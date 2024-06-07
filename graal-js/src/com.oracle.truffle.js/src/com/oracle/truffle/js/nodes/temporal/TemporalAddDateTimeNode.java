@@ -44,53 +44,50 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 /**
- * Implementation of the Temporal AddDate operation.
+ * Implementation of the Temporal AddDateTime operation.
  */
-public abstract class TemporalAddDateNode extends JavaScriptBaseNode {
+public abstract class TemporalAddDateTimeNode extends JavaScriptBaseNode {
 
-    protected TemporalAddDateNode() {
+    protected TemporalAddDateTimeNode() {
     }
 
-    public abstract JSTemporalPlainDateObject execute(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration, JSDynamicObject optionsOpt);
+    public abstract JSTemporalDateTimeRecord execute(int year, int month, int day,
+                    int hour, int minute, int second, int millisecond, int microsecond, double nanosecond,
+                    CalendarMethodsRecord calendarRec,
+                    double years, double months, double weeks, double days, BigInt normalizedTimeDuration,
+                    JSDynamicObject options);
 
     @Specialization
-    protected JSTemporalPlainDateObject addDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration, JSDynamicObject options,
-                    @Cached ToTemporalCalendarObjectNode toCalendarObject,
-                    @Cached("createCall()") JSFunctionCallNode callDateAddNode,
-                    @Cached InlinedBranchProfile errorBranch,
-                    @Cached TemporalGetOptionNode getOptionNode) {
-        if (duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0) {
-            // CalendarDateAdd(calendarRec, plainDate, duration, options).
-            Object calendar = toCalendarObject.execute(calendarRec.receiver());
-            Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, calendarRec.dateAdd(), plainDate, duration, options));
-            return TemporalUtil.requireTemporalDate(addedDate, this, errorBranch);
-        } else {
-            JSContext ctx = getJSContext();
-            JSRealm realm = getRealm();
-            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
-            BigInt norm = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            TimeDurationRecord balancedDuration = TemporalUtil.balanceTimeDuration(norm, Unit.DAY);
-            double days = duration.getDays() + balancedDuration.days();
-            var result = TemporalUtil.addISODate(plainDate.getYear(), plainDate.getMonth(), plainDate.getDay(), 0, 0, 0, days, overflow);
-            return JSTemporalPlainDate.create(ctx, realm, result.year(), result.month(), result.day(), calendarRec.receiver(), this, errorBranch);
-        }
+    protected JSTemporalDateTimeRecord addDateTime(int year, int month, int day,
+                    int hour, int minute, int second, int millisecond, int microsecond, double nanosecond,
+                    CalendarMethodsRecord calendarRec,
+                    double years, double months, double weeks, double days, BigInt normalizedTimeDuration,
+                    JSDynamicObject options,
+                    @Cached TemporalAddDateNode addDateNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        JSContext ctx = getJSContext();
+        JSRealm realm = getRealm();
+
+        TimeRecord timeResult = TemporalUtil.addTime(hour, minute, second, millisecond, microsecond, nanosecond, normalizedTimeDuration, this, errorBranch);
+        JSTemporalPlainDateObject datePart = JSTemporalPlainDate.create(ctx, realm, year, month, day, calendarRec.receiver(), this, errorBranch);
+        JSTemporalDurationObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, weeks, days + timeResult.days(), 0L, 0L, 0L, 0L, 0L, 0L, this, errorBranch);
+        JSTemporalPlainDateObject addedDate = addDateNode.execute(calendarRec, datePart, dateDuration, options);
+        return JSTemporalDateTimeRecord.create(addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
+                        timeResult.hour(), timeResult.minute(), timeResult.second(), timeResult.millisecond(), timeResult.microsecond(), timeResult.nanosecond());
     }
 
 }

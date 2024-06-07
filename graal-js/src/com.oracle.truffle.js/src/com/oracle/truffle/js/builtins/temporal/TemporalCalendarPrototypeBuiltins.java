@@ -90,6 +90,7 @@ import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -437,10 +438,12 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
             JSRealm realm = getRealm();
-            TimeDurationRecord balanceResult = TemporalUtil.balanceTimeDuration(duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
+            BigInt norm = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
+            TimeDurationRecord balanceResult = TemporalUtil.balanceTimeDuration(norm, Unit.DAY);
+            double days = duration.getDays() + balanceResult.days();
             ISODateRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.days(), overflow);
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), days, overflow);
             return JSTemporalPlainDate.create(getContext(), realm, result.year(), result.month(), result.day(), calendar, this, errorBranch);
         }
 
