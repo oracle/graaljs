@@ -1935,13 +1935,29 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/calendar-dateadd-called-with-options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/calendar-dateuntil-called-with-singular-largestunit.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/dateuntil-field.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/dst-balancing-result.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/dst-rounding-result.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/largestunit-smallestunit-combinations-relativeto.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/largestunit-smallestunit-default.js",
     "status" : "FAIL",
@@ -2027,9 +2043,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/throws-in-unbalance-duration-relative-when-sign-mismatched.js",
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/timezone-getpossibleinstantsfor-iterable.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-06-07"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/total-duration-nanoseconds-too-large-with-zoned-datetime.js",
     "status" : "FAIL",
@@ -2086,6 +2102,18 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/total/balance-negative-result.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/calendar-dateuntil-called-with-singular-largestunit.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/dst-balancing-result.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/dst-day-length.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/dst-rounding-result.js",
     "status" : "FAIL",
@@ -2150,6 +2178,14 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-zoneddatetime-with-fractional-days.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/total-of-each-unit-relativeto.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/total-of-each-unit.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
   }, {
     "filePath" : "built-ins/Temporal/Instant/compare/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
@@ -3439,13 +3475,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/calendar-dateadd-called-with-options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/calendar-dateuntil-called-with-singular-largestunit.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/date-and-time-durations-opposite-signs.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/dst-month-day-boundary.js",
     "status" : "FAIL",
@@ -3459,14 +3495,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/normalized-time-duration-to-days-loop-arbitrarily.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/normalized-time-duration-to-days-range-errors.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3475,9 +3503,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/roundingincrement-non-integer.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/roundingincrement-addition-out-of-range.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
+    "comment" : "new failures 2024-06-07"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/roundingmode-ceil.js",
     "status" : "FAIL",
@@ -3527,13 +3555,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/calendar-dateadd-called-with-options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/calendar-dateuntil-called-with-singular-largestunit.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/date-and-time-durations-opposite-signs.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/dst-month-day-boundary.js",
     "status" : "FAIL",
@@ -3547,14 +3575,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/normalized-time-duration-to-days-loop-arbitrarily.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/normalized-time-duration-to-days-range-errors.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3563,9 +3583,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/roundingincrement-non-integer.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/roundingincrement-addition-out-of-range.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
+    "comment" : "new failures 2024-06-07"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/roundingmode-ceil.js",
     "status" : "FAIL",
@@ -4154,9 +4174,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-07-13"
   }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/reference-day.js",
+    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/reference-day-chinese.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-03-10"
+    "comment" : "new failures 2024-06-07"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/reference-day-gregory.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/reference-day-hebrew.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-06-07"
   }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/yearOfWeek/gregory-iso-weekofyear.js",
     "status" : "FAIL",
