@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 
 import java.util.EnumSet;
@@ -68,21 +69,21 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateUntilSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateWithCalendarNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateWithNodeGen;
-import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
+import com.oracle.truffle.js.nodes.temporal.RoundRelativeDurationNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalDifferenceDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalYearMonthFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
@@ -90,15 +91,17 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
@@ -109,6 +112,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -424,11 +428,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Bind("this") Node node,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached TemporalDifferenceDateNode differenceDate,
                         @Cached ToTemporalDateNode toTemporalDate,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
-                        @Cached TemporalRoundDurationNode roundDurationNode,
+                        @Cached RoundRelativeDurationNode roundRelativeDuration,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -438,26 +442,28 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
 
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            JSObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateOrAuto, TemporalUtil.unitMappingDate, Unit.DAY, Unit.DAY);
 
             Object dateAddMethod = lookupDateAdd.execute(temporalDate.getCalendar());
             Object dateUntilMethod = lookupDateUntil.execute(temporalDate.getCalendar());
             CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateAddDateUntil(temporalDate.getCalendar(), dateAddMethod, dateUntilMethod);
 
-            JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, resolvedOptions, settings.largestUnit());
-            JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendarRec, temporalDate, other, untilOptions);
+            JSRuntime.createDataPropertyOrThrow(resolvedOptions, LARGEST_UNIT, settings.largestUnit().toTruffleString());
+            JSTemporalDurationObject result = differenceDate.execute(calendarRec, temporalDate, other, settings.largestUnit(), resolvedOptions);
+            NormalizedDurationRecord duration = TemporalUtil.createNormalizedDurationRecord(
+                            result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), TemporalUtil.zeroTimeDuration());
 
             boolean roundingGranularityIsNoop = settings.smallestUnit() == Unit.DAY && (settings.roundingIncrement() == 1);
             if (!roundingGranularityIsNoop) {
-                JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0,
-                                0, 0, settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode(), temporalDate, calendarRec);
-                return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
-                                sign * result2.getYears(), sign * result2.getMonths(), sign * result2.getWeeks(), sign * result2.getDays(),
-                                0, 0, 0, 0, 0, 0, node, errorBranch);
+                BigInt destEpochNs = TemporalUtil.getUTCEpochNanoseconds(other.getYear(), other.getMonth(), other.getDay(), 0, 0, 0, 0, 0, 0);
+                var dateTime = new ISODateTimeRecord(temporalDate.getYear(), temporalDate.getMonth(), temporalDate.getDay(), 0, 0, 0, 0, 0, 0);
+                var roundedDuration = roundRelativeDuration.execute(duration, destEpochNs, dateTime, calendarRec, null,
+                                settings.largestUnit(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode()).duration();
+                duration = new NormalizedDurationRecord(roundedDuration.getYears(), roundedDuration.getMonths(), roundedDuration.getWeeks(), roundedDuration.getDays(), BigInt.ZERO);
             }
             return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
-                            sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
+                            sign * duration.years(), sign * duration.months(), sign * duration.weeks(), sign * duration.days(),
                             0, 0, 0, 0, 0, 0, node, errorBranch);
         }
 

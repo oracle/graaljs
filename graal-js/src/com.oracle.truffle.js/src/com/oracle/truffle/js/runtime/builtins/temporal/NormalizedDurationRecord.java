@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,21 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import java.math.BigInteger;
+import com.oracle.truffle.js.runtime.BigInt;
 
-public record NormalizedTimeDurationToDaysResult(BigInteger days, BigInteger remainder, BigInteger dayLength) {
+/**
+ * Normalized Duration Record.
+ *
+ * @param years a float64-representable integer
+ * @param months a float64-representable integer
+ * @param weeks a float64-representable integer
+ * @param days a float64-representable integer
+ * @param normalizedTimeTotalNanoseconds a Normalized Time Duration Record (the time portion).
+ */
+public record NormalizedDurationRecord(
+                double years,
+                double months,
+                double weeks,
+                double days,
+                BigInt normalizedTimeTotalNanoseconds) {
 }

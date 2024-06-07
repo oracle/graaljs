@@ -73,7 +73,6 @@ import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
@@ -266,15 +265,15 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached ToTemporalInstantNode toTemporalInstantNode,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
-                        @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalInstantObject other = toTemporalInstantNode.execute(otherObj);
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingTimeOrAuto, TemporalUtil.unitMappingTime, Unit.NANOSECOND, Unit.SECOND);
 
-            TimeDurationRecord norm = TemporalUtil.differenceInstant(instant.getNanoseconds(), other.getNanoseconds(),
-                            settings.roundingIncrement(), settings.smallestUnit(), settings.largestUnit(), settings.roundingMode(), roundDurationNode);
+            var diffRecord = TemporalUtil.differenceInstant(instant.getNanoseconds(), other.getNanoseconds(),
+                            settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
+            BigInt norm = diffRecord.normalizedTimeDuration();
             TimeDurationRecord result = TemporalUtil.balanceTimeDuration(norm, settings.largestUnit());
             JSRealm realm = getRealm();
             return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
