@@ -314,10 +314,10 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
-            double roundingIncrement = getRoundingIncrementOption.execute(roundTo);
+            int roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.REQUIRED);
-            double maximum;
+            long maximum;
             if (Unit.HOUR == smallestUnit) {
                 maximum = TemporalUtil.HOURS_PER_DAY;
             } else if (Unit.MINUTE == smallestUnit) {
@@ -330,10 +330,10 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 maximum = TemporalUtil.MS_PER_DAY * 1000;
             } else {
                 assert Unit.NANOSECOND == smallestUnit;
-                maximum = TemporalUtil.NS_PER_DAY;
+                maximum = TemporalUtil.NS_PER_DAY_LONG;
             }
             TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, true, this, errorBranch);
-            BigInt roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode);
+            BigInt roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode);
             return JSTemporalInstant.create(getContext(), getRealm(), roundedNs);
         }
 

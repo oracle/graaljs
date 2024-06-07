@@ -309,8 +309,9 @@ public final class TemporalUtil {
     public static final int HOURS_PER_DAY = 24;
     public static final int MINUTES_PER_HOUR = 60;
     public static final int SECONDS_PER_MINUTE = 60;
-    public static final double MS_PER_DAY = 8.64 * 10_000_000;
-    public static final double NS_PER_DAY = 8.64 * 10_000_000_000_000D;
+    public static final int MS_PER_DAY = 86_400_000; // 24 * 60 * 60 * 1000
+    public static final double NS_PER_DAY = 8.64e13; // 24 * 60 * 60 * 1000 * 1000 * 1000
+    public static final long NS_PER_DAY_LONG = (long) NS_PER_DAY;
 
     public static final int SINCE = -1;
     public static final int UNTIL = 1;
@@ -472,7 +473,7 @@ public final class TemporalUtil {
         return Map.copyOf(map);
     }
 
-    public static double validateTemporalRoundingIncrement(double increment, double dividend, boolean inclusive,
+    public static int validateTemporalRoundingIncrement(int increment, long dividend, boolean inclusive,
                     Node node, InlinedBranchProfile errorBranch) {
         double maximum;
         if (inclusive) {
@@ -499,9 +500,9 @@ public final class TemporalUtil {
             case EMPTY -> switch (fractionalDigitCount) {
                 case ToFractionalSecondDigitsNode.AUTO -> JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
                 case 0 -> JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
-                case 1, 2, 3 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MILLISECOND, Math.pow(10, 3 - fractionalDigitCount));
-                case 4, 5, 6 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MICROSECOND, Math.pow(10, 6 - fractionalDigitCount));
-                case 7, 8, 9 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.NANOSECOND, Math.pow(10, 9 - fractionalDigitCount));
+                case 1, 2, 3 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MILLISECOND, (int) Math.pow(10, 3 - fractionalDigitCount));
+                case 4, 5, 6 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MICROSECOND, (int) Math.pow(10, 6 - fractionalDigitCount));
+                case 7, 8, 9 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.NANOSECOND, (int) Math.pow(10, 9 - fractionalDigitCount));
                 default -> throw Errors.shouldNotReachHereUnexpectedValue(fractionalDigitCount);
             };
             default -> throw Errors.shouldNotReachHereUnexpectedValue(smallestUnit);
@@ -610,18 +611,18 @@ public final class TemporalUtil {
         }
     }
 
-    public static Double maximumTemporalDurationRoundingIncrement(Unit unit) {
+    public static Integer maximumTemporalDurationRoundingIncrement(Unit unit) {
         if (unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY) {
             return null; // Undefined according to spec, we fix at consumer
         }
         if (unit == Unit.HOUR) {
-            return 24d;
+            return 24;
         }
         if (unit == Unit.MINUTE || unit == Unit.SECOND) {
-            return 60d;
+            return 60;
         }
         assert unit == Unit.MILLISECOND || unit == Unit.MICROSECOND || unit == Unit.NANOSECOND;
-        return 1000d;
+        return 1000;
     }
 
     // 13.32
@@ -1428,8 +1429,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInt roundTemporalInstant(BigInt ns, double increment, Unit unit, RoundingMode roundingMode) {
-        assert JSRuntime.isIntegralNumber(increment) : increment;
+    public static BigInt roundTemporalInstant(BigInt ns, int increment, Unit unit, RoundingMode roundingMode) {
         BigDecimal incrementNs = BigDecimal.valueOf(increment);
         if (Unit.HOUR == unit) {
             incrementNs = incrementNs.multiply(BigDecimal.valueOf(3_600_000_000_000L));
@@ -2363,7 +2363,7 @@ public final class TemporalUtil {
     // TODO doing some long arithmetics here. Might need double/BigInteger
     public static JSTemporalDurationRecord adjustRoundedDurationDays(JSContext ctx, JSRealm realm,
                     TemporalDurationAddNode durationAddNode, TemporalRoundDurationNode roundDurationNode, double years,
-                    double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, double increment,
+                    double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, int increment,
                     Unit unit, RoundingMode roundingMode, JSTemporalZonedDateTimeObject zonedRelativeTo,
                     CalendarMethodsRecord calendarRec, TimeZoneMethodsRecord timeZoneRec, JSTemporalPlainDateTimeObject precalculatedPlainDateTime) {
         if (zonedRelativeTo == null ||
@@ -2436,7 +2436,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static TimeRecord roundTime(int hours, int minutes, int seconds, int milliseconds, int microseconds,
-                    int nanoseconds, double increment, Unit unit, RoundingMode roundingMode, Long dayLengthNsParam) {
+                    int nanoseconds, int increment, Unit unit, RoundingMode roundingMode, Long dayLengthNsParam) {
         double fractionalSecond = ((double) nanoseconds / 1_000_000_000) + ((double) microseconds / 1_000_000) +
                         ((double) milliseconds / 1_000) + seconds;
         double quantity;
@@ -2588,7 +2588,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalDurationRecord roundISODateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
-                    int nanosecond, double increment, Unit unit, RoundingMode roundingMode, Long dayLength) {
+                    int nanosecond, int increment, Unit unit, RoundingMode roundingMode, Long dayLength) {
         TimeRecord rt = roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
         ISODateRecord br = balanceISODate(year, month, day + dtoi(rt.days()));
         return JSTemporalDurationRecord.create(br.year(), br.month(), br.day(),
@@ -2790,7 +2790,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static TimeDurationRecord differenceInstant(BigInt ns1, BigInt ns2, double roundingIncrement, Unit smallestUnit, Unit largestUnit, RoundingMode roundingMode,
+    public static TimeDurationRecord differenceInstant(BigInt ns1, BigInt ns2, int roundingIncrement, Unit smallestUnit, Unit largestUnit, RoundingMode roundingMode,
                     TemporalRoundDurationNode roundDuration) {
         BigInteger difference = ns2.subtract(ns1).bigIntegerValue();
         int nanoseconds = difference.remainder(BI_1000).intValue();
@@ -3016,15 +3016,15 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static TruffleString temporalZonedDateTimeToString(JSContext ctx, JSRealm realm, JSDynamicObject zonedDateTimeParam, Object precision, ShowCalendar showCalendar, TruffleString showTimeZone,
-                    TruffleString showOffset, Double incrementParam, Unit unitParam, RoundingMode roundingModeParam) {
+                    TruffleString showOffset, Integer incrementParam, Unit unitParam, RoundingMode roundingModeParam) {
         assert isTemporalZonedDateTime(zonedDateTimeParam);
         assert unitParam != null && roundingModeParam != null;
         JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) zonedDateTimeParam;
-        double increment = incrementParam == null ? 1 : (double) incrementParam;
+        int increment = incrementParam == null ? 1 : incrementParam;
         Unit unit = unitParam == Unit.EMPTY ? Unit.NANOSECOND : unitParam;
         RoundingMode roundingMode = roundingModeParam == RoundingMode.EMPTY ? RoundingMode.TRUNC : roundingModeParam;
 
-        BigInt ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), (long) increment, unit, roundingMode);
+        BigInt ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), increment, unit, roundingMode);
         Object timeZone = zonedDateTime.getTimeZone();
         JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, realm, ns);
         JSTemporalCalendarObject isoCalendar = getISO8601Calendar(ctx, realm);
