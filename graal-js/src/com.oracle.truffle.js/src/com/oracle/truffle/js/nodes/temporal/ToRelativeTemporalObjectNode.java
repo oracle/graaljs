@@ -191,11 +191,11 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             if (timeZoneName != null) {
                 // If ParseText(! StringToCodePoints(timeZoneName), TimeZoneNumericUTCOffset)
                 // is not a List of errors
-                if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
+                timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
+                if (timeZoneName == null) {
                     errorBranch.enter(this);
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
-                timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
                 timeZone = TemporalUtil.createTemporalTimeZone(ctx, realm, timeZoneName);
             }
 

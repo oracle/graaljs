@@ -143,11 +143,11 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             TruffleString timeZoneName = resultZDT.getTimeZoneResult().getName();
             assert timeZoneName != null;
             if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
-                if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
+                timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
+                if (timeZoneName == null) {
                     errorBranch.enter(this);
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
-                timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
             }
             offsetString = resultZDT.getTimeZoneResult().getOffsetString();
             if (resultZDT.getTimeZoneResult().isZ()) {

@@ -43,15 +43,10 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Implementation of ToTemporalDuration() operation.
@@ -65,22 +60,12 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSTemporalDurationObject toTemporalDuration(Object item,
-                    @Cached InlinedConditionProfile isObjectProfile,
-                    @Cached InlinedBranchProfile errorBranch,
-                    @Cached IsObjectNode isObjectNode) {
-        JSTemporalDurationRecord result;
-        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
-            JSDynamicObject itemObj = (JSDynamicObject) item;
-            if (JSTemporalDuration.isJSTemporalDuration(itemObj)) {
-                return (JSTemporalDurationObject) itemObj;
-            }
-            result = JSTemporalDuration.toTemporalDurationRecord(itemObj);
-        } else if (item instanceof TruffleString string) {
-            result = JSTemporalDuration.parseTemporalDurationString(string);
-        } else {
-            errorBranch.enter(this);
-            throw Errors.createTypeErrorNotAString(item);
+                    @Cached ToTemporalDurationRecordNode toTemporalDurationRecord,
+                    @Cached InlinedBranchProfile errorBranch) {
+        if (item instanceof JSTemporalDurationObject duration) {
+            return duration;
         }
+        JSTemporalDurationRecord result = toTemporalDurationRecord.execute(item);
         return JSTemporalDuration.createTemporalDuration(getLanguage().getJSContext(), getRealm(),
                         result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
                         result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);

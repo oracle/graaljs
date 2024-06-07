@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,60 +47,47 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ToTemporalTimeZoneSlotValue() operation.
+ * Implementation of ToTemporalDurationRecord (temporalDurationLike) operation.
  */
-public abstract class ToTemporalTimeZoneSlotValueNode extends JavaScriptBaseNode {
+public abstract class ToTemporalDurationRecordNode extends JavaScriptBaseNode {
 
-    @Child protected PropertyGetNode getTimeZoneNode;
-
-    protected ToTemporalTimeZoneSlotValueNode() {
+    protected ToTemporalDurationRecordNode() {
     }
 
-    public abstract Object execute(Object temporalTimeZoneLike);
+    public abstract JSTemporalDurationRecord execute(Object item);
 
     @Specialization
-    protected Object toTemporalTimeZoneSlotValue(Object temporalTimeZoneLike,
-                    @Cached IsObjectNode isObjectNode,
-                    @Cached ObjectImplementsTemporalTimeZoneProtocolNode objectImplementsTimeZoneProtocol,
-                    @Cached InlinedBranchProfile errorBranch,
+    protected final JSTemporalDurationRecord toTemporalDurationRecord(Object temporalDurationLike,
                     @Cached InlinedConditionProfile isObjectProfile,
-                    @Cached InlinedConditionProfile isTimeZoneProfile) {
-        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(temporalTimeZoneLike))) {
-            if (isTimeZoneProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(temporalTimeZoneLike))) {
-                return ((JSTemporalZonedDateTimeObject) temporalTimeZoneLike).getTimeZone();
-            }
-            if (objectImplementsTimeZoneProtocol.execute(temporalTimeZoneLike)) {
-                return temporalTimeZoneLike;
+                    @Cached ToTemporalPartialDurationRecordNode toTemporalPartialDurationRecord,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached IsObjectNode isObjectNode) {
+        JSTemporalDurationRecord result;
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(temporalDurationLike))) {
+            if (temporalDurationLike instanceof JSTemporalDurationObject duration) {
+                result = JSTemporalDurationRecord.create(duration);
             } else {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
+                result = toTemporalPartialDurationRecord.execute(temporalDurationLike, JSTemporalDurationRecord.createZero());
+                if (!TemporalUtil.isValidDuration(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
+                                result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds())) {
+                    errorBranch.enter(this);
+                    throw TemporalErrors.createTypeErrorDurationOutsideRange();
+                }
             }
-        }
-        if (temporalTimeZoneLike instanceof TruffleString identifier) {
-            JSTemporalTimeZoneRecord parseResult = TemporalUtil.parseTemporalTimeZoneString(identifier);
-            TruffleString offsetMinutes = parseResult.getOffsetString();
-            TruffleString name = parseResult.getName();
-            if (offsetMinutes != null && name == null) {
-                return TemporalUtil.formatTimeZoneOffsetString(TemporalUtil.parseTimeZoneOffsetString(offsetMinutes));
-            }
-            TruffleString timeZoneName = TemporalUtil.canonicalizeTimeZoneName(name);
-            if (timeZoneName == null) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
-            }
-            return timeZoneName;
+        } else if (temporalDurationLike instanceof TruffleString string) {
+            result = JSTemporalDuration.parseTemporalDurationString(string);
         } else {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorNotAString(temporalTimeZoneLike);
+            throw Errors.createTypeErrorNotAString(temporalDurationLike);
         }
+        return result;
     }
-
 }

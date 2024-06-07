@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,49 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.temporal;
+package com.oracle.truffle.js.nodes.temporal;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
-public final class JSTemporalPrecisionRecord {
-    private final Object precision; // TruffleString "minute", "auto", or an integer from 0 to 9
-    private final Unit unit;
-    private final int increment;
+@ImportStatic(TemporalConstants.class)
+public abstract class GetRoundingIncrementOptionNode extends JavaScriptBaseNode {
 
-    private JSTemporalPrecisionRecord(Object precision, Unit unit, int increment) {
-        assert isValidPrecision(precision) : precision;
-        this.precision = precision;
-        this.unit = unit;
-        this.increment = increment;
-    }
+    public abstract int execute(Object options);
 
-    public static JSTemporalPrecisionRecord create(Object precision, Unit unit, int increment) {
-        return new JSTemporalPrecisionRecord(precision, unit, increment);
-    }
-
-    public Object getPrecision() {
-        return precision;
-    }
-
-    public Unit getUnit() {
-        return unit;
-    }
-
-    public int getIncrement() {
-        return increment;
-    }
-
-    public static boolean isValidPrecision(Object precision) {
-        if (precision instanceof TruffleString strPrecision) {
-            return Strings.equals(strPrecision, TemporalConstants.MINUTE) || Strings.equals(strPrecision, TemporalConstants.AUTO);
-        } else if (precision instanceof Integer intPrecision) {
-            return (0 <= intPrecision) || (intPrecision <= 9);
-        } else {
-            return false;
+    @Specialization
+    protected final int toTemporalRoundingIncrement(Object options,
+                    @Cached("create(ROUNDING_INCREMENT, getJSContext())") PropertyGetNode getRoundingIncrement,
+                    @Cached JSToDoubleNode toDouble,
+                    @Cached InlinedBranchProfile errorBranch) {
+        Object value = getRoundingIncrement.getValue(options);
+        if (value == Undefined.instance) {
+            return 1;
         }
+        double doubleValue = toDouble.executeDouble(value);
+        double increment = Math.floor(doubleValue);
+        if (!Double.isFinite(doubleValue) || increment < 1 || increment > 1e9) {
+            errorBranch.enter(this);
+            throw Errors.createRangeError("Increment out of range.");
+        }
+        return (int) increment;
     }
 
 }
