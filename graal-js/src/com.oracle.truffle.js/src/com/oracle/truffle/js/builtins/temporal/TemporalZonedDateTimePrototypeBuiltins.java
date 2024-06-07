@@ -937,23 +937,16 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
-            double roundingIncrement = getRoundingIncrementOption.execute(roundTo);
+            int roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTimeOrDay, Unit.REQUIRED);
-            double maximum;
+            int maximum;
             boolean inclusive;
             if (Unit.DAY == smallestUnit) {
                 maximum = 1;
                 inclusive = true;
             } else {
-                if (Unit.HOUR == smallestUnit) {
-                    maximum = 24;
-                } else if (Unit.MINUTE == smallestUnit || Unit.SECOND == smallestUnit) {
-                    maximum = 60;
-                } else {
-                    assert Unit.MILLISECOND == smallestUnit || Unit.MICROSECOND == smallestUnit || Unit.NANOSECOND == smallestUnit;
-                    maximum = 1000;
-                }
+                maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
                 inclusive = false;
             }
             TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, inclusive, this, errorBranch);

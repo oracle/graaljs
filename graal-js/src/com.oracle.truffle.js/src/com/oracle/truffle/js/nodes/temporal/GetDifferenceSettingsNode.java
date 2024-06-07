@@ -69,7 +69,7 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
                     TemporalUtil.Unit smallestUnit,
                     TemporalUtil.Unit largestUnit,
                     TemporalUtil.RoundingMode roundingMode,
-                    long roundingIncrement) {
+                    int roundingIncrement) {
     }
 
     public abstract GetDifferenceSettingsResult execute(int operation, JSDynamicObject options, Map<TruffleString, Unit> unitMappingOrAuto, Map<TruffleString, TemporalUtil.Unit> unitMapping,
@@ -86,7 +86,7 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
                     @Cached GetTemporalUnitNode getSmallestUnit) {
         assert unitMappingOrAuto.containsKey(TemporalConstants.AUTO) && !unitMapping.containsKey(TemporalConstants.AUTO);
         Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, unitMappingOrAuto, Unit.AUTO);
-        double roundingIncrement = getRoundingIncrementOption.execute(resolvedOptions);
+        int roundingIncrement = getRoundingIncrementOption.execute(resolvedOptions);
         RoundingMode roundingMode = JSTemporalBuiltinOperation.toTemporalRoundingMode(resolvedOptions, TemporalConstants.TRUNC, equalNode, getOptionNode);
         if (operation == TemporalUtil.SINCE) {
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
@@ -97,10 +97,10 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
             largestUnit = defaultLargestUnit;
         }
         TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-        Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
+        Integer maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
         if (maximum != null) {
             TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, false, this, errorBranch);
         }
-        return new GetDifferenceSettingsResult(smallestUnit, largestUnit, roundingMode, (long) roundingIncrement);
+        return new GetDifferenceSettingsResult(smallestUnit, largestUnit, roundingMode, roundingIncrement);
     }
 }

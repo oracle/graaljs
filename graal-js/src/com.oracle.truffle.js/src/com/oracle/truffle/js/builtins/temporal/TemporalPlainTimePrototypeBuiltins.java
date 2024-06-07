@@ -429,17 +429,10 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
-            double roundingIncrement = getRoundingIncrementOption.execute(roundTo);
+            int roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.REQUIRED);
-            double maximum;
-            if (smallestUnit == Unit.HOUR) {
-                maximum = 24;
-            } else if (smallestUnit == Unit.MINUTE || smallestUnit == Unit.SECOND) {
-                maximum = 60;
-            } else {
-                maximum = 1000;
-            }
+            int maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, false, this, errorBranch);
             TimeRecord result = TemporalUtil.roundTime(temporalTime.getHour(), temporalTime.getMinute(),
                             temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),

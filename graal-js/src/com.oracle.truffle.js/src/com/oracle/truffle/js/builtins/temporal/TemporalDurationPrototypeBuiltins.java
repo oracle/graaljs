@@ -416,7 +416,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
             TimeZoneMethodsRecord timeZoneRec = relativeToRec.timeZoneRec();
-            double roundingIncrement = getRoundingIncrementOption.execute(roundTo);
+            int roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingDateTime, Unit.EMPTY);
             if (smallestUnit == Unit.EMPTY) {
@@ -440,7 +440,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             JSRealm realm = getRealm();
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
+            Integer maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             if (maximum != null) {
                 TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, false, node, errorBranch);
             }
@@ -488,7 +488,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDurationRecord roundResult = roundDurationNode.execute(
                             unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(), unbalanceResult.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                            duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
+                            duration.getMicroseconds(), duration.getNanoseconds(), roundingIncrement, smallestUnit,
                             roundingMode, plainRelativeTo, zonedRelativeTo, calendarRec, timeZoneRec, precalculatedPlainDateTime);
             TimeDurationRecord balanceResult;
             if (relativeToIsZonedDateTime.profile(node, zonedRelativeTo != null)) {
@@ -496,7 +496,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(),
                                 roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
                                 roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(),
-                                (long) roundingIncrement, smallestUnit, roundingMode,
+                                roundingIncrement, smallestUnit, roundingMode,
                                 zonedRelativeTo, calendarRec, timeZoneRec, precalculatedPlainDateTime);
                 balanceResult = TemporalUtil.balanceTimeDurationRelative(adjustResult.getDays(), adjustResult.getHours(), adjustResult.getMinutes(), adjustResult.getSeconds(),
                                 adjustResult.getMilliseconds(), adjustResult.getMicroseconds(), adjustResult.getNanoseconds(), largestUnit,

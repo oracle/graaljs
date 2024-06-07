@@ -54,10 +54,10 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
 @ImportStatic(TemporalConstants.class)
 public abstract class GetRoundingIncrementOptionNode extends JavaScriptBaseNode {
 
-    public abstract double execute(Object options);
+    public abstract int execute(Object options);
 
     @Specialization
-    protected final double toTemporalRoundingIncrement(Object options,
+    protected final int toTemporalRoundingIncrement(Object options,
                     @Cached("create(ROUNDING_INCREMENT, getJSContext())") PropertyGetNode getRoundingIncrement,
                     @Cached JSToDoubleNode toDouble,
                     @Cached InlinedBranchProfile errorBranch) {
@@ -71,7 +71,7 @@ public abstract class GetRoundingIncrementOptionNode extends JavaScriptBaseNode 
             errorBranch.enter(this);
             throw Errors.createRangeError("Increment out of range.");
         }
-        return increment;
+        return (int) increment;
     }
 
 }
