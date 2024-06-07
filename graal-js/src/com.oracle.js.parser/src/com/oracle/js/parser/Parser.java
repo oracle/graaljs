@@ -41,6 +41,12 @@
 
 package com.oracle.js.parser;
 
+import static com.oracle.js.parser.ScriptEnvironment.ES_2015;
+import static com.oracle.js.parser.ScriptEnvironment.ES_2017;
+import static com.oracle.js.parser.ScriptEnvironment.ES_2020;
+import static com.oracle.js.parser.ScriptEnvironment.ES_2021;
+import static com.oracle.js.parser.ScriptEnvironment.ES_2022;
+import static com.oracle.js.parser.ScriptEnvironment.ES_STAGING;
 import static com.oracle.js.parser.TokenType.ACCESSOR;
 import static com.oracle.js.parser.TokenType.ARROW;
 import static com.oracle.js.parser.TokenType.AS;
@@ -910,42 +916,39 @@ public class Parser extends AbstractParser {
      * ES6 (a.k.a. ES2015) or newer.
      */
     private boolean isES6() {
-        return env.ecmaScriptVersion >= 6;
+        return env.ecmaScriptVersion >= ES_2015;
     }
 
     /**
      * ES2017 or newer.
      */
     private boolean isES2017() {
-        return env.ecmaScriptVersion >= 8;
+        return env.ecmaScriptVersion >= ES_2017;
     }
 
     /**
      * ES2020 or newer.
      */
     private boolean isES2020() {
-        return env.ecmaScriptVersion >= 11;
+        return env.ecmaScriptVersion >= ES_2020;
     }
 
     /**
      * ES2021 or newer.
      */
     private boolean isES2021() {
-        return env.ecmaScriptVersion >= 12;
+        return env.ecmaScriptVersion >= ES_2021;
     }
 
     /**
      * ES2022 or newer.
      */
     private boolean isES2022() {
-        return env.ecmaScriptVersion >= 13;
+        return env.ecmaScriptVersion >= ES_2022;
     }
 
-    /**
-     * ES2023 or newer.
-     */
-    private boolean isES2023() {
-        return env.ecmaScriptVersion >= 14;
+    private boolean isClassDecorators() {
+        return env.ecmaScriptVersion >= ES_STAGING;
     }
 
     private boolean isClassFields() {
@@ -1609,7 +1612,7 @@ public class Parser extends AbstractParser {
         assert type == CLASS || type == AT;
         List<Expression> classDecorators = null;
         if (type == AT) {
-            assert isES2023();
+            assert isClassDecorators();
             classDecorators = decoratorList(yield, await);
         }
 
@@ -1652,7 +1655,7 @@ public class Parser extends AbstractParser {
         assert type == CLASS || type == AT;
         List<Expression> classDecorators = null;
         if (type == AT) {
-            assert isES2023();
+            assert isClassDecorators();
             classDecorators = decoratorList(yield, await);
         }
         int classLineNumber = line;
@@ -1745,7 +1748,7 @@ public class Parser extends AbstractParser {
                     hasClassElementDecorators = true;
                 }
                 boolean isAutoAccessor = false;
-                if (isES2023() && type == ACCESSOR) {
+                if (isClassDecorators() && type == ACCESSOR) {
                     TokenType nextToken = lookaheadNoLineTerminator();
                     if (nextToken != LPAREN && nextToken != ASSIGN && nextToken != SEMICOLON && nextToken != RBRACE && nextToken != EOL) {
                         isAutoAccessor = true;
@@ -1755,7 +1758,7 @@ public class Parser extends AbstractParser {
                 boolean isStatic = false;
                 if (type == STATIC) {
                     TokenType nextToken = lookahead();
-                    if (isES2023() && nextToken == ACCESSOR) {
+                    if (isClassDecorators() && nextToken == ACCESSOR) {
                         next();
                         nextToken = lookaheadNoLineTerminator();
                         if (nextToken != LPAREN && nextToken != ASSIGN && nextToken != SEMICOLON && nextToken != RBRACE && nextToken != EOL) {
@@ -7595,7 +7598,7 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     public List<Expression> decoratorList(boolean yield, boolean await) {
-        assert isES2023();
+        assert isClassDecorators();
         List<Expression> decoratorList = new ArrayList<>();
         while (type == AT) {
             next();

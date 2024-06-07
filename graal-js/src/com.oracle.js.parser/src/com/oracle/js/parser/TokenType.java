@@ -41,6 +41,10 @@
 
 package com.oracle.js.parser;
 
+import static com.oracle.js.parser.ScriptEnvironment.ES_2015;
+import static com.oracle.js.parser.ScriptEnvironment.ES_2020;
+import static com.oracle.js.parser.ScriptEnvironment.ES_2021;
+import static com.oracle.js.parser.ScriptEnvironment.ES_STAGING;
 import static com.oracle.js.parser.TokenKind.BINARY;
 import static com.oracle.js.parser.TokenKind.BRACKET;
 import static com.oracle.js.parser.TokenKind.CONTEXTUAL;
@@ -79,13 +83,13 @@ public enum TokenType {
     BIT_AND        (BINARY,  "&",     8, true),
     AND            (BINARY,  "&&",    5, true),
     ASSIGN_BIT_AND (BINARY,  "&=",    2, false),
-    ASSIGN_AND     (BINARY,  "&&=",   2, false, 12),
+    ASSIGN_AND     (BINARY,  "&&=",   2, false, ES_2021),
     LPAREN         (BRACKET, "(",    17, true),
     RPAREN         (BRACKET, ")",     0, true),
     MUL            (BINARY,  "*",    13, true),
     ASSIGN_MUL     (BINARY,  "*=",    2, false),
-    EXP            (BINARY,  "**",   14, false, 6),
-    ASSIGN_EXP     (BINARY,  "**=",   2, false, 6),
+    EXP            (BINARY,  "**",   14, false, ES_2015),
+    ASSIGN_EXP     (BINARY,  "**=",   2, false, ES_2015),
     ADD            (BINARY,  "+",    12, true),
     INCPREFIX      (UNARY,   "++",   16, true),
     ASSIGN_ADD     (BINARY,  "+=",    2, false),
@@ -121,14 +125,14 @@ public enum TokenType {
     BIT_OR         (BINARY,  "|",     6, true),
     ASSIGN_BIT_OR  (BINARY,  "|=",    2, false),
     OR             (BINARY,  "||",    4, true),
-    ASSIGN_OR      (BINARY,  "||=",   2, false, 12),
+    ASSIGN_OR      (BINARY,  "||=",   2, false, ES_2021),
     RBRACE         (BRACKET, "}"),
     BIT_NOT        (UNARY,   "~",    15, false),
     ELLIPSIS       (UNARY,   "..."),
-    NULLISHCOALESC (BINARY,  "??",    4, true, 11),
-    ASSIGN_NULLCOAL(BINARY,  "??=",   2, false, 12),
-    OPTIONAL_CHAIN (BRACKET, "?.",   18, true, 11),
-    AT             (UNARY,   "@",    0,  true, 14),
+    NULLISHCOALESC (BINARY,  "??",    4, true, ES_2020),
+    ASSIGN_NULLCOAL(BINARY,  "??=",   2, false, ES_2021),
+    OPTIONAL_CHAIN (BRACKET, "?.",   18, true, ES_2020),
+    AT             (UNARY,   "@",    0,  true, ES_STAGING),
 
     // ECMA 7.6.1.1 Keywords, 7.6.1.2 Future Reserved Words.
     // All other Java keywords are commented out.
