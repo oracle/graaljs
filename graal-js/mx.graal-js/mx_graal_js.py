@@ -381,6 +381,51 @@ def _fetch_test262():
     else:
         mx.GitConfig().update(_location, rev=TEST262_REV, mayPull=True, abortOnError=True)
 
+def jsnative(args):
+    """builds and executes native JS image"""
+    parser = mx_truffle.ArgumentParser(prog='mx jsnative', description='Builds and executes native JS image.', usage='mx jsnative [--target-folder <folder>|@VM options|--|JS args]')
+    parser.add_argument('--target-folder', help='Folder where the JS executable will be generated.', default=None)
+    parsed_args, args = parser.parse_known_args(args)
+    vm_args, js_args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
+    target_dir = parsed_args.target_folder if parsed_args.target_folder else tempfile.mkdtemp()
+    if not exists(target_dir):
+        os.mkdir(target_dir)
+    jdk = mx.get_jdk(tag='graalvm')
+    image = _native_image_js(jdk, vm_args, target_dir, use_optimized_runtime=True, hosted_assertions=False)
+    if js_args:
+        mx.log("Image build completed. Running {}".format(" ".join([image] + js_args)))
+        return mx.run([image] + js_args)
+    else:
+        mx.log(f"Image build completed. JavaScript image has been generated at {image}.")
+        return 0
+
+def resolve_js_dist_names(use_optimized_runtime=True, use_enterprise=True):
+    return ['GRAALJS', 'GRAALJS_LAUNCHER'] + mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+
+def _native_image_js(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, hosted_assertions=True):
+    native_image_args = list(vm_args)
+    native_image_path = _native_image(jdk)
+    target_path = os.path.join(target_dir, mx.exe_suffix('js'))
+    dist_names = resolve_js_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+
+    if hosted_assertions:
+        native_image_args += ["-J-ea", "-J-esa"]
+
+    native_image_args += mx.get_runtime_jvm_args(names=dist_names)
+    native_image_args += ["com.oracle.truffle.js.shell.JSLauncher"]
+    native_image_args += [target_path]
+    mx.log("Running {} {}".format(mx.exe_suffix('native-image'), " ".join(native_image_args)))
+    mx.run([native_image_path] + native_image_args)
+    return target_path
+
+def _native_image(jdk):
+    native_image_path = jdk.exe_path('native-image')
+    if not exists(native_image_path):
+        native_image_path = os.path.join(jdk.home, 'bin', mx.cmd_suffix('native-image'))
+    if not exists(native_image_path):
+        mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(jdk.home))
+    return native_image_path
+
 def testnashorn(args, nonZeroIsFatal=True):
     """run the testNashorn conformance suite"""
     _location = join(_suite.dir, 'lib', 'testnashorn')
@@ -565,6 +610,7 @@ def verify_ci(args):
 mx.update_commands(_suite, {
     'deploy-binary-if-master' : [deploy_binary_if_master, ''],
     'js' : [js, '[JS args|VM options]'],
+    'jsnative': [jsnative, '[--target-folder <folder>|@VM options|--|JS args]'],
     'nashorn' : [nashorn, '[JS args|VM options]'],
     'test262': [test262, ''],
     'testnashorn': [testnashorn, ''],
