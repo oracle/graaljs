@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.utilities.MathUtils;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -51,12 +52,12 @@ public abstract class AcoshNode extends MathOperation {
     }
 
     @Specialization
-    protected static double acoshDouble(double x) {
-        return Math.log(x + Math.sqrt(x * x - 1));
+    protected static double acosh(double x) {
+        return MathUtils.acosh(x);
     }
 
-    @Specialization
-    protected double acoshGeneric(Object a) {
-        return acoshDouble(toDouble(a));
+    @Specialization(replaces = "acosh")
+    protected final double acoshGeneric(Object a) {
+        return acosh(toDouble(a));
     }
 }

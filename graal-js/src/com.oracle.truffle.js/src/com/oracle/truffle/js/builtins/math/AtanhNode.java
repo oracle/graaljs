@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,9 @@
 package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.utilities.MathUtils;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class AtanhNode extends MathOperation {
 
@@ -53,14 +53,11 @@ public abstract class AtanhNode extends MathOperation {
 
     @Specialization
     protected static double atanh(double x) {
-        if (JSRuntime.isNegativeZero(x)) {
-            return -0.0;
-        }
-        return Math.log((1 + x) / (1 - x)) / 2;
+        return MathUtils.atanh(x);
     }
 
-    @Specialization
-    protected double atanh(Object a) {
+    @Specialization(replaces = "atanh")
+    protected final double atanhGeneric(Object a) {
         return atanh(toDouble(a));
     }
 }
