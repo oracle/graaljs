@@ -3189,8 +3189,13 @@ public final class TemporalUtil {
         }
         BigInt epochNanoseconds = getUTCEpochNanoseconds(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
-        JSTemporalInstantObject dayBefore = JSTemporalInstant.create(ctx, realm, epochNanoseconds.subtract(BI_NS_PER_DAY));
-        JSTemporalInstantObject dayAfter = JSTemporalInstant.create(ctx, realm, epochNanoseconds.add(BI_NS_PER_DAY));
+        BigInt dayBeforeNs = epochNanoseconds.subtract(BI_NS_PER_DAY);
+        BigInt dayAfterNs = epochNanoseconds.add(BI_NS_PER_DAY);
+        if (!TemporalUtil.isValidEpochNanoseconds(dayBeforeNs) || !TemporalUtil.isValidEpochNanoseconds(dayAfterNs)) {
+            throw TemporalErrors.createRangeErrorInvalidNanoseconds();
+        }
+        JSTemporalInstantObject dayBefore = JSTemporalInstant.create(ctx, realm, dayBeforeNs);
+        JSTemporalInstantObject dayAfter = JSTemporalInstant.create(ctx, realm, dayAfterNs);
         long offsetBefore = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, dayBefore);
         long offsetAfter = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, dayAfter);
         long nanoseconds = offsetAfter - offsetBefore;
@@ -3438,7 +3443,7 @@ public final class TemporalUtil {
             ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
             long fractions = milliseconds * 1_000_000L + microseconds * 1_000L + nanoseconds;
             ZonedDateTime zdt = ZonedDateTime.of((int) isoYear, (int) isoMonth, (int) isoDay, (int) hours, (int) minutes, (int) seconds, (int) fractions, zoneId);
-            list.add(BigInt.valueOf(zdt.toEpochSecond() * 1_000_000_000L + fractions));
+            list.add(BigInt.valueOf(zdt.toEpochSecond()).multiply(BigInt.valueOf(1_000_000_000L)).add(BigInt.valueOf(fractions)));
         } catch (Exception ex) {
             assert false;
         }
