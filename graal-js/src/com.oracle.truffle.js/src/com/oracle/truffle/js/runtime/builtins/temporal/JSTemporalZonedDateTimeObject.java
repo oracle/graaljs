@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import java.math.BigInteger;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -83,7 +82,7 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
 
     @TruffleBoundary
     private Instant toInstant() {
-        BigInteger[] res = nanoseconds.bigIntegerValue().divideAndRemainder(TemporalUtil.BI_10_POW_9);
+        BigInt[] res = nanoseconds.divideAndRemainder(TemporalUtil.BI_NS_PER_SECOND);
         return Instant.ofEpochSecond(res[0].longValue(), res[1].intValue());
     }
 

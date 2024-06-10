@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -75,7 +74,7 @@ public final class JSTemporalInstantObject extends JSNonProxyObject {
     @ExportMessage
     @TruffleBoundary
     Instant asInstant() {
-        BigInteger[] res = nanoseconds.bigIntegerValue().divideAndRemainder(TemporalUtil.BI_10_POW_9);
+        BigInt[] res = nanoseconds.divideAndRemainder(TemporalUtil.BI_NS_PER_SECOND);
         return Instant.ofEpochSecond(res[0].longValue(), res[1].intValue());
     }
 

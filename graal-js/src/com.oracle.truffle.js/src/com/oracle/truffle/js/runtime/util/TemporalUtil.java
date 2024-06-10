@@ -94,7 +94,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.math.MathContext;
 import java.time.Instant;
 import java.time.Year;
@@ -296,13 +295,13 @@ public final class TemporalUtil {
     /** maxTimeDuration = 2**53 * 10**9 - 1 = 9,007,199,254,740,991,999,999,999. */
     private static final BigInt MAX_TIME_DURATION = BigInt.valueOf(1L << 53).multiply(BigInt.valueOf(1_000_000_000L)).subtract(BigInt.ONE);
 
-    public static final BigInteger BI_36_10_POW_11 = BigInteger.valueOf(3600000000000L);
-    public static final BigInteger BI_6_10_POW_10 = BigInteger.valueOf(60000000000L);
-    public static final BigInteger BI_10_POW_9 = BigInteger.valueOf(1000000000); // 10 ^ 9
-    public static final BigInteger BI_10_POW_6 = BigInteger.valueOf(1000000); // 10 ^ 6
-    public static final BigInteger BI_1000 = BigInteger.valueOf(1000);  // 10 ^ 3
-    public static final BigInteger BI_24 = BigInteger.valueOf(24);
-    public static final BigInteger BI_60 = BigInteger.valueOf(60);
+    public static final BigInt BI_NS_PER_HOUR = BigInt.valueOf(3_600_000_000_000L);
+    public static final BigInt BI_NS_PER_MINUTE = BigInt.valueOf(60_000_000_000L);
+    public static final BigInt BI_NS_PER_SECOND = BigInt.valueOf(1_000_000_000);
+    public static final BigInt BI_NS_PER_MS = BigInt.valueOf(1_000_000);
+    public static final BigInt BI_1000 = BigInt.valueOf(1_000);
+    public static final BigInt BI_24 = BigInt.valueOf(24);
+    public static final BigInt BI_60 = BigInt.valueOf(60);
 
     public static final BigDecimal BD_10 = BigDecimal.valueOf(10);
     public static final BigDecimal BD_60 = BigDecimal.valueOf(60);
@@ -1306,11 +1305,11 @@ public final class TemporalUtil {
         // 2. Let time be MakeTime(hour, minute, second, millisecond).
         long time = hour * JSDate.MS_PER_HOUR + minute * JSDate.MS_PER_MINUTE + second * JSDate.MS_PER_SECOND + millisecond;
         // 3. Let ms be MakeDate(date, time).
-        BigInteger ms = BigInteger.valueOf(date).multiply(BigInteger.valueOf(JSDate.MS_PER_DAY)).add(BigInteger.valueOf(time));
+        BigInt ms = BigInt.valueOf(date).multiply(BigInt.valueOf(JSDate.MS_PER_DAY)).add(BigInt.valueOf(time));
 
         // Let epochNanoseconds be ms * 1e6 + microsecond * 1e3 + nanosecond.
-        BigInteger epochNanoseconds = ms.multiply(BI_10_POW_6).add(BigInteger.valueOf(microsecond * 1000)).add(BigInteger.valueOf(nanosecond));
-        return BigInt.fromBigInteger(epochNanoseconds);
+        BigInt epochNanoseconds = ms.multiply(BI_NS_PER_MS).add(BigInt.valueOf(microsecond * 1000)).add(BigInt.valueOf(nanosecond));
+        return epochNanoseconds;
     }
 
     @TruffleBoundary
@@ -1469,23 +1468,22 @@ public final class TemporalUtil {
     public static BigInt roundTemporalInstant(BigInt ns, int increment, Unit unit, RoundingMode roundingMode) {
         BigInt incrementNs = BigInt.valueOf(increment);
         if (Unit.HOUR == unit) {
-            incrementNs = incrementNs.multiply(BigInt.valueOf(3_600_000_000_000L));
+            incrementNs = incrementNs.multiply(BI_NS_PER_HOUR);
         } else if (Unit.MINUTE == unit) {
-            incrementNs = incrementNs.multiply(BigInt.valueOf(60_000_000_000L));
+            incrementNs = incrementNs.multiply(BI_NS_PER_MINUTE);
         } else if (Unit.SECOND == unit) {
-            incrementNs = incrementNs.multiply(BigInt.valueOf(1_000_000_000L));
+            incrementNs = incrementNs.multiply(BI_NS_PER_SECOND);
         } else if (Unit.MILLISECOND == unit) {
-            incrementNs = incrementNs.multiply(BigInt.valueOf(1_000_000L));
+            incrementNs = incrementNs.multiply(BI_NS_PER_MS);
         } else if (Unit.MICROSECOND == unit) {
-            incrementNs = incrementNs.multiply(BigInt.valueOf(1_000L));
+            incrementNs = incrementNs.multiply(BI_1000);
         } else {
             assert Unit.NANOSECOND == unit : unit;
             if (incrementNs.compareTo(BigInt.ONE) == 0) {
                 return ns;
             }
         }
-        var x = ns;
-        return roundNumberToIncrementAsIfPositive(x, incrementNs, roundingMode);
+        return roundNumberToIncrementAsIfPositive(ns, incrementNs, roundingMode);
     }
 
     public static ISODateRecord regulateISODate(int year, int monthParam, int dayParam, Overflow overflow) {
@@ -1936,14 +1934,14 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static TimeDurationRecord balanceTimeDuration(BigInt normalizedTimeDuration, Unit largestUnit) {
-        BigInteger d = BigInteger.ZERO;
-        BigInteger h = BigInteger.ZERO;
-        BigInteger min = BigInteger.ZERO;
-        BigInteger s = BigInteger.ZERO;
-        BigInteger ms = BigInteger.ZERO;
-        BigInteger us = BigInteger.ZERO;
+        BigInt d = BigInt.ZERO;
+        BigInt h = BigInt.ZERO;
+        BigInt min = BigInt.ZERO;
+        BigInt s = BigInt.ZERO;
+        BigInt ms = BigInt.ZERO;
+        BigInt us = BigInt.ZERO;
         double sign = normalizedTimeDurationSign(normalizedTimeDuration);
-        BigInteger ns = normalizedTimeDurationAbs(normalizedTimeDuration).bigIntegerValue();
+        BigInt ns = normalizedTimeDurationAbs(normalizedTimeDuration);
         switch (largestUnit) {
             case YEAR, MONTH, WEEK, DAY -> {
                 var qr = ns.divideAndRemainder(BI_1000);
@@ -2190,22 +2188,22 @@ public final class TemporalUtil {
         return new AddDaysToZonedDateTimeResult(instantResult.getNanoseconds(), instant, dateTimeResult);
     }
 
-    private static BigInteger dtobi(double d) {
+    private static BigInt dtobi(double d) {
         CompilerAsserts.neverPartOfCompilation();
-        return new BigDecimal(d).toBigInteger();
+        return BigInt.fromBigInteger(new BigDecimal(d).toBigInteger());
     }
 
     @TruffleBoundary
     public static BigInt totalDurationNanoseconds(double days, double hours, double minutes, double seconds, double milliseconds,
                     double microseconds, double nanoseconds) {
-        BigInteger d = dtobi(days).multiply(BI_24);
-        BigInteger h = dtobi(hours).add(d);
-        BigInteger min = dtobi(minutes).add(h.multiply(BI_60));
-        BigInteger s = dtobi(seconds).add(min.multiply(BI_60));
-        BigInteger ms = dtobi(milliseconds).add(s.multiply(BI_1000));
-        BigInteger us = dtobi(microseconds).add(ms.multiply(BI_1000));
-        BigInteger ns = dtobi(nanoseconds).add(us.multiply(BI_1000));
-        return BigInt.fromBigInteger(ns);
+        BigInt d = dtobi(days).multiply(BI_24);
+        BigInt h = dtobi(hours).add(d);
+        BigInt min = dtobi(minutes).add(h.multiply(BI_60));
+        BigInt s = dtobi(seconds).add(min.multiply(BI_60));
+        BigInt ms = dtobi(milliseconds).add(s.multiply(BI_1000));
+        BigInt us = dtobi(microseconds).add(ms.multiply(BI_1000));
+        BigInt ns = dtobi(nanoseconds).add(us.multiply(BI_1000));
+        return ns;
     }
 
     /**
@@ -2218,19 +2216,19 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static BigInt normalizeTimeDuration(double hours, double minutes, double seconds,
                     double milliseconds, double microseconds, double nanoseconds) {
-        BigInteger h = dtobi(hours);
-        BigInteger min = dtobi(minutes).add(h.multiply(BI_60));
-        BigInteger s = dtobi(seconds).add(min.multiply(BI_60));
-        BigInteger ms = dtobi(milliseconds).add(s.multiply(BI_1000));
-        BigInteger us = dtobi(microseconds).add(ms.multiply(BI_1000));
-        BigInteger ns = dtobi(nanoseconds).add(us.multiply(BI_1000));
-        return BigInt.fromBigInteger(ns);
+        BigInt h = dtobi(hours);
+        BigInt min = dtobi(minutes).add(h.multiply(BI_60));
+        BigInt s = dtobi(seconds).add(min.multiply(BI_60));
+        BigInt ms = dtobi(milliseconds).add(s.multiply(BI_1000));
+        BigInt us = dtobi(microseconds).add(ms.multiply(BI_1000));
+        BigInt ns = dtobi(nanoseconds).add(us.multiply(BI_1000));
+        return ns;
     }
 
     @TruffleBoundary
     public static BigInt add24HourDaysToNormalizedTimeDuration(BigInt timeDurationTotalNanoseconds, double days) {
         assert JSRuntime.isIntegralNumber(days) : days;
-        BigInt result = timeDurationTotalNanoseconds.add(BigInt.fromBigInteger(dtobi(days)).multiply(BI_NS_PER_DAY));
+        BigInt result = timeDurationTotalNanoseconds.add(dtobi(days).multiply(BI_NS_PER_DAY));
         if (result.abs().compareTo(MAX_TIME_DURATION) > 0) {
             throw Errors.createRangeError("Time duration out of range");
         }
@@ -2289,12 +2287,12 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static double normalizeTimeDurationSeconds(BigInt timeDurationTotalNanoseconds) {
-        return timeDurationTotalNanoseconds.bigIntegerValue().divide(BI_10_POW_9).doubleValue();
+        return timeDurationTotalNanoseconds.divide(BI_NS_PER_SECOND).doubleValue();
     }
 
     @TruffleBoundary
     public static double normalizeTimeDurationSubseconds(BigInt timeDurationTotalNanoseconds) {
-        return timeDurationTotalNanoseconds.bigIntegerValue().remainder(BI_10_POW_9).doubleValue();
+        return timeDurationTotalNanoseconds.remainder(BI_NS_PER_SECOND).doubleValue();
     }
 
     public static BigInt normalizedTimeDurationAbs(BigInt timeDurationTotalNanoseconds) {
@@ -2510,7 +2508,7 @@ public final class TemporalUtil {
     public static TimeRecord addTime(int hour, int minute, int second, int millisecond, int microsecond, double nanosecond,
                     BigInt normalizedTimeDuration,
                     Node node, InlinedBranchProfile errorBranch) {
-        BigInteger[] qr = normalizedTimeDuration.bigIntegerValue().divideAndRemainder(BI_10_POW_9);
+        BigInt[] qr = normalizedTimeDuration.divideAndRemainder(BI_NS_PER_SECOND);
         double seconds = second + qr[0].doubleValue(); // NormalizedTimeDurationSeconds
         double nanoseconds = nanosecond + qr[1].doubleValue(); // NormalizedTimeDurationSubseconds
         return balanceTimeDouble(hour, minute, seconds, millisecond, microsecond, nanoseconds, node, errorBranch);
@@ -2607,7 +2605,7 @@ public final class TemporalUtil {
             remainderNs = epochNanoseconds.longValue() % 1_000_000;
             epochMilliseconds = (epochNanoseconds.longValue() - remainderNs) / 1_000_000;
         } else {
-            BigInteger[] result = epochNanoseconds.bigIntegerValue().divideAndRemainder(BI_10_POW_6);
+            BigInt[] result = epochNanoseconds.divideAndRemainder(BI_NS_PER_MS);
             remainderNs = result[1].longValue();
             epochMilliseconds = result[0].longValue();
         }
@@ -2701,18 +2699,17 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static BigInt addInstant(BigInt epochNanoseconds, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
-        return addInstant(epochNanoseconds, dtol(hours), dtol(minutes), dtol(seconds), dtol(milliseconds), dtol(microseconds), BigInteger.valueOf(dtol(nanoseconds)));
+        return addInstant(epochNanoseconds, dtol(hours), dtol(minutes), dtol(seconds), dtol(milliseconds), dtol(microseconds), BigInt.valueOf(dtol(nanoseconds)));
     }
 
     @TruffleBoundary
-    public static BigInt addInstant(BigInt epochNanoseconds, long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInteger nanoseconds) {
-        BigInteger res = epochNanoseconds.bigIntegerValue().add(nanoseconds);
-        res = res.add(BigInteger.valueOf(microseconds).multiply(BI_1000));
-        res = res.add(BigInteger.valueOf(milliseconds).multiply(BI_10_POW_6));
-        res = res.add(BigInteger.valueOf(seconds).multiply(BI_10_POW_9));
-        res = res.add(BigInteger.valueOf(minutes).multiply(BI_6_10_POW_10));
-        res = res.add(BigInteger.valueOf(hours).multiply(BI_36_10_POW_11));
-        BigInt result = new BigInt(res);
+    public static BigInt addInstant(BigInt epochNanoseconds, long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInt nanoseconds) {
+        BigInt result = epochNanoseconds.add(nanoseconds);
+        result = result.add(BigInt.valueOf(microseconds).multiply(BI_1000));
+        result = result.add(BigInt.valueOf(milliseconds).multiply(BI_NS_PER_MS));
+        result = result.add(BigInt.valueOf(seconds).multiply(BI_NS_PER_SECOND));
+        result = result.add(BigInt.valueOf(minutes).multiply(BI_NS_PER_MINUTE));
+        result = result.add(BigInt.valueOf(hours).multiply(BI_NS_PER_HOUR));
         if (!isValidEpochNanoseconds(result)) {
             throw TemporalErrors.createRangeErrorInvalidNanoseconds();
         }
@@ -3252,7 +3249,7 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static OptionalLong getIANATimeZoneNextTransition(BigInt nanoseconds, TruffleString identifier) {
         try {
-            BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(BI_10_POW_9);
+            BigInt[] sec = nanoseconds.divideAndRemainder(BI_NS_PER_SECOND);
             Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
             ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
             ZoneRules zoneRule = zoneId.getRules();
@@ -3270,7 +3267,7 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static OptionalLong getIANATimeZonePreviousTransition(BigInt nanoseconds, TruffleString identifier) {
         try {
-            BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(BI_10_POW_9);
+            BigInt[] sec = nanoseconds.divideAndRemainder(BI_NS_PER_SECOND);
             Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
             ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
             ZoneRules zoneRule = zoneId.getRules();
@@ -3469,7 +3466,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static int bitoi(BigInteger bi) {
+    public static int bitoi(BigInt bi) {
         double value = bi.doubleValue();
         assert Double.isFinite(value);
         assert JSRuntime.doubleIsRepresentableAsInt(value);
