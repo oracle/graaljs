@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
@@ -77,7 +76,7 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached ToTemporalCalendarObjectNode toCalendarObject,
                     @Cached("createCall()") JSFunctionCallNode callDateUntilNode) {
-        JSContext ctx = getLanguage().getJSContext();
+        JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
 
         if (one.getYear() == two.getYear() && one.getMonth() == two.getMonth() && one.getDay() == two.getDay()) {
@@ -86,10 +85,7 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
             double days = TemporalUtil.daysUntil(one, two);
             return JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
         } else {
-            // CalendarDateUntil(calenderRec, one, two, options)
-            Object calendar = toCalendarObject.execute(calendarRec.receiver());
-            Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendar, calendarRec.dateUntil(), one, two, untilOptions));
-            return TemporalUtil.requireTemporalDuration(addedDate);
+            return TemporalUtil.calendarDateUntil(calendarRec, one, two, untilOptions, toCalendarObject, callDateUntilNode);
         }
     }
 }
