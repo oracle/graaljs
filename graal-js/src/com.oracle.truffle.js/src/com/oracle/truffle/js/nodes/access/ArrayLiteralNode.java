@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,8 +53,6 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -402,7 +400,6 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
     }
 
-    @NodeInfo(cost = NodeCost.MONOMORPHIC)
     private static class DefaultArrayLiteralNode extends DefaultArrayLiteralBaseNode {
 
         @Children protected final JavaScriptNode[] elements;
@@ -428,7 +425,6 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
     }
 
-    @NodeInfo(cost = NodeCost.MONOMORPHIC)
     private static class DefaultArrayLiteralOneElementNode extends DefaultArrayLiteralBaseNode {
 
         @Child protected JavaScriptNode child;
@@ -455,7 +451,6 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
     }
 
-    @NodeInfo(cost = NodeCost.MONOMORPHIC)
     private static final class DefaultObjectArrayWithEmptyLiteralNode extends DefaultArrayLiteralNode {
 
         DefaultObjectArrayWithEmptyLiteralNode(JSContext context, JavaScriptNode[] elements) {

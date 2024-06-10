@@ -61,8 +61,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -1267,7 +1265,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     }
 
-    @NodeInfo(cost = NodeCost.MEGAMORPHIC)
     public static final class GenericPropertyGetNode extends GetCacheNode {
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertyGetNode foreignGetNode;
