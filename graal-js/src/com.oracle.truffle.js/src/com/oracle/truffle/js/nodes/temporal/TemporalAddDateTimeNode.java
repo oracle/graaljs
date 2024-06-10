@@ -41,51 +41,53 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 /**
- * Implementation of the Temporal DifferenceDate operation.
+ * Implementation of the Temporal AddDateTime operation.
  */
-@ImportStatic(TemporalConstants.class)
-public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
+public abstract class TemporalAddDateTimeNode extends JavaScriptBaseNode {
 
-    protected TemporalDifferenceDateNode() {
+    protected TemporalAddDateTimeNode() {
     }
 
-    public abstract JSTemporalDurationObject execute(
-                    CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
-                    Unit largestUnit, JSObject untilOptions);
+    public abstract JSTemporalDateTimeRecord execute(int year, int month, int day,
+                    int hour, int minute, int second, int millisecond, int microsecond, double nanosecond,
+                    CalendarMethodsRecord calendarRec,
+                    double years, double months, double weeks, double days, BigInt normalizedTimeDuration,
+                    JSDynamicObject options);
 
     @Specialization
-    final JSTemporalDurationObject differenceDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
-                    Unit largestUnit, JSObject untilOptions,
-                    @Cached InlinedBranchProfile errorBranch,
-                    @Cached ToTemporalCalendarObjectNode toCalendarObject,
-                    @Cached("createCall()") JSFunctionCallNode callDateUntilNode) {
+    protected JSTemporalDateTimeRecord addDateTime(int year, int month, int day,
+                    int hour, int minute, int second, int millisecond, int microsecond, double nanosecond,
+                    CalendarMethodsRecord calendarRec,
+                    double years, double months, double weeks, double days, BigInt normalizedTimeDuration,
+                    JSDynamicObject options,
+                    @Cached TemporalAddDateNode addDateNode,
+                    @Cached InlinedBranchProfile errorBranch) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
 
-        if (one.getYear() == two.getYear() && one.getMonth() == two.getMonth() && one.getDay() == two.getDay()) {
-            return JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
-        } else if (largestUnit == Unit.DAY) {
-            double days = TemporalUtil.daysUntil(one, two);
-            return JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
-        } else {
-            return TemporalUtil.calendarDateUntil(calendarRec, one, two, untilOptions, toCalendarObject, callDateUntilNode);
-        }
+        TimeRecord timeResult = TemporalUtil.addTime(hour, minute, second, millisecond, microsecond, nanosecond, normalizedTimeDuration, this, errorBranch);
+        JSTemporalPlainDateObject datePart = JSTemporalPlainDate.create(ctx, realm, year, month, day, calendarRec.receiver(), this, errorBranch);
+        JSTemporalDurationObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, weeks, days + timeResult.days(), 0L, 0L, 0L, 0L, 0L, 0L, this, errorBranch);
+        JSTemporalPlainDateObject addedDate = addDateNode.execute(calendarRec, datePart, dateDuration, options);
+        return JSTemporalDateTimeRecord.create(addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
+                        timeResult.hour(), timeResult.minute(), timeResult.second(), timeResult.millisecond(), timeResult.microsecond(), timeResult.nanosecond());
     }
+
 }

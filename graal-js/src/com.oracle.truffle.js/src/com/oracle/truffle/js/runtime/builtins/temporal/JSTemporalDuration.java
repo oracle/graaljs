@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.bitoi;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,6 +56,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -339,17 +339,17 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                     double microsecondsP, double nanosecondsP, Object precision, JSNumberToBigIntNode toBigIntNode) {
         int sign = TemporalUtil.durationSign(yearsP, monthsP, weeksP, daysP, hoursP, minutesP, secondsP, millisecondsP, microsecondsP, nanosecondsP);
 
-        BigInteger nanosecondsBI = toBigInteger(nanosecondsP, toBigIntNode);
-        BigInteger microsecondsBI = toBigInteger(microsecondsP, toBigIntNode);
-        BigInteger millisecondsBI = toBigInteger(millisecondsP, toBigIntNode);
-        BigInteger secondsBI = toBigInteger(secondsP, toBigIntNode);
+        BigInt nanosecondsBI = toBigInteger(nanosecondsP, toBigIntNode);
+        BigInt microsecondsBI = toBigInteger(microsecondsP, toBigIntNode);
+        BigInt millisecondsBI = toBigInteger(millisecondsP, toBigIntNode);
+        BigInt secondsBI = toBigInteger(secondsP, toBigIntNode);
 
-        BigInteger yearsBI = toBigIntegerOrNull(Math.abs(yearsP), toBigIntNode);
-        BigInteger monthsBI = toBigIntegerOrNull(Math.abs(monthsP), toBigIntNode);
-        BigInteger weeksBI = toBigIntegerOrNull(Math.abs(weeksP), toBigIntNode);
-        BigInteger daysBI = toBigIntegerOrNull(Math.abs(daysP), toBigIntNode);
-        BigInteger hoursBI = toBigIntegerOrNull(Math.abs(hoursP), toBigIntNode);
-        BigInteger minutesBI = toBigIntegerOrNull(Math.abs(minutesP), toBigIntNode);
+        BigInt yearsBI = toBigIntegerOrNull(Math.abs(yearsP), toBigIntNode);
+        BigInt monthsBI = toBigIntegerOrNull(Math.abs(monthsP), toBigIntNode);
+        BigInt weeksBI = toBigIntegerOrNull(Math.abs(weeksP), toBigIntNode);
+        BigInt daysBI = toBigIntegerOrNull(Math.abs(daysP), toBigIntNode);
+        BigInt hoursBI = toBigIntegerOrNull(Math.abs(hoursP), toBigIntNode);
+        BigInt minutesBI = toBigIntegerOrNull(Math.abs(minutesP), toBigIntNode);
 
         boolean condition = secondsP != 0 || millisecondsP != 0 || microsecondsP != 0 || nanosecondsP != 0 ||
                         (yearsP == 0 && monthsP == 0 && weeksP == 0 && daysP == 0 && hoursP == 0 && minutesP == 0);
@@ -357,18 +357,18 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     @TruffleBoundary
-    private static TruffleString temporalDurationToStringIntl(BigInteger yearsP, BigInteger monthsP, BigInteger weeksP, BigInteger daysP, BigInteger hoursP, BigInteger minutesP, BigInteger secondsP,
-                    BigInteger millisecondsP, BigInteger microsecondsP, BigInteger nanosecondsP, Object precision, int sign, boolean condition) {
-        BigInteger[] res = nanosecondsP.divideAndRemainder(TemporalUtil.BI_1000);
-        BigInteger microseconds = microsecondsP.add(res[0]);
-        BigInteger nanoseconds = res[1];
+    private static TruffleString temporalDurationToStringIntl(BigInt yearsP, BigInt monthsP, BigInt weeksP, BigInt daysP, BigInt hoursP, BigInt minutesP, BigInt secondsP,
+                    BigInt millisecondsP, BigInt microsecondsP, BigInt nanosecondsP, Object precision, int sign, boolean condition) {
+        BigInt[] res = nanosecondsP.divideAndRemainder(TemporalUtil.BI_1000);
+        BigInt microseconds = microsecondsP.add(res[0]);
+        BigInt nanoseconds = res[1];
 
         res = microseconds.divideAndRemainder(TemporalUtil.BI_1000);
-        BigInteger milliseconds = millisecondsP.add(res[0]);
+        BigInt milliseconds = millisecondsP.add(res[0]);
         microseconds = res[1];
 
         res = milliseconds.divideAndRemainder(TemporalUtil.BI_1000);
-        BigInteger seconds = secondsP.add(res[0]);
+        BigInt seconds = secondsP.add(res[0]);
         milliseconds = res[1];
 
         StringBuilder datePart = new StringBuilder();
@@ -436,12 +436,12 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return Strings.builderToString(result);
     }
 
-    private static BigInteger toBigIntegerOrNull(double value, JSNumberToBigIntNode toBigIntNode) {
-        return (value != 0) ? toBigIntNode.executeBigInt(value).bigIntegerValue() : null;
+    private static BigInt toBigIntegerOrNull(double value, JSNumberToBigIntNode toBigIntNode) {
+        return (value != 0) ? toBigIntNode.executeBigInt(value) : null;
     }
 
-    private static BigInteger toBigInteger(double value, JSNumberToBigIntNode toBigIntNode) {
-        return toBigIntNode.executeBigInt(value).bigIntegerValue();
+    private static BigInt toBigInteger(double value, JSNumberToBigIntNode toBigIntNode) {
+        return toBigIntNode.executeBigInt(value);
     }
     // endregion
 }

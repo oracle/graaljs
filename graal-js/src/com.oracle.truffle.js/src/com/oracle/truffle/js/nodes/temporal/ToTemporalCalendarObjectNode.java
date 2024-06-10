@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 
 /**
@@ -64,12 +62,14 @@ public abstract class ToTemporalCalendarObjectNode extends JavaScriptBaseNode {
     public abstract Object execute(Object calendarSlotValue);
 
     @Specialization
-    public Object toTemporalCalendarObject(Object calendarSlotValue,
-                    @Cached IsObjectNode isObjectNode) {
-        if (isObjectNode.executeBoolean(calendarSlotValue)) {
-            return calendarSlotValue;
+    final Object toTemporalCalendarObject(Object calendarSlotValue) {
+        Object calendar;
+        if (calendarSlotValue instanceof TruffleString calendarID) {
+            calendar = JSTemporalCalendar.create(getJSContext(), getRealm(), calendarID);
+        } else {
+            calendar = calendarSlotValue;
         }
-        return JSTemporalCalendar.create(getJSContext(), getRealm(), (TruffleString) calendarSlotValue);
+        return calendar;
     }
 
 }

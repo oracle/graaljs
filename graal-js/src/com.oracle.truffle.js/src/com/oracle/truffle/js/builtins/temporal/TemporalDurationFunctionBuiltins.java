@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -49,17 +47,18 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalAddZonedDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDateDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
@@ -67,7 +66,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationFunctionBuiltins.TemporalDurationFunction> {
 
@@ -137,6 +135,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached TemporalUnbalanceDateDurationRelativeNode unbalanceDurationRelativeNode,
+                        @Cached TemporalAddZonedDateTimeNode addZonedDateTimeNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalDurationObject one = toTemporalDurationNode.execute(oneParam);
@@ -163,25 +162,27 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             if (zonedRelativeTo != null && (calendarUnitsPresent || one.getDays() != 0 || two.getDays() != 0)) {
                 var instant = JSTemporalInstant.create(getContext(), realm, zonedRelativeTo.getNanoseconds());
                 JSTemporalPlainDateTimeObject precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZoneRec, instant, calendarRec.receiver());
-                var after1 = TemporalUtil.addZonedDateTime(getContext(), realm,
+
+                BigInt norm1 = TemporalUtil.normalizeTimeDuration(one.getHours(), one.getMinutes(), one.getSeconds(), one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds());
+                BigInt norm2 = TemporalUtil.normalizeTimeDuration(two.getHours(), two.getMinutes(), two.getSeconds(), two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
+                var after1 = addZonedDateTimeNode.execute(
                                 zonedRelativeTo.getNanoseconds(), timeZoneRec, calendarRec,
-                                dtol(one.getYears()), dtol(one.getMonths()), dtol(one.getWeeks()), dtol(one.getDays()),
-                                dtol(one.getHours()), dtol(one.getMinutes()), dtol(one.getSeconds()),
-                                dtol(one.getMilliseconds()), dtol(one.getMicroseconds()), dtol(one.getNanoseconds()), precalculatedPlainDateTime);
-                var after2 = TemporalUtil.addZonedDateTime(getContext(), realm,
+                                one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
+                                norm1, precalculatedPlainDateTime);
+                var after2 = addZonedDateTimeNode.execute(
                                 zonedRelativeTo.getNanoseconds(), timeZoneRec, calendarRec,
-                                dtol(two.getYears()), dtol(two.getMonths()), dtol(two.getWeeks()), dtol(two.getDays()),
-                                dtol(two.getHours()), dtol(two.getMinutes()), dtol(two.getSeconds()),
-                                dtol(two.getMilliseconds()), dtol(two.getMicroseconds()), dtol(two.getNanoseconds()), precalculatedPlainDateTime);
+                                two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
+                                norm2, precalculatedPlainDateTime);
                 return after1.compareTo(after2);
             }
             double days1;
             double days2;
             if (calendarUnitsPresent) {
-                JSTemporalDurationRecord balanceResult1 = unbalanceDurationRelativeNode.execute(one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(), Unit.DAY, plainRelativeTo, calendarRec);
-                JSTemporalDurationRecord balanceResult2 = unbalanceDurationRelativeNode.execute(two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(), Unit.DAY, plainRelativeTo, calendarRec);
-                days1 = balanceResult1.getDays();
-                days2 = balanceResult2.getDays();
+                if (plainRelativeTo == null) {
+                    throw Errors.createRangeError("A starting point is required for years, months, or weeks comparison");
+                }
+                days1 = unbalanceDurationRelativeNode.execute(one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(), plainRelativeTo, calendarRec);
+                days2 = unbalanceDurationRelativeNode.execute(two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(), plainRelativeTo, calendarRec);
             } else {
                 days1 = one.getDays();
                 days2 = two.getDays();

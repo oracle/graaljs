@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -230,21 +228,6 @@ public final class Boundaries {
     @TruffleBoundary
     public static boolean setContains(Set<?> set, Object element) {
         return set.contains(element);
-    }
-
-    @TruffleBoundary
-    public static BigInteger bigIntegerValueOf(long l) {
-        return BigInteger.valueOf(l);
-    }
-
-    @TruffleBoundary
-    public static BigDecimal bigDecimalValueOf(long l) {
-        return BigDecimal.valueOf(l);
-    }
-
-    @TruffleBoundary
-    public static BigInteger bigIntegerMultiply(BigInteger a, BigInteger b) {
-        return a.multiply(b);
     }
 
     @TruffleBoundary

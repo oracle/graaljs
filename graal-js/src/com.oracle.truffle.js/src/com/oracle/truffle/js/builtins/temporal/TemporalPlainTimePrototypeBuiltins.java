@@ -80,12 +80,12 @@ import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -372,7 +372,6 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public JSTemporalDurationObject differenceTemporalPlainTime(JSTemporalPlainTimeObject temporalTime, Object otherObj, Object options,
                         @Cached ToTemporalTimeNode toTemporalTime,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
-                        @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -381,20 +380,21 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingTimeOrAuto, TemporalUtil.unitMappingTime, Unit.NANOSECOND, Unit.HOUR);
 
-            TimeDurationRecord result = TemporalUtil.differenceTime(
+            BigInt norm = TemporalUtil.differenceTime(
                             temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
                             temporalTime.getNanosecond(),
                             other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
-            JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
-                            result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(),
-                            result.nanoseconds(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
+
+            if (settings.smallestUnit() != Unit.NANOSECOND || settings.roundingIncrement() != 1) {
+                var roundRecord = TemporalUtil.roundTimeDuration(0, norm, settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
+                norm = roundRecord.normalizedDuration().normalizedTimeTotalNanoseconds();
+            }
+
             JSRealm realm = getRealm();
-            TimeDurationRecord result3 = TemporalUtil.balanceTimeDuration(
-                            0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(),
-                            result2.getNanoseconds(), settings.largestUnit());
+            TimeDurationRecord result = TemporalUtil.balanceTimeDuration(norm, settings.largestUnit());
             return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
-                            sign * result3.hours(), sign * result3.minutes(), sign * result3.seconds(), sign * result3.milliseconds(), sign * result3.microseconds(),
-                            sign * result3.nanoseconds(), this, errorBranch);
+                            sign * result.hours(), sign * result.minutes(), sign * result.seconds(),
+                            sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")

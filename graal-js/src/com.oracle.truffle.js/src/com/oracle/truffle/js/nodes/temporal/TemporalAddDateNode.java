@@ -45,13 +45,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
@@ -74,17 +75,15 @@ public abstract class TemporalAddDateNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached TemporalGetOptionNode getOptionNode) {
         if (duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0) {
-            // CalendarDateAdd(calendarRec, plainDate, duration, options).
-            Object calendar = toCalendarObject.execute(calendarRec.receiver());
-            Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, calendarRec.dateAdd(), plainDate, duration, options));
-            return TemporalUtil.requireTemporalDate(addedDate, this, errorBranch);
+            return TemporalUtil.calendarDateAdd(calendarRec, plainDate, duration, options, toCalendarObject, callDateAddNode);
         } else {
-            JSContext ctx = getLanguage().getJSContext();
+            JSContext ctx = getJSContext();
             JSRealm realm = getRealm();
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
-            double days = TemporalUtil.balanceTimeDuration(duration.getDays(),
-                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY).days();
+            BigInt norm = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
+            TimeDurationRecord balancedDuration = TemporalUtil.balanceTimeDuration(norm, Unit.DAY);
+            double days = duration.getDays() + balancedDuration.days();
             var result = TemporalUtil.addISODate(plainDate.getYear(), plainDate.getMonth(), plainDate.getDay(), 0, 0, 0, days, overflow);
             return JSTemporalPlainDate.create(ctx, realm, result.year(), result.month(), result.day(), calendarRec.receiver(), this, errorBranch);
         }

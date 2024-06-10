@@ -40,7 +40,28 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import java.math.BigInteger;
-
-public record NormalizedTimeDurationToDaysResult(BigInteger days, BigInteger remainder, BigInteger dayLength) {
+/**
+ * An ISO Date-Time Record is used to represent a valid calendar date in the ISO 8601 calendar
+ * together with a clock time.
+ *
+ * @param year The year in the ISO 8601 calendar. An integer.
+ * @param month The number of the month. An integer between 1 and 12, inclusive.
+ * @param day The number of the day of the month. An integer between 1 and 31, inclusive.
+ * @param hour The number of the hour. An integer in the inclusive range 0 to 23.
+ * @param minute The number of the minute. An integer in the inclusive range 0 to 59.
+ * @param second The number of the second. An integer in the inclusive range 0 to 59.
+ * @param millisecond The number of the millisecond. An integer in the inclusive range 0 to 999.
+ * @param microsecond The number of the microsecond. An integer in the inclusive range 0 to 999.
+ * @param nanosecond The number of the nanosecond. An integer in the inclusive range 0 to 999.
+ */
+public record ISODateTimeRecord(
+                int year,
+                int month,
+                int day,
+                int hour,
+                int minute,
+                int second,
+                int millisecond,
+                int microsecond,
+                int nanosecond) {
 }

@@ -79,23 +79,22 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBui
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeWithPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeWithPlainTimeNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
-import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.DifferencePlainDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalBalanceDateDurationRelativeNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalAddDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalYearMonthFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
@@ -105,6 +104,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -392,6 +392,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         JSTemporalPlainDateTimeObject dateTime, Object temporalDurationLike, Object optParam,
                         @Cached ToTemporalDurationNode toTemporalDurationNode,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
+                        @Cached TemporalAddDateTimeNode addDateTime,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalDurationObject duration = toTemporalDurationNode.execute(temporalDurationLike);
@@ -405,16 +406,15 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Object dateAddMethod = lookupDateAdd.execute(calendar);
             CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateAdd(calendar, dateAddMethod);
 
-            JSTemporalDateTimeRecord result = TemporalUtil.addDateTime(getContext(), getRealm(),
+            BigInt norm = TemporalUtil.normalizeTimeDuration(sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
+                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
+            JSTemporalDateTimeRecord result = addDateTime.execute(
                             dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                             dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                             calendarRec,
-                            sign * duration.getYears(), sign * duration.getMonths(), sign * duration.getWeeks(), sign * duration.getDays(),
-                            sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
-                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds(),
-                            options,
-                            this, errorBranch);
+                            sign * duration.getYears(), sign * duration.getMonths(), sign * duration.getWeeks(), sign * duration.getDays(), norm,
+                            options);
 
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
@@ -442,13 +442,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         protected JSTemporalDurationObject differenceTemporalPlainDateTime(JSTemporalPlainDateTimeObject dateTime, Object otherObj, Object options,
                         @Bind("this") Node node,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToTemporalDateTimeNode toTemporalDateTime,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
-                        @Cached TemporalRoundDurationNode roundDurationNode,
-                        @Cached TemporalBalanceDateDurationRelativeNode balanceDateDurationRelative,
+                        @Cached DifferencePlainDateTimeWithRoundingNode differencePlainDateTimeWithRounding,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -459,33 +457,36 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
 
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            JSContext ctx = getContext();
+            JSRealm realm = getRealm();
+            JSObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateTimeOrAuto, TemporalUtil.unitMappingDateTime, Unit.NANOSECOND, Unit.DAY);
+
+            boolean datePartsIdentical = dateTime.getYear() == other.getYear() && dateTime.getMonth() == other.getMonth() && dateTime.getDay() == other.getDay();
+            if (datePartsIdentical && dateTime.getHour() == other.getHour() && dateTime.getMinute() == other.getMinute() && dateTime.getSecond() == other.getSecond() &&
+                            dateTime.getMillisecond() == other.getMillisecond() && dateTime.getMicrosecond() == other.getMicrosecond() && dateTime.getNanosecond() == other.getNanosecond()) {
+                return JSTemporalDuration.createTemporalDuration(ctx, realm,
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
+            }
+
+            JSTemporalPlainDateObject plainDate = JSTemporalPlainDate.create(ctx, realm,
+                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), calendar, node, errorBranch);
 
             Object dateAddMethod = lookupDateAdd.execute(calendar);
             Object dateUntilMethod = lookupDateUntil.execute(calendar);
             var calendarRec = CalendarMethodsRecord.forDateAddDateUntil(calendar, dateAddMethod, dateUntilMethod);
 
-            JSRealm realm = getRealm();
-            JSTemporalDurationRecord diff = TemporalUtil.differenceISODateTime(getContext(), getRealm(), namesNode,
-                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(),
-                            dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), other.getYear(), other.getMonth(),
-                            other.getDay(), other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond(), calendarRec,
-                            settings.largestUnit(), resolvedOptions);
-            JSTemporalPlainDateObject plainRelativeTo = JSTemporalPlainDate.create(getContext(), realm, dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), calendar, node, errorBranch);
-            JSTemporalDurationRecord roundResult = roundDurationNode.execute(diff.getYears(), diff.getMonths(), diff.getWeeks(), diff.getDays(), diff.getHours(),
-                            diff.getMinutes(), diff.getSeconds(), diff.getMilliseconds(), diff.getMicroseconds(), diff.getNanoseconds(),
-                            settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode(), plainRelativeTo, calendarRec);
-            var result = TemporalUtil.balanceTimeDuration(roundResult.getDays(), roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
-                            roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(), settings.largestUnit());
-            var balanceResult = balanceDateDurationRelative.execute(
-                            roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), result.days(),
-                            settings.largestUnit(), settings.smallestUnit(), plainRelativeTo, calendarRec);
+            var resultRecord = differencePlainDateTimeWithRounding.execute(plainDate,
+                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
+                            other.getYear(), other.getMonth(), other.getDay(),
+                            other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond(),
+                            calendarRec, settings.largestUnit(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode(), resolvedOptions);
+            JSTemporalDurationRecord result = resultRecord.duration();
 
-            return JSTemporalDuration.createTemporalDuration(getContext(), realm,
-                            sign * balanceResult.years(), sign * balanceResult.months(), sign * balanceResult.weeks(), sign * balanceResult.days(),
-                            sign * result.hours(), sign * result.minutes(), sign * result.seconds(),
-                            sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(),
+            return JSTemporalDuration.createTemporalDuration(ctx, realm,
+                            sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
+                            sign * result.getHours(), sign * result.getMinutes(), sign * result.getSeconds(),
+                            sign * result.getMilliseconds(), sign * result.getMicroseconds(), sign * result.getNanoseconds(),
                             node, errorBranch);
         }
 

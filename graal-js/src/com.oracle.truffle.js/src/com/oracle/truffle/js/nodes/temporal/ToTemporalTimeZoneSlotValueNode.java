@@ -47,7 +47,6 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
@@ -58,8 +57,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  * Implementation of ToTemporalTimeZoneSlotValue() operation.
  */
 public abstract class ToTemporalTimeZoneSlotValueNode extends JavaScriptBaseNode {
-
-    @Child protected PropertyGetNode getTimeZoneNode;
 
     protected ToTemporalTimeZoneSlotValueNode() {
     }

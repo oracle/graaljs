@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.temporal;
-
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.MoveRelativeDateResult;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
 /**
- * Implementation of the Temporal MoveRelativeDate operation.
+ * The result record returned by the operations: RoundRelativeDuration,
+ * DifferencePlainDateTimeWithRounding, DifferenceZonedDateTimeWithRounding.
  */
-public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
-
-    protected TemporalMoveRelativeDateNode() {
-    }
-
-    public abstract MoveRelativeDateResult execute(CalendarMethodsRecord calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration);
-
-    @Specialization
-    protected MoveRelativeDateResult moveRelativeDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration,
-                    @Cached TemporalAddDateNode addDateNode) {
-        JSTemporalPlainDateObject newDate = addDateNode.execute(calendarRec, relativeTo, duration, Undefined.instance);
-        long days = TemporalUtil.daysUntil(relativeTo, newDate);
-        return new MoveRelativeDateResult(newDate, days);
-    }
-
+public record TemporalDurationWithTotalRecord(
+                JSTemporalDurationRecord duration,
+                double total) {
 }
