@@ -2070,7 +2070,7 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(getScriptEngineImportScope(), builtin, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, builtin),
                             JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
-        if (getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
+        if (getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed(null) || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
         }
         if (getContextOptions().isDebugBuiltin()) {
