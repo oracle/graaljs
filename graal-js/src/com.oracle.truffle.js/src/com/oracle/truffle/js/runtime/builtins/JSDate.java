@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneOffset;
 
 import org.graalvm.shadowed.com.ibm.icu.impl.Grego;
 import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
@@ -87,6 +86,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     // slightly beyond MAX_DATE (+/- 273,790 years)
     // cf. https://tc39.es/ecma262/#sec-time-values-and-time-range
     public static final double MAX_YEAR_VALUE = 300000;
+    public static final double MIN_YEAR_VALUE = -300000;
 
     private static final int DAYS_IN_4_YEARS = 4 * 365 + 1;
     private static final int DAYS_IN_100_YEARS = 25 * DAYS_IN_4_YEARS - 1;
@@ -207,7 +207,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         // days after year (2000 - yearShift)
         int days = daysAfter2000 + DAY_SHIFT;
         // we need days > 0 to ensure that integer division rounds correctly
-        assert days > 0;
+        assert days > 0 : days;
 
         int year = 400 * (days / DAYS_IN_400_YEARS);
         int remainingDays = days % DAYS_IN_400_YEARS;
@@ -223,7 +223,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return year - YEAR_SHIFT + 2000;
     }
 
-    private static boolean isLeapYear(int year) {
+    public static boolean isLeapYear(int year) {
         if (year % 4 != 0) {
             return false;
         }
@@ -246,7 +246,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     private static int monthFromTimeIntl(boolean leapYear, int day) {
-        assert (0 <= day) && (day < (365 + (leapYear ? 1 : 0))) : "should not reach here";
+        assert (0 <= day) && (day < (365 + (leapYear ? 1 : 0))) : day;
 
         if (day < 31) {
             return 0;
@@ -497,12 +497,26 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
             mn += 12;
         }
 
-        if (ym < -MAX_YEAR_VALUE || ym > MAX_YEAR_VALUE) {
+        if (ym < MIN_YEAR_VALUE || ym > MAX_YEAR_VALUE) {
             return Double.NaN;
         }
 
-        double t = LocalDate.of((int) ym, mn + 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli();
-        return day(t) + dt - 1;
+        return isoDateToEpochDaysResolvedYM((int) ym, mn + 1, 1) + dt - 1;
+    }
+
+    @TruffleBoundary
+    public static long isoDateToEpochDays(int year, int month, int date) {
+        int resolvedYear = year + month / 12;
+        int resolvedMonth = month % 12;
+        if (resolvedMonth < 0) {
+            resolvedMonth += 12;
+        }
+        return isoDateToEpochDaysResolvedYM(resolvedYear, resolvedMonth + 1, date);
+    }
+
+    @TruffleBoundary
+    private static long isoDateToEpochDaysResolvedYM(int y, int m, int date) {
+        return LocalDate.of(y, m, 1).toEpochDay() + date - 1;
     }
 
     // 15.9.1.13

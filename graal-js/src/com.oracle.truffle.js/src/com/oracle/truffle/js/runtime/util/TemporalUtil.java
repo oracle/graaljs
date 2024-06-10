@@ -97,7 +97,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -1078,7 +1077,7 @@ public final class TemporalUtil {
         long week = Math.floorDiv(dayOfYear + daysInWeek - dayOfWeek + wednesday, daysInWeek);
         if (week < 1) {
             long dayOfJan1st = toISODayOfWeek(year, 1, 1);
-            if (dayOfJan1st == friday || (dayOfJan1st == saturday && isISOLeapYear(year - 1))) {
+            if (dayOfJan1st == friday || (dayOfJan1st == saturday && JSDate.isLeapYear(year - 1))) {
                 return maxWeekNumber;
             } else {
                 return maxWeekNumber - 1;
@@ -1122,12 +1121,8 @@ public final class TemporalUtil {
         return year;
     }
 
-    public static boolean isISOLeapYear(int year) {
-        return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
-    }
-
     public static int isoDaysInYear(int year) {
-        if (isISOLeapYear(year)) {
+        if (JSDate.isLeapYear(year)) {
             return 366;
         }
         return 365;
@@ -1141,7 +1136,7 @@ public final class TemporalUtil {
         if (month == 4 || month == 6 || month == 9 || month == 11) {
             return 30;
         }
-        if (isISOLeapYear(year)) {
+        if (JSDate.isLeapYear(year)) {
             return 29;
         }
         return 28;
@@ -1307,7 +1302,7 @@ public final class TemporalUtil {
         assert isValidTime(hour, minute, second, millisecond, microsecond, nanosecond);
 
         // 1. Let date be MakeDay(year, month - 1, day).
-        long date = isoDateToEpochDays(year, month - 1, day);
+        long date = JSDate.isoDateToEpochDays(year, month - 1, day);
         // 2. Let time be MakeTime(hour, minute, second, millisecond).
         long time = hour * JSDate.MS_PER_HOUR + minute * JSDate.MS_PER_MINUTE + second * JSDate.MS_PER_SECOND + millisecond;
         // 3. Let ms be MakeDate(date, time).
@@ -1509,22 +1504,6 @@ public final class TemporalUtil {
         return new ISODateRecord(year, month, day);
     }
 
-    /**
-     * Corresponds to {@link JSDate#makeDay MakeDay}.
-     */
-    @TruffleBoundary
-    public static long isoDateToEpochDays(int year, int month, int date) {
-        int resolvedYear = year + month / 12;
-        int resolvedMonth = month % 12;
-        if (resolvedMonth < 0) {
-            resolvedMonth += 12;
-        }
-        // Year must be in the supported range for LocalDate.
-        assert resolvedYear >= Year.MIN_VALUE && resolvedYear <= Year.MAX_VALUE : resolvedYear;
-        long t = LocalDate.of(resolvedYear, resolvedMonth + 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli();
-        return Math.floorDiv(t, JSDate.MS_PER_DAY) + date - 1;
-    }
-
     @TruffleBoundary
     public static ISODateRecord balanceISODate(int year, int month, int day) {
         if (year < -1000000 || 1000000 < year || day < -ISO_DATE_MAX_UTC_OFFSET_DAYS || ISO_DATE_MAX_UTC_OFFSET_DAYS < day) {
@@ -1533,7 +1512,7 @@ public final class TemporalUtil {
             // This is OK since all callers would throw a RangeError immediately after anyway.
             throw Errors.createRangeError("Date outside of supported range");
         }
-        long epochDays = isoDateToEpochDays(year, month - 1, day);
+        long epochDays = JSDate.isoDateToEpochDays(year, month - 1, day);
         long ms = epochDays * JSDate.MS_PER_DAY;
         return createISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
     }
@@ -2332,8 +2311,8 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static long daysUntil(JSTemporalPlainDateObject earlier, JSTemporalPlainDateObject later) {
-        long epochDays1 = isoDateToEpochDays(earlier.getYear(), earlier.getMonth() - 1, earlier.getDay());
-        long epochDays2 = isoDateToEpochDays(later.getYear(), later.getMonth() - 1, later.getDay());
+        long epochDays1 = JSDate.isoDateToEpochDays(earlier.getYear(), earlier.getMonth() - 1, earlier.getDay());
+        long epochDays2 = JSDate.isoDateToEpochDays(later.getYear(), later.getMonth() - 1, later.getDay());
         return epochDays2 - epochDays1;
     }
 
