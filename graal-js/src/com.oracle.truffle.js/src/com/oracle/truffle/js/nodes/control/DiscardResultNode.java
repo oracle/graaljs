@@ -44,14 +44,11 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-@NodeInfo(cost = NodeCost.NONE)
 public class DiscardResultNode extends JSUnaryNode {
 
     protected DiscardResultNode(JavaScriptNode operand) {

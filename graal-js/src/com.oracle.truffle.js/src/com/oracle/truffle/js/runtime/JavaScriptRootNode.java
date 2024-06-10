@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,14 +45,14 @@ import java.util.List;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
-@NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of all functions in JavaScript.")
+@NodeInfo(language = "JavaScript", description = "The root node of all functions in JavaScript.")
 public abstract class JavaScriptRootNode extends RootNode {
     private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = FrameDescriptor.newBuilder(0).build();
     public static final FrameDescriptor MODULE_DUMMY_FRAMEDESCRIPTOR = FrameDescriptor.newBuilder(0).build();
@@ -109,7 +109,7 @@ public abstract class JavaScriptRootNode extends RootNode {
     }
 
     @Override
-    public boolean isCaptureFramesForTrace() {
+    public boolean isCaptureFramesForTrace(@SuppressWarnings("unused") Node currentNode) {
         return isFunction() || isResumption();
     }
 

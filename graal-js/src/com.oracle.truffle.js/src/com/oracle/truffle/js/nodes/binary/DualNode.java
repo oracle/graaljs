@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -56,7 +54,6 @@ import com.oracle.truffle.js.nodes.control.SequenceNode;
 import com.oracle.truffle.js.nodes.control.VoidBlockNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
 
-@NodeInfo(cost = NodeCost.NONE)
 public class DualNode extends JavaScriptNode implements SequenceNode, ResumableNode.WithIntState {
 
     @Child private JavaScriptNode left;

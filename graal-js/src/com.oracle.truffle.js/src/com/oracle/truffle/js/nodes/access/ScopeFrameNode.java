@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -112,7 +110,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         return false;
     }
 
-    @NodeInfo(cost = NodeCost.NONE)
     private static final class CurrentFrameNode extends ScopeFrameNode {
 
         private static final ScopeFrameNode INSTANCE = new CurrentFrameNode();
@@ -130,7 +127,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         }
     }
 
-    @NodeInfo(cost = NodeCost.NONE)
     private static final class CurrentBlockScopeFrameNode extends ScopeFrameNode {
         private final int blockScopeSlot;
 
