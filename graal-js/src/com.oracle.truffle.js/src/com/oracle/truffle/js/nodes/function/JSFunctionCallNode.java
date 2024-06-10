@@ -70,7 +70,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -456,19 +455,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             this.cacheNode = newNode;
         }
         return newNode;
-    }
-
-    @Override
-    public NodeCost getCost() {
-        if (cacheNode == null) {
-            return NodeCost.UNINITIALIZED;
-        } else if (isGeneric(cacheNode)) {
-            return NodeCost.MEGAMORPHIC;
-        } else if (cacheNode.nextNode != null) {
-            return NodeCost.POLYMORPHIC;
-        } else {
-            return NodeCost.MONOMORPHIC;
-        }
     }
 
     @Override
@@ -1140,10 +1126,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return copy;
         }
 
-        @Override
-        public final NodeCost getCost() {
-            return NodeCost.NONE;
-        }
     }
 
     private abstract static class JSFunctionCacheNode extends AbstractCacheNode {

@@ -54,7 +54,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -136,10 +135,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return false;
         }
 
-        @Override
-        public final NodeCost getCost() {
-            return NodeCost.NONE;
-        }
     }
 
     /**
@@ -886,10 +881,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return null;
         }
 
-        @Override
-        public final NodeCost getCost() {
-            return NodeCost.NONE;
-        }
     }
 
     protected final Object key;
@@ -1415,20 +1406,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     protected abstract boolean isPropertyAssumptionCheckEnabled();
 
     protected abstract void setPropertyAssumptionCheckEnabled(boolean value);
-
-    @Override
-    public NodeCost getCost() {
-        T cacheNode = getCacheNode();
-        if (cacheNode == null) {
-            return NodeCost.UNINITIALIZED;
-        } else if (cacheNode.isGeneric()) {
-            return NodeCost.MEGAMORPHIC;
-        } else if (cacheNode.getNext() == null) {
-            return NodeCost.MONOMORPHIC;
-        } else {
-            return NodeCost.POLYMORPHIC;
-        }
-    }
 
     protected static boolean isArrayLengthProperty(Property property) {
         return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSArray.ArrayLengthProxyProperty;
