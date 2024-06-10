@@ -2055,25 +2055,16 @@ public final class TemporalUtil {
         }
     }
 
-    public static TimeDurationRecord balanceTimeDuration(BigInt nanoseconds, Unit largestUnit) {
-        TimeDurationRecord result = balancePossiblyInfiniteTimeDuration(nanoseconds, largestUnit);
-        if (result.isOverflow()) {
-            throw Errors.createRangeError("Time is infinite");
-        }
-        return result;
-    }
-
     @TruffleBoundary
-    private static TimeDurationRecord balancePossiblyInfiniteTimeDuration(BigInt nanoseconds, Unit largestUnit) {
-        BigInteger ns = nanoseconds.bigIntegerValue();
+    public static TimeDurationRecord balanceTimeDuration(BigInt normalizedTimeDuration, Unit largestUnit) {
         BigInteger d = BigInteger.ZERO;
         BigInteger h = BigInteger.ZERO;
         BigInteger min = BigInteger.ZERO;
         BigInteger s = BigInteger.ZERO;
         BigInteger ms = BigInteger.ZERO;
         BigInteger us = BigInteger.ZERO;
-        double sign = ns.signum() < 0 ? -1 : 1;
-        ns = ns.abs();
+        double sign = normalizedTimeDurationSign(normalizedTimeDuration);
+        BigInteger ns = normalizedTimeDurationAbs(normalizedTimeDuration).bigIntegerValue();
         switch (largestUnit) {
             case YEAR, MONTH, WEEK, DAY -> {
                 var qr = ns.divideAndRemainder(BI_1000);
@@ -2150,13 +2141,21 @@ public final class TemporalUtil {
                 us = qr[0];
                 ns = qr[1];
             }
-            case NANOSECOND -> {
+            default -> {
+                assert largestUnit == Unit.NANOSECOND : largestUnit;
             }
-            default -> throw Errors.shouldNotReachHereUnexpectedValue(largestUnit);
         }
-        return new TimeDurationRecord(d.doubleValue() * sign,
-                        h.doubleValue() * sign, min.doubleValue() * sign, s.doubleValue() * sign,
-                        ms.doubleValue() * sign, us.doubleValue() * sign, ns.doubleValue() * sign);
+        double days = d.doubleValue() * sign;
+        double hours = h.doubleValue() * sign;
+        double minutes = min.doubleValue() * sign;
+        double seconds = s.doubleValue() * sign;
+        double milliseconds = ms.doubleValue() * sign;
+        double microseconds = us.doubleValue() * sign;
+        double nanoseconds = ns.doubleValue() * sign;
+        if (!isValidDuration(0, 0, 0, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
+            throw Errors.createRangeError("Time is infinite");
+        }
+        return new TimeDurationRecord(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
     public static JSDynamicObject toDynamicObject(Object obj) {
@@ -2177,6 +2176,7 @@ public final class TemporalUtil {
         }
     }
 
+    @TruffleBoundary
     public static boolean isValidDuration(double years, double months, double weeks, double days, double hours,
                     double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
         int sign = durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
