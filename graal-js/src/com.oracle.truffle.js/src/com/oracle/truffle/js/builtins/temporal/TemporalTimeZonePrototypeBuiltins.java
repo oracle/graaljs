@@ -305,6 +305,9 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
             List<Object> possibleInstants = new ArrayList<>();
             for (BigInt epochNanoseconds : possibleEpochNanoseconds) {
+                if (!TemporalUtil.isValidEpochNanoseconds(epochNanoseconds)) {
+                    throw TemporalErrors.createRangeErrorInvalidNanoseconds();
+                }
                 JSDynamicObject instant = JSTemporalInstant.create(getContext(), realm, epochNanoseconds);
                 possibleInstants.add(instant);
             }
