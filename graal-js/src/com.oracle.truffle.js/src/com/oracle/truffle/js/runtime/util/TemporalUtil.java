@@ -127,18 +127,21 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -1462,11 +1465,19 @@ public final class TemporalUtil {
         return requireTemporalDate(addedDate);
     }
 
-    @TruffleBoundary
-    public static JSTemporalDurationObject calendarDateUntil(CalendarMethodsRecord calendarRec, JSDynamicObject one, JSDynamicObject two, JSDynamicObject options) {
+    public static JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject date, JSTemporalDurationObject duration, JSDynamicObject options,
+                    ToTemporalCalendarObjectNode toCalendarObject, JSFunctionCallNode callDateAdd) {
+        Object dateAddPrepared = calendarRec.dateAdd();
+        Object calendar = toCalendarObject.execute(calendarRec.receiver());
+        Object addedDate = callDateAdd.executeCall(JSArguments.create(calendar, dateAddPrepared, date, duration, options));
+        return requireTemporalDate(addedDate);
+    }
+
+    public static JSTemporalDurationObject calendarDateUntil(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two, JSObject options,
+                    ToTemporalCalendarObjectNode toCalendarObject, JSFunctionCallNode callDateUntil) {
         Object dateUntilPrepared = calendarRec.dateUntil();
-        Object calendar = toCalendarObject(calendarRec.receiver());
-        Object date = JSRuntime.call(dateUntilPrepared, calendar, new Object[]{one, two, options});
+        Object calendar = toCalendarObject.execute(calendarRec.receiver());
+        Object date = callDateUntil.executeCall(JSArguments.create(calendar, dateUntilPrepared, one, two, options));
         return requireTemporalDuration(date);
     }
 

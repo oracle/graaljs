@@ -42,16 +42,13 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -83,17 +80,8 @@ public abstract class TemporalUnbalanceDateDurationRelativeNode extends JavaScri
         JSRealm realm = getRealm();
 
         var yearsMonthsWeeksDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, weeks, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
-        JSTemporalPlainDateObject later = calendarDateAdd(calendarRec, plainRelativeTo, yearsMonthsWeeksDuration,
-                        this, errorBranch, toCalendarObjectNode, callDateAddNode);
+        JSTemporalPlainDateObject later = TemporalUtil.calendarDateAdd(calendarRec, plainRelativeTo, yearsMonthsWeeksDuration, Undefined.instance, toCalendarObjectNode, callDateAddNode);
         double yearsMonthsWeeksInDays = TemporalUtil.daysUntil(plainRelativeTo, later);
         return days + yearsMonthsWeeksInDays;
     }
-
-    static JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject date, JSTemporalDurationObject duration,
-                    Node node, InlinedBranchProfile errorBranch, ToTemporalCalendarObjectNode toCalendarObjectNode, JSFunctionCallNode callDateAddNode) {
-        Object calendar = toCalendarObjectNode.execute(calendarRec.receiver());
-        Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, calendarRec.dateAdd(), date, duration, Undefined.instance));
-        return TemporalUtil.requireTemporalDate(addedDate, node, errorBranch);
-    }
-
 }
