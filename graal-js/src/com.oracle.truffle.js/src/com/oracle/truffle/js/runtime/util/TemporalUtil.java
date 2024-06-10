@@ -1270,16 +1270,18 @@ public final class TemporalUtil {
         return createTemporalTimeZone(ctx, realm, ctx.getTemporalTimeZoneFactory().getPrototype(realm), identifier);
     }
 
+    @TruffleBoundary
     public static JSTemporalTimeZoneObject createTemporalTimeZone(JSContext ctx, JSRealm realm, JSDynamicObject proto, TruffleString identifier) {
         BigInt offsetNs;
         TruffleString newIdentifier = identifier;
-        try {
-            long result = parseTimeZoneOffsetString(identifier);
+        JSTemporalParserRecord rec = new TemporalParser(identifier).parseTimeZoneNumericUTCOffset();
+        if (rec != null) {
             // no abrupt completion
+            long result = parseTimeZoneOffsetNs(rec);
             newIdentifier = formatTimeZoneOffsetString(result);
             offsetNs = BigInt.valueOf(result);
-        } catch (Exception ex) {
-            assert canonicalizeTimeZoneName(identifier).equals(identifier);
+        } else {
+            assert canonicalizeTimeZoneName(identifier).equals(identifier) : identifier;
             offsetNs = null;
         }
         return JSTemporalTimeZone.create(ctx, realm, proto, offsetNs, newIdentifier);
@@ -2937,11 +2939,14 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static long parseTimeZoneOffsetString(TruffleString string) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseTimeZoneNumericUTCOffset();
+        JSTemporalParserRecord rec = new TemporalParser(string).parseTimeZoneNumericUTCOffset();
         if (rec == null) {
             throw Errors.createRangeError("TemporalTimeZoneNumericUTCOffset expected");
         }
+        return parseTimeZoneOffsetNs(rec);
+    }
 
+    private static long parseTimeZoneOffsetNs(JSTemporalParserRecord rec) {
         long nanoseconds;
         if (rec.getOffsetFraction() == null) {
             nanoseconds = 0;
