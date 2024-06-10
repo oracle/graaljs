@@ -432,29 +432,6 @@ public final class TemporalUtil {
         }
     }
 
-    public enum UnitPlural {
-        YEARS(TemporalConstants.YEARS),
-        MONTHS(TemporalConstants.MONTHS),
-        WEEKS(TemporalConstants.WEEKS),
-        DAYS(TemporalConstants.DAYS),
-        HOURS(TemporalConstants.HOURS),
-        MINUTES(TemporalConstants.MINUTES),
-        SECONDS(TemporalConstants.SECONDS),
-        MILLISECONDS(TemporalConstants.MILLISECONDS),
-        MICROSECONDS(TemporalConstants.MICROSECONDS),
-        NANOSECONDS(TemporalConstants.NANOSECONDS);
-
-        private final TruffleString name;
-
-        UnitPlural(TruffleString name) {
-            this.name = name;
-        }
-
-        public TruffleString toTruffleString() {
-            return name;
-        }
-    }
-
     public enum RoundingMode {
         EMPTY,
         CEIL,
