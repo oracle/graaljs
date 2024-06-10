@@ -1967,14 +1967,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-3.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-4.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -2387,10 +2379,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/disambiguate-empty-possible-instants-with-datetime-near-limits.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2399,17 +2387,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/invalid-instant.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/plain-custom-timezone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/plain-date-time-near-limits.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/wrapping-at-end-of-month.js",
     "status" : "FAIL",
@@ -2995,10 +2975,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/add/argument-duration-max.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/day/validate-calendar-value.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3163,10 +3139,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/rounding-direction.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/rounding-is-noop.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -3223,10 +3195,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/roundingincrement-addition-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-06-07"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/wrapping-at-end-of-month.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -3240,10 +3208,6 @@
     "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/startOfDay/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/subtract/argument-duration-max.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
@@ -3262,10 +3226,6 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/roundingincrement-addition-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-06-07"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/wrapping-at-end-of-month.js",
     "status" : "FAIL",
@@ -3306,10 +3266,6 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/overflow-wrong-type.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/zoned-datetime-like-at-minimum-date-time.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withCalendar/subclassing-ignored.js",
     "status" : "FAIL",
@@ -4678,10 +4634,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "staging/Temporal/Instant/old/limits.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
     "filePath" : "staging/Temporal/Regex/old/instant.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
@@ -4727,10 +4679,6 @@
     "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Temporal/ZonedDateTime/old/string-parsing.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/toInstant.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
