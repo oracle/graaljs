@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 
-import java.math.BigInteger;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -199,15 +198,15 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @TruffleBoundary
         @Specialization
         protected Object instantGetter(JSTemporalInstantObject instant) {
-            BigInteger ns = instant.getNanoseconds().bigIntegerValue();
+            BigInt ns = instant.getNanoseconds();
             switch (property) {
                 // roundTowardsZero is a no-op for BigIntegers
                 case epochSeconds:
-                    return ns.divide(TemporalUtil.BI_10_POW_9).doubleValue();
+                    return ns.divide(TemporalUtil.BI_NS_PER_SECOND).doubleValue();
                 case epochMilliseconds:
-                    return ns.divide(TemporalUtil.BI_10_POW_6).doubleValue();
+                    return ns.divide(TemporalUtil.BI_NS_PER_MS).doubleValue();
                 case epochMicroseconds:
-                    return new BigInt(ns.divide(TemporalUtil.BI_1000));
+                    return ns.divide(TemporalUtil.BI_1000);
                 case epochNanoseconds:
                     return instant.getNanoseconds();
             }
