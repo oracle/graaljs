@@ -97,6 +97,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
@@ -848,7 +849,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 JSTemporalPlainDateObject dateLike = toTemporalDate.execute(temporalDateLike);
                 year = dateLike.getYear();
             }
-            return TemporalUtil.isISOLeapYear(year);
+            return JSDate.isLeapYear(year);
         }
 
         @SuppressWarnings("unused")
