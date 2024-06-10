@@ -71,11 +71,12 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.DifferencePlainDateTimeWithRoundingNode;
-import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeNode;
+import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalAddZonedDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDifferenceDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
@@ -351,6 +352,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached TemporalAddDateNode addDateNode,
                         @Cached TemporalDifferenceDateNode differenceDateNode,
                         @Cached DifferenceZonedDateTimeNode differenceZonedDateTimeNode,
+                        @Cached TemporalAddZonedDateTimeNode addZonedDateTimeNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined,
                         @Cached InlinedBranchProfile relativeToUndefinedBranch,
@@ -436,9 +438,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     var relativeToInstant = JSTemporalInstant.create(ctx, realm, zonedRelativeTo.getNanoseconds());
                     startDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, relativeToInstant, calendarRec.receiver());
                 }
-                BigInt intermediateNs = TemporalUtil.addZonedDateTime(ctx, realm, zonedRelativeTo.getNanoseconds(), timeZoneRec, calendarRec,
+                BigInt intermediateNs = addZonedDateTimeNode.execute(zonedRelativeTo.getNanoseconds(), timeZoneRec, calendarRec,
                                 y1, mon1, w1, d1, norm1, startDateTime);
-                BigInt endNs = TemporalUtil.addZonedDateTime(ctx, realm, intermediateNs, timeZoneRec, calendarRec,
+                BigInt endNs = addZonedDateTimeNode.execute(intermediateNs, timeZoneRec, calendarRec,
                                 y2, mon2, w2, d2, norm2, null);
 
                 if (largestUnit.isTimeUnit()) {
@@ -491,6 +493,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached TemporalAddDateNode addDate,
                         @Cached DifferencePlainDateTimeWithRoundingNode differencePlainDateTimeWithRounding,
                         @Cached DifferenceZonedDateTimeWithRoundingNode differenceZonedDateTimeWithRounding,
+                        @Cached TemporalAddZonedDateTimeNode addZonedDateTimeNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (roundToParam == Undefined.instance) {
@@ -583,7 +586,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDurationRecord roundResult;
             if (relativeToIsZonedDateTime.profile(node, zonedRelativeTo != null)) {
                 BigInt relativeEpochNs = zonedRelativeTo.getNanoseconds();
-                BigInt targetEpochNs = TemporalUtil.addZonedDateTime(ctx, realm, relativeEpochNs, timeZoneRec, calendarRec,
+                BigInt targetEpochNs = addZonedDateTimeNode.execute(relativeEpochNs, timeZoneRec, calendarRec,
                                 duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                                 norm, precalculatedPlainDateTime);
 
@@ -642,6 +645,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached TemporalAddDateNode addDate,
                         @Cached DifferencePlainDateTimeWithRoundingNode differencePlainDateTimeWithRounding,
                         @Cached DifferenceZonedDateTimeWithRoundingNode differenceZonedDateTimeWithRounding,
+                        @Cached TemporalAddZonedDateTimeNode addZonedDateTimeNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (totalOfParam == Undefined.instance) {
@@ -688,7 +692,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             double total;
             if (zonedRelativeTo != null) {
                 BigInt relativeEpochNs = zonedRelativeTo.getNanoseconds();
-                BigInt targetEpochNs = TemporalUtil.addZonedDateTime(getContext(), realm, relativeEpochNs, timeZoneRec, calendarRec,
+                BigInt targetEpochNs = addZonedDateTimeNode.execute(relativeEpochNs, timeZoneRec, calendarRec,
                                 duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                                 norm, precalculatedPlainDateTime);
 

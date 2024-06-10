@@ -123,7 +123,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
@@ -156,13 +155,11 @@ import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
@@ -1457,14 +1454,6 @@ public final class TemporalUtil {
         return JSRuntime.truncateDouble(d);
     }
 
-    @TruffleBoundary
-    public static JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject date, JSTemporalDurationObject duration, JSDynamicObject options) {
-        Object dateAddPrepared = calendarRec.dateAdd();
-        Object calendar = toCalendarObject(calendarRec.receiver());
-        Object addedDate = JSRuntime.call(dateAddPrepared, calendar, new Object[]{date, duration, options});
-        return requireTemporalDate(addedDate);
-    }
-
     public static JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject date, JSTemporalDurationObject duration, JSDynamicObject options,
                     ToTemporalCalendarObjectNode toCalendarObject, JSFunctionCallNode callDateAdd) {
         Object dateAddPrepared = calendarRec.dateAdd();
@@ -1479,16 +1468,6 @@ public final class TemporalUtil {
         Object calendar = toCalendarObject.execute(calendarRec.receiver());
         Object date = callDateUntil.executeCall(JSArguments.create(calendar, dateUntilPrepared, one, two, options));
         return requireTemporalDuration(date);
-    }
-
-    public static Object toCalendarObject(Object calendarSlotValue) {
-        Object calendar;
-        if (calendarSlotValue instanceof TruffleString calendarID) {
-            calendar = JSTemporalCalendar.create(JavaScriptLanguage.get(null).getJSContext(), JavaScriptLanguage.getCurrentJSRealm(), calendarID);
-        } else {
-            calendar = calendarSlotValue;
-        }
-        return calendar;
     }
 
     @TruffleBoundary
@@ -3186,85 +3165,6 @@ public final class TemporalUtil {
         }
         JSTemporalInstantObject instant = builtinTimeZoneGetInstantFor(ctx, realm, timeZoneRec, dateTime, disambiguation);
         return instant.getNanoseconds();
-    }
-
-    @TruffleBoundary
-    public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds,
-                    TimeZoneMethodsRecord timeZoneRec, CalendarMethodsRecord calendarRec,
-                    long years, long months, long weeks, long days,
-                    long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime) {
-        return addZonedDateTime(ctx, realm, epochNanoseconds, timeZoneRec, calendarRec, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
-                        BigInteger.valueOf(nanoseconds),
-                        precalculatedPlainDateTime, Undefined.instance);
-    }
-
-    @TruffleBoundary
-    public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds,
-                    TimeZoneMethodsRecord timeZoneRec, CalendarMethodsRecord calendarRec,
-                    long years, long months, long weeks, long days,
-                    long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInteger nanoseconds,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject options) {
-        if (years == 0 && months == 0 && weeks == 0 && days == 0) {
-            return addInstant(epochNanoseconds, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        }
-        JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, realm, epochNanoseconds);
-        JSTemporalPlainDateTimeObject temporalDateTime = precalculatedPlainDateTime != null
-                        ? precalculatedPlainDateTime
-                        : builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, calendarRec.receiver());
-        if (years == 0 && months == 0 && weeks == 0) {
-            Overflow overflow = toTemporalOverflow(options);
-            BigInt intermediate = addDaysToZonedDateTime(ctx, realm, instant, temporalDateTime, timeZoneRec, (int) days, overflow).epochNanoseconds();
-            return addInstant(intermediate, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        }
-        JSTemporalPlainDateObject datePart = JSTemporalPlainDate.create(ctx, realm, temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
-                        calendarRec.receiver(), null, InlinedBranchProfile.getUncached());
-        JSTemporalDurationObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, null, InlinedBranchProfile.getUncached());
-        JSTemporalPlainDateObject addedDate = calendarDateAdd(calendarRec, datePart, dateDuration, options);
-        JSTemporalPlainDateTimeObject intermediateDateTime = JSTemporalPlainDateTime.create(ctx, realm, addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
-                        temporalDateTime.getHour(), temporalDateTime.getMinute(), temporalDateTime.getSecond(),
-                        temporalDateTime.getMillisecond(), temporalDateTime.getMicrosecond(), temporalDateTime.getNanosecond(), calendarRec.receiver());
-        JSTemporalInstantObject intermediateInstant = builtinTimeZoneGetInstantFor(ctx, realm, timeZoneRec, intermediateDateTime, Disambiguation.COMPATIBLE);
-        return addInstant(intermediateInstant.getNanoseconds(), hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-    }
-
-    @TruffleBoundary
-    public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds,
-                    TimeZoneMethodsRecord timeZoneRec, CalendarMethodsRecord calendarRec,
-                    double years, double months, double weeks, double days,
-                    BigInt norm,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime) {
-        return addZonedDateTime(ctx, realm, epochNanoseconds, timeZoneRec, calendarRec, years, months, weeks, days, norm,
-                        precalculatedPlainDateTime, Undefined.instance);
-    }
-
-    @TruffleBoundary
-    public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds,
-                    TimeZoneMethodsRecord timeZoneRec, CalendarMethodsRecord calendarRec,
-                    double years, double months, double weeks, double days,
-                    BigInt norm,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject options) {
-        if (years == 0 && months == 0 && weeks == 0 && days == 0) {
-            return addInstant(epochNanoseconds, norm);
-        }
-        JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, realm, epochNanoseconds);
-        JSTemporalPlainDateTimeObject temporalDateTime = precalculatedPlainDateTime != null
-                        ? precalculatedPlainDateTime
-                        : builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, calendarRec.receiver());
-        if (years == 0 && months == 0 && weeks == 0) {
-            Overflow overflow = toTemporalOverflow(options);
-            BigInt intermediate = addDaysToZonedDateTime(ctx, realm, instant, temporalDateTime, timeZoneRec, (int) days, overflow).epochNanoseconds();
-            return addInstant(intermediate, norm);
-        }
-        JSTemporalPlainDateObject datePart = JSTemporalPlainDate.create(ctx, realm, temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
-                        calendarRec.receiver(), null, InlinedBranchProfile.getUncached());
-        JSTemporalDurationObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, null, InlinedBranchProfile.getUncached());
-        JSTemporalPlainDateObject addedDate = calendarDateAdd(calendarRec, datePart, dateDuration, options);
-        JSTemporalPlainDateTimeObject intermediateDateTime = JSTemporalPlainDateTime.create(ctx, realm, addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
-                        temporalDateTime.getHour(), temporalDateTime.getMinute(), temporalDateTime.getSecond(),
-                        temporalDateTime.getMillisecond(), temporalDateTime.getMicrosecond(), temporalDateTime.getNanosecond(), calendarRec.receiver());
-        JSTemporalInstantObject intermediateInstant = builtinTimeZoneGetInstantFor(ctx, realm, timeZoneRec, intermediateDateTime, Disambiguation.COMPATIBLE);
-        return addInstant(intermediateInstant.getNanoseconds(), norm);
     }
 
     public static boolean timeZoneEquals(Object tz1, Object tz2, ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier) {
