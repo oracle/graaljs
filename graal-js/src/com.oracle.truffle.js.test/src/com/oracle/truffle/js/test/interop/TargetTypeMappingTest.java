@@ -64,7 +64,7 @@ import com.oracle.truffle.js.test.JSTest;
  * {@link HostAccess.Builder#targetTypeMapping}.
  */
 public class TargetTypeMappingTest {
-    @Rule public ExpectedException expectedException = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException expectedException = ExpectedException.none();
 
     public static class ToBePassedToJS {
         private JsonObject jsonObject;

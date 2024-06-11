@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,8 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.util.function.Predicate;
@@ -66,7 +66,7 @@ import com.oracle.truffle.js.test.JSTest;
  */
 public class ClassFilterInteropTest {
 
-    @Rule public ExpectedException expectedException = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public ExpectedException expectedException = ExpectedException.none();
 
     public static class MyClass {
         @Export

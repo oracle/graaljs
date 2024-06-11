@@ -154,7 +154,7 @@ public class InnerContextTest {
         }
     }
 
-    @Rule public final ExpectedException exception = ExpectedException.none();
+    @SuppressWarnings("deprecation") @Rule public final ExpectedException exception = ExpectedException.none();
 
     @Test
     public void innerParseWithArgumentsHasLocalEnvironment() throws Exception {

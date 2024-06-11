@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.regress;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -52,7 +53,6 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -90,8 +90,8 @@ public class GR32786 extends JSTest {
             };
             asyncPromise.invokeMember("catch", javaThen);
 
-            Assert.assertThat(out.toString(), containsString("expected message"));
-            Assert.assertThat(out.toString(), containsString("someJsFun(async-snippet"));
+            assertThat(out.toString(), containsString("expected message"));
+            assertThat(out.toString(), containsString("someJsFun(async-snippet"));
         }
     }
 
@@ -114,8 +114,8 @@ public class GR32786 extends JSTest {
                 fail("should have thrown a PolyglotException");
             } catch (PolyglotException ex) {
                 ex.printStackTrace(new PrintStream(out));
-                Assert.assertThat(out.toString(), containsString("expected message"));
-                Assert.assertThat(out.toString(), containsString("someJsFun(sync-snippet"));
+                assertThat(out.toString(), containsString("expected message"));
+                assertThat(out.toString(), containsString("someJsFun(sync-snippet"));
             }
         }
     }
