@@ -206,7 +206,10 @@ public final class TruffleJSONParser {
     private void parseJSONMember(JSObject object, JSRealm realm, JSONParseRecord parseRecord) {
         TruffleString jsonKey = getJSONString();
         skipWhitespace();
-        expectChar(':');
+        if (get(pos) != ':') {
+            throw error("Expected ':' after property name in JSON");
+        }
+        skipChar(':');
         skipWhitespace();
         Object jsonValue = parseJSONValue(realm);
         if (withSource) {
