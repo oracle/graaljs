@@ -24,6 +24,6 @@ describe('ESM: importing CJS', { concurrency: true }, () => {
     assert.strictEqual(code, 1);
     assert.strictEqual(signal, null);
     assert.ok(stderr.includes('Warning: To load an ES module'));
-    assert.ok(stderr.includes('Unexpected token \'export\''));
+    assert.ok(stderr.includes('Unexpected token \'export\'') || stderr.includes('Expected an operand but found export'));
   });
 });
