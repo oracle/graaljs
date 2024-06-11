@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,7 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.junit.Assert;
+import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -97,7 +97,7 @@ public class GR32847 extends JSTest {
             // (4)
             asyncPromise.invokeMember("catch", javaThen);
 
-            Assert.assertThat(out.toString(), allOf(
+            MatcherAssert.assertThat(out.toString(), allOf(
                             containsString("throwException("),
                             containsString("foo(Unnamed"),
                             containsString("main(Unnamed")));
