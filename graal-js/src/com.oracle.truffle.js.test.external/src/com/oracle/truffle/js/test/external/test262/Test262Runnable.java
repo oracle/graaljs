@@ -241,6 +241,7 @@ public class Test262Runnable extends TestRunnable {
                     "object-spread",
                     "optional-catch-binding",
                     "optional-chaining",
+                    "promise-try",
                     "promise-with-resolvers",
                     "proxy-missing-checks",
                     "regexp-dotall",
@@ -265,7 +266,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "explicit-resource-management",
-                    "promise-try",
                     "regexp-modifiers",
                     "tail-call-optimization",
     });
@@ -277,6 +277,7 @@ public class Test262Runnable extends TestRunnable {
                     "ShadowRealm",
                     "decorators",
                     "json-parse-with-source",
+                    "promise-try",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
