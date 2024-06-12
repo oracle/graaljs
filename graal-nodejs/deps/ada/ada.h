@@ -5064,11 +5064,7 @@ ada_really_inline constexpr bool verify_dns_length(
 
 
 #include <algorithm>
-#if __has_include(<charconv>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500)
 #include <charconv>
-#else
-#include "charconv_shim.h"
-#endif
 #include <iostream>
 #include <optional>
 #include <string>

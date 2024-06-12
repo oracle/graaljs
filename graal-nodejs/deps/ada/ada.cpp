@@ -10422,11 +10422,7 @@ ada_warn_unused std::string to_string(ada::encoding_type type) {
 /* begin file src/helpers.cpp */
 
 #include <algorithm>
-#if __has_include(<charconv>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500)
 #include <charconv>
-#else
-#include "charconv_shim.h"
-#endif
 #include <cstring>
 #include <sstream>
 

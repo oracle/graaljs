@@ -96,7 +96,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     common.jdk21 + common.windows_amd64,
     common.jdklatest + common.linux_amd64,
     common.jdklatest + common.linux_aarch64,
-    #common.jdklatest + common.darwin_amd64, # GR-50122
+    common.jdklatest + common.darwin_amd64,
     common.jdklatest + common.darwin_aarch64,
     common.jdklatest + common.windows_amd64,
   ],
