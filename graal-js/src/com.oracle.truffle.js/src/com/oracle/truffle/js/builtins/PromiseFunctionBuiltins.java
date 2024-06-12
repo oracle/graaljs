@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
+import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseTryNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.WithResolversNodeGen;
@@ -100,7 +101,9 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         allSettled(1),
         any(1),
 
-        withResolvers(0);
+        withResolvers(0),
+
+        try_(1);
 
         private final int length;
 
@@ -119,6 +122,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 case any -> JSConfig.ECMAScript2021;
                 case allSettled -> JSConfig.ECMAScript2020;
                 case withResolvers -> JSConfig.ECMAScript2024;
+                case try_ -> JSConfig.StagingECMAScriptVersion;
                 default -> JSConfig.ECMAScript2015;
             };
         }
@@ -141,6 +145,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return ResolveNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case withResolvers:
                 return WithResolversNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case try_:
+                return PromiseTryNodeGen.create(context, builtin, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
         }
         return null;
     }
@@ -289,5 +295,48 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             return obj;
         }
 
+    }
+
+    public abstract static class PromiseTryNode extends JSBuiltinNode {
+        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private JSFunctionCallNode callCallbackFnNode;
+        @Child private JSFunctionCallNode callResolveNode;
+        @Child private JSFunctionCallNode callRejectNode;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+
+        protected PromiseTryNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            this.callCallbackFnNode = JSFunctionCallNode.createCall();
+            this.callResolveNode = JSFunctionCallNode.createCall();
+        }
+
+        @Specialization
+        protected final Object doObject(JSObject constructor, Object callbackfn, Object[] args) {
+            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
+            try {
+                Object status = callCallbackFnNode.executeCall(JSArguments.create(Undefined.instance, callbackfn, args));
+                callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), status));
+            } catch (AbstractTruffleException ex) {
+                rejectPromise(ex, promiseCapability);
+            }
+            return promiseCapability.getPromise();
+        }
+
+        private void rejectPromise(AbstractTruffleException ex, PromiseCapabilityRecord promiseCapability) {
+            if (callRejectNode == null || getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callRejectNode = insert(JSFunctionCallNode.createCall());
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+            }
+            Object error = getErrorObjectNode.execute(ex);
+            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected static Object doNotObject(Object thisObj, Object callbackfn, Object[] args) {
+            throw Errors.createTypeError("Cannot create promise from this type");
+        }
     }
 }
