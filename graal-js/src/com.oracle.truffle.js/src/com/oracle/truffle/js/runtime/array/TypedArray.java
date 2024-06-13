@@ -112,7 +112,18 @@ public abstract class TypedArray extends ScriptArray {
     @Override
     public final int lengthInt(JSDynamicObject object) {
         JSTypedArrayObject typedArray = (JSTypedArrayObject) object;
-        return fixedLength ? typedArray.getLengthFixed() : typedArray.getLength();
+        if (fixedLength) {
+            return typedArray.getLengthFixed();
+        } else {
+            JSArrayBufferObject arrayBuffer = typedArray.getArrayBuffer();
+            int byteLength = switch (bufferType) {
+                case BUFFER_TYPE_ARRAY -> ((JSArrayBufferObject.Heap) arrayBuffer).getByteLength();
+                case BUFFER_TYPE_DIRECT -> ((JSArrayBufferObject.DirectBase) arrayBuffer).getByteLength();
+                case BUFFER_TYPE_INTEROP -> ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
+                default -> throw Errors.shouldNotReachHereUnexpectedValue(bufferType);
+            };
+            return (byteLength - getOffset(object)) / bytesPerElement;
+        }
     }
 
     @Override
