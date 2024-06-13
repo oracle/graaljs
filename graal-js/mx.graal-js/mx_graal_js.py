@@ -159,9 +159,11 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
     def apply(self, config):
         (vmArgs, mainClass, mainClassArgs) = config
         # Disable DefaultRuntime warning
-        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-        # Assert for enter/return parity of ProbeNode
-        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
+        vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        vmArgs += ['-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # Assert for enter/return parity of ProbeNode (if assertions are enabled only)
+        if next((arg.startswith('-e') for arg in reversed(vmArgs) if arg in ['-ea', '-da', '-enableassertions', '-disableassertions']), False):
+            vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
         vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
