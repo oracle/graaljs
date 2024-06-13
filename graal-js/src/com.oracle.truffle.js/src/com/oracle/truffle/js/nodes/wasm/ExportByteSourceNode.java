@@ -115,9 +115,17 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
             buffer = JSArrayBuffer.createArrayBuffer(context, realm, 0);
         }
         // Wrap ArrayBuffer into Uint8Array - to allow reading its bytes on WASM side
-        boolean interop = JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
-        boolean direct = JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer);
-        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(direct, (offset != 0), true, interop);
+        byte bufferType;
+        if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
+            bufferType = TypedArray.BUFFER_TYPE_INTEROP;
+        } else if (JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer)) {
+            bufferType = TypedArray.BUFFER_TYPE_ARRAY;
+        } else if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
+            bufferType = TypedArray.BUFFER_TYPE_DIRECT;
+        } else {
+            bufferType = TypedArray.BUFFER_TYPE_SHARED;
+        }
+        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(bufferType, (offset != 0), true);
         return JSArrayBufferView.createArrayBufferView(context, realm, buffer, arrayType, offset, length);
     }
 
