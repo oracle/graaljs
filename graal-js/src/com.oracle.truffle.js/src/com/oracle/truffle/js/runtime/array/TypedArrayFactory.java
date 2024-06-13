@@ -87,145 +87,145 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 public enum TypedArrayFactory implements PrototypeSupplier {
     Int8Array(TypedArray.INT8_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropInt8Array(this, offset);
+                return new InteropInt8Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectInt8Array(this, offset);
+                return new DirectInt8Array(this, offset, fixedLength);
             } else {
-                return new Int8Array(this, offset);
+                return new Int8Array(this, offset, fixedLength);
             }
         }
     },
     Uint8Array(TypedArray.UINT8_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropUint8Array(this, offset);
+                return new InteropUint8Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectUint8Array(this, offset);
+                return new DirectUint8Array(this, offset, fixedLength);
             } else {
-                return new Uint8Array(this, offset);
+                return new Uint8Array(this, offset, fixedLength);
             }
         }
     },
     Uint8ClampedArray(TypedArray.UINT8_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropUint8ClampedArray(this, offset);
+                return new InteropUint8ClampedArray(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectUint8ClampedArray(this, offset);
+                return new DirectUint8ClampedArray(this, offset, fixedLength);
             } else {
-                return new Uint8ClampedArray(this, offset);
+                return new Uint8ClampedArray(this, offset, fixedLength);
             }
         }
     },
     Int16Array(TypedArray.INT16_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropInt16Array(this, offset);
+                return new InteropInt16Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectInt16Array(this, offset);
+                return new DirectInt16Array(this, offset, fixedLength);
             } else {
-                return new Int16Array(this, offset);
+                return new Int16Array(this, offset, fixedLength);
             }
         }
     },
     Uint16Array(TypedArray.UINT16_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropUint16Array(this, offset);
+                return new InteropUint16Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectUint16Array(this, offset);
+                return new DirectUint16Array(this, offset, fixedLength);
             } else {
-                return new Uint16Array(this, offset);
+                return new Uint16Array(this, offset, fixedLength);
             }
         }
     },
     Int32Array(TypedArray.INT32_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropInt32Array(this, offset);
+                return new InteropInt32Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectInt32Array(this, offset);
+                return new DirectInt32Array(this, offset, fixedLength);
             } else {
-                return new Int32Array(this, offset);
+                return new Int32Array(this, offset, fixedLength);
             }
         }
     },
     Uint32Array(TypedArray.UINT32_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropUint32Array(this, offset);
+                return new InteropUint32Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectUint32Array(this, offset);
+                return new DirectUint32Array(this, offset, fixedLength);
             } else {
-                return new Uint32Array(this, offset);
+                return new Uint32Array(this, offset, fixedLength);
             }
         }
     },
     Float32Array(TypedArray.FLOAT32_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropFloat32Array(this, offset);
+                return new InteropFloat32Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectFloat32Array(this, offset);
+                return new DirectFloat32Array(this, offset, fixedLength);
             } else {
-                return new Float32Array(this, offset);
+                return new Float32Array(this, offset, fixedLength);
             }
         }
     },
     Float64Array(TypedArray.FLOAT64_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropFloat64Array(this, offset);
+                return new InteropFloat64Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectFloat64Array(this, offset);
+                return new DirectFloat64Array(this, offset, fixedLength);
             } else {
-                return new Float64Array(this, offset);
+                return new Float64Array(this, offset, fixedLength);
             }
         }
     },
     BigInt64Array(TypedArray.BIGINT64_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropBigInt64Array(this, offset);
+                return new InteropBigInt64Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectBigInt64Array(this, offset);
+                return new DirectBigInt64Array(this, offset, fixedLength);
             } else {
-                return new BigInt64Array(this, offset);
+                return new BigInt64Array(this, offset, fixedLength);
             }
         }
     },
     BigUint64Array(TypedArray.BIGUINT64_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropBigUint64Array(this, offset);
+                return new InteropBigUint64Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectBigUint64Array(this, offset);
+                return new DirectBigUint64Array(this, offset, fixedLength);
             } else {
-                return new BigUint64Array(this, offset);
+                return new BigUint64Array(this, offset, fixedLength);
             }
         }
     },
     Float16Array(TypedArray.FLOAT16_BYTES_PER_ELEMENT) {
         @Override
-        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+        TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength) {
             if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
-                return new InteropFloat16Array(this, offset);
+                return new InteropFloat16Array(this, offset, fixedLength);
             } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
-                return new DirectFloat16Array(this, offset);
+                return new DirectFloat16Array(this, offset, fixedLength);
             } else {
-                return new Float16Array(this, offset);
+                return new Float16Array(this, offset, fixedLength);
             }
         }
     };
@@ -234,48 +234,60 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     private final TruffleString name;
     private final TypedArray arrayType;
     private final TypedArray arrayTypeWithOffset;
+    private final TypedArray arrayTypeAutoLength;
+    private final TypedArray arrayTypeWithOffsetAutoLength;
     private final TypedArray directArrayType;
     private final TypedArray directArrayTypeWithOffset;
+    private final TypedArray directArrayTypeAutoLength;
+    private final TypedArray directArrayTypeWithOffsetAutoLength;
     private final TypedArray interopArrayType;
     private final TypedArray interopArrayTypeWithOffset;
+    private final TypedArray interopArrayTypeAutoLength;
+    private final TypedArray interopArrayTypeWithOffsetAutoLength;
 
     TypedArrayFactory(int bytesPerElement) {
         this.bytesPerElement = bytesPerElement;
         this.name = Strings.constant(name());
-        this.arrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, false);
-        this.arrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, true);
-        this.directArrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_DIRECT, false);
-        this.directArrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_DIRECT, true);
-        this.interopArrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_INTEROP, false);
-        this.interopArrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_INTEROP, true);
+        this.arrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, false, true);
+        this.arrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, true, true);
+        this.arrayTypeAutoLength = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, false, false);
+        this.arrayTypeWithOffsetAutoLength = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, true, false);
+        this.directArrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_DIRECT, false, true);
+        this.directArrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_DIRECT, true, true);
+        this.directArrayTypeAutoLength = instantiateArrayType(TypedArray.BUFFER_TYPE_DIRECT, false, false);
+        this.directArrayTypeWithOffsetAutoLength = instantiateArrayType(TypedArray.BUFFER_TYPE_DIRECT, true, false);
+        this.interopArrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_INTEROP, false, true);
+        this.interopArrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_INTEROP, true, true);
+        this.interopArrayTypeAutoLength = instantiateArrayType(TypedArray.BUFFER_TYPE_INTEROP, false, false);
+        this.interopArrayTypeWithOffsetAutoLength = instantiateArrayType(TypedArray.BUFFER_TYPE_INTEROP, true, false);
 
         assert !arrayType.hasOffset() && arrayTypeWithOffset.hasOffset() && !arrayType.isDirect() && !arrayTypeWithOffset.isDirect() &&
                         !directArrayType.hasOffset() && directArrayTypeWithOffset.hasOffset() && directArrayType.isDirect() && directArrayTypeWithOffset.isDirect() &&
                         !interopArrayType.hasOffset() && interopArrayTypeWithOffset.hasOffset() && interopArrayType.isInterop() && interopArrayTypeWithOffset.isInterop();
     }
 
-    public final TypedArray createArrayType(boolean direct, boolean offset) {
-        return createArrayType(direct, offset, false);
+    public final TypedArray createArrayType(boolean direct, boolean offset, boolean fixedLength) {
+        return createArrayType(direct, offset, fixedLength, false);
     }
 
-    public final TypedArray createArrayType(boolean direct, boolean offset, boolean interop) {
+    public final TypedArray createArrayType(boolean direct, boolean offset, boolean fixedLength, boolean interop) {
         if (interop) {
             if (offset) {
-                return interopArrayTypeWithOffset;
+                return fixedLength ? interopArrayTypeWithOffset : interopArrayTypeWithOffsetAutoLength;
             } else {
-                return interopArrayType;
+                return fixedLength ? interopArrayType : interopArrayTypeAutoLength;
             }
         } else if (direct) {
             if (offset) {
-                return directArrayTypeWithOffset;
+                return fixedLength ? directArrayTypeWithOffset : directArrayTypeWithOffsetAutoLength;
             } else {
-                return directArrayType;
+                return fixedLength ? directArrayType : directArrayTypeAutoLength;
             }
         } else {
             if (offset) {
-                return arrayTypeWithOffset;
+                return fixedLength ? arrayTypeWithOffset : arrayTypeWithOffsetAutoLength;
             } else {
-                return arrayType;
+                return fixedLength ? arrayType : arrayTypeAutoLength;
             }
         }
     }
@@ -292,7 +304,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
         return name;
     }
 
-    abstract TypedArray instantiateArrayType(byte bufferType, boolean offset);
+    abstract TypedArray instantiateArrayType(byte bufferType, boolean offset, boolean fixedLength);
 
     @Override
     public final JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {

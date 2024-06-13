@@ -227,7 +227,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
 
         assert byteOffset <= Integer.MAX_VALUE && length <= Integer.MAX_VALUE;
-        TypedArray typedArray = factory.createArrayType(direct, byteOffset != 0, isInteropBuffer);
+        TypedArray typedArray = factory.createArrayType(direct, byteOffset != 0, length != JSArrayBufferViewBase.AUTO_LENGTH, isInteropBuffer);
         return createTypedArray(arrayBuffer, typedArray, (int) byteOffset, (int) length, newTarget);
     }
 
@@ -282,7 +282,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
         }
 
-        TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
+        TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false, true);
         JSDynamicObject result = createTypedArray(arrayBuffer, typedArray, 0, (int) length, newTarget);
 
         assert typedArray == JSArrayBufferView.typedArrayGetArrayType(result);
@@ -375,7 +375,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             SimpleArrayList<Object> values = iterableToListNode.execute(getIteratorFromMethodNode.execute(node, object, usingIterator));
             int len = values.size();
             JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(len);
-            TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
+            TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false, true);
             JSDynamicObject obj = integerIndexedObjectCreate(arrayBuffer, typedArray, 0, len, proto);
             for (int k = 0; k < len; k++) {
                 Object kValue = values.get(k);
@@ -388,7 +388,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         long len = getLengthNode.executeLong(object);
         JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(len);
         assert len <= Integer.MAX_VALUE;
-        TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
+        TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false, true);
         JSDynamicObject obj = integerIndexedObjectCreate(arrayBuffer, typedArray, 0, (int) len, proto);
         for (int k = 0; k < len; k++) {
             Object kValue = readNode.executeWithTargetAndIndex(object, k);
@@ -482,7 +482,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     private JSDynamicObject createTypedArrayWithLength(long length, JSDynamicObject newTarget) {
         JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length);
-        TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
+        TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false, true);
         return createTypedArray(arrayBuffer, typedArray, 0, (int) length, newTarget);
     }
 

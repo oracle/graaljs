@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetOffset;
 
 import java.nio.ByteBuffer;
@@ -87,6 +86,7 @@ public abstract class TypedArray extends ScriptArray {
 
     private final int bytesPerElement;
     private final boolean offset;
+    private final boolean fixedLength;
     private final byte bufferType;
     private final TruffleString name;
     private final TypedArrayFactory factory;
@@ -95,9 +95,10 @@ public abstract class TypedArray extends ScriptArray {
     protected static final byte BUFFER_TYPE_DIRECT = 1;
     protected static final byte BUFFER_TYPE_INTEROP = -1;
 
-    protected TypedArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
+    protected TypedArray(TypedArrayFactory factory, boolean offset, boolean fixedLength, byte bufferType) {
         this.bytesPerElement = factory.getBytesPerElement();
         this.offset = offset;
+        this.fixedLength = fixedLength;
         this.bufferType = bufferType;
         this.name = factory.getName();
         this.factory = factory;
@@ -110,7 +111,8 @@ public abstract class TypedArray extends ScriptArray {
 
     @Override
     public final int lengthInt(JSDynamicObject object) {
-        return typedArrayGetLength(object);
+        JSTypedArrayObject typedArray = (JSTypedArrayObject) object;
+        return fixedLength ? typedArray.getLengthFixed() : typedArray.getLength();
     }
 
     @Override
@@ -286,8 +288,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class TypedIntArray extends TypedArray {
-        protected TypedIntArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
-            super(factory, offset, bufferType);
+        protected TypedIntArray(TypedArrayFactory factory, boolean offset, boolean fixedLength, byte bufferType) {
+            super(factory, offset, fixedLength, bufferType);
         }
 
         @Override
@@ -384,8 +386,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int INT8_BYTES_PER_ELEMENT = 1;
 
     public static final class Int8Array extends TypedIntArray {
-        Int8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Int8Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -415,8 +417,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectInt8Array extends TypedIntArray {
-        DirectInt8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectInt8Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -458,8 +460,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static class InteropInt8Array extends InteropOneByteIntArray {
-        InteropInt8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        InteropInt8Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength);
         }
 
         @Override
@@ -469,8 +471,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class InteropOneByteIntArray extends TypedIntArray {
-        InteropOneByteIntArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropOneByteIntArray(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -517,8 +519,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int UINT8_BYTES_PER_ELEMENT = 1;
 
     public static final class Uint8Array extends TypedIntArray {
-        Uint8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Uint8Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -548,8 +550,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectUint8Array extends TypedIntArray {
-        DirectUint8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectUint8Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -591,8 +593,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropUint8Array extends InteropOneByteIntArray {
-        InteropUint8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        InteropUint8Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength);
         }
 
         @Override
@@ -612,8 +614,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class AbstractUint8ClampedArray extends TypedIntArray {
-        private AbstractUint8ClampedArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
-            super(factory, offset, bufferType);
+        private AbstractUint8ClampedArray(TypedArrayFactory factory, boolean offset, boolean fixedLength, byte bufferType) {
+            super(factory, offset, fixedLength, bufferType);
         }
 
         @Override
@@ -644,8 +646,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class Uint8ClampedArray extends AbstractUint8ClampedArray {
-        Uint8ClampedArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Uint8ClampedArray(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -670,8 +672,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectUint8ClampedArray extends AbstractUint8ClampedArray {
-        DirectUint8ClampedArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectUint8ClampedArray(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -696,8 +698,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropUint8ClampedArray extends AbstractUint8ClampedArray {
-        InteropUint8ClampedArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropUint8ClampedArray(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -724,8 +726,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int INT16_BYTES_PER_ELEMENT = 2;
 
     public static final class Int16Array extends TypedIntArray {
-        Int16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Int16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -755,8 +757,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectInt16Array extends TypedIntArray {
-        DirectInt16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectInt16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -798,8 +800,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static class InteropInt16Array extends InteropTwoByteIntArray {
-        InteropInt16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        InteropInt16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength);
         }
 
         @Override
@@ -809,8 +811,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class InteropTwoByteIntArray extends TypedIntArray {
-        InteropTwoByteIntArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropTwoByteIntArray(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -857,8 +859,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int UINT16_BYTES_PER_ELEMENT = 2;
 
     public static final class Uint16Array extends TypedIntArray {
-        Uint16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Uint16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -888,8 +890,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectUint16Array extends TypedIntArray {
-        DirectUint16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectUint16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -931,8 +933,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropUint16Array extends InteropTwoByteIntArray {
-        InteropUint16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        InteropUint16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength);
         }
 
         @Override
@@ -954,8 +956,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int INT32_BYTES_PER_ELEMENT = 4;
 
     public static final class Int32Array extends TypedIntArray {
-        Int32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Int32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -985,8 +987,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectInt32Array extends TypedIntArray {
-        DirectInt32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectInt32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1023,8 +1025,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropInt32Array extends TypedIntArray {
-        InteropInt32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropInt32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1076,8 +1078,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int UINT32_BYTES_PER_ELEMENT = 4;
 
     public abstract static class AbstractUint32Array extends TypedIntArray {
-        private AbstractUint32Array(TypedArrayFactory factory, boolean offset, byte bufferType) {
-            super(factory, offset, bufferType);
+        private AbstractUint32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength, byte bufferType) {
+            super(factory, offset, fixedLength, bufferType);
         }
 
         @Override
@@ -1116,8 +1118,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class Uint32Array extends AbstractUint32Array {
-        Uint32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Uint32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1142,8 +1144,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectUint32Array extends AbstractUint32Array {
-        DirectUint32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectUint32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1175,8 +1177,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropUint32Array extends AbstractUint32Array {
-        InteropUint32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropUint32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1201,8 +1203,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class TypedBigIntArray extends TypedArray {
-        protected TypedBigIntArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
-            super(factory, offset, bufferType);
+        protected TypedBigIntArray(TypedArrayFactory factory, boolean offset, boolean fixedLength, byte bufferType) {
+            super(factory, offset, fixedLength, bufferType);
         }
 
         @Override
@@ -1280,8 +1282,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int BIGINT64_BYTES_PER_ELEMENT = 8;
 
     public static final class BigInt64Array extends TypedBigIntArray {
-        BigInt64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        BigInt64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1311,8 +1313,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectBigInt64Array extends TypedBigIntArray {
-        DirectBigInt64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectBigInt64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1353,8 +1355,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static class InteropBigInt64Array extends InteropBigIntArray {
-        InteropBigInt64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        InteropBigInt64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength);
         }
 
         @Override
@@ -1364,8 +1366,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class InteropBigIntArray extends TypedBigIntArray {
-        InteropBigIntArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropBigIntArray(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1412,8 +1414,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int BIGUINT64_BYTES_PER_ELEMENT = 8;
 
     public static final class BigUint64Array extends TypedBigIntArray {
-        BigUint64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        BigUint64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1453,8 +1455,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectBigUint64Array extends TypedBigIntArray {
-        DirectBigUint64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectBigUint64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1505,8 +1507,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropBigUint64Array extends InteropBigIntArray {
-        InteropBigUint64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        InteropBigUint64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength);
         }
 
         @Override
@@ -1526,8 +1528,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class TypedFloatArray extends TypedArray {
-        protected TypedFloatArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
-            super(factory, offset, bufferType);
+        protected TypedFloatArray(TypedArrayFactory factory, boolean offset, boolean fixedLength, byte bufferType) {
+            super(factory, offset, fixedLength, bufferType);
         }
 
         @Override
@@ -1569,8 +1571,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int FLOAT16_BYTES_PER_ELEMENT = 2;
 
     public static final class Float16Array extends TypedFloatArray {
-        Float16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Float16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1600,8 +1602,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectFloat16Array extends TypedFloatArray {
-        DirectFloat16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectFloat16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1631,8 +1633,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropFloat16Array extends TypedFloatArray {
-        InteropFloat16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropFloat16Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1684,8 +1686,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int FLOAT32_BYTES_PER_ELEMENT = 4;
 
     public static final class Float32Array extends TypedFloatArray {
-        Float32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Float32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1715,8 +1717,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectFloat32Array extends TypedFloatArray {
-        DirectFloat32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectFloat32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1746,8 +1748,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropFloat32Array extends TypedFloatArray {
-        InteropFloat32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropFloat32Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1799,8 +1801,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int FLOAT64_BYTES_PER_ELEMENT = 8;
 
     public static final class Float64Array extends TypedFloatArray {
-        Float64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_ARRAY);
+        Float64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1830,8 +1832,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectFloat64Array extends TypedFloatArray {
-        DirectFloat64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_DIRECT);
+        DirectFloat64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1861,8 +1863,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class InteropFloat64Array extends TypedFloatArray {
-        InteropFloat64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset, BUFFER_TYPE_INTEROP);
+        InteropFloat64Array(TypedArrayFactory factory, boolean offset, boolean fixedLength) {
+            super(factory, offset, fixedLength, BUFFER_TYPE_INTEROP);
         }
 
         @Override
