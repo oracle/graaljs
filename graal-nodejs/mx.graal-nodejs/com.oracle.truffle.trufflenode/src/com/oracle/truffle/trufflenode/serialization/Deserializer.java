@@ -462,7 +462,7 @@ public class Deserializer {
             view = JSDataView.createDataView(context, realm, arrayBuffer, offset, byteLength);
         } else {
             TypedArrayFactory factory = tag.getFactory();
-            TypedArray array = factory.createArrayType(true, offset != 0, true);
+            TypedArray array = factory.createArrayType(TypedArray.BUFFER_TYPE_DIRECT, offset != 0, true);
             int length = byteLength / factory.getBytesPerElement();
             view = JSArrayBufferView.createArrayBufferView(context, realm, arrayBuffer, array, offset, length);
         }
