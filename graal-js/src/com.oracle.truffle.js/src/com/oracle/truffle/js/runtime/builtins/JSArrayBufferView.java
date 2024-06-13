@@ -342,7 +342,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         byte[] byteArray = new byte[0];
         JSObjectFactory bufferFactory = context.getArrayBufferFactory();
         JSArrayBufferObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), bufferFactory.getPrototype(realm), byteArray), realm);
-        TypedArray arrayType = factory.createArrayType(false, false);
+        TypedArray arrayType = factory.createArrayType(false, false, true);
         Shape shape = JSShape.createPrototypeShape(context, INSTANCE, taPrototype);
         JSObject prototype = JSTypedArrayObject.create(shape, taPrototype, arrayType, emptyArrayBuffer, 0, 0);
         JSObjectUtil.setOrVerifyPrototype(context, prototype, taPrototype);

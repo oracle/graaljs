@@ -1485,7 +1485,7 @@ public final class GraalJSAccess {
     }
 
     private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArrayFactory factory) {
-        TypedArray arrayType = factory.createArrayType(true, offset != 0);
+        TypedArray arrayType = factory.createArrayType(true, offset != 0, true);
         JSArrayBufferObject dynamicObject = (JSArrayBufferObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
         JSRealm realm = getCurrentRealm();

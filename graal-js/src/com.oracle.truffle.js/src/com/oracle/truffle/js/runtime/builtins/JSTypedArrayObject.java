@@ -78,6 +78,11 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         return arrayType;
     }
 
+    public int getLengthFixed() {
+        assert !hasAutoLength();
+        return length;
+    }
+
     public int getLength() {
         return hasAutoLength() ? (arrayBuffer.getByteLength() - offset) / arrayType.bytesPerElement() : length;
     }
