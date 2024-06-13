@@ -12,6 +12,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implemented the [Array.fromAsync](https://github.com/tc39/proposal-array-from-async) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Resizable and Growable ArrayBuffers](https://github.com/tc39/proposal-resizablearraybuffer) proposal.
 * Updated Node.js to version 20.15.1.
+* Made option `js.esm-eval-returns-exports` stable and allowed in `SandboxPolicy.UNTRUSTED`.
 
 ## Version 24.0.0
 * Implemented the [WebAssembly threads](https://github.com/WebAssembly/threads) proposal.
