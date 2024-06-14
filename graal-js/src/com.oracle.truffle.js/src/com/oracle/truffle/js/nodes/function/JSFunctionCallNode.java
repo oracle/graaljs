@@ -75,11 +75,14 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitException;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
@@ -768,9 +771,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object getPropertyKey() {
-            JavaScriptNode propertyNode = functionTargetNode;
-            if (propertyNode instanceof WrapperNode) {
-                propertyNode = (JavaScriptNode) ((WrapperNode) propertyNode).getDelegateNode();
+            JavaScriptNode propertyNode = JSNodeUtil.getWrappedNode(functionTargetNode);
+            if (propertyNode instanceof ShortCircuitTargetableNode shortCircuitNode) {
+                propertyNode = JSNodeUtil.getWrappedNode(shortCircuitNode.getExpressionNode());
             }
             if (propertyNode instanceof PropertyNode) {
                 return ((PropertyNode) propertyNode).getPropertyKey();
@@ -1594,6 +1597,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
             }
             errorBranch.enter();
+            // There is no valid function to invoke. Do not throw if the invocation
+            // is optional, short-circuit instead.
+            if (getParent() instanceof InvokeNode invokeNode && invokeNode.getFunctionTargetDelegate() instanceof ShortCircuitTargetableNode) {
+                throw ShortCircuitException.instance();
+            }
             throw Errors.createTypeErrorInteropException(receiver, ex != null ? ex : UnknownIdentifierException.create(Strings.toJavaString(functionName)), "invokeMember", functionName, this);
         }
 
