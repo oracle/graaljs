@@ -271,7 +271,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             static Object doHeapArrayBuffer(JSArrayBufferObject.Heap buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory) {
                 assert !JSArrayBuffer.isJSInteropArrayBuffer(buffer) && !JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
                 CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(false, true, false);
+                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_ARRAY, true, false);
                 CompilerAsserts.partialEvaluationConstant(strategy);
                 return strategy.getBufferElement(buffer, bufferIndex, littleEndian, null);
             }
@@ -280,7 +280,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             static Object doDirectOrSharedArrayBuffer(JSArrayBufferObject.DirectBase buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory) {
                 assert !JSArrayBuffer.isJSInteropArrayBuffer(buffer) && JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
                 CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(true, true, false);
+                // It does not matter whether we use BUFFER_TYPE_DIRECT or BUFFER_TYPE_SHARED here
+                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_DIRECT, true, false);
                 CompilerAsserts.partialEvaluationConstant(strategy);
                 return strategy.getBufferElement(buffer, bufferIndex, littleEndian, null);
             }
@@ -290,7 +291,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                             @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
                 assert JSArrayBuffer.isJSInteropArrayBuffer(buffer) && !JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
                 CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(false, true, true);
+                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_INTEROP, true, false);
                 CompilerAsserts.partialEvaluationConstant(strategy);
                 return strategy.getBufferElement(buffer, bufferIndex, littleEndian, interop);
             }
@@ -352,7 +353,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             static void doHeapArrayBuffer(JSArrayBufferObject.Heap buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory) {
                 assert !JSArrayBuffer.isJSInteropArrayBuffer(buffer) && !JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
                 CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(false, true, false);
+                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_ARRAY, true, false);
                 CompilerAsserts.partialEvaluationConstant(strategy);
                 strategy.setBufferElement(buffer, bufferIndex, littleEndian, value, null);
             }
@@ -361,7 +362,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             static void doDirectOrSharedArrayBuffer(JSArrayBufferObject.DirectBase buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory) {
                 assert !JSArrayBuffer.isJSInteropArrayBuffer(buffer) && JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
                 CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(true, true, false);
+                // It does not matter whether we use BUFFER_TYPE_DIRECT or BUFFER_TYPE_SHARED here
+                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_DIRECT, true, false);
                 CompilerAsserts.partialEvaluationConstant(strategy);
                 strategy.setBufferElement(buffer, bufferIndex, littleEndian, value, null);
             }
@@ -371,7 +373,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                             @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
                 assert JSArrayBuffer.isJSInteropArrayBuffer(buffer) && !JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
                 CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(false, true, true);
+                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_INTEROP, true, false);
                 CompilerAsserts.partialEvaluationConstant(strategy);
                 strategy.setBufferElement(buffer, bufferIndex, littleEndian, value, interop);
             }
