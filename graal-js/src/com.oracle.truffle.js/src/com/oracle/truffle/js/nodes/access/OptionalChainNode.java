@@ -241,6 +241,10 @@ public final class OptionalChainNode extends JavaScriptNode {
             return isNullish.profile(isNullOrUndefinedNode.executeBoolean(targetValue));
         }
 
+        public JSTargetableNode getExpressionNode() {
+            return expressionNode;
+        }
+
         @Override
         public JavaScriptNode getTarget() {
             return expressionNode.getTarget();
@@ -279,14 +283,14 @@ public final class OptionalChainNode extends JavaScriptNode {
     }
 
     @SuppressWarnings("serial")
-    private static final class ShortCircuitException extends ControlFlowException {
+    public static final class ShortCircuitException extends ControlFlowException {
 
         private static final ShortCircuitException INSTANCE = new ShortCircuitException();
 
         private ShortCircuitException() {
         }
 
-        static ShortCircuitException instance() {
+        public static ShortCircuitException instance() {
             return INSTANCE;
         }
     }
