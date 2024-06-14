@@ -81,6 +81,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitException;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode.ShortCircuitTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -1596,6 +1597,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
             }
             errorBranch.enter();
+            // There is no valid function to invoke. Do not throw if the invocation
+            // is optional, short-circuit instead.
+            if (getParent() instanceof InvokeNode invokeNode && invokeNode.getFunctionTargetDelegate() instanceof ShortCircuitTargetableNode) {
+                throw ShortCircuitException.instance();
+            }
             throw Errors.createTypeErrorInteropException(receiver, ex != null ? ex : UnknownIdentifierException.create(Strings.toJavaString(functionName)), "invokeMember", functionName, this);
         }
 
