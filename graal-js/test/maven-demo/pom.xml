@@ -48,7 +48,7 @@
     <name>my-app</name>
     <url>http://maven.apache.org</url>
     <properties>
-        <graalvm.version>23.1.0</graalvm.version>
+        <graalvm.version>24.1.0</graalvm.version>
         <compiler.dir>${project.build.directory}/compiler</compiler.dir>
     </properties>
 
@@ -120,7 +120,7 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.1.2</version>
                         <configuration>
-                            <argLine>-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI --upgrade-module-path=${compiler.dir}</argLine>
+                            <argLine>-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI --add-exports=java.base/jdk.internal.misc=jdk.graal.compiler --upgrade-module-path=${compiler.dir}</argLine>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -194,6 +194,7 @@
                                         <modulepath/>
                                         <argument>-XX:+UnlockExperimentalVMOptions</argument>
                                         <argument>-XX:+EnableJVMCI</argument>
+                                        <argument>--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler</argument>
                                         <argument>--upgrade-module-path=${compiler.dir}</argument>
                                         <argument>-m</argument>
                                         <argument>com.mycompany.app/com.mycompany.app.App</argument>
@@ -242,7 +243,7 @@
                                 myapp=com.mycompany.app/com.mycompany.app.App
                             </launcher>
                             <addOptions>
-                                <addOption>"-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI"</addOption>
+                                <addOption>"-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI --add-exports=java.base/jdk.internal.misc=jdk.graal.compiler"</addOption>
                             </addOptions>
                         </configuration>
                     </plugin>
