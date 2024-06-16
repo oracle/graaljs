@@ -225,10 +225,11 @@
                         <version>3.1.0</version>
                         <configuration>
                             <!-- Note: jlink is only supported beginning with GraalVM 23.1.0. -->
+                            <!-- Note: in 23.1.x, the jdk.graal.compiler modules were named jdk.internal.vm.compiler and jdk.internal.vm.compiler.management, respectively. -->
                             <addModules>
                                 <module>com.mycompany.app</module>
-                                <module>jdk.internal.vm.compiler</module>
-                                <module>jdk.internal.vm.compiler.management</module>
+                                <module>jdk.graal.compiler</module>
+                                <module>jdk.graal.compiler.management</module>
                                 <module>org.graalvm.truffle</module>
                                 <module>org.graalvm.truffle.compiler</module>
                                 <module>org.graalvm.truffle.runtime</module>
