@@ -118,7 +118,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             return switch (this) {
                 case any -> JSConfig.ECMAScript2021;
                 case allSettled -> JSConfig.ECMAScript2020;
-                case withResolvers -> JSConfig.StagingECMAScriptVersion;
+                case withResolvers -> JSConfig.ECMAScript2024;
                 default -> JSConfig.ECMAScript2015;
             };
         }

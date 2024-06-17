@@ -250,6 +250,7 @@ public class Test262Runnable extends TestRunnable {
                     "regexp-named-groups",
                     "regexp-unicode-property-escapes",
                     "regexp-v-flag",
+                    "resizable-arraybuffer",
                     "rest-parameters",
                     "set-methods",
                     "string-trimming",
@@ -265,23 +266,16 @@ public class Test262Runnable extends TestRunnable {
                     "IsHTMLDDA",
                     "explicit-resource-management",
                     "regexp-modifiers",
-                    "resizable-arraybuffer",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Array.fromAsync",
-                    "Atomics.waitAsync",
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Float16Array",
                     "Intl.Locale-info",
                     "ShadowRealm",
-                    "String.prototype.isWellFormed",
-                    "String.prototype.toWellFormed",
-                    "array-grouping",
-                    "arraybuffer-transfer",
                     "decorators",
                     "json-parse-with-source",
-                    "promise-with-resolvers",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

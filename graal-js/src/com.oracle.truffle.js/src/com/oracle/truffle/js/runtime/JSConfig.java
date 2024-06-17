@@ -78,9 +78,10 @@ public final class JSConfig {
     public static final int ECMAScript2022 = 13;
     public static final int ECMAScript2023 = 14;
     public static final int ECMAScript2024 = 15;
+    public static final int ECMAScript2025 = 16;
     public static final int ECMAScriptVersionYearDelta = 2009; // ES6==ES2015
-    public static final int LatestECMAScriptVersion = ECMAScript2023;
-    public static final int StagingECMAScriptVersion = ECMAScript2024;
+    public static final int LatestECMAScriptVersion = ECMAScript2024;
+    public static final int StagingECMAScriptVersion = ECMAScript2025;
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = true;
 

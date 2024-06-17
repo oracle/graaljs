@@ -154,8 +154,8 @@ public abstract class JSTypedArraySortNode extends JavaScriptBaseNode {
             }
 
             Boundaries.arraySort(arr, comparator);
-            // Comparator or ToNumber(cmpResult) may have detached the buffer.
-            if (isTypedArrayDetached(toArray)) {
+            // Comparator or ToNumber(cmpResult) may have detached or resized the buffer.
+            if (isTypedArrayOutOfBounds(toArray)) {
                 return;
             }
 
@@ -187,8 +187,8 @@ public abstract class JSTypedArraySortNode extends JavaScriptBaseNode {
             }
 
             Boundaries.arraySort(arr, comparator);
-            // Comparator or ToNumber(cmpResult) may have detached the buffer.
-            if (isTypedArrayDetached(toArray)) {
+            // Comparator or ToNumber(cmpResult) may have detached or resized the buffer.
+            if (isTypedArrayOutOfBounds(toArray)) {
                 return;
             }
 
@@ -220,8 +220,8 @@ public abstract class JSTypedArraySortNode extends JavaScriptBaseNode {
             }
 
             Boundaries.arraySort(arr, comparator);
-            // Comparator or ToNumber(cmpResult) may have detached the buffer.
-            if (isTypedArrayDetached(toArray)) {
+            // Comparator or ToNumber(cmpResult) may have detached or resized the buffer.
+            if (isTypedArrayOutOfBounds(toArray)) {
                 return;
             }
 
@@ -231,7 +231,7 @@ public abstract class JSTypedArraySortNode extends JavaScriptBaseNode {
         }
     }
 
-    private boolean isTypedArrayDetached(JSTypedArrayObject toArray) {
-        return JSArrayBufferView.hasDetachedBuffer(toArray, getJSContext());
+    private boolean isTypedArrayOutOfBounds(JSTypedArrayObject toArray) {
+        return JSArrayBufferView.isOutOfBounds(toArray, getJSContext());
     }
 }

@@ -414,10 +414,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "mjsunit/compiler/regress-crbug-1486342.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
     "status" : "PASS",
     "runInIsolation" : true,
@@ -568,7 +564,7 @@
   }, {
     "filePath" : "mjsunit/es6/proxies-json.js",
     "ecmaVersion" : {
-      "minVersion" : 15
+      "minVersion" : 16
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
@@ -672,95 +668,36 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-2timeout.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-buffer-out-of-scope-timeout.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-promise-out-of-scope.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses Atomics.waitAsync"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-timeout.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-timeouts-and-no-timeouts.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-all.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses Atomics.waitAsync"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-fifo.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses Atomics.waitAsync"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-simple.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses Atomics.waitAsync"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-2-waits.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-2-workers.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-no-timeout.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-timeout.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses Atomics.waitAsync"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/bigint/regressions.js",
     "status" : "FAIL",
@@ -841,20 +778,6 @@
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
     "comment" : "Uses Worker"
-  }, {
-    "filePath" : "mjsunit/harmony/string-iswellformed-external-uncached.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses String.prototype.isWellFormed()"
-  }, {
-    "filePath" : "mjsunit/harmony/string-iswellformed-flat-indirect.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses String.prototype.isWellFormed()"
   }, {
     "filePath" : "mjsunit/harmony/suppressed-error.js",
     "status" : "FAIL",
@@ -1008,6 +931,10 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/rab-gsab-transfer-to-worker.js",
+    "status" : "FAIL",
+    "comment" : "Uses Worker"
+  }, {
     "filePath" : "mjsunit/realm-property-access.js",
     "status" : "FAIL"
   }, {
@@ -1044,10 +971,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress-1400809.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/regress/asm/regress-13967.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
@@ -1126,11 +1049,8 @@
     "comment" : "GR-34371: Occasional segfault on SVM; test with (expected) stack overflows"
   }, {
     "filePath" : "mjsunit/regress/regress-1115354.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and async_hooks"
+    "comment" : "Uses async_hooks"
   }, {
     "filePath" : "mjsunit/regress/regress-1129.js",
     "status" : "SKIP",
@@ -1227,13 +1147,6 @@
     "status" : "FAIL",
     "comment" : "Uses console.profile(), console.profileEnd(), and d8.profiler.setOnProfileEndListener()"
   }, {
-    "filePath" : "mjsunit/regress/regress-14333.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses regexp unicode sets"
-  }, {
     "filePath" : "mjsunit/regress/regress-14433.js",
     "status" : "FAIL",
     "comment" : "Uses d8.serializer"
@@ -1246,10 +1159,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "mjsunit/regress/regress-1464437.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/regress/regress-148378.js",
     "status" : "SKIP",
     "comment" : "NOW: Fails consistently with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -1259,10 +1168,6 @@
     "comment" : "Uses performance.measureMemor()y"
   }, {
     "filePath" : "mjsunit/regress/regress-1494681.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1501679.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-19"
   }, {
@@ -1548,11 +1453,8 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/regress/regress-chromium-1194026.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
     "status" : "FAIL",
-    "comment" : "Uses Atomics.waitAsync and Worker"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-100859.js",
     "runInIsolation" : true,
@@ -1698,6 +1600,10 @@
     "status" : "FAIL",
     "comment" : "Uses d8.serializer.deserialize"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1402139.js",
+    "status" : "FAIL",
+    "comment" : "Uses d8.serializer.serialize"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1406774.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -1717,27 +1623,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1416395.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses regexp unicode sets"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1421198.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1421451.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, fixed by https://github.com/v8/v8/commit/1f45cacc0ab05b0941c4605ef33769dc6006fa1f#diff-8b33fefec9ea50caa40be31b0829475f2e28fa86d17ba8041fe0bdbcb36649a2"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1423650.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1437346.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses regexp unicode sets"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1440685.js",
     "status" : "FAIL",
@@ -1751,12 +1647,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1454482.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Uses regexp unicode sets"
+    "filePath" : "mjsunit/regress/regress-crbug-1459172.js",
+    "status" : "FAIL",
+    "comment" : "Expects an error for an unclear reason. Incorrect/off-spec test?"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1467028.js",
     "status" : "FAIL",
@@ -4397,6 +4290,10 @@
     },
     "comment" : "GC proposal."
   }, {
+    "filePath" : "mjsunit/resizablearraybuffer-growablesharedarraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "Uses Worker"
+  }, {
     "filePath" : "mjsunit/serialize-deserialize-now.js",
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
@@ -4780,6 +4677,22 @@
     "filePath" : "mjsunit/tools/timeline.mjs",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-array-methods.js",
+    "status" : "SKIP",
+    "comment" : "Long running test"
+  }, {
+    "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-atomics.js",
+    "status" : "FAIL",
+    "comment" : "Uses Worker"
+  }, {
+    "filePath" : "mjsunit/typedarray-resizablearraybuffer-array-methods.js",
+    "status" : "SKIP",
+    "comment" : "Long running test"
+  }, {
+    "filePath" : "mjsunit/typedarray-resizablearraybuffer-atomics.js",
+    "status" : "FAIL",
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/tzoffset-seoul-noi18n.js",
     "status" : "FAIL",
@@ -5993,6 +5906,12 @@
       "POLYGLOT" : "FAIL"
     },
     "comment" : "new failures 2024-01-19"
+  }, {
+    "filePath" : "mjsunit/wasm/resizablearraybuffer-growablesharedarraybuffer-wasm.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/return-calls-eh.js",
     "status" : "SKIP",

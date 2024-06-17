@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -68,9 +69,13 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
+    private final int maxByteLength;
+    private int byteLength;
 
-    protected JSArrayBufferObject(Shape shape, JSDynamicObject proto) {
+    protected JSArrayBufferObject(Shape shape, JSDynamicObject proto, int byteLength, int maxByteLength) {
         super(shape, proto);
+        this.byteLength = byteLength;
+        this.maxByteLength = maxByteLength;
     }
 
     @Override
@@ -78,19 +83,24 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
         return JSArrayBuffer.CLASS_NAME;
     }
 
-    public abstract int getByteLength();
-
     public abstract void detachArrayBuffer();
 
     public abstract boolean isDetached();
 
-    @SuppressWarnings("static-method")
-    public final boolean isResizable() {
-        return false;
+    public int getByteLength() {
+        return byteLength;
+    }
+
+    public void setByteLength(int newByteLength) {
+        this.byteLength = newByteLength;
     }
 
     public final int getMaxByteLength() {
-        return getByteLength();
+        return maxByteLength;
+    }
+
+    public final boolean isFixedLength() {
+        return (maxByteLength == JSArrayBuffer.FIXED_LENGTH);
     }
 
     @SuppressWarnings("static-method")
@@ -125,8 +135,8 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
     public static final class Heap extends JSArrayBufferObject {
         byte[] byteArray;
 
-        protected Heap(Shape shape, JSDynamicObject proto, byte[] byteArray) {
-            super(shape, proto);
+        protected Heap(Shape shape, JSDynamicObject proto, byte[] byteArray, int byteLength, int maxByteLength) {
+            super(shape, proto, byteLength, maxByteLength);
             this.byteArray = byteArray;
         }
 
@@ -142,11 +152,6 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
         @Override
         public boolean isDetached() {
             return byteArray == null;
-        }
-
-        @Override
-        public int getByteLength() {
-            return byteArray.length;
         }
 
         @SuppressWarnings("static-method")
@@ -314,8 +319,8 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
     public abstract static sealed class DirectBase extends JSArrayBufferObject {
         ByteBuffer byteBuffer;
 
-        protected DirectBase(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer) {
-            super(shape, proto);
+        protected DirectBase(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, int byteLength, int maxByteLength) {
+            super(shape, proto, byteLength, maxByteLength);
             this.byteBuffer = byteBuffer;
         }
 
@@ -325,11 +330,6 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         public final void setByteBuffer(ByteBuffer byteBuffer) {
             this.byteBuffer = byteBuffer;
-        }
-
-        @Override
-        public final int getByteLength() {
-            return byteBuffer.limit();
         }
 
         @Override
@@ -490,8 +490,8 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
     public static final class Direct extends DirectBase {
 
-        protected Direct(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer) {
-            super(shape, proto, byteBuffer);
+        protected Direct(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, int byteLength, int maxByteLength) {
+            super(shape, proto, byteBuffer, byteLength, maxByteLength);
         }
 
         @Override
@@ -507,10 +507,21 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
     public static final class Shared extends DirectBase {
         JSAgentWaiterList waiterList;
+        AtomicInteger byteLength;
 
-        protected Shared(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
-            super(shape, proto, byteBuffer);
+        protected Shared(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, JSAgentWaiterList waiterList, int byteLength, int maxByteLength) {
+            super(shape, proto, byteBuffer, /* unused */ -1, maxByteLength);
             this.waiterList = waiterList;
+            this.byteLength = new AtomicInteger(byteLength);
+        }
+
+        @Override
+        public int getByteLength() {
+            return byteLength.get();
+        }
+
+        public boolean updateByteLength(int expectedByteLength, int newByteLength) {
+            return byteLength.compareAndSet(expectedByteLength, newByteLength);
         }
 
         public JSAgentWaiterList getWaiterList() {
@@ -546,7 +557,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
         Object interopBuffer;
 
         protected Interop(Shape shape, JSDynamicObject proto, Object interopBuffer) {
-            super(shape, proto);
+            super(shape, proto, /* unused */ -1, JSArrayBuffer.FIXED_LENGTH);
             assert InteropLibrary.getUncached().hasBufferElements(interopBuffer);
             this.interopBuffer = interopBuffer;
         }
@@ -760,7 +771,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
     }
 
     public static JSArrayBufferObject createHeapArrayBuffer(Shape shape, JSDynamicObject proto, byte[] byteArray) {
-        return new Heap(shape, proto, byteArray);
+        return new Heap(shape, proto, byteArray, byteArray.length, JSArrayBuffer.FIXED_LENGTH);
     }
 
     @SuppressWarnings("serial")

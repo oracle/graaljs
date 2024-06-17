@@ -6,9 +6,11 @@ Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
 ## Version 24.1.0
+* ECMAScript 2024 mode/features enabled by default.
 * Implemented the [Make eval-introduced global vars redeclarable](https://github.com/tc39/proposal-redeclarable-global-eval-vars) proposal.
 * Implemented the [Float16Array](https://github.com/tc39/proposal-float16array) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Array.fromAsync](https://github.com/tc39/proposal-array-from-async) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [Resizable and Growable ArrayBuffers](https://github.com/tc39/proposal-resizablearraybuffer) proposal.
 * Updated Node.js to version 20.13.1.
 
 ## Version 24.0.0

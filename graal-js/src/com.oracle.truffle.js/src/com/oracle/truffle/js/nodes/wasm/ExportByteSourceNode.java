@@ -81,14 +81,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             length = 0;
         } else {
-            if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
-                length = JSArrayBuffer.getDirectByteLength(arrayBuffer);
-            } else if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
-                length = ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
-            } else {
-                assert JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer);
-                length = JSArrayBuffer.getHeapByteLength(arrayBuffer);
-            }
+            length = arrayBuffer.getByteLength();
         }
         return exportBuffer(arrayBuffer, 0, length);
     }

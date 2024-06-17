@@ -93,19 +93,16 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-stringref",
                     "--experimental-wasm-type-reflection",
                     "--expose-fast-api",
-                    "--harmony-rab-gsab",
                     "--harmony-struct",
                     "--wasm-test-streaming"
     });
     private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
                     "--harmony",
                     "--harmony-array-from-async",
-                    "--harmony-array-grouping",
                     "--harmony-intl-locale-info-func",
                     "--harmony-json-parse-with-source",
                     "--harmony-shadow-realm",
                     "--harmony-weak-refs-with-cleanup-some",
-                    "--js-promise-withresolvers",
     });
 
     private static final String FLAGS_PREFIX = "// Flags: ";

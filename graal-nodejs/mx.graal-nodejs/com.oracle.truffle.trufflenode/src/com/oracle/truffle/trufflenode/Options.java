@@ -201,8 +201,6 @@ public final class Options {
             // Node.js-specific defaults, may be overridden by command line arguments.
             polyglotOptions.put("js.print", "false");
             polyglotOptions.put("js.string-length-limit", Integer.toString((1 << 29) - 24)); // v8::String::kMaxLength
-            // until graal-js switches to 2024
-            polyglotOptions.put("js.ecmascript-version", "staging");
 
             List<String> unprocessedArguments = new ArrayList<>();
             Boolean optWebAssembly = null;

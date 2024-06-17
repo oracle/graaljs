@@ -476,8 +476,6 @@ public final class Strings {
     public static final TruffleString UNKNOWN_FILENAME = constant("<unknown>");
     public static final TruffleString DYNAMIC_FUNCTION_NAME = constant("anonymous");
     public static final TruffleString ASYNC = constant("async");
-    public static final TruffleString GROUP = constant("group");
-    public static final TruffleString GROUP_TO_MAP = constant("groupToMap");
     public static final TruffleString UC_M = constant("M");
     public static final TruffleString UC_M0 = constant("M0");
     public static final TruffleString UC_Z = constant("Z");

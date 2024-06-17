@@ -47,6 +47,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public abstract class JSArrayBufferViewBase extends JSNonProxyObject {
+    public static final int AUTO_LENGTH = -1;
 
     final JSArrayBufferObject arrayBuffer;
     final int length;
@@ -63,11 +64,12 @@ public abstract class JSArrayBufferViewBase extends JSNonProxyObject {
         return arrayBuffer;
     }
 
-    public final int getLength() {
-        return length;
-    }
-
     public final int getOffset() {
         return offset;
     }
+
+    public final boolean hasAutoLength() {
+        return (length == AUTO_LENGTH);
+    }
+
 }

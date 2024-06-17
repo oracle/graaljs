@@ -59,7 +59,6 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferOperation;
-import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferSliceNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.AbstractArraySortNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayForEachIndexCallOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
@@ -315,36 +314,31 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          *
          * The returned TypedArray will be of the same type as the array on which this method is
          * invoked.
-         *
-         * @param thisObj TypedArray
-         * @param begin begin index
-         * @param end end index
-         * @return subarray TypedArray
          */
         @Specialization
-        protected JSTypedArrayObject subarray(JSTypedArrayObject thisObj, int begin, int end) {
-            TypedArray array = typedArrayGetArrayType(thisObj);
-            int length = (int) array.length(thisObj);
-            int clampedBegin = JSArrayBufferSliceNode.clampIndex(begin, 0, length);
-            int clampedEnd = JSArrayBufferSliceNode.clampIndex(end, clampedBegin, length);
-            return subarrayImpl(thisObj, array, clampedBegin, clampedEnd);
-        }
-
-        @Specialization
-        protected JSTypedArrayObject subarray(JSTypedArrayObject thisObj, Object begin0, Object end0,
+        protected JSTypedArrayObject subarray(JSTypedArrayObject thisObj, Object start, Object end,
                         @Cached InlinedConditionProfile negativeBegin,
                         @Cached InlinedConditionProfile negativeEnd,
                         @Cached InlinedConditionProfile smallerEnd) {
             TypedArray array = typedArrayGetArrayType(thisObj);
-            long len = array.length(thisObj);
-            long relativeBegin = toInteger(begin0);
-            long beginIndex = negativeBegin.profile(this, relativeBegin < 0) ? Math.max(len + relativeBegin, 0) : Math.min(relativeBegin, len);
-            long relativeEnd = end0 == Undefined.instance ? len : toInteger(end0);
-            long endIndex = negativeEnd.profile(this, relativeEnd < 0) ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
-            if (smallerEnd.profile(this, endIndex < beginIndex)) {
-                endIndex = beginIndex;
+            long srcLength = JSArrayBufferView.isOutOfBounds(thisObj, getContext()) ? 0 : array.length(thisObj);
+            long relativeStart = toInteger(start);
+            long startIndex = negativeBegin.profile(this, relativeStart < 0) ? Math.max(srcLength + relativeStart, 0) : Math.min(relativeStart, srcLength);
+            int srcByteOffset = thisObj.getOffset();
+            long beginByteOffset = srcByteOffset + startIndex * array.bytesPerElement();
+            Object newLength;
+            if (thisObj.hasAutoLength() && end == Undefined.instance) {
+                newLength = Undefined.instance;
+            } else {
+                long relativeEnd = end == Undefined.instance ? srcLength : toInteger(end);
+                long endIndex = negativeEnd.profile(this, relativeEnd < 0) ? Math.max(srcLength + relativeEnd, 0) : Math.min(relativeEnd, srcLength);
+                if (smallerEnd.profile(this, endIndex < startIndex)) {
+                    newLength = 0;
+                } else {
+                    newLength = (int) (endIndex - startIndex);
+                }
             }
-            return subarrayImpl(thisObj, array, (int) beginIndex, (int) endIndex);
+            return subarrayImpl(thisObj, (int) beginByteOffset, newLength);
         }
 
         @SuppressWarnings("unused")
@@ -353,11 +347,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeErrorArrayBufferViewExpected();
         }
 
-        protected JSTypedArrayObject subarrayImpl(JSTypedArrayObject thisObj, TypedArray arrayType, int begin, int end) {
-            assert arrayType == thisObj.getArrayType();
-            int offset = thisObj.getOffset();
+        protected JSTypedArrayObject subarrayImpl(JSTypedArrayObject thisObj, int beginByteOffset, Object newLength) {
             JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);
-            return getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisObj, arrayBuffer, offset + begin * arrayType.bytesPerElement(), end - begin);
+            return getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisObj, arrayBuffer, beginByteOffset, newLength);
         }
 
         protected ArraySpeciesConstructorNode getArraySpeciesConstructorNode() {
@@ -434,7 +426,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 needErrorBranch.enter();
                 throw Errors.createRangeError("out of bounds");
             }
-            checkHasDetachedBuffer(targetObj);
+            checkOutOfBounds(targetObj);
             int targetOffset = (int) targetOffsetLong;
             if (arrayIsArrayBufferView.profile(array instanceof JSTypedArrayObject)) {
                 setArrayBufferView(targetObj, (JSTypedArrayObject) array, targetOffset);
@@ -452,7 +444,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
-        private void setFastArray(JSDynamicObject thisObj, JSDynamicObject array, int offset) {
+        private void setFastArray(JSTypedArrayObject thisObj, JSDynamicObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert JSArray.isJSFastArray(array);
             ScriptArray sourceArray = sourceArrayProf.profile(arrayGetArrayType(array));
@@ -465,21 +457,24 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 Object value = sourceArray.getElement(array, i);
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
-                if (!JSArrayBufferView.hasDetachedBuffer(thisObj, getContext())) {
+                if (!JSArrayBufferView.isOutOfBounds(thisObj, getContext())) {
                     targetArray.setElement(thisObj, j, numValue, false);
                 }
                 TruffleSafepoint.poll(this);
             }
         }
 
-        private void setOther(JSDynamicObject thisObj, Object array, int offset) {
+        private void setOther(JSTypedArrayObject thisObj, Object array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSFastArray(array);
+            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
+            long targetLength = targetArray.length(thisObj);
             Object src = toObject(array);
             long srcLength = objectGetLength(src);
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
 
-            rangeCheck(0, srcLength, offset, targetArray.length(thisObj));
+            if (srcLength + offset > targetLength) {
+                throw Errors.createRangeError("out of bounds");
+            }
 
             boolean isJSObject = JSDynamicObject.isJSDynamicObject(src);
             boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
@@ -492,7 +487,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 }
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
-                if (!JSArrayBufferView.hasDetachedBuffer(thisObj, getContext())) {
+                if (!JSArrayBufferView.isOutOfBounds(thisObj, getContext())) {
                     targetArray.setElement(thisObj, j, numValue, false);
                 }
                 TruffleSafepoint.poll(this);
@@ -516,7 +511,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         private void setArrayBufferView(JSTypedArrayObject targetView, JSTypedArrayObject sourceView, int offset) {
-            checkHasDetachedBuffer(sourceView);
+            checkOutOfBounds(sourceView);
             TypedArray sourceArray = sourceArrayProf.profile(sourceView.getArrayType());
             TypedArray targetArray = targetArrayProf.profile(targetView.getArrayType());
             long sourceLength = sourceArray.length(sourceView);
@@ -734,10 +729,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return getLengthNode.executeLong(thisObject);
         }
 
-        private void checkHasDetachedBuffer(JSDynamicObject view) {
-            if (JSArrayBufferView.hasDetachedBuffer(view, getContext())) {
+        private void checkOutOfBounds(JSTypedArrayObject view) {
+            if (JSArrayBufferView.isOutOfBounds(view, getContext())) {
                 needErrorBranch.enter();
-                throw Errors.createTypeErrorDetachedBuffer();
+                throw Errors.createTypeErrorOutOfBoundsTypedArray();
             }
         }
 
@@ -756,9 +751,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSArrayBufferView(thisJSObj)")
-        protected Object forEach(JSDynamicObject thisJSObj, Object callback, Object thisArg) {
-            checkHasDetachedBuffer(thisJSObj);
+        @Specialization
+        protected Object forEach(JSTypedArrayObject thisJSObj, Object callback, Object thisArg) {
+            checkOutOfBounds(thisJSObj);
             long length = JSArrayBufferView.typedArrayGetArrayType(thisJSObj).length(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
             return forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, Undefined.instance);
@@ -792,10 +787,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin, true);
         }
 
-        @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected JSDynamicObject reverse(JSDynamicObject thisObj,
+        @Specialization
+        protected JSDynamicObject reverse(JSTypedArrayObject thisObj,
                         @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode) {
-            checkHasDetachedBuffer(thisObj);
+            checkOutOfBounds(thisObj);
             long len = getLength(thisObj);
             long middle = len / 2L;
             long lower = 0;
@@ -855,15 +850,14 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached JSToBigIntNode toBigIntNode,
                         @Cached InlinedConditionProfile offsetProfile1,
                         @Cached InlinedConditionProfile offsetProfile2) {
-            validateTypedArray(thisObj);
-            JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
+            JSTypedArrayObject thisJSObj = validateTypedArray(thisObj);
             long len = getLength(thisJSObj);
             Object convValue = JSArrayBufferView.isBigIntArrayBufferView(thisJSObj)
                             ? toBigIntNode.execute(value)
                             : toNumberNode.execute(value);
             long lStart = JSRuntime.getOffset(toIntegerAsLong(start), len, this, offsetProfile1);
             long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerAsLong(end), len, this, offsetProfile2);
-            checkHasDetachedBuffer(thisJSObj);
+            checkOutOfBounds(thisJSObj);
             for (long idx = lStart; idx < lEnd; idx++) {
                 write(thisJSObj, idx, convValue);
                 TruffleSafepoint.poll(this);
@@ -924,9 +918,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected final JSObject doObject(JSTypedArrayObject thisObj,
                         @Cached InlinedBranchProfile errorBranch) {
-            if (JSArrayBufferView.hasDetachedBuffer(thisObj, getContext())) {
+            if (JSArrayBufferView.isOutOfBounds(thisObj, getContext())) {
                 errorBranch.enter(this);
-                throw Errors.createTypeErrorDetachedBuffer();
+                throw Errors.createTypeErrorOutOfBoundsTypedArray();
             }
             return createArrayIterator(thisObj);
         }
@@ -949,9 +943,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected final int doTypedArray(JSTypedArrayObject typedArray,
-                        @Cached InlinedBranchProfile detachedBranch) {
-            if (JSArrayBufferView.hasDetachedBuffer(typedArray, getContext())) {
-                detachedBranch.enter(this);
+                        @Cached InlinedBranchProfile outOfBoundsBranch) {
+            if (JSArrayBufferView.isOutOfBounds(typedArray, getContext())) {
+                outOfBoundsBranch.enter(this);
                 return 0;
             }
             switch (getter) {

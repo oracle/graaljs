@@ -42,10 +42,14 @@ package com.oracle.truffle.js.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
@@ -108,4 +112,50 @@ public class ModuleTest {
         }
     }
 
+    @Test
+    public void testDynamicImportFromVirtualFileSystem() throws IOException {
+        Map<String, String> modules = Map.of("other.mjs", "export const answer = 42;");
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(new MockFileSystem(modules)).build()).out(out).build()) {
+            context.eval(Source.newBuilder("js", "import('other.mjs').then(({answer}) => console.log(answer));", "test1.mjs").buildLiteral());
+            assertEquals("42", out.toString().trim());
+        }
+    }
+
+    @Test
+    public void testLoadFromVirtualFileSystem() {
+        Map<String, String> modules = Map.of("other.js", "var answer = 42;");
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(new MockFileSystem(modules)).build()).build()) {
+            Value result = context.eval(Source.newBuilder("js", "load('other.js'); answer;", "test1.mjs").buildLiteral());
+            assertTrue(result.isNumber());
+            assertEquals(42, result.asInt());
+        }
+    }
+
+    @Test
+    public void testImportWithoutIOPermission() {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.NONE).build()) {
+            context.eval(Source.newBuilder("js", "export default 42;", "other.mjs").buildLiteral());
+            Value result = context.eval(Source.newBuilder("js", "import answer from 'other.mjs'; answer;", "main.mjs").buildLiteral());
+            assertTrue(result.isNumber());
+            assertEquals(42, result.asInt());
+
+            try {
+                context.eval(Source.newBuilder("js", "import 'non-existent.mjs';", "error.mjs").buildLiteral());
+                fail("should have thrown");
+            } catch (PolyglotException expected) {
+            }
+        }
+    }
+
+    @Test
+    public void testDynamicImportWithoutIOPermission() throws IOException {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        Context context = JSTest.newContextBuilder().allowIO(IOAccess.NONE).out(out).build()) {
+            context.eval(Source.newBuilder("js", "export const answer = 42;", "other.mjs").buildLiteral());
+            context.eval(Source.newBuilder("js", "import('other.mjs').then(({answer}) => console.log(answer));", "test1.js").buildLiteral());
+            context.eval(Source.newBuilder("js", "import('other.mjs').then(({answer}) => console.log(answer + 1));", "test1.mjs").buildLiteral());
+            assertEquals("42\n43", out.toString().trim());
+        }
+    }
 }

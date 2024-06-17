@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -105,7 +106,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private IsArrayNode isArrayNode = IsArrayNode.createIsAnyArray();
     protected final JSClassProfile targetClassProfile = JSClassProfile.create();
     protected final LoopConditionProfile loopCond = LoopConditionProfile.create();
-    protected final BranchProfile detachedBufferBranch = BranchProfile.create();
+    protected final BranchProfile outOfBoundsBranch = BranchProfile.create();
     @Child private CallbackNode callbackNode;
     @Child protected MaybeResultNode maybeResultNode;
 
@@ -192,8 +193,8 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
     }
 
-    protected final boolean hasDetachedBuffer(Object view) {
-        return !context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBufferView.isJSArrayBufferView(view) && JSArrayBufferView.hasDetachedBuffer((JSDynamicObject) view);
+    protected final boolean isOutOfBounds(Object view) {
+        return JSArrayBufferView.isJSArrayBufferView(view) && JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) view, context);
     }
 
     protected final Object callback(long index, Object value, Object target, Object callback, Object callbackThisArg, Object currentResult) {
@@ -232,10 +233,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             long index = fromIndexZero.profile(fromIndex == 0) ? firstElementIndex(target, length) : nextElementIndex(target, fromIndex - 1, length);
             Object currentResult = initialResult;
             long count = 0;
-            while (loopCond.profile(index < length && index <= lastElementIndex(target, length))) {
-                if (checkHasProperty && hasDetachedBuffer(target)) {
-                    detachedBufferBranch.enter();
-                    break; // detached buffer does not have numeric properties
+            while (loopCond.profile(index < length && (!checkHasProperty || index <= lastElementIndex(target, length)))) {
+                if (checkHasProperty && isOutOfBounds(target)) {
+                    outOfBoundsBranch.enter();
+                    break; // out of bounds typed array does not have numeric properties
                 }
                 Object value = readElementInBounds(target, index);
                 Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
@@ -245,7 +246,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     break;
                 }
                 count++;
-                index = nextElementIndex(target, index, length);
+                index = checkHasProperty ? nextElementIndex(target, index, length) : (index + 1);
             }
             BasicArrayOperation.reportLoopCount(this, count);
             return currentResult;
@@ -294,10 +295,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             // NB: cannot rely on lastElementIndex here: can be > length (e.g. arguments object)
             Object currentResult = initialResult;
             long count = 0;
-            while (loopCond.profile(index >= 0 && index >= firstElementIndex(target, length))) {
-                if (checkHasProperty && hasDetachedBuffer(target)) {
-                    detachedBufferBranch.enter();
-                    break; // detached buffer does not have numeric properties
+            while (loopCond.profile(index >= 0 && (!checkHasProperty || index >= firstElementIndex(target, length)))) {
+                if (checkHasProperty && isOutOfBounds(target)) {
+                    outOfBoundsBranch.enter();
+                    break; // out of bounds typed array does not have numeric properties
                 }
                 Object value = readElementInBounds(target, index);
                 Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
@@ -307,7 +308,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     break;
                 }
                 count++;
-                index = previousElementIndex(target, index);
+                index = checkHasProperty ? previousElementIndex(target, index) : (index - 1);
             }
             BasicArrayOperation.reportLoopCount(this, count);
             return currentResult;
