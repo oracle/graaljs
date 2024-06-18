@@ -1619,9 +1619,8 @@
     "filePath" : "mjsunit/regress/regress-crbug-1412938.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2023-10-09"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1415249.js",
     "status" : "FAIL",
@@ -5225,9 +5224,8 @@
     "filePath" : "mjsunit/wasm/ffi.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "GR-53938: Error when importing one function from JS under different type signatures"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/float-constant-folding.js",
     "status" : "SKIP",
@@ -5505,9 +5503,8 @@
     "filePath" : "mjsunit/wasm/import-function.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "GR-53938: The print function is imported twice in the same module, using different type signatures."
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/import-memory.js",
     "status" : "SKIP",
