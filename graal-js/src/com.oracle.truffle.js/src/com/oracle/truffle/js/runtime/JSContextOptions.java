@@ -639,7 +639,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean wasmBigInt;
 
     public static final String ESM_EVAL_RETURNS_EXPORTS_NAME = JS_OPTION_PREFIX + "esm-eval-returns-exports";
-    @Option(name = ESM_EVAL_RETURNS_EXPORTS_NAME, category = OptionCategory.EXPERT, help = "Eval of an ES module through the polyglot API returns its exported symbols.") //
+    @Option(name = ESM_EVAL_RETURNS_EXPORTS_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Eval of an ES module through the polyglot API returns its exported symbols.") //
     public static final OptionKey<Boolean> ESM_EVAL_RETURNS_EXPORTS = new OptionKey<>(false);
     @CompilationFinal private boolean esmEvalReturnsExports;
 

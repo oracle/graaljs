@@ -73,6 +73,7 @@ The following stable options are frequently relevant:
    * `--js.allow-eval`: allow the code generation from strings, e.g. using `eval()` or the `Function` constructor. Boolean value, default is `true`.
    * `--js.timer-resolution`: sets the resolution of timing functions, like `Date.now()` and `performance.now()`, in nanoseconds. Default: `1000000` (i.e. 1 ms).
    * `--js.unhandled-rejections`: configure unhandled promise rejection tracking. Accepted values are `none` (default, no tracking), `warn` (print a warning to stderr), `throw` (throw an exception), and `handler` (invoke a custom handler).
+   * `--js.esm-eval-returns-exports`: `context.eval` of an ES module `Source` returns its exported symbols.
 
 For a complete list, use `js --help:js:internal`
 
@@ -116,6 +117,5 @@ To use them, the `--experimental-options` flag is required or the experimental o
    * `--js.nashorn-compat`: provide compatibility mode with the Nashorn engine. Sets ECMAScript version to 5 by default. Might conflict with newer ECMAScript versions. Boolean value, default is `false`.
    * `--js.timezone`: set the local time zone. String value, default is the system default.
    * `--js.v8-compat`: provide better compatibility with Google's V8 engine. Boolean value, default is `false`.
-   * `--js.esm-eval-returns-exports`: `context.eval` of an ES module `Source` returns its exported symbols.
-   * `--js.temporal`: enable  [`Temporal` API](https://github.com/tc39/proposal-temporal).
+   * `--js.temporal`: enable [`Temporal` API](https://github.com/tc39/proposal-temporal).
    * `--js.webassembly`: enable `WebAssembly` API.
