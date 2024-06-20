@@ -2422,7 +2422,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Override
         protected MaybeResultNode makeMaybeResultNode() {
             return new ForEachIndexCallNode.MaybeResultNode() {
-                @Child private WriteElementNode writeOwnNode = WriteElementNode.create(getContext(), true, true);
+                @Child private WriteElementNode writeOwnNode = WriteElementNode.create(getContext(), true, !isTypedArrayImplementation);
 
                 @Override
                 public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
