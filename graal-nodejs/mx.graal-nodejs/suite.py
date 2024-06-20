@@ -1,6 +1,6 @@
 
 suite = {
-  "mxversion" : "6.27.1",
+  "mxversion" : "7.27.0",
   "name" : "graal-nodejs",
   "versionConflictResolution" : "latest",
 
@@ -45,7 +45,7 @@ suite = {
         "windows" : {
           "amd64" : {
             "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/nodejs/nasm-2.14.02-windows-amd64.tar.gz"],
-            "sha1": "2a7caf509b5d9f56fad303538d2a5f0e783e7a1e",
+            "digest": "sha512:f11495fe7b3b50587161d5cc9e604770c0470aef04468865e7d775d96dbdc33903989ee76aed51ec09f923da452be50993bc7b3aa73b635fc93c7bca17807951",
           },
           "<others>": {
             "optional": True,
