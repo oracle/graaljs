@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,7 +104,7 @@ public class ScriptEngineArrayTypeMappingTest {
 
             Assert.assertFalse(result instanceof List);
             Assert.assertTrue(result instanceof Map);
-            Assert.assertEquals(0, ((Map<?, ?>) result).size());
+            Assert.assertEquals(3, ((Map<?, ?>) result).size());
         }
     }
 

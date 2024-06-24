@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,11 +47,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -71,8 +71,8 @@ import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
  */
 public class InteropArrayTest {
     /**
-     * Test that fast JS array indices are not in member keys (which contains only enumerable
-     * properties) and that both getMember and getArrayElement works on them.
+     * Test that fast JS array indices are in member keys and that both getMember and
+     * getArrayElement work on them.
      */
     @Test
     public void testArrayGetMembers() {
@@ -83,66 +83,12 @@ public class InteropArrayTest {
             assertEquals(3, array.getArrayElement(0).asInt());
             assertEquals(1, array.getMember("2").asInt());
             assertEquals(1, array.getArrayElement(2).asInt());
-            assertTrue(array.getMemberKeys().toString(), array.getMemberKeys().isEmpty());
+            assertEquals(array.getMemberKeys().toString(), Set.of("0", "1", "2", "3"), array.getMemberKeys());
         }
     }
 
     /**
-     * Test that slow JS array indices are not in member keys and also overridden index is not in
-     * member keys.
-     */
-    @Test
-    public void testSlowArrayGetMembers() {
-        try (Context context = JSTest.newContextBuilder().build()) {
-            Value array = context.eval(ID, "var a = [3, 4, 1, 5]; Object.defineProperty(a, 2, {get: function(){return" +
-                            " 42;}}); a;");
-            assertEquals(4, array.getArraySize());
-            assertEquals(3, array.getMember("0").asInt());
-            assertEquals(3, array.getArrayElement(0).asInt());
-            assertEquals(42, array.getMember("2").asInt());
-            assertEquals(42, array.getArrayElement(2).asInt());
-            assertTrue(array.getMemberKeys().toString(), array.getMemberKeys().isEmpty());
-        }
-    }
-
-    /**
-     * Test that JS array's enumerable property with integer key specified as integer is not in
-     * member keys.
-     */
-    @Test
-    public void testSlowArrayWithIntKeyEnumerablePropertyGetMembers1() {
-        try (Context context = JSTest.newContextBuilder().build()) {
-            Value array = context.eval(ID, "var a = [3, 4, 1, 5]; Object.defineProperty(a, 2, {get: function(){return" +
-                            " 42;}, enumerable: true}); a;");
-            assertEquals(4, array.getArraySize());
-            assertEquals(3, array.getMember("0").asInt());
-            assertEquals(3, array.getArrayElement(0).asInt());
-            assertEquals(42, array.getMember("2").asInt());
-            assertEquals(42, array.getArrayElement(2).asInt());
-            assertTrue(array.getMemberKeys().toString(), array.getMemberKeys().isEmpty());
-        }
-    }
-
-    /**
-     * Test that JS array's enumerable property with integer key specified as string is not in
-     * member keys.
-     */
-    @Test
-    public void testSlowArrayWithIntKeyEnumerablePropertyGetMembers2() {
-        try (Context context = JSTest.newContextBuilder().build()) {
-            Value array = context.eval(ID, "var a = [3, 4, 1, 5]; Object.defineProperty(a, '2', {get: function()" +
-                            "{return 42;}, enumerable: true}); a;");
-            assertEquals(4, array.getArraySize());
-            assertEquals(3, array.getMember("0").asInt());
-            assertEquals(3, array.getArrayElement(0).asInt());
-            assertEquals(42, array.getMember("2").asInt());
-            assertEquals(42, array.getArrayElement(2).asInt());
-            assertTrue(array.getMemberKeys().toString(), array.getMemberKeys().isEmpty());
-        }
-    }
-
-    /**
-     * Test that JS array's enumerable property with string key is the only element of member keys.
+     * Test that JS array's enumerable property with string key is the element of member keys.
      */
     @Test
     public void testSlowArrayWithStringKeyEnumerablePropertyGetMembers() {
@@ -155,12 +101,12 @@ public class InteropArrayTest {
             assertEquals(1, array.getMember("2").asInt());
             assertEquals(1, array.getArrayElement(2).asInt());
             assertEquals(42, array.getMember("x").asInt());
-            assertEquals(array.getMemberKeys().toString(), Collections.singleton("x"), array.getMemberKeys());
+            assertEquals(array.getMemberKeys().toString(), Set.of("0", "1", "2", "3", "x"), array.getMemberKeys());
         }
     }
 
     /**
-     * Test that typed JS array indices are not in member keys (enumberable properties).
+     * Test that typed JS array indices are in member keys.
      */
     @Test
     public void testTypedArrayGetMembers() {
@@ -171,12 +117,12 @@ public class InteropArrayTest {
             assertEquals(3, array.getArrayElement(0).asInt());
             assertEquals(1, array.getMember("2").asInt());
             assertEquals(1, array.getArrayElement(2).asInt());
-            assertTrue(array.getMemberKeys().toString(), array.getMemberKeys().isEmpty());
+            assertEquals(array.getMemberKeys().toString(), Set.of("0", "1", "2", "3"), array.getMemberKeys());
         }
     }
 
     /**
-     * Test that arguments JS array indices are not in member keys (enumerable properties).
+     * Test that arguments JS array indices are in member keys.
      */
     @Test
     public void testArgumentsObjectGetMembers() {
@@ -187,7 +133,7 @@ public class InteropArrayTest {
             assertEquals(3, array.getArrayElement(0).asInt());
             assertEquals(1, array.getMember("2").asInt());
             assertEquals(1, array.getArrayElement(2).asInt());
-            assertTrue(array.getMemberKeys().toString(), array.getMemberKeys().isEmpty());
+            assertEquals(array.getMemberKeys().toString(), Set.of("0", "1", "2", "3"), array.getMemberKeys());
         }
     }
 
