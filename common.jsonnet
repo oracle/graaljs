@@ -112,7 +112,7 @@ targets +
     timelimit: if 'timelimit' in super then super.timelimit else '45:00',
   },
 
-  gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
+  gateStyleFullBuild:: common.deps.pylint + common.deps.black + common.deps.eclipse + common.deps.jdt + {
     local is_jdk_latest = 'jdk_name' in self && self.jdk_name == 'jdk-latest',
     local strict = !is_jdk_latest,
     // Add JDK21 to EXTRA_JAVA_HOMES for SpotBugs.
