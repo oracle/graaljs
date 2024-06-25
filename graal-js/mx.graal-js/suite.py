@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.41.0",
+  "mxversion" : "7.27.0",
 
   "name" : "graal-js",
 
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "4186b49c88690386fce71af0c7ad8a5a341d6d8e",
+           "version" : "01f3be02bb8e99e910959c1f266a69f651b5dc08",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
