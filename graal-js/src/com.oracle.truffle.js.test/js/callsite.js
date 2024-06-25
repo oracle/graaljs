@@ -7,6 +7,8 @@
 
 /**
  * Tests of CallSite built-ins.
+ * 
+ * @option v8-compat
  */
 
 load('assert.js');
