@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+source="${BASH_SOURCE[0]}"
+while [ -h "$source" ] ; do
+    prev_source="$source"
+    source="$(readlink "$source")";
+    if [[ "$source" != /* ]]; then
+        # if the link was relative, it was relative to where it came from
+        dir="$( cd -P "$( dirname "$prev_source" )" && pwd )"
+        source="$dir/$source"
+    fi
+done
+
+bin_dir="$( cd -P "$( dirname "$source" )" && pwd )"
+parent_dir="$( dirname "$bin_dir" )"
+
+if [ ! -x "${parent_dir}/jvm/bin/java" ]; then
+    echo "Error: ${parent_dir}/jvm/bin/java not found. $(basename "$0") is not available for the native standalone."
+    exit 1
+fi
+
+MAIN_ARGS=()
+PRE_ARGS=()
+
+HAS_OUTPUTDIR=0
+HAS_VERSION=0
+
+for opt in "${@:1}"; do
+    case "${opt}" in
+        -o)
+            HAS_OUTPUTDIR=1
+            MAIN_ARGS+=("${opt}") ;;
+        -v)
+            HAS_VERSION=1
+            MAIN_ARGS+=("${opt}") ;;
+        *)
+            MAIN_ARGS+=("${opt}") ;;
+    esac
+done
+
+if [ $HAS_OUTPUTDIR -eq 0 ]; then
+    # Set default output dir.
+    PRE_ARGS+=("-o")
+    PRE_ARGS+=("${parent_dir}/modules")
+fi
+if [ $HAS_VERSION -eq 0 ]; then
+    # Read GRAALVM_VERSION property from "release" file.
+    if [ -f "${parent_dir}/release" ]; then
+        while IFS='=' read -r propertyName propertyValue
+        do
+            if [[ "${propertyName}" == "GRAALVM_VERSION" ]]; then
+                GRAALVM_VERSION="${propertyValue}"
+                break
+            fi
+        done < "${parent_dir}/release"
+    fi
+
+    # Unquote version string, if wrapped in double quotes.
+    if [[ "${GRAALVM_VERSION}" == \"*\" ]]; then
+        GRAALVM_VERSION=${GRAALVM_VERSION#\"} # remove leading quote
+        GRAALVM_VERSION=${GRAALVM_VERSION%\"} # remove trailing quote
+    fi
+
+    # If GRAALVM_VERSION is not empty, set default version.
+    if [ -n "${GRAALVM_VERSION}" ]; then
+        PRE_ARGS+=("-v")
+        PRE_ARGS+=("${GRAALVM_VERSION}")
+    fi
+fi
+# Treat single non-option argument as artifact id.
+if [[ $# -eq 1 && "$1" != -* ]]; then
+    PRE_ARGS+=("-a")
+fi
+
+if [ "${VERBOSE_GRAALVM_LAUNCHERS}" == "true" ]; then
+    set -x
+fi
+
+exec "${parent_dir}/jvm/bin/java" "-p" "${parent_dir}/modules" "-m" "org.graalvm.maven.downloader/org.graalvm.maven.downloader.Main" "${PRE_ARGS[@]}" "${MAIN_ARGS[@]}"
