@@ -690,12 +690,16 @@ suite = {
 
     "GRAALJS_GRAALVM_SUPPORT" : {
       "native" : True,
+      "platformDependent" : True,
       "description" : "Graal.js support distribution for the GraalVM",
       "layout" : {
         "native-image.properties": "file:mx.graal-js/native-image.properties",
         "./": [
           "file:README.md",
         ],
+        "bin/": [
+          "file:mx.graal-js/graalvm_launchers/<cmd:js-polyglot-get>",
+        ]
       },
     },
 

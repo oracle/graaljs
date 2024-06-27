@@ -163,6 +163,7 @@ suite = {
           "dependency:trufflenodeNative/Release/<exe:node>",
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npm>",
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npx>",
+          "file:mx.graal-nodejs/graalvm_launchers/<cmd:node-polyglot-get>",
         ],
       },
       "os" : {
