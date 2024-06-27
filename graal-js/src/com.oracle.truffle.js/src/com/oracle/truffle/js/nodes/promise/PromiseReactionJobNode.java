@@ -51,7 +51,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -213,7 +212,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public boolean isCaptureFramesForTrace(@SuppressWarnings("unused") Node currentNode) {
+        public boolean isCaptureFramesForTrace(@SuppressWarnings("unused") boolean compiledFrame) {
             return context.isOptionAsyncStackTraces();
         }
 
