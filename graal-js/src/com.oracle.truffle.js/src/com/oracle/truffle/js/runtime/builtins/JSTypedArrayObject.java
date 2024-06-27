@@ -97,10 +97,15 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
     }
 
     @ExportMessage
-    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        // Do not include array indices
+    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
+                    @CachedLibrary("this") InteropLibrary self) {
         assert JSObject.getJSClass(this) == JSArrayBufferView.INSTANCE;
-        return InteropArray.create(filterEnumerableNames(this, JSNonProxy.ordinaryOwnPropertyKeys(this), JSArrayBufferView.INSTANCE));
+        boolean includeArrayIndices = language(self).getJSContext().getLanguageOptions().arrayElementsAmongMembers();
+        if (includeArrayIndices) {
+            return InteropArray.create(JSObject.enumerableOwnNames(this));
+        } else {
+            return InteropArray.create(filterEnumerableNames(this, JSNonProxy.ordinaryOwnPropertyKeys(this), JSArrayBufferView.INSTANCE));
+        }
     }
 
     @SuppressWarnings("static-method")
