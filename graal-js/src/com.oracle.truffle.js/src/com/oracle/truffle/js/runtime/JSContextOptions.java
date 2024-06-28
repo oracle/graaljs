@@ -589,6 +589,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> V8_INTRINSICS = new OptionKey<>(false);
     @CompilationFinal private boolean v8Intrinsics;
 
+    public static final String ARRAY_ELEMENTS_AMONG_MEMBERS_NAME = JS_OPTION_PREFIX + "array-elements-among-members";
+    @Option(name = ARRAY_ELEMENTS_AMONG_MEMBERS_NAME, category = OptionCategory.EXPERT, help = "Include array indices in Value.getMemberKeys().") //
+    public static final OptionKey<Boolean> ARRAY_ELEMENTS_AMONG_MEMBERS = new OptionKey<>(true);
+    @CompilationFinal private boolean arrayElementsAmongMembers;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -792,6 +797,7 @@ public final class JSContextOptions {
         this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
         this.allowNarrowSpacesInDateFormat = ALLOW_NARROW_SPACES_IN_DATE_FORMAT.hasBeenSet(optionValues) ? readBooleanOption(ALLOW_NARROW_SPACES_IN_DATE_FORMAT) : !isV8CompatibilityMode();
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
+        this.arrayElementsAmongMembers = readBooleanOption(ARRAY_ELEMENTS_AMONG_MEMBERS);
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -1255,6 +1261,10 @@ public final class JSContextOptions {
 
     public boolean isV8Intrinsics() {
         return v8Intrinsics;
+    }
+
+    public boolean isArrayElementsAmongMembers() {
+        return arrayElementsAmongMembers;
     }
 
     public short getFrequencyBasedPropertyCacheLimit() {

@@ -461,7 +461,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     node_jvm_mp = (os.environ['NODE_JVM_MODULE_PATH'] + pathsep) if 'NODE_JVM_MODULE_PATH' in os.environ else ''
     node_mp = node_jvm_mp + mx.classpath(['TRUFFLENODE']
         + mx_truffle.resolve_truffle_dist_names()
-        + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
+        + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:INSIGHT_HEAP'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
         + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
     _setEnvVar('NODE_JVM_MODULE_PATH', node_mp)
     _setEnvVar('JAVA_HOME', _java_home())  # when running with the Graal compiler, setting `$JAVA_HOME` to the GraalJDK should be done after calling `mx.classpath()`, which resets `$JAVA_HOME` to the value of the `--java-home` mx cmd line argument

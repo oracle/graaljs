@@ -114,15 +114,25 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
     @ExportMessage
     abstract static class GetMembers {
         @Specialization(guards = "isJSFastArray(target)")
-        public static Object fastArray(JSArrayObject target, boolean internal) {
-            // Do not include array indices
-            return InteropArray.create(filterEnumerableNames(target, JSNonProxy.ordinaryOwnPropertyKeys(target), JSObject.getJSClass(target)));
+        public static Object fastArray(JSArrayObject target, boolean internal,
+                        @CachedLibrary("this") InteropLibrary self) {
+            boolean includeArrayIndices = language(self).getJSContext().getLanguageOptions().arrayElementsAmongMembers();
+            if (includeArrayIndices) {
+                return InteropArray.create(JSObject.enumerableOwnNames(target));
+            } else {
+                return InteropArray.create(filterEnumerableNames(target, JSNonProxy.ordinaryOwnPropertyKeys(target), JSObject.getJSClass(target)));
+            }
         }
 
         @Specialization(guards = {"!isJSFastArray(target)"})
-        public static Object slowArray(JSArrayObject target, boolean internal) {
-            // Do not include array indices
-            return InteropArray.create(filterEnumerableNames(target, JSObject.ownPropertyKeys(target), JSObject.getJSClass(target)));
+        public static Object slowArray(JSArrayObject target, boolean internal,
+                        @CachedLibrary("this") InteropLibrary self) {
+            boolean includeArrayIndices = language(self).getJSContext().getLanguageOptions().arrayElementsAmongMembers();
+            if (includeArrayIndices) {
+                return InteropArray.create(JSObject.enumerableOwnNames(target));
+            } else {
+                return InteropArray.create(filterEnumerableNames(target, JSObject.ownPropertyKeys(target), JSObject.getJSClass(target)));
+            }
         }
     }
 
