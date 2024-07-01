@@ -14,10 +14,10 @@ suite = {
   },
 
   "developer" : {
-    "name" : "Graal JS developers",
-    "email" : "graal_js_ww_grp@oracle.com",
-    "organization" : "Graal JS",
-    "organizationUrl" : "https://labs.oracle.com/pls/apex/f?p=labs:49:::::P49_PROJECT_ID:129",
+    "name" : "GraalVM Development",
+    "email" : "graalvm-dev@oss.oracle.com",
+    "organization" : "Oracle Corporation",
+    "organizationUrl" : "http://www.graalvm.org/",
   },
   "url" : "http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html",
 
