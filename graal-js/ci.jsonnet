@@ -52,6 +52,8 @@ local ci = import '../ci.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'js', '--type=jvm']],
       ['${STANDALONE_HOME}/bin/js', '--jvm', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '--jvm', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      # maven-downloader smoke test
+      ['VERBOSE_GRAALVM_LAUNCHERS=true', '${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
     ],
     timelimit: '30:00',
   },
