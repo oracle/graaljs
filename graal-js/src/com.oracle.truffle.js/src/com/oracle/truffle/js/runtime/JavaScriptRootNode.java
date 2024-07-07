@@ -45,7 +45,6 @@ import java.util.List;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -109,7 +108,7 @@ public abstract class JavaScriptRootNode extends RootNode {
     }
 
     @Override
-    public boolean isCaptureFramesForTrace(@SuppressWarnings("unused") Node currentNode) {
+    public boolean isCaptureFramesForTrace(@SuppressWarnings("unused") boolean compiledFrame) {
         return isFunction() || isResumption();
     }
 
