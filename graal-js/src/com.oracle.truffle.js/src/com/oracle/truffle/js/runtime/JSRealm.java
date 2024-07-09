@@ -2256,7 +2256,7 @@ public class JSRealm {
     }
 
     private void addErrorStackTraceLimit() {
-        if (getContextOptions().isV8CompatibilityMode()) {
+        if (getContextOptions().isV8CompatibilityMode() || getContextOptions().isMLEMode()) {
             JSObject errorConstructor = getErrorConstructor(JSErrorType.Error);
             JSObjectUtil.putDataProperty(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, getContextOptions().getStackTraceLimit(), JSAttributes.getDefault());
         }

@@ -151,7 +151,7 @@ public final class JSException extends GraalJSException {
 
     public static int getStackTraceLimit(JSRealm realm) {
         JSContextOptions contextOptions = realm.getContextOptions();
-        if (contextOptions.isV8CompatibilityMode()) {
+        if (contextOptions.isV8CompatibilityMode() || contextOptions.isMLEMode()) {
             JSFunctionObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
             DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
             if (JSProperty.isData(lib.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
