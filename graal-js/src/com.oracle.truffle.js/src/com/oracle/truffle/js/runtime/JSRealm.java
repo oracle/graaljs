@@ -2992,9 +2992,8 @@ public class JSRealm {
     }
 
     public void setAgent(JSAgent newAgent) {
-        assert newAgent != null : "Cannot set a null agent!";
         CompilerAsserts.neverPartOfCompilation("Assigning agent to context in compiled code");
-        this.agent = newAgent;
+        this.agent = Objects.requireNonNull(newAgent, "agent");
     }
 
     public TimeZone getLocalTimeZone() {

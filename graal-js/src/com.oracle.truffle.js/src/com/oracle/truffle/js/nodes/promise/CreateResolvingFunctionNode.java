@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -136,7 +137,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 Object resolution = resolutionNode.execute(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolvedNode.getValue(functionObject);
                 if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
-                    context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED, resolution);
+                    context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED, resolution, JSAgent.get(this));
                     return Undefined.instance;
                 }
                 alreadyResolved.value = true;
@@ -270,7 +271,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 Object reason = reasonNode.execute(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolvedNode.getValue(functionObject);
                 if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
-                    context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED, reason);
+                    context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED, reason, JSAgent.get(this));
                     return Undefined.instance;
                 }
                 alreadyResolved.value = true;
