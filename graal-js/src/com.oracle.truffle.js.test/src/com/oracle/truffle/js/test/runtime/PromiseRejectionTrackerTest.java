@@ -50,6 +50,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -71,11 +72,12 @@ public class PromiseRejectionTrackerTest {
     @Test
     public void testBasic() {
         JSContext context = JavaScriptLanguage.getJSContext(ctx);
+        JSAgent agent = JavaScriptLanguage.getJSRealm(ctx).getAgent();
         final int[] rejected = new int[1];
         final int[] handled = new int[1];
         final int[] rejectAfterResolve = new int[1];
         final int[] resolveAfterResolve = new int[1];
-        context.setPromiseRejectionTracker(new PromiseRejectionTracker() {
+        context.setPromiseRejectionTracker(agent, new PromiseRejectionTracker() {
             @Override
             public void promiseRejected(JSDynamicObject promise, Object value) {
                 rejected[0]++;

@@ -2987,7 +2987,14 @@ public final class GraalJSAccess {
                 if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
                     throw atex;
                 }
-                mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
+
+                Object errorObject;
+                if (atex instanceof GraalJSException jsex) {
+                    errorObject = jsex.getErrorObject();
+                } else {
+                    errorObject = atex;
+                }
+                mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, errorObject, agent);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -3222,7 +3229,7 @@ public final class GraalJSAccess {
 
     public void isolateEnablePromiseRejectCallback(boolean enable) {
         PromiseRejectionTracker tracker = enable ? new NativePromiseRejectionTracker() : null;
-        mainJSContext.setPromiseRejectionTracker(tracker);
+        mainJSContext.setPromiseRejectionTracker(agent, tracker);
     }
 
     public void isolateEnableImportMetaInitializer(boolean enable) {
