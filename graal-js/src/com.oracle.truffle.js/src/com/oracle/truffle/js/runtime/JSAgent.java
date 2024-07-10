@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,12 +51,15 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -96,16 +99,11 @@ public abstract class JSAgent {
 
     private final Deque<WaiterRecord> waitAsyncJobsQueue;
 
-    private final PromiseRejectionTracker promiseRejectionTracker;
+    private PromiseRejectionTracker promiseRejectionTracker;
 
     private AsyncContext asyncContextMapping = AsyncContext.empty();
 
     public JSAgent(boolean canBlock) {
-        this(null, canBlock);
-    }
-
-    public JSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock) {
-        this.promiseRejectionTracker = promiseRejectionTracker;
         this.signifier = signifierGenerator.incrementAndGet();
         this.canBlock = canBlock;
         this.promiseJobsQueue = new ArrayDeque<>();
@@ -270,6 +268,41 @@ public abstract class JSAgent {
      * Terminate the agent.
      */
     public abstract void terminate();
+
+    public static JSAgent get(Node node) {
+        return JSRealm.getMain(node).getAgent();
+    }
+
+    protected final boolean hasPromiseRejectionTracker() {
+        return promiseRejectionTracker != null;
+    }
+
+    protected final void setPromiseRejectionTracker(PromiseRejectionTracker tracker) {
+        this.promiseRejectionTracker = tracker;
+    }
+
+    @TruffleBoundary
+    protected final void notifyPromiseRejectionTracker(JSPromiseObject promise, int operation, Object value) {
+        if (!hasPromiseRejectionTracker()) {
+            return;
+        }
+        switch (operation) {
+            case JSPromise.REJECTION_TRACKER_OPERATION_REJECT:
+                promiseRejectionTracker.promiseRejected(promise, value);
+                break;
+            case JSPromise.REJECTION_TRACKER_OPERATION_HANDLE:
+                promiseRejectionTracker.promiseRejectionHandled(promise);
+                break;
+            case JSPromise.REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED:
+                promiseRejectionTracker.promiseRejectedAfterResolved(promise, value);
+                break;
+            case JSPromise.REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED:
+                promiseRejectionTracker.promiseResolvedAfterResolved(promise, value);
+                break;
+            default:
+                assert false : "Unknown operation: " + operation;
+        }
+    }
 
     public AsyncContext getAsyncContextMapping() {
         return asyncContextMapping;
