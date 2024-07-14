@@ -70,7 +70,7 @@ public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
                     @Cached IsNumberNode isNumber,
                     @Cached JSToIntegerAsLongNode toInteger) {
         JSContext context = getJSContext();
-        if (context.isOptionV8CompatibilityMode() || context.getLanguageOptions().isMLEMode()) {
+        if (context.getLanguageOptions().stackTraceAPI()) {
             JSFunctionObject errorConstructor = getRealm().getErrorConstructor(JSErrorType.Error);
             if (JSProperty.isData(getStackTraceLimit.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
                 Object value = getStackTraceLimit.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
