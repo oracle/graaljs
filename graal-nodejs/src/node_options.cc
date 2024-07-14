@@ -179,6 +179,9 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
     } else if (force_repl) {
       errors->push_back("either --watch or --interactive "
                         "can be used, not both");
+    } else if (test_runner_force_exit) {
+      errors->push_back("either --watch or --test-force-exit "
+                        "can be used, not both");
     } else if (!test_runner && (argv->size() < 1 || (*argv)[1].empty())) {
       errors->push_back("--watch requires specifying a file");
     }
@@ -334,6 +337,14 @@ DebugOptionsParser::DebugOptionsParser() {
   AddOption("--inspect-brk-node", "", &DebugOptions::break_node_first_line);
   Implies("--inspect-brk-node", "--inspect");
   AddAlias("--inspect-brk-node=", { "--inspect-port", "--inspect-brk-node" });
+
+  AddOption(
+      "--inspect-wait",
+      "activate inspector on host:port and wait for debugger to be attached",
+      &DebugOptions::inspect_wait,
+      kAllowedInEnvvar);
+  Implies("--inspect-wait", "--inspect");
+  AddAlias("--inspect-wait=", {"--inspect-port", "--inspect-wait"});
 
   AddOption("--inspect-publish-uid",
             "comma separated list of destinations for inspector uid"
@@ -618,6 +629,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--test-concurrency",
             "specify test runner concurrency",
             &EnvironmentOptions::test_runner_concurrency);
+  AddOption("--test-force-exit",
+            "force test runner to exit upon completion",
+            &EnvironmentOptions::test_runner_force_exit);
   AddOption("--test-timeout",
             "specify test runner timeout",
             &EnvironmentOptions::test_runner_timeout);
@@ -1062,6 +1076,14 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "Generate a blob that can be embedded into the single executable "
             "application",
             &PerProcessOptions::experimental_sea_config);
+
+  AddOption(
+      "--disable-wasm-trap-handler",
+      "Disable trap-handler-based WebAssembly bound checks. V8 will insert "
+      "inline bound checks when compiling WebAssembly which may slow down "
+      "performance.",
+      &PerProcessOptions::disable_wasm_trap_handler,
+      kAllowedInEnvvar);
 }
 
 inline std::string RemoveBrackets(const std::string& host) {
