@@ -5,11 +5,20 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 
+/**
+ * Sanity check of stack-trace-api option.
+ * 
+ * @option stack-trace-api=false
+ */
+
 load("assert.js");
 
 function createError(n) {
     return n ? createError(n-1) : new Error();
 }
+
+// Error.captureStackTrace should not be defined
+assertSame(undefined, Error.captureStackTrace);
 
 // Error.stackTraceLimit should have no impact on the stack property
 var expected = createError(10).stack;
