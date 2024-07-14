@@ -589,6 +589,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> V8_INTRINSICS = new OptionKey<>(false);
     @CompilationFinal private boolean v8Intrinsics;
 
+    public static final String STACK_TRACE_API_NAME = JS_OPTION_PREFIX + "stack-trace-api";
+    @Option(name = STACK_TRACE_API_NAME, category = OptionCategory.EXPERT, help = "Enable Stack Trace API (Error.captureStackTrace/prepareStackTrace/stackTraceLimit).") //
+    public static final OptionKey<Boolean> STACK_TRACE_API = new OptionKey<>(true);
+    @CompilationFinal private boolean stackTraceAPI;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -792,6 +797,7 @@ public final class JSContextOptions {
         this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
         this.allowNarrowSpacesInDateFormat = ALLOW_NARROW_SPACES_IN_DATE_FORMAT.hasBeenSet(optionValues) ? readBooleanOption(ALLOW_NARROW_SPACES_IN_DATE_FORMAT) : !isV8CompatibilityMode();
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
+        this.stackTraceAPI = readBooleanOption(STACK_TRACE_API);
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -1255,6 +1261,10 @@ public final class JSContextOptions {
 
     public boolean isV8Intrinsics() {
         return v8Intrinsics;
+    }
+
+    public boolean isStackTraceAPI() {
+        return stackTraceAPI;
     }
 
     public short getFrequencyBasedPropertyCacheLimit() {
