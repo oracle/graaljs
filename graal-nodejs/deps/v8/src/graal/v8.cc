@@ -82,6 +82,9 @@
 #ifdef __POSIX__
 #include "v8-wasm-trap-handler-posix.h"
 #endif
+#if defined(_WIN32)
+#include "v8-wasm-trap-handler-win.h"
+#endif
 #include "libplatform/libplatform.h"
 #include "libplatform/v8-tracing.h"
 #include "src/base/once.h"
@@ -3749,6 +3752,13 @@ namespace v8 {
 
 #ifdef __POSIX__
     bool TryHandleWebAssemblyTrapPosix(int sig_code, siginfo_t* info, void* context) {
+        TRACE
+        return false;
+    }
+#endif
+
+#if defined(_WIN32)
+    bool TryHandleWebAssemblyTrapWindows(EXCEPTION_POINTERS* exception) {
         TRACE
         return false;
     }
