@@ -2718,6 +2718,11 @@ public final class GraalJSAccess {
                 target = jsObject;
                 key = HIDDEN_WEAK_CALLBACK;
             } else if (object instanceof JSModuleRecord moduleRecord) {
+                if (moduleRecord.getStatus() == JSModuleRecord.Status.Unlinked) {
+                    assert (callbackPointer == 0);
+                    // ClearWeak() called on a module that cannot be weak yet
+                    return null;
+                }
                 target = moduleRecord.getContext().getEvaluator().getModuleNamespace(moduleRecord);
                 key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
             } else {
