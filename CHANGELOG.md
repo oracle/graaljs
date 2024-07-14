@@ -13,7 +13,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implemented the [Resizable and Growable ArrayBuffers](https://github.com/tc39/proposal-resizablearraybuffer) proposal.
 * Updated Node.js to version 20.15.1.
 * Made option `js.esm-eval-returns-exports` stable and allowed in `SandboxPolicy.UNTRUSTED`.
-* Usage of non-standard extensions `Error.prepareStackTrace` and `Error.stackTraceLimit` has been limited to `js.v8-compat` mode only.
+* Added option `js.stack-trace-api` that enables/disables `Error.captureStackTrace`, `Error.prepareStackTrace` and `Error.stackTraceLimit`.
 
 ## Version 24.0.0
 * Implemented the [WebAssembly threads](https://github.com/WebAssembly/threads) proposal.
