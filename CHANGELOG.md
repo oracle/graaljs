@@ -7,7 +7,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 
 ## Version 24.2.0
 * Implemented the [`Promise.try`](https://github.com/tc39/proposal-promise-try) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
-* Usage of non-standard extensions `Error.prepareStackTrace` and `Error.stackTraceLimit` has been limited to `js.v8-compat` mode only.
+* Added option `js.stack-trace-api` that enables/disables `Error.captureStackTrace`, `Error.prepareStackTrace` and `Error.stackTraceLimit`.
 
 ## Version 24.1.0
 * ECMAScript 2024 mode/features enabled by default.
