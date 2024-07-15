@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,22 +41,27 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -120,6 +125,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
             }
         }
 
+        List<AbstractTruffleException> errors = new ArrayList<>();
         // Take one at a time as the rejection handler could queue up more rejections.
         while (!pendingUnhandledRejections.isEmpty()) {
             JSDynamicObject unhandledPromise = pendingUnhandledRejections.iterator().next();
@@ -147,9 +153,21 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
                     try {
                         interop.throwException(info.reason);
                     } catch (UnsupportedMessageException e) {
+                    } catch (AbstractTruffleException e) {
+                        errors.add(e);
+                        continue;
                     }
                 }
-                throw Errors.createError("Unhandled promise rejection: " + formatError(info.reason));
+                errors.add(Errors.createError("Unhandled promise rejection: " + formatError(info.reason)));
+            }
+        }
+        if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.THROW && !errors.isEmpty()) {
+            if (errors.size() == 1) {
+                throw errors.get(0);
+            } else {
+                throw Errors.createAggregateError(JSArray.createConstant(context, realm, errors.stream().map(e -> {
+                    return e instanceof GraalJSException ex ? ex.getErrorObject() : e;
+                }).toArray()), "Unhandled promise rejections", null);
             }
         }
     }
