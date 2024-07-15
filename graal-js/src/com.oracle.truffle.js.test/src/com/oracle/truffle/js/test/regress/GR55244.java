@@ -44,6 +44,8 @@ import static com.oracle.truffle.js.runtime.JSContextOptions.UNHANDLED_REJECTION
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.Map;
@@ -95,7 +97,18 @@ public class GR55244 {
                     });
                     fail("should have thrown");
                 } catch (PolyglotException e) {
-                    assertThat(e.getMessage(), containsString("Unhandled promise rejection: Error from foo()"));
+                    assertThat(e.getMessage(), containsString("AggregateError: Unhandled promise rejections"));
+                    Value errors = e.getGuestObject().getMember("errors");
+                    assertNotNull("errors", errors);
+                    assertTrue(errors.hasArrayElements());
+                    assertEquals(2, errors.getArraySize());
+                    assertTrue(errors.getArrayElement(0).isException());
+                    assertTrue(errors.getArrayElement(1).isException());
+                    try {
+                        errors.getArrayElement(0).throwException();
+                    } catch (PolyglotException e0) {
+                        assertThat(e0.getMessage(), containsString("Error from foo()"));
+                    }
                 }
             }
 
@@ -113,6 +126,30 @@ public class GR55244 {
                     assertEquals(42, a[0].asInt());
                     return null;
                 });
+            }
+        }
+    }
+
+    /**
+     * Aggregate multiple unhandled promise rejection errors into one error.
+     */
+    @Test
+    public void testMultipleRejections() {
+        try (Engine eng = JSTest.newEngineBuilder().build()) {
+            try (Context ctx = JSTest.newContextBuilder().engine(eng).option(UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+                try {
+                    ctx.eval("js", "Promise.reject(42); Promise.reject(211);");
+                    fail("should have thrown");
+                } catch (PolyglotException e) {
+                    assertThat(e.getMessage(), containsString("AggregateError: Unhandled promise rejections"));
+                    Value errors = e.getGuestObject().getMember("errors");
+                    assertNotNull("errors", errors);
+                    assertTrue(errors.hasArrayElements());
+                    assertEquals(2, errors.getArraySize());
+                    assertTrue(errors.getArrayElement(0).isException());
+                    assertTrue(errors.getArrayElement(1).isException());
+                }
+                ctx.eval("js", "1 + 1");
             }
         }
     }

@@ -751,12 +751,7 @@ public class JSContext {
         this.regexOptions = createRegexOptions(languageOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-
         this.supportedImportAssertions = languageOptions.importAssertions() ? Set.of(TYPE_IMPORT_ASSERTION) : Set.of();
-
-        if (languageOptions.unhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
-            setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, languageOptions.unhandledRejectionsMode()));
-        }
     }
 
     public final Evaluator getEvaluator() {
