@@ -615,7 +615,26 @@ public class Parser extends AbstractParser {
             scanFirstToken();
 
             assert lc.getCurrentScope() == null;
-            formalParameterList(TokenType.EOF, false, false);
+
+            // Set up a fake function.
+            final int functionLine = line;
+            final long functionToken = Token.toDesc(FUNCTION, 0, source.getLength());
+            final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), lexer.stringIntern(PROGRAM_NAME));
+            final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, 0, functionLine);
+            function.clearFlag(FunctionNode.IS_PROGRAM);
+
+            lc.push(function);
+            try {
+                final ParserContextBlockNode parameterBlock = function.createParameterBlock();
+                lc.push(parameterBlock);
+                try {
+                    formalParameterList(TokenType.EOF, false, false);
+                } finally {
+                    restoreBlock(parameterBlock);
+                }
+            } finally {
+                lc.pop(function);
+            }
         } catch (ParserException e) {
             handleParseException(e);
         }
@@ -2681,9 +2700,7 @@ public class Parser extends AbstractParser {
 
     private void addIdentifierReference(String name) {
         Scope currentScope = lc.getCurrentScope();
-        if (currentScope != null) { // can be null when parsing/verifying a parameter list.
-            currentScope.addIdentifierReference(name);
-        }
+        currentScope.addIdentifierReference(name);
     }
 
     private Expression bindingPattern(boolean yield, boolean await) {
