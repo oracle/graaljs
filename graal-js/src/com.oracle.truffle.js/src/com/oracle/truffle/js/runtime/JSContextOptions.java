@@ -594,6 +594,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ARRAY_ELEMENTS_AMONG_MEMBERS = new OptionKey<>(true);
     @CompilationFinal private boolean arrayElementsAmongMembers;
 
+    public static final String STACK_TRACE_API_NAME = JS_OPTION_PREFIX + "stack-trace-api";
+    @Option(name = STACK_TRACE_API_NAME, category = OptionCategory.EXPERT, help = "Enable Stack Trace API (Error.captureStackTrace/prepareStackTrace/stackTraceLimit).") //
+    public static final OptionKey<Boolean> STACK_TRACE_API = new OptionKey<>(true);
+    @CompilationFinal private boolean stackTraceAPI;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -798,6 +803,7 @@ public final class JSContextOptions {
         this.allowNarrowSpacesInDateFormat = ALLOW_NARROW_SPACES_IN_DATE_FORMAT.hasBeenSet(optionValues) ? readBooleanOption(ALLOW_NARROW_SPACES_IN_DATE_FORMAT) : !isV8CompatibilityMode();
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
         this.arrayElementsAmongMembers = readBooleanOption(ARRAY_ELEMENTS_AMONG_MEMBERS);
+        this.stackTraceAPI = readBooleanOption(STACK_TRACE_API);
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -1265,6 +1271,10 @@ public final class JSContextOptions {
 
     public boolean isArrayElementsAmongMembers() {
         return arrayElementsAmongMembers;
+    }
+
+    public boolean isStackTraceAPI() {
+        return stackTraceAPI;
     }
 
     public short getFrequencyBasedPropertyCacheLimit() {

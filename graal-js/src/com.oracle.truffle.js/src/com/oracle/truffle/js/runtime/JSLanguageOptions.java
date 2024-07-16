@@ -128,6 +128,7 @@ public record JSLanguageOptions(
                 boolean constAsVar,
                 boolean profileTime,
                 boolean arrayElementsAmongMembers,
+                boolean stackTraceAPI,
                 String locale) {
 
     public static JSLanguageOptions fromOptionValues(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
@@ -209,6 +210,7 @@ public record JSLanguageOptions(
         boolean constAsVar = options.isConstAsVar();
         boolean profileTime = options.isProfileTime();
         boolean arrayElementsAmongMembers = options.isArrayElementsAmongMembers();
+        boolean stackTraceAPI = options.isStackTraceAPI();
         String locale = options.getLocale();
 
         return new JSLanguageOptions(
@@ -285,6 +287,7 @@ public record JSLanguageOptions(
                         constAsVar,
                         profileTime,
                         arrayElementsAmongMembers,
+                        stackTraceAPI,
                         locale);
     }
 
