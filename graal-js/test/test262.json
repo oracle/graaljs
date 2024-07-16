@@ -156,12 +156,138 @@
     },
     "comment" : "GR-22846"
   }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-no-operation.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-add.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-and.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-compareExchange.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-exchange.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-or.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-store.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-sub.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-xor.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
     "filePath" : "built-ins/Atomics/waitAsync/bigint/true-for-timeout.js",
     "status" : "PASS",
     "statusOverrides" : {
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-no-operation.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-on-add.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-on-and.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-on-compareExchange.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-on-exchange.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-on-or.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-on-store.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-on-sub.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/no-spurious-wakeup-on-xor.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "WINDOWS" : "SKIP"
+    },
+    "comment" : "GR-22846"
   }, {
     "filePath" : "built-ins/Atomics/waitAsync/returns-result-object-value-is-promise-resolves-to-timed-out.js",
     "status" : "PASS",
