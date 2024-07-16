@@ -110,6 +110,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRawJSON;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -247,7 +248,6 @@ public class JSContext {
     private PrepareStackTraceCallback prepareStackTraceCallback;
     private final Assumption prepareStackTraceCallbackNotUsedAssumption;
 
-    private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
 
     private PromiseHook promiseHook;
@@ -761,10 +761,6 @@ public class JSContext {
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
         this.supportedImportAttributes = languageOptions.importAttributes() ? Set.of(TYPE_IMPORT_ATTRIBUTE) : Set.of();
-
-        if (languageOptions.unhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
-            setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, languageOptions.unhandledRejectionsMode()));
-        }
     }
 
     public final Evaluator getEvaluator() {
@@ -848,11 +844,7 @@ public class JSContext {
         newRealm.setupGlobals();
 
         if (isTop) {
-            if (languageOptions.test262Mode() || languageOptions.testV8Mode()) {
-                newRealm.setAgent(new DebugJSAgent(getPromiseRejectionTracker(), languageOptions.agentCanBlock()));
-            } else {
-                newRealm.setAgent(new MainJSAgent(getPromiseRejectionTracker()));
-            }
+            newRealm.setAgent(createAgent());
             if (languageOptions.v8RealmBuiltin()) {
                 newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
@@ -869,6 +861,19 @@ public class JSContext {
 
         realmInit.set(REALM_INITIALIZED);
         return newRealm;
+    }
+
+    private JSAgent createAgent() {
+        JSAgent agent;
+        if (languageOptions.test262Mode() || languageOptions.testV8Mode()) {
+            agent = new DebugJSAgent(languageOptions.agentCanBlock());
+        } else {
+            agent = new MainJSAgent();
+        }
+        if (languageOptions.unhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
+            setPromiseRejectionTracker(agent, new BuiltinPromiseRejectionTracker(this, languageOptions.unhandledRejectionsMode()));
+        }
+        return agent;
     }
 
     public final Shape createEmptyShape() {
@@ -1611,13 +1616,9 @@ public class JSContext {
         }
     }
 
-    public PromiseRejectionTracker getPromiseRejectionTracker() {
-        return promiseRejectionTracker;
-    }
-
-    public final void setPromiseRejectionTracker(PromiseRejectionTracker tracker) {
+    public final void setPromiseRejectionTracker(JSAgent agent, PromiseRejectionTracker tracker) {
         invalidatePromiseRejectionTrackerNotUsedAssumption();
-        this.promiseRejectionTracker = tracker;
+        agent.setPromiseRejectionTracker(tracker);
     }
 
     private void invalidatePromiseRejectionTrackerNotUsedAssumption() {
@@ -1627,45 +1628,13 @@ public class JSContext {
         }
     }
 
-    public void notifyPromiseRejectionTracker(JSDynamicObject promise, int operation, Object value) {
-        if (!promiseRejectionTrackerNotUsedAssumption.isValid() && promiseRejectionTracker != null) {
-            switch (operation) {
-                case JSPromise.REJECTION_TRACKER_OPERATION_REJECT:
-                    invokePromiseRejected(promise, value);
-                    break;
-                case JSPromise.REJECTION_TRACKER_OPERATION_HANDLE:
-                    invokePromiseRejectionHandled(promise);
-                    break;
-                case JSPromise.REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED:
-                    invokePromiseRejectedAfterResolved(promise, value);
-                    break;
-                case JSPromise.REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED:
-                    invokePromiseResolvedAfterResolved(promise, value);
-                    break;
-                default:
-                    assert false : "Unknown operation: " + operation;
-            }
+    public void notifyPromiseRejectionTracker(JSPromiseObject promise, int operation, Object value, JSAgent agent) {
+        boolean hasPromiseRejectionTracker = agent.hasPromiseRejectionTracker();
+        if (promiseRejectionTrackerNotUsedAssumption.isValid()) {
+            assert !hasPromiseRejectionTracker : promiseRejectionTrackerNotUsedAssumption;
+            return;
         }
-    }
-
-    @TruffleBoundary
-    private void invokePromiseRejected(JSDynamicObject promise, Object value) {
-        promiseRejectionTracker.promiseRejected(promise, value);
-    }
-
-    @TruffleBoundary
-    private void invokePromiseRejectionHandled(JSDynamicObject promise) {
-        promiseRejectionTracker.promiseRejectionHandled(promise);
-    }
-
-    @TruffleBoundary
-    private void invokePromiseRejectedAfterResolved(JSDynamicObject promise, Object value) {
-        promiseRejectionTracker.promiseRejectedAfterResolved(promise, value);
-    }
-
-    @TruffleBoundary
-    private void invokePromiseResolvedAfterResolved(JSDynamicObject promise, Object value) {
-        promiseRejectionTracker.promiseResolvedAfterResolved(promise, value);
+        agent.notifyPromiseRejectionTracker(promise, operation, value);
     }
 
     public final void setPromiseHook(PromiseHook promiseHook) {
@@ -1696,7 +1665,7 @@ public class JSContext {
                     notifyPromiseHookImpl(changeType, promise, parent);
                 } catch (GraalJSException ex) {
                     // Resembles ReportMessageFromMicrotask()
-                    notifyPromiseRejectionTracker(JSPromise.create(this, getRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, ex.getErrorObject());
+                    notifyPromiseRejectionTracker(JSPromise.create(this, getRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, ex.getErrorObject(), realm.getAgent());
                 }
             }
         }
