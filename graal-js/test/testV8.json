@@ -939,6 +939,10 @@
     "status" : "FAIL",
     "comment" : "Uses Worker"
   }, {
+    "filePath" : "mjsunit/random-bit-correlations.js",
+    "status" : "SKIP",
+    "comment" : "Statistical check of the quality of the random number generator. It is unstable unless a fixed seed is used."
+  }, {
     "filePath" : "mjsunit/realm-property-access.js",
     "status" : "FAIL"
   }, {
