@@ -108,7 +108,7 @@ local ci = import '../ci.jsonnet';
     graalvmtests:: '../../graalvm-tests',
     run+: [
       ['mx', 'build'],
-      ['python', '../../graalvm-tests/test.py', '-g', ['mx', '--quiet', 'graalvm-home'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache'],
+      ['python', '../../graalvm-tests/test.py', '-g', ['mx', '--quiet', 'graalvm-home'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
     ],
     timelimit: '1:00:00',
   },
