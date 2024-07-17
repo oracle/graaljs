@@ -182,22 +182,22 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * If length is not explicitly specified, the length of the ArrayBuffer minus the byteOffset
      * must be a multiple of the element size of the specific type, or an exception is raised.
      */
-    @Specialization(guards = {"!isUndefined(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
-    protected JSDynamicObject doArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0,
+    @Specialization(guards = {"!isUndefined(newTarget)"})
+    protected JSDynamicObject doArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Heap arrayBuffer, Object byteOffset0, Object length0,
                     @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_ARRAY, this, lengthIsUndefined);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_ARRAY, this, lengthIsUndefined, null);
     }
 
-    @Specialization(guards = {"!isUndefined(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
-    protected JSDynamicObject doDirectArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0,
+    @Specialization(guards = {"!isUndefined(newTarget)"})
+    protected JSDynamicObject doDirectArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Direct arrayBuffer, Object byteOffset0, Object length0,
                     @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_DIRECT, this, lengthIsUndefined);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_DIRECT, this, lengthIsUndefined, null);
     }
 
     private JSDynamicObject doArrayBufferImpl(JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0, JSDynamicObject newTarget,
-                    byte bufferType, Node node, InlinedConditionProfile lengthIsUndefinedProfile) {
+                    byte bufferType, Node node, InlinedConditionProfile lengthIsUndefinedProfile, InteropLibrary interop) {
         final int elementSize = factory.getBytesPerElement();
 
         final long byteOffset = toIndex(byteOffset0);
@@ -211,7 +211,10 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         checkDetachedBuffer(arrayBuffer);
 
-        long bufferByteLength = arrayBuffer.getByteLength();
+        assert interop != null == arrayBuffer instanceof JSArrayBufferObject.Interop;
+        long bufferByteLength = interop == null
+                        ? arrayBuffer.getByteLength()
+                        : ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength(interop);
         if (lengthIsUndefinedProfile.profile(node, length0 == Undefined.instance)) {
             if (arrayBuffer.isFixedLength()) {
                 rangeCheckIsMultipleOfElementSize(bufferByteLength % elementSize == 0, "buffer.byteLength", factory.getName(), elementSize);
@@ -243,10 +246,10 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * standard ArrayBuffer, optional parameters (byteOffset and length) can be used to limit the
      * section of the buffer referenced.
      */
-    @Specialization(guards = {"!isUndefined(newTarget)", "isJSSharedArrayBuffer(arrayBuffer)"})
-    protected JSDynamicObject doSharedArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0,
+    @Specialization(guards = {"!isUndefined(newTarget)"})
+    protected JSDynamicObject doSharedArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Shared arrayBuffer, Object byteOffset0, Object length0,
                     @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_SHARED, this, lengthIsUndefined);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_SHARED, this, lengthIsUndefined, null);
     }
 
     /**
@@ -257,10 +260,11 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * standard ArrayBuffer, optional parameters (byteOffset and length) can be used to limit the
      * section of the buffer referenced.
      */
-    @Specialization(guards = {"!isUndefined(newTarget)", "isJSInteropArrayBuffer(arrayBuffer)"})
-    protected JSDynamicObject doInteropArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_INTEROP, this, lengthIsUndefined);
+    @Specialization(guards = {"!isUndefined(newTarget)"})
+    protected JSDynamicObject doInteropArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Interop arrayBuffer, Object byteOffset0, Object length0,
+                    @Cached @Shared InlinedConditionProfile lengthIsUndefined,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bufferInterop) {
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_INTEROP, this, lengthIsUndefined, bufferInterop);
     }
 
     /**
@@ -411,9 +415,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached ImportValueNode importValue,
                     @Cached @Exclusive InlinedConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {
-            JSArrayBufferObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), object);
-            checkLengthLimit(arrayBuffer.getByteLength(), 1);
-            return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_INTEROP, node, lengthIsUndefined);
+            JSArrayBufferObject.Interop arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), object);
+            checkLengthLimit(arrayBuffer.getByteLength(interop), 1);
+            return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_INTEROP, node, lengthIsUndefined, interop);
         }
 
         long length;
