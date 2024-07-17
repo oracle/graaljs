@@ -218,6 +218,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
+import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -2496,8 +2497,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @Specialization(guards = {"isJSHeapArrayBuffer(buffer)"})
-        protected final JSDynamicObject ofHeapArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
+        @Specialization
+        protected final JSDataViewObject ofHeapArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Heap buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @Cached @Shared InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared JSToIndexNode offsetToIndexNode,
@@ -2505,8 +2506,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return constructDataView(newTarget, buffer, byteOffset, byteLength, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
         }
 
-        @Specialization(guards = {"isJSDirectOrSharedArrayBuffer(buffer)"})
-        protected final JSDynamicObject ofDirectArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
+        @Specialization
+        protected final JSDataViewObject ofDirectArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Direct buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @Cached @Shared InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared JSToIndexNode offsetToIndexNode,
@@ -2514,8 +2515,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return constructDataView(newTarget, buffer, byteOffset, byteLength, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
         }
 
-        @Specialization(guards = {"isJSInteropArrayBuffer(buffer)"})
-        protected final JSDynamicObject ofInteropArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
+        @Specialization
+        protected final JSDataViewObject ofSharedArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Shared buffer, Object byteOffset, Object byteLength,
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached @Shared InlinedConditionProfile byteLengthCondition,
+                        @Cached @Shared JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared JSToIndexNode lengthToIndexNode) {
+            return constructDataView(newTarget, buffer, byteOffset, byteLength, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
+        }
+
+        @Specialization
+        protected final JSDataViewObject ofInteropArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Interop buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @Cached @Shared InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared JSToIndexNode offsetToIndexNode,
@@ -2525,13 +2535,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "bufferInterop.hasBufferElements(buffer)"})
-        protected final JSDynamicObject ofInteropBuffer(JSDynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
+        protected final JSDataViewObject ofInteropBuffer(JSDynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @Cached @Shared InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared JSToIndexNode offsetToIndexNode,
                         @Cached @Shared JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary bufferInterop) {
-            JSArrayBufferObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), buffer);
+            JSArrayBufferObject.Interop arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), buffer);
             return ofInteropArrayBuffer(newTarget, arrayBuffer, byteOffset, byteLength, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, bufferInterop);
         }
 
@@ -2542,7 +2552,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             throw Errors.createTypeError("Not an ArrayBuffer");
         }
 
-        protected final JSDynamicObject constructDataView(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset, Object byteLength,
+        protected final JSDataViewObject constructDataView(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset, Object byteLength,
                         boolean isInteropBuffer,
                         InlinedBranchProfile errorBranch,
                         InlinedConditionProfile byteLengthCondition,
@@ -2588,7 +2598,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             // GetPrototypeFromConstructor might have detached the ArrayBuffer as a side effect.
             checkDetachedBuffer(arrayBuffer, errorBranch);
-            bufferByteLength = arrayBuffer.getByteLength();
+            if (isInteropBuffer) {
+                bufferByteLength = ConstructArrayBufferNode.getBufferSizeSafe(JSArrayBuffer.getInteropBuffer(arrayBuffer), bufferInterop, this, errorBranch);
+            } else {
+                bufferByteLength = arrayBuffer.getByteLength();
+            }
             if (offset > bufferByteLength) {
                 errorBranch.enter(this);
                 throw Errors.createRangeError("offset > bufferByteLength");
