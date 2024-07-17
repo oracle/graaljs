@@ -219,7 +219,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         public static boolean isSharedBufferView(JSTypedArrayObject object) {
-            return JSArrayBufferView.isJSArrayBufferView(object) && JSSharedArrayBuffer.isJSSharedArrayBuffer(JSArrayBufferView.getArrayBuffer(object));
+            return JSSharedArrayBuffer.isJSSharedArrayBuffer(JSArrayBufferView.getArrayBuffer(object));
         }
 
         public static boolean isInt32SharedBufferView(JSTypedArrayObject object) {
