@@ -125,9 +125,11 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return JSRuntime.booleanToString(value);
     }
 
+    @InliningCutoff
     @Specialization
-    protected TruffleString doInteger(int value) {
-        return Strings.fromInt(value);
+    protected TruffleString doInteger(int value,
+                    @Shared @Cached JSDoubleToStringNode doubleToStringNode) {
+        return doubleToStringNode.executeString(value);
     }
 
     @Specialization
@@ -135,15 +137,17 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return Strings.fromBigInt(value);
     }
 
+    @InliningCutoff
     @Specialization
-    protected TruffleString doLong(long value) {
-        return Strings.fromLong(value);
+    protected TruffleString doLong(long value,
+                    @Shared @Cached JSDoubleToStringNode doubleToStringNode) {
+        return doubleToStringNode.executeString(value);
     }
 
     @InliningCutoff
     @Specialization
     protected TruffleString doDouble(double d,
-                    @Cached JSDoubleToStringNode doubleToStringNode) {
+                    @Shared @Cached JSDoubleToStringNode doubleToStringNode) {
         return doubleToStringNode.executeString(d);
     }
 
