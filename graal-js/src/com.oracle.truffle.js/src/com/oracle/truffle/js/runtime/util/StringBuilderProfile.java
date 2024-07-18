@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -64,6 +65,7 @@ public final class StringBuilderProfile extends NodeCloneable {
         this.errorBranch = BranchProfile.create();
     }
 
+    @NeverDefault
     public static StringBuilderProfile create(int stringLengthLimit) {
         return new StringBuilderProfile(stringLengthLimit);
     }
@@ -100,6 +102,19 @@ public final class StringBuilderProfile extends NodeCloneable {
             throw Errors.createRangeErrorInvalidStringLength();
         }
         Strings.builderAppend(node, builder, c);
+    }
+
+    public void append(TruffleStringBuilder.AppendCodePointNode node, TruffleStringBuilderUTF16 builder, int codePoint) {
+        repeat(node, builder, codePoint, 1);
+    }
+
+    public void repeat(TruffleStringBuilder.AppendCodePointNode node, TruffleStringBuilderUTF16 builder, int codePoint, int repeat) {
+        int utf16Length = (codePoint <= Character.MAX_VALUE ? 1 : 2) * repeat;
+        if (Strings.builderLength(builder) + utf16Length > stringLengthLimit) {
+            errorBranch.enter();
+            throw Errors.createRangeErrorInvalidStringLength();
+        }
+        node.execute(builder, codePoint, repeat);
     }
 
     public void append(TruffleStringBuilder.AppendIntNumberNode node, TruffleStringBuilderUTF16 builder, int intValue) {

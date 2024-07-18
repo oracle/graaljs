@@ -84,6 +84,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalNashornExtensionParseToJSONNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalScriptingEXECNodeGen;
@@ -148,6 +149,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
 /**
  * Contains builtins for the global object.
@@ -1363,35 +1365,38 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         protected Object print(Object[] arguments,
                         @Cached InlinedConditionProfile argumentsCount,
-                        @Cached InlinedBranchProfile consoleIndentation) {
+                        @Cached(parameters = "getContext().getStringLengthLimit()") StringBuilderProfile builderProfile,
+                        @Cached TruffleStringBuilder.AppendCodePointNode appendCodePointNode,
+                        @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
+                        @Cached TruffleStringBuilder.ToStringNode toStringNode) {
             // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
-            var builder = Strings.builderCreate();
-            JSConsoleUtil consoleUtil = getRealm().getConsoleUtil();
+            JSRealm realm = getRealm();
+            TruffleStringBuilderUTF16 sb = builderProfile.newStringBuilder();
+            JSConsoleUtil consoleUtil = realm.getConsoleUtil();
             if (consoleUtil.getConsoleIndentation() > 0) {
-                consoleIndentation.enter(this);
-                Strings.builderAppend(builder, consoleUtil.getConsoleIndentationString());
+                builderProfile.repeat(appendCodePointNode, sb, ' ', consoleUtil.getConsoleIndentation() * 2);
             }
             if (argumentsCount.profile(this, arguments.length == 1)) {
-                Strings.builderAppend(builder, toString1(arguments[0]));
+                builderProfile.append(appendStringNode, sb, toString1(arguments[0]));
             } else {
                 for (int i = 0; i < arguments.length; i++) {
                     if (i != 0) {
-                        Strings.builderAppend(builder, ' ');
+                        builderProfile.append(appendCodePointNode, sb, ' ');
                     }
-                    Strings.builderAppend(builder, toString1(arguments[i]));
+                    builderProfile.append(appendStringNode, sb, toString1(arguments[i]));
                 }
             }
-            return printIntl(builder);
+            if (!noNewLine) {
+                builderProfile.append(appendStringNode, sb, Strings.LINE_SEPARATOR);
+            }
+            TruffleString string = StringBuilderProfile.toString(toStringNode, sb);
+            return printString(string, realm);
         }
 
         @TruffleBoundary
-        private Object printIntl(TruffleStringBuilderUTF16 builder) {
-            JSRealm realm = getRealm();
-            if (!noNewLine) {
-                Strings.builderAppend(builder, Strings.LINE_SEPARATOR);
-            }
+        private Object printString(TruffleString string, JSRealm realm) {
             PrintWriter writer = useErr ? realm.getErrorWriter() : realm.getOutputWriter();
-            writer.print(Strings.builderToString(builder));
+            writer.print(string);
             writer.flush();
             return Undefined.instance;
         }
