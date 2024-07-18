@@ -87,7 +87,7 @@ local cicommon = import '../ci/common.jsonnet';
   local auxEngineCache = {
     graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'graalvm-home'], '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'standalone-home', 'nodejs'], '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
     ],
     timelimit: '1:00:00',
   },
