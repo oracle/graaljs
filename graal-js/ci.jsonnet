@@ -107,8 +107,8 @@ local ci = import '../ci.jsonnet';
     nativeimages+:: ['lib:jsvm'],
     graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['mx', 'build'],
-      ['python', '../../graalvm-tests/test.py', '-g', ['mx', '--quiet', 'graalvm-home'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache'],
+      ['mx', 'build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'standalone-home', 'js'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
     ],
     timelimit: '1:00:00',
   },

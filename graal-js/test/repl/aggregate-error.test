@@ -1,0 +1,48 @@
+#/*
+# * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+# * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+# *
+# * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+# */
+#
+# ------
+# Test reporting of AggregateErrors in the `js` launcher/REPL.
+# ------
+# To run:
+# graal-js $ ../../graalvm-tests/test.py --keep-on-error -g $(mx --quiet graalvm-home) test/repl/aggregate-error.test
+# graal-js $ ../../graalvm-tests/test.py --keep-on-error -g $(mx --quiet --dynamicimports /vm standalone-home js) test/repl/aggregate-error.test
+#
+>[7r] js --engine.WarnInterpreterOnly=false --unhandled-rejections=throw ${TEST_DIR}/throw-aggregate-error.js
+AggregateError: dolor
+    at <js> :program\(.*throw-aggregate-error.js:7.*\) \{
+  \[errors\]: \[
+    Error: lorem
+        at <js> hoge\(.*throw-aggregate-error.js:8.*\)
+        at <js> :program\(.*throw-aggregate-error.js:8.*\),
+    Error: ipsum
+        at <js> fuga\(.*throw-aggregate-error.js:9.*\)
+        at <js> :program\(.*throw-aggregate-error.js:9.*\)
+  \]
+\}
+>[7r] js --engine.WarnInterpreterOnly=false --unhandled-rejections=throw ${TEST_DIR}/unhandled-rejections.js
+AggregateError: Unhandled promise rejections \{
+  \[errors\]: \[
+    Error: lorem
+        at <js> hoge\(.*unhandled-rejections.js:7.*\)
+        at <js> :program\(.*unhandled-rejections.js:7.*\),
+    Error: ipsum
+        at <js> fuga\(.*unhandled-rejections.js:8.*\)
+        at <js> :program\(.*unhandled-rejections.js:8.*\)
+  \]
+\}
+>[7] js --engine.WarnInterpreterOnly=false --unhandled-rejections=throw ${TEST_DIR}/unhandled-rejections-primitive.js
+AggregateError: Unhandled promise rejections {
+  [errors]: [
+    Error: Unhandled promise rejection: 42,
+    Error: Unhandled promise rejection: 211
+  ]
+}
+>[7] js --engine.WarnInterpreterOnly=false --unhandled-rejections=throw ${TEST_DIR}/booby-trapped-aggregate-error.js
+Error
+    at <js> AggregateError\(.*booby-trapped-aggregate-error.js:7.*\)
+    at <js> :program\(.*booby-trapped-aggregate-error.js:12.*\)
