@@ -460,7 +460,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
     }
 
     private static Value getErrorsFromAggregateError(Value guestException) {
-        if (guestException.hasMembers()) {
+        if (guestException.isException() && guestException.hasMembers()) {
             Value errorMetaObject = guestException.getMetaObject();
             if (errorMetaObject != null && "AggregateError".equals(errorMetaObject.getMetaSimpleName())) {
                 Value errors = guestException.getMember("errors");
@@ -476,28 +476,34 @@ public class JSLauncher extends AbstractLanguageLauncher {
         StringBuilder output = new StringBuilder();
         printStackTraceSkipTrailingHost(e, output, "");
         Value guestException = e.getGuestObject();
-        if (guestException != null && guestException.isException()) {
-            // Print all errors of an AggregateError
-            Value errors = getErrorsFromAggregateError(guestException);
-            if (errors != null) {
-                long size = errors.getArraySize();
-                output.append(" {").append(System.lineSeparator());
-                output.append("  [errors]: [").append(System.lineSeparator());
-                String indent = " ".repeat(4);
-                for (long i = 0; i < size; i++) {
-                    Value error = errors.getArrayElement(i);
-                    if (error.isException()) {
-                        printStackTraceSkipTrailingHost(error.as(PolyglotException.class), output, indent);
-                    } else {
-                        output.append(error.toString());
+        if (guestException != null) {
+            int safeLength = output.length();
+            try {
+                // Print all errors of an AggregateError
+                Value errors = getErrorsFromAggregateError(guestException);
+                if (errors != null) {
+                    long size = errors.getArraySize();
+                    output.append(" {").append(System.lineSeparator());
+                    output.append("  [errors]: [").append(System.lineSeparator());
+                    String indent = " ".repeat(4);
+                    for (long i = 0; i < size; i++) {
+                        Value error = errors.getArrayElement(i);
+                        if (error.isException()) {
+                            printStackTraceSkipTrailingHost(error.as(PolyglotException.class), output, indent);
+                        } else {
+                            output.append(error.toString());
+                        }
+                        if (i != size - 1) {
+                            output.append(",");
+                        }
+                        output.append(System.lineSeparator());
                     }
-                    if (i != size - 1) {
-                        output.append(",");
-                    }
-                    output.append(System.lineSeparator());
+                    output.append("  ]").append(System.lineSeparator());
+                    output.append("}");
                 }
-                output.append("  ]").append(System.lineSeparator());
-                output.append("}");
+            } catch (PolyglotException ignored) {
+                // Erase any incomplete output.
+                output.setLength(safeLength);
             }
         }
         err.println(output);
