@@ -257,13 +257,13 @@ If you get the following warning, you are not running on GraalVM JDK, or a compa
 ```
 [engine] WARNING: The polyglot context is using an implementation that does not support runtime compilation.
 The guest application code will therefore be executed in interpreted mode only.
-Execution only in interpreted mode will strongly impact the guest application performance.
-To disable this warning the '--engine.WarnInterpreterOnly=false' option or use the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
+Execution only in interpreted mode will strongly impair guest application performance.
+To disable this warning, use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```
 
-To resolve this, use [GraalVM](https://github.com/oracle/graal/blob/master/docs/getting-started/graalvm-community/get-started-graalvm-community.md) or see the [Run GraalVM JavaScript on a Stock JDK guide](RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible Graal-enabled stock JDK.
+To resolve this issue, use [GraalVM](https://www.graalvm.org/downloads/) or see the [Run GraalVM JavaScript on a Stock JDK guide](RunOnJDK.md) for instructions how to set up the Graal JIT compiler on a compatible Graal-enabled stock JDK.
 
-Nevertheless, if this is intentional, you can disable the warning and continue to run with degraded performance by setting the above mentioned option, either via the command line or using the `Context.Builder`, e.g.:
+Nevertheless, if this is intentional, you can disable the warning and continue to run with degraded performance by setting the option described above, either via the command line or by using the `Context.Builder`, for example:
 ```java
 try (Context ctx = Context.newBuilder("js")
     .option("engine.WarnInterpreterOnly", "false")
@@ -271,7 +271,7 @@ try (Context ctx = Context.newBuilder("js")
   ctx.eval("js", "console.log('Greetings!');");
 }
 ```
-Note that when using an explicit polyglot engine, the option has to be set on the `Engine`, e.g.:
+Note that when using an explicit polyglot engine, the option has to be set on the `Engine`, for example:
 ```java
 try (Engine engine = Engine.newBuilder()
     .option("engine.WarnInterpreterOnly", "false")
