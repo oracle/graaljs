@@ -1,27 +1,70 @@
 [![https://graalvm.slack.com](https://img.shields.io/badge/slack-join%20channel-active)](https://www.graalvm.org/slack-invitation/)
 
-A high performance implementation of the JavaScript programming language.
-Built on the GraalVM by Oracle Labs.
+# GraalJS
 
-The goals of GraalVM JavaScript are:
+GraalJS is a JavaScript engine implemented in Java on top of GraalVM. 
+It is an ECMAScript-compliant runtime to execute JavaScript and Node.js applications, and includes all the benefits from the GraalVM stack including interoperability with Java.
+GraalJS is an open-source project.
 
-* Execute JavaScript code with best possible performance
+The goals of GraalJS are:
 * [Full compatibility with the latest ECMAScript specification](docs/user/JavaScriptCompatibility.md)
-* Support Node.js applications, including native packages ([check](https://www.graalvm.org/compatibility/))
-* Allow simple upgrading from [Nashorn](docs/user/NashornMigrationGuide.md) or [Rhino](docs/user/RhinoMigrationGuide.md) based applications
-* [Fast interoperability](https://www.graalvm.org/reference-manual/polyglot-programming/) with Java, Scala, or Kotlin, or with other GraalVM languages like Ruby, Python, or R
-* Be embeddable in systems like [Oracle RDBMS](https://labs.oracle.com/pls/apex/f?p=LABS:project_details:0:15) or MySQL
-
+* [Interoperability with Java](docs/user/JavaInteroperability.md)
+* Interoperability with WebAssembly using the JavaScript WebAssembly API
+* Running JavaScript with the best possible performance
+* Support for Node.js applications, including native packages
+* Simple upgrading from applications based on [Nashorn](docs/user/NashornMigrationGuide.md) or [Rhino](docs/user/RhinoMigrationGuide.md)
+* Embeddability in systems like [Oracle RDBMS](https://labs.oracle.com/pls/apex/f?p=LABS:project_details:0:15) or MySQL
 
 ## Getting Started
-The preferred way to run GraalVM JavaScript (a.k.a. GraalJS) is from a [GraalVM](https://www.graalvm.org/downloads/).
-As of GraalVM for JDK 21, (23.1), GraalVM JavaScript and Node.js runtimes are available as [standalone distributions](https://github.com/oracle/graaljs/releases) and [Maven artifacts](https://central.sonatype.com/artifact/org.graalvm.polyglot/js) (but no longer as GraalVM components).
-See the documentation on the [GraalVM website](https://www.graalvm.org/latest/reference-manual/js/) for more information on how to set up GraalVM JavaScript.
 
-### Standalone Distribution
-To install GraalVM JavaScript using the [standalone distribution], simply download and extract the desired archive from the [GitHub Releases](https://github.com/oracle/graaljs/releases) page.
-The standalone archives for the JavaScript and Node.js distributions are named `graaljs[-community][-jvm]-<version>-<os>-<arch>.tar.gz` and `graalnodejs[-community][-jvm]-<version>-<os>-<arch>.tar.gz`, respectively.
-Four different available configurations are available for each component and platform combination:
+As of version 23.1.0, GraalJS is available as [Maven artifacts](https://central.sonatype.com/artifact/org.graalvm.polyglot/js).
+We also provide [standalone distributions](https://github.com/oracle/graaljs/releases) of the JavaScript and Node.js runtimes.
+
+### Maven Artifacts
+
+Thanks to GraalJS, you can easily embed JavaScript into a Java application.
+All necessary artifacts can be downloaded directly from Maven Central.
+
+All artifacts relevant to embedders can be found in the Maven dependency group [org.graalvm.polyglot](https://central.sonatype.com/namespace/org.graalvm.polyglot). 
+
+Below is a minimal Maven dependency setup that you can copy into your _pom.xml_:
+```xml
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>polyglot</artifactId>
+    <version>${graaljs.version}</version>
+</dependency>
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>js</artifactId>
+    <version>${graaljs.version}</version>
+    <type>pom</type>
+</dependency>
+```
+This enables GraalJS which is built on top of Oracle GraalVM and licensed under the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html).
+Use `js-community` if you want to use GraalJS built on GraalVM Community Edition.
+
+
+To access [polyglot isolate](https://www.graalvm.org/reference-manual/embed-languages/#polyglot-isolates) artifacts (GFTC only), use the `-isolate` suffix instead (e.g. `js-isolate`).
+
+See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub for a complete runnable example.
+
+You can use GraalJS with GraalVM JDK, Oracle JDK, or OpenJDK. 
+If you prefer running on a stock JVM, have a look at [Run GraalJS on a Stock JDK](docs/user/RunOnJDK.md). 
+Note that in this mode many features and optimizations of GraalVM are not available.
+Due to those limitations, running on a stock JVM is not a supported feature - please use a GraalVM instead.
+
+### Standalone Distributions
+
+Standalone distributions are published on [GitHub](https://github.com/oracle/graaljs/releases). 
+There are two language runtime options to choose from: 
+- Native launcher compiled ahead of time with GraalVM Native Image;
+- JVM-based runtime.
+
+To distinguish between them, a standalone that comes with a JVM has a `-jvm` infix in the name. 
+Also, the GraalVM Community Edition version has `-community` in the name, for example, `graaljs-community-<version>-<os>-<arch>.tar.gz`.
+
+Four different configurations are available for each component and platform combination:
 
 | Runtime      | License | Archive Infix    |
 | -------------| ------- | ---------------- |
@@ -30,90 +73,48 @@ Four different available configurations are available for each component and pla
 | Native       | UPL     | `-community`     |
 | JVM          | UPL     | `-community-jvm` |
 
-After installation, the `js` or `node` executable in the `bin` subdirectory can be used to run JavaScript files or Node modules, respectively.
+To install GraalJS from a standalone, download and extract the archive from the [GitHub Releases](https://github.com/oracle/graaljs/releases) page. 
+After the installation, the `js` or `node` executable in the `bin` subdirectory can be used to run JavaScript files or Node modules, respectively.
 If no file is provided on the command line, an interactive shell (REPL) will be spawned.
 
-### Maven Artifact
-All required artifacts for embedding GraalVM JavaScript can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
+## Node.js Runtime
 
-Here is a minimal Maven dependency setup that you can copy into your `pom.xml`:
-```xml
-<dependency>
-	<groupId>org.graalvm.polyglot</groupId>
-	<artifactId>polyglot</artifactId>
-	<version>23.1.0</version>
-</dependency>
-<dependency>
-	<groupId>org.graalvm.polyglot</groupId>
-	<artifactId>js</artifactId>
-	<version>23.1.0</version>
-	<type>pom</type>
-</dependency>
-<!-- add additional languages and tools, if needed -->
-```
+GraalJS can run unmodified Node.js applications. 
+GraalVM's Node.js runtime is based on a recent version of Node.js, and runs the GraalJS engine instead of Google V8. 
+It provides high compatibility with the existing NPM packages.
+This includes NPM packages with native implementations.
+Note that some NPM modules may require to be recompiled from source with GraalJS (if they ship with binaries that have been compiled for Node.js based on V8).
 
-See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub for a complete runnable example.
-
-Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html) license by default.
-To use community-licensed versions instead, add the `-community` suffix to each language and tool dependency, e.g.:
-```xml
-<dependency>
-	<groupId>org.graalvm.polyglot</groupId>
-	<artifactId>js-community</artifactId>
-	<version>23.1.0</version>
-	<type>pom</type>
-</dependency>
-```
-To access [polyglot isolate](https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates) artifacts (GFTC only), use the `-isolate` suffix instead (e.g. `js-isolate`).
-
-If you prefer running it on a stock JVM, please have a look at the documentation in [`RunOnJDK.md`](https://github.com/graalvm/graaljs/blob/master/docs/user/RunOnJDK.md).
-Note that in this mode many features and optimizations of GraalVM are not available.
-Due to those limitations, running on a stock JVM is not a supported feature - please use a GraalVM instead.
+Node.js is available as a separate [standalone distribution](#standalone-distributions).
+See [how to get started with Node.js](NodeJS.md).
 
 ## Documentation
 
-Extensive documentation is available on [graalvm.org](https://www.graalvm.org/): see [Getting Started](https://www.graalvm.org/docs/getting-started/) and the more extensive [JavaScript and Node.js Reference Manual](https://www.graalvm.org/reference-manual/js/).
-In addition, there is documentation in the source code repository in the [`docs`](https://github.com/graalvm/graaljs/tree/master/docs) directory, for [users](https://github.com/graalvm/graaljs/tree/master/docs/user) and [contributors](https://github.com/graalvm/graaljs/tree/master/docs/contributor).
+Extensive user documentation is available on the [website](https://www.graalvm.org/reference-manual/js/).
+In addition, there is documentation in this repository under [docs](https://github.com/oracle/graaljs/tree/master/docs), for [users](https://github.com/oracle/graaljs/tree/master/docs/user) and [contributors](https://github.com/oracle/graaljs/tree/master/docs/contributor).
+For contributing, see also a [guide on how to build GraalJS from source code](docs/Building.md).
 
-For contributors, a guide how to build GraalVM JavaScript from source code can be found in [`Building.md`](https://github.com/graalvm/graaljs/tree/master/docs/Building.md).
+## Compatibility
 
-## Current Status
+GraalJS is compatible with the [ECMAScript 2024 specification](https://262.ecma-international.org/).
+New features, new ECMAScript proposals, scheduled to land in future editions, are added frequently and are accessible behind an option.
+See the [CHANGELOG.md](CHANGELOG.md) for the proposals already adopted.
 
-GraalVM JavaScript is compatible with the [ECMAScript 2023 specification](https://262.ecma-international.org/14.0/).
-New features, e.g. `ECMAScript proposals` scheduled to land in future editions, are added frequently and are accessible behind a flag.
-See the [CHANGELOG.md](https://github.com/graalvm/graaljs/tree/master/CHANGELOG.md) for the proposals already adopted.
+In addition, some popular extensions of other engines are supported. See [GraalJS Compatibility](docs/user/JavaScriptCompatibility.md).
 
-In addition, some popular extensions of other engines are supported, see [`JavaScriptCompatibility.md`](https://github.com/graalvm/graaljs/tree/master/docs/user/JavaScriptCompatibility.md).
+## Operating Systems Compatibility
 
-### Node.js support
+The core JavaScript engine is a Java application and is thus compatible with every operating system that provides a compatible JVM. See [Run GraalJS on a Stock JDK](docs/user/RunOnJDK.md).
+We provide binary distributions and fully support GraalJS on Linux (x64, AArch64), macOS (x64, AArch64), and Windows (x64), currently.
 
-GraalVM JavaScript can execute Node.js applications.
-It provides high compatibility with existing npm packages, with high likelihood that your application will run out of the box.
-This includes npm packages with native implementations.
-Note that some npm modules will require to be re-compiled from source with GraalVM JavaScript if they ship with binaries that have been compiled for Node.js based on V8.
-Node.js is a separate [standalone distribution](#standalone-distribution).
+## Stay Connected with the Community
 
-### Compatibility on Operating Systems
-
-The core JavaScript engine is a Java application and is thus in principle compatible with every operating system that provides a compatible JVM, [see `RunOnJDK.md`](https://github.com/graalvm/graaljs/tree/master/docs/user/RunOnJDK.md).
-We provide binary distributions and fully support GraalVM JavaScript on Linux (AMD64, AArch64), MacOS (AMD64, AArch64), and Windows (AMD64), currently.
-
-## GraalVM JavaScript Reference Manual
-
-A reference manual for GraalVM JavaScript is available on the [GraalVM website](https://www.graalvm.org/reference-manual/js/).
-
-## Stay connected with the community
-
-See [graalvm.org/community](https://www.graalvm.org/community/) on how to stay connected with the development community.
-The channel _graaljs_ on [graalvm.slack.com](https://www.graalvm.org/slack-invitation) is a good way to get in touch with us.
-Please report JavaScript-specific issues on the [`oracle/graaljs`](https://github.com/oracle/graaljs/) GitHub repository.
+See [graalvm.org/community](https://www.graalvm.org/community/) for how to stay connected with the development community.
+The channel _graaljs_ on [graalvm.slack.com](https://www.graalvm.org/slack-invitation) is a good way to get in touch with the team behind GraalJS.
+Report any GraalJS-specific issues at the [oracle/graaljs](https://github.com/oracle/graaljs/) GitHub repository.
 
 ## License
 
-GraalVM JavaScript source code and community distributions are available under the following license:
+GraalJS source code and community distributions are available under the [Universal Permissive License (UPL), Version 1.0](https://opensource.org/licenses/UPL).
 
-* [The Universal Permissive License (UPL), Version 1.0](https://opensource.org/licenses/UPL)
-
-Non-community artifacts are provided under the following license:
-
-* [GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html)
+Non-community artifacts are provided under the [GraalVM Free Terms and Conditions (GFTC) including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graal-free-license.html).
