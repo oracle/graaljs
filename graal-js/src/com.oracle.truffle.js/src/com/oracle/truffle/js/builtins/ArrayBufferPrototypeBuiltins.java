@@ -303,7 +303,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
          * @return sliced ArrayBuffer
          */
         @Specialization
-        protected JSDynamicObject sliceIntInt(JSArrayBufferObject.Heap thisObj, int begin, int end,
+        protected JSArrayBufferObject sliceIntInt(JSArrayBufferObject.Heap thisObj, int begin, int end,
                         @Cached @Shared InlinedBranchProfile errorBranch) {
             checkDetachedBuffer(thisObj, errorBranch);
             int byteLength = thisObj.getByteLength();
@@ -351,7 +351,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(replaces = "sliceIntInt")
-        protected JSDynamicObject slice(JSArrayBufferObject.Heap thisObj, Object begin0, Object end0,
+        protected JSArrayBufferObject slice(JSArrayBufferObject.Heap thisObj, Object begin0, Object end0,
                         @Cached @Shared InlinedBranchProfile errorBranch) {
             checkDetachedBuffer(thisObj, errorBranch);
             int len = thisObj.getByteLength();
@@ -361,7 +361,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected JSDynamicObject sliceDirectIntInt(JSArrayBufferObject.Direct thisObj, int begin, int end,
+        protected JSArrayBufferObject sliceDirectIntInt(JSArrayBufferObject.Direct thisObj, int begin, int end,
                         @Cached @Shared InlinedBranchProfile errorBranch) {
             checkDetachedBuffer(thisObj, errorBranch);
             ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
@@ -378,7 +378,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(replaces = "sliceDirectIntInt")
-        protected JSDynamicObject sliceDirect(JSArrayBufferObject.Direct thisObj, Object begin0, Object end0,
+        protected JSArrayBufferObject sliceDirect(JSArrayBufferObject.Direct thisObj, Object begin0, Object end0,
                         @Cached @Shared InlinedBranchProfile errorBranch) {
             checkDetachedBuffer(thisObj, errorBranch);
             int len = thisObj.getByteLength();
@@ -388,7 +388,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected Object sliceInterop(JSArrayBufferObject.Interop thisObj, Object begin0, Object end0,
+        protected JSArrayBufferObject sliceInterop(JSArrayBufferObject.Interop thisObj, Object begin0, Object end0,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary srcBufferLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary dstBufferLib) {
@@ -420,7 +420,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = {"!isJSSharedArrayBuffer(thisObj)", "hasBufferElements(thisObj, srcBufferLib)"})
-        protected Object sliceTruffleBuffer(Object thisObj, Object begin0, Object end0,
+        protected JSArrayBufferObject sliceTruffleBuffer(Object thisObj, Object begin0, Object end0,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary srcBufferLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary dstBufferLib) {
@@ -429,7 +429,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Fallback
-        protected static JSDynamicObject error(Object thisObj, @SuppressWarnings("unused") Object begin0, @SuppressWarnings("unused") Object end0) {
+        protected static JSArrayBufferObject error(Object thisObj, @SuppressWarnings("unused") Object begin0, @SuppressWarnings("unused") Object end0) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
