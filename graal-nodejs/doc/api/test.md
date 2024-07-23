@@ -1149,7 +1149,12 @@ added:
   - v18.9.0
   - v16.19.0
 changes:
-  - version: v20.1.0
+  - version: v20.14.0
+    pr-url: https://github.com/nodejs/node/pull/52038
+    description: Added the `forceExit` option.
+  - version:
+    - v20.1.0
+    - v18.17.0
     pr-url: https://github.com/nodejs/node/pull/47628
     description: Add a testNamePatterns option.
 -->
@@ -1165,6 +1170,9 @@ changes:
     **Default:** `false`.
   * `files`: {Array} An array containing the list of files to run.
     **Default** matching files from [test runner execution model][].
+  * `forceExit`: {boolean} Configures the test runner to exit the process once
+    all known tests have finished executing even if the event loop would
+    otherwise remain active. **Default:** `false`.
   * `inspectPort` {number|Function} Sets inspector port of test child process.
     This can be a number, or a function that takes no arguments and returns a
     number. If a nullish value is provided, each process gets its own port,
@@ -1317,6 +1325,10 @@ changes:
   * `timeout` {number} A number of milliseconds the test will fail after.
     If unspecified, subtests inherit this value from their parent.
     **Default:** `Infinity`.
+  * `plan` {number} The number of assertions and subtests expected to be run in the test.
+    If the number of assertions run in the test does not match the number
+    specified in the plan, the test will fail.
+    **Default:** `undefined`.
 * `fn` {Function|AsyncFunction} The function under test. The first argument
   to this function is a [`TestContext`][] object. If the test uses callbacks,
   the callback function is passed as the second argument. **Default:** A no-op
@@ -2904,6 +2916,54 @@ added:
 
 The name of the test.
 
+### `context.plan(count)`
+
+<!-- YAML
+added:
+  - v20.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `count` {number} The number of assertions and subtests that are expected to run.
+
+This function is used to set the number of assertions and subtests that are expected to run
+within the test. If the number of assertions and subtests that run does not match the
+expected count, the test will fail.
+
+> Note: To make sure assertions are tracked, `t.assert` must be used instead of `assert` directly.
+
+```js
+test('top level test', (t) => {
+  t.plan(2);
+  t.assert.ok('some relevant assertion here');
+  t.subtest('subtest', () => {});
+});
+```
+
+When working with asynchronous code, the `plan` function can be used to ensure that the
+correct number of assertions are run:
+
+```js
+test('planning with streams', (t, done) => {
+  function* generate() {
+    yield 'a';
+    yield 'b';
+    yield 'c';
+  }
+  const expected = ['a', 'b', 'c'];
+  t.plan(expected.length);
+  const stream = Readable.from(generate());
+  stream.on('data', (chunk) => {
+    t.assert.strictEqual(chunk, expected.shift());
+  });
+
+  stream.on('end', () => {
+    done();
+  });
+});
+```
+
 ### `context.runOnly(shouldRunOnlyTests)`
 
 <!-- YAML
@@ -3034,6 +3094,10 @@ changes:
   * `timeout` {number} A number of milliseconds the test will fail after.
     If unspecified, subtests inherit this value from their parent.
     **Default:** `Infinity`.
+  * `plan` {number} The number of assertions and subtests expected to be run in the test.
+    If the number of assertions run in the test does not match the number
+    specified in the plan, the test will fail.
+    **Default:** `undefined`.
 * `fn` {Function|AsyncFunction} The function under test. The first argument
   to this function is a [`TestContext`][] object. If the test uses callbacks,
   the callback function is passed as the second argument. **Default:** A no-op
@@ -3047,7 +3111,7 @@ behaves in the same fashion as the top level [`test()`][] function.
 test('top level test', async (t) => {
   await t.test(
     'This is a subtest',
-    { only: false, skip: false, concurrency: 1, todo: false },
+    { only: false, skip: false, concurrency: 1, todo: false, plan: 4 },
     (t) => {
       assert.ok('some relevant assertion here');
     },

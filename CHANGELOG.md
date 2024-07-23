@@ -6,6 +6,7 @@ Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
 ## Version 24.2.0
+* Updated Node.js to version 20.15.1.
 * Implemented the [`Promise.try`](https://github.com/tc39/proposal-promise-try) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Added option `js.stack-trace-api` that enables/disables `Error.captureStackTrace`, `Error.prepareStackTrace` and `Error.stackTraceLimit`.
 

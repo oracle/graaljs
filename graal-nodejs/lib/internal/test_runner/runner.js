@@ -35,7 +35,6 @@ const { createInterface } = require('readline');
 const { deserializeError } = require('internal/error_serdes');
 const { Buffer } = require('buffer');
 const { FilesWatcher } = require('internal/watch_mode/files_watcher');
-const { queueMicrotask } = require('internal/process/task_queues');
 const console = require('internal/console/global');
 const {
   codes: {
@@ -156,8 +155,11 @@ function filterExecArgv(arg, i, arr) {
   !ArrayPrototypeSome(kFilterArgValues, (p) => arg === p || (i > 0 && arr[i - 1] === p) || StringPrototypeStartsWith(arg, `${p}=`));
 }
 
-function getRunArgs(path, { inspectPort, testNamePatterns, only }) {
+function getRunArgs(path, { forceExit, inspectPort, testNamePatterns, only }) {
   const argv = ArrayPrototypeFilter(process.execArgv, filterExecArgv);
+  if (forceExit === true) {
+    ArrayPrototypePush(argv, '--test-force-exit');
+  }
   if (isUsingInspector()) {
     ArrayPrototypePush(argv, `--inspect-port=${getInspectPort(inspectPort)}`);
   }
@@ -417,10 +419,16 @@ function runTestFile(path, filesWatcher, opts) {
     if (watchMode) {
       filesWatcher.runningProcesses.delete(path);
       filesWatcher.runningSubtests.delete(path);
-      if (filesWatcher.runningSubtests.size === 0) {
-        opts.root.reporter[kEmitMessage]('test:watch:drained');
-        queueMicrotask(() => opts.root.postRun());
-      }
+      (async () => {
+        try {
+          await subTestEnded;
+        } finally {
+          if (filesWatcher.runningSubtests.size === 0) {
+            opts.root.reporter[kEmitMessage]('test:watch:drained');
+            opts.root.postRun();
+          }
+        }
+      })();
     }
 
     if (code !== 0 || signal !== null) {
@@ -439,7 +447,8 @@ function runTestFile(path, filesWatcher, opts) {
       throw err;
     }
   });
-  return subtest.start();
+  const subTestEnded = subtest.start();
+  return subTestEnded;
 }
 
 function watchFiles(testFiles, opts) {
@@ -490,13 +499,33 @@ function run(options) {
     options = kEmptyObject;
   }
   let { testNamePatterns, shard } = options;
-  const { concurrency, timeout, signal, files, inspectPort, watch, setup, only } = options;
+  const {
+    concurrency,
+    timeout,
+    signal,
+    files,
+    forceExit,
+    inspectPort,
+    watch,
+    setup,
+    only,
+    plan,
+  } = options;
 
   if (files != null) {
     validateArray(files, 'options.files');
   }
   if (watch != null) {
     validateBoolean(watch, 'options.watch');
+  }
+  if (forceExit != null) {
+    validateBoolean(forceExit, 'options.forceExit');
+
+    if (forceExit && watch) {
+      throw new ERR_INVALID_ARG_VALUE(
+        'options.forceExit', watch, 'is not supported with watch mode',
+      );
+    }
   }
   if (only != null) {
     validateBoolean(only, 'options.only');
@@ -537,7 +566,7 @@ function run(options) {
     });
   }
 
-  const root = createTestTree({ __proto__: null, concurrency, timeout, signal });
+  const root = createTestTree({ __proto__: null, concurrency, timeout, signal, plan });
   root.harness.shouldColorizeTestFiles ||= shouldColorizeTestFiles(root);
 
   if (process.env.NODE_TEST_CONTEXT !== undefined) {
@@ -553,13 +582,22 @@ function run(options) {
 
   let postRun = () => root.postRun();
   let filesWatcher;
-  const opts = { __proto__: null, root, signal, inspectPort, testNamePatterns, only };
+  const opts = {
+    __proto__: null,
+    root,
+    signal,
+    inspectPort,
+    testNamePatterns,
+    only,
+    forceExit,
+  };
   if (watch) {
     filesWatcher = watchFiles(testFiles, opts);
     postRun = undefined;
   }
   const runFiles = () => {
     root.harness.bootstrapComplete = true;
+    root.harness.allowTestsToRun = true;
     return SafePromiseAllSettledReturnVoid(testFiles, (path) => {
       const subtest = runTestFile(path, filesWatcher, opts);
       filesWatcher?.runningSubtests.set(path, subtest);
