@@ -96,6 +96,7 @@ import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSTypedArraySortNode;
+import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -883,10 +884,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected final JSTypedArrayObject sortTypedArray(Object thisObj, Object compare,
                         @Cached JSTypedArraySortNode typedArraySortNode,
+                        @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Cached InlinedConditionProfile isCompareUndefined) {
             checkCompareCallableOrUndefined(compare);
             JSTypedArrayObject thisArray = validateTypedArray(thisObj);
-            int len = thisArray.getLength();
+            int len = typedArrayLengthNode.execute(this, thisArray, getContext());
 
             JSTypedArrayObject resultArray;
             if (toSorted) {
@@ -953,7 +955,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 case length:
                     return typedArray.getLengthFixed();
                 case byteLength:
-                    return typedArray.getLengthFixed() * typedArray.getArrayType().bytesPerElement();
+                    return typedArray.getLengthFixed() << typedArray.getArrayType().bytesPerElementShift();
                 case byteOffset:
                     return typedArray.getOffset();
                 default:
@@ -962,13 +964,13 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = {"!isOutOfBounds(typedArray, getContext())", "typedArray.hasAutoLength()"})
-        protected final int doTypedArrayAutoLength(JSTypedArrayObject typedArray) {
+        protected final int doTypedArrayAutoLength(JSTypedArrayObject typedArray,
+                        @Cached TypedArrayLengthNode typedArrayLengthNode) {
             switch (getter) {
                 case length:
-                    return typedArray.getLength();
+                    return typedArrayLengthNode.execute(this, typedArray, getContext());
                 case byteLength:
-                    TypedArray type = typedArray.getArrayType();
-                    return type.lengthInt(typedArray) * type.bytesPerElement();
+                    return typedArrayLengthNode.execute(this, typedArray, getContext()) << typedArray.getArrayType().bytesPerElementShift();
                 case byteOffset:
                     return typedArray.getOffset();
                 default:

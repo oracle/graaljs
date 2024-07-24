@@ -53,7 +53,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
+import com.oracle.truffle.js.nodes.array.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Boundaries;

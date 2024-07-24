@@ -438,6 +438,7 @@ suite = {
           "com.oracle.truffle.js.lang to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.access to org.graalvm.nodejs",
+          "com.oracle.truffle.js.nodes.array to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.arguments to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.cast to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.function to org.graalvm.nodejs",
