@@ -269,7 +269,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     @CompilerDirectives.TruffleBoundary
     public static Object transformImportObject(JSContext context, JSRealm realm, Object wasmModule, Object importObject) {
         try {
-            JSDynamicObject transformedImportObject = JSOrdinary.createWithNullPrototype(context);
+            JSObject transformedImportObject = JSOrdinary.createWithNullPrototype(context);
 
             Object importsFn = realm.getWASMModuleImports();
             Object imports = InteropLibrary.getUncached(importsFn).execute(importsFn, wasmModule);
@@ -283,7 +283,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 Object moduleImportObject = JSRuntime.get(importObject, module);
                 InteropLibrary moduleImportObjectInterop = InteropLibrary.getUncached(moduleImportObject);
                 if (!moduleImportObjectInterop.hasMembers(moduleImportObject)) {
-                    throw Errors.createTypeErrorNotAnObject(moduleImportObject);
+                    throw Errors.createTypeError("Imported module \"" + module + "\" is not an object: " + JSRuntime.safeToString(moduleImportObject));
                 }
 
                 TruffleString name = asTString(descriptorInterop.readMember(descriptor, "name"));
