@@ -53,6 +53,7 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -936,6 +937,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    @ImportStatic({JSArrayBufferView.class})
     public abstract static class GetTypedArrayLengthOrOffsetNode extends JSBuiltinNode {
 
         private final TypedArrayPrototype getter;
@@ -945,23 +947,38 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             this.getter = getter;
         }
 
-        @Specialization
-        protected final int doTypedArray(JSTypedArrayObject typedArray,
-                        @Cached InlinedBranchProfile outOfBoundsBranch) {
-            if (JSArrayBufferView.isOutOfBounds(typedArray, getContext())) {
-                outOfBoundsBranch.enter(this);
-                return 0;
+        @Specialization(guards = {"!isOutOfBounds(typedArray, getContext())", "!typedArray.hasAutoLength()"})
+        protected final int doTypedArrayFixedLength(JSTypedArrayObject typedArray) {
+            switch (getter) {
+                case length:
+                    return typedArray.getLengthFixed();
+                case byteLength:
+                    return typedArray.getLengthFixed() * typedArray.getArrayType().bytesPerElement();
+                case byteOffset:
+                    return typedArray.getOffset();
+                default:
+                    throw Errors.shouldNotReachHere();
             }
+        }
+
+        @Specialization(guards = {"!isOutOfBounds(typedArray, getContext())", "typedArray.hasAutoLength()"})
+        protected final int doTypedArrayAutoLength(JSTypedArrayObject typedArray) {
             switch (getter) {
                 case length:
                     return typedArray.getLength();
                 case byteLength:
-                    return JSArrayBufferView.getByteLength(typedArray, getContext());
+                    TypedArray type = typedArray.getArrayType();
+                    return type.lengthInt(typedArray) * type.bytesPerElement();
                 case byteOffset:
-                    return JSArrayBufferView.getByteOffset(typedArray, getContext());
+                    return typedArray.getOffset();
                 default:
                     throw Errors.shouldNotReachHere();
             }
+        }
+
+        @Specialization(guards = {"isOutOfBounds(typedArray, getContext())"})
+        protected static int doTypedArrayOutOfBounds(@SuppressWarnings("unused") JSTypedArrayObject typedArray) {
+            return 0;
         }
 
         @SuppressWarnings("unused")
