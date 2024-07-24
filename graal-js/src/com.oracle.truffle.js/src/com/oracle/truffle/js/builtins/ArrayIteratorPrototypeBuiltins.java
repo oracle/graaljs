@@ -50,6 +50,7 @@ import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltinsFactory.Arra
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -112,6 +113,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                         @Cached("create(getContext())") JSGetLengthNode getLengthNode,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached(inline = true) LongToIntOrDoubleNode toJSIndex,
+                        @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedBranchProfile useAfterCloseBranch,
                         @Cached InlinedConditionProfile isTypedArrayProfile) {
@@ -130,7 +132,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     errorBranch.enter(this);
                     throw Errors.createTypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");
                 }
-                length = typedArray.getLength();
+                length = typedArrayLengthNode.execute(this, typedArray, getContext());
             } else {
                 length = getLengthNode.executeLong(array);
             }

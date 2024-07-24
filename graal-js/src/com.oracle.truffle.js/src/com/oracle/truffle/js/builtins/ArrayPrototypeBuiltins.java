@@ -140,6 +140,7 @@ import com.oracle.truffle.js.nodes.array.JSArrayToDenseObjectArrayNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
 import com.oracle.truffle.js.nodes.array.TestArrayNode;
+import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -370,6 +371,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final boolean isTypedArrayImplementation; // for reusing array code on TypedArrays
         @Child private JSToObjectNode toObjectNode;
         @Child private JSGetLengthNode getLengthNode;
+        @Child private TypedArrayLengthNode typedArrayLengthNode;
         @Child private ArraySpeciesConstructorNode arraySpeciesCreateNode;
         @Child private IsCallableNode isCallableNode;
         protected final BranchProfile errorBranch = BranchProfile.create();
@@ -394,7 +396,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected long getLength(Object thisObject) {
             if (isTypedArrayImplementation) {
                 // %TypedArray%.prototype.* don't access the "length" property
-                return ((JSTypedArrayObject) thisObject).getLength();
+                if (typedArrayLengthNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    typedArrayLengthNode = insert(TypedArrayLengthNode.create());
+                }
+                return typedArrayLengthNode.execute(null, (JSTypedArrayObject) thisObject, getContext());
             } else {
                 if (getLengthNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
