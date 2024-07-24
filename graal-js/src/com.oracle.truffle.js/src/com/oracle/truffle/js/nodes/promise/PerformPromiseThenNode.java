@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JobCallback;
@@ -84,8 +85,9 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile unhandledProf,
                     @Cached InlinedBranchProfile growProfile) {
         JSRealm realm = getRealm();
-        JobCallback onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? realm.getAgent().hostMakeJobCallback(onFulfilled) : null;
-        JobCallback onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? realm.getAgent().hostMakeJobCallback(onRejected) : null;
+        JSAgent agent = realm.getAgent();
+        JobCallback onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? agent.hostMakeJobCallback(onFulfilled) : null;
+        JobCallback onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? agent.hostMakeJobCallback(onRejected) : null;
         assert resultCapability != null || (onFulfilledHandler != null && onRejectedHandler != null);
         PromiseReactionRecord fulfillReaction = PromiseReactionRecord.create(resultCapability, onFulfilledHandler, true);
         PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
@@ -104,7 +106,7 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
             Object reason = promise.getPromiseResult();
             assert reason != null;
             if (unhandledProf.profile(this, !promise.isHandled())) {
-                context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
+                context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance, agent);
             }
             JSFunctionObject job = getPromiseReactionJob(rejectReaction, reason);
             context.enqueuePromiseJob(realm, job);

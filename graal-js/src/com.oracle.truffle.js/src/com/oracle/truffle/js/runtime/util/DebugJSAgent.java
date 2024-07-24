@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSInterruptedExecutionException;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -84,8 +83,8 @@ public class DebugJSAgent extends JSAgent {
 
     static final int POLL_TIMEOUT_MS = 100;
 
-    public DebugJSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock) {
-        super(promiseRejectionTracker, canBlock);
+    public DebugJSAgent(boolean canBlock) {
+        super(canBlock);
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgents = new LinkedList<>();
         this.queueLock = new ReentrantLock();
