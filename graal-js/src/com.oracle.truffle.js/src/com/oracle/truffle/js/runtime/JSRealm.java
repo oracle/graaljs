@@ -917,9 +917,6 @@ public class JSRealm {
         if (context.getLanguageOptions().webAssembly()) {
             if (!isWasmAvailable()) {
                 String msg = "WebAssembly API enabled but wasm language cannot be accessed! Did you forget to set the --polyglot flag?";
-                if (JSConfig.SubstrateVM) {
-                    msg += " In native mode, you might have to rebuild libpolyglot with 'gu rebuild-images libpolyglot'.";
-                }
                 throw new IllegalStateException(msg);
             }
             LanguageInfo wasmLanguageInfo = truffleLanguageEnv.getInternalLanguages().get("wasm");
