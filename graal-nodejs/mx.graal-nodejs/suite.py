@@ -164,6 +164,7 @@ suite = {
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npm>",
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npx>",
         ],
+        "bin/<cmd:node-polyglot-get>": "file:../graal-js/mx.graal-js/graalvm_launchers/<cmd:js-polyglot-get>",
       },
       "os" : {
         "windows" : {},

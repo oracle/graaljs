@@ -52,6 +52,8 @@ local ci = import '../ci.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'js', '--type=jvm']],
       ['${STANDALONE_HOME}/bin/js', '--jvm', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '--jvm', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      # maven-downloader smoke test
+      ['VERBOSE_GRAALVM_LAUNCHERS=true', '${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
     ],
     timelimit: '30:00',
   },
@@ -60,8 +62,8 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['mx', 'build'],
       ['mx', '-v', 'maven-deploy', '--suppress-javadoc', '--validate', 'full', '--licenses', 'UPL,MIT', '--dry-run', 'ossrh', 'https://this-is-only-a-test'],
-      ['mx', '-p', '../../graal/vm', '--dynamicimports', '/tools,/compiler,/graal-js', 'build'],
-      ['mx', '-p', '../../graal/vm', '--dynamicimports', '/tools,/regex,/compiler,/truffle,/sdk,/graal-js', 'maven-deploy', '--suppress-javadoc', '--all-suites', '--version-string', 'GATE'],
+      ['mx', '-p', '../../graal/vm', '--dynamicimports', '/tools,/compiler,/graal-js,/wasm', 'build'],
+      ['mx', '-p', '../../graal/vm', '--dynamicimports', '/tools,/regex,/compiler,/truffle,/sdk,/graal-js,/wasm', 'maven-deploy', '--suppress-javadoc', '--all-suites', '--version-string', 'GATE'],
       ['cd', 'test/maven-demo'],
       ['mvn', '-Dgraalvm.version=GATE', '--batch-mode', 'package'],
       ['mvn', '-Dgraalvm.version=GATE', '--batch-mode', 'exec:exec'],

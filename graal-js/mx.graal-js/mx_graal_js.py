@@ -550,6 +550,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     truffle_jars=[
         'graal-js:GRAALJS',
+        'sdk:MAVEN_DOWNLOADER',
     ],
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',
