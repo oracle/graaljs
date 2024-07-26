@@ -24,3 +24,6 @@ const bytes = new Uint8Array([
 
 const wasmModule = new WebAssembly.Module(bytes);
 assertThrows(() => new WebAssembly.Instance(wasmModule, {}), TypeError, 'Imported module "m" is not an object');
+
+assertThrows(() => new WebAssembly.Instance(wasmModule, {m: {}}), WebAssembly.LinkError, 'Import #0 "m" "f": Imported value is not callable');
+assertThrows(() => new WebAssembly.Instance(wasmModule, {m: {f: 404}}), WebAssembly.LinkError, 'Import #0 "m" "f": Imported value is not callable');
