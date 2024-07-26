@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -293,7 +294,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
                 if (Strings.equals(Strings.FUNCTION, externType)) {
                     if (!JSRuntime.isCallable(value)) {
-                        throw Errors.createLinkError("Imported value is not callable");
+                        throw createLinkErrorImport(i, module, name, "Imported value is not callable");
                     }
                     if (JSWebAssembly.isExportedFunction(value)) {
                         wasmValue = JSWebAssembly.getExportedFunction((JSDynamicObject) value);
@@ -308,16 +309,16 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         TruffleString valueType = asTString(descriptorInterop.readMember(descriptor, "type"));
                         boolean isI64 = JSWebAssemblyValueTypes.isI64(valueType);
                         if (!context.getLanguageOptions().wasmBigInt() && isI64) {
-                            throw Errors.createLinkError("Can't import the value of i64 WebAssembly.Global");
+                            throw createLinkErrorImport(i, module, name, "Can't import the value of i64 WebAssembly.Global");
                         }
                         if (isI64 && isNumber) {
-                            throw Errors.createLinkError("Value of valtype i64 must be BigInt");
+                            throw createLinkErrorImport(i, module, name, "Value of valtype i64 must be BigInt");
                         }
                         if (!isI64 && isBigInt) {
-                            throw Errors.createLinkError("BigInt can only be stored in valtype i64");
+                            throw createLinkErrorImport(i, module, name, "BigInt can only be stored in valtype i64");
                         }
                         if (JSWebAssemblyValueTypes.isV128(valueType)) {
-                            throw Errors.createLinkError("Values of valtype v128 cannot be imported from JS");
+                            throw createLinkErrorImport(i, module, name, "Values of valtype v128 cannot be imported from JS");
                         }
                         Object webAssemblyValue = ToWebAssemblyValueNodeGen.getUncached().execute(value, valueType);
                         try {
@@ -329,20 +330,20 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     } else if (JSWebAssemblyGlobal.isJSWebAssemblyGlobal(value)) {
                         wasmValue = ((JSWebAssemblyGlobalObject) value).getWASMGlobal();
                     } else {
-                        throw Errors.createLinkError("Imported value is not WebAssembly.Global object");
+                        throw createLinkErrorImport(i, module, name, "Imported value is not a WebAssembly.Global object");
                     }
                 } else if (Strings.equals(Strings.MEMORY, externType)) {
                     if (JSWebAssemblyMemory.isJSWebAssemblyMemory(value)) {
                         wasmValue = ((JSWebAssemblyMemoryObject) value).getWASMMemory();
                     } else {
-                        throw Errors.createLinkError("Imported value is not WebAssembly.Memory object");
+                        throw createLinkErrorImport(i, module, name, "Imported value is not a WebAssembly.Memory object");
                     }
                 } else {
                     assert Strings.equals(Strings.TABLE, externType) : externType;
                     if (JSWebAssemblyTable.isJSWebAssemblyTable(value)) {
                         wasmValue = ((JSWebAssemblyTableObject) value).getWASMTable();
                     } else {
-                        throw Errors.createLinkError("Imported value is not WebAssembly.Table object");
+                        throw createLinkErrorImport(i, module, name, "Imported value is not a WebAssembly.Table object");
                     }
                 }
 
@@ -359,6 +360,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         } catch (InteropException ex) {
             throw Errors.shouldNotReachHere(ex);
         }
+    }
+
+    @TruffleBoundary
+    private static JSException createLinkErrorImport(long index, TruffleString module, TruffleString name, String message) {
+        return Errors.createLinkError("Import #" + index + " \"" + module + "\" \"" + name + "\": " + message);
     }
 
     @TruffleBoundary
