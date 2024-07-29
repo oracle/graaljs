@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.builtins.intl;
 
+import java.text.Format;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 import org.graalvm.shadowed.com.ibm.icu.impl.ICUResourceBundle;
+import org.graalvm.shadowed.com.ibm.icu.text.ConstrainedFieldPosition;
 import org.graalvm.shadowed.com.ibm.icu.text.ListFormatter;
-import org.graalvm.shadowed.com.ibm.icu.text.SimpleFormatter;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import org.graalvm.shadowed.com.ibm.icu.util.UResourceBundle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -194,33 +195,28 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
 
     @TruffleBoundary
     public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSListFormatObject listFormatObj, List<String> list) {
-        if (list.size() == 0) {
+        if (list.isEmpty()) {
             return JSArray.createConstantEmptyArray(context, realm);
         }
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
-        String pattern = listFormatter.getPatternForNumItems(list.size());
-        int[] offsets = new int[list.size()];
-        SimpleFormatter simpleFormatter = SimpleFormatter.compile(pattern);
-        StringBuilder formatted = new StringBuilder();
-        simpleFormatter.formatAndAppend(formatted, offsets, list.toArray(new String[]{}));
-        int i = 0;
-        int idx = 0;
+        ListFormatter.FormattedList formattedList = listFormatter.formatToValue(list);
         List<Object> resultParts = new ArrayList<>();
-        for (String element : list) {
-            int nextOffset = offsets[idx++];
-            if (i < nextOffset) { // literal
-                resultParts.add(IntlUtil.makePart(context, realm, IntlUtil.LITERAL, formatted.substring(i, nextOffset)));
-                i = nextOffset;
+
+        ConstrainedFieldPosition cfPos = new ConstrainedFieldPosition();
+        while (formattedList.nextPosition(cfPos)) {
+            Format.Field field = cfPos.getField();
+            String type;
+            if (field == ListFormatter.Field.LITERAL) {
+                type = IntlUtil.LITERAL;
+            } else if (field == ListFormatter.Field.ELEMENT) {
+                type = IntlUtil.ELEMENT;
+            } else {
+                continue;
             }
-            if (i == nextOffset) { // element
-                int elemLength = element.length();
-                resultParts.add(IntlUtil.makePart(context, realm, IntlUtil.ELEMENT, formatted.substring(i, i + elemLength)));
-                i += elemLength;
-            }
+            String value = formattedList.subSequence(cfPos.getStart(), cfPos.getLimit()).toString();
+            resultParts.add(IntlUtil.makePart(context, realm, type, value));
         }
-        if (i < formatted.length()) {
-            resultParts.add(IntlUtil.makePart(context, realm, IntlUtil.LITERAL, formatted.substring(i, formatted.length())));
-        }
+
         return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
