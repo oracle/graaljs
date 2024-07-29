@@ -55,7 +55,8 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Converts a JS array to an Object[]. If the array is sparse or has holes, it is compacted to a
- * dense array that consists of only actual elements.
+ * dense array that consists of only actual elements. Note that this node assumes that the array has
+ * only fast own elements and no prototype elements.
  *
  * Used by {@code Array.prototype.sort}.
  */

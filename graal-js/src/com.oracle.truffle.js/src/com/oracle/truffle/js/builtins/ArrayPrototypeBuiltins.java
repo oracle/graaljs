@@ -1065,7 +1065,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isArrayWithoutHolesAndNotSealed(thisObj, isArrayNode, hasHolesNode, isSealedNode)"}, limit = "1")
         protected Object shiftWithoutHoles(JSDynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
-                        @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
+                        @Shared @Cached("createHasHolesOrUnused()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared("isSealed") @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Cached InlinedExactClassProfile arrayTypeProfile,
                         @Shared("lengthIsZero") @Cached InlinedConditionProfile lengthIsZero,
@@ -1094,7 +1094,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isArrayWithHolesOrSealed(thisObj, isArrayNode, hasHolesNode, isSealedNode)"}, limit = "1")
         protected Object shiftWithHoles(JSDynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
-                        @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
+                        @Shared @Cached("createHasHolesOrUnused()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared("isSealed") @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
                         @Shared("lengthIsZero") @Cached InlinedConditionProfile lengthIsZero) {
@@ -1205,7 +1205,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Child protected IsArrayNode isArrayNode = IsArrayNode.createIsArray();
-        @Child protected TestArrayNode hasHolesNode = TestArrayNode.createHasHoles();
+        @Child protected TestArrayNode hasHolesNode = TestArrayNode.createHasHolesOrUnused();
 
         protected boolean isFastPath(Object thisObj) {
             boolean isArray = isArrayNode.execute(thisObj);
@@ -3172,7 +3172,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected final Object reverseJSArray(JSArrayObject thisObj,
-                        @Shared @Cached("createHasHoles()") TestArrayNode hasHolesNode,
+                        @Shared @Cached("createHasHolesOrUnused()") TestArrayNode hasHolesNode,
                         @Shared @Cached InlinedConditionProfile bothExistProfile,
                         @Shared @Cached InlinedConditionProfile onlyUpperExistsProfile,
                         @Shared @Cached InlinedConditionProfile onlyLowerExistsProfile) {
@@ -3182,7 +3182,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(replaces = "reverseJSArray")
         protected final Object reverseGeneric(Object thisObj,
-                        @Shared @Cached("createHasHoles()") TestArrayNode hasHolesNode,
+                        @Shared @Cached("createHasHolesOrUnused()") TestArrayNode hasHolesNode,
                         @Shared @Cached InlinedConditionProfile bothExistProfile,
                         @Shared @Cached InlinedConditionProfile onlyUpperExistsProfile,
                         @Shared @Cached InlinedConditionProfile onlyLowerExistsProfile) {
