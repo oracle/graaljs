@@ -50,7 +50,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
@@ -64,26 +64,27 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
     protected JSArrayToDenseObjectArrayNode() {
     }
 
-    public abstract Object[] executeObjectArray(JSDynamicObject array, ScriptArray arrayType, long length);
+    public abstract Object[] executeObjectArray(JSArrayObject array, ScriptArray arrayType, long length);
 
-    @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()", "!cachedArrayType.hasHoles(array)",
-                    "cachedArrayType.firstElementIndex(array)==0"}, limit = "5")
-    protected static Object[] fromDenseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
+    @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()"}, limit = "5")
+    protected static Object[] fromDenseArray(JSArrayObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
                     @Cached("create(getJSContext())") @Shared ReadElementNode readNode) {
         assert JSRuntime.longIsRepresentableAsInt(length);
-        int iLen = (int) length;
-
-        Object[] arr = new Object[iLen];
-        for (int index = 0; index < iLen; index++) {
-            Object value = readNode.executeWithTargetAndIndex(array, index);
-            arr[index] = value;
+        long start = cachedArrayType.firstElementIndex(array);
+        long end = cachedArrayType.lastElementIndex(array) + 1;
+        Object[] arr = new Object[(int) (end - start)];
+        int toIndex = 0;
+        for (long fromIndex = start; fromIndex < end; fromIndex++) {
+            assert cachedArrayType.hasElement(array, fromIndex);
+            Object value = readNode.executeWithTargetAndIndex(array, fromIndex);
+            arr[toIndex++] = value;
         }
         return arr;
     }
 
-    @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "cachedArrayType.isHolesType() || cachedArrayType.hasHoles(array)"}, limit = "5")
-    protected static Object[] fromSparseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
+    @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "cachedArrayType.isHolesType()"}, limit = "5")
+    protected static Object[] fromSparseArray(JSArrayObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
                     @Bind("this") Node node,
                     @Cached("create(getJSContext())") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
@@ -99,11 +100,11 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(replaces = {"fromDenseArray", "fromSparseArray"})
-    protected Object[] doUncached(JSDynamicObject array, ScriptArray arrayType, long length,
+    protected Object[] doUncached(JSArrayObject array, ScriptArray arrayType, long length,
                     @Cached("create(getJSContext())") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached("create(getJSContext())") @Shared ReadElementNode readNode,
                     @Cached @Shared InlinedBranchProfile growProfile) {
-        if (arrayType.isHolesType() || arrayType.hasHoles(array) || arrayType.firstElementIndex(array) != 0) {
+        if (arrayType.isHolesType()) {
             return fromSparseArray(array, arrayType, length, arrayType, this, nextElementIndexNode, growProfile);
         } else {
             return fromDenseArray(array, arrayType, length, arrayType, readNode);
