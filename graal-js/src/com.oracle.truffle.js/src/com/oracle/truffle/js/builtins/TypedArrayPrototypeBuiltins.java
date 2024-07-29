@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
 import java.nio.ByteBuffer;
@@ -114,6 +113,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -426,8 +426,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          * @param offset destination array offset
          * @return void
          */
-        @Specialization(guards = "isJSArrayBufferView(targetObj)")
-        protected Object set(JSDynamicObject targetObj, Object array, Object offset) {
+        @Specialization
+        protected Object set(JSTypedArrayObject targetObj, Object array, Object offset) {
             long targetOffsetLong = toInteger(offset);
             if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
                 needErrorBranch.enter();
@@ -438,7 +438,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (arrayIsArrayBufferView.profile(JSArrayBufferView.isJSArrayBufferView(array))) {
                 setArrayBufferView(targetObj, (JSDynamicObject) array, targetOffset);
             } else if (arrayIsFastArray.profile(JSArray.isJSFastArray(array))) {
-                setFastArray(targetObj, (JSDynamicObject) array, targetOffset);
+                setFastArray(targetObj, (JSArrayObject) array, targetOffset);
             } else {
                 setOther(targetObj, array, targetOffset);
             }
@@ -451,16 +451,17 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
-        private void setFastArray(JSDynamicObject thisObj, JSDynamicObject array, int offset) {
+        private void setFastArray(JSTypedArrayObject thisObj, JSArrayObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert JSArray.isJSFastArray(array);
-            ScriptArray sourceArray = sourceArrayProf.profile(arrayGetArrayType(array));
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
+            ScriptArray sourceArray = sourceArrayProf.profile(array.getArrayType());
+            TypedArray targetArray = targetArrayProf.profile(thisObj.getArrayType());
             long sourceLen = sourceArray.length(array);
             rangeCheck(0, sourceLen, offset, targetArray.length(thisObj));
 
             boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
             for (int i = 0, j = offset; i < sourceLen; i++, j++) {
+                sourceArray = sourceArrayProf.profile(array.getArrayType());
                 Object value = sourceArray.getElement(array, i);
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
@@ -471,14 +472,15 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
         }
 
-        private void setOther(JSDynamicObject thisObj, Object array, int offset) {
+        private void setOther(JSTypedArrayObject thisObj, Object array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSFastArray(array);
+            TypedArray targetArray = targetArrayProf.profile(thisObj.getArrayType());
+            long targetLength = targetArray.length(thisObj);
             Object src = toObject(array);
             long srcLength = objectGetLength(src);
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
 
-            rangeCheck(0, srcLength, offset, targetArray.length(thisObj));
+            rangeCheck(0, srcLength, offset, targetLength);
 
             boolean isJSObject = JSDynamicObject.isJSDynamicObject(src);
             boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
