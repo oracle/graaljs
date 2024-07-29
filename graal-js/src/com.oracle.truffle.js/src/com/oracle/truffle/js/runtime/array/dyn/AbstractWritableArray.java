@@ -828,6 +828,19 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return this;
     }
 
+    @Override
+    public boolean hasHoles(JSDynamicObject object) {
+        assert arrayGetHoleCount(object) == 0 : arrayGetHoleCount(object);
+        return false;
+    }
+
+    @Override
+    public boolean hasHolesOrUnused(JSDynamicObject object) {
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        return usedLength < length || hasHoles(object);
+    }
+
     protected final int countHoles(JSDynamicObject object) {
         assert isHolesType();
         int arrayOffset = getArrayOffset(object);
