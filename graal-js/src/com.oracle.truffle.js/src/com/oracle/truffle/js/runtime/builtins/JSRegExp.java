@@ -124,7 +124,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
 
-    public static final int MAX_FLAGS_LENGTH = 7; // "dgimsuy"
+    public static final int MAX_FLAGS_LENGTH = 8; // "dgimsuvy"
 
     /**
      * Since we cannot use nodes here, access to this property is special-cased in
