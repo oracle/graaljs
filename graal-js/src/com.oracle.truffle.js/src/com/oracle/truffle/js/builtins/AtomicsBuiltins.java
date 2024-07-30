@@ -63,6 +63,7 @@ import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsWaitNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
@@ -213,6 +214,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
     public abstract static class AtomicsOperationNode extends JSBuiltinNode {
 
         private final BranchProfile outOfBoundsBranch = BranchProfile.create();
+        private final TypedArrayLengthNode typedArrayLengthNode = TypedArrayLengthNode.create();
 
         public AtomicsOperationNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -258,7 +260,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return ta instanceof DirectBigUint64Array;
         }
 
-        protected void checkOutOfBounds(JSTypedArrayObject object) {
+        protected final void checkOutOfBounds(JSTypedArrayObject object) {
             if (JSArrayBufferView.isOutOfBounds(object, getContext())) {
                 outOfBoundsBranch.enter();
                 throw Errors.createTypeErrorOutOfBoundsTypedArray();
@@ -274,12 +276,16 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return (int) convertedIndex;
         }
 
-        protected void revalidateAtomicAccess(JSTypedArrayObject target, int convertedIndex) {
-            checkOutOfBounds(target);
-            validateAtomicAccess(target.getLength(), convertedIndex);
+        protected final int typedArrayLength(JSTypedArrayObject target) {
+            return typedArrayLengthNode.execute(null, target, getContext());
         }
 
-        protected JSTypedArrayObject validateTypedArray(Object object) {
+        protected final void revalidateAtomicAccess(JSTypedArrayObject target, int convertedIndex) {
+            checkOutOfBounds(target);
+            validateAtomicAccess(typedArrayLength(target), convertedIndex);
+        }
+
+        protected final JSTypedArrayObject validateTypedArray(Object object) {
             if (!JSArrayBufferView.isJSArrayBufferView(object)) {
                 throw createTypeErrorNotTypedArray();
             }
@@ -288,7 +294,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return typedArrayObject;
         }
 
-        protected TypedArray validateIntegerTypedArray(JSTypedArrayObject typedArrayObject, boolean waitable) {
+        protected final TypedArray validateIntegerTypedArray(JSTypedArrayObject typedArrayObject, boolean waitable) {
             TypedArray ta = JSArrayBufferView.typedArrayGetArrayType(typedArrayObject);
             if (waitable) {
                 if (!(ta instanceof DirectInt32Array || ta instanceof DirectBigInt64Array || ta instanceof Int32Array || ta instanceof BigInt64Array || ta instanceof InteropInt32Array ||
@@ -456,7 +462,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected int doInt32ArrayIntObjIdx(JSTypedArrayObject target, Object index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             return doCASInt(target, intIndex, expected, replacement, (TypedArray.DirectInt32Array) ta);
         }
 
@@ -464,7 +470,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected int doInt32ArrayObjObjIdx(JSTypedArrayObject target, Object index, Object expected, Object replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             return doCASInt(target, intIndex, toInt(expected), toInt(replacement), (TypedArray.DirectInt32Array) ta);
         }
 
@@ -472,7 +478,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected BigInt doBigInt64ArrayObjObjIdx(JSTypedArrayObject target, Object index, Object expected, Object replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             return doCASBigInt(target, intIndex, toBigInt(expected).toBigInt64(), toBigInt(replacement), (TypedArray.DirectBigInt64Array) ta);
         }
 
@@ -480,7 +486,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected BigInt doBigUint64ArrayObjObjIdx(JSTypedArrayObject target, Object index, Object expected, Object replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             return doCASBigInt(target, intIndex, toBigInt(expected).toBigUint64(), toBigInt(replacement), (TypedArray.DirectBigUint64Array) ta);
         }
 
@@ -492,7 +498,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             boolean sharedArrayBuffer = isSharedBufferView(target);
             TypedArray ta = validateIntegerTypedArray(target, false);
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
 
             BigInt expectedBigInt = null;
             BigInt replacementBigInt = null;
@@ -631,7 +637,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected int doInt32ArrayObjObjIdx(JSTypedArrayObject target, Object index,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             return SharedMemorySync.doVolatileGet(target, intIndex, (DirectInt32Array) ta);
         }
 
@@ -641,7 +647,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             TypedArray ta = validateIntegerTypedArray(target, false);
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             revalidateAtomicAccess(target, intIndex);
 
             if (ta instanceof DirectInt8Array || ta instanceof Int8Array || ta instanceof InteropInt8Array) {
@@ -773,7 +779,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected Object doSharedInt32ArrayObjIdx(JSTypedArrayObject target, Object index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             SharedMemorySync.doVolatilePut(target, intIndex, value, (DirectInt32Array) ta);
             return value;
         }
@@ -782,7 +788,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected Object doSharedBigInt64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             BigInt biValue = toBigIntChecked(value, target, intIndex);
             SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue, (DirectBigInt64Array) ta);
             return biValue;
@@ -792,7 +798,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected Object doSharedBigUint64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             BigInt biValue = toBigIntChecked(value, target, intIndex);
             SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue, (DirectBigUint64Array) ta);
             return biValue;
@@ -804,7 +810,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             TypedArray ta = validateIntegerTypedArray(target, false);
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
 
             if (ta instanceof DirectInt8Array || ta instanceof DirectUint8Array ||
                             ta instanceof Int8Array || ta instanceof Uint8Array ||
@@ -961,7 +967,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected int doSharedInt32ArrayObjIdx(JSTypedArrayObject target, Object index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             return atomicDoInt(target, intIndex, value, (DirectInt32Array) ta);
         }
 
@@ -969,7 +975,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected BigInt doSharedBigInt64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             return atomicDoBigInt(target, intIndex, toBigInt(value), (DirectBigInt64Array) ta);
         }
 
@@ -977,7 +983,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected BigInt doSharedBigUint64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
                         @Cached @Shared JSToIndexNode toIndexNode) {
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
             return atomicDoBigInt(target, intIndex, toBigInt(value), (DirectBigUint64Array) ta);
         }
 
@@ -988,7 +994,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             TypedArray ta = validateIntegerTypedArray(target, false);
-            int intIndex = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
 
             if (!isSharedBufferView(target)) {
                 notSharedArrayBuffer.enter(this);
@@ -1076,7 +1082,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             validateIntegerTypedArray(target, true);
-            int i = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int i = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
 
             int c = Integer.MAX_VALUE;
             if (count != Undefined.instance) {
@@ -1130,7 +1136,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 notSharedArrayBuffer.enter();
                 throw createTypeErrorNotSharedArray();
             }
-            int i = validateAtomicAccess(target.getLength(), toIndexNode.executeLong(index));
+            int i = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
 
             boolean isInt32 = isInt32SharedBufferView(target);
             long v = isInt32 ? toInt32(value) : toBigInt(value).longValue();
