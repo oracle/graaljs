@@ -71,6 +71,8 @@ class DebugOptions : public Options {
   bool allow_attaching_debugger = true;
   // --inspect
   bool inspector_enabled = false;
+  // --inspect-wait
+  bool inspect_wait = false;
   // --debug
   bool deprecated_debug = false;
   // --inspect-brk
@@ -93,6 +95,10 @@ class DebugOptions : public Options {
   }
 
   bool wait_for_connect() const {
+    return break_first_line || break_node_first_line || inspect_wait;
+  }
+
+  bool should_break_first_line() const {
     return break_first_line || break_node_first_line;
   }
 
@@ -166,6 +172,7 @@ class EnvironmentOptions : public Options {
   uint64_t test_runner_concurrency = 0;
   uint64_t test_runner_timeout = 0;
   bool test_runner_coverage = false;
+  bool test_runner_force_exit = false;
   std::vector<std::string> test_name_pattern;
   std::vector<std::string> test_reporter;
   std::vector<std::string> test_reporter_destination;
@@ -302,6 +309,8 @@ class PerProcessOptions : public Options {
   bool openssl_legacy_provider = false;
   bool openssl_shared_config = false;
 #endif
+
+  bool disable_wasm_trap_handler = false;
 
   // Per-process because reports can be triggered outside a known V8 context.
   bool report_on_fatalerror = false;

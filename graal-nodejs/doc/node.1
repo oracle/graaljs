@@ -142,6 +142,11 @@ is `delete`, the property will be removed entirely. If
 is `throw`, accesses to the property will throw an exception with the code
 `ERR_PROTO_ACCESS`.
 .
+.It Fl -disable-wasm-trap-handler Ns = Ns Ar mode
+Disable trap-handler-based WebAssembly bound checks and fall back to
+inline bound checks so that WebAssembly can be run with limited virtual
+memory.
+.
 .It Fl -disallow-code-generation-from-strings
 Make built-in language features like `eval` and `new Function` that generate
 code from strings throw an exception instead. This does not affect the Node.js
@@ -281,6 +286,11 @@ and
 .Sy http .
 Default is
 .Sy stderr,http .
+.
+.It Fl -inspect-wait Ns = Ns Ar [host:]port
+Activate inspector on
+.Ar host:port
+and wait for debugger to be attached.
 .
 .It Fl -inspect Ns = Ns Ar [host:]port
 Activate inspector on
@@ -424,6 +434,10 @@ Starts the Node.js command line test runner.
 .It Fl -test-concurrency
 The maximum number of test files that the test runner CLI will execute
 concurrently.
+.
+.It Fl -test-force-exit
+Configures the test runner to exit the process once all known tests have
+finished executing even if the event loop would otherwise remain active.
 .
 .It Fl -test-name-pattern
 A regular expression that configures the test runner to only execute tests
@@ -793,8 +807,3 @@ GitHub repository and issue tracker:
 IRC (general questions):
 .Sy "libera.chat #node.js"
 (unofficial)
-.
-.\"======================================================================
-.Sh AUTHORS
-Written and maintained by 1000+ contributors:
-.Sy https://github.com/nodejs/node/blob/HEAD/AUTHORS

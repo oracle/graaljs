@@ -11,10 +11,12 @@ const {
   FunctionPrototype,
   MathMax,
   Number,
+  ObjectEntries,
   ObjectSeal,
   PromisePrototypeThen,
   PromiseResolve,
   SafePromisePrototypeFinally,
+  StringPrototypeStartsWith,
   ReflectApply,
   RegExpPrototypeExec,
   SafeMap,
@@ -58,6 +60,7 @@ const {
 } = require('internal/validators');
 const { setTimeout } = require('timers');
 const { TIMEOUT_MAX } = require('internal/timers');
+const { fileURLToPath } = require('internal/url');
 const { availableParallelism } = require('os');
 const { bigint: hrtime } = process.hrtime;
 const kCallbackAndPromisePresent = 'callbackAndPromisePresent';
@@ -76,8 +79,38 @@ const kHookNames = ObjectSeal(['before', 'after', 'beforeEach', 'afterEach']);
 const kUnwrapErrors = new SafeSet()
   .add(kTestCodeFailure).add(kHookFailure)
   .add('uncaughtException').add('unhandledRejection');
-const { testNamePatterns, testOnlyFlag } = parseCommandLine();
+const {
+  forceExit,
+  sourceMaps,
+  testNamePatterns,
+  testOnlyFlag,
+} = parseCommandLine();
 let kResistStopPropagation;
+let assertObj;
+let findSourceMap;
+
+const kRunOnceOptions = { __proto__: null, preserveReturnValue: true };
+
+function lazyFindSourceMap(file) {
+  if (findSourceMap === undefined) {
+    ({ findSourceMap } = require('internal/source_map/source_map_cache'));
+  }
+
+  return findSourceMap(file);
+}
+
+function lazyAssertObject() {
+  if (assertObj === undefined) {
+    assertObj = new SafeMap();
+    const assert = require('assert');
+    for (const { 0: key, 1: value } of ObjectEntries(assert)) {
+      if (typeof value === 'function') {
+        assertObj.set(value, key);
+      }
+    }
+  }
+  return assertObj;
+}
 
 function stopTest(timeout, signal) {
   const deferred = createDeferredPromise();
@@ -118,7 +151,25 @@ function stopTest(timeout, signal) {
   return deferred.promise;
 }
 
+class TestPlan {
+  constructor(count) {
+    validateUint32(count, 'count', 0);
+    this.expected = count;
+    this.actual = 0;
+  }
+
+  check() {
+    if (this.actual !== this.expected) {
+      throw new ERR_TEST_FAILURE(
+        `plan expected ${this.expected} assertions but received ${this.actual}`,
+        kTestCodeFailure,
+      );
+    }
+  }
+}
+
 class TestContext {
+  #assert;
   #test;
 
   constructor(test) {
@@ -145,6 +196,36 @@ class TestContext {
     this.#test.diagnostic(message);
   }
 
+  plan(count) {
+    if (this.#test.plan !== null) {
+      throw new ERR_TEST_FAILURE(
+        'cannot set plan more than once',
+        kTestCodeFailure,
+      );
+    }
+
+    this.#test.plan = new TestPlan(count);
+  }
+
+  get assert() {
+    if (this.#assert === undefined) {
+      const { plan } = this.#test;
+      const assertions = lazyAssertObject();
+      const assert = { __proto__: null };
+
+      this.#assert = assert;
+      for (const { 0: method, 1: name } of assertions.entries()) {
+        assert[name] = (...args) => {
+          if (plan !== null) {
+            plan.actual++;
+          }
+          return ReflectApply(method, assert, args);
+        };
+      }
+    }
+    return this.#assert;
+  }
+
   get mock() {
     this.#test.mock ??= new MockTracker();
     return this.#test.mock;
@@ -167,6 +248,11 @@ class TestContext {
       __proto__: null,
       loc: getCallerLocation(),
     };
+
+    const { plan } = this.#test;
+    if (plan !== null) {
+      plan.actual++;
+    }
 
     const subtest = this.#test.createSubtest(
       // eslint-disable-next-line no-use-before-define
@@ -222,7 +308,7 @@ class Test extends AsyncResource {
     super('Test');
 
     let { fn, name, parent, skip } = options;
-    const { concurrency, loc, only, timeout, todo, signal } = options;
+    const { concurrency, loc, only, timeout, todo, signal, plan } = options;
 
     if (typeof fn !== 'function') {
       fn = noop;
@@ -333,6 +419,8 @@ class Test extends AsyncResource {
     this.fn = fn;
     this.harness = null; // Configured on the root test by the test harness.
     this.mock = null;
+    this.plan = null;
+    this.expectedAssertions = plan;
     this.cancelled = false;
     this.skipped = skip !== undefined && skip !== false;
     this.isTodo = todo !== undefined && todo !== false;
@@ -365,6 +453,21 @@ class Test extends AsyncResource {
         column: loc[1],
         file: loc[2],
       };
+
+      if (sourceMaps === true) {
+        const map = lazyFindSourceMap(this.loc.file);
+        const entry = map?.findEntry(this.loc.line - 1, this.loc.column - 1);
+
+        if (entry !== undefined) {
+          this.loc.line = entry.originalLine + 1;
+          this.loc.column = entry.originalColumn + 1;
+          this.loc.file = entry.originalSource;
+        }
+      }
+
+      if (StringPrototypeStartsWith(this.loc.file, 'file://')) {
+        this.loc.file = fileURLToPath(this.loc.file);
+      }
     }
   }
 
@@ -495,7 +598,7 @@ class Test extends AsyncResource {
     // eslint-disable-next-line no-use-before-define
     const hook = new TestHook(fn, options);
     if (name === 'before' || name === 'after') {
-      hook.run = runOnce(hook.run);
+      hook.run = runOnce(hook.run, kRunOnceOptions);
     }
     if (name === 'before' && this.startTime !== null) {
       // Test has already started, run the hook immediately
@@ -553,7 +656,7 @@ class Test extends AsyncResource {
     // it. Otherwise, return a Promise to the caller and mark the test as
     // pending for later execution.
     this.reporter.enqueue(this.nesting, this.loc, this.name);
-    if (!this.parent.hasConcurrency()) {
+    if (!this.root.harness.allowTestsToRun || !this.parent.hasConcurrency()) {
       const deferred = createDeferredPromise();
 
       deferred.test = this;
@@ -610,6 +713,11 @@ class Test extends AsyncResource {
 
     const hookArgs = this.getRunArgs();
     const { args, ctx } = hookArgs;
+
+    if (this.plan === null && this.expectedAssertions) {
+      ctx.plan(this.expectedAssertions);
+    }
+
     const after = async () => {
       if (this.hooks.after.length > 0) {
         await this.runHook('after', hookArgs);
@@ -619,7 +727,7 @@ class Test extends AsyncResource {
       if (this.parent?.hooks.afterEach.length > 0 && !this.skipped) {
         await this.parent.runHook('afterEach', hookArgs);
       }
-    });
+    }, kRunOnceOptions);
 
     let stopPromise;
 
@@ -661,7 +769,7 @@ class Test extends AsyncResource {
         this.postRun();
         return;
       }
-
+      this.plan?.check();
       this.pass();
       await afterEach();
       await after();
@@ -696,6 +804,16 @@ class Test extends AsyncResource {
       // This helps catch any asynchronous activity that occurs after the tests
       // have finished executing.
       this.postRun();
+    } else if (forceExit) {
+      // This is the root test, and all known tests and hooks have finished
+      // executing. If the user wants to force exit the process regardless of
+      // any remaining ref'ed handles, then do that now. It is theoretically
+      // possible that a ref'ed handle could asynchronously create more tests,
+      // but the user opted into this behavior.
+      this.reporter.once('close', () => {
+        process.exit();
+      });
+      this.harness.teardown();
     }
   }
 
@@ -744,12 +862,11 @@ class Test extends AsyncResource {
       if (this.parent === this.root &&
           this.root.activeSubtests === 0 &&
           this.root.pendingSubtests.length === 0 &&
-          this.root.readySubtests.size === 0 &&
-          this.root.hooks.after.length > 0) {
-        // This is done so that any global after() hooks are run. At this point
-        // all of the tests have finished running. However, there might be
-        // ref'ed handles keeping the event loop alive. This gives the global
-        // after() hook a chance to clean them up.
+          this.root.readySubtests.size === 0) {
+        // At this point all of the tests have finished running. However, there
+        // might be ref'ed handles keeping the event loop alive. This gives the
+        // global after() hook a chance to clean them up. The user may also
+        // want to force the test runner to exit despite ref'ed handles.
         this.root.run();
       }
     } else if (!this.reported) {
@@ -926,7 +1043,7 @@ class Suite extends Test {
   constructor(options) {
     super(options);
 
-    if (testNamePatterns !== null && !options.skip && !options.todo) {
+    if (testNamePatterns !== null && !options.skip) {
       this.fn = options.fn || this.fn;
       this.skipped = false;
     }
@@ -964,7 +1081,7 @@ class Suite extends Test {
     const hookArgs = this.getRunArgs();
 
     let stopPromise;
-    const after = runOnce(() => this.runHook('after', hookArgs));
+    const after = runOnce(() => this.runHook('after', hookArgs), kRunOnceOptions);
     try {
       this.parent.activeSubtests++;
       await this.buildSuite;

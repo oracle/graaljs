@@ -199,6 +199,8 @@ function parseCommandLine() {
 
   const isTestRunner = getOptionValue('--test');
   const coverage = getOptionValue('--experimental-test-coverage');
+  const forceExit = getOptionValue('--test-force-exit');
+  const sourceMaps = getOptionValue('--enable-source-maps');
   const isChildProcess = process.env.NODE_TEST_CONTEXT === 'child';
   const isChildProcessV8 = process.env.NODE_TEST_CONTEXT === 'child-v8';
   let destinations;
@@ -250,6 +252,8 @@ function parseCommandLine() {
     __proto__: null,
     isTestRunner,
     coverage,
+    forceExit,
+    sourceMaps,
     testOnlyFlag,
     testNamePatterns,
     reporters,
