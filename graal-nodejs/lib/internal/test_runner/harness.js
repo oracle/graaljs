@@ -26,6 +26,7 @@ const {
   setupTestReporters,
   shouldColorizeTestFiles,
 } = require('internal/test_runner/utils');
+const { queueMicrotask } = require('internal/process/task_queues');
 const { bigint: hrtime } = process.hrtime;
 
 const testResources = new SafeMap();
@@ -189,6 +190,7 @@ function setup(root) {
 
   root.harness = {
     __proto__: null,
+    allowTestsToRun: false,
     bootstrapComplete: false,
     watching: false,
     coverage: FunctionPrototypeBind(collectCoverage, null, root, coverage),
@@ -207,6 +209,7 @@ function setup(root) {
     },
     counters: null,
     shouldColorizeTestFiles: false,
+    teardown: exitHandler,
   };
   root.harness.resetCounters();
   root.startTime = hrtime();
@@ -230,8 +233,21 @@ function getGlobalRoot() {
 }
 
 async function startSubtest(subtest) {
-  await reportersSetup;
-  getGlobalRoot().harness.bootstrapComplete = true;
+  if (reportersSetup) {
+    // Only incur the overhead of awaiting the Promise once.
+    await reportersSetup;
+    reportersSetup = undefined;
+  }
+
+  const root = getGlobalRoot();
+  if (!root.harness.bootstrapComplete) {
+    root.harness.bootstrapComplete = true;
+    queueMicrotask(() => {
+      root.harness.allowTestsToRun = true;
+      root.processPendingSubtests();
+    });
+  }
+
   await subtest.start();
 }
 

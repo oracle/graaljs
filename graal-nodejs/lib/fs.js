@@ -1554,6 +1554,10 @@ function lstat(path, options = { bigint: false }, callback) {
   }
   callback = makeStatsCallback(callback);
   path = getValidatedPath(path);
+  if (permission.isEnabled() && !permission.has('fs.read', path)) {
+    callback(new ERR_ACCESS_DENIED('Access to this API has been restricted', 'FileSystemRead', path));
+    return;
+  }
 
   const req = new FSReqCallback(options.bigint);
   req.oncomplete = callback;
@@ -1630,6 +1634,9 @@ function fstatSync(fd, options = { bigint: false }) {
  */
 function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
   path = getValidatedPath(path);
+  if (permission.isEnabled() && !permission.has('fs.read', path)) {
+    throw new ERR_ACCESS_DENIED('Access to this API has been restricted', 'FileSystemRead', path);
+  }
   const stats = binding.lstat(
     pathModule.toNamespacedPath(path),
     options.bigint,
@@ -1888,6 +1895,11 @@ function fchmod(fd, mode, callback) {
   mode = parseFileMode(mode, 'mode');
   callback = makeCallback(callback);
 
+  if (permission.isEnabled()) {
+    callback(new ERR_ACCESS_DENIED('fchmod API is disabled when Permission Model is enabled.'));
+    return;
+  }
+
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.fchmod(fd, mode, req);
@@ -1900,6 +1912,9 @@ function fchmod(fd, mode, callback) {
  * @returns {void}
  */
 function fchmodSync(fd, mode) {
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('fchmod API is disabled when Permission Model is enabled.');
+  }
   binding.fchmod(
     fd,
     parseFileMode(mode, 'mode'),
@@ -2032,6 +2047,10 @@ function fchown(fd, uid, gid, callback) {
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
   callback = makeCallback(callback);
+  if (permission.isEnabled()) {
+    callback(new ERR_ACCESS_DENIED('fchown API is disabled when Permission Model is enabled.'));
+    return;
+  }
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
@@ -2048,6 +2067,9 @@ function fchown(fd, uid, gid, callback) {
 function fchownSync(fd, uid, gid) {
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('fchown API is disabled when Permission Model is enabled.');
+  }
 
   binding.fchown(fd, uid, gid);
 }

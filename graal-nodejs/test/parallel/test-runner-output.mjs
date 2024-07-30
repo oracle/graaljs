@@ -105,6 +105,7 @@ const tests = [
   { name: 'test-runner/output/global-hooks-with-no-tests.js' },
   { name: 'test-runner/output/before-and-after-each-too-many-listeners.js' },
   { name: 'test-runner/output/before-and-after-each-with-timeout-too-many-listeners.js' },
+  { name: 'test-runner/output/force_exit.js', transform: specTransform },
   { name: 'test-runner/output/global_after_should_fail_the_test.js' },
   { name: 'test-runner/output/no_refs.js' },
   { name: 'test-runner/output/no_tests.js' },
@@ -114,6 +115,7 @@ const tests = [
   { name: 'test-runner/output/spec_reporter_successful.js', transform: specTransform },
   { name: 'test-runner/output/spec_reporter.js', transform: specTransform },
   { name: 'test-runner/output/spec_reporter_cli.js', transform: specTransform },
+  { name: 'test-runner/output/source_mapped_locations.mjs' },
   process.features.inspector ? { name: 'test-runner/output/lcov_reporter.js', transform: lcovTransform } : false,
   { name: 'test-runner/output/output.js' },
   { name: 'test-runner/output/output_cli.js' },
@@ -136,6 +138,7 @@ const tests = [
       replaceTestDuration,
     ),
   },
+  { name: 'test-runner/output/test-runner-plan.js' },
   process.features.inspector ? { name: 'test-runner/output/coverage_failure.js' } : false,
 ]
 .filter(Boolean)
