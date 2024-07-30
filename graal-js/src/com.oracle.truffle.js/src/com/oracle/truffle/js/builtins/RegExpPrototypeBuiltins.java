@@ -1851,8 +1851,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected Object doObject(JSDynamicObject rx,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
-                        @Cached TruffleString.FromCharArrayUTF16Node fromCharArrayNode) {
-            char[] flags = new char[JSRegExp.MAX_FLAGS_LENGTH];
+                        @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
+                        @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
+            byte[] flags = new byte[JSRegExp.MAX_FLAGS_LENGTH];
             int len = 0;
             if (getHasIndices != null && getFlag(rx, getHasIndices)) {
                 flags[len++] = 'd';
@@ -1881,7 +1882,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (len == 0) {
                 return Strings.EMPTY_STRING;
             }
-            return Strings.fromCharArray(fromCharArrayNode, flags, 0, len);
+            return switchEncodingNode.execute(fromByteArrayNode.execute(flags, 0, len, TruffleString.Encoding.ISO_8859_1, true), TruffleString.Encoding.UTF_16);
         }
 
         @Fallback
