@@ -948,22 +948,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             this.getter = getter;
         }
 
-        @Specialization(guards = {"!isOutOfBounds(typedArray, getContext())", "!typedArray.hasAutoLength()"})
-        protected final int doTypedArrayFixedLength(JSTypedArrayObject typedArray) {
-            switch (getter) {
-                case length:
-                    return typedArray.getLengthFixed();
-                case byteLength:
-                    return typedArray.getLengthFixed() << typedArray.getArrayType().bytesPerElementShift();
-                case byteOffset:
-                    return typedArray.getOffset();
-                default:
-                    throw Errors.shouldNotReachHere();
-            }
-        }
-
-        @Specialization(guards = {"!isOutOfBounds(typedArray, getContext())", "typedArray.hasAutoLength()"})
-        protected final int doTypedArrayAutoLength(JSTypedArrayObject typedArray,
+        @Specialization(guards = {"!isOutOfBounds(typedArray, getContext())"})
+        protected final int doTypedArray(JSTypedArrayObject typedArray,
                         @Cached TypedArrayLengthNode typedArrayLengthNode) {
             switch (getter) {
                 case length:
