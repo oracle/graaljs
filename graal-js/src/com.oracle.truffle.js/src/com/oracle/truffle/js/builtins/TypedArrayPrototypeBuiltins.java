@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_ARRAY;
+import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_DIRECT;
+import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_INTEROP;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
@@ -536,7 +539,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     sourceBuffer = cloneArrayBuffer(sourceBuffer, sourceArray, srcByteLength, srcByteOffset);
                     if (sourceArray.isInterop()) {
                         // cloned buffer is not an interop buffer anymore
-                        sourceArray = sourceArray.getFactory().createArrayType(getContext().isOptionDirectByteBuffer(), false);
+                        sourceArray = sourceArray.getFactory().createArrayType(getContext().isOptionDirectByteBuffer() ? BUFFER_TYPE_DIRECT : BUFFER_TYPE_ARRAY, false, true);
                     }
                     srcByteIndex = 0;
                 }
@@ -693,8 +696,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private JSArrayBufferObject cloneInteropArrayBuffer(JSArrayBufferObject sourceBuffer, int srcByteLength, int srcByteOffset, InteropLibrary interop) {
             assert JSArrayBuffer.isJSInteropArrayBuffer(sourceBuffer);
             boolean direct = getContext().isOptionDirectByteBuffer();
-            TypedArray sourceType = TypedArrayFactory.Int8Array.createArrayType(false, false, true);
-            TypedArray clonedType = TypedArrayFactory.Int8Array.createArrayType(direct, false);
+            TypedArray sourceType = TypedArrayFactory.Int8Array.createArrayType(BUFFER_TYPE_INTEROP, false, true);
+            TypedArray clonedType = TypedArrayFactory.Int8Array.createArrayType(direct ? BUFFER_TYPE_DIRECT : BUFFER_TYPE_ARRAY, false, true);
             JSArrayBufferObject clonedArrayBuffer = direct
                             ? JSArrayBuffer.createDirectArrayBuffer(getContext(), getRealm(), srcByteLength)
                             : JSArrayBuffer.createArrayBuffer(getContext(), getRealm(), srcByteLength);
