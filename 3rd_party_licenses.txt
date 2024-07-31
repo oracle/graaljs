@@ -512,7 +512,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-Node.js 18.20.2
+Node.js 18.20.4
 
 Node.js is licensed for use as follows:
 
