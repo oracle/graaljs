@@ -95,6 +95,26 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return thisObj.getOffset();
     }
 
+    // IsViewOutOfBounds()
+    public static boolean isOutOfBounds(JSDataViewObject dataView, JSContext ctx) {
+        if (!ctx.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(dataView.getArrayBuffer())) {
+            return true;
+        }
+        if (ctx.getArrayBufferNotShrunkAssumption().isValid()) {
+            return false;
+        } else {
+            long bufferByteLength = dataView.getArrayBuffer().getByteLength();
+            int byteOffsetStart = dataView.getOffset();
+            long byteOffsetEnd;
+            if (dataView.hasAutoLength()) {
+                byteOffsetEnd = bufferByteLength;
+            } else {
+                byteOffsetEnd = byteOffsetStart + dataView.getLength();
+            }
+            return (byteOffsetStart > bufferByteLength || byteOffsetEnd > bufferByteLength);
+        }
+    }
+
     @Override
     public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         Shape childTree = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);

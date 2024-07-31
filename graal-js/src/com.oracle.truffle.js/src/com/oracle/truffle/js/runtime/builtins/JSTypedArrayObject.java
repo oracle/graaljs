@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -74,6 +75,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         this.arrayType = arrayType;
     }
 
+    @NeverDefault
     public TypedArray getArrayType() {
         return arrayType;
     }
@@ -84,7 +86,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
     }
 
     public int getLength() {
-        return hasAutoLength() ? (arrayBuffer.getByteLength() - offset) / arrayType.bytesPerElement() : length;
+        return hasAutoLength() ? (arrayBuffer.getByteLength() - offset) >> arrayType.bytesPerElementShift() : length;
     }
 
     public static JSTypedArrayObject create(Shape shape, JSDynamicObject proto, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {

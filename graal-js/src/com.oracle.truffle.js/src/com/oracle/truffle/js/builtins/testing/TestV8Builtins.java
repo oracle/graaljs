@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
@@ -55,8 +56,7 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetach
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
-import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen;
-import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8AtomicsNumWaitersForTestingNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8AtomicsNumNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8CreatePrivateSymbolNodeGen;
@@ -85,7 +85,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JobCallback;
@@ -205,9 +204,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             case toLength:
                 return TestV8ToLengthNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case atomicsNumWaitersForTesting:
-                return TestV8AtomicsNumWaitersForTestingNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case atomicsNumUnresolvedAsyncPromisesForTesting:
-                return TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                return TestV8AtomicsNumNodeGen.create(context, builtin, builtinEnum, args().fixedArgs(2).createArgumentNodes(context));
             case setAllowAtomicsWait:
                 return TestV8SetAllowAtomicsWaitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case createPrivateSymbol:
@@ -439,12 +437,16 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         }
     }
 
-    public abstract static class TestV8AtomicsBaseNode extends JSBuiltinNode {
-        public TestV8AtomicsBaseNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class TestV8AtomicsNumNode extends AtomicsBuiltins.AtomicsOperationNode {
+
+        private final TestV8 getter;
+
+        public TestV8AtomicsNumNode(JSContext context, JSBuiltin builtin, TestV8 getter) {
             super(context, builtin);
+            this.getter = getter;
         }
 
-        protected JSTypedArrayObject ensureSharedArray(Object maybeTarget) {
+        private JSTypedArrayObject ensureSharedArray(Object maybeTarget) {
             if (maybeTarget instanceof JSTypedArrayObject typedArrayObj) {
                 JSDynamicObject buffer = JSArrayBufferView.getArrayBuffer(typedArrayObj);
                 if (JSSharedArrayBuffer.isJSSharedArrayBuffer(buffer)) {
@@ -454,55 +456,26 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             throw createTypeErrorNotSharedArray();
         }
 
-        @TruffleBoundary
-        protected final JSException createTypeErrorNotSharedArray() {
-            return Errors.createTypeError("Cannot execute on non-shared array.", this);
-        }
-
-        @TruffleBoundary
-        protected static final JSException createRangeErrorSharedArray(Object idx) {
-            return Errors.createRangeError("Range error with index : " + idx);
-        }
-
-        protected static int validateAtomicAccess(JSTypedArrayObject target, long convertedIndex, Object originalIndex) {
-            int length = target.getLength();
-            assert convertedIndex >= 0;
-            if (convertedIndex >= length) {
-                throw createRangeErrorSharedArray(originalIndex);
-            }
-            return (int) convertedIndex;
-        }
-
-    }
-
-    public abstract static class TestV8AtomicsNumWaitersForTestingNode extends TestV8AtomicsBaseNode {
-
-        public TestV8AtomicsNumWaitersForTestingNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
         @Specialization
-        protected Object numWaiters(Object maybeTarget, Object index,
+        protected int num(Object maybeTarget, Object index,
                         @Cached JSToIndexNode toIndexNode) {
             JSTypedArrayObject target = ensureSharedArray(maybeTarget);
-            int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            int i = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
+            return switch (getter) {
+                case atomicsNumWaitersForTesting -> numWaiters(target, i);
+                case atomicsNumUnresolvedAsyncPromisesForTesting -> numUnresolvedAsyncPromises(target, i);
+                default -> throw Errors.shouldNotReachHereUnexpectedValue(getter);
+            };
+        }
+
+        @TruffleBoundary
+        private int numWaiters(JSTypedArrayObject target, int i) {
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
             return wl.size();
         }
 
-    }
-
-    public abstract static class TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNode extends TestV8AtomicsBaseNode {
-
-        public TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Object numUnresolvedAsyncPromises(Object maybeTarget, Object index,
-                        @Cached JSToIndexNode toIndexNode) {
-            JSTypedArrayObject target = ensureSharedArray(maybeTarget);
-            int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+        @TruffleBoundary
+        private int numUnresolvedAsyncPromises(JSTypedArrayObject target, int i) {
             JSAgent agent = getRealm().getAgent();
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
             return agent.getAsyncWaitersToBeResolved(wl);

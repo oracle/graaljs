@@ -56,6 +56,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.IntToLongTypeSystem;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
@@ -132,8 +133,10 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public boolean typedArray(JSTypedArrayObject object, long index) {
-        return !JSArrayBufferView.isOutOfBounds(object, getLanguage().getJSContext()) && index >= 0 && index < object.getLength();
+    public boolean typedArray(JSTypedArrayObject object, long index,
+                    @Cached TypedArrayLengthNode typedArrayLengthNode) {
+        // If IsTypedArrayOutOfBounds(), TypedArrayLength() == 0.
+        return index >= 0 && index < typedArrayLengthNode.execute(this, object, getJSContext());
     }
 
     @SuppressWarnings("unused")
