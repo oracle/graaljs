@@ -36,7 +36,7 @@ from mx import TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
-from mx_graal_js import get_jdk
+from mx_graal_js import get_jdk, is_wasm_available
 
 _suite = mx.suite('graal-nodejs')
 _current_os = mx.get_os()
@@ -616,9 +616,6 @@ def _prepare_svm_env():
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
 
-def _is_wasm_available():
-    return any(wasm_suite in mx.get_dynamic_imports() for wasm_suite in [('wasm', True), ('wasm-enterprise', True)])
-
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.nodejs',
@@ -633,7 +630,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     truffle_jars=[
         'graal-nodejs:TRUFFLENODE',
         'sdk:MAVEN_DOWNLOADER',
-        *(['wasm:WASM'] if _is_wasm_available() else []),
+        *(['wasm:WASM'] if is_wasm_available() else []),
     ],
     support_distributions=[
         'graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT',
@@ -651,13 +648,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             destination='lib/<lib:graal-nodejs>',
             jar_distributions=[
                 'graal-nodejs:TRUFFLENODE',
-                *(['wasm:WASM'] if _is_wasm_available() else []),
+                *(['wasm:WASM'] if is_wasm_available() else []),
             ],
             build_args=[
                 '--tool:all',
                 '--language:nodejs',
                 '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
-                *(['--language:wasm'] if _is_wasm_available() else []),
+                *(['--language:wasm'] if is_wasm_available() else []),
             ],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
