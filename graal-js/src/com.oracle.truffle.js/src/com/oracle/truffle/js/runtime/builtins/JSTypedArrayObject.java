@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,7 +123,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         }
         Object result;
         if (readNode == null) {
-            result = JSObject.getOrDefault(target, index, target, Undefined.instance);
+            result = JSArrayBufferView.INSTANCE.getOwnHelper(target, target, index, self);
         } else {
             result = readNode.executeWithTargetAndIndexOrDefault(target, index, Undefined.instance);
         }
@@ -145,14 +145,14 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
     public void writeArrayElement(long index, Object value,
                     @Cached ImportValueNode castValueNode,
                     @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode,
-                    @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
+                    @CachedLibrary("this") InteropLibrary self) throws InvalidArrayIndexException, UnsupportedMessageException {
         var target = this;
-        if (index < 0 || index >= thisLibrary.getArraySize(this)) {
+        if (index < 0 || index >= self.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
         Object importedValue = castValueNode.executeWithTarget(value);
         if (writeNode == null) {
-            JSObject.set(target, index, importedValue, true, null);
+            JSArrayBufferView.INSTANCE.set(target, index, importedValue, target, true, self);
         } else {
             writeNode.executeWithTargetAndIndexAndValue(target, index, importedValue);
         }
