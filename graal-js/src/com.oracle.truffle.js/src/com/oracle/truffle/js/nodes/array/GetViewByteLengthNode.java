@@ -61,7 +61,7 @@ public abstract class GetViewByteLengthNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isOutOfBounds(dataView, context)", "!dataView.hasAutoLength()"})
     protected static int doFixedLength(JSDataViewObject dataView, JSContext context) {
         assert !JSDataView.isOutOfBounds(dataView, context);
-        return dataView.getLengthFixed();
+        return dataView.getByteLengthFixed();
     }
 
     @Specialization(guards = {"!isOutOfBounds(dataView, context)", "dataView.hasAutoLength()"})
@@ -70,7 +70,7 @@ public abstract class GetViewByteLengthNode extends JavaScriptBaseNode {
         assert !JSDataView.isOutOfBounds(dataView, context);
         JSArrayBufferObject arrayBuffer = dataView.getArrayBuffer();
         int byteLength = getByteLengthNode.execute(this, arrayBuffer, context);
-        int byteOffset = dataView.getOffset();
+        int byteOffset = dataView.getByteOffset();
         return (byteLength - byteOffset);
     }
 

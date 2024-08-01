@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetOffset;
+import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetByteOffset;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -192,7 +192,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public final int getOffset(JSDynamicObject object) {
         if (offset) {
-            return typedArrayGetOffset(object);
+            return typedArrayGetByteOffset(object);
         } else {
             return 0;
         }

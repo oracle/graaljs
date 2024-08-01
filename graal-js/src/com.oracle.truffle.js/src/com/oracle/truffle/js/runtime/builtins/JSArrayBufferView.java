@@ -83,8 +83,8 @@ public final class JSArrayBufferView extends JSNonProxy {
         return ((JSTypedArrayObject) thisObj).getLength();
     }
 
-    public static int typedArrayGetOffset(JSDynamicObject thisObj) {
-        return ((JSTypedArrayObject) thisObj).getOffset();
+    public static int typedArrayGetByteOffset(JSDynamicObject thisObj) {
+        return ((JSTypedArrayObject) thisObj).getByteOffset();
     }
 
     public static TruffleString typedArrayGetName(JSDynamicObject thisObj) {
@@ -110,7 +110,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) store, ctx)) {
             return 0;
         }
-        return typedArrayGetOffset(store);
+        return typedArrayGetByteOffset(store);
     }
 
     @TruffleBoundary
@@ -405,7 +405,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             return false;
         } else {
             long bufferByteLength = typedArray.getArrayBuffer().getByteLength();
-            int byteOffsetStart = typedArray.getOffset();
+            int byteOffsetStart = typedArray.getByteOffset();
             long byteOffsetEnd;
             if (typedArray.hasAutoLength()) {
                 byteOffsetEnd = bufferByteLength;

@@ -185,12 +185,12 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
         if (!context.getArrayBufferNotShrunkAssumption().isValid()) {
             long bufferByteLength = arrayBuffer.getByteLength();
-            int byteOffsetStart = dataView.getOffset();
+            int byteOffsetStart = dataView.getByteOffset();
             long byteOffsetEnd;
             if (dataView.hasAutoLength()) {
                 byteOffsetEnd = bufferByteLength;
             } else {
-                byteOffsetEnd = byteOffsetStart + dataView.getLength();
+                byteOffsetEnd = byteOffsetStart + dataView.getByteLength();
             }
             if (byteOffsetStart > bufferByteLength || byteOffsetEnd > bufferByteLength) {
                 errorBranch.enter(node);
@@ -226,7 +226,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 errorBranch.enter(this);
                 throw Errors.createRangeError("index + elementSize > viewLength");
             }
-            int viewOffset = dataView.getOffset();
+            int viewOffset = dataView.getByteOffset();
 
             assert getIndex + viewOffset <= Integer.MAX_VALUE;
             int bufferIndex = (int) (getIndex + viewOffset);
@@ -406,7 +406,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     return getViewByteLengthNode.execute(dataView, getContext());
                 case byteOffset:
                     checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
-                    return dataView.getOffset();
+                    return dataView.getByteOffset();
                 default:
                     throw Errors.shouldNotReachHere();
             }

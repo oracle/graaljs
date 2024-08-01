@@ -510,7 +510,7 @@ public class Serializer {
         if (treatArrayBufferViewsAsHostObjects) {
             writeHostObject(view);
         } else {
-            int offset = view.getOffset();
+            int offset = view.getByteOffset();
             TypedArray typedArray = view.getArrayType();
             int length = typedArray.lengthInt(view) * typedArray.bytesPerElement();
             ArrayBufferViewTag tag = ArrayBufferViewTag.fromFactory(typedArray.getFactory());
@@ -523,8 +523,8 @@ public class Serializer {
             writeTag(SerializationTag.HOST_OBJECT);
             NativeAccess.writeHostObject(delegate, view);
         } else {
-            int offset = view.getOffset();
-            int length = view.getLength();
+            int offset = view.getByteOffset();
+            int length = view.getByteLength();
             writeJSArrayBufferView(ArrayBufferViewTag.DATA_VIEW, offset, length);
         }
     }
