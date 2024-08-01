@@ -396,13 +396,14 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected final Object doDataView(JSDataViewObject dataView,
+                        @Cached GetViewByteLengthNode getViewByteLengthNode,
                         @Cached InlinedBranchProfile errorBranch) {
             switch (getter) {
                 case buffer:
                     return dataView.getArrayBuffer();
                 case byteLength:
                     checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
-                    return dataView.getLength();
+                    return getViewByteLengthNode.execute(dataView, getContext());
                 case byteOffset:
                     checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
                     return dataView.getOffset();
