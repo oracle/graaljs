@@ -89,6 +89,10 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         return hasAutoLength() ? (arrayBuffer.getByteLength() - offset) >> arrayType.bytesPerElementShift() : length;
     }
 
+    public int getByteLength() {
+        return hasAutoLength() ? (arrayBuffer.getByteLength() - offset) : (length << arrayType.bytesPerElementShift());
+    }
+
     public static JSTypedArrayObject create(Shape shape, JSDynamicObject proto, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
         return new JSTypedArrayObject(shape, proto, arrayType, arrayBuffer, length, offset);
     }

@@ -410,7 +410,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             if (typedArray.hasAutoLength()) {
                 byteOffsetEnd = bufferByteLength;
             } else {
-                byteOffsetEnd = byteOffsetStart + typedArray.getLength() * typedArray.getArrayType().bytesPerElement();
+                byteOffsetEnd = byteOffsetStart + typedArray.getByteLength();
             }
             return (byteOffsetStart > bufferByteLength || byteOffsetEnd > bufferByteLength);
         }
