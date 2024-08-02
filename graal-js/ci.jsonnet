@@ -37,7 +37,7 @@ local ci = import '../ci.jsonnet';
   },
 
   local nativeImageSmokeTest = checkoutJsBenchmarks + {
-    suiteimports+:: ['vm', 'substratevm'],
+    suiteimports+:: ['vm', 'substratevm', 'wasm'],
     nativeimages+:: ['lib:jsvm', 'lib:jvmcicompiler'],
     extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
@@ -49,9 +49,11 @@ local ci = import '../ci.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'js', '--type=native']],
       ['${STANDALONE_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      ['${STANDALONE_HOME}/bin/js', '--experimental-options', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'js', '--type=jvm']],
       ['${STANDALONE_HOME}/bin/js', '--jvm', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '--jvm', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      ['${STANDALONE_HOME}/bin/js', '--experimental-options', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
       # maven-downloader smoke test
       ['VERBOSE_GRAALVM_LAUNCHERS=true', '${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
     ],
