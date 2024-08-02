@@ -102,6 +102,11 @@ public class JSLauncher extends AbstractLanguageLauncher {
         return "js";
     }
 
+    @Override
+    protected String[] getDefaultLanguages() {
+        return new String[0];
+    }
+
     protected void preEval(@SuppressWarnings("unused") Context context) {
     }
 
