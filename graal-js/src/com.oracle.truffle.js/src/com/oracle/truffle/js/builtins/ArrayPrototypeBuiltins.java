@@ -2036,7 +2036,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                             @Bind("this") Node node,
                             @Cached @Shared("getPrototype") GetPrototypeNode getPrototypeNode,
                             @Cached @Shared("useElementwise") InlinedConditionProfile arrayElementwise) {
-                if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, cachedArrayType.cast(arrayType), getPrototypeNode))) {
+                if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, actualDeleteCount, itemCount, cachedArrayType.cast(arrayType), getPrototypeNode))) {
                     parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
                 } else {
                     parent.spliceJSArrayBlockwise(array, actualStart, actualDeleteCount, itemCount, cachedArrayType.cast(arrayType));
@@ -2048,7 +2048,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                             @Bind("this") Node node,
                             @Cached @Shared("getPrototype") GetPrototypeNode getPrototypeNode,
                             @Cached @Shared("useElementwise") InlinedConditionProfile arrayElementwise) {
-                if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, arrayType, getPrototypeNode))) {
+                if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, actualDeleteCount, itemCount, arrayType, getPrototypeNode))) {
                     parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
                 } else {
                     parent.spliceJSArrayBlockwise(array, actualStart, actualDeleteCount, itemCount, arrayType);
@@ -2056,13 +2056,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        final boolean mustUseElementwise(JSDynamicObject obj, long expectedLength, ScriptArray array, GetPrototypeNode getPrototypeNode) {
+        final boolean mustUseElementwise(JSDynamicObject obj, long expectedLength, long deleteCount, long itemCount, ScriptArray array, GetPrototypeNode getPrototypeNode) {
             return array instanceof SparseArray ||
                             array.isLengthNotWritable() ||
                             getPrototypeNode.execute(obj) != getRealm().getArrayPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() ||
                             (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj)) ||
-                            array.length(obj) != expectedLength;
+                            array.length(obj) != expectedLength ||
+                            expectedLength + itemCount - deleteCount >= Integer.MAX_VALUE;
         }
 
         private void spliceRead(Object thisObj, long actualStart, long actualDeleteCount, Object aObj, long length) {
