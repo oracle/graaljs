@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_ARRAY;
 import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_DIRECT;
 import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_INTEROP;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
 import java.nio.ByteBuffer;
@@ -54,6 +53,7 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -96,6 +96,7 @@ import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSTypedArraySortNode;
+import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -119,6 +120,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -434,7 +436,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (arrayIsArrayBufferView.profile(array instanceof JSTypedArrayObject)) {
                 setArrayBufferView(targetObj, (JSTypedArrayObject) array, targetOffset);
             } else if (arrayIsFastArray.profile(JSArray.isJSFastArray(array))) {
-                setFastArray(targetObj, (JSDynamicObject) array, targetOffset);
+                setFastArray(targetObj, (JSArrayObject) array, targetOffset);
             } else {
                 setOther(targetObj, array, targetOffset);
             }
@@ -447,16 +449,17 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
-        private void setFastArray(JSTypedArrayObject thisObj, JSDynamicObject array, int offset) {
+        private void setFastArray(JSTypedArrayObject thisObj, JSArrayObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert JSArray.isJSFastArray(array);
-            ScriptArray sourceArray = sourceArrayProf.profile(arrayGetArrayType(array));
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
+            ScriptArray sourceArray = sourceArrayProf.profile(array.getArrayType());
+            TypedArray targetArray = targetArrayProf.profile(thisObj.getArrayType());
             long sourceLen = sourceArray.length(array);
             rangeCheck(0, sourceLen, offset, targetArray.length(thisObj));
 
             boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
             for (int i = 0, j = offset; i < sourceLen; i++, j++) {
+                sourceArray = sourceArrayProf.profile(array.getArrayType());
                 Object value = sourceArray.getElement(array, i);
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
@@ -470,7 +473,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private void setOther(JSTypedArrayObject thisObj, Object array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSFastArray(array);
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
+            TypedArray targetArray = targetArrayProf.profile(thisObj.getArrayType());
             long targetLength = targetArray.length(thisObj);
             Object src = toObject(array);
             long srcLength = objectGetLength(src);
@@ -881,10 +884,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected final JSTypedArrayObject sortTypedArray(Object thisObj, Object compare,
                         @Cached JSTypedArraySortNode typedArraySortNode,
+                        @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Cached InlinedConditionProfile isCompareUndefined) {
             checkCompareCallableOrUndefined(compare);
             JSTypedArrayObject thisArray = validateTypedArray(thisObj);
-            int len = thisArray.getLength();
+            int len = typedArrayLengthNode.execute(this, thisArray, getContext());
 
             JSTypedArrayObject resultArray;
             if (toSorted) {
@@ -935,6 +939,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    @ImportStatic({JSArrayBufferView.class})
     public abstract static class GetTypedArrayLengthOrOffsetNode extends JSBuiltinNode {
 
         private final TypedArrayPrototype getter;
@@ -944,23 +949,24 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             this.getter = getter;
         }
 
-        @Specialization
+        @Specialization(guards = {"!isOutOfBounds(typedArray, getContext())"})
         protected final int doTypedArray(JSTypedArrayObject typedArray,
-                        @Cached InlinedBranchProfile outOfBoundsBranch) {
-            if (JSArrayBufferView.isOutOfBounds(typedArray, getContext())) {
-                outOfBoundsBranch.enter(this);
-                return 0;
-            }
+                        @Cached TypedArrayLengthNode typedArrayLengthNode) {
             switch (getter) {
                 case length:
-                    return typedArray.getLength();
+                    return typedArrayLengthNode.execute(this, typedArray, getContext());
                 case byteLength:
-                    return JSArrayBufferView.getByteLength(typedArray, getContext());
+                    return typedArrayLengthNode.execute(this, typedArray, getContext()) << typedArray.getArrayType().bytesPerElementShift();
                 case byteOffset:
-                    return JSArrayBufferView.getByteOffset(typedArray, getContext());
+                    return typedArray.getOffset();
                 default:
                     throw Errors.shouldNotReachHere();
             }
+        }
+
+        @Specialization(guards = {"isOutOfBounds(typedArray, getContext())"})
+        protected static int doTypedArrayOutOfBounds(@SuppressWarnings("unused") JSTypedArrayObject typedArray) {
+            return 0;
         }
 
         @SuppressWarnings("unused")

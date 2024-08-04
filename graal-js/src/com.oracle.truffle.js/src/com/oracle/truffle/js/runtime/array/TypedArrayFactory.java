@@ -237,6 +237,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     };
 
     private final int bytesPerElement;
+    private final byte bytesPerElementShift;
     private final TruffleString name;
     private final TypedArray arrayType;
     private final TypedArray arrayTypeWithOffset;
@@ -257,6 +258,8 @@ public enum TypedArrayFactory implements PrototypeSupplier {
 
     TypedArrayFactory(int bytesPerElement) {
         this.bytesPerElement = bytesPerElement;
+        this.bytesPerElementShift = (byte) Integer.numberOfTrailingZeros(bytesPerElement);
+        assert 1 << bytesPerElementShift == bytesPerElement;
         this.name = Strings.constant(name());
         this.arrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, false, true);
         this.arrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, true, true);
@@ -300,6 +303,10 @@ public enum TypedArrayFactory implements PrototypeSupplier {
 
     public final int getBytesPerElement() {
         return bytesPerElement;
+    }
+
+    public final byte getBytesPerElementShift() {
+        return bytesPerElementShift;
     }
 
     public final int getFactoryIndex() {

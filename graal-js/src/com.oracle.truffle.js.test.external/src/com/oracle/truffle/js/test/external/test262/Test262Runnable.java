@@ -265,6 +265,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "explicit-resource-management",
+                    "promise-try",
                     "regexp-modifiers",
                     "tail-call-optimization",
     });

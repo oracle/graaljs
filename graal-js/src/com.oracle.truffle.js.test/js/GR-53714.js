@@ -9,6 +9,7 @@
  * Regression test of the handling of long values.
  * 
  * @option temporal
+ * @option v8-compat
  */
 
 load('assert.js');

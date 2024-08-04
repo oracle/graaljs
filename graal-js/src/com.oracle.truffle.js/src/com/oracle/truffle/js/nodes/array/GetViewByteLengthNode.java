@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.temporal;
+package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.MoveRelativeDateResult;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSDataView;
+import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 
 /**
- * Implementation of the Temporal MoveRelativeDate operation.
+ * Gets the byteLength of a DataView. Specializes on the type of the underlying ArrayBuffer.
  */
-public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
+@ImportStatic({JSDataView.class})
+public abstract class GetViewByteLengthNode extends JavaScriptBaseNode {
 
-    protected TemporalMoveRelativeDateNode() {
+    public abstract int execute(JSDataViewObject typedArrayObj, JSContext context);
+
+    @Specialization(guards = {"!isOutOfBounds(dataView, context)", "!dataView.hasAutoLength()"})
+    protected static int doFixedLength(JSDataViewObject dataView, JSContext context) {
+        assert !JSDataView.isOutOfBounds(dataView, context);
+        return dataView.getLengthFixed();
     }
 
-    public abstract MoveRelativeDateResult execute(CalendarMethodsRecord calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration);
-
-    @Specialization
-    protected MoveRelativeDateResult moveRelativeDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration,
-                    @Cached TemporalAddDateNode addDateNode) {
-        JSTemporalPlainDateObject newDate = addDateNode.execute(calendarRec, relativeTo, duration, Undefined.instance);
-        long days = TemporalUtil.daysUntil(relativeTo, newDate);
-        return new MoveRelativeDateResult(newDate, days);
+    @Specialization(guards = {"!isOutOfBounds(dataView, context)", "dataView.hasAutoLength()"})
+    protected final int doAutoLength(JSDataViewObject dataView, JSContext context,
+                    @Cached ArrayBufferByteLengthNode getByteLengthNode) {
+        assert !JSDataView.isOutOfBounds(dataView, context);
+        JSArrayBufferObject arrayBuffer = dataView.getArrayBuffer();
+        int byteLength = getByteLengthNode.execute(this, arrayBuffer, context);
+        int byteOffset = dataView.getOffset();
+        return (byteLength - byteOffset);
     }
 
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"isOutOfBounds(dataView, context)"})
+    protected static int doOutOfBounds(JSDataViewObject dataView, JSContext context) {
+        return 0;
+    }
+
+    @NeverDefault
+    public static GetViewByteLengthNode create() {
+        return GetViewByteLengthNodeGen.create();
+    }
 }

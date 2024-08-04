@@ -2351,7 +2351,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     /**
      * Implementation of the String.prototype.match() method as specified by ECMAScript 5.1 in
-     * 15.5.4.19.
+     * 15.5.4.10.
      */
     public abstract static class JSStringMatchES5Node extends JSStringOperationWithRegExpArgument {
         @Child private PropertySetNode setLastIndexNode;
@@ -2359,7 +2359,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         public JSStringMatchES5Node(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             assert context.getEcmaScriptVersion() < 6;
-
         }
 
         private void setLastIndex(JSDynamicObject regExp, int value) {
@@ -2371,7 +2370,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected JSDynamicObject matchRegExpNotGlobal(Object thisObj, Object searchObj,
+        protected JSDynamicObject match(Object thisObj, Object searchObj,
                         @Cached("create(getContext())") JSToRegExpNode toRegExpNode,
                         @Cached("create(getContext())") JSRegExpExecES5Node regExpExecNode,
                         @Cached InlinedCountingConditionProfile isMatch,
@@ -2382,12 +2381,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
                         @Cached TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getGlobalFlag) {
             requireObjectCoercible(thisObj);
+            TruffleString thisStr = toString(thisObj);
             if (isGlobalRegExp.profile(this, JSRegExp.isJSRegExp(searchObj) && isGlobal(JSRegExp.getCompiledRegex((JSRegExpObject) searchObj), getGlobalFlag))) {
-                TruffleString thisStr = toString(thisObj);
-                return matchAll((JSRegExpObject) searchObj, thisStr,
+                return matchGlobal(thisStr, (JSRegExpObject) searchObj,
                                 this, isMatch, substringNode, readIsMatch, getStart, getEnd);
             } else {
-                return matchNotRegExpIntl(thisObj, searchObj, toRegExpNode, regExpExecNode);
+                return matchNotGlobal(thisStr, searchObj, toRegExpNode, regExpExecNode);
             }
         }
 
@@ -2395,14 +2394,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getGlobalFlag.execute(this, compiledRegex, TRegexUtil.Props.Flags.GLOBAL);
         }
 
-        private JSDynamicObject matchNotRegExpIntl(Object thisObj, Object searchObj,
+        private static JSDynamicObject matchNotGlobal(TruffleString thisStr, Object searchObj,
                         JSToRegExpNode toRegExpNode, JSRegExpExecES5Node regExpExecNode) {
-            Object thisStr = toString(thisObj);
             JSRegExpObject regExp = toRegExpNode.execute(searchObj);
             return regExpExecNode.execute(regExp, thisStr);
         }
 
-        private JSDynamicObject matchAll(JSRegExpObject regExp, TruffleString input,
+        private JSDynamicObject matchGlobal(TruffleString input, JSRegExpObject regExp,
                         Node node,
                         InlinedCountingConditionProfile isMatch,
                         @Cached TruffleString.SubstringByteIndexNode substringNode,
@@ -2421,11 +2419,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
                 int thisIndex = TRegexResultAccessor.captureGroupEnd(result, 0, node, getEnd);
                 lastIndex = thisIndex + (thisIndex == lastIndex ? 1 : 0);
-                result = matchIgnoreLastIndex(regExp, input, lastIndex);
+                result = lastIndex > Strings.length(input) ? getContext().getTRegexEmptyResult() : matchIgnoreLastIndex(regExp, input, lastIndex);
             }
             return JSArray.createConstant(getContext(), getRealm(), Boundaries.listToArray(matches));
         }
-
     }
 
     /**

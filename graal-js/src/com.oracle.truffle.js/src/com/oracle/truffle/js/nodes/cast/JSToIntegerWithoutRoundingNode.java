@@ -60,11 +60,11 @@ import com.oracle.truffle.js.runtime.Symbol;
 @ImportStatic(JSGuards.class)
 public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode {
 
-    public abstract Object execute(Object value);
-
-    public final double executeDouble(Object value) {
-        return (double) execute(value);
+    public final double execute(Object value) {
+        return executeDouble(value);
     }
+
+    public abstract double executeDouble(Object value);
 
     @Specialization
     protected static double doInteger(int value) {
@@ -110,12 +110,12 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
     }
 
     @Specialization
-    protected final long doSymbol(@SuppressWarnings("unused") Symbol value) {
+    protected final double doSymbol(@SuppressWarnings("unused") Symbol value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
     @Specialization
-    protected final long doBigInt(@SuppressWarnings("unused") BigInt value) {
+    protected final double doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 

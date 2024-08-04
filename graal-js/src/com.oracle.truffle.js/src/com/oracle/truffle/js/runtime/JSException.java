@@ -150,16 +150,21 @@ public final class JSException extends GraalJSException {
     }
 
     public static int getStackTraceLimit(JSRealm realm) {
-        JSFunctionObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
-        if (JSProperty.isData(lib.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
-            Object stackTraceLimit = lib.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
-            if (JSRuntime.isNumber(stackTraceLimit)) {
-                final long limit = JSRuntime.toInteger((Number) stackTraceLimit);
-                return (int) Math.max(0, Math.min(limit, Integer.MAX_VALUE));
+        JSContextOptions contextOptions = realm.getContextOptions();
+        if (contextOptions.isStackTraceAPI()) {
+            JSFunctionObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
+            DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
+            if (JSProperty.isData(lib.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
+                Object stackTraceLimit = lib.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
+                if (JSRuntime.isNumber(stackTraceLimit)) {
+                    final long limit = JSRuntime.toInteger((Number) stackTraceLimit);
+                    return (int) Math.max(0, Math.min(limit, Integer.MAX_VALUE));
+                }
             }
+            return 0;
+        } else {
+            return contextOptions.getStackTraceLimit();
         }
-        return 0;
     }
 
     @Override

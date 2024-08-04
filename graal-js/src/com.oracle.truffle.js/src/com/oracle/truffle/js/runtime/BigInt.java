@@ -327,6 +327,12 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @TruffleBoundary
+    public BigInt[] divideAndRemainder(BigInt b) {
+        BigInteger[] qr = value.divideAndRemainder(b.value);
+        return new BigInt[]{new BigInt(qr[0]), new BigInt(qr[1])};
+    }
+
+    @TruffleBoundary
     public BigInt shiftLeft(int b) {
         return new BigInt(value.shiftLeft(b));
     }

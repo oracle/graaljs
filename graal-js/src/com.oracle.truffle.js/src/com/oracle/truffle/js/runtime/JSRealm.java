@@ -917,9 +917,6 @@ public class JSRealm {
         if (context.getLanguageOptions().webAssembly()) {
             if (!isWasmAvailable()) {
                 String msg = "WebAssembly API enabled but wasm language cannot be accessed! Did you forget to set the --polyglot flag?";
-                if (JSConfig.SubstrateVM) {
-                    msg += " In native mode, you might have to rebuild libpolyglot with 'gu rebuild-images libpolyglot'.";
-                }
                 throw new IllegalStateException(msg);
             }
             LanguageInfo wasmLanguageInfo = truffleLanguageEnv.getInternalLanguages().get("wasm");
@@ -2070,7 +2067,7 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(getScriptEngineImportScope(), builtin, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, builtin),
                             JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
-        if (getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
+        if (getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed(null) || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
         }
         if (getContextOptions().isDebugBuiltin()) {
@@ -2992,9 +2989,8 @@ public class JSRealm {
     }
 
     public void setAgent(JSAgent newAgent) {
-        assert newAgent != null : "Cannot set a null agent!";
         CompilerAsserts.neverPartOfCompilation("Assigning agent to context in compiled code");
-        this.agent = newAgent;
+        this.agent = Objects.requireNonNull(newAgent, "agent");
     }
 
     public TimeZone getLocalTimeZone() {

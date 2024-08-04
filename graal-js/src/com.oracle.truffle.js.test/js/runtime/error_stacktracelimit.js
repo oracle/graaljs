@@ -6,6 +6,8 @@
  */
 /*
  * Test that getting Error.stackTraceLimit is side-effect-free.
+ * 
+ * @option v8-compat
  */
 
 class MyError extends Error {

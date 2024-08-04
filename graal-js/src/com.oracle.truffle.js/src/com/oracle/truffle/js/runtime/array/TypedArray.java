@@ -85,6 +85,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private final int bytesPerElement;
+    private final byte bytesPerElementShift;
     private final boolean offset;
     private final boolean fixedLength;
     private final byte bufferType;
@@ -98,6 +99,7 @@ public abstract class TypedArray extends ScriptArray {
 
     protected TypedArray(TypedArrayFactory factory, boolean offset, boolean fixedLength, byte bufferType) {
         this.bytesPerElement = factory.getBytesPerElement();
+        this.bytesPerElementShift = factory.getBytesPerElementShift();
         this.offset = offset;
         this.fixedLength = fixedLength;
         this.bufferType = bufferType;
@@ -124,7 +126,7 @@ public abstract class TypedArray extends ScriptArray {
                 case BUFFER_TYPE_SHARED -> ((JSArrayBufferObject.Shared) arrayBuffer).getByteLength();
                 default -> throw Errors.shouldNotReachHereUnexpectedValue(bufferType);
             };
-            return (byteLength - getOffset(object)) / bytesPerElement;
+            return (byteLength - getOffset(object)) >> bytesPerElementShift;
         }
     }
 
@@ -202,6 +204,10 @@ public abstract class TypedArray extends ScriptArray {
 
     public final int bytesPerElement() {
         return bytesPerElement;
+    }
+
+    public final byte bytesPerElementShift() {
+        return bytesPerElementShift;
     }
 
     public final TruffleString getName() {

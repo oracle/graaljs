@@ -321,7 +321,7 @@ describe('--experimental-detect-module', { concurrency: true }, () => {
         'function fn() { const require = 1; const require = 2; } fn();',
       ]);
 
-      match(stderr, /SyntaxError: Identifier 'require' has already been declared/);
+      match(stderr, /SyntaxError: (?:Identifier|Variable) .require. has already been declared/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);

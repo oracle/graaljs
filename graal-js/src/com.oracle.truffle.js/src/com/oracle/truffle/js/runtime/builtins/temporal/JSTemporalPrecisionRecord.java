@@ -48,16 +48,16 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 public final class JSTemporalPrecisionRecord {
     private final Object precision; // TruffleString "minute", "auto", or an integer from 0 to 9
     private final Unit unit;
-    private final double increment;
+    private final int increment;
 
-    private JSTemporalPrecisionRecord(Object precision, Unit unit, double increment) {
+    private JSTemporalPrecisionRecord(Object precision, Unit unit, int increment) {
         assert isValidPrecision(precision) : precision;
         this.precision = precision;
         this.unit = unit;
         this.increment = increment;
     }
 
-    public static JSTemporalPrecisionRecord create(Object precision, Unit unit, double increment) {
+    public static JSTemporalPrecisionRecord create(Object precision, Unit unit, int increment) {
         return new JSTemporalPrecisionRecord(precision, unit, increment);
     }
 
@@ -69,7 +69,7 @@ public final class JSTemporalPrecisionRecord {
         return unit;
     }
 
-    public double getIncrement() {
+    public int getIncrement() {
         return increment;
     }
 

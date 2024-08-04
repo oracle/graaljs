@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "6c4f42bf5368c480ef2c9c29f0163d30d827b001",
+           "version" : "0262bebe5db5f6f48ada94821a889a7b414279c4",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
@@ -438,6 +438,7 @@ suite = {
           "com.oracle.truffle.js.lang to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.access to org.graalvm.nodejs",
+          "com.oracle.truffle.js.nodes.array to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.arguments to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.cast to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.function to org.graalvm.nodejs",
@@ -690,12 +691,16 @@ suite = {
 
     "GRAALJS_GRAALVM_SUPPORT" : {
       "native" : True,
+      "platformDependent" : True,
       "description" : "Graal.js support distribution for the GraalVM",
       "layout" : {
         "native-image.properties": "file:mx.graal-js/native-image.properties",
         "./": [
           "file:README.md",
         ],
+        "bin/": [
+          "file:mx.graal-js/graalvm_launchers/<cmd:js-polyglot-get>",
+        ]
       },
     },
 

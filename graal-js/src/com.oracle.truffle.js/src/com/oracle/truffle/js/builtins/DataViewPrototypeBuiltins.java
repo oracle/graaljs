@@ -58,6 +58,7 @@ import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewG
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewGetterNodeGen;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewSetNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.array.GetViewByteLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
@@ -217,8 +218,9 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             throw new IllegalArgumentException(Strings.toJavaString(type));
         }
 
-        protected final int getBufferIndex(JSDataViewObject dataView, long getIndex, InlinedBranchProfile errorBranch) {
-            int viewLength = dataView.getLength();
+        protected final int getBufferIndex(JSDataViewObject dataView, long getIndex,
+                        InlinedBranchProfile errorBranch, GetViewByteLengthNode getViewByteLengthNode) {
+            int viewLength = getViewByteLengthNode.execute(dataView, getContext());
             int elementSize = factory.getBytesPerElement();
             if (getIndex + elementSize > viewLength) {
                 errorBranch.enter(this);
@@ -244,13 +246,14 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedExactClassProfile bufferTypeProfile,
+                        @Cached GetViewByteLengthNode getViewByteLengthNode,
                         @Cached GetBufferElementNode getBufferElement) {
             long getIndex = toIndexNode.executeLong(byteOffset);
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(this, dataView.getArrayBuffer());
             checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
-            int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
+            int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch, getViewByteLengthNode);
 
             return getBufferElement.execute(this, buffer, bufferIndex, isLittleEndian, factory);
         }
@@ -320,6 +323,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedExactClassProfile bufferTypeProfile,
+                        @Cached GetViewByteLengthNode getViewByteLengthNode,
                         @Cached SetBufferElementNode setBufferElement) {
             long getIndex = toIndexNode.executeLong(byteOffset);
             Object numberValue = switch (factory) {
@@ -331,7 +335,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(this, dataView.getArrayBuffer());
             checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
-            int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
+            int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch, getViewByteLengthNode);
 
             setBufferElement.execute(this, buffer, bufferIndex, isLittleEndian, numberValue, factory);
             return Undefined.instance;

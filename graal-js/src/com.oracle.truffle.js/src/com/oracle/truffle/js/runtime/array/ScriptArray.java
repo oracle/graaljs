@@ -414,7 +414,7 @@ public abstract class ScriptArray {
     }
 
     /**
-     * Returns true when the this array could have hole values in it. Doesn't tell whether it
+     * Returns true if this array type could have hole values in it. Doesn't tell whether it
      * actually HAS holes.
      */
     @Idempotent
@@ -422,7 +422,22 @@ public abstract class ScriptArray {
         return false;
     }
 
+    /**
+     * Returns true when this array actually has holes between {@link #firstElementIndex} and
+     * {@link #lastElementIndex}. Implies {@link #isHolesType()}.
+     *
+     * @see #hasHolesOrUnused
+     */
     public abstract boolean hasHoles(JSDynamicObject object);
+
+    /**
+     * Returns true when this array has any hole or unused elements between 0 and {@link #length}.
+     *
+     * @see #hasHoles
+     */
+    public boolean hasHolesOrUnused(JSDynamicObject object) {
+        return hasHoles(object);
+    }
 
     /**
      * This function deletes all elements in the range from [start..end[. This is equivalent to

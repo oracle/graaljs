@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -78,7 +79,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         promise.clearPromiseReactions();
         JSPromise.setPromiseState(promise, JSPromise.REJECTED);
         if (unhandledProf.profile(!promise.isHandled())) {
-            context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT, reason);
+            context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT, reason, JSAgent.get(this));
         }
         return triggerPromiseReactions.execute(reactions, reason);
     }

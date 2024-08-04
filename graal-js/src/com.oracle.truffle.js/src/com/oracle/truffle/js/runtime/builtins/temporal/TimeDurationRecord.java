@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,27 +51,4 @@ public record TimeDurationRecord(
                 double milliseconds,
                 double microseconds,
                 double nanoseconds) {
-
-    public double getOverflow() {
-        if (Double.isInfinite(days)) {
-            return days;
-        } else if (Double.isInfinite(hours)) {
-            return hours;
-        } else if (Double.isInfinite(minutes)) {
-            return minutes;
-        } else if (Double.isInfinite(seconds)) {
-            return seconds;
-        } else if (Double.isInfinite(milliseconds)) {
-            return milliseconds;
-        } else if (Double.isInfinite(microseconds)) {
-            return microseconds;
-        } else if (Double.isInfinite(nanoseconds)) {
-            return nanoseconds;
-        }
-        return 0.0;
-    }
-
-    public boolean isOverflow() {
-        return Double.isInfinite(getOverflow());
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,9 +38,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.temporal;
+package com.oracle.truffle.js.test.runtime;
 
-import java.math.BigInteger;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.junit.Assert.assertEquals;
 
-public record NormalizedTimeDurationToDaysResult(BigInteger days, BigInteger remainder, BigInteger dayLength) {
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.PromiseHook;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.test.JSTest;
+
+public class PromiseHookTest {
+    private Context ctx;
+
+    @Before
+    public void setup() {
+        ctx = JSTest.newContextBuilder().build();
+    }
+
+    @After
+    public void tearDown() {
+        ctx.close();
+    }
+
+    @Test
+    public void testBasic() {
+        JSContext context = JavaScriptLanguage.getJSContext(ctx);
+        final int[] changes = new int[4];
+        context.setPromiseHook(new PromiseHook() {
+            @Override
+            public void promiseChanged(int changeType, JSDynamicObject promise, JSDynamicObject parentPromise) {
+                changes[changeType]++;
+            }
+        });
+        ctx.eval(ID, "Promise.resolve(42).then(() => {})");
+        assertEquals(2, changes[PromiseHook.TYPE_INIT]);
+        assertEquals(2, changes[PromiseHook.TYPE_RESOLVE]);
+        assertEquals(1, changes[PromiseHook.TYPE_BEFORE]);
+        assertEquals(1, changes[PromiseHook.TYPE_AFTER]);
+    }
+
 }

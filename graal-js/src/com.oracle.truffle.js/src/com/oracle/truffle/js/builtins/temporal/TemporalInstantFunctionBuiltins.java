@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import java.math.BigInteger;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -54,7 +52,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -97,13 +94,13 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             case from:
                 return JSTemporalInstantFromNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case fromEpochSeconds:
-                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, 1_000_000_000, true, args().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, TemporalUtil.BI_NS_PER_SECOND, true, args().fixedArgs(1).createArgumentNodes(context));
             case fromEpochMilliseconds:
-                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, 1_000_000, true, args().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, TemporalUtil.BI_NS_PER_MS, true, args().fixedArgs(1).createArgumentNodes(context));
             case fromEpochMicroseconds:
-                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, 1000, false, args().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, TemporalUtil.BI_1000, false, args().fixedArgs(1).createArgumentNodes(context));
             case fromEpochNanoseconds:
-                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, 1, false, args().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, BigInt.ONE, false, args().fixedArgs(1).createArgumentNodes(context));
             case compare:
                 return JSTemporalInstantCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
@@ -129,12 +126,12 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
 
     public abstract static class JSTemporalInstantFromEpochNode extends JSBuiltinNode {
 
-        private final BigInteger factor;
+        private final BigInt factor;
         private final boolean numberToBigIntConversion;
 
-        public JSTemporalInstantFromEpochNode(JSContext context, JSBuiltin builtin, long factor, boolean numberToBigIntConversion) {
+        public JSTemporalInstantFromEpochNode(JSContext context, JSBuiltin builtin, BigInt factor, boolean numberToBigIntConversion) {
             super(context, builtin);
-            this.factor = BigInteger.valueOf(factor);
+            this.factor = factor;
             this.numberToBigIntConversion = numberToBigIntConversion;
         }
 
@@ -149,7 +146,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             } else {
                 epochNanoseconds = JSRuntime.toBigInt(epochParam);
             }
-            epochNanoseconds = new BigInt(Boundaries.bigIntegerMultiply(epochNanoseconds.bigIntegerValue(), factor));
+            epochNanoseconds = epochNanoseconds.multiply(factor);
             if (!TemporalUtil.isValidEpochNanoseconds(epochNanoseconds)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }

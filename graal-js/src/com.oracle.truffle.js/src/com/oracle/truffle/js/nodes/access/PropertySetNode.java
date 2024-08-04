@@ -53,8 +53,6 @@ import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
@@ -800,7 +798,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    @NodeInfo(cost = NodeCost.MEGAMORPHIC)
     public static final class GenericPropertySetNode extends SetCacheNode {
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertySetNode foreignSetNode;

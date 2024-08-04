@@ -59,6 +59,10 @@ public abstract class JSDoubleToStringNode extends JavaScriptBaseNode {
 
     public abstract TruffleString executeString(Object operand);
 
+    public abstract TruffleString executeString(double operand);
+
+    public abstract TruffleString executeString(long operand);
+
     @Specialization
     protected static TruffleString doInt(int i,
                     @Cached @Shared TruffleString.FromLongNode fromLongNode) {

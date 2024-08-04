@@ -212,7 +212,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public boolean isCaptureFramesForTrace() {
+        public boolean isCaptureFramesForTrace(@SuppressWarnings("unused") boolean compiledFrame) {
             return context.isOptionAsyncStackTraces();
         }
 

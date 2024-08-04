@@ -8,14 +8,6 @@ prefix es-module
 
 ### Graal.js-specific ###
 
-# Different error message expected:
-# 'Unexpected token export' versus 'Expected an operand but found export'
-test-esm-cjs-exports                 : FAIL
-# 'await is only valid in async function' versus 'Expected ; but found Promise'
-test-esm-detect-ambiguous            : FAIL
-# 'Unexpected token }' verus ': expected'
-test-esm-invalid-pjson               : FAIL
-
 # missing support for source maps
 test-esm-loader-hooks                : FAIL
 test-esm-source-map                  : FAIL

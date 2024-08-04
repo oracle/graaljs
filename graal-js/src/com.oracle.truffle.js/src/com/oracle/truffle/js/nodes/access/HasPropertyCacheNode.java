@@ -45,8 +45,6 @@ import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -276,7 +274,6 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         }
     }
 
-    @NodeInfo(cost = NodeCost.MEGAMORPHIC)
     public static final class GenericHasPropertyCacheNode extends HasCacheNode {
         @Child private InteropLibrary interop;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();

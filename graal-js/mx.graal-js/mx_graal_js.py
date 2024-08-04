@@ -47,7 +47,7 @@ _suite = mx.suite('graal-js')
 TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
-TEST262_REV = "007b333af22d8b8466be3394b9248345ac4445c9"
+TEST262_REV = "a15874163e6a4f19ee7cd3e47592af382af0f5fd"
 
 # Git repository of V8
 TESTV8_REPO = "https://" + "github.com/v8/v8.git"
@@ -159,9 +159,11 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
     def apply(self, config):
         (vmArgs, mainClass, mainClassArgs) = config
         # Disable DefaultRuntime warning
-        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-        # Assert for enter/return parity of ProbeNode
-        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
+        vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        vmArgs += ['-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # Assert for enter/return parity of ProbeNode (if assertions are enabled only)
+        if next((arg.startswith('-e') for arg in reversed(vmArgs) if arg in ['-ea', '-da', '-enableassertions', '-disableassertions']), False):
+            vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
         vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
@@ -503,6 +505,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     truffle_jars=[
         'graal-js:GRAALJS',
+        'sdk:MAVEN_DOWNLOADER',
     ],
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',

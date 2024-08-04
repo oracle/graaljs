@@ -46,6 +46,7 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -140,7 +141,7 @@ public class TemporalDurationHugeTest extends JSTest {
             ctx.eval(ID, code);
             Assert.fail("RangeError expected");
         } catch (PolyglotException ex) {
-            Assert.assertThat(ex.getMessage(), CoreMatchers.startsWith("RangeError"));
+            MatcherAssert.assertThat(ex.getMessage(), CoreMatchers.startsWith("RangeError"));
         }
     }
 

@@ -3005,7 +3005,7 @@ public final class GraalJSAccess {
                 } else {
                     errorObject = atex;
                 }
-                mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, errorObject);
+                mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, errorObject, agent);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -3240,7 +3240,7 @@ public final class GraalJSAccess {
 
     public void isolateEnablePromiseRejectCallback(boolean enable) {
         PromiseRejectionTracker tracker = enable ? new NativePromiseRejectionTracker() : null;
-        mainJSContext.setPromiseRejectionTracker(tracker);
+        mainJSContext.setPromiseRejectionTracker(agent, tracker);
     }
 
     public void isolateEnableImportMetaInitializer(boolean enable) {

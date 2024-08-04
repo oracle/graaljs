@@ -98,9 +98,15 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return (double) result;
         }
 
-        @Specialization
-        protected static int doTypedArray(JSTypedArrayObject target) {
-            return target.getLength();
+        @Specialization(guards = {"!target.hasAutoLength()"})
+        protected static int doTypedArrayFixedLength(JSTypedArrayObject target) {
+            return target.getLengthFixed();
+        }
+
+        @Specialization(guards = {"target.hasAutoLength()"})
+        protected final int doTypedArrayAutoLength(JSTypedArrayObject target,
+                        @Cached TypedArrayLengthNode typedArrayLengthNode) {
+            return typedArrayLengthNode.execute(this, target, getJSContext());
         }
 
         @Specialization(guards = {"arrayType.isInstance(target.getArrayType())", "isLengthAlwaysInt(arrayType)"}, limit = "1")

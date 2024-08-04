@@ -274,7 +274,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             TruffleLanguage.Env env = getRealm().getEnv();
             try {
                 return env.parsePublic(source);
-            } catch (IllegalStateException ex) {
+            } catch (IllegalStateException | IllegalArgumentException ex) {
                 throw Errors.createErrorFromException(ex);
             }
         }
@@ -333,7 +333,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
             try {
                 return env.parsePublic(source);
-            } catch (IllegalStateException ex) {
+            } catch (IllegalStateException | IllegalArgumentException ex) {
                 throw Errors.createErrorFromException(ex);
             }
         }

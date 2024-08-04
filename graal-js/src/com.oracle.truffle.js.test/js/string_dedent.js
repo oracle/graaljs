@@ -172,34 +172,3 @@ assertSame(String.dedent({raw: ['\n\\', '\\', '\n\\\n']}, 6, 9, 'STOP'), 'undefi
 // Missing substitutions
 assertSame(String.dedent({raw: ['\n{', '}\n']}), "{}");
 assertSame(String.dedent({raw: ['\n{', ',', '}\n']}), "{,}");
-
-(function testDedentedCacheLookupWithPrimitiveRawValue() {
-    class NotSameIdentityError extends Error {}
-    
-    let expectedLength;
-    let first;
-    function interceptRaw(template, ...substitutions) {
-        if (!first) {
-            first = template;
-        } else if (template !== first) {
-            throw new NotSameIdentityError(`expected same identity`);
-        }
-        if (template.length !== expectedLength) {
-            throw new Error(`unexpected length: ${template.length} !== ${expectedLength}`);
-        }
-        return String.raw(template, ...substitutions);
-    }
-
-    expectedLength = 4;
-    let value = '\na';
-    assertSame('ab', String.dedent(interceptRaw)({raw: '\nab\n'}));
-    assertSame('ab', String.dedent(interceptRaw)({raw: value.concat('b\n')}));
-
-    expectedLength = 1;
-    Number.prototype.length = 1;
-    Number.prototype[0] = `\nno\n`;
-    first = undefined;
-    assertSame('no', String.dedent(interceptRaw)({raw: 9001}));
-    assertSame('no', String.dedent(interceptRaw)({raw: Math.ceil(9000.5 + Math.random() / 3)}));
-    assertThrows(() => String.dedent(interceptRaw)({raw: 9000}), NotSameIdentityError);
-})();

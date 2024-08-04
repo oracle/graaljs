@@ -61,8 +61,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -1118,6 +1116,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         private final JSContext context;
         @Child private InteropLibrary interop;
         @Child private InteropLibrary getterInterop;
+        @Child private TruffleString.ToJavaStringNode toJavaStringNode = TruffleString.ToJavaStringNode.create();
 
         private final BranchProfile errorBranch = BranchProfile.create();
         @CompilationFinal private boolean optimistic = true;
@@ -1161,7 +1160,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return result;
                 }
             }
-            String stringKey = Strings.toJavaString(propertyName);
+            String stringKey = Strings.toJavaString(toJavaStringNode, propertyName);
             if (optimistic) {
                 try {
                     return interop.readMember(thisObj, stringKey);
@@ -1234,11 +1233,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            if (!getterInterop.isMemberInvocable(thisObj, Strings.toJavaString(getterKey))) {
+            if (!getterInterop.isMemberInvocable(thisObj, Strings.toJavaString(toJavaStringNode, getterKey))) {
                 return null;
             }
             try {
-                return getterInterop.invokeMember(thisObj, Strings.toJavaString(getterKey), JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                return getterInterop.invokeMember(thisObj, Strings.toJavaString(toJavaStringNode, getterKey), JSArguments.EMPTY_ARGUMENTS_ARRAY);
             } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                 return null; // try the next fallback
             }
@@ -1267,7 +1266,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     }
 
-    @NodeInfo(cost = NodeCost.MEGAMORPHIC)
     public static final class GenericPropertyGetNode extends GetCacheNode {
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertyGetNode foreignGetNode;

@@ -598,6 +598,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
+    "filePath" : "mjsunit/es6/typedarray-map.js",
+    "status" : "FAIL",
+    "comment" : "Off-spec test."
+  }, {
     "filePath" : "mjsunit/es6/typedarray-of.js",
     "runInIsolation" : true,
     "comment" : "Triggers 576 GCs."
@@ -934,6 +938,10 @@
     "filePath" : "mjsunit/rab-gsab-transfer-to-worker.js",
     "status" : "FAIL",
     "comment" : "Uses Worker"
+  }, {
+    "filePath" : "mjsunit/random-bit-correlations.js",
+    "status" : "SKIP",
+    "comment" : "Statistical check of the quality of the random number generator. It is unstable unless a fixed seed is used."
   }, {
     "filePath" : "mjsunit/realm-property-access.js",
     "status" : "FAIL"

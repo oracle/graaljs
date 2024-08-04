@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,57 +38,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 
 /**
- * Optimization over JSArrayBufferView.getByteLength to have a valueProfile on the TypedArray,
- * potentially avoiding a virtual call.
+ * Gets the length of a typed array. Specializes on the type of the underlying ArrayBuffer.
  */
-@GenerateInline
-@GenerateCached(false)
-public abstract class ArrayBufferViewGetByteLengthNode extends JavaScriptBaseNode {
+@ImportStatic({JSArrayBufferView.class})
+@GenerateInline(inlineByDefault = true)
+public abstract class TypedArrayLengthNode extends JavaScriptBaseNode {
 
-    protected ArrayBufferViewGetByteLengthNode() {
+    public abstract int execute(Node node, JSTypedArrayObject typedArrayObj, JSContext context);
+
+    @Specialization(guards = {"!isOutOfBounds(typedArray, context)", "!typedArray.hasAutoLength()"})
+    protected static int doFixedLength(JSTypedArrayObject typedArray, JSContext context) {
+        assert !JSArrayBufferView.isOutOfBounds(typedArray, context);
+        return typedArray.getLengthFixed();
     }
 
-    public abstract int executeInt(Node node, JSTypedArrayObject obj, JSContext context);
-
-    @Specialization(guards = {"!isOutOfBounds(obj, context)", "cachedArray == getArrayType(obj)"}, limit = "1")
-    protected static int getByteLength(JSTypedArrayObject obj, @SuppressWarnings("unused") JSContext context,
-                    @Cached("getArrayType(obj)") TypedArray cachedArray) {
-        return cachedArray.lengthInt(obj) * cachedArray.bytesPerElement();
+    @Specialization(guards = {"!isOutOfBounds(typedArray, context)", "typedArray.hasAutoLength()"})
+    protected static int doAutoLength(Node node, JSTypedArrayObject typedArray, JSContext context,
+                    @Cached ArrayBufferByteLengthNode getByteLengthNode) {
+        assert !JSArrayBufferView.isOutOfBounds(typedArray, context);
+        JSArrayBufferObject arrayBuffer = typedArray.getArrayBuffer();
+        int byteLength = getByteLengthNode.execute(node, arrayBuffer, context);
+        int byteOffset = typedArray.getOffset();
+        return (byteLength - byteOffset) >> typedArray.getArrayType().bytesPerElementShift();
     }
 
-    @Specialization(guards = {"!isOutOfBounds(obj, context)"}, replaces = "getByteLength")
-    protected static int getByteLengthOverLimit(JSTypedArrayObject obj, @SuppressWarnings("unused") JSContext context) {
-        TypedArray typedArray = getArrayType(obj);
-        return typedArray.lengthInt(obj) * typedArray.bytesPerElement();
-    }
-
-    @Specialization(guards = {"isOutOfBounds(obj, context)"})
-    protected static int getByteLengthOutOfBounds(@SuppressWarnings("unused") JSTypedArrayObject obj, @SuppressWarnings("unused") JSContext context) {
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"isOutOfBounds(typedArray, context)"})
+    protected static int doOutOfBounds(JSTypedArrayObject typedArray, JSContext context) {
         return 0;
     }
 
     @NeverDefault
-    protected static TypedArray getArrayType(JSTypedArrayObject obj) {
-        return JSArrayBufferView.typedArrayGetArrayType(obj);
+    public static TypedArrayLengthNode create() {
+        return TypedArrayLengthNodeGen.create();
     }
-
-    protected boolean isOutOfBounds(JSTypedArrayObject object, JSContext context) {
-        return JSArrayBufferView.isOutOfBounds(object, context);
-    }
-
 }

@@ -45,14 +45,11 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 
-@NodeInfo(cost = NodeCost.NONE)
 public abstract class AbstractBlockNode extends StatementNode implements SequenceNode, BlockNode.ElementExecutor<JavaScriptNode> {
     @Child protected BlockNode<JavaScriptNode> block;
 
