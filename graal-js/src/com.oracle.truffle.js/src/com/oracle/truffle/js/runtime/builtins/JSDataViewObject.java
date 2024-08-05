@@ -56,12 +56,12 @@ public final class JSDataViewObject extends JSArrayBufferViewBase {
         return JSDataView.CLASS_NAME;
     }
 
-    public int getLengthFixed() {
+    public int getByteLengthFixed() {
         assert !hasAutoLength();
         return length;
     }
 
-    public int getLength() {
+    public int getByteLength() {
         return hasAutoLength() ? (arrayBuffer.getByteLength() - offset) : length;
     }
 

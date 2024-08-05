@@ -89,6 +89,10 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         return hasAutoLength() ? (arrayBuffer.getByteLength() - offset) >> arrayType.bytesPerElementShift() : length;
     }
 
+    public int getByteLength() {
+        return hasAutoLength() ? (arrayBuffer.getByteLength() - offset) : (length << arrayType.bytesPerElementShift());
+    }
+
     public static JSTypedArrayObject create(Shape shape, JSDynamicObject proto, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
         return new JSTypedArrayObject(shape, proto, arrayType, arrayBuffer, length, offset);
     }
@@ -132,7 +136,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         }
         Object result;
         if (readNode == null) {
-            result = JSObject.getOrDefault(target, index, target, Undefined.instance);
+            result = JSArrayBufferView.INSTANCE.getOwnHelper(target, target, index, self);
         } else {
             result = readNode.executeWithTargetAndIndexOrDefault(target, index, Undefined.instance);
         }
@@ -154,14 +158,14 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
     public void writeArrayElement(long index, Object value,
                     @Cached ImportValueNode castValueNode,
                     @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode,
-                    @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
+                    @CachedLibrary("this") InteropLibrary self) throws InvalidArrayIndexException, UnsupportedMessageException {
         var target = this;
-        if (index < 0 || index >= thisLibrary.getArraySize(this)) {
+        if (index < 0 || index >= self.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
         Object importedValue = castValueNode.executeWithTarget(value);
         if (writeNode == null) {
-            JSObject.set(target, index, importedValue, true, null);
+            JSArrayBufferView.INSTANCE.set(target, index, importedValue, target, true, self);
         } else {
             writeNode.executeWithTargetAndIndexAndValue(target, index, importedValue);
         }

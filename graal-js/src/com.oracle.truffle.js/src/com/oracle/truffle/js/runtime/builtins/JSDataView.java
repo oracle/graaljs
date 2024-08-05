@@ -85,14 +85,14 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         if (JSArrayBuffer.isDetachedBuffer(thisObj.getArrayBuffer())) {
             return 0;
         }
-        return thisObj.getLength();
+        return thisObj.getByteLength();
     }
 
     public static int dataViewGetByteOffset(JSDataViewObject thisObj) {
         if (JSArrayBuffer.isDetachedBuffer(thisObj.getArrayBuffer())) {
             return 0;
         }
-        return thisObj.getOffset();
+        return thisObj.getByteOffset();
     }
 
     // IsViewOutOfBounds()
@@ -104,12 +104,12 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
             return false;
         } else {
             long bufferByteLength = dataView.getArrayBuffer().getByteLength();
-            int byteOffsetStart = dataView.getOffset();
+            int byteOffsetStart = dataView.getByteOffset();
             long byteOffsetEnd;
             if (dataView.hasAutoLength()) {
                 byteOffsetEnd = bufferByteLength;
             } else {
-                byteOffsetEnd = byteOffsetStart + dataView.getLength();
+                byteOffsetEnd = byteOffsetStart + dataView.getByteLength();
             }
             return (byteOffsetStart > bufferByteLength || byteOffsetEnd > bufferByteLength);
         }

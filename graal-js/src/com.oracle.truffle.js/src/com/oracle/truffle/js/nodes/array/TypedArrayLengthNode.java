@@ -73,7 +73,7 @@ public abstract class TypedArrayLengthNode extends JavaScriptBaseNode {
         assert !JSArrayBufferView.isOutOfBounds(typedArray, context);
         JSArrayBufferObject arrayBuffer = typedArray.getArrayBuffer();
         int byteLength = getByteLengthNode.execute(node, arrayBuffer, context);
-        int byteOffset = typedArray.getOffset();
+        int byteOffset = typedArray.getByteOffset();
         return (byteLength - byteOffset) >> typedArray.getArrayType().bytesPerElementShift();
     }
 

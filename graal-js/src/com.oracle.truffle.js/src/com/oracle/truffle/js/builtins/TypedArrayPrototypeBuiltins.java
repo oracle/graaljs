@@ -329,7 +329,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             long srcLength = JSArrayBufferView.isOutOfBounds(thisObj, getContext()) ? 0 : array.length(thisObj);
             long relativeStart = toInteger(start);
             long startIndex = negativeBegin.profile(this, relativeStart < 0) ? Math.max(srcLength + relativeStart, 0) : Math.min(relativeStart, srcLength);
-            int srcByteOffset = thisObj.getOffset();
+            int srcByteOffset = thisObj.getByteOffset();
             long beginByteOffset = srcByteOffset + startIndex * array.bytesPerElement();
             Object newLength;
             if (thisObj.hasAutoLength() && end == Undefined.instance) {
@@ -527,8 +527,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             int sourceLen = (int) sourceLength;
             JSArrayBufferObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView);
             JSArrayBufferObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView);
-            int srcByteOffset = sourceView.getOffset();
-            int targetByteOffset = targetView.getOffset();
+            int srcByteOffset = sourceView.getByteOffset();
+            int targetByteOffset = targetView.getByteOffset();
 
             int srcByteIndex;
             if (sameBufferProf.profile(sourceBuffer == targetBuffer)) {
@@ -958,7 +958,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 case byteLength:
                     return typedArrayLengthNode.execute(this, typedArray, getContext()) << typedArray.getArrayType().bytesPerElementShift();
                 case byteOffset:
-                    return typedArray.getOffset();
+                    return typedArray.getByteOffset();
                 default:
                     throw Errors.shouldNotReachHere();
             }
