@@ -236,7 +236,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         private void deleteAndSetLength(JSDynamicObject arrayObj, int length, ScriptArray arrayType, Node node, ScriptArray.SetLengthProfileAccess setLengthProfile) {
             ScriptArray array = arrayType;
-            for (int i = array.lengthInt(arrayObj) - 1; i >= length; i--) {
+            for (long i = array.length(arrayObj) - 1; i >= length; i--) {
                 if (array.canDeleteElement(arrayObj, i, strict)) {
                     array = array.deleteElement(arrayObj, i, strict);
                     arraySetArrayType(arrayObj, array);
