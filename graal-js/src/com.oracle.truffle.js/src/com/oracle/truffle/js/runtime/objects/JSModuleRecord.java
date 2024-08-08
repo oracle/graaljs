@@ -43,11 +43,15 @@ package com.oracle.truffle.js.runtime.objects;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -59,6 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 public class JSModuleRecord extends ScriptOrModule {
 
     public enum Status {
+        New,
         Unlinked,
         Linking,
         Linked,
@@ -93,22 +98,23 @@ public class JSModuleRecord extends ScriptOrModule {
      * "evaluating", this non-negative number records the point at which the module was first
      * visited during the ongoing depth-first traversal of the dependency graph.
      */
-    private int dfsIndex;
+    private int dfsIndex = -1;
     /**
      * Auxiliary field used during Link and Evaluate only. If [[Status]] is "linking" or
      * "evaluating", this is either the module's own [[DFSIndex]] or that of an "earlier" module in
      * the same strongly connected component.
      */
-    private int dfsAncestorIndex;
+    private int dfsAncestorIndex = -1;
 
-    @SuppressWarnings("this-escape")
+    private EconomicMap<ModuleRequest, JSModuleRecord> loadedModules = EconomicMap.create();
+
     public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader) {
         super(parsedModule.getContext(), parsedModule.getSource());
         this.parsedModule = parsedModule;
         this.moduleLoader = moduleLoader;
         this.hasTLA = parsedModule.isTopLevelAsync();
         this.hostDefined = null;
-        setUnlinked();
+        this.status = Status.New;
     }
 
     public JSModuleRecord(JSModuleData moduleData, JSModuleLoader moduleLoader, Object hostDefined) {
@@ -323,6 +329,24 @@ public class JSModuleRecord extends ScriptOrModule {
 
     public JSModuleRecord getCycleRoot() {
         return cycleRoot;
+    }
+
+    @TruffleBoundary
+    @Override
+    public JSModuleRecord getLoadedModule(JSRealm realm, ModuleRequest moduleRequest) {
+        return loadedModules.get(moduleRequest);
+    }
+
+    @TruffleBoundary
+    @Override
+    public JSModuleRecord addLoadedModule(JSRealm realm, ModuleRequest moduleRequest, JSModuleRecord module) {
+        return loadedModules.putIfAbsent(moduleRequest, module);
+    }
+
+    @TruffleBoundary
+    public JSModuleRecord getImportedModule(ModuleRequest moduleRequest) {
+        assert loadedModules.containsKey(moduleRequest) : moduleRequest;
+        return loadedModules.get(moduleRequest);
     }
 
     @Override

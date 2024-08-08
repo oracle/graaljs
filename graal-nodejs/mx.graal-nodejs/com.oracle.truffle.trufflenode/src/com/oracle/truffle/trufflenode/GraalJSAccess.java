@@ -2726,7 +2726,7 @@ public final class GraalJSAccess {
                 target = jsObject;
                 key = HIDDEN_WEAK_CALLBACK;
             } else if (object instanceof JSModuleRecord moduleRecord) {
-                if (moduleRecord.getStatus() == JSModuleRecord.Status.Unlinked) {
+                if (moduleRecord.getStatus() == JSModuleRecord.Status.New || moduleRecord.getStatus() == JSModuleRecord.Status.Unlinked) {
                     assert (callbackPointer == 0);
                     // ClearWeak() called on a module that cannot be weak yet
                     return null;
@@ -3798,17 +3798,19 @@ public final class GraalJSAccess {
         // Get the correct Source instance to be used as weak map key.
         source = parsedModule.getSource();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
-        JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
+        JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader(), hostDefinedOptions);
         return moduleRecord;
     }
 
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
         JSRealm jsRealm = (JSRealm) context;
+        JSModuleRecord moduleRecord = (JSModuleRecord) module;
         JSContext jsContext = jsRealm.getContext();
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         try {
-            jsContext.getEvaluator().moduleLinking(jsRealm, (JSModuleRecord) module);
+            jsContext.getEvaluator().loadRequestedModules(jsRealm, moduleRecord, moduleRecord.getHostDefined());
+            jsContext.getEvaluator().moduleLinking(jsRealm, moduleRecord);
         } finally {
             loader.setResolver(0);
         }
@@ -3840,6 +3842,7 @@ public final class GraalJSAccess {
     public int moduleGetStatus(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
         switch (record.getStatus()) {
+            case New:
             case Unlinked:
                 return 0; // v8::Module::Status::kUninstantiated
             case Linking:
@@ -3850,13 +3853,13 @@ public final class GraalJSAccess {
                 return 3; // v8::Module::Status::Evaluating
             case EvaluatingAsync:
             case Evaluated:
-            default:
-                assert (record.getStatus() == JSModuleRecord.Status.Evaluated || record.getStatus() == JSModuleRecord.Status.EvaluatingAsync);
                 if (record.getEvaluationError() == null) {
                     return 4; // v8::Module::Status::kEvaluated
                 } else {
                     return 5; // v8::Module::Status::kErrored
                 }
+            default:
+                throw Errors.shouldNotReachHereUnexpectedValue(record.getStatus());
         }
     }
 
@@ -4269,11 +4272,6 @@ public final class GraalJSAccess {
             JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
             referrerCache.put(specifier, result);
             return result;
-        }
-
-        @Override
-        public JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData) {
-            throw new UnsupportedOperationException();
         }
     }
 

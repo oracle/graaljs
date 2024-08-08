@@ -91,6 +91,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.parser.date.DateParser;
@@ -113,7 +114,9 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
@@ -289,7 +292,17 @@ public final class GraalJSEvaluator implements JSParser {
 
         @TruffleBoundary
         private Object evalModule(JSRealm realm) {
-            JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source, parsedModule);
+            JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, realm.getModuleLoader());
+            ModuleRequest moduleRequest = ModuleRequest.create(Strings.fromJavaString(source.getName()));
+            realm.getModuleLoader().addLoadedModule(moduleRequest, moduleRecord);
+
+            JSPromiseObject loadPromise = (JSPromiseObject) loadRequestedModules(realm, moduleRecord, Undefined.instance).getPromise();
+            assert !JSPromise.isPending(loadPromise);
+            // If loading failed, we must not perform module linking.
+            if (JSPromise.isRejected(loadPromise)) {
+                throw JSRuntime.getException(loadPromise.getPromiseResult(), this);
+            }
+
             moduleLinking(realm, moduleRecord);
             Object promise = moduleEvaluation(realm, moduleRecord);
             boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
@@ -600,10 +613,131 @@ public final class GraalJSEvaluator implements JSParser {
         return namespace;
     }
 
+    private static class GraphLoadingState {
+        boolean isLoading;
+        int pendingModulesCount;
+        PromiseCapabilityRecord promiseCapability;
+        Object hostDefined;
+        Set<JSModuleRecord> visited;
+
+        GraphLoadingState(PromiseCapabilityRecord promiseCapability, Object hostDefined) {
+            this.isLoading = true;
+            this.pendingModulesCount = 1;
+            this.promiseCapability = promiseCapability;
+            this.hostDefined = hostDefined;
+            this.visited = new HashSet<>();
+        }
+    }
+
+    @TruffleBoundary
+    @Override
+    public PromiseCapabilityRecord loadRequestedModules(JSRealm realm, JSModuleRecord moduleRecord, Object hostDefined) {
+        PromiseCapabilityRecord pc = NewPromiseCapabilityNode.createDefault(realm);
+        GraphLoadingState state = new GraphLoadingState(pc, hostDefined);
+        try {
+            innerModuleLoading(realm, state, moduleRecord);
+        } catch (AbstractTruffleException e) {
+            assert false : e; // should not throw
+            throw e;
+        }
+        return pc;
+    }
+
+    private void innerModuleLoading(JSRealm realm, GraphLoadingState state, JSModuleRecord moduleRecord) {
+        assert state.isLoading;
+        if (moduleRecord.getStatus() == Status.New && !state.visited.contains(moduleRecord)) {
+            state.visited.add(moduleRecord);
+            int requestedModuleCount = moduleRecord.getModule().getRequestedModules().size();
+            state.pendingModulesCount += requestedModuleCount;
+            for (var required : moduleRecord.getModule().getRequestedModules()) {
+                JSModuleRecord resolved = moduleRecord.getLoadedModule(realm, required);
+                if (resolved != null) {
+                    innerModuleLoading(realm, state, resolved);
+                } else {
+                    hostLoadImportedModule(realm, moduleRecord, required, state.hostDefined, state);
+                }
+                if (!state.isLoading) {
+                    return;
+                }
+            }
+        }
+        assert state.pendingModulesCount >= 1 : state.pendingModulesCount;
+        if (--state.pendingModulesCount == 0) {
+            state.isLoading = false;
+            for (var loaded : state.visited) {
+                loaded.setUnlinked();
+            }
+            JSFunction.call(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getResolve(), Undefined.instance));
+        }
+    }
+
+    /**
+     * HostLoadImportedModule takes arguments referrer (a Script Record, a Cyclic Module Record, or
+     * a Realm Record), specifier (a String), hostDefined (anything), and payload (a
+     * GraphLoadingState Record or a PromiseCapability Record) and returns unused.
+     *
+     * The host environment must perform FinishLoadingImportedModule(referrer, specifier, payload,
+     * result), where result is either a normal completion containing the loaded Module Record or a
+     * throw completion, either synchronously or asynchronously.
+     */
+    @Override
+    public void hostLoadImportedModule(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest, Object hostDefined, Object payload) {
+        Completion moduleCompletion;
+        try {
+            JSModuleRecord module = hostResolveImportedModule(realm.getContext(), referrer, moduleRequest);
+            moduleCompletion = Completion.forNormal(module);
+        } catch (AbstractTruffleException e) {
+            moduleCompletion = Completion.forThrow(getErrorObject(e));
+        }
+        finishLoadingImportedModule(realm, referrer, moduleRequest, payload, moduleCompletion);
+    }
+
+    private void finishLoadingImportedModule(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest, Object payload, Completion moduleCompletion) {
+        if (moduleCompletion.isNormal()) {
+            JSModuleRecord moduleResult = (JSModuleRecord) moduleCompletion.getValue();
+            JSModuleRecord existing = referrer != null
+                            ? referrer.addLoadedModule(realm, moduleRequest, moduleResult)
+                            : realm.getModuleLoader().addLoadedModule(moduleRequest, moduleResult);
+            if (existing != null) {
+                assert existing == moduleResult;
+            }
+        }
+        if (payload instanceof GraphLoadingState state) {
+            continueModuleLoading(realm, state, moduleCompletion);
+        } else {
+            continueDynamicImport(payload, moduleCompletion);
+        }
+    }
+
+    private void continueModuleLoading(JSRealm realm, GraphLoadingState state, Completion moduleCompletion) {
+        if (!state.isLoading) {
+            return;
+        }
+        if (moduleCompletion.isNormal()) {
+            innerModuleLoading(realm, state, (JSModuleRecord) moduleCompletion.getValue());
+        } else {
+            state.isLoading = false;
+            JSFunction.call(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getReject(), moduleCompletion.getValue()));
+        }
+    }
+
+    private static void continueDynamicImport(Object payload, Completion moduleCompletion) {
+        var continuation = (ImportCallNode.ContinueDynamicImportPayload) payload;
+        PromiseCapabilityRecord promiseCapability = continuation.promiseCapability();
+        if (moduleCompletion.isAbrupt()) {
+            JSFunction.call(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), moduleCompletion.getValue()));
+            return;
+        }
+
+        JSModuleRecord module = (JSModuleRecord) moduleCompletion.getValue();
+        // Perform the remaining steps of ContinueDynamicImport.
+        JSFunction.call(JSArguments.create(Undefined.instance, continuation.continueDynamicImportCallback(), promiseCapability, module));
+    }
+
     @TruffleBoundary
     @Override
     public void moduleLinking(JSRealm realm, JSModuleRecord moduleRecord) {
-        assert moduleRecord.getStatus() != Status.Linking && moduleRecord.getStatus() != Status.Evaluating;
+        assert moduleRecord.getStatus() != Status.Linking && moduleRecord.getStatus() != Status.Evaluating && moduleRecord.getStatus() != Status.New : moduleRecord.getStatus();
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
 
         try {
@@ -631,7 +765,7 @@ public final class GraalJSEvaluator implements JSParser {
                         moduleRecord.getStatus() == Status.Evaluated) {
             return index;
         }
-        assert moduleRecord.getStatus() == Status.Unlinked;
+        assert moduleRecord.getStatus() == Status.Unlinked : moduleRecord.getStatus();
         moduleRecord.setStatus(Status.Linking);
         moduleRecord.setDFSIndex(index);
         moduleRecord.setDFSAncestorIndex(index);
@@ -690,7 +824,7 @@ public final class GraalJSEvaluator implements JSParser {
         JSModuleRecord module = moduleRecord;
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
         if (realm.getContext().isOptionTopLevelAwait()) {
-            assert module.getStatus() == Status.Linked || module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated;
+            assert module.getStatus() == Status.Linked || module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated : module.getStatus();
             if (module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated) {
                 module = module.getCycleRoot();
             }
@@ -736,6 +870,18 @@ public final class GraalJSEvaluator implements JSParser {
             m.setEvaluationError(e);
         }
         assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
+
+        PromiseCapabilityRecord capability = module.getTopLevelCapability();
+        if (capability != null) {
+            JSFunction.call(JSArguments.create(Undefined.instance, capability.getReject(), getErrorObject(e)));
+        }
+    }
+
+    private static Object getErrorObject(AbstractTruffleException e) {
+        if (e instanceof GraalJSException jsex) {
+            return jsex.getErrorObject();
+        }
+        return e;
     }
 
     @TruffleBoundary
@@ -929,8 +1075,7 @@ public final class GraalJSEvaluator implements JSParser {
                         JSFunction.call(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), Undefined.instance));
                     }
                 } catch (AbstractTruffleException ex) {
-                    Object error = ex instanceof GraalJSException ? ((GraalJSException) ex).getErrorObject() : ex;
-                    asyncModuleExecutionRejected(realm, m, error);
+                    asyncModuleExecutionRejected(realm, m, getErrorObject(ex));
                 }
             }
         }

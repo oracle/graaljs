@@ -85,10 +85,11 @@ public class ResolveNamedImportNode extends StatementNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        JSModuleRecord referencingScriptOrModule = (JSModuleRecord) moduleNode.execute(frame);
+        JSModuleRecord referrer = (JSModuleRecord) moduleNode.execute(frame);
         Evaluator evaluator = context.getEvaluator();
-        JSModuleRecord importedModule = evaluator.hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
-        // Let resolution be importedModule.ResolveExport(in.[[ImportName]], << >>, << >>).
+        // Let importedModule be GetImportedModule(module, in.[[ModuleRequest]]).
+        JSModuleRecord importedModule = referrer.getImportedModule(moduleRequest);
+        // Let resolution be importedModule.ResolveExport(in.[[ImportName]]).
         ExportResolution resolution = resolutionProfile.profile(evaluator.resolveExport(importedModule, importName));
         // If resolution is null or resolution is "ambiguous", throw SyntaxError.
         if (resolution.isNull() || resolution.isAmbiguous()) {

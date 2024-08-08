@@ -110,7 +110,6 @@ import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -582,14 +581,10 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                     return moduleMap.computeIfAbsent(moduleRequest.specifier(),
                                     (key) -> new JSModuleRecord(evaluator.envParseModule(JSRealm.get(null), resolveModuleSource(referencingModule, key)), this));
                 }
-
-                @Override
-                public JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData) {
-                    throw new UnsupportedOperationException();
-                }
             };
             JSModuleRecord module = moduleLoader.resolveImportedModule(null, ModuleRequest.create(name));
             JSRealm realm = getRealm();
+            evaluator.loadRequestedModules(realm, module, Undefined.instance);
             evaluator.moduleLinking(realm, module);
             evaluator.moduleEvaluation(realm, module);
             return Strings.fromJavaString(String.valueOf(module));

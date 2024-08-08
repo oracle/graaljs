@@ -249,9 +249,9 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     @Override
-    public JSModuleRecord loadModule(Source source, JSModuleData moduleData) {
-        String canonicalPath = getCanonicalPath(source);
-        return moduleMap.computeIfAbsent(canonicalPath, (key) -> new JSModuleRecord(moduleData, this));
+    public JSModuleRecord addLoadedModule(ModuleRequest moduleRequest, JSModuleRecord moduleRecord) {
+        String canonicalPath = getCanonicalPath(moduleRecord.getSource());
+        return moduleMap.putIfAbsent(canonicalPath, moduleRecord);
     }
 
     private String getCanonicalPath(Source source) {
