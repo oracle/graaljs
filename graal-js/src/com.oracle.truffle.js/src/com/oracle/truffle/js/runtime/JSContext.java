@@ -760,7 +760,7 @@ public class JSContext {
         this.regexOptions = createRegexOptions(languageOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAttributes = languageOptions.importAttributes() ? Set.of(TYPE_IMPORT_ATTRIBUTE) : Set.of();
+        this.supportedImportAttributes = (languageOptions.importAttributes() || languageOptions.importAssertions()) ? Set.of(TYPE_IMPORT_ATTRIBUTE) : Set.of();
     }
 
     public final Evaluator getEvaluator() {

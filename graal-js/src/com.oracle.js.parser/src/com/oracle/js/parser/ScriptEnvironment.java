@@ -118,6 +118,9 @@ public final class ScriptEnvironment {
     /** Are import attributes enabled. */
     final boolean importAttributes;
 
+    /** Are legacy import assertions enabled. */
+    final boolean importAssertions;
+
     /** Is private field in enabled */
     final boolean privateFieldsIn;
 
@@ -138,6 +141,7 @@ public final class ScriptEnvironment {
                     boolean annexB,
                     boolean classFields,
                     boolean importAttributes,
+                    boolean importAssertions,
                     boolean privateFieldsIn,
                     boolean topLevelAwait,
                     boolean v8Intrinsics,
@@ -154,6 +158,7 @@ public final class ScriptEnvironment {
         this.annexB = annexB;
         this.classFields = classFields;
         this.importAttributes = importAttributes;
+        this.importAssertions = importAssertions;
         this.privateFieldsIn = privateFieldsIn;
         this.topLevelAwait = topLevelAwait;
         this.v8Intrinsics = v8Intrinsics;
@@ -180,6 +185,7 @@ public final class ScriptEnvironment {
         private boolean annexB = true;
         private boolean classFields = true;
         private boolean importAttributes = false;
+        private boolean importAssertions = false;
         private boolean privateFieldsIn = false;
         private boolean topLevelAwait = false;
         private boolean v8Intrinsics = false;
@@ -243,6 +249,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder importAssertions(boolean importAssertions) {
+            this.importAssertions = importAssertions;
+            return this;
+        }
+
         public Builder privateFieldsIn(boolean privateFieldsIn) {
             this.privateFieldsIn = privateFieldsIn;
             return this;
@@ -265,7 +276,7 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAttributes, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior);
+                            classFields, importAttributes, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior);
         }
     }
 }

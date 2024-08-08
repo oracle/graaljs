@@ -5106,7 +5106,7 @@ public class Parser extends AbstractParser {
             next();
             List<Expression> arguments = new ArrayList<>();
             arguments.add(assignmentExpression(true, yield, await));
-            if (env.importAttributes && type == COMMARIGHT) {
+            if (type == COMMARIGHT && (env.importAttributes || env.importAssertions)) {
                 next();
                 if (type != RPAREN) {
                     arguments.add(assignmentExpression(true, yield, await));
@@ -7068,7 +7068,7 @@ public class Parser extends AbstractParser {
      */
     private Map<TruffleString, TruffleString> withClause() {
         Map<TruffleString, TruffleString> attributes = Map.of();
-        if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
+        if ((env.importAttributes && type == WITH) || (env.importAssertions && type == ASSERT && last != EOL)) {
             next();
             expect(LBRACE);
             attributes = withEntries();

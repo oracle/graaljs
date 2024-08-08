@@ -139,7 +139,7 @@ public class ImportCallNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         ScriptOrModule referencingScriptOrModule = activeScriptOrModule;
         Object specifier = argRefNode.execute(frame);
-        if (context.getLanguageOptions().importAttributes() && optionsRefNode != null) {
+        if (optionsRefNode != null) {
             return executeAttributes(frame, referencingScriptOrModule, specifier);
         } else {
             return executeWithoutAttributes(referencingScriptOrModule, specifier);
@@ -179,20 +179,23 @@ public class ImportCallNode extends JavaScriptNode {
             if (!JSRuntime.isObject(options)) {
                 return rejectPromiseWithTypeError(promiseCapability, "The second argument to import() must be an object");
             }
-            Object attributesObj;
+            Object attributesObj = Undefined.instance;
             try {
-                attributesObj = getWithNode.getValue(options);
+                if (context.getLanguageOptions().importAttributes()) {
+                    attributesObj = getWithNode.getValue(options);
+                }
                 if (attributesObj == Undefined.instance) {
-                    attributesObj = getAssertNode.getValue(options);
+                    if (context.getLanguageOptions().importAssertions()) {
+                        attributesObj = getAssertNode.getValue(options);
+                    }
                 }
             } catch (AbstractTruffleException ex) {
                 return rejectPromise(promiseCapability, ex);
             }
             if (attributesObj != Undefined.instance) {
-                if (!JSRuntime.isObject(attributesObj)) {
+                if (!(attributesObj instanceof JSObject obj)) {
                     return rejectPromiseWithTypeError(promiseCapability, "The 'assert' option must be an object");
                 }
-                JSDynamicObject obj = (JSDynamicObject) attributesObj;
                 UnmodifiableArrayList<? extends Object> keys;
                 try {
                     keys = enumerableOwnPropertyNamesNode.execute(obj);

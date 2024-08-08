@@ -112,6 +112,7 @@ public record JSLanguageOptions(
                 boolean operatorOverloading,
                 boolean errorCause,
                 boolean importAttributes,
+                boolean importAssertions,
                 boolean jsonModules,
                 boolean wasmBigInt,
                 boolean esmEvalReturnsExports,
@@ -188,6 +189,7 @@ public record JSLanguageOptions(
         boolean operatorOverloading = options.isOperatorOverloading();
         boolean errorCause = options.isErrorCauseEnabled();
         boolean importAttributes = options.isImportAttributes();
+        boolean importAssertions = options.isImportAssertions();
         boolean jsonModules = options.isJsonModules();
         boolean wasmBigInt = options.isWasmBigInt();
         boolean esmEvalReturnsExports = options.isEsmEvalReturnsExports();
@@ -271,6 +273,7 @@ public record JSLanguageOptions(
                         operatorOverloading,
                         errorCause,
                         importAttributes,
+                        importAssertions,
                         jsonModules,
                         wasmBigInt,
                         esmEvalReturnsExports,

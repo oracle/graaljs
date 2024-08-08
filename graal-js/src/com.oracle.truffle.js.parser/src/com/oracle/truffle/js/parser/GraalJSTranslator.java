@@ -2659,10 +2659,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
-        assert args.length == 1 || (context.getLanguageOptions().importAttributes() && args.length == 2);
-        if (context.getLanguageOptions().importAttributes() && args.length == 2) {
+        if (args.length == 2 && (context.getLanguageOptions().importAttributes() || context.getLanguageOptions().importAssertions())) {
             return factory.createImportCall(context, args[0], activeScriptOrModule, args[1]);
         }
+        assert args.length == 1 : args.length;
         return factory.createImportCall(context, args[0], activeScriptOrModule);
     }
 

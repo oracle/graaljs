@@ -638,6 +638,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> IMPORT_ATTRIBUTES = new OptionKey<>(false);
     @CompilationFinal private boolean importAttributes;
 
+    public static final String IMPORT_ASSERTIONS_NAME = JS_OPTION_PREFIX + "import-assertions";
+    @Option(name = IMPORT_ASSERTIONS_NAME, category = OptionCategory.USER, help = "Enable legacy import assertions") //
+    public static final OptionKey<Boolean> IMPORT_ASSERTIONS = new OptionKey<>(false);
+    @CompilationFinal private boolean importAssertions;
+
     public static final String JSON_MODULES_NAME = JS_OPTION_PREFIX + "json-modules";
     @Option(name = JSON_MODULES_NAME, category = OptionCategory.USER, help = "Enable loading of json modules") //
     public static final OptionKey<Boolean> JSON_MODULES = new OptionKey<>(false);
@@ -788,6 +793,7 @@ public final class JSContextOptions {
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES);
+        this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
         this.jsonModules = readBooleanOption(JSON_MODULES);
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
@@ -1207,6 +1213,10 @@ public final class JSContextOptions {
 
     public boolean isImportAttributes() {
         return importAttributes;
+    }
+
+    public boolean isImportAssertions() {
+        return importAssertions;
     }
 
     public boolean isJsonModules() {

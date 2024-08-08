@@ -59,6 +59,7 @@ public record JSParserOptions(boolean strict,
                 boolean allowBigInt,
                 boolean classFields,
                 boolean importAttributes,
+                boolean importAssertions,
                 boolean privateFieldsIn,
                 boolean topLevelAwait,
                 boolean v8Intrinsics) {
@@ -76,17 +77,18 @@ public record JSParserOptions(boolean strict,
         boolean allowBigInt = options.bigInt();
         boolean classFields = options.classFields();
         boolean importAttributes = options.importAttributes();
+        boolean importAssertions = options.importAssertions();
         boolean privateFieldsIn = options.privateFieldsIn();
         boolean topLevelAwait = options.topLevelAwait();
         boolean v8Intrinsics = options.v8Intrinsics();
         return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, emptyStatements, annexB, allowBigInt,
-                        classFields, importAttributes, privateFieldsIn, topLevelAwait, v8Intrinsics);
+                        classFields, importAttributes, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
     }
 
     public JSParserOptions withStrict(@SuppressWarnings("hiding") boolean strict) {
         if (strict != this.strict) {
             return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAttributes, privateFieldsIn, topLevelAwait, v8Intrinsics);
+                            classFields, importAttributes, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
         }
         return this;
     }

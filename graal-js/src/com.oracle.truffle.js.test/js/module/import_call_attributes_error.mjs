@@ -6,9 +6,9 @@
  */
 
 /**
- * Tests that import calls with invalid options/assertions throw a TypeError.
+ * Tests that import calls with invalid options/attributes throw a TypeError.
  *
- * @option import-assertions=true
+ * @option import-attributes=true
  */
 
 function shouldHaveThrown(err) {
@@ -26,16 +26,16 @@ try {
 }
 
 try {
-    // The 'assert' option must be an object
-    await import(from, {assert: 42});
+    // The 'with' option must be an object
+    await import(from, {with: 42});
     shouldHaveThrown(TypeError);
 } catch (e) {
     if (!(e instanceof TypeError)) throw e;
 }
 
 try {
-    // Import assertion value must be a string
-    await import(from, {assert: {attr: 42}});
+    // Import attribute value must be a string
+    await import(from, {with: {attr: 42}});
     shouldHaveThrown(TypeError);
 } catch (e) {
     if (!(e instanceof TypeError)) throw e;
@@ -43,5 +43,5 @@ try {
 
 // Valid
 await import(from, {});
-await import(from, {assert: {}});
-await import(from, {assert: {attr: 'value'}});
+await import(from, {with: {}});
+await import(from, {with: {attr: 'value'}});

@@ -246,8 +246,12 @@ public final class Options {
                     polyglotOptions.put("js.top-level-await", "true");
                     continue;
                 }
-                if ("harmony-import-assertions".equals(normalizedKey) || "harmony-import-attributes".equals(normalizedKey)) {
+                if ("harmony-import-attributes".equals(normalizedKey)) {
                     polyglotOptions.put("js.import-attributes", "true");
+                    continue;
+                }
+                if ("harmony-import-assertions".equals(normalizedKey)) {
+                    polyglotOptions.put("js.import-assertions", "true");
                     continue;
                 }
                 if ("harmony-shadow-realm".equals(normalizedKey)) {

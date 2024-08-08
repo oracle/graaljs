@@ -190,6 +190,7 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (flags.contains(HARMONY_IMPORT_ASSERTIONS) || flags.contains(HARMONY_IMPORT_ATTRIBUTES)) {
             extraOptions.put(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true");
+            extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
         }
         if (flags.contains(HARMONY_ITERATOR_HELPERS)) {

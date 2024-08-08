@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,7 +88,7 @@ public class ImportAssertionsWithCustomFsTest {
             try (Context context = JSTest.newContextBuilder().allowIO(ioAccess).out(out).//
                             option(JSContextOptions.CONSOLE_NAME, "true").//
                             option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").//
-                            option(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true").//
+                            option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").//
                             option(JSContextOptions.JSON_MODULES_NAME, "true").//
                             build()) {
                 Value asyncFn = context.eval(JavaScriptLanguage.ID, source.statement);
@@ -97,7 +97,7 @@ public class ImportAssertionsWithCustomFsTest {
             Assert.assertEquals(source.expectedValue + "\n", out.toString());
         } else {
             try (Context context = JSTest.newContextBuilder().allowIO(ioAccess).//
-                            option(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true").//
+                            option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").//
                             option(JSContextOptions.JSON_MODULES_NAME, "true").//
                             build()) {
                 Value v = context.eval(Source.newBuilder(JavaScriptLanguage.ID, source.statement, "exec.mjs").build());
