@@ -700,10 +700,6 @@ public class Parser extends AbstractParser {
     private void handleParseException(final ParserException e) {
         // Issue message.
         errors.error(e);
-
-        if (env.dumpOnError) {
-            e.printStackTrace(env.getErr());
-        }
     }
 
     /**
@@ -713,10 +709,6 @@ public class Parser extends AbstractParser {
         if (e != null) {
             // Issue message.
             errors.error(e);
-
-            if (env.dumpOnError) {
-                e.printStackTrace(env.getErr());
-            }
         }
 
         // Skip to a recovery point.
