@@ -6981,8 +6981,8 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ImportDeclaration :
-     *     import ImportClause FromClause ;
-     *     import ModuleSpecifier ;
+     *     import ImportClause FromClause WithClause_opt;
+     *     import ModuleSpecifier WithClause_opt;
      *     import ImportClause FromClause [no LineTerminator here] AssertClause ;
      *     import ModuleSpecifier [no LineTerminator here] AssertClause ;
      * ImportClause :
@@ -7003,19 +7003,17 @@ public class Parser extends AbstractParser {
         final long importToken = token;
         expect(IMPORT);
         if (type == STRING || type == ESCSTRING) {
-            // import ModuleSpecifier ;
+            // import ModuleSpecifier WithClause_opt;
             TruffleString moduleSpecifier = (TruffleString) getValue();
             long specifierToken = token;
             next();
             LiteralNode<TruffleString> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
-            Map<TruffleString, TruffleString> attributes = Map.of();
-            if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                attributes = withClause();
-            }
+            Map<TruffleString, TruffleString> attributes = withClause();
+
             module.addModuleRequest(ModuleRequest.create(moduleSpecifier, attributes));
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
         } else {
-            // import ImportClause FromClause ;
+            // import ImportClause FromClause WithClause_opt;
             final List<ImportEntry> importEntries = new ArrayList<>();
             final ImportClauseNode importClause;
             final long startToken = token;
@@ -7055,10 +7053,8 @@ public class Parser extends AbstractParser {
             }
 
             FromNode fromNode = fromClause();
-            Map<TruffleString, TruffleString> attributes = Map.of();
-            if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                attributes = withClause();
-            }
+            Map<TruffleString, TruffleString> attributes = withClause();
+
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode));
             TruffleString moduleSpecifier = fromNode.getModuleSpecifier().getValue();
             ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes);
@@ -7071,7 +7067,7 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse assert clause.
+     * Parse optional with clause (or legacy assert clause).
      *
      * <pre>
      *     AttributesKeyword { }
@@ -7079,12 +7075,14 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private Map<TruffleString, TruffleString> withClause() {
-        assert (type == ASSERT || type == WITH);
-        next();
-        expect(LBRACE);
-        Map<TruffleString, TruffleString> entries = withEntries();
-        expect(RBRACE);
-        return entries;
+        Map<TruffleString, TruffleString> attributes = Map.of();
+        if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
+            next();
+            expect(LBRACE);
+            attributes = withEntries();
+            expect(RBRACE);
+        }
+        return attributes;
     }
 
     /**
@@ -7232,7 +7230,7 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ExportDeclaration :
-     *     export ExportFromClause FromClause ;
+     *     export ExportFromClause FromClause WithClause_opt ;
      *     export ExportFromClause FromClause [no LineTerminator here] AssertClause;
      *     export NamedExports ;
      *     export VariableStatement
@@ -7244,7 +7242,6 @@ public class Parser extends AbstractParser {
      */
     private void exportDeclaration(ParserContextModuleNode module) {
         final long exportToken = token;
-        Map<TruffleString, TruffleString> attributes = Map.of();
         expect(EXPORT);
         final boolean yield = false;
         final boolean await = isTopLevelAwait();
@@ -7257,9 +7254,8 @@ public class Parser extends AbstractParser {
                     exportName = moduleExportName();
                 }
                 FromNode from = fromClause();
-                if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                    attributes = withClause();
-                }
+                Map<TruffleString, TruffleString> attributes = withClause();
+
                 TruffleString moduleRequest = from.getModuleSpecifier().getValue();
                 module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from, attributes));
@@ -7269,11 +7265,11 @@ public class Parser extends AbstractParser {
             case LBRACE: {
                 NamedExportsNode exportClause = namedExports();
                 FromNode from = null;
+                Map<TruffleString, TruffleString> attributes = Map.of();
                 if (type == FROM) {
                     from = fromClause();
-                    if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                        attributes = withClause();
-                    }
+                    attributes = withClause();
+
                     TruffleString moduleRequest = from.getModuleSpecifier().getValue();
                     module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
                 } else {
