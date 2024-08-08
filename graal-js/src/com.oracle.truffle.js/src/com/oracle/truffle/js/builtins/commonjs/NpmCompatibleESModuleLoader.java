@@ -122,7 +122,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     @TruffleBoundary
     @Override
     public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
-        String specifier = moduleRequest.getSpecifier().toJavaStringUncached();
+        String specifier = moduleRequest.specifier().toJavaStringUncached();
         log("IMPORT resolve ", specifier);
         String moduleReplacementName = getCoreModuleReplacement(realm, specifier);
         if (moduleReplacementName != null) {
@@ -157,7 +157,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     }
 
     private JSModuleRecord loadCoreModuleReplacement(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String moduleReplacementName) {
-        String specifier = moduleRequest.getSpecifier().toJavaStringUncached();
+        String specifier = moduleRequest.specifier().toJavaStringUncached();
         log("IMPORT resolve built-in ", specifier);
         JSModuleRecord existingModule = moduleMap.get(specifier);
         if (existingModule != null) {

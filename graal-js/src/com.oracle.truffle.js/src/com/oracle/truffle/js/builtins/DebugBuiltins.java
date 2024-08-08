@@ -579,7 +579,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
                 @Override
                 public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
-                    return moduleMap.computeIfAbsent(moduleRequest.getSpecifier(),
+                    return moduleMap.computeIfAbsent(moduleRequest.specifier(),
                                     (key) -> new JSModuleRecord(evaluator.envParseModule(JSRealm.get(null), resolveModuleSource(referencingModule, key)), this));
                 }
 

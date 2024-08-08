@@ -274,8 +274,8 @@ public class ExportParserTest {
 
         assertEquals(1, module.getIndirectExportEntries().size());
         ExportEntry exportEntry = module.getIndirectExportEntries().get(0);
-        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().getAttributes().size());
-        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().getAttributes());
+        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().attributes().size());
+        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().attributes());
     }
 
     @Test
@@ -297,8 +297,8 @@ public class ExportParserTest {
 
         assertEquals(1, module.getStarExportEntries().size());
         ExportEntry exportEntry = module.getStarExportEntries().get(0);
-        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().getAttributes().size());
-        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().getAttributes());
+        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().attributes().size());
+        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().attributes());
     }
 
     @Test
@@ -322,8 +322,8 @@ public class ExportParserTest {
 
         assertEquals(1, module.getIndirectExportEntries().size());
         ExportEntry exportEntry = module.getIndirectExportEntries().get(0);
-        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().getAttributes().size());
-        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().getAttributes());
+        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().attributes().size());
+        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().attributes());
     }
 
     @Test

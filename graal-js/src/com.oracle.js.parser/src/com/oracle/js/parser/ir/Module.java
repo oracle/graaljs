@@ -41,12 +41,12 @@
 
 package com.oracle.js.parser.ir;
 
-import com.oracle.js.parser.ParserStrings;
-import com.oracle.truffle.api.strings.TruffleString;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import com.oracle.js.parser.ParserStrings;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Module information.
@@ -175,14 +175,9 @@ public final class Module {
         }
     }
 
-    public static final class ModuleRequest {
-        private final TruffleString specifier;
-        private Map<TruffleString, TruffleString> attributes;
-
-        private ModuleRequest(TruffleString specifier, Map<TruffleString, TruffleString> attributes) {
-            this.specifier = specifier;
-            this.attributes = attributes;
-        }
+    public record ModuleRequest(
+                    TruffleString specifier,
+                    Map<TruffleString, TruffleString> attributes) {
 
         public static ModuleRequest create(TruffleString specifier) {
             return new ModuleRequest(specifier, Collections.emptyMap());
@@ -196,16 +191,11 @@ public final class Module {
             return new ModuleRequest(specifier, Map.ofEntries(attributes));
         }
 
-        public TruffleString getSpecifier() {
-            return specifier;
-        }
-
-        public Map<TruffleString, TruffleString> getAttributes() {
-            return attributes;
-        }
-
-        public void setAttributes(Map<TruffleString, TruffleString> attributes) {
-            this.attributes = attributes;
+        public ModuleRequest withAttributes(Map<TruffleString, TruffleString> newAttributes) {
+            if (this.attributes == newAttributes) {
+                return this;
+            }
+            return new ModuleRequest(specifier, newAttributes);
         }
     }
 

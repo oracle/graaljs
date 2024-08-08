@@ -105,7 +105,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             refPathOrName = refPath != null ? refPath : referrerSource.getName();
         }
         try {
-            TruffleString specifierTS = moduleRequest.getSpecifier();
+            TruffleString specifierTS = moduleRequest.specifier();
             String specifier = Strings.toJavaString(specifierTS);
             TruffleFile moduleFile;
             String canonicalPath;
@@ -205,8 +205,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             return existingModule;
         }
 
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(Strings.toJavaString(moduleRequest.getSpecifier())).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
-        Map<TruffleString, TruffleString> attributes = moduleRequest.getAttributes();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(Strings.toJavaString(moduleRequest.specifier())).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
+        Map<TruffleString, TruffleString> attributes = moduleRequest.attributes();
         int moduleType = getModuleType(moduleFile.getName());
         TruffleString assertedType = attributes.get(JSContext.getTypeImportAttribute());
         if (!doesModuleTypeMatchAssertionType(assertedType, moduleType)) {
@@ -222,7 +222,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         moduleMap.put(canonicalPath, newModule);
 
         if (referrer != null) {
-            referrer.rememberImportedModuleSource(moduleRequest.getSpecifier(), source);
+            referrer.rememberImportedModuleSource(moduleRequest.specifier(), source);
         }
         return newModule;
     }

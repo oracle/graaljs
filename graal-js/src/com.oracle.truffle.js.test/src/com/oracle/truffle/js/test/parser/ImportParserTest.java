@@ -256,8 +256,8 @@ public class ImportParserTest {
 
         assertEquals(1, module.getImportEntries().size());
         ImportEntry importEntry = module.getImportEntries().get(0);
-        assertEquals(importEntry.toString(), expectedAttributes.size(), importEntry.getModuleRequest().getAttributes().size());
-        assertEquals(importEntry.toString(), expectedAttributes, importEntry.getModuleRequest().getAttributes());
+        assertEquals(importEntry.toString(), expectedAttributes.size(), importEntry.getModuleRequest().attributes().size());
+        assertEquals(importEntry.toString(), expectedAttributes, importEntry.getModuleRequest().attributes());
     }
 
     @Test
@@ -282,7 +282,7 @@ public class ImportParserTest {
 
         assertEquals(1, module.getImportEntries().size());
         ImportEntry importEntry = module.getImportEntries().get(0);
-        assertEquals(importEntry.toString(), expectedAttributes.size(), importEntry.getModuleRequest().getAttributes().size());
-        assertEquals(importEntry.toString(), expectedAttributes, importEntry.getModuleRequest().getAttributes());
+        assertEquals(importEntry.toString(), expectedAttributes.size(), importEntry.getModuleRequest().attributes().size());
+        assertEquals(importEntry.toString(), expectedAttributes, importEntry.getModuleRequest().attributes());
     }
 }

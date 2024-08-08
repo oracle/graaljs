@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -448,29 +448,27 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary
     @Override
     public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, ModuleRequest moduleRequest) {
-        filterSupportedImportAttributes(context, moduleRequest);
         JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : JSRealm.get(null).getModuleLoader();
-        return moduleLoader.resolveImportedModule(referrer, moduleRequest);
+        return moduleLoader.resolveImportedModule(referrer, filterSupportedImportAttributes(context, moduleRequest));
     }
 
     private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, ModuleRequest moduleRequest) {
-        filterSupportedImportAttributes(referencingModule.getContext(), moduleRequest);
-        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, moduleRequest);
+        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, filterSupportedImportAttributes(referencingModule.getContext(), moduleRequest));
     }
 
-    private static void filterSupportedImportAttributes(final JSContext context, final ModuleRequest moduleRequest) {
-        if (moduleRequest.getAttributes().isEmpty()) {
-            return;
+    private static ModuleRequest filterSupportedImportAttributes(JSContext context, ModuleRequest moduleRequest) {
+        if (moduleRequest.attributes().isEmpty() || context.getSupportedImportAttributes().containsAll(moduleRequest.attributes().keySet())) {
+            return moduleRequest;
         }
         Map<TruffleString, TruffleString> supportedAttributes = new HashMap<>();
-        for (Map.Entry<TruffleString, TruffleString> attributes : moduleRequest.getAttributes().entrySet()) {
+        for (Map.Entry<TruffleString, TruffleString> attributes : moduleRequest.attributes().entrySet()) {
             TruffleString key = attributes.getKey();
             TruffleString value = attributes.getValue();
             if (context.getSupportedImportAttributes().contains(key)) {
                 supportedAttributes.put(key, value);
             }
         }
-        moduleRequest.setAttributes(supportedAttributes);
+        return moduleRequest.withAttributes(supportedAttributes);
     }
 
     Collection<TruffleString> getExportedNames(JSModuleRecord moduleRecord) {

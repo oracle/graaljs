@@ -3365,7 +3365,7 @@ public final class GraalJSAccess {
                 resourceName = Strings.fromJavaString(referrer.getSource().getName());
                 hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
             }
-            return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.getSpecifier(), importAssertions);
+            return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), importAssertions);
         }
     }
 
@@ -3910,12 +3910,12 @@ public final class GraalJSAccess {
     }
 
     public Object moduleRequestGetSpecifier(Object moduleRequest) {
-        return ((ModuleRequest) moduleRequest).getSpecifier();
+        return ((ModuleRequest) moduleRequest).specifier();
     }
 
     private static Object[] moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
         List<Object> attributes = new ArrayList<>();
-        for (Map.Entry<TruffleString, TruffleString> entry : request.getAttributes().entrySet()) {
+        for (Map.Entry<TruffleString, TruffleString> entry : request.attributes().entrySet()) {
             attributes.add(entry.getKey());
             attributes.add(entry.getValue());
             if (withSourceOffset) {
@@ -4249,7 +4249,7 @@ public final class GraalJSAccess {
         @Override
         public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Map<TruffleString, JSModuleRecord> referrerCache = cache.get(referrer);
-            TruffleString specifier = moduleRequest.getSpecifier();
+            TruffleString specifier = moduleRequest.specifier();
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();
                 cache.put(referrer, referrerCache);

@@ -239,7 +239,7 @@ public class ImportCallNode extends JavaScriptNode {
         if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
             JSDynamicObject promise = context.hostImportModuleDynamically(realm, referencingScriptOrModule, moduleRequest);
             if (promise == null) {
-                return rejectPromise(promiseCapability, createTypeErrorCannotImport(moduleRequest.getSpecifier()));
+                return rejectPromise(promiseCapability, createTypeErrorCannotImport(moduleRequest.specifier()));
             }
             assert JSPromise.isJSPromise(promise);
             return promise;
