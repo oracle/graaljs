@@ -147,7 +147,6 @@ import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.ExpressionList;
 import com.oracle.js.parser.ir.ExpressionStatement;
 import com.oracle.js.parser.ir.ForNode;
-import com.oracle.js.parser.ir.FromNode;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.IfNode;
@@ -7044,11 +7043,11 @@ public class Parser extends AbstractParser {
                 throw error(AbstractParser.message(MSG_EXPECTED_IMPORT));
             }
 
-            FromNode fromNode = fromClause();
+            LiteralNode<TruffleString> specifier = fromClause();
             Map<TruffleString, TruffleString> attributes = withClause();
 
-            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode, attributes));
-            TruffleString moduleSpecifier = fromNode.getModuleSpecifier().getValue();
+            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, specifier, attributes));
+            TruffleString moduleSpecifier = specifier.getValue();
             ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes);
             module.addModuleRequest(moduleRequest);
             for (int i = 0; i < importEntries.size(); i++) {
@@ -7201,9 +7200,7 @@ public class Parser extends AbstractParser {
      *      from ModuleSpecifier
      * </pre>
      */
-    private FromNode fromClause() {
-        int fromStart = start;
-        long fromToken = token;
+    private LiteralNode<TruffleString> fromClause() {
         expect(FROM);
 
         if (type == STRING || type == ESCSTRING) {
@@ -7211,7 +7208,7 @@ public class Parser extends AbstractParser {
             long specifierToken = token;
             next();
             LiteralNode<TruffleString> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
-            return new FromNode(fromToken, fromStart, finish, specifier);
+            return specifier;
         } else {
             throw error(expectMessage(STRING));
         }
@@ -7245,25 +7242,25 @@ public class Parser extends AbstractParser {
                     next();
                     exportName = moduleExportName();
                 }
-                FromNode from = fromClause();
+                LiteralNode<TruffleString> fromSpecifier = fromClause();
                 Map<TruffleString, TruffleString> attributes = withClause();
 
-                TruffleString moduleRequest = from.getModuleSpecifier().getValue();
-                module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from, attributes));
+                TruffleString moduleSpecifier = fromSpecifier.getValue();
+                module.addModuleRequest(ModuleRequest.create(moduleSpecifier, attributes));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, fromSpecifier, attributes));
                 endOfLine();
                 break;
             }
             case LBRACE: {
                 NamedExportsNode exportClause = namedExports();
-                FromNode from = null;
+                LiteralNode<TruffleString> fromSpecifier = null;
                 Map<TruffleString, TruffleString> attributes = Map.of();
                 if (type == FROM) {
-                    from = fromClause();
+                    fromSpecifier = fromClause();
                     attributes = withClause();
 
-                    TruffleString moduleRequest = from.getModuleSpecifier().getValue();
-                    module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
+                    TruffleString moduleSpecifier = fromSpecifier.getValue();
+                    module.addModuleRequest(ModuleRequest.create(moduleSpecifier, attributes));
                 } else {
                     for (ExportSpecifierNode export : exportClause.getExportSpecifiers()) {
                         if (!(export.getIdentifier() instanceof IdentNode)) {
@@ -7271,7 +7268,7 @@ public class Parser extends AbstractParser {
                         }
                     }
                 }
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from, attributes));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, fromSpecifier, attributes));
                 endOfLine();
                 break;
             }

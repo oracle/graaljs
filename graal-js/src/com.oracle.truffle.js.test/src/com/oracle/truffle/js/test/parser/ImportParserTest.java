@@ -51,7 +51,6 @@ import com.oracle.js.parser.ErrorManager;
 import com.oracle.js.parser.Parser;
 import com.oracle.js.parser.ScriptEnvironment;
 import com.oracle.js.parser.Source;
-import com.oracle.js.parser.ir.FromNode;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.ImportClauseNode;
@@ -85,8 +84,7 @@ public class ImportParserTest {
         ImportNode importNode = imports.get(0);
         IdentNode ident = importNode.getImportClause().getDefaultBinding();
         assertEquals(BAR, ident.getNameTS());
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -102,8 +100,7 @@ public class ImportParserTest {
         assertEquals(1, specifiers.size());
         ImportSpecifierNode specifier = specifiers.get(0);
         assertEquals(BAR, specifier.getBindingIdentifier().getNameTS());
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -117,8 +114,7 @@ public class ImportParserTest {
         assertEquals(FOO, ident.getNameTS());
         NameSpaceImportNode namespace = clause.getNameSpaceImport();
         assertEquals(BAR, namespace.getBindingIdentifier().getNameTS());
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -133,8 +129,7 @@ public class ImportParserTest {
         ImportSpecifierNode specifier = specifiers.get(0);
         assertEquals(FOO, specifier.getBindingIdentifier().getNameTS());
         assertEquals(DEFAULT, specifier.getIdentifier().getPropertyNameTS());
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -158,8 +153,7 @@ public class ImportParserTest {
         ImportSpecifierNode specifier = specifiers.get(0);
         assertEquals(BAZ, specifier.getBindingIdentifier().getNameTS());
         assertEquals(BAR, specifier.getIdentifier().getPropertyNameTS());
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -179,8 +173,7 @@ public class ImportParserTest {
         specifier = specifiers.get(1);
         assertEquals(XYZ, specifier.getBindingIdentifier().getNameTS());
 
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -192,8 +185,7 @@ public class ImportParserTest {
         ImportClauseNode clause = importNode.getImportClause();
         List<ImportSpecifierNode> specifiers = clause.getNamedImports().getImportSpecifiers();
         assertEquals(0, specifiers.size());
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -207,8 +199,7 @@ public class ImportParserTest {
         assertEquals(1, specifiers.size());
         ImportSpecifierNode specifier = specifiers.get(0);
         assertEquals(BAR, specifier.getBindingIdentifier().getNameTS());
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -227,8 +218,7 @@ public class ImportParserTest {
         specifier = specifiers.get(1);
         assertEquals(BAZ, specifier.getBindingIdentifier().getNameTS());
 
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -239,8 +229,7 @@ public class ImportParserTest {
         ImportNode importNode = imports.get(0);
         NameSpaceImportNode namespace = importNode.getImportClause().getNameSpaceImport();
         assertEquals(FOO, namespace.getBindingIdentifier().getNameTS());
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -255,8 +244,7 @@ public class ImportParserTest {
         assertEquals(1, imports.size());
         ImportNode importNode = imports.get(0);
 
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
         ImportClauseNode clause = importNode.getImportClause();
         List<ImportSpecifierNode> specifiers = clause.getNamedImports().getImportSpecifiers();
         assertEquals(1, specifiers.size());
@@ -284,8 +272,7 @@ public class ImportParserTest {
         assertEquals(1, imports.size());
         ImportNode importNode = imports.get(0);
 
-        FromNode from = importNode.getFrom();
-        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        assertEquals(FOO, importNode.getModuleSpecifier().getValue());
         ImportClauseNode clause = importNode.getImportClause();
         NameSpaceImportNode nameSpaceImport = clause.getNameSpaceImport();
         assertEquals(BAR, nameSpaceImport.getBindingIdentifier().getNameTS());

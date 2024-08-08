@@ -62,7 +62,6 @@ import com.oracle.js.parser.ir.ExportNode;
 import com.oracle.js.parser.ir.ExportSpecifierNode;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.ExpressionStatement;
-import com.oracle.js.parser.ir.FromNode;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.LiteralNode;
@@ -162,8 +161,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        FromNode from = export.getFrom();
-        assertEquals(ImportParserTest.FOO, from.getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
         List<ExportSpecifierNode> specifiers = export.getNamedExports().getExportSpecifiers();
         assertEquals(1, specifiers.size());
         return specifiers.get(0);
@@ -176,8 +174,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        FromNode from = export.getFrom();
-        assertEquals(ImportParserTest.FOO, from.getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -218,8 +215,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        FromNode from = export.getFrom();
-        assertEquals(ImportParserTest.FOO, from.getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
         List<ExportSpecifierNode> specifiers = export.getNamedExports().getExportSpecifiers();
         assertEquals(2, specifiers.size());
 
@@ -245,8 +241,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        FromNode from = export.getFrom();
-        assertEquals(ImportParserTest.FOO, from.getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
         List<ExportSpecifierNode> specifiers = export.getNamedExports().getExportSpecifiers();
         assertEquals(2, specifiers.size());
 
@@ -269,7 +264,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        assertEquals(ImportParserTest.FOO, export.getFrom().getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
         List<ExportSpecifierNode> specifiers = export.getNamedExports().getExportSpecifiers();
         assertEquals(1, specifiers.size());
         assertEquals(ImportParserTest.BAR, specifiers.get(0).getIdentifier().getPropertyNameTS());
@@ -295,7 +290,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        assertEquals(ImportParserTest.FOO, export.getFrom().getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
 
         assertEquals(export.toString(), expectedAttributes.size(), export.getAttributes().size());
         assertEquals(export.toString(), expectedAttributes, export.getAttributes());
@@ -318,7 +313,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        assertEquals(ImportParserTest.FOO, export.getFrom().getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
         assertNull(export.toString(), export.getNamedExports());
         assertEquals(export.toString(), ImportParserTest.BAR, export.getExportIdentifier().getPropertyNameTS());
 
