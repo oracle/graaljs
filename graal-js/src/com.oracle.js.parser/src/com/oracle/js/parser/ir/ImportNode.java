@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.Map;
+
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -53,19 +55,25 @@ public class ImportNode extends Node {
 
     private final FromNode from;
 
-    public ImportNode(final long token, final int start, final int finish, final LiteralNode<TruffleString> moduleSpecifier) {
-        this(token, start, finish, moduleSpecifier, null, null);
+    private final Map<TruffleString, TruffleString> attributes;
+
+    public ImportNode(long token, int start, int finish, LiteralNode<TruffleString> moduleSpecifier,
+                    Map<TruffleString, TruffleString> attributes) {
+        this(token, start, finish, moduleSpecifier, null, null, attributes);
     }
 
-    public ImportNode(final long token, final int start, final int finish, final ImportClauseNode importClause, final FromNode from) {
-        this(token, start, finish, null, importClause, from);
+    public ImportNode(long token, int start, int finish, ImportClauseNode importClause, final FromNode from,
+                    Map<TruffleString, TruffleString> attributes) {
+        this(token, start, finish, null, importClause, from, attributes);
     }
 
-    private ImportNode(final long token, final int start, final int finish, final LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause, FromNode from) {
+    private ImportNode(long token, int start, int finish, LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause, FromNode from,
+                    Map<TruffleString, TruffleString> attributes) {
         super(token, start, finish);
         this.moduleSpecifier = moduleSpecifier;
         this.importClause = importClause;
         this.from = from;
+        this.attributes = attributes;
     }
 
     private ImportNode(final ImportNode node, final LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause, FromNode from) {
@@ -73,6 +81,7 @@ public class ImportNode extends Node {
         this.moduleSpecifier = moduleSpecifier;
         this.importClause = importClause;
         this.from = from;
+        this.attributes = node.attributes;
     }
 
     public LiteralNode<TruffleString> getModuleSpecifier() {
@@ -85,6 +94,10 @@ public class ImportNode extends Node {
 
     public FromNode getFrom() {
         return from;
+    }
+
+    public Map<TruffleString, TruffleString> getAttributes() {
+        return attributes;
     }
 
     public ImportNode setModuleSpecifier(LiteralNode<TruffleString> moduleSpecifier) {
@@ -137,7 +150,24 @@ public class ImportNode extends Node {
             sb.append(' ');
             from.toString(sb, printType);
         }
+        if (!attributes.isEmpty()) {
+            sb.append(" with ");
+            attributesToString(attributes, sb);
+        }
         sb.append(';');
     }
 
+    static void attributesToString(Map<TruffleString, TruffleString> attributes, StringBuilder sb) {
+        sb.append("{");
+        for (var iterator = attributes.entrySet().iterator(); iterator.hasNext();) {
+            var attr = iterator.next();
+            sb.append(attr.getKey());
+            sb.append(": ");
+            sb.append('"').append(attr.getValue()).append('"');
+            if (iterator.hasNext()) {
+                sb.append(", ");
+            }
+        }
+        sb.append("}");
+    }
 }

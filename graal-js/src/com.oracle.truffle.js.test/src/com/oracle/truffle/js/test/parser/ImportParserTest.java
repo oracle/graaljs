@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.parser;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 
@@ -56,6 +57,8 @@ import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.ImportClauseNode;
 import com.oracle.js.parser.ir.ImportNode;
 import com.oracle.js.parser.ir.ImportSpecifierNode;
+import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Strings;
@@ -69,7 +72,7 @@ public class ImportParserTest {
     public static final TruffleString DEFAULT = Strings.constant("default");
 
     private static FunctionNode parseModule(String code) {
-        ScriptEnvironment env = ScriptEnvironment.builder().strict(true).build();
+        ScriptEnvironment env = ScriptEnvironment.builder().strict(true).ecmaScriptVersion(ScriptEnvironment.ES_2020).importAttributes(true).build();
         Parser parser = new Parser(env, Source.sourceFor("name", code), new ErrorManager.ThrowErrorManager());
         return parser.parseModule("moduleName");
     }
@@ -240,4 +243,59 @@ public class ImportParserTest {
         assertEquals(FOO, from.getModuleSpecifier().getValue());
     }
 
+    @Test
+    public void testImportNamedWithAttributes() {
+        String code = """
+                        import {bar} from "foo" with {type: "json"};
+                        """;
+        Module module = parseModule(code).getModule();
+        Map<TruffleString, TruffleString> expectedAttributes = Map.of(Strings.fromJavaString("type"), Strings.fromJavaString("json"));
+
+        List<ImportNode> imports = module.getImports();
+        assertEquals(1, imports.size());
+        ImportNode importNode = imports.get(0);
+
+        FromNode from = importNode.getFrom();
+        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        ImportClauseNode clause = importNode.getImportClause();
+        List<ImportSpecifierNode> specifiers = clause.getNamedImports().getImportSpecifiers();
+        assertEquals(1, specifiers.size());
+        ImportSpecifierNode specifier = specifiers.get(0);
+        assertEquals(BAR, specifier.getBindingIdentifier().getNameTS());
+
+        assertEquals(importNode.toString(), expectedAttributes.size(), importNode.getAttributes().size());
+        assertEquals(importNode.toString(), expectedAttributes, importNode.getAttributes());
+
+        assertEquals(1, module.getImportEntries().size());
+        ImportEntry importEntry = module.getImportEntries().get(0);
+        assertEquals(importEntry.toString(), expectedAttributes.size(), importEntry.getModuleRequest().getAttributes().size());
+        assertEquals(importEntry.toString(), expectedAttributes, importEntry.getModuleRequest().getAttributes());
+    }
+
+    @Test
+    public void testImportNamespaceWithAttributes() {
+        String code = """
+                        import * as bar from "foo" with {type: "json"};
+                        """;
+        Module module = parseModule(code).getModule();
+        Map<TruffleString, TruffleString> expectedAttributes = Map.of(Strings.fromJavaString("type"), Strings.fromJavaString("json"));
+
+        List<ImportNode> imports = module.getImports();
+        assertEquals(1, imports.size());
+        ImportNode importNode = imports.get(0);
+
+        FromNode from = importNode.getFrom();
+        assertEquals(FOO, from.getModuleSpecifier().getValue());
+        ImportClauseNode clause = importNode.getImportClause();
+        NameSpaceImportNode nameSpaceImport = clause.getNameSpaceImport();
+        assertEquals(BAR, nameSpaceImport.getBindingIdentifier().getNameTS());
+
+        assertEquals(importNode.toString(), expectedAttributes.size(), importNode.getAttributes().size());
+        assertEquals(importNode.toString(), expectedAttributes, importNode.getAttributes());
+
+        assertEquals(1, module.getImportEntries().size());
+        ImportEntry importEntry = module.getImportEntries().get(0);
+        assertEquals(importEntry.toString(), expectedAttributes.size(), importEntry.getModuleRequest().getAttributes().size());
+        assertEquals(importEntry.toString(), expectedAttributes, importEntry.getModuleRequest().getAttributes());
+    }
 }

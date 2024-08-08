@@ -7003,7 +7003,7 @@ public class Parser extends AbstractParser {
             Map<TruffleString, TruffleString> attributes = withClause();
 
             module.addModuleRequest(ModuleRequest.create(moduleSpecifier, attributes));
-            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
+            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier, attributes));
         } else {
             // import ImportClause FromClause WithClause_opt;
             final List<ImportEntry> importEntries = new ArrayList<>();
@@ -7047,7 +7047,7 @@ public class Parser extends AbstractParser {
             FromNode fromNode = fromClause();
             Map<TruffleString, TruffleString> attributes = withClause();
 
-            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode));
+            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode, attributes));
             TruffleString moduleSpecifier = fromNode.getModuleSpecifier().getValue();
             ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes);
             module.addModuleRequest(moduleRequest);
