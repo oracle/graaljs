@@ -105,8 +105,6 @@ public interface Evaluator {
 
     void hostLoadImportedModule(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest, Object hostDefined, Object payload);
 
-    JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, Module.ModuleRequest moduleRequest);
-
     PromiseCapabilityRecord loadRequestedModules(JSRealm realm, JSModuleRecord moduleRecord, Object hostDefined);
 
     void moduleLinking(JSRealm realm, JSModuleRecord moduleRecord);

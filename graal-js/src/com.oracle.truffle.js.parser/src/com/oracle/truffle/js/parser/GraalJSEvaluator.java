@@ -459,14 +459,9 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    @Override
-    public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, ModuleRequest moduleRequest) {
-        JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : JSRealm.get(null).getModuleLoader();
-        return moduleLoader.resolveImportedModule(referrer, filterSupportedImportAttributes(context, moduleRequest));
-    }
-
-    private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, ModuleRequest moduleRequest) {
-        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, filterSupportedImportAttributes(referencingModule.getContext(), moduleRequest));
+    private static JSModuleRecord hostResolveImportedModule(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
+        JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : realm.getModuleLoader();
+        return moduleLoader.resolveImportedModule(referrer, filterSupportedImportAttributes(realm.getContext(), moduleRequest));
     }
 
     private static ModuleRequest filterSupportedImportAttributes(JSContext context, ModuleRequest moduleRequest) {
@@ -505,7 +500,7 @@ public final class GraalJSEvaluator implements JSParser {
             exportedNames.add(exportEntry.getExportName());
         }
         for (ExportEntry exportEntry : module.getStarExportEntries()) {
-            JSModuleRecord requestedModule = hostResolveImportedModule(moduleRecord, exportEntry.getModuleRequest());
+            JSModuleRecord requestedModule = moduleRecord.getImportedModule(exportEntry.getModuleRequest());
             Collection<TruffleString> starNames = getExportedNames(requestedModule, exportStarSet);
             for (TruffleString starName : starNames) {
                 if (!starName.equals(Module.DEFAULT_NAME)) {
@@ -554,7 +549,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
             if (exportEntry.getExportName().equals(exportName)) {
-                JSModuleRecord importedModule = hostResolveImportedModule(referencingModule, exportEntry.getModuleRequest());
+                JSModuleRecord importedModule = referencingModule.getImportedModule(exportEntry.getModuleRequest());
                 if (exportEntry.getImportName().equals(Module.STAR_NAME)) {
                     // Assert: module does not provide the direct binding for this export.
                     return ExportResolution.resolved(importedModule, Module.NAMESPACE_EXPORT_BINDING_NAME);
@@ -571,7 +566,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         ExportResolution starResolution = ExportResolution.notFound();
         for (ExportEntry exportEntry : module.getStarExportEntries()) {
-            JSModuleRecord importedModule = hostResolveImportedModule(referencingModule, exportEntry.getModuleRequest());
+            JSModuleRecord importedModule = referencingModule.getImportedModule(exportEntry.getModuleRequest());
             ExportResolution resolution = resolveExport(importedModule, exportName, resolveSet);
             if (resolution.isAmbiguous()) {
                 return resolution;
@@ -680,11 +675,12 @@ public final class GraalJSEvaluator implements JSParser {
      * result), where result is either a normal completion containing the loaded Module Record or a
      * throw completion, either synchronously or asynchronously.
      */
+    @TruffleBoundary
     @Override
     public void hostLoadImportedModule(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest, Object hostDefined, Object payload) {
         Completion moduleCompletion;
         try {
-            JSModuleRecord module = hostResolveImportedModule(realm.getContext(), referrer, moduleRequest);
+            JSModuleRecord module = hostResolveImportedModule(realm, referrer, moduleRequest);
             moduleCompletion = Completion.forNormal(module);
         } catch (AbstractTruffleException e) {
             moduleCompletion = Completion.forThrow(getErrorObject(e));
@@ -773,8 +769,8 @@ public final class GraalJSEvaluator implements JSParser {
         stack.push(moduleRecord);
 
         Module module = moduleRecord.getModule();
-        for (ModuleRequest requestedModule : module.getRequestedModules()) {
-            JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
+        for (ModuleRequest required : module.getRequestedModules()) {
+            JSModuleRecord requiredModule = moduleRecord.getImportedModule(required);
             index = innerModuleLinking(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
                             requiredModule.getStatus() == Status.EvaluatingAsync || requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
@@ -908,8 +904,8 @@ public final class GraalJSEvaluator implements JSParser {
         stack.push(moduleRecord);
 
         Module module = moduleRecord.getModule();
-        for (ModuleRequest requestedModule : module.getRequestedModules()) {
-            JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
+        for (ModuleRequest required : module.getRequestedModules()) {
+            JSModuleRecord requiredModule = moduleRecord.getImportedModule(required);
             // Note: Link must have completed successfully prior to invoking this method,
             // so every requested module is guaranteed to resolve successfully.
             index = innerModuleEvaluation(realm, requiredModule, stack, index);
