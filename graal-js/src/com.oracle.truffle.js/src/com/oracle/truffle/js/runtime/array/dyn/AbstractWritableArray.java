@@ -261,10 +261,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
             int offset = 0;
             if (internalIndex < 0) {
                 offset = (int) newCapacity - capacity;
-                // alignment to zero index
-                if (indexOffset < offset) {
-                    offset = (int) indexOffset;
-                }
             }
             resizeArray(object, (int) newCapacity, capacity, offset);
             return offset;

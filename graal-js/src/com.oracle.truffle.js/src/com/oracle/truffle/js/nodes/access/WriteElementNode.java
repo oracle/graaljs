@@ -942,7 +942,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         private static boolean mightTransferToNonContiguous(AbstractIntArray intArray, JSDynamicObject target, long index) {
-            return intArray instanceof ContiguousIntArray && index == 0 && intArray.firstElementIndex(target) == 1;
+            return intArray instanceof ContiguousIntArray && index == 0 && intArray.firstElementIndex(target) == 1 && JSAbstractArray.arrayGetIndexOffset(target) == 0;
         }
     }
 
