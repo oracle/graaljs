@@ -50,6 +50,8 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -153,7 +155,7 @@ public class ImportCallNode extends JavaScriptNode {
         } catch (AbstractTruffleException ex) {
             return rejectPromise(promiseCapability, ex);
         }
-        return hostImportModuleDynamically(referencingScriptOrModule, ModuleRequest.create(specifierString), promiseCapability);
+        return hostImportModuleDynamicallyWithSite(referencingScriptOrModule, ModuleRequest.create(specifierString), promiseCapability);
     }
 
     @SuppressWarnings("unchecked")
@@ -225,7 +227,17 @@ public class ImportCallNode extends JavaScriptNode {
             }
         }
         ModuleRequest moduleRequest = attributes == null ? ModuleRequest.create(specifierString) : createModuleRequestWithAttributes(specifierString, attributes);
-        return hostImportModuleDynamically(referencingScriptOrModule, moduleRequest, promiseCapability);
+        return hostImportModuleDynamicallyWithSite(referencingScriptOrModule, moduleRequest, promiseCapability);
+    }
+
+    private JSDynamicObject hostImportModuleDynamicallyWithSite(ScriptOrModule referrer, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
+        EncapsulatingNodeReference current = EncapsulatingNodeReference.getCurrent();
+        Node prev = current.set(this);
+        try {
+            return hostImportModuleDynamically(referrer, moduleRequest, promiseCapability);
+        } finally {
+            current.set(prev);
+        }
     }
 
     @TruffleBoundary
