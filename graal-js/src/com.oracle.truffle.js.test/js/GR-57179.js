@@ -17,3 +17,10 @@ for (var i = 0; i < array.length; i++) {
     var expected = (i === 1000) ? undefined : (1000 - i);
     assertSame(expected, array[i]);
 }
+
+// Regression test of an incorrect transition to zero-based array
+array = [];
+for (var i = 8; i >= 0; i--) {
+    array[i] = i;
+}
+assertSameContent([0,1,2,3,4,5,6,7,8], array);
