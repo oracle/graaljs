@@ -198,7 +198,7 @@ public abstract class TestRunnable implements Runnable {
             if (line.contains(prefix)) {
                 Matcher matcher = findPattern.matcher(line);
                 if (matcher.find()) {
-                    stream = Stream.concat(stream, splitPattern.splitAsStream(matcher.group(1)));
+                    stream = Stream.concat(stream, splitPattern.splitAsStream(matcher.group(1).trim()));
                 }
             }
         }
