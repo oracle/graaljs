@@ -395,6 +395,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         // --- not new.target-capable below ---
         TypedArray(0),
         Symbol(0),
+        AbstractModuleSource(0),
 
         // non-standard (Nashorn) extensions
         JSAdapter(1),
@@ -568,6 +569,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return ConstructAggregateErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(3).createArgumentNodes(context));
 
             case TypedArray:
+            case AbstractModuleSource:
                 return AbstractClassConstructorNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case Int8Array:
             case Uint8Array:

@@ -161,6 +161,7 @@ import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.LiteralNode.ArrayLiteralNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.js.parser.ir.NamedExportsNode;
@@ -203,6 +204,7 @@ public class Parser extends AbstractParser {
     static final String NEW_TARGET_NAME = "new.target";
     static final TruffleString NEW_TARGET_NAME_TS = ParserStrings.constant(NEW_TARGET_NAME);
     private static final TruffleString IMPORT_META_NAME = ParserStrings.constant("import.meta");
+    private static final TruffleString IMPORT_SOURCE_NAME = ParserStrings.constant("import.source");
     private static final String PROTOTYPE_NAME = "prototype";
     /** Function.prototype.apply method name. */
     private static final String APPLY_NAME = "apply";
@@ -254,6 +256,8 @@ public class Parser extends AbstractParser {
     private static final String GET_SPC = "get ";
     private static final String SET_SPC = "set ";
     private static final String META = "meta";
+    private static final String SOURCE = "source";
+    private static final TruffleString SOURCE_TS = ParserStrings.constant("source");
     private static final TruffleString TARGET = ParserStrings.constant("target");
 
     private static final String CONTEXT_ASSIGNMENT_TARGET = "assignment target";
@@ -4844,7 +4848,7 @@ public class Parser extends AbstractParser {
             } else {
                 throw error(AbstractParser.message(MSG_EXPECTED_TARGET), token);
             }
-        } else if (type == IMPORT && isES2020() && lookahead() == LPAREN) {
+        } else if (type == IMPORT && lookaheadIsImportCall()) {
             // new cannot be used with import()
             throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName()), token);
         }
@@ -5080,6 +5084,10 @@ public class Parser extends AbstractParser {
      * ImportCall:
      *     import ( AssignmentExpression ,opt )
      *     import ( AssignmentExpression, AssignmentExpression ,opt )
+     *     import.source ( AssignmentExpression ,opt )
+     *     import.source ( AssignmentExpression, AssignmentExpression ,opt )
+     * ImportMeta:
+     *     import.meta
      * </pre>
      */
     private Expression importExpression(boolean yield, boolean await) {
@@ -5098,29 +5106,38 @@ public class Parser extends AbstractParser {
                 }
                 next();
                 return new IdentNode(importToken, finish, lexer.stringIntern(IMPORT_META_NAME)).setIsImportMeta();
+            } else if (SOURCE.equals(meta) && env.sourcePhaseImports) {
+                next();
+                expectDontAdvance(LPAREN);
+                return importCall(yield, await, importToken, importStart, importLine, IMPORT_SOURCE_NAME, true);
             } else {
                 throw error(AbstractParser.message(MSG_UNEXPECTED_IDENT, meta), token);
             }
         } else if (type == LPAREN) {
-            next();
-            List<Expression> arguments = new ArrayList<>();
-            arguments.add(assignmentExpression(true, yield, await));
-            if (type == COMMARIGHT && (env.importAttributes || env.importAssertions)) {
-                next();
-                if (type != RPAREN) {
-                    arguments.add(assignmentExpression(true, yield, await));
-                    if (type == COMMARIGHT) {
-                        next();
-                    }
-                }
-            }
-            expect(RPAREN);
-
-            IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), lexer.stringIntern(IMPORT.getNameTS()));
-            return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, arguments);
+            return importCall(yield, await, importToken, importStart, importLine, IMPORT.getNameTS(), false);
         } else {
             throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName()), importToken);
         }
+    }
+
+    private Expression importCall(boolean yield, boolean await, long importToken, int importStart, int importLine, TruffleString importName, boolean sourcePhase) {
+        assert type == LPAREN;
+        next();
+        List<Expression> arguments = new ArrayList<>();
+        arguments.add(assignmentExpression(true, yield, await));
+        if (type == COMMARIGHT && (env.importAttributes || env.importAssertions)) {
+            next();
+            if (type != RPAREN) {
+                arguments.add(assignmentExpression(true, yield, await));
+                if (type == COMMARIGHT) {
+                    next();
+                }
+            }
+        }
+        expect(RPAREN);
+
+        IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), lexer.stringIntern(importName));
+        return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, arguments, sourcePhase);
     }
 
     private ArrayList<Expression> argumentList(boolean yield, boolean await) {
@@ -6946,6 +6963,44 @@ public class Parser extends AbstractParser {
         return la == PERIOD || la == LPAREN;
     }
 
+    private boolean lookaheadIsImportCall() {
+        assert type == IMPORT;
+        if (!isES2020()) {
+            return false;
+        }
+        // import followed by `(` or `.source(`
+        boolean seenPeriod = false;
+        boolean seenIdent = false;
+        for (int i = 1;; i++) {
+            long currentToken = getToken(k + i);
+            TokenType t = Token.descType(currentToken);
+            switch (t) {
+                case EOL:
+                case COMMENT:
+                    continue;
+                case LPAREN:
+                    return !seenPeriod || seenIdent;
+                case PERIOD:
+                    if (!env.sourcePhaseImports || seenPeriod) {
+                        return false;
+                    }
+                    seenPeriod = true;
+                    continue;
+                case IDENT:
+                    if (!seenPeriod || seenIdent) {
+                        return false;
+                    } else if (SOURCE_TS.equals(getValueNoEscape(currentToken))) {
+                        seenIdent = true;
+                        continue;
+                    } else {
+                        return false;
+                    }
+                default:
+                    return false;
+            }
+        }
+    }
+
     private void declareImportBinding(IdentNode ident, boolean star) {
         Scope moduleScope = lc.getCurrentBlock().getScope();
         assert moduleScope.isModuleScope();
@@ -6963,6 +7018,9 @@ public class Parser extends AbstractParser {
         declareImportBinding(ident, true);
     }
 
+    /**
+     * ImportedBinding.
+     */
     private IdentNode importedBindingIdentifier() {
         return bindingIdentifier(false, isTopLevelAwait(), CONTEXT_IMPORTED_BINDING);
     }
@@ -6974,6 +7032,7 @@ public class Parser extends AbstractParser {
      * ImportDeclaration :
      *     import ImportClause FromClause WithClause_opt;
      *     import ModuleSpecifier WithClause_opt;
+     *     import source ImportedBinding FromClause WithClause_opt;
      *     import ImportClause FromClause [no LineTerminator here] AssertClause ;
      *     import ModuleSpecifier [no LineTerminator here] AssertClause ;
      * ImportClause :
@@ -6993,7 +7052,7 @@ public class Parser extends AbstractParser {
     private void importDeclaration(ParserContextModuleNode module) {
         final long importToken = token;
         expect(IMPORT);
-        if (type == STRING || type == ESCSTRING) {
+        end: if (type == STRING || type == ESCSTRING) {
             // import ModuleSpecifier WithClause_opt;
             TruffleString moduleSpecifier = (TruffleString) getValue();
             long specifierToken = token;
@@ -7018,6 +7077,25 @@ public class Parser extends AbstractParser {
             } else if (isBindingIdentifier()) {
                 // ImportedDefaultBinding
                 IdentNode importedDefaultBinding = importedBindingIdentifier();
+
+                if (env.sourcePhaseImports && SOURCE.equals(importedDefaultBinding.getName()) && isBindingIdentifier() && lookahead() == FROM) {
+                    // import source ImportedBinding FromClause WithClause_opt;
+                    long identToken = token;
+                    IdentNode importedBinding = importedBindingIdentifier();
+                    declareImportStarBinding(importedBinding);
+                    importClause = new ImportClauseNode(identToken, Token.descPosition(identToken), finish, importedBinding);
+
+                    LiteralNode<TruffleString> fromClause = fromClause();
+                    Map<TruffleString, TruffleString> attributes = withClause();
+
+                    module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromClause, attributes));
+                    TruffleString moduleSpecifier = fromClause.getValue();
+                    ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes, ImportPhase.Source);
+                    module.addModuleRequest(moduleRequest);
+                    module.addImportEntry(ImportEntry.importSource(moduleRequest, importedBinding.getNameTS()));
+                    break end;
+                }
+
                 declareImportBinding(importedDefaultBinding);
                 ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getNameTS());
                 importEntries.add(defaultImport);

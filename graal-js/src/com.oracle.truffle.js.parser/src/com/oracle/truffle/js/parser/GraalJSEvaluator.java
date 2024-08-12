@@ -60,6 +60,7 @@ import java.util.function.Supplier;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -493,7 +494,7 @@ public final class GraalJSEvaluator implements JSParser {
         PromiseCapabilityRecord pc = NewPromiseCapabilityNode.createDefault(realm);
         GraphLoadingState state = new GraphLoadingState(pc, hostDefined);
         try {
-            innerModuleLoading(realm, state, moduleRecord);
+            innerModuleLoading(realm, state, moduleRecord, true);
         } catch (AbstractTruffleException e) {
             assert false : e; // should not throw
             throw e;
@@ -501,17 +502,18 @@ public final class GraalJSEvaluator implements JSParser {
         return (JSPromiseObject) pc.getPromise();
     }
 
-    private void innerModuleLoading(JSRealm realm, GraphLoadingState state, AbstractModuleRecord module) {
+    private void innerModuleLoading(JSRealm realm, GraphLoadingState state, AbstractModuleRecord module, boolean recursiveLoad) {
         assert state.isLoading;
-        if (module instanceof JSModuleRecord moduleRecord && moduleRecord.getStatus() == Status.New &&
+        if (recursiveLoad && module instanceof JSModuleRecord moduleRecord && moduleRecord.getStatus() == Status.New &&
                         !state.visited.contains(moduleRecord)) {
             state.visited.add(moduleRecord);
             int requestedModuleCount = moduleRecord.getModule().getRequestedModules().size();
             state.pendingModulesCount += requestedModuleCount;
-            for (var required : moduleRecord.getModule().getRequestedModules()) {
+            for (ModuleRequest required : moduleRecord.getModule().getRequestedModules()) {
                 AbstractModuleRecord resolved = moduleRecord.getLoadedModule(realm, required);
                 if (resolved != null) {
-                    innerModuleLoading(realm, state, resolved);
+                    boolean innerRecursiveLoad = required.phase() != ImportPhase.Source;
+                    innerModuleLoading(realm, state, resolved, innerRecursiveLoad);
                 } else {
                     hostLoadImportedModule(realm, moduleRecord, required, state.hostDefined, state);
                 }
@@ -563,25 +565,26 @@ public final class GraalJSEvaluator implements JSParser {
             }
         }
         if (payload instanceof GraphLoadingState state) {
-            continueModuleLoading(realm, state, moduleCompletion);
+            continueModuleLoading(realm, state, moduleRequest.phase(), moduleCompletion);
         } else {
-            continueDynamicImport(payload, moduleCompletion);
+            continueDynamicImport(payload, moduleRequest.phase(), moduleCompletion);
         }
     }
 
-    private void continueModuleLoading(JSRealm realm, GraphLoadingState state, Completion moduleCompletion) {
+    private void continueModuleLoading(JSRealm realm, GraphLoadingState state, ImportPhase phase, Completion moduleCompletion) {
         if (!state.isLoading) {
             return;
         }
         if (moduleCompletion.isNormal()) {
-            innerModuleLoading(realm, state, (AbstractModuleRecord) moduleCompletion.getValue());
+            boolean recursiveLoad = phase != ImportPhase.Source;
+            innerModuleLoading(realm, state, (AbstractModuleRecord) moduleCompletion.getValue(), recursiveLoad);
         } else {
             state.isLoading = false;
             JSFunction.call(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getReject(), moduleCompletion.getValue()));
         }
     }
 
-    private static void continueDynamicImport(Object payload, Completion moduleCompletion) {
+    private static void continueDynamicImport(Object payload, ImportPhase phase, Completion moduleCompletion) {
         var continuation = (ImportCallNode.ContinueDynamicImportPayload) payload;
         PromiseCapabilityRecord promiseCapability = continuation.promiseCapability();
         if (moduleCompletion.isAbrupt()) {
@@ -590,6 +593,16 @@ public final class GraalJSEvaluator implements JSParser {
         }
 
         AbstractModuleRecord module = (AbstractModuleRecord) moduleCompletion.getValue();
+        if (phase == ImportPhase.Source) {
+            try {
+                Object moduleSource = module.getModuleSource();
+                JSFunction.call(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), moduleSource));
+            } catch (AbstractTruffleException e) {
+                JSFunction.call(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObject(e)));
+            }
+            return;
+        }
+
         // Perform the remaining steps of ContinueDynamicImport.
         JSFunction.call(JSArguments.create(Undefined.instance, continuation.continueDynamicImportCallback(), promiseCapability, module));
     }
@@ -634,6 +647,9 @@ public final class GraalJSEvaluator implements JSParser {
 
         Module module = moduleRecord.getModule();
         for (ModuleRequest required : module.getRequestedModules()) {
+            if (required.phase() != ImportPhase.Evaluation) {
+                continue;
+            }
             JSModuleRecord requiredModule = (JSModuleRecord) moduleRecord.getImportedModule(required);
             index = innerModuleLinking(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
@@ -768,6 +784,9 @@ public final class GraalJSEvaluator implements JSParser {
 
         Module module = moduleRecord.getModule();
         for (ModuleRequest required : module.getRequestedModules()) {
+            if (required.phase() != ImportPhase.Evaluation) {
+                continue;
+            }
             JSModuleRecord requiredModule = (JSModuleRecord) moduleRecord.getImportedModule(required);
             // Note: Link must have completed successfully prior to invoking this method,
             // so every requested module is guaranteed to resolve successfully.

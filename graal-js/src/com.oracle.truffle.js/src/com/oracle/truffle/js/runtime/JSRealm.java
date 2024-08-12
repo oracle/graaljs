@@ -88,6 +88,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.AbstractModuleSourcePrototype;
 import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -469,6 +470,9 @@ public class JSRealm {
     private boolean staticRegexResultInvalidated;
     private long staticRegexResultFromIndex;
     private TruffleString staticRegexResultOriginalInputString;
+
+    private final JSFunctionObject abstractModuleSourceConstructor;
+    private final JSDynamicObject abstractModuleSourcePrototype;
 
     /** WebAssembly support. */
     private final Object wasmTableAlloc;
@@ -913,6 +917,10 @@ public class JSRealm {
         } else {
             this.commonJSRequireCache = null;
         }
+
+        ctor = createAbstractModuleSourcePrototype();
+        this.abstractModuleSourceConstructor = ctor.getFunctionObject();
+        this.abstractModuleSourcePrototype = ctor.getPrototype();
 
         if (context.getLanguageOptions().webAssembly()) {
             if (!isWasmAvailable()) {
@@ -2522,6 +2530,23 @@ public class JSRealm {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, ForeignIteratorPrototypeBuiltins.BUILTINS);
         return prototype;
+    }
+
+    private JSConstructor createAbstractModuleSourcePrototype() {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSFunctionObject constructor = lookupFunction(ConstructorBuiltins.BUILTINS, ConstructorBuiltins.Constructor.AbstractModuleSource.getKey());
+        JSObjectUtil.putDataProperty(constructor, JSObject.PROTOTYPE, prototype, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
+        JSObjectUtil.putAccessorsFromContainer(this, prototype, AbstractModuleSourcePrototype.BUILTINS);
+        return new JSConstructor(constructor, prototype);
+    }
+
+    public JSFunctionObject getAbstractModuleSourceConstructor() {
+        return abstractModuleSourceConstructor;
+    }
+
+    public JSDynamicObject getAbstractModuleSourcePrototype() {
+        return abstractModuleSourcePrototype;
     }
 
     public JSDynamicObject getArrayProtoValuesIterator() {

@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
@@ -221,6 +222,7 @@ import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
 import com.oracle.truffle.js.nodes.module.ImportMetaNode;
 import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.nodes.module.ResolveNamedImportNode;
+import com.oracle.truffle.js.nodes.module.ResolveSourceImportNode;
 import com.oracle.truffle.js.nodes.module.ResolveStarImportNode;
 import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.unary.JSComplementNode;
@@ -1275,12 +1277,12 @@ public class NodeFactory {
         return ReadImportBindingNode.create(readLocal);
     }
 
-    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode argument, ScriptOrModule activeScriptOrModule) {
-        return ImportCallNode.create(context, argument, activeScriptOrModule);
+    public JavaScriptNode createImportCall(JSContext context, ImportPhase phase, JavaScriptNode argument, JavaScriptNode options, ScriptOrModule activeScriptOrModule) {
+        return ImportCallNode.create(context, phase, argument, options, activeScriptOrModule);
     }
 
-    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode specifier, ScriptOrModule activeScriptOrModule, JavaScriptNode options) {
-        return ImportCallNode.createWithOptions(context, specifier, activeScriptOrModule, options);
+    public JavaScriptNode createResolveSourceImport(JSContext context, JavaScriptNode moduleNode, ModuleRequest moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
+        return ResolveSourceImportNode.create(context, moduleNode, moduleRequest, writeLocalNode);
     }
 
     public JavaScriptNode createRestObject(JSContext context, JavaScriptNode source, JavaScriptNode excludedNames) {

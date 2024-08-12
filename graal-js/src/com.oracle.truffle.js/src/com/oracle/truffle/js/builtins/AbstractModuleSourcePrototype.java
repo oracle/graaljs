@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,63 +38,66 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.builtins;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
-import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
-import com.oracle.truffle.js.runtime.util.Pair;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Abstract Module Record.
+ * Contains built-in methods of AsyncGenerator.prototype.
  */
-public abstract class AbstractModuleRecord extends ScriptOrModule {
+public enum AbstractModuleSourcePrototype implements BuiltinEnum<AbstractModuleSourcePrototype> {
 
-    public AbstractModuleRecord(JSContext context, Source source) {
-        super(context, source);
+    _toStringTag(0) {
+        @Override
+        public Object getKey() {
+            return Symbol.SYMBOL_TO_STRING_TAG;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return true;
+        }
+    };
+
+    public static final TruffleString ABSTRACT_MODULE_SOURCE_PROTOTYPE = Strings.constant("%AbstractModuleSource%.prototype");
+    public static final JSBuiltinsContainer BUILTINS = JSBuiltinsContainer.fromEnum(ABSTRACT_MODULE_SOURCE_PROTOTYPE, AbstractModuleSourcePrototype.class);
+
+    private final int length;
+
+    AbstractModuleSourcePrototype(int length) {
+        this.length = length;
     }
 
-    public abstract JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefined);
+    @Override
+    public int getLength() {
+        return length;
+    }
 
-    public final void loadRequestedModulesSync(JSRealm realm, Object hostDefined) {
-        JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefined);
-        assert !JSPromise.isPending(loadPromise);
-        if (JSPromise.isRejected(loadPromise)) {
-            throw JSRuntime.getException(JSPromise.getPromiseResult(loadPromise));
+    @Override
+    public Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
+        return switch (this) {
+            case _toStringTag -> AbstractModuleSourcePrototypeFactory.ToStringTagNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+        };
+    }
+
+    public abstract static class ToStringTagNode extends JSBuiltinNode {
+
+        public ToStringTagNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        protected static Object doOther(Object thisObj) {
+            return Undefined.instance;
         }
     }
-
-    public abstract void link(JSRealm realm);
-
-    public abstract Object evaluate(JSRealm realm);
-
-    @TruffleBoundary
-    public final Collection<TruffleString> getExportedNames() {
-        return getExportedNames(new HashSet<>());
-    }
-
-    public abstract Collection<TruffleString> getExportedNames(Set<JSModuleRecord> exportStarSet);
-
-    @TruffleBoundary
-    public final ExportResolution resolveExport(TruffleString exportName) {
-        return resolveExport(exportName, new HashSet<>());
-    }
-
-    public abstract ExportResolution resolveExport(TruffleString exportName, Set<Pair<? extends AbstractModuleRecord, TruffleString>> resolveSet);
-
-    public JSDynamicObject getModuleNamespace() {
-        return Undefined.instance;
-    }
-
-    public abstract Object getModuleSource();
-
 }

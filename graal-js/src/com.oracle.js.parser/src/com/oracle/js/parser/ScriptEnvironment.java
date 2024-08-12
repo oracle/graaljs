@@ -130,6 +130,9 @@ public final class ScriptEnvironment {
     /** Are V8 intrinsics supported? */
     final boolean v8Intrinsics;
 
+    /** Are source phase imports enabled. */
+    final boolean sourcePhaseImports;
+
     public ScriptEnvironment(boolean strict,
                     int ecmaScriptVersion,
                     boolean emptyStatements,
@@ -142,6 +145,7 @@ public final class ScriptEnvironment {
                     boolean classFields,
                     boolean importAttributes,
                     boolean importAssertions,
+                    boolean sourcePhaseImports,
                     boolean privateFieldsIn,
                     boolean topLevelAwait,
                     boolean v8Intrinsics,
@@ -159,6 +163,7 @@ public final class ScriptEnvironment {
         this.classFields = classFields;
         this.importAttributes = importAttributes;
         this.importAssertions = importAssertions;
+        this.sourcePhaseImports = sourcePhaseImports;
         this.privateFieldsIn = privateFieldsIn;
         this.topLevelAwait = topLevelAwait;
         this.v8Intrinsics = v8Intrinsics;
@@ -186,6 +191,7 @@ public final class ScriptEnvironment {
         private boolean classFields = true;
         private boolean importAttributes = false;
         private boolean importAssertions = false;
+        private boolean sourcePhaseImports = false;
         private boolean privateFieldsIn = false;
         private boolean topLevelAwait = false;
         private boolean v8Intrinsics = false;
@@ -254,6 +260,10 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public void sourcePhaseImports(boolean sourcePhaseImports) {
+            this.sourcePhaseImports = sourcePhaseImports;
+        }
+
         public Builder privateFieldsIn(boolean privateFieldsIn) {
             this.privateFieldsIn = privateFieldsIn;
             return this;
@@ -276,7 +286,7 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAttributes, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior);
+                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior);
         }
     }
 }

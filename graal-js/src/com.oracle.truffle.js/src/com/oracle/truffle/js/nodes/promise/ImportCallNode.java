@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.promise;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -97,6 +98,7 @@ public class ImportCallNode extends JavaScriptNode {
     private static final HiddenKey LINK_AND_EVALUATE_KEY = new HiddenKey("%linkAndEvaluate");
     private static final TruffleString ASSERT = Strings.constant("assert");
 
+    private final ImportPhase phase;
     @Child private JavaScriptNode argRefNode;
     private final ScriptOrModule activeScriptOrModule;
     @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
@@ -113,8 +115,9 @@ public class ImportCallNode extends JavaScriptNode {
 
     private final JSContext context;
 
-    protected ImportCallNode(JSContext context, JavaScriptNode argRefNode, ScriptOrModule activeScriptOrModule, JavaScriptNode optionsRefNode) {
+    protected ImportCallNode(JSContext context, ImportPhase phase, JavaScriptNode argRefNode, JavaScriptNode optionsRefNode, ScriptOrModule activeScriptOrModule) {
         this.context = context;
+        this.phase = phase;
         this.argRefNode = argRefNode;
         this.activeScriptOrModule = activeScriptOrModule;
         this.optionsRefNode = optionsRefNode;
@@ -123,17 +126,14 @@ public class ImportCallNode extends JavaScriptNode {
         this.promiseReactionJobNode = PromiseReactionJobNode.create(context);
     }
 
-    public static ImportCallNode create(JSContext context, JavaScriptNode argRefNode, ScriptOrModule activeScriptOrModule) {
-        return new ImportCallNode(context, argRefNode, activeScriptOrModule, null);
-    }
-
-    public static ImportCallNode createWithOptions(JSContext context, JavaScriptNode specifierRefNode, ScriptOrModule activeScriptOrModule, JavaScriptNode optionsRefNode) {
-        return new ImportCallNode(context, specifierRefNode, activeScriptOrModule, optionsRefNode);
+    @NeverDefault
+    public static ImportCallNode create(JSContext context, ImportPhase phase, JavaScriptNode specifierRefNode, JavaScriptNode optionsRefNode, ScriptOrModule activeScriptOrModule) {
+        return new ImportCallNode(context, phase, specifierRefNode, optionsRefNode, activeScriptOrModule);
     }
 
     @NeverDefault
     public static ImportCallNode create(JSContext context) {
-        return create(context, null, null);
+        return create(context, ImportPhase.Evaluation, null, null, null);
     }
 
     @Override
@@ -155,7 +155,7 @@ public class ImportCallNode extends JavaScriptNode {
         } catch (AbstractTruffleException ex) {
             return rejectPromise(promiseCapability, ex);
         }
-        return hostImportModuleDynamicallyWithSite(referencingScriptOrModule, ModuleRequest.create(specifierString), promiseCapability);
+        return hostImportModuleDynamicallyWithSite(referencingScriptOrModule, ModuleRequest.create(specifierString, phase), promiseCapability);
     }
 
     @SuppressWarnings("unchecked")
@@ -226,7 +226,7 @@ public class ImportCallNode extends JavaScriptNode {
                 }
             }
         }
-        ModuleRequest moduleRequest = attributes == null ? ModuleRequest.create(specifierString) : createModuleRequestWithAttributes(specifierString, attributes);
+        ModuleRequest moduleRequest = attributes == null ? ModuleRequest.create(specifierString, phase) : createModuleRequestWithAttributes(specifierString, attributes, phase);
         return hostImportModuleDynamicallyWithSite(referencingScriptOrModule, moduleRequest, promiseCapability);
     }
 
@@ -241,8 +241,8 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    private static ModuleRequest createModuleRequestWithAttributes(TruffleString specifierString, Map.Entry<TruffleString, TruffleString>[] attributes) {
-        return ModuleRequest.create(specifierString, attributes);
+    private static ModuleRequest createModuleRequestWithAttributes(TruffleString specifierString, Map.Entry<TruffleString, TruffleString>[] attributes, ImportPhase phase) {
+        return ModuleRequest.create(specifierString, attributes, phase);
     }
 
     public final JSDynamicObject hostImportModuleDynamically(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
@@ -478,11 +478,6 @@ public class ImportCallNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        if (optionsRefNode == null) {
-            return ImportCallNode.create(context, cloneUninitialized(argRefNode, materializedTags), activeScriptOrModule);
-        } else {
-            return ImportCallNode.createWithOptions(context, cloneUninitialized(argRefNode, materializedTags), activeScriptOrModule,
-                            cloneUninitialized(optionsRefNode, materializedTags));
-        }
+        return ImportCallNode.create(context, phase, cloneUninitialized(argRefNode, materializedTags), cloneUninitialized(optionsRefNode, materializedTags), activeScriptOrModule);
     }
 }

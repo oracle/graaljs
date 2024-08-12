@@ -114,6 +114,7 @@ public record JSLanguageOptions(
                 boolean importAttributes,
                 boolean importAssertions,
                 boolean jsonModules,
+                boolean sourcePhaseImports,
                 boolean wasmBigInt,
                 boolean esmEvalReturnsExports,
                 boolean isMLEMode,
@@ -191,6 +192,7 @@ public record JSLanguageOptions(
         boolean importAttributes = options.isImportAttributes();
         boolean importAssertions = options.isImportAssertions();
         boolean jsonModules = options.isJsonModules();
+        boolean sourcePhaseImports = options.isSourcePhaseImports();
         boolean wasmBigInt = options.isWasmBigInt();
         boolean esmEvalReturnsExports = options.isEsmEvalReturnsExports();
         boolean printNoNewline = options.isPrintNoNewline();
@@ -275,6 +277,7 @@ public record JSLanguageOptions(
                         importAttributes,
                         importAssertions,
                         jsonModules,
+                        sourcePhaseImports,
                         wasmBigInt,
                         esmEvalReturnsExports,
                         mleMode,

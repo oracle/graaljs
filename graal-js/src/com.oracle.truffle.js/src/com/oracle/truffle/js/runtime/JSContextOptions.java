@@ -648,6 +648,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> JSON_MODULES = new OptionKey<>(false);
     @CompilationFinal private boolean jsonModules;
 
+    public static final String SOURCE_PHASE_IMPORTS_NAME = JS_OPTION_PREFIX + "source-phase-imports";
+    @Option(name = SOURCE_PHASE_IMPORTS_NAME, category = OptionCategory.USER, help = "Enable source phase imports proposal") //
+    public static final OptionKey<Boolean> SOURCE_PHASE_IMPORTS = new OptionKey<>(false);
+    @CompilationFinal private boolean sourcePhaseImports;
+
     public static final String WASM_BIG_INT_NAME = JS_OPTION_PREFIX + "wasm-bigint";
     @Option(name = WASM_BIG_INT_NAME, category = OptionCategory.USER, help = "Enable wasm i64 to javascript BigInt support") //
     public static final OptionKey<Boolean> WASM_BIG_INT = new OptionKey<>(true);
@@ -795,6 +800,7 @@ public final class JSContextOptions {
         this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES);
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
         this.jsonModules = readBooleanOption(JSON_MODULES);
+        this.sourcePhaseImports = readBooleanOption(SOURCE_PHASE_IMPORTS);
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
         this.printNoNewline = readBooleanOption(PRINT_NO_NEWLINE);
@@ -1221,6 +1227,10 @@ public final class JSContextOptions {
 
     public boolean isJsonModules() {
         return jsonModules;
+    }
+
+    public boolean isSourcePhaseImports() {
+        return sourcePhaseImports;
     }
 
     public boolean isWasmBigInt() {
