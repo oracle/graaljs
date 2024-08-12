@@ -1997,14 +1997,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -2017,30 +2009,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-propertybag-invalid-offset-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-datetime.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-string-zoneddatetime-wrong-offset.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/out-of-range-when-converting-from-normalized-duration.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2048,14 +2016,6 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-datetime.js",
     "status" : "FAIL",
@@ -2069,41 +2029,9 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-propertybag-invalid-offset-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-datetime.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-string-zoneddatetime-wrong-offset.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-datetime.js",
     "status" : "FAIL",
@@ -2121,6 +2049,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Instant/compare/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/Instant/compare/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2132,6 +2064,10 @@
     "filePath" : "built-ins/Temporal/Instant/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/from/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/Instant/from/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2145,21 +2081,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
   }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/epochMicroseconds/basic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/epochMilliseconds/basic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/epochSeconds/basic.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/equals/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/equals/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2173,6 +2105,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/since/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/since/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2181,17 +2117,21 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/since/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/subtract/minimum-maximum-instant.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
   }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/toZonedDateTimeISO/calendar-is-builtin.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/until/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/until/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/until/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2201,89 +2141,45 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/until/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/argument-convert.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-01-17"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/basic.js",
+    "filePath" : "built-ins/Temporal/PlainDate/calendar-iso-string.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/from/argument-plaindatetime.js",
+    "filePath" : "built-ins/Temporal/PlainDate/compare/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/from/argument-zoneddatetime.js",
+    "filePath" : "built-ins/Temporal/PlainDate/from/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/from/calendar-temporal-object.js",
+    "filePath" : "built-ins/Temporal/PlainDate/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/day/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainDate/from/observable-get-overflow-argument-string-invalid.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/dayOfWeek/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainDate/from/order-of-operations.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/dayOfYear/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/equals/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/daysInMonth/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/daysInWeek/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/daysInYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/getCalendar/branding.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/getCalendar/builtin.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/getCalendar/length.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/getCalendar/name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/getCalendar/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/getCalendar/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/inLeapYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/month/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/monthCode/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/monthsInYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/since/order-of-operations.js",
     "status" : "FAIL",
@@ -2297,6 +2193,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/toPlainDateTime/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toPlainDateTime/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
@@ -2305,13 +2205,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/toPlainDateTime/custom.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/argument-string-calendar-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
@@ -2321,21 +2221,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/calendar.js",
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/timezone-getpossibleinstantsfor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/until/order-of-operations.js",
     "status" : "FAIL",
@@ -2345,41 +2233,33 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/weekOfYear/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/with/order-of-operations.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/withCalendar/basic.js",
+    "filePath" : "built-ins/Temporal/PlainDateTime/calendar-iso-string.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/withCalendar/subclassing-ignored.js",
+    "filePath" : "built-ins/Temporal/PlainDateTime/compare/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/year/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/yearOfWeek/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/constructor-full.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-plaindate.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-subsecond.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/from/calendar-temporal-object.js",
+    "filePath" : "built-ins/Temporal/PlainDateTime/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/from/observable-get-overflow-argument-string-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/from/order-of-operations.js",
     "status" : "FAIL",
@@ -2389,69 +2269,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/day/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/equals/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/dayOfWeek/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/dayOfYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/daysInMonth/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/daysInWeek/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/daysInYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/getCalendar/branding.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/getCalendar/builtin.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/getCalendar/length.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/getCalendar/name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/getCalendar/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/getCalendar/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/inLeapYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/month/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/monthCode/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/monthsInYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/round/balance.js",
     "status" : "FAIL",
@@ -2501,29 +2321,33 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/wrapping-at-end-of-month.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/fixed-offset-near-date-time-limits.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/plain-custom-timezone.js",
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/order-of-operations.js",
     "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/wrapping-at-end-of-month.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/weekOfYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/with/order-of-operations.js",
     "status" : "FAIL",
@@ -2533,41 +2357,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withCalendar/basic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withCalendar/subclassing-ignored.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar-noniso.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar-same-id.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar-same-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-string-iso-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/calendar-temporal-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainTime/argument-string-calendar-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainTime/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainTime/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
@@ -2577,69 +2373,53 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/year/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainMonthDay/calendar-iso-string.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/yearOfWeek/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/from/calendar-temporal-object.js",
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/day/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/observable-get-overflow-argument-string-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/getCalendar/branding.js",
+    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/equals/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/getCalendar/builtin.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/getCalendar/length.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/getCalendar/name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/getCalendar/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/getCalendar/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/monthCode/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/toPlainDate/calendar-fromfields-called-with-undefined-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/toPlainDate/default-overflow-behaviour.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-15"
   }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/with/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/refisoyear-out-of-range.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/compare/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/compare/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
@@ -2652,6 +2432,10 @@
     "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-calendar-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
@@ -2673,6 +2457,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/equals/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/equals/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
@@ -2681,13 +2469,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/getISOFields/field-traversal-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/since/argument-string-calendar-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/since/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
@@ -2697,6 +2485,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/subtract/argument-string-duration-too-large.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
@@ -2705,29 +2497,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/toPlainDateTime/calendar-temporal-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/basic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/calendar-temporal-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/until/argument-string-calendar-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/until/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/until/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
@@ -2737,137 +2513,77 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/until/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/calendar-iso-string.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/compare/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/compare/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/from/calendar-temporal-object.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/from/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/calendar-dateadd-called-with-plaindate-instance.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/calendar-datefromfields-called.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/from/observable-get-overflow-argument-string-invalid.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/custom-daysInMonth-irrelevant.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/from/order-of-operations.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/end-of-month-out-of-range.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/order-of-operations.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-23"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/daysInMonth/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/overflow-wrong-type.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/daysInYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/getCalendar/branding.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/equals/argument-string-minus-sign.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/getCalendar/builtin.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/getCalendar/length.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/getCalendar/name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/getCalendar/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/getCalendar/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/inLeapYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/month/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/monthCode/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/monthsInYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-arguments-extra-options.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-arguments.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-dateadd-called-with-plaindate-instance.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-dateadd.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-datefromfields-called.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/calendar-fromfields-called-with-null-prototype-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/custom-daysInMonth-irrelevant.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/end-of-month-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-23"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/toPlainDate/calendar-fromfields-called-with-undefined-options.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/overflow-wrong-type.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/toPlainDate/default-overflow-behaviour.js",
     "status" : "FAIL",
@@ -2877,213 +2593,61 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/year/validate-calendar-value.js",
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/with/order-of-operations.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/TimeZone/argument-wrong-type.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/calendar-iso-string.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/basic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/from/argument-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/missing-arguments.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/argument-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/argument-primitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/argument-valid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/branding.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/builtin.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/length.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/timezone-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/timezone-string-datetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/timezone-string-multiple-offsets.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/equals/timezone-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getInstantFor/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getInstantFor/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getNextTransition/argument-string-date-with-utc-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getNextTransition/argument-string-multiple-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getNextTransition/argument-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetNanosecondsFor/argument-string-date-with-utc-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetNanosecondsFor/argument-string-multiple-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetNanosecondsFor/argument-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetStringFor/argument-not-absolute-getOffsetNanosecondsFor-override.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetStringFor/argument-string-date-with-utc-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetStringFor/argument-string-multiple-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetStringFor/argument-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/argument-not-absolute-getOffsetNanosecondsFor-override.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/argument-string-date-with-utc-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/argument-string-multiple-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/argument-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPossibleInstantsFor/fixed-offset-near-date-time-limits.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPreviousTransition/argument-string-date-with-utc-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPreviousTransition/argument-string-multiple-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPreviousTransition/argument-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/TimeZone/prototype/toJSON/returns-identifier-slot.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/zoneddatetime-string.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-ambiguous-wall-clock-time.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-time-zone-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/from/calendar-temporal-object.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/observable-get-overflow-argument-string-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/offset-overrides-critical-flag.js",
     "status" : "FAIL",
@@ -3101,55 +2665,11 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/day/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/dayOfWeek/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/dayOfYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/daysInMonth/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/daysInWeek/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/daysInYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/epochMicroseconds/basic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/epochMilliseconds/basic.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/epochSeconds/basic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-propertybag-invalid-offset-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-propertybag-timezone-normalize-offset-strings.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
@@ -3161,6 +2681,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-string-time-zone-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3169,105 +2693,49 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getCalendar/branding.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/branding.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getCalendar/builtin.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/builtin.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getCalendar/length.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/direction-undefined.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getCalendar/name.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/direction-wrong-type.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getCalendar/not-a-constructor.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/length.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getCalendar/prop-desc.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/name.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getISOFields/order-of-operations.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/not-a-constructor.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZone/branding.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/offset-timezone-no-transitions.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZone/builtin.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/prop-desc.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZone/length.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/utc-no-transitions.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZone/name.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/wrong-string.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZone/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZone/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/precision-exact-mathematical-values-2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/precision-exact-mathematical-values.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/inLeapYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/month/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/monthCode/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/monthsInYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/getpossibleinstantsfor-called-with-iso8601-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-23"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/rounding-is-noop.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/roundingmode-halfCeil.js",
     "status" : "FAIL",
@@ -3289,37 +2757,21 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/smallest-unit-day-daylength-too-large.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/smallest-unit-day-daylength-zero-or-negative.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/smallest-unit-day-rounding-modes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/timezone-getpossibleinstantsfor-iterable.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/wrapping-at-end-of-month.js",
     "status" : "FAIL",
@@ -3329,29 +2781,25 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/startOfDay/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/toPlainDateTime/pre-epoch.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/startOfDay/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-propertybag-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-propertybag-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/wrapping-at-end-of-month.js",
     "status" : "FAIL",
@@ -3360,26 +2808,6 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/zoneddatetime-string.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/weekOfYear/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/balance-negative-time-units.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/getpossibleinstantsfor-called-with-iso8601-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-23"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/offset-property-invalid-string.js",
     "status" : "FAIL",
@@ -3393,25 +2821,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withCalendar/subclassing-ignored.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/calendar-temporal-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/argument-string-calendar-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/argument-string-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/argument-string-time-designator-required-for-disambiguation.js",
     "status" : "FAIL",
@@ -3421,21 +2837,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/timezone-iso-string.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/year/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/yearOfWeek/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
@@ -3443,6 +2847,14 @@
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
+  }, {
+    "filePath" : "intl402/Collator/prototype/resolvedOptions/ignorePunctuation-default.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/offset-timezone-no-unicode-minus-sign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
@@ -3497,6 +2909,18 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "intl402/Locale/constructor-options-firstDayOfWeek-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Locale/prototype/firstDayOfWeek/valid-id.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Locale/prototype/firstDayOfWeek/valid-options.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -3504,461 +2928,9 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Temporal/Calendar/calendar-case-insensitive.js",
+    "filePath" : "intl402/NumberFormat/prototype/format/useGrouping-extended-en-IN.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dateAdd/date-infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dateFromFields/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dateFromFields/one-of-era-erayear-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-03-10"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dateFromFields/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dateUntil/argument-infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dateUntil/until-across-lunisolar-leap-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dateUntil/zero-length-duration-result.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/day/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dayOfWeek/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/dayOfYear/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/daysInMonth/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/daysInWeek/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/daysInYear/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-builtin-calendar-no-array-iteration.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-calendar-datefromfields-called-with-null-prototype-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-constructor-in-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-duplicate-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-propertybag-calendar-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-propertybag-calendar-iso-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-propertybag-calendar-leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-propertybag-calendar-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-propertybag-calendar-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-propertybag-calendar-year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-proto-in-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-calendar-annotation-invalid-key.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-calendar-annotation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-critical-unknown-annotation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-date-with-utc-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-multiple-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2013-06-28"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-multiple-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-time-separators.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-time-zone-annotation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-unknown-annotation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-with-utc-designator.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-zoneddatetime-convert.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-zoneddatetime-slots.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-zoneddatetime-timezone-getoffsetnanosecondsfor-non-integer.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-zoneddatetime-timezone-getoffsetnanosecondsfor-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/builtin.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/length.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/name.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/era/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-builtin-calendar-no-array-iteration.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-calendar-datefromfields-called-with-null-prototype-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-constructor-in-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-duplicate-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-propertybag-calendar-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-propertybag-calendar-iso-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-propertybag-calendar-leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-propertybag-calendar-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-propertybag-calendar-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-propertybag-calendar-year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-proto-in-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-calendar-annotation-invalid-key.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-calendar-annotation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-critical-unknown-annotation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-date-with-utc-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-multiple-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2013-06-28"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-multiple-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-time-separators.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-time-zone-annotation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-unknown-annotation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-with-utc-designator.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-zoneddatetime-convert.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-zoneddatetime-slots.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-zoneddatetime-timezone-getoffsetnanosecondsfor-non-integer.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-zoneddatetime-timezone-getoffsetnanosecondsfor-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/builtin.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/calendar-datefromfields-called-with-options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new Temporal failures 2022-04-11"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/length.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/name.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/year-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/inLeapYear/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/mergeFields/gregorian-mutually-exclusive-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-03-10"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/mergeFields/japanese-mutually-exclusive-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-03-10"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/month/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/monthCode/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/monthDayFromFields/fields-underspecified.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/monthDayFromFields/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/monthDayFromFields/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/monthDayFromFields/reference-year-1972.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-03-10"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/monthsInYear/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/weekOfYear/gregory-iso-weekofyear.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/weekOfYear/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/weekOfYear/non-iso-week-of-year.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/year/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/one-of-era-erayear-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-03-10"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-07-13"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/reference-day-chinese.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-06-07"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/reference-day-gregory.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-06-07"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearMonthFromFields/reference-day-hebrew.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-06-07"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearOfWeek/gregory-iso-weekofyear.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearOfWeek/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/Calendar/prototype/yearOfWeek/non-iso-week-of-year.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/add/relativeto-infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/add/relativeto-string-datetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
-  }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/add/relativeto-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -3969,18 +2941,6 @@
     "comment" : "new failures 2022-01-25"
   }, {
     "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/subtract/relativeto-infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/subtract/relativeto-string-datetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-01-25"
-  }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/subtract/relativeto-sub-minute-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
@@ -4012,13 +2972,33 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/compare/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/from/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/one-of-era-erayear-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/equals/argument-object-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/equals/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/equals/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4032,10 +3012,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/era/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/eraYear/branding.js",
     "status" : "FAIL",
     "comment" : "Temporal tests still failing"
@@ -4044,9 +3020,9 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/eraYear/validate-calendar-value.js",
+    "filePath" : "intl402/Temporal/PlainDate/prototype/since/canonicalize-calendar.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/since/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4076,9 +3052,17 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/until/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/until/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/until/until-across-lunisolar-leap-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/weekOfYear/gregory-iso-weekofyear.js",
     "status" : "FAIL",
@@ -4092,6 +3076,18 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-03-10"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/with/gregorian-mutually-exclusive-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/with/japanese-mutually-exclusive-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/withCalendar/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/yearOfWeek/gregory-iso-weekofyear.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -4100,13 +3096,25 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/compare/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/from/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/from/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/equals/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/equals/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4120,10 +3128,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/era/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/eraYear/branding.js",
     "status" : "FAIL",
     "comment" : "Temporal tests still failing"
@@ -4132,9 +3136,9 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/eraYear/validate-calendar-value.js",
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/since/canonicalize-calendar.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/since/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4164,6 +3168,22 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toZonedDateTime/dst-disambiguation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toZonedDateTime/multiple-instants.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toZonedDateTime/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/until/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/until/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -4176,33 +3196,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar-noniso.js",
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withCalendar/canonicalize-calendar.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar-same-id.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar-same-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/argument-string-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/argument-string-iso-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/yearOfWeek/gregory-iso-weekofyear.js",
     "status" : "FAIL",
@@ -4212,6 +3208,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/from/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/from/fields-missing-properties.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
@@ -4220,9 +3224,21 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
   }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/from/fields-underspecified.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/from/reference-date-noniso-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/from/reference-year-1972.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/equals/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/equals/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4272,13 +3288,9 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toPlainDateTime/infinity-throws-rangeerror.js",
+    "filePath" : "intl402/Temporal/PlainYearMonth/canonicalize-calendar.js",
     "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toZonedDateTime/plaindate-infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/compare/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4288,9 +3300,37 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/from/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/one-of-era-erayear-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-chinese.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-gregory.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-hebrew.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/add/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/equals/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/equals/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4304,10 +3344,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/era/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/eraYear/branding.js",
     "status" : "FAIL",
     "comment" : "Temporal tests still failing"
@@ -4316,13 +3352,17 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/eraYear/validate-calendar-value.js",
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/since/canonicalize-calendar.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/since/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/subtract/options-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/calendar-mismatch.js",
     "status" : "FAIL",
@@ -4344,125 +3384,45 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/until/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/until/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/TimeZone/basic.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/canonicalize-calendar.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/etc-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/from/argument-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/from/argument-valid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/from/etc-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/from/iana-legacy-names.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/from/timezone-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/from/timezone-string-legacy-non-iana.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/iana-legacy-names.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/legacy-non-iana.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/links-africa.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/links-asia.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/links-backward.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/links-backzone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/links-etcetera.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/links-europe.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/links-northamerica.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/non-canonical-utc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/equals/argument-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/equals/argument-valid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/equals/canonical-iana-names.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/equals/canonical-not-equal.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/equals/offset-and-iana.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/equals/timezone-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/getInstantFor/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/getNextTransition/transition-at-instant-boundaries.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "intl402/Temporal/TimeZone/prototype/getPossibleInstantsFor/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/compare/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/construct-non-utc-non-iso.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/etc-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/argument-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/do-not-canonicalize-iana-identifiers.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/etc-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4476,6 +3436,54 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/iana-legacy-names.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/legacy-non-iana.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/links-africa.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/links-asia.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/links-backward.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/links-backzone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/links-etcetera.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/links-europe.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/links-northamerica.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/non-canonical-utc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/argument-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -4483,6 +3491,10 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/sub-minute-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/timezone-case-insensitive.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/branding.js",
     "status" : "FAIL",
@@ -4492,26 +3504,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/timezone-getoffsetnanosecondsfor-non-integer.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/timezone-getoffsetnanosecondsfor-not-callable.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/timezone-getoffsetnanosecondsfor-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/timezone-getoffsetnanosecondsfor-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/validate-calendar-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/branding.js",
     "status" : "FAIL",
     "comment" : "Temporal tests still failing"
@@ -4520,35 +3512,39 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/timezone-getoffsetnanosecondsfor-non-integer.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/nanoseconds-subtracted-or-added-at-dst-transition.js",
     "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/timezone-getoffsetnanosecondsfor-not-callable.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/result-type.js",
     "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/timezone-getoffsetnanosecondsfor-out-of-range.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/specific-tzdb-values.js",
     "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/timezone-getoffsetnanosecondsfor-wrong-type.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/subtract-second-and-nanosecond-from-last-transition.js",
     "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/validate-calendar-value.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/transition-at-instant-boundaries.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/hoursInDay/dst-midnight.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/canonicalize-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/calendar-mismatch.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/custom-time-zone-name-not-supported.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
@@ -4580,9 +3576,9 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/time-zone-canonicalized.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/until/canonicalize-calendar.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/until/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4600,9 +3596,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withPlainDate/infinity-throws-rangeerror.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withCalendar/canonicalize-calendar.js",
     "status" : "FAIL",
-    "comment" : "Temporal failures"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/yearOfWeek/gregory-iso-weekofyear.js",
     "status" : "FAIL",
@@ -4611,6 +3607,14 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/yearOfWeek/non-iso-week-of-year.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/timezone-case-insensitive.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/timezone-ids-basic.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "language/comments/S7.4_A5.js",
     "status" : "PASS",
@@ -4705,6 +3709,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
+    "filePath" : "staging/Intl402/Temporal/old/dst-properties.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "staging/Intl402/Temporal/old/hebrew-leap-months.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
@@ -4720,6 +3728,10 @@
     "filePath" : "staging/Intl402/Temporal/old/islamic-calendars.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-15"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/japanese-before-era.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/japanese-era.js",
     "status" : "FAIL",
@@ -4737,6 +3749,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-01-15"
   }, {
+    "filePath" : "staging/Intl402/Temporal/old/property-bags.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
     "filePath" : "staging/Intl402/Temporal/old/time-toLocaleString.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
@@ -4748,6 +3764,14 @@
     "filePath" : "staging/Intl402/Temporal/old/yearmonth-toLocaleString.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/zdt-round.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/zdt-with.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/zoneddatetime-dst-corner-cases.js",
     "status" : "FAIL",
@@ -4764,37 +3788,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
-    "filePath" : "staging/Temporal/TimeZone/old/getInstantFor.js",
+    "filePath" : "staging/Temporal/removed-methods.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/TimeZone/old/getNextTransition.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/UserCalendar/old/calendar-extra-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/UserCalendar/old/calendar-non-trivial-mergefields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/UserCalendar/old/trivial-protocol-implementation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/UserCalendar/old/trivial-subclass.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/construction-and-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/dst-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
+    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "staging/Temporal/ZonedDateTime/old/property-bags.js",
     "status" : "FAIL",
@@ -4808,28 +3804,8 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/toPlainDate.js",
+    "filePath" : "staging/top-level-await/tla-hang-entry.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/toPlainMonthDay.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/toPlainYearMonth.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/with.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/withCalendar.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/withTimezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
+    "comment" : "new failures 2024-08-09"
   } ]
 }
