@@ -263,11 +263,17 @@ public class Test262Runnable extends TestRunnable {
                     "well-formed-json-stringify",
     });
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
+                    "Atomics.pause",
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
+                    "Math.sumPrecise",
+                    "RegExp.escape",
                     "explicit-resource-management",
                     "regexp-modifiers",
+                    "source-phase-imports",
+                    "source-phase-imports-module-source",
                     "tail-call-optimization",
+                    "uint8array-base64",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Array.fromAsync",
