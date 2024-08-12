@@ -68,6 +68,8 @@ public final class InteropBufferView implements TruffleObject {
     final JSTypedArrayObject arrayView;
 
     public InteropBufferView(JSArrayBufferObject arrayBuffer, int byteOffset, int byteLength, JSTypedArrayObject arrayView) {
+        assert byteOffset >= 0 : byteOffset;
+        assert byteLength >= 0 : byteLength;
         this.viewByteOffset = byteOffset;
         this.viewByteLength = byteLength;
         this.arrayBuffer = arrayBuffer;
@@ -88,7 +90,7 @@ public final class InteropBufferView implements TruffleObject {
     private long checkFromIndexSize(long fromIndex, int size) throws InvalidBufferOffsetException {
         long bufferByteOffset = viewByteOffset + fromIndex;
         long bufferByteLength = viewByteLength;
-        if ((bufferByteLength | bufferByteOffset | size) < 0 || size > bufferByteLength - bufferByteOffset) {
+        if ((fromIndex | size) < 0 || size > bufferByteLength - fromIndex) {
             throw InvalidBufferOffsetException.create(fromIndex, size);
         }
         return bufferByteOffset;
