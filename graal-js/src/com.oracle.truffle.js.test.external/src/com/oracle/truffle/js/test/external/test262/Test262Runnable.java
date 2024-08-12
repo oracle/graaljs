@@ -354,7 +354,7 @@ public class Test262Runnable extends TestRunnable {
             assert getIncludes(scriptCodeList).count() == 0 && !runStrict && !asyncTest;
             harnessSources = new Source[0];
         } else {
-            harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
+            harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList), testFile.getFilePath());
         }
 
         boolean supported = true;
