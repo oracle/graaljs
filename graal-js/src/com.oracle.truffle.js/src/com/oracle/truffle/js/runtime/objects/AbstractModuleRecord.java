@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,48 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.js.parser.ir.Module.ModuleRequest;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
-public interface JSModuleLoader {
-    AbstractModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest);
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.util.Pair;
 
-    @SuppressWarnings("unused")
-    default AbstractModuleRecord addLoadedModule(ModuleRequest moduleRequest, AbstractModuleRecord moduleRecord) {
-        throw new UnsupportedOperationException();
+/**
+ * Abstract Module Record.
+ */
+public abstract class AbstractModuleRecord extends ScriptOrModule {
+
+    public AbstractModuleRecord(JSContext context, Source source) {
+        super(context, source);
     }
+
+    public abstract PromiseCapabilityRecord loadRequestedModules(JSRealm realm, Object hostDefined);
+
+    public abstract void link(JSRealm realm);
+
+    public abstract Object evaluate(JSRealm realm);
+
+    @TruffleBoundary
+    public final Collection<TruffleString> getExportedNames() {
+        return getExportedNames(new HashSet<>());
+    }
+
+    public abstract Collection<TruffleString> getExportedNames(Set<JSModuleRecord> exportStarSet);
+
+    @TruffleBoundary
+    public final ExportResolution resolveExport(TruffleString exportName) {
+        return resolveExport(exportName, new HashSet<>());
+    }
+
+    public abstract ExportResolution resolveExport(TruffleString exportName, Set<Pair<? extends AbstractModuleRecord, TruffleString>> resolveSet);
+
+    public JSDynamicObject getModuleNamespace() {
+        return Undefined.instance;
+    }
+
 }

@@ -109,6 +109,7 @@ import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -582,11 +583,11 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                                     (key) -> new JSModuleRecord(evaluator.envParseModule(JSRealm.get(null), resolveModuleSource(referencingModule, key)), this));
                 }
             };
-            JSModuleRecord module = moduleLoader.resolveImportedModule(null, ModuleRequest.create(name));
+            AbstractModuleRecord module = moduleLoader.resolveImportedModule(null, ModuleRequest.create(name));
             JSRealm realm = getRealm();
-            evaluator.loadRequestedModules(realm, module, Undefined.instance);
-            evaluator.moduleLinking(realm, module);
-            evaluator.moduleEvaluation(realm, module);
+            module.loadRequestedModules(realm, Undefined.instance);
+            module.link(realm);
+            module.evaluate(realm);
             return Strings.fromJavaString(String.valueOf(module));
         }
     }

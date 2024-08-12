@@ -172,7 +172,6 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
-import com.oracle.truffle.js.parser.GraalJSEvaluator;
 import com.oracle.truffle.js.parser.GraalJSParserHelper;
 import com.oracle.truffle.js.parser.JSParser;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
@@ -2731,7 +2730,7 @@ public final class GraalJSAccess {
                     // ClearWeak() called on a module that cannot be weak yet
                     return null;
                 }
-                target = moduleRecord.getContext().getEvaluator().getModuleNamespace(moduleRecord);
+                target = moduleRecord.getModuleNamespace();
                 key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
             } else {
                 System.err.println("Weak references not supported for " + object);
@@ -3805,12 +3804,11 @@ public final class GraalJSAccess {
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
         JSRealm jsRealm = (JSRealm) context;
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        JSContext jsContext = jsRealm.getContext();
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         try {
-            jsContext.getEvaluator().loadRequestedModules(jsRealm, moduleRecord, moduleRecord.getHostDefined());
-            jsContext.getEvaluator().moduleLinking(jsRealm, moduleRecord);
+            moduleRecord.loadRequestedModules(jsRealm, moduleRecord.getHostDefined());
+            moduleRecord.link(jsRealm);
         } finally {
             loader.setResolver(0);
         }
@@ -3818,11 +3816,10 @@ public final class GraalJSAccess {
 
     public Object moduleEvaluate(Object context, Object module) {
         JSRealm jsRealm = (JSRealm) context;
-        JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
 
         if (!moduleRecord.hasBeenEvaluated()) {
-            jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+            moduleRecord.evaluate(jsRealm);
         }
 
         PromiseCapabilityRecord promiseCapability = moduleRecord.getTopLevelCapability();
@@ -3873,8 +3870,7 @@ public final class GraalJSAccess {
 
     public Object moduleGetNamespace(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        GraalJSEvaluator graalEvaluator = (GraalJSEvaluator) record.getContext().getEvaluator();
-        return graalEvaluator.getModuleNamespace(record);
+        return record.getModuleNamespace();
     }
 
     public int moduleGetIdentityHash(Object module) {

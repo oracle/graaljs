@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_S
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -112,10 +111,9 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -128,7 +126,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.Pair;
 
 /**
  * This is the main external entry into the GraalJS parser.
@@ -296,15 +293,15 @@ public final class GraalJSEvaluator implements JSParser {
             ModuleRequest moduleRequest = ModuleRequest.create(Strings.fromJavaString(source.getName()));
             realm.getModuleLoader().addLoadedModule(moduleRequest, moduleRecord);
 
-            JSPromiseObject loadPromise = (JSPromiseObject) loadRequestedModules(realm, moduleRecord, Undefined.instance).getPromise();
+            JSPromiseObject loadPromise = (JSPromiseObject) moduleRecord.loadRequestedModules(realm, Undefined.instance).getPromise();
             assert !JSPromise.isPending(loadPromise);
             // If loading failed, we must not perform module linking.
             if (JSPromise.isRejected(loadPromise)) {
                 throw JSRuntime.getException(loadPromise.getPromiseResult(), this);
             }
 
-            moduleLinking(realm, moduleRecord);
-            Object promise = moduleEvaluation(realm, moduleRecord);
+            moduleRecord.link(realm);
+            Object promise = moduleRecord.evaluate(realm);
             boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
             if (isAsync) {
                 JSFunctionObject onRejected = createTopLevelAwaitReject(context, realm);
@@ -313,7 +310,7 @@ public final class GraalJSEvaluator implements JSParser {
                 performPromiseThenNode.execute((JSPromiseObject) promise, onAccepted, onRejected, null);
             }
             if (context.getLanguageOptions().esmEvalReturnsExports()) {
-                JSDynamicObject moduleNamespace = getModuleNamespace(moduleRecord);
+                JSDynamicObject moduleNamespace = moduleRecord.getModuleNamespace();
                 assert moduleNamespace != null;
                 return moduleNamespace;
             } else if (isAsync) {
@@ -459,7 +456,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static JSModuleRecord hostResolveImportedModule(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
+    private static AbstractModuleRecord hostResolveImportedModule(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
         JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : realm.getModuleLoader();
         return moduleLoader.resolveImportedModule(referrer, filterSupportedImportAttributes(realm.getContext(), moduleRequest));
     }
@@ -477,135 +474,6 @@ public final class GraalJSEvaluator implements JSParser {
             }
         }
         return moduleRequest.withAttributes(supportedAttributes);
-    }
-
-    Collection<TruffleString> getExportedNames(JSModuleRecord moduleRecord) {
-        return getExportedNames(moduleRecord, new HashSet<>());
-    }
-
-    private Collection<TruffleString> getExportedNames(JSModuleRecord moduleRecord, Set<JSModuleRecord> exportStarSet) {
-        if (exportStarSet.contains(moduleRecord)) {
-            // Assert: We've reached the starting point of an import * circularity.
-            return Collections.emptySortedSet();
-        }
-        exportStarSet.add(moduleRecord);
-        Collection<TruffleString> exportedNames = new HashSet<>();
-        Module module = moduleRecord.getModule();
-        for (ExportEntry exportEntry : module.getLocalExportEntries()) {
-            // Assert: module provides the direct binding for this export.
-            exportedNames.add(exportEntry.getExportName());
-        }
-        for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
-            // Assert: module imports a specific binding for this export.
-            exportedNames.add(exportEntry.getExportName());
-        }
-        for (ExportEntry exportEntry : module.getStarExportEntries()) {
-            JSModuleRecord requestedModule = moduleRecord.getImportedModule(exportEntry.getModuleRequest());
-            Collection<TruffleString> starNames = getExportedNames(requestedModule, exportStarSet);
-            for (TruffleString starName : starNames) {
-                if (!starName.equals(Module.DEFAULT_NAME)) {
-                    if (!exportedNames.contains(starName)) {
-                        exportedNames.add(starName);
-                    }
-                }
-            }
-        }
-        return exportedNames;
-    }
-
-    @TruffleBoundary
-    @Override
-    public ExportResolution resolveExport(JSModuleRecord referencingModule, TruffleString exportName) {
-        return resolveExport(referencingModule, exportName, new HashSet<>());
-    }
-
-    /**
-     * ResolveExport attempts to resolve an imported binding to the actual defining module and local
-     * binding name. The defining module may be the module represented by the Module Record this
-     * method was invoked on or some other module that is imported by that module. The parameter
-     * resolveSet is use to detect unresolved circular import/export paths. If a pair consisting of
-     * specific Module Record and exportName is reached that is already in resolveSet, an import
-     * circularity has been encountered. Before recursively calling ResolveExport, a pair consisting
-     * of module and exportName is added to resolveSet.
-     *
-     * If a defining module is found a Record {[[module]], [[bindingName]]} is returned. This record
-     * identifies the resolved binding of the originally requested export. If no definition was
-     * found or the request is found to be circular, null is returned. If the request is found to be
-     * ambiguous, the string "ambiguous" is returned.
-     */
-    private ExportResolution resolveExport(JSModuleRecord referencingModule, TruffleString exportName, Set<Pair<JSModuleRecord, TruffleString>> resolveSet) {
-        Pair<JSModuleRecord, TruffleString> resolved = new Pair<>(referencingModule, exportName);
-        if (resolveSet.contains(resolved)) {
-            // Assert: this is a circular import request.
-            return ExportResolution.notFound();
-        }
-        resolveSet.add(resolved);
-        Module module = referencingModule.getModule();
-        for (ExportEntry exportEntry : module.getLocalExportEntries()) {
-            if (exportEntry.getExportName().equals(exportName)) {
-                // Assert: module provides the direct binding for this export.
-                return ExportResolution.resolved(referencingModule, exportEntry.getLocalName());
-            }
-        }
-        for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
-            if (exportEntry.getExportName().equals(exportName)) {
-                JSModuleRecord importedModule = referencingModule.getImportedModule(exportEntry.getModuleRequest());
-                if (exportEntry.getImportName().equals(Module.STAR_NAME)) {
-                    // Assert: module does not provide the direct binding for this export.
-                    return ExportResolution.resolved(importedModule, Module.NAMESPACE_EXPORT_BINDING_NAME);
-                } else {
-                    // Assert: module imports a specific binding for this export.
-                    return resolveExport(importedModule, exportEntry.getImportName(), resolveSet);
-                }
-            }
-        }
-        if (exportName.equals(Module.DEFAULT_NAME)) {
-            // Assert: A default export was not explicitly defined by this module.
-            return ExportResolution.notFound();
-            // NOTE: A default export cannot be provided by an `export *` or `export * from "mod"`.
-        }
-        ExportResolution starResolution = ExportResolution.notFound();
-        for (ExportEntry exportEntry : module.getStarExportEntries()) {
-            JSModuleRecord importedModule = referencingModule.getImportedModule(exportEntry.getModuleRequest());
-            ExportResolution resolution = resolveExport(importedModule, exportName, resolveSet);
-            if (resolution.isAmbiguous()) {
-                return resolution;
-            }
-            if (!resolution.isNull()) {
-                if (starResolution.isNull()) {
-                    starResolution = resolution;
-                } else {
-                    // Assert: there is more than one * import that includes the requested name.
-                    if (!resolution.equals(starResolution)) {
-                        return ExportResolution.ambiguous();
-                    }
-                }
-            }
-        }
-        return starResolution;
-    }
-
-    @TruffleBoundary
-    @Override
-    public JSDynamicObject getModuleNamespace(JSModuleRecord moduleRecord) {
-        if (moduleRecord.getNamespace() != null) {
-            return moduleRecord.getNamespace();
-        }
-
-        Collection<TruffleString> exportedNames = getExportedNames(moduleRecord);
-        List<Map.Entry<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
-        for (TruffleString exportedName : exportedNames) {
-            ExportResolution resolution = resolveExport(moduleRecord, exportedName);
-            if (resolution.isNull()) {
-                throw Errors.createSyntaxError("Could not resolve export");
-            } else if (!resolution.isAmbiguous()) {
-                unambiguousNames.add(Map.entry(exportedName, resolution));
-            }
-        }
-        unambiguousNames.sort((a, b) -> a.getKey().compareCharsUTF16Uncached(b.getKey()));
-        JSModuleNamespaceObject namespace = JSModuleNamespace.create(moduleRecord.getContext(), JSRealm.get(null), moduleRecord, unambiguousNames);
-        moduleRecord.setNamespace(namespace);
-        return namespace;
     }
 
     private static class GraphLoadingState {
@@ -638,14 +506,15 @@ public final class GraalJSEvaluator implements JSParser {
         return pc;
     }
 
-    private void innerModuleLoading(JSRealm realm, GraphLoadingState state, JSModuleRecord moduleRecord) {
+    private void innerModuleLoading(JSRealm realm, GraphLoadingState state, AbstractModuleRecord module) {
         assert state.isLoading;
-        if (moduleRecord.getStatus() == Status.New && !state.visited.contains(moduleRecord)) {
+        if (module instanceof JSModuleRecord moduleRecord && moduleRecord.getStatus() == Status.New &&
+                        !state.visited.contains(moduleRecord)) {
             state.visited.add(moduleRecord);
             int requestedModuleCount = moduleRecord.getModule().getRequestedModules().size();
             state.pendingModulesCount += requestedModuleCount;
             for (var required : moduleRecord.getModule().getRequestedModules()) {
-                JSModuleRecord resolved = moduleRecord.getLoadedModule(realm, required);
+                AbstractModuleRecord resolved = moduleRecord.getLoadedModule(realm, required);
                 if (resolved != null) {
                     innerModuleLoading(realm, state, resolved);
                 } else {
@@ -680,7 +549,7 @@ public final class GraalJSEvaluator implements JSParser {
     public void hostLoadImportedModule(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest, Object hostDefined, Object payload) {
         Completion moduleCompletion;
         try {
-            JSModuleRecord module = hostResolveImportedModule(realm, referrer, moduleRequest);
+            AbstractModuleRecord module = hostResolveImportedModule(realm, referrer, moduleRequest);
             moduleCompletion = Completion.forNormal(module);
         } catch (AbstractTruffleException e) {
             moduleCompletion = Completion.forThrow(getErrorObject(e));
@@ -690,8 +559,8 @@ public final class GraalJSEvaluator implements JSParser {
 
     private void finishLoadingImportedModule(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest, Object payload, Completion moduleCompletion) {
         if (moduleCompletion.isNormal()) {
-            JSModuleRecord moduleResult = (JSModuleRecord) moduleCompletion.getValue();
-            JSModuleRecord existing = referrer != null
+            AbstractModuleRecord moduleResult = (AbstractModuleRecord) moduleCompletion.getValue();
+            AbstractModuleRecord existing = referrer != null
                             ? referrer.addLoadedModule(realm, moduleRequest, moduleResult)
                             : realm.getModuleLoader().addLoadedModule(moduleRequest, moduleResult);
             if (existing != null) {
@@ -710,7 +579,7 @@ public final class GraalJSEvaluator implements JSParser {
             return;
         }
         if (moduleCompletion.isNormal()) {
-            innerModuleLoading(realm, state, (JSModuleRecord) moduleCompletion.getValue());
+            innerModuleLoading(realm, state, (AbstractModuleRecord) moduleCompletion.getValue());
         } else {
             state.isLoading = false;
             JSFunction.call(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getReject(), moduleCompletion.getValue()));
@@ -725,7 +594,7 @@ public final class GraalJSEvaluator implements JSParser {
             return;
         }
 
-        JSModuleRecord module = (JSModuleRecord) moduleCompletion.getValue();
+        AbstractModuleRecord module = (AbstractModuleRecord) moduleCompletion.getValue();
         // Perform the remaining steps of ContinueDynamicImport.
         JSFunction.call(JSArguments.create(Undefined.instance, continuation.continueDynamicImportCallback(), promiseCapability, module));
     }
@@ -770,7 +639,7 @@ public final class GraalJSEvaluator implements JSParser {
 
         Module module = moduleRecord.getModule();
         for (ModuleRequest required : module.getRequestedModules()) {
-            JSModuleRecord requiredModule = moduleRecord.getImportedModule(required);
+            JSModuleRecord requiredModule = (JSModuleRecord) moduleRecord.getImportedModule(required);
             index = innerModuleLinking(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
                             requiredModule.getStatus() == Status.EvaluatingAsync || requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
@@ -795,11 +664,11 @@ public final class GraalJSEvaluator implements JSParser {
         return index;
     }
 
-    private void moduleInitializeEnvironment(JSRealm realm, JSModuleRecord moduleRecord) {
+    private static void moduleInitializeEnvironment(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() == Status.Linking;
         Module module = moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
-            ExportResolution resolution = resolveExport(moduleRecord, exportEntry.getExportName());
+            ExportResolution resolution = moduleRecord.resolveExport(exportEntry.getExportName());
             if (resolution.isNull() || resolution.isAmbiguous()) {
                 throw Errors.createSyntaxError("Could not resolve indirect export entry");
             }
@@ -904,7 +773,7 @@ public final class GraalJSEvaluator implements JSParser {
 
         Module module = moduleRecord.getModule();
         for (ModuleRequest required : module.getRequestedModules()) {
-            JSModuleRecord requiredModule = moduleRecord.getImportedModule(required);
+            JSModuleRecord requiredModule = (JSModuleRecord) moduleRecord.getImportedModule(required);
             // Note: Link must have completed successfully prior to invoking this method,
             // so every requested module is guaranteed to resolve successfully.
             index = innerModuleEvaluation(realm, requiredModule, stack, index);

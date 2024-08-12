@@ -78,10 +78,10 @@ public class ResolveStarImportNode extends StatementNode {
     public Object execute(VirtualFrame frame) {
         JSModuleRecord referrer = (JSModuleRecord) moduleNode.execute(frame);
         // Let importedModule be GetImportedModule(module, in.[[ModuleRequest]]).
-        JSModuleRecord importedModule = referrer.getImportedModule(moduleRequest);
+        JSModuleRecord importedModule = (JSModuleRecord) referrer.getImportedModule(moduleRequest);
         // If in.[[ImportName]] is namespace-object, then
         // Let namespace be GetModuleNamespace(importedModule)
-        JSDynamicObject namespace = context.getEvaluator().getModuleNamespace(importedModule);
+        JSDynamicObject namespace = importedModule.getModuleNamespace();
         // envRec.CreateImmutableBinding(in.[[LocalName]], true).
         // Call envRec.InitializeBinding(in.[[LocalName]], namespace).
         writeLocalNode.executeWrite(frame, namespace);

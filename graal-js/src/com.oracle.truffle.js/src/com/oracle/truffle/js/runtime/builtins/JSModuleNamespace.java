@@ -160,7 +160,7 @@ public final class JSModuleNamespace extends JSNonProxy {
             throw Errors.createReferenceErrorNotDefined(bindingName, null);
         }
         if (binding.isNamespace()) {
-            return targetModule.getContext().getEvaluator().getModuleNamespace(targetModule);
+            return targetModule.getModuleNamespace();
         }
         FrameDescriptor targetEnvDesc = targetEnv.getFrameDescriptor();
         int slot = JSFrameUtil.findRequiredFrameSlotIndex(targetEnvDesc, bindingName);

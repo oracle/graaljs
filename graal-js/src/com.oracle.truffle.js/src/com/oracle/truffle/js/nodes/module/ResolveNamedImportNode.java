@@ -51,7 +51,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -86,11 +85,10 @@ public class ResolveNamedImportNode extends StatementNode {
     @Override
     public Object execute(VirtualFrame frame) {
         JSModuleRecord referrer = (JSModuleRecord) moduleNode.execute(frame);
-        Evaluator evaluator = context.getEvaluator();
         // Let importedModule be GetImportedModule(module, in.[[ModuleRequest]]).
-        JSModuleRecord importedModule = referrer.getImportedModule(moduleRequest);
+        JSModuleRecord importedModule = (JSModuleRecord) referrer.getImportedModule(moduleRequest);
         // Let resolution be importedModule.ResolveExport(in.[[ImportName]]).
-        ExportResolution resolution = resolutionProfile.profile(evaluator.resolveExport(importedModule, importName));
+        ExportResolution resolution = resolutionProfile.profile(importedModule.resolveExport(importName));
         // If resolution is null or resolution is "ambiguous", throw SyntaxError.
         if (resolution.isNull() || resolution.isAmbiguous()) {
             String message = "The requested module '%s' does not provide an export named '%s'";
@@ -98,7 +96,7 @@ public class ResolveNamedImportNode extends StatementNode {
         }
         Object resolutionOrNamespace;
         if (resolution.isNamespace()) {
-            resolutionOrNamespace = evaluator.getModuleNamespace(resolution.getModule());
+            resolutionOrNamespace = resolution.getModule().getModuleNamespace();
         } else {
             resolutionOrNamespace = resolution;
         }

@@ -72,7 +72,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     private static final int JSON_MODULE_TYPE = 1 << 1;
 
     protected final JSRealm realm;
-    protected final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
+    protected final Map<String, AbstractModuleRecord> moduleMap = new HashMap<>();
 
     public static DefaultESModuleLoader create(JSRealm realm) {
         return new DefaultESModuleLoader(realm);
@@ -96,7 +96,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     @Override
-    public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
+    public AbstractModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
         String refPath = null;
         String refPathOrName = null;
         if (referrer != null) {
@@ -186,7 +186,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         return !(specifier.startsWith(SLASH) || specifier.startsWith(DOT_SLASH) || specifier.startsWith(DOT_DOT_SLASH));
     }
 
-    protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile maybeModuleFile, String maybeCanonicalPath) throws IOException {
+    protected AbstractModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile maybeModuleFile, String maybeCanonicalPath) throws IOException {
         TruffleFile moduleFile = maybeModuleFile;
         String canonicalPath;
         TruffleLanguage.Env env = realm.getEnv();
@@ -200,7 +200,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             canonicalPath = maybeCanonicalPath;
         }
 
-        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
+        AbstractModuleRecord existingModule = moduleMap.get(canonicalPath);
         if (existingModule != null) {
             return existingModule;
         }
@@ -249,7 +249,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     @Override
-    public JSModuleRecord addLoadedModule(ModuleRequest moduleRequest, JSModuleRecord moduleRecord) {
+    public AbstractModuleRecord addLoadedModule(ModuleRequest moduleRequest, AbstractModuleRecord moduleRecord) {
         String canonicalPath = getCanonicalPath(moduleRecord.getSource());
         return moduleMap.putIfAbsent(canonicalPath, moduleRecord);
     }

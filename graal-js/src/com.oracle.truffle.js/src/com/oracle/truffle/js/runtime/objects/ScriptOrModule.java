@@ -80,12 +80,12 @@ public class ScriptOrModule {
     }
 
     @TruffleBoundary
-    public JSModuleRecord getLoadedModule(JSRealm realm, ModuleRequest moduleRequest) {
+    public AbstractModuleRecord getLoadedModule(JSRealm realm, ModuleRequest moduleRequest) {
         return realm.getModuleLoader().resolveImportedModule(this, moduleRequest);
     }
 
     @TruffleBoundary
-    public JSModuleRecord addLoadedModule(JSRealm realm, ModuleRequest moduleRequest, JSModuleRecord moduleRecord) {
+    public AbstractModuleRecord addLoadedModule(JSRealm realm, ModuleRequest moduleRequest, AbstractModuleRecord moduleRecord) {
         return realm.getModuleLoader().addLoadedModule(moduleRequest, moduleRecord);
     }
 

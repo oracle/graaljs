@@ -342,7 +342,7 @@ public class ImportCallNode extends JavaScriptNode {
                 JSModuleRecord module = (JSModuleRecord) moduleRecordArgument.execute(frame);
                 JSRealm realm = getRealm();
 
-                JSPromiseObject loadPromise = (JSPromiseObject) context.getEvaluator().loadRequestedModules(realm, module, Undefined.instance).getPromise();
+                JSPromiseObject loadPromise = (JSPromiseObject) module.loadRequestedModules(realm, Undefined.instance).getPromise();
                 JSFunctionObject onRejected = createOnRejectedClosure(context, realm, importPromiseCapability);
                 JSFunctionObject linkAndEvaluate = createLinkAndEvaluateClosure(context, realm, module, importPromiseCapability, onRejected);
 
@@ -396,11 +396,11 @@ public class ImportCallNode extends JavaScriptNode {
                 assert realm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
                 try {
                     // If link is an abrupt completion, reject the promise from import().
-                    context.getEvaluator().moduleLinking(realm, moduleRecord);
+                    moduleRecord.link(realm);
 
                     // Evaluate() should always return a promise.
                     // Yet, if top-level-await is disabled, returns/throws the result instead.
-                    Object evaluatePromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
+                    Object evaluatePromise = moduleRecord.evaluate(realm);
                     if (context.isOptionTopLevelAwait()) {
                         assert evaluatePromise instanceof JSPromiseObject : evaluatePromise;
                         JSFunctionObject onFulfilled = createFulfilledClosure(context, realm, captures);
@@ -408,7 +408,7 @@ public class ImportCallNode extends JavaScriptNode {
                     } else {
                         // Rethrow any previous execution errors.
                         moduleRecord.getExecutionResultOrThrow();
-                        var namespace = context.getEvaluator().getModuleNamespace(moduleRecord);
+                        var namespace = moduleRecord.getModuleNamespace();
                         callPromiseResolve.executeCall(JSArguments.createOneArg(Undefined.instance, importPromiseCapability.getResolve(), namespace));
                     }
                 } catch (AbstractTruffleException ex) {
@@ -449,7 +449,7 @@ public class ImportCallNode extends JavaScriptNode {
                 PromiseCapabilityRecord promiseCapability = captures.promiseCapability;
                 JSModuleRecord moduleRecord = captures.moduleRecord;
 
-                var namespace = cx.getEvaluator().getModuleNamespace(moduleRecord);
+                var namespace = moduleRecord.getModuleNamespace();
                 callPromiseResolve.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), namespace));
                 return Undefined.instance;
             }
