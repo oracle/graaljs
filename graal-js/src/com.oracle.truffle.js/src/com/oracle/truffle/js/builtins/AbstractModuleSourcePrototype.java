@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -48,6 +49,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -96,6 +99,12 @@ public enum AbstractModuleSourcePrototype implements BuiltinEnum<AbstractModuleS
 
         @SuppressWarnings("unused")
         @Specialization
+        protected static Object doWasmModule(JSWebAssemblyModuleObject thisObj) {
+            return JSWebAssemblyModule.WEB_ASSEMBLY_MODULE;
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
         protected static Object doOther(Object thisObj) {
             return Undefined.instance;
         }

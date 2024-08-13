@@ -1238,6 +1238,13 @@ public class JSRealm {
         return JSFunction.create(this, functionData);
     }
 
+    public final JSFunctionObject lookupFunctionWithPrototype(JSBuiltinsContainer container, Object key, JSDynamicObject prototype) {
+        assert JSRuntime.isPropertyKey(key);
+        Builtin builtin = Objects.requireNonNull(container.lookupFunctionByKey(key));
+        JSFunctionData functionData = builtin.createFunctionData(context);
+        return JSFunction.createWithPrototype(this, functionData, prototype);
+    }
+
     public final Accessor lookupAccessor(JSBuiltinsContainer container, Object key) {
         Pair<JSBuiltin, JSBuiltin> pair = container.lookupAccessorByKey(key);
         JSBuiltin getterBuiltin = pair.getLeft();

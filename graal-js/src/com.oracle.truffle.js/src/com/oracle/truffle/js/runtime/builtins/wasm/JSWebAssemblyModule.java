@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -75,7 +76,7 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getAbstractModuleSourcePrototype());
         JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_MODULE);
         return prototype;
@@ -89,6 +90,11 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
     @Override
     public Shape makeInitialShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
+    }
+
+    @Override
+    public JSFunctionObject createConstructorObject(JSRealm realm) {
+        return realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, getClassName(), realm.getAbstractModuleSourceConstructor());
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
