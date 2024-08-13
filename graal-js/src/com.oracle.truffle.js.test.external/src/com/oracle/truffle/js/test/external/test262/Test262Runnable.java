@@ -254,6 +254,7 @@ public class Test262Runnable extends TestRunnable {
                     "resizable-arraybuffer",
                     "rest-parameters",
                     "set-methods",
+                    "source-phase-imports",
                     "string-trimming",
                     "super",
                     "symbols-as-weakmap-keys",
@@ -270,7 +271,6 @@ public class Test262Runnable extends TestRunnable {
                     "RegExp.escape",
                     "explicit-resource-management",
                     "regexp-modifiers",
-                    "source-phase-imports",
                     "source-phase-imports-module-source",
                     "tail-call-optimization",
                     "uint8array-base64",
@@ -333,6 +333,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("set-methods")) {
             extraOptions.put(JSContextOptions.NEW_SET_METHODS_NAME, "true");
+        }
+        if (features.contains("source-phase-imports")) {
+            extraOptions.put(JSContextOptions.SOURCE_PHASE_IMPORTS_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
