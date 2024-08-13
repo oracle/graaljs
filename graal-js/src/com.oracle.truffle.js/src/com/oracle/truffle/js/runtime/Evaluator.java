@@ -51,6 +51,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -98,6 +99,8 @@ public interface Evaluator {
      * in order to make use of Truffle code caching.
      */
     JSModuleData envParseModule(JSRealm realm, Source source);
+
+    AbstractModuleRecord parseWasmModuleSource(JSRealm realm, Source source);
 
     JSModuleRecord parseJSONModule(JSRealm realm, Source source);
 

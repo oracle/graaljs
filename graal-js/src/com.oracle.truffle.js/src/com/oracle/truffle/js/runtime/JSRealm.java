@@ -3295,6 +3295,10 @@ public class JSRealm {
         return wasmRefNull;
     }
 
+    public JSFunctionObject getWebAssemblyModuleConstructor() {
+        return webAssemblyModuleConstructor;
+    }
+
     public JSDynamicObject getWebAssemblyModulePrototype() {
         return webAssemblyModulePrototype;
     }

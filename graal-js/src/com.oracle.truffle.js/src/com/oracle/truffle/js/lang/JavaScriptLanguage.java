@@ -166,6 +166,11 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
     public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
     public static final String JSON_SOURCE_NAME_SUFFIX = ".json";
+
+    public static final String WASM_LANGUAGE_ID = "wasm";
+    public static final String WASM_MIME_TYPE = "application/wasm";
+    public static final String WASM_SOURCE_NAME_SUFFIX = ".wasm";
+
     public static final String INTERNAL_SOURCE_URL_PREFIX = "internal:";
     public static final String NODE_ENV_PARSE_TOKEN = "%NODE_ENV_PARSE_TOKEN%";
 

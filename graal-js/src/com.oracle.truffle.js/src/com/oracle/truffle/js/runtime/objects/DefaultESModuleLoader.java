@@ -49,6 +49,7 @@ import java.nio.file.NoSuchFileException;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -67,9 +68,6 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     public static final String SLASH = "/";
     public static final String DOT_SLASH = "./";
     public static final String DOT_DOT_SLASH = "../";
-
-    private static final int JS_MODULE_TYPE = 1 << 0;
-    private static final int JSON_MODULE_TYPE = 1 << 1;
 
     protected final JSRealm realm;
     protected final Map<String, AbstractModuleRecord> moduleMap = new HashMap<>();
@@ -165,6 +163,12 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 message = "Cannot access module";
             }
         }
+        message = buildErrorMessage(message, fileName, refPath, reason);
+        return Errors.createError(message, fsex);
+    }
+
+    private static String buildErrorMessage(String causeMessage, String fileName, String refPath, String reason) {
+        String message = causeMessage;
         if (message == null) {
             message = "Error reading module";
         }
@@ -173,9 +177,15 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             message += " imported from " + refPath;
         }
         if (reason != null) {
-            message = ": " + reason;
+            message += ": " + reason;
         }
-        return Errors.createError(message, fsex);
+        return message;
+    }
+
+    private static JSException createErrorUnsupportedPhase(ScriptOrModule referrer, ModuleRequest moduleRequest) {
+        String refPath = referrer != null ? referrer.getSource().getName() : null;
+        return Errors.createError(buildErrorMessage(null, moduleRequest.specifier().toJavaStringUncached(), refPath,
+                        moduleRequest.phase() + " phase imports not supported for this type of module"));
     }
 
     private boolean bareSpecifierDirectLookup(String specifier) {
@@ -205,20 +215,30 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             return existingModule;
         }
 
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(Strings.toJavaString(moduleRequest.specifier())).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
+        String mimeType = findMimeType(moduleFile);
+        String language = findLanguage(mimeType);
+
+        Source source = Source.newBuilder(language, moduleFile).name(Strings.toJavaString(moduleRequest.specifier())).mimeType(mimeType).build();
         Map<TruffleString, TruffleString> attributes = moduleRequest.attributes();
-        int moduleType = getModuleType(moduleFile.getName());
         TruffleString assertedType = attributes.get(JSContext.getTypeImportAttribute());
-        if (!doesModuleTypeMatchAssertionType(assertedType, moduleType)) {
+        if (!doesModuleTypeMatchAssertionType(assertedType, mimeType)) {
             throw Errors.createTypeError("Invalid module type was asserted");
         }
-        JSModuleRecord newModule;
-        if (isModuleType(moduleType, JSON_MODULE_TYPE)) {
-            newModule = realm.getContext().getEvaluator().parseJSONModule(realm, source);
-        } else {
-            JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
-            newModule = new JSModuleRecord(parsedModule, this);
-        }
+        AbstractModuleRecord newModule = switch (mimeType) {
+            case JavaScriptLanguage.JSON_MIME_TYPE -> realm.getContext().getEvaluator().parseJSONModule(realm, source);
+            case JavaScriptLanguage.WASM_MIME_TYPE -> {
+                if (moduleRequest.phase() == ImportPhase.Source && realm.getContextOptions().isWebAssembly()) {
+                    yield realm.getContext().getEvaluator().parseWasmModuleSource(realm, source);
+                } else {
+                    throw createErrorUnsupportedPhase(referrer, moduleRequest);
+                }
+            }
+            default -> {
+                JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
+                yield new JSModuleRecord(parsedModule, this);
+            }
+        };
+
         moduleMap.put(canonicalPath, newModule);
 
         if (referrer != null) {
@@ -227,25 +247,69 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         return newModule;
     }
 
-    private static boolean doesModuleTypeMatchAssertionType(TruffleString assertedType, int moduleType) {
+    /**
+     * Try to detect the mime type of the imported module, considering only supported mime types,
+     * and assuming ES module by default.
+     */
+    private String findMimeType(TruffleFile moduleFile) {
+        final String defaultMimeType = JavaScriptLanguage.MODULE_MIME_TYPE;
+        if (moduleFile == null) {
+            return defaultMimeType;
+        }
+        String foundMimeType;
+        try {
+            // Source.findMimeType may return null.
+            foundMimeType = Source.findMimeType(moduleFile);
+        } catch (IOException | SecurityException e) {
+            foundMimeType = null;
+        }
+        if (foundMimeType == null) {
+            foundMimeType = findMimeTypeFromExtension(moduleFile.getName());
+        }
+        return filterSupportedMimeType(foundMimeType, defaultMimeType);
+    }
+
+    private String filterSupportedMimeType(String foundMimeType, String defaultMimeType) {
+        String mimeType = defaultMimeType;
+        if (JavaScriptLanguage.JSON_MIME_TYPE.equals(foundMimeType)) {
+            if (realm.getContextOptions().isJsonModules()) {
+                mimeType = JavaScriptLanguage.JSON_MIME_TYPE;
+            }
+        } else if (JavaScriptLanguage.WASM_MIME_TYPE.equals(foundMimeType)) {
+            mimeType = JavaScriptLanguage.WASM_MIME_TYPE;
+        }
+        return mimeType;
+    }
+
+    private static String findMimeTypeFromExtension(String moduleName) {
+        if (moduleName.endsWith(JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX)) {
+            return JavaScriptLanguage.JSON_MIME_TYPE;
+        }
+        if (moduleName.endsWith(JavaScriptLanguage.WASM_SOURCE_NAME_SUFFIX)) {
+            return JavaScriptLanguage.WASM_MIME_TYPE;
+        }
+        return null;
+    }
+
+    /**
+     * Like {@link Source#findLanguage(String)}, but considering only supported mime types.
+     */
+    private static String findLanguage(String mimeType) {
+        String language = JavaScriptLanguage.ID;
+        if (JavaScriptLanguage.WASM_MIME_TYPE.equals(mimeType)) {
+            language = JavaScriptLanguage.WASM_LANGUAGE_ID;
+        }
+        return language;
+    }
+
+    private static boolean doesModuleTypeMatchAssertionType(TruffleString assertedType, String mimeType) {
         if (assertedType == null) {
             return true;
         }
         if (Strings.equals(Strings.JSON, assertedType)) {
-            return isModuleType(moduleType, JSON_MODULE_TYPE);
+            return mimeType.equals(JavaScriptLanguage.JSON_MIME_TYPE);
         }
         return false;
-    }
-
-    private int getModuleType(String moduleName) {
-        if (realm.getContext().getLanguageOptions().jsonModules() && moduleName.endsWith(JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX)) {
-            return JSON_MODULE_TYPE;
-        }
-        return JS_MODULE_TYPE;
-    }
-
-    private static boolean isModuleType(int moduleType, int expectedType) {
-        return (moduleType & expectedType) != 0;
     }
 
     @Override
