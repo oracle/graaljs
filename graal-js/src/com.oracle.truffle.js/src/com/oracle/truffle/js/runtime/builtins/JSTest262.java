@@ -53,6 +53,7 @@ public final class JSTest262 {
 
     public static final TruffleString CLASS_NAME = Strings.constant("Test262");
     public static final TruffleString GLOBAL_PROPERTY_NAME = Strings.constant("$262");
+    public static final TruffleString ABSTRACT_MODULE_SOURCE = Strings.constant("AbstractModuleSource");
 
     private JSTest262() {
     }
@@ -66,6 +67,9 @@ public final class JSTest262 {
         JSObjectUtil.putDataProperty(obj, Strings.GC, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.GC), JSAttributes.getDefaultNotEnumerable());
         JSObject agent = createAgent(realm);
         JSObjectUtil.putDataProperty(obj, Strings.AGENT, agent, JSAttributes.getDefaultNotEnumerable());
+        if (realm.getContextOptions().isSourcePhaseImports()) {
+            JSObjectUtil.putDataProperty(obj, ABSTRACT_MODULE_SOURCE, realm.getAbstractModuleSourceConstructor(), JSAttributes.getDefaultNotEnumerable());
+        }
         return obj;
     }
 
