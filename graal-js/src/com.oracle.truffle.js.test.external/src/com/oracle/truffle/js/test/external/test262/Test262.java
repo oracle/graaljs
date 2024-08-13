@@ -99,10 +99,10 @@ public class Test262 extends TestSuite {
         commonOptionsExtLauncher = optionsToExtLauncherOptions(options);
 
         // sanity check: fail early if any prequel file is missing
-        assert getHarnessSources(false, true, Stream.empty()).length > 0;
+        assert getHarnessSources(false, true, Stream.empty(), "").length > 0;
     }
 
-    public Source[] getHarnessSources(boolean strict, boolean async, Stream<String> includes) {
+    public Source[] getHarnessSources(boolean strict, boolean async, Stream<String> includes, String context) {
         Stream<Source> prologStream;
         if (getConfig().isExtLauncher()) {
             prologStream = Stream.empty();
@@ -119,8 +119,7 @@ public class Test262 extends TestSuite {
             try {
                 return Source.newBuilder("js", Paths.get(harnessLocation, pfn).toFile()).build();
             } catch (IOException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
+                throw new RuntimeException(e.toString() + (!context.isEmpty() ? " (" + context + ")" : ""), e);
             }
         });
 
