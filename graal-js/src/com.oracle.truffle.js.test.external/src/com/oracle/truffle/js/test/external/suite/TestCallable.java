@@ -42,7 +42,6 @@ package com.oracle.truffle.js.test.external.suite;
 
 import java.io.File;
 import java.io.OutputStream;
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -64,23 +63,26 @@ public class TestCallable extends AbstractTestCallable {
     protected final Context.Builder contextBuilder;
 
     public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion) {
-        this(suite, prequelSources, testSource, scriptFile, ecmaScriptVersion, Collections.emptyMap());
+        this(suite, prequelSources, testSource, scriptFile, ecmaScriptVersion, Map.of());
     }
 
-    @SuppressWarnings("this-escape")
     public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion, Map<String, String> extraOptions) {
+        this(suite, prequelSources, testSource, scriptFile, ecmaScriptVersion, extraOptions, IOAccess.newBuilder().allowHostFileAccess(true).build());
+    }
+
+    public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion, Map<String, String> extraOptions, IOAccess ioAccess) {
         super(suite);
         this.prequelSources = prequelSources;
         this.testSource = testSource;
         this.scriptFile = scriptFile;
 
-        if (getConfig().isPolyglot()) {
+        if (suite.getConfig().isPolyglot()) {
             this.contextBuilder = Context.newBuilder();
             contextBuilder.allowPolyglotAccess(PolyglotAccess.ALL);
         } else {
             this.contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
         }
-        contextBuilder.allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build());
+        contextBuilder.allowIO(ioAccess);
         contextBuilder.allowExperimentalOptions(true);
         contextBuilder.allowCreateThread(true);
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, ecmaScriptVersionToOptionString(ecmaScriptVersion));
@@ -89,7 +91,7 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.options(extraOptions);
         contextBuilder.option(JSContextOptions.LOCALE_NAME, suite.getConfig().getLocale());
         contextBuilder.timeZone(suite.getConfig().getTimeZone());
-        if (getConfig().isShareEngine()) {
+        if (suite.getConfig().isShareEngine()) {
             contextBuilder.engine(suite.getSharedEngine());
         } else {
             contextBuilder.option("engine.WarnInterpreterOnly", Boolean.toString(false));
