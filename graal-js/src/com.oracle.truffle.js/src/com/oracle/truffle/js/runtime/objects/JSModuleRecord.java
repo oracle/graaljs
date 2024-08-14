@@ -67,6 +67,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.util.Pair;
 
 /**
@@ -477,7 +478,7 @@ public class JSModuleRecord extends AbstractModuleRecord {
     }
 
     @Override
-    public PromiseCapabilityRecord loadRequestedModules(JSRealm realm, Object hostDefinedArg) {
+    public JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefinedArg) {
         return context.getEvaluator().loadRequestedModules(realm, this, hostDefinedArg);
     }
 

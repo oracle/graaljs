@@ -293,7 +293,7 @@ public final class GraalJSEvaluator implements JSParser {
             ModuleRequest moduleRequest = ModuleRequest.create(Strings.fromJavaString(source.getName()));
             realm.getModuleLoader().addLoadedModule(moduleRequest, moduleRecord);
 
-            JSPromiseObject loadPromise = (JSPromiseObject) moduleRecord.loadRequestedModules(realm, Undefined.instance).getPromise();
+            JSPromiseObject loadPromise = moduleRecord.loadRequestedModules(realm, Undefined.instance);
             assert !JSPromise.isPending(loadPromise);
             // If loading failed, we must not perform module linking.
             if (JSPromise.isRejected(loadPromise)) {
@@ -494,7 +494,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public PromiseCapabilityRecord loadRequestedModules(JSRealm realm, JSModuleRecord moduleRecord, Object hostDefined) {
+    public JSPromiseObject loadRequestedModules(JSRealm realm, JSModuleRecord moduleRecord, Object hostDefined) {
         PromiseCapabilityRecord pc = NewPromiseCapabilityNode.createDefault(realm);
         GraphLoadingState state = new GraphLoadingState(pc, hostDefined);
         try {
@@ -503,7 +503,7 @@ public final class GraalJSEvaluator implements JSParser {
             assert false : e; // should not throw
             throw e;
         }
-        return pc;
+        return (JSPromiseObject) pc.getPromise();
     }
 
     private void innerModuleLoading(JSRealm realm, GraphLoadingState state, AbstractModuleRecord module) {

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.util.Pair;
 
 /**
@@ -60,7 +61,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
         super(context, source);
     }
 
-    public abstract PromiseCapabilityRecord loadRequestedModules(JSRealm realm, Object hostDefined);
+    public abstract JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefined);
 
     public abstract void link(JSRealm realm);
 

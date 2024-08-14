@@ -342,7 +342,7 @@ public class ImportCallNode extends JavaScriptNode {
                 JSModuleRecord module = (JSModuleRecord) moduleRecordArgument.execute(frame);
                 JSRealm realm = getRealm();
 
-                JSPromiseObject loadPromise = (JSPromiseObject) module.loadRequestedModules(realm, Undefined.instance).getPromise();
+                JSPromiseObject loadPromise = module.loadRequestedModules(realm, Undefined.instance);
                 JSFunctionObject onRejected = createOnRejectedClosure(context, realm, importPromiseCapability);
                 JSFunctionObject linkAndEvaluate = createLinkAndEvaluateClosure(context, realm, module, importPromiseCapability, onRejected);
 
