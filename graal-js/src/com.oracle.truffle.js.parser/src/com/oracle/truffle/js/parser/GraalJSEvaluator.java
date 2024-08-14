@@ -840,7 +840,6 @@ public final class GraalJSEvaluator implements JSParser {
                 assert stack.isEmpty();
             } catch (AbstractTruffleException e) {
                 handleModuleEvaluationError(module, stack, e);
-                throw e;
             }
             return capability.getPromise();
         } else {

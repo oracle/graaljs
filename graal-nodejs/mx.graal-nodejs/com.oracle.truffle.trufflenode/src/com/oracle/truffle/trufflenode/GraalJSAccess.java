@@ -3825,17 +3825,11 @@ public final class GraalJSAccess {
             jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
         }
 
-        if (!moduleRecord.hasTLA()) {
-            Throwable evaluationError = moduleRecord.getEvaluationError();
-            if (evaluationError != null) {
-                throw JSRuntime.rethrow(evaluationError);
-            }
-        }
         PromiseCapabilityRecord promiseCapability = moduleRecord.getTopLevelCapability();
-        if (promiseCapability == null) {
-            return moduleRecord.getExecutionResult();
-        } else {
+        if (promiseCapability != null) {
             return promiseCapability.getPromise();
+        } else {
+            return moduleRecord.getExecutionResultOrThrow();
         }
     }
 
