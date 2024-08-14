@@ -727,6 +727,10 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
+    "filePath" : "mjsunit/harmony/import-from-compilation-errored.js",
+    "status" : "FAIL",
+    "comment" : "only fails because of different line number in error stack"
+  }, {
     "filePath" : "mjsunit/harmony/private-accessors.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
