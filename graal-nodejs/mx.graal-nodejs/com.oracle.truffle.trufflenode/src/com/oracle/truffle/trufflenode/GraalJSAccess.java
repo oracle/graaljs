@@ -3807,7 +3807,7 @@ public final class GraalJSAccess {
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         try {
-            moduleRecord.loadRequestedModules(jsRealm, moduleRecord.getHostDefined());
+            moduleRecord.loadRequestedModulesSync(jsRealm, moduleRecord.getHostDefined());
             moduleRecord.link(jsRealm);
         } finally {
             loader.setResolver(0);

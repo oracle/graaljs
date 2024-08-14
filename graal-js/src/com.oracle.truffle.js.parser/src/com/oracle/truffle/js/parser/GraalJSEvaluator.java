@@ -111,7 +111,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Completion;
@@ -293,12 +292,8 @@ public final class GraalJSEvaluator implements JSParser {
             ModuleRequest moduleRequest = ModuleRequest.create(Strings.fromJavaString(source.getName()));
             realm.getModuleLoader().addLoadedModule(moduleRequest, moduleRecord);
 
-            JSPromiseObject loadPromise = moduleRecord.loadRequestedModules(realm, Undefined.instance);
-            assert !JSPromise.isPending(loadPromise);
-            // If loading failed, we must not perform module linking.
-            if (JSPromise.isRejected(loadPromise)) {
-                throw JSRuntime.getException(loadPromise.getPromiseResult(), this);
-            }
+            moduleRecord.loadRequestedModulesSync(realm, Undefined.instance);
+            // Note: If loading failed, we must not perform module linking.
 
             moduleRecord.link(realm);
             Object promise = moduleRecord.evaluate(realm);
