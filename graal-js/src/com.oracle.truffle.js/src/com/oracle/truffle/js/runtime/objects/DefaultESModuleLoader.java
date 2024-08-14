@@ -45,11 +45,18 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystemException;
 import java.nio.file.NoSuchFileException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
@@ -64,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
 
 public class DefaultESModuleLoader implements JSModuleLoader {
 
@@ -71,6 +79,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     public static final String SLASH = "/";
     public static final String DOT_SLASH = "./";
     public static final String DOT_DOT_SLASH = "../";
+    private static final String DATA_URI_SOURCE_NAME_PREFIX = "data-uri";
 
     protected final JSRealm realm;
     protected final Map<String, AbstractModuleRecord> moduleMap = new HashMap<>();
@@ -110,6 +119,11 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         try {
             TruffleString specifierTS = moduleRequest.specifier();
             String specifier = Strings.toJavaString(specifierTS);
+
+            if (specifier.startsWith("data:")) {
+                return loadModuleFromDataURL(referrer, moduleRequest, specifier);
+            }
+
             TruffleFile moduleFile;
             String canonicalPath;
             URI maybeUri = asURI(specifier);
@@ -312,6 +326,151 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             referrer.rememberImportedModuleSource(moduleRequest.specifier(), source);
         }
         return newModule;
+    }
+
+    private AbstractModuleRecord loadModuleFromDataURL(ScriptOrModule referrer, ModuleRequest moduleRequest, String specifier) {
+        // "data:[<mime-type>][;charset=<charset>][;base64],<data>"
+        // RFC 2397: dataurl := data:[<mediatype>][;base64],<data>
+        // where mediatype := [<type/subtype>][;parameter=value]*
+
+        assert specifier.startsWith("data:") : specifier;
+        int startPos = "data:".length();
+        String input = specifier;
+
+        // Validate URI syntax (RFC 2396).
+        URI.create(input);
+
+        // Drop any fragment part.
+        int fragmentPos = specifier.indexOf('#', startPos);
+        if (fragmentPos != -1) {
+            input = specifier.substring(0, fragmentPos);
+        }
+
+        int commaPos = input.indexOf(',', startPos);
+        if (commaPos < 0) {
+            throw new IllegalArgumentException("Invalid data URL");
+        }
+
+        int mimeTypeStart = startPos;
+        int mimeTypeEnd = commaPos;
+        int encodedBodyStart = commaPos + 1;
+        int encodedBodyEnd = input.length();
+
+        // Parse ";base64" part before the comma, if present.
+        boolean base64 = false;
+        int lastSemicolon = input.lastIndexOf(';', mimeTypeEnd);
+        if (lastSemicolon >= mimeTypeStart) {
+            if (regionEqualsIgnoreCase(input, lastSemicolon + 1, mimeTypeEnd, "base64")) {
+                base64 = true;
+                mimeTypeEnd = lastSemicolon;
+            }
+        }
+
+        // Parse mime type with parameters (e.g. "text/plain;charset=US-ASCII"), if present.
+        int firstSemicolon = indexOf(input, ';', mimeTypeStart, mimeTypeEnd);
+        int parametersStart = -1;
+        int parametersEnd = -1;
+        if (firstSemicolon >= 0) {
+            parametersStart = firstSemicolon + 1;
+            parametersEnd = mimeTypeEnd;
+            mimeTypeEnd = firstSemicolon;
+        }
+
+        String mimeType = input.substring(mimeTypeStart, mimeTypeEnd);
+        mimeType = filterSupportedMimeType(mimeType, JavaScriptLanguage.MODULE_MIME_TYPE);
+        String language = findLanguage(mimeType);
+        String sourceName = switch (mimeType) {
+            case JavaScriptLanguage.JSON_MIME_TYPE -> DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX;
+            case JavaScriptLanguage.WASM_MIME_TYPE -> DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.WASM_SOURCE_NAME_SUFFIX;
+            default -> DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+        };
+        boolean useByteSource = mimeType.equals(JavaScriptLanguage.WASM_MIME_TYPE);
+
+        Charset charset;
+        if (useByteSource) {
+            // No charset-specific decoding necessary for binary sources.
+            charset = StandardCharsets.ISO_8859_1;
+        } else {
+            charset = StandardCharsets.US_ASCII;
+            String charsetName = findMimeTypeParameter(input, parametersStart, parametersEnd, "charset");
+            if (charsetName != null) {
+                charset = charsetForNameWithFallback(charsetName, charset);
+            }
+        }
+
+        String encodedBody = specifier.substring(encodedBodyStart, encodedBodyEnd);
+        Source source;
+        if (base64) {
+            byte[] decodedBytes = Base64.getDecoder().decode(encodedBody);
+            if (useByteSource) {
+                source = Source.newBuilder(language, ByteSequence.create(decodedBytes), sourceName).mimeType(mimeType).build();
+            } else {
+                String decoded = new String(decodedBytes, charset);
+                source = Source.newBuilder(language, decoded, sourceName).mimeType(mimeType).build();
+            }
+        } else {
+            // Data part is in URL percent-encoding.
+            String decoded = JSURLDecoder.decodePercentEncoding(encodedBody, charset);
+            if (useByteSource) {
+                byte[] decodedBytes = decoded.getBytes(StandardCharsets.ISO_8859_1);
+                source = Source.newBuilder(language, ByteSequence.create(decodedBytes), sourceName).mimeType(mimeType).build();
+            } else {
+                source = Source.newBuilder(language, decoded, sourceName).mimeType(mimeType).build();
+            }
+        }
+        return loadModuleFromSource(referrer, moduleRequest, source, mimeType, specifier);
+    }
+
+    private static boolean regionEqualsIgnoreCase(String input, int start, int end, String match) {
+        return end - start == match.length() && input.regionMatches(true, start, match, 0, match.length());
+    }
+
+    /**
+     * Java 17 compatible alternative for Java 21 {@link String#indexOf(int, int, int)}.
+     */
+    private static int indexOf(String input, char ch, int start, int end) {
+        int index = input.indexOf(ch, start);
+        return index < end ? index : -1;
+    }
+
+    /**
+     * Java 17 compatible alternative for Java 18 {@link Charset#forName(String, Charset)}.
+     */
+    private static Charset charsetForNameWithFallback(String charsetName, Charset fallback) {
+        try {
+            if (Charset.isSupported(charsetName)) {
+                return Charset.forName(charsetName);
+            }
+        } catch (IllegalCharsetNameException | UnsupportedCharsetException e) {
+        }
+        return fallback;
+    }
+
+    private static String findMimeTypeParameter(String input, int inputStart, int inputEnd, String paramName) {
+        int paramStart = inputStart;
+        while (paramStart < inputEnd) {
+            int nextParamStart;
+            int paramLimit = indexOf(input, ';', paramStart, inputEnd);
+            if (paramLimit == -1) {
+                paramLimit = inputEnd;
+                nextParamStart = inputEnd;
+            } else {
+                nextParamStart = paramLimit + 1;
+            }
+            int equalPos = indexOf(input, '=', paramStart, paramLimit);
+            if (equalPos != -1) {
+                if (regionEqualsIgnoreCase(input, paramStart, equalPos, paramName)) {
+                    // We don't need to handle quoted values since '"' is not a valid URI character
+                    int valueStart = equalPos + 1;
+                    int valueEnd = paramLimit;
+                    if (valueEnd - valueStart > 0) {
+                        return input.substring(valueStart, valueEnd);
+                    }
+                }
+            }
+            paramStart = nextParamStart;
+        }
+        return null;
     }
 
     /**

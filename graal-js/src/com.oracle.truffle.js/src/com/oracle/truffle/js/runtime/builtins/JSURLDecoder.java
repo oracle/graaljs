@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,8 +67,10 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -220,5 +222,62 @@ public class JSURLDecoder {
             return 7;
         }
         return 8;
+    }
+
+    @TruffleBoundary
+    public static String decodePercentEncoding(String input, Charset charset) {
+        int n = input.length();
+        if (n == 0) {
+            return input;
+        }
+        if (input.indexOf('%') < 0) {
+            return input;
+        }
+
+        StringBuilder sb = new StringBuilder(n);
+        ByteBuffer bb = ByteBuffer.allocate(n);
+        CharBuffer cb = CharBuffer.allocate(n);
+        CharsetDecoder dec = charset.newDecoder();
+        dec.onMalformedInput(CodingErrorAction.REPLACE);
+        dec.onUnmappableCharacter(CodingErrorAction.REPLACE);
+
+        char c = input.charAt(0);
+        for (int i = 0; i < n;) {
+            assert c == input.charAt(i);
+            if (c != '%') {
+                sb.append(c);
+                if (++i >= n) {
+                    break;
+                }
+                c = input.charAt(i);
+                continue;
+            }
+            // decode percent-encoded sequence
+            bb.clear();
+            for (;;) {
+                assert (n - i >= 2);
+                char c1 = input.charAt(++i);
+                char c2 = input.charAt(++i);
+                bb.put((byte) ((getHexValue(c1) << 4) |
+                                getHexValue(c2)));
+                if (++i >= n) {
+                    break;
+                }
+                c = input.charAt(i);
+                if (c != '%') {
+                    break;
+                }
+            }
+            bb.flip();
+            cb.clear();
+            dec.reset();
+            CoderResult cr = dec.decode(bb, cb, true);
+            assert cr.isUnderflow();
+            cr = dec.flush(cb);
+            assert cr.isUnderflow();
+            sb.append(cb.flip().toString());
+        }
+
+        return sb.toString();
     }
 }
