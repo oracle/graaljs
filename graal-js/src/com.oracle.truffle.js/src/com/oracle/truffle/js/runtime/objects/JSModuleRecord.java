@@ -506,4 +506,10 @@ public class JSModuleRecord extends AbstractModuleRecord {
         parsedModule.rememberImportedModuleSource(moduleSpecifier, moduleSource);
     }
 
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        return "SourceTextModule" + "@" + Integer.toHexString(System.identityHashCode(this)) + "[status=" + getStatus() + ", source=" + getSource() + "]";
+    }
+
 }

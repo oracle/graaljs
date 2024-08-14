@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.objects;
 import java.util.Collection;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
@@ -94,4 +95,9 @@ public class WebAssemblyModuleRecord extends AbstractModuleRecord {
         throw Errors.createSyntaxError("Unsupported");
     }
 
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        return "WebAssembly.Module" + "@" + Integer.toHexString(System.identityHashCode(this)) + "[source=" + getSource() + "]";
+    }
 }
