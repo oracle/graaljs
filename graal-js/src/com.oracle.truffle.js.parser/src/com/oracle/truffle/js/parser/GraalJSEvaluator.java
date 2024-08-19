@@ -827,7 +827,12 @@ public final class GraalJSEvaluator implements JSParser {
         }
         if (moduleRecord.getPendingAsyncDependencies() > 0 || moduleRecord.hasTLA()) {
             assert !moduleRecord.isAsyncEvaluation();
+            moduleRecord.setAsyncEvaluation(true);
             moduleRecord.setAsyncEvaluatingOrder(realm.nextAsyncEvaluationOrder());
+            /*
+             * NOTE: The order in which module records have their [[AsyncEvaluation]] fields
+             * transition to true is significant.
+             */
             if (moduleRecord.getPendingAsyncDependencies() == 0) {
                 moduleAsyncExecution(realm, moduleRecord);
             }
@@ -944,6 +949,7 @@ public final class GraalJSEvaluator implements JSParser {
         assert module.getStatus() == Status.EvaluatingAsync;
         assert module.isAsyncEvaluation();
         assert module.getEvaluationError() == null;
+        module.setAsyncEvaluation(false);
         module.setStatus(Status.Evaluated);
         if (module.getTopLevelCapability() != null) {
             assert module.getCycleRoot() == module;
@@ -964,6 +970,7 @@ public final class GraalJSEvaluator implements JSParser {
             } else {
                 try {
                     moduleExecution(realm, m, null);
+                    m.setAsyncEvaluation(false);
                     m.setStatus(Status.Evaluated);
                     if (m.getTopLevelCapability() != null) {
                         assert m.getCycleRoot() == m;
@@ -989,6 +996,13 @@ public final class GraalJSEvaluator implements JSParser {
         assert module.getEvaluationError() == null;
         module.setEvaluationError(JSRuntime.getException(error));
         module.setStatus(Status.Evaluated);
+        module.setAsyncEvaluation(false);
+        /*
+         * NOTE: _module_.[[AsyncEvaluation]] is set to *false* for symmetry with
+         * AsyncModuleExecutionFulfilled. In InnerModuleEvaluation, the value of a module's
+         * [[AsyncEvaluation]] internal slot is unused when its [[EvaluationError]] internal slot is
+         * not ~empty~.
+         */
         for (JSModuleRecord m : module.getAsyncParentModules()) {
             asyncModuleExecutionRejected(realm, m, error);
         }

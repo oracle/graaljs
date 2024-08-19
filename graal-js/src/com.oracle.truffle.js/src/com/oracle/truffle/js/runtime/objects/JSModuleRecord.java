@@ -265,7 +265,9 @@ public class JSModuleRecord extends AbstractModuleRecord {
     private JSModuleRecord cycleRoot = this;
     // [[HasTLA]]
     private final boolean hasTLA;
-    // [[AsyncEvaluation]] (true when asyncEvaluationOrder > 0)
+    // [[AsyncEvaluation]]
+    private boolean asyncEvaluation;
+    // Order in which [[AsyncEvaluation]] was set (if > 0)
     private long asyncEvaluationOrder;
     // [[TopLevelCapability]]
     private PromiseCapabilityRecord topLevelPromiseCapability = null;
@@ -283,7 +285,11 @@ public class JSModuleRecord extends AbstractModuleRecord {
     }
 
     public boolean isAsyncEvaluation() {
-        return asyncEvaluationOrder > 0;
+        return asyncEvaluation;
+    }
+
+    public void setAsyncEvaluation(boolean asyncEvaluation) {
+        this.asyncEvaluation = asyncEvaluation;
     }
 
     public List<JSModuleRecord> getAsyncParentModules() {
