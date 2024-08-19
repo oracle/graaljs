@@ -3815,9 +3815,5 @@
     "filePath" : "staging/Temporal/ZonedDateTime/old/string-parsing.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/top-level-await/tla-hang-entry.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
   } ]
 }
