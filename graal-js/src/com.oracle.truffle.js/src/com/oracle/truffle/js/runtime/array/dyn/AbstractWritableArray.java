@@ -429,10 +429,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
     protected final long nextElementIndexHoles(JSDynamicObject object, long index0) {
         long index = index0;
         long firstIdx = firstElementIndex(object);
-        if (index0 < firstIdx) {
-            return firstIdx;
-        }
         long lastI = lastElementIndex(object);
+        if (index0 < firstIdx) {
+            return (firstIdx <= lastI) ? firstIdx : JSRuntime.MAX_SAFE_INTEGER_LONG;
+        }
         do {
             index++;
             if (index > lastI) {
