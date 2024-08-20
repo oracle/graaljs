@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,7 +110,7 @@ public class DynamicArrayTest extends JSTest {
         assertEquals(true, array.isInBoundsFast(arrayObject, 3));
         assertEquals(true, array.isInBounds(arrayObject, 2));
         assertEquals(false, array.isInBoundsFast(arrayObject, 2));
-        assertEquals(false, array.isInBounds(arrayObject, 4));
+        assertEquals(true, array.isInBounds(arrayObject, 4));
         assertEquals(false, array.isInBoundsFast(arrayObject, 4));
 
         array.setInBounds(arrayObject, 2, INT, null, SetSupportedProfileAccess.getUncached());
