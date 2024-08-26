@@ -72,7 +72,6 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
@@ -140,14 +139,11 @@ public class ImportCallNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         ScriptOrModule referencingScriptOrModule = activeScriptOrModule;
         Object specifier = argRefNode.execute(frame);
+        Object options = Undefined.instance;
         if (optionsRefNode != null) {
-            return executeAttributes(frame, referencingScriptOrModule, specifier);
-        } else {
-            return executeWithoutAttributes(referencingScriptOrModule, specifier);
+            options = optionsRefNode.execute(frame);
         }
-    }
 
-    private Object executeWithoutAttributes(ScriptOrModule referencingScriptOrModule, Object specifier) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         TruffleString specifierString;
         try {
@@ -155,79 +151,73 @@ public class ImportCallNode extends JavaScriptNode {
         } catch (AbstractTruffleException ex) {
             return rejectPromise(promiseCapability, ex);
         }
-        return hostImportModuleDynamicallyWithSite(referencingScriptOrModule, ModuleRequest.create(specifierString, phase), promiseCapability);
-    }
 
-    @SuppressWarnings("unchecked")
-    private Object executeAttributes(VirtualFrame frame, ScriptOrModule referencingScriptOrModule, Object specifier) {
-        assert optionsRefNode != null;
-        if (enumerableOwnPropertyNamesNode == null || getWithNode == null || getAssertNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            enumerableOwnPropertyNamesNode = insert(EnumerableOwnPropertyNamesNode.createKeys(context));
-            getWithNode = insert(PropertyGetNode.create(Strings.WITH, context));
-            getAssertNode = insert(PropertyGetNode.create(ASSERT, context));
-        }
-        Object options = optionsRefNode.execute(frame);
-        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
-        TruffleString specifierString;
-        try {
-            specifierString = toStringNode.executeString(specifier);
-        } catch (AbstractTruffleException ex) {
-            return rejectPromise(promiseCapability, ex);
-        }
         Map.Entry<TruffleString, TruffleString>[] attributes = null;
         if (options != Undefined.instance) {
-            if (!JSRuntime.isObject(options)) {
-                return rejectPromiseWithTypeError(promiseCapability, "The second argument to import() must be an object");
-            }
-            Object attributesObj = Undefined.instance;
             try {
-                if (context.getLanguageOptions().importAttributes()) {
-                    attributesObj = getWithNode.getValue(options);
+                if (!(options instanceof JSObject optionsObj)) {
+                    throw Errors.createTypeError("The second argument to import() must be an object", this);
                 }
-                if (attributesObj == Undefined.instance) {
-                    if (context.getLanguageOptions().importAssertions()) {
-                        attributesObj = getAssertNode.getValue(options);
-                    }
-                }
+                attributes = getAttributes(optionsObj);
             } catch (AbstractTruffleException ex) {
                 return rejectPromise(promiseCapability, ex);
-            }
-            if (attributesObj != Undefined.instance) {
-                if (!(attributesObj instanceof JSObject obj)) {
-                    return rejectPromiseWithTypeError(promiseCapability, "The 'assert' option must be an object");
-                }
-                UnmodifiableArrayList<? extends Object> keys;
-                try {
-                    keys = enumerableOwnPropertyNamesNode.execute(obj);
-                } catch (AbstractTruffleException ex) {
-                    return rejectPromise(promiseCapability, ex);
-                }
-                attributes = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
-                boolean allStrings = true;
-                for (int i = 0; i < keys.size(); i++) {
-                    TruffleString key = (TruffleString) keys.get(i);
-                    Object value;
-                    try {
-                        value = JSObject.get(obj, key);
-                    } catch (AbstractTruffleException ex) {
-                        return rejectPromise(promiseCapability, ex);
-                    }
-                    if (value instanceof TruffleString valueStr) {
-                        attributes[i] = Boundaries.mapEntry(key, valueStr);
-                    } else {
-                        // Read all values before rejecting the promise,
-                        // we were supposed to do EnumerableOwnProperties(KEY+VALUE) above.
-                        allStrings = false;
-                    }
-                }
-                if (!allStrings) {
-                    return rejectPromiseWithTypeError(promiseCapability, "Import assertion value must be a string");
-                }
             }
         }
         ModuleRequest moduleRequest = attributes == null ? ModuleRequest.create(specifierString, phase) : createModuleRequestWithAttributes(specifierString, attributes, phase);
         return hostImportModuleDynamicallyWithSite(referencingScriptOrModule, moduleRequest, promiseCapability);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map.Entry<TruffleString, TruffleString>[] getAttributes(JSObject options) {
+        Object attributesObj = Undefined.instance;
+        if (context.getLanguageOptions().importAttributes()) {
+            if (getWithNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getWithNode = insert(PropertyGetNode.create(Strings.WITH, context));
+            }
+            attributesObj = getWithNode.getValue(options);
+        }
+        if (attributesObj == Undefined.instance) {
+            if (context.getLanguageOptions().importAssertions()) {
+                if (getAssertNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getAssertNode = insert(PropertyGetNode.create(ASSERT, context));
+                }
+                attributesObj = getAssertNode.getValue(options);
+            }
+        }
+        Map.Entry<TruffleString, TruffleString>[] attributes = null;
+        if (attributesObj != Undefined.instance) {
+            if (!(attributesObj instanceof JSObject obj)) {
+                throw Errors.createTypeError(context.getLanguageOptions().importAssertions()
+                                ? "The 'assert' option must be an object"
+                                : "The 'with' option must be an object", this);
+            }
+            if (enumerableOwnPropertyNamesNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                enumerableOwnPropertyNamesNode = insert(EnumerableOwnPropertyNamesNode.createKeys(context));
+            }
+            UnmodifiableArrayList<? extends Object> keys = enumerableOwnPropertyNamesNode.execute(obj);
+            attributes = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
+            boolean allStrings = true;
+            for (int i = 0; i < keys.size(); i++) {
+                TruffleString key = (TruffleString) keys.get(i);
+                Object value = JSObject.get(obj, key);
+                if (value instanceof TruffleString valueStr) {
+                    attributes[i] = Boundaries.mapEntry(key, valueStr);
+                } else {
+                    // Read all values before rejecting the promise,
+                    // we were supposed to do EnumerableOwnProperties(KEY+VALUE) above.
+                    allStrings = false;
+                }
+            }
+            if (!allStrings) {
+                throw Errors.createTypeError(context.getLanguageOptions().importAssertions()
+                                ? "Import assertion value must be a string"
+                                : "Import attribute value must be a string", this);
+            }
+        }
+        return attributes;
     }
 
     private JSDynamicObject hostImportModuleDynamicallyWithSite(ScriptOrModule referrer, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
@@ -278,14 +268,6 @@ public class ImportCallNode extends JavaScriptNode {
         Object error = getErrorObjectNode.execute(ex);
         callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
         return promiseCapability.getPromise();
-    }
-
-    private Object rejectPromiseWithTypeError(PromiseCapabilityRecord promiseCapability, String errorMessage) {
-        if (callRejectNode == null) {
-            // Just to cut off before createTypeError. Nodes are initialized in rejectPromise().
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
-        return rejectPromise(promiseCapability, Errors.createTypeError(errorMessage, this));
     }
 
     @TruffleBoundary
