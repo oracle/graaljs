@@ -638,10 +638,20 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> IMPORT_ATTRIBUTES = new OptionKey<>(false);
     @CompilationFinal private boolean importAttributes;
 
+    public static final String IMPORT_ASSERTIONS_NAME = JS_OPTION_PREFIX + "import-assertions";
+    @Option(name = IMPORT_ASSERTIONS_NAME, category = OptionCategory.USER, help = "Enable legacy import assertions") //
+    public static final OptionKey<Boolean> IMPORT_ASSERTIONS = new OptionKey<>(false);
+    @CompilationFinal private boolean importAssertions;
+
     public static final String JSON_MODULES_NAME = JS_OPTION_PREFIX + "json-modules";
     @Option(name = JSON_MODULES_NAME, category = OptionCategory.USER, help = "Enable loading of json modules") //
     public static final OptionKey<Boolean> JSON_MODULES = new OptionKey<>(false);
     @CompilationFinal private boolean jsonModules;
+
+    public static final String SOURCE_PHASE_IMPORTS_NAME = JS_OPTION_PREFIX + "source-phase-imports";
+    @Option(name = SOURCE_PHASE_IMPORTS_NAME, category = OptionCategory.USER, help = "Enable source phase imports proposal") //
+    public static final OptionKey<Boolean> SOURCE_PHASE_IMPORTS = new OptionKey<>(false);
+    @CompilationFinal private boolean sourcePhaseImports;
 
     public static final String WASM_BIG_INT_NAME = JS_OPTION_PREFIX + "wasm-bigint";
     @Option(name = WASM_BIG_INT_NAME, category = OptionCategory.USER, help = "Enable wasm i64 to javascript BigInt support") //
@@ -788,7 +798,9 @@ public final class JSContextOptions {
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES);
+        this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
         this.jsonModules = readBooleanOption(JSON_MODULES);
+        this.sourcePhaseImports = readBooleanOption(SOURCE_PHASE_IMPORTS);
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
         this.printNoNewline = readBooleanOption(PRINT_NO_NEWLINE);
@@ -1209,8 +1221,16 @@ public final class JSContextOptions {
         return importAttributes;
     }
 
+    public boolean isImportAssertions() {
+        return importAssertions;
+    }
+
     public boolean isJsonModules() {
         return jsonModules;
+    }
+
+    public boolean isSourcePhaseImports() {
+        return sourcePhaseImports;
     }
 
     public boolean isWasmBigInt() {

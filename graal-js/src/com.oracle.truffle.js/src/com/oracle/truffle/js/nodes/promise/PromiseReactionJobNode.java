@@ -94,7 +94,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
         return new PromiseReactionJobNode(context);
     }
 
-    public JSFunctionObject execute(Object reaction, Object argument) {
+    public JSFunctionObject execute(PromiseReactionRecord reaction, Object argument) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseReactionJob, (c) -> createPromiseReactionJobImpl(c));
         JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setReaction.setValue(function, reaction);

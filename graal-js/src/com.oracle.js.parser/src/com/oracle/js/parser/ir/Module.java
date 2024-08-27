@@ -41,12 +41,12 @@
 
 package com.oracle.js.parser.ir;
 
-import com.oracle.js.parser.ParserStrings;
-import com.oracle.truffle.api.strings.TruffleString;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import com.oracle.js.parser.ParserStrings;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Module information.
@@ -62,6 +62,7 @@ public final class Module {
     public static final TruffleString DEFAULT_NAME = ParserStrings.constant("default");
     public static final TruffleString STAR_NAME = ParserStrings.constant("\uD800*");
     public static final TruffleString NAMESPACE_EXPORT_BINDING_NAME = ParserStrings.constant("\uD800*namespace*");
+    public static final TruffleString SOURCE_IMPORT_NAME = ParserStrings.constant("\uD800source");
 
     public static final class ExportEntry {
         private final TruffleString exportName;
@@ -153,6 +154,10 @@ public final class Module {
             return importSpecifier(importName, importName);
         }
 
+        public static ImportEntry importSource(ModuleRequest moduleRequest, TruffleString localName) {
+            return new ImportEntry(moduleRequest, SOURCE_IMPORT_NAME, localName);
+        }
+
         public ImportEntry withFrom(@SuppressWarnings("hiding") ModuleRequest moduleRequest) {
             return new ImportEntry(moduleRequest, importName, localName);
         }
@@ -175,37 +180,45 @@ public final class Module {
         }
     }
 
-    public static final class ModuleRequest {
-        private final TruffleString specifier;
-        private Map<TruffleString, TruffleString> attributes;
+    public enum ImportPhase {
+        Evaluation,
+        Source,
+    }
 
-        private ModuleRequest(TruffleString specifier, Map<TruffleString, TruffleString> attributes) {
-            this.specifier = specifier;
-            this.attributes = attributes;
+    public record ModuleRequest(
+                    TruffleString specifier,
+                    Map<TruffleString, TruffleString> attributes,
+                    ImportPhase phase) {
+
+        public static ModuleRequest create(TruffleString specifier, ImportPhase phase) {
+            return new ModuleRequest(specifier, Collections.emptyMap(), phase);
         }
 
         public static ModuleRequest create(TruffleString specifier) {
-            return new ModuleRequest(specifier, Collections.emptyMap());
+            return create(specifier, ImportPhase.Evaluation);
+        }
+
+        public static ModuleRequest create(TruffleString specifier, Map<TruffleString, TruffleString> attributes, ImportPhase phase) {
+            return new ModuleRequest(specifier, Map.copyOf(attributes), phase);
         }
 
         public static ModuleRequest create(TruffleString specifier, Map<TruffleString, TruffleString> attributes) {
-            return new ModuleRequest(specifier, Map.copyOf(attributes));
+            return create(specifier, attributes, ImportPhase.Evaluation);
+        }
+
+        public static ModuleRequest create(TruffleString specifier, Map.Entry<TruffleString, TruffleString>[] attributes, ImportPhase phase) {
+            return new ModuleRequest(specifier, Map.ofEntries(attributes), phase);
         }
 
         public static ModuleRequest create(TruffleString specifier, Map.Entry<TruffleString, TruffleString>[] attributes) {
-            return new ModuleRequest(specifier, Map.ofEntries(attributes));
+            return create(specifier, attributes, ImportPhase.Evaluation);
         }
 
-        public TruffleString getSpecifier() {
-            return specifier;
-        }
-
-        public Map<TruffleString, TruffleString> getAttributes() {
-            return attributes;
-        }
-
-        public void setAttributes(Map<TruffleString, TruffleString> attributes) {
-            this.attributes = attributes;
+        public ModuleRequest withAttributes(Map<TruffleString, TruffleString> newAttributes) {
+            if (this.attributes == newAttributes) {
+                return this;
+            }
+            return new ModuleRequest(specifier, newAttributes, phase);
         }
     }
 

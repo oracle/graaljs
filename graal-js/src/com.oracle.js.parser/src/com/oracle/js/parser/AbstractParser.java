@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -384,8 +384,18 @@ public abstract class AbstractParser {
      * @return JavaScript value of the token.
      */
     protected final Object getValueNoEscape() {
+        return getValueNoEscape(token);
+    }
+
+    /**
+     * Get the value of a specific token. If the token contains an escape sequence, the method does
+     * not attempt to convert it.
+     *
+     * @return JavaScript value of the token.
+     */
+    protected final Object getValueNoEscape(final long valueToken) {
         try {
-            return lexer.getValueOf(token, isStrictMode, false);
+            return lexer.getValueOf(valueToken, isStrictMode, false);
         } catch (final ParserException e) {
             errors.error(e);
         }

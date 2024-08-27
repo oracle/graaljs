@@ -377,6 +377,10 @@ public class JSContext {
         PromiseValueThunk,
         PromiseThrower,
         ImportModuleDynamically,
+        ContinueDynamicImport,
+        ContinueDynamicImportLinkAndEvaluateClosure,
+        ContinueDynamicImportFulfilledClosure,
+        ContinueDynamicImportRejectedClosure,
         JavaPackageToPrimitive,
         RegExpMultiLine,
         RegExpLastMatch,
@@ -400,8 +404,6 @@ public class JSContext {
         TopLevelAwaitResolve,
         TopLevelAwaitReject,
         WebAssemblySourceInstantiation,
-        FinishImportModuleDynamicallyReject,
-        FinishImportModuleDynamicallyResolve,
         ExportGetter,
         OrdinaryWrappedFunctionCall,
         DecoratorContextAddInitializer,
@@ -717,8 +719,8 @@ public class JSContext {
         this.listFormatFactory = builder.create(JSListFormat.INSTANCE);
         this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
         this.segmenterFactory = builder.create(JSSegmenter.INSTANCE);
-        this.segmentsFactory = builder.create(JSRealm::getSegmentsPrototype, JSSegmenter::makeInitialSegmentsShape);
-        this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSSegmenter::makeInitialSegmentIteratorShape);
+        this.segmentsFactory = builder.create(JSRealm::getSegmentsPrototype, JSOrdinary.BARE_SHAPE_SUPPLIER);
+        this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSOrdinary.BARE_SHAPE_SUPPLIER);
         this.displayNamesFactory = builder.create(JSDisplayNames.INSTANCE);
         this.localeFactory = builder.create(JSLocale.INSTANCE);
 
@@ -760,7 +762,7 @@ public class JSContext {
         this.regexOptions = createRegexOptions(languageOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAttributes = languageOptions.importAttributes() ? Set.of(TYPE_IMPORT_ATTRIBUTE) : Set.of();
+        this.supportedImportAttributes = (languageOptions.importAttributes() || languageOptions.importAssertions()) ? Set.of(TYPE_IMPORT_ATTRIBUTE) : Set.of();
     }
 
     public final Evaluator getEvaluator() {

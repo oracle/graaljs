@@ -261,6 +261,10 @@ public final class JSFunction extends JSNonProxy {
         return createDefault(functionData, enclosingFrame, CLASS_PROTOTYPE_PLACEHOLDER, realm);
     }
 
+    public static JSFunctionObject createWithPrototype(JSRealm realm, JSFunctionData functionData, JSDynamicObject prototype) {
+        return createWithPrototype(initialFactory(functionData), realm, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, prototype);
+    }
+
     public static JSFunctionObject createWithPrototype(JSFunctionFactory factory, JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSDynamicObject prototype) {
         return createWithPrototype(factory, functionData, enclosingFrame, CLASS_PROTOTYPE_PLACEHOLDER, realm, prototype);
     }

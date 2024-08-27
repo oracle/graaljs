@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,6 @@ import com.oracle.js.parser.ir.ExportNode;
 import com.oracle.js.parser.ir.ExportSpecifierNode;
 import com.oracle.js.parser.ir.ExpressionStatement;
 import com.oracle.js.parser.ir.ForNode;
-import com.oracle.js.parser.ir.FromNode;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.IfNode;
@@ -465,14 +464,6 @@ public abstract class NodeVisitor<T extends LexicalContext> {
      */
     public Node leaveForNode(final ForNode forNode) {
         return leaveDefault(forNode);
-    }
-
-    public boolean enterFromNode(final FromNode fromNode) {
-        return enterDefault(fromNode);
-    }
-
-    public Node leaveFromNode(final FromNode fromNode) {
-        return leaveDefault(fromNode);
     }
 
     /**
@@ -957,7 +948,7 @@ public abstract class NodeVisitor<T extends LexicalContext> {
 
     /**
      * Callback for entering a ClassElement
-     * 
+     *
      * @param element the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
@@ -967,7 +958,7 @@ public abstract class NodeVisitor<T extends LexicalContext> {
 
     /**
      * Callback for leaving a ClassElement
-     * 
+     *
      * @param element the node
      * @return processed node, which will replace the original one, or the original node
      */

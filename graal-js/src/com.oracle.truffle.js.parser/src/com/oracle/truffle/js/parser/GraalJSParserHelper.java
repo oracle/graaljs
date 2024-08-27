@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.parser;
 
-import java.io.PrintWriter;
 import java.util.List;
 import java.util.function.Function;
 
@@ -197,6 +196,8 @@ public final class GraalJSParserHelper {
         builder.annexB(parserOptions.annexB());
         builder.classFields(parserOptions.classFields());
         builder.importAttributes(parserOptions.importAttributes());
+        builder.importAssertions(parserOptions.importAssertions());
+        builder.sourcePhaseImports(parserOptions.sourcePhaseImports());
         builder.privateFieldsIn(parserOptions.privateFieldsIn());
         builder.topLevelAwait(parserOptions.topLevelAwait());
         builder.v8Intrinsics(parserOptions.v8Intrinsics());
@@ -204,9 +205,6 @@ public final class GraalJSParserHelper {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
         } else {
             builder.functionStatementBehavior(FunctionStatementBehavior.ACCEPT);
-        }
-        if (parserOptions.dumpOnError()) {
-            builder.dumpOnError(new PrintWriter(System.err, true));
         }
         return builder.build();
     }

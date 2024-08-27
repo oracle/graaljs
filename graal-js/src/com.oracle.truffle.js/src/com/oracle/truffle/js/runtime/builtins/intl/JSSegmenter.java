@@ -284,10 +284,6 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
 
     // Segments Object
 
-    public static Shape makeInitialSegmentsShape(JSContext ctx, JSDynamicObject prototype) {
-        return JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.BARE_INSTANCE, ctx);
-    }
-
     public static boolean isJSSegments(Object obj) {
         return obj instanceof JSSegmentsObject;
     }
@@ -299,10 +295,6 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     // Segment Iterator
-
-    public static Shape makeInitialSegmentIteratorShape(JSContext ctx, JSDynamicObject prototype) {
-        return JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.BARE_INSTANCE, ctx);
-    }
 
     public static boolean isJSSegmentIterator(Object obj) {
         return obj instanceof JSSegmentIteratorObject;

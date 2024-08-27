@@ -41,6 +41,8 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.Objects;
+
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
@@ -52,13 +54,13 @@ public class ExportSpecifierNode extends Node {
 
     public ExportSpecifierNode(final long token, final int start, final int finish, final PropertyKey identifier, final PropertyKey exportIdentifier) {
         super(token, start, finish);
-        this.identifier = identifier;
+        this.identifier = Objects.requireNonNull(identifier);
         this.exportIdentifier = exportIdentifier;
     }
 
     private ExportSpecifierNode(final ExportSpecifierNode node, final PropertyKey identifier, final PropertyKey exportIdentifier) {
         super(node);
-        this.identifier = identifier;
+        this.identifier = Objects.requireNonNull(identifier);
         this.exportIdentifier = exportIdentifier;
     }
 
@@ -103,11 +105,11 @@ public class ExportSpecifierNode extends Node {
 
     @Override
     public void toString(StringBuilder sb, boolean printType) {
-        if (identifier != null) {
-            ((Node) identifier).toString(sb, printType);
+        ((Node) identifier).toString(sb, printType);
+        if (exportIdentifier != null) {
             sb.append(" as ");
+            ((Node) exportIdentifier).toString(sb, printType);
         }
-        ((Node) exportIdentifier).toString(sb, printType);
     }
 
 }

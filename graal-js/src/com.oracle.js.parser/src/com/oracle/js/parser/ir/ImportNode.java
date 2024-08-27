@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,9 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.Map;
+import java.util.Objects;
+
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -51,28 +54,30 @@ public class ImportNode extends Node {
 
     private final ImportClauseNode importClause;
 
-    private final FromNode from;
+    private final Map<TruffleString, TruffleString> attributes;
 
-    public ImportNode(final long token, final int start, final int finish, final LiteralNode<TruffleString> moduleSpecifier) {
-        this(token, start, finish, moduleSpecifier, null, null);
+    public ImportNode(long token, int start, int finish, LiteralNode<TruffleString> moduleSpecifier,
+                    Map<TruffleString, TruffleString> attributes) {
+        this(token, start, finish, moduleSpecifier, null, attributes);
     }
 
-    public ImportNode(final long token, final int start, final int finish, final ImportClauseNode importClause, final FromNode from) {
-        this(token, start, finish, null, importClause, from);
+    public ImportNode(long token, int start, int finish, ImportClauseNode importClause, LiteralNode<TruffleString> moduleSpecifier,
+                    Map<TruffleString, TruffleString> attributes) {
+        this(token, start, finish, moduleSpecifier, importClause, attributes);
     }
 
-    private ImportNode(final long token, final int start, final int finish, final LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause, FromNode from) {
+    private ImportNode(long token, int start, int finish, LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause, Map<TruffleString, TruffleString> attributes) {
         super(token, start, finish);
-        this.moduleSpecifier = moduleSpecifier;
+        this.moduleSpecifier = Objects.requireNonNull(moduleSpecifier);
         this.importClause = importClause;
-        this.from = from;
+        this.attributes = Objects.requireNonNull(attributes);
     }
 
-    private ImportNode(final ImportNode node, final LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause, FromNode from) {
+    private ImportNode(final ImportNode node, final LiteralNode<TruffleString> moduleSpecifier, ImportClauseNode importClause) {
         super(node);
-        this.moduleSpecifier = moduleSpecifier;
+        this.moduleSpecifier = Objects.requireNonNull(moduleSpecifier);
         this.importClause = importClause;
-        this.from = from;
+        this.attributes = Objects.requireNonNull(node.attributes);
     }
 
     public LiteralNode<TruffleString> getModuleSpecifier() {
@@ -83,39 +88,31 @@ public class ImportNode extends Node {
         return importClause;
     }
 
-    public FromNode getFrom() {
-        return from;
+    public Map<TruffleString, TruffleString> getAttributes() {
+        return attributes;
     }
 
     public ImportNode setModuleSpecifier(LiteralNode<TruffleString> moduleSpecifier) {
         if (this.moduleSpecifier == moduleSpecifier) {
             return this;
         }
-        return new ImportNode(this, moduleSpecifier, importClause, from);
+        return new ImportNode(this, moduleSpecifier, importClause);
     }
 
     public ImportNode setImportClause(ImportClauseNode importClause) {
         if (this.importClause == importClause) {
             return this;
         }
-        return new ImportNode(this, moduleSpecifier, importClause, from);
-    }
-
-    public ImportNode setFrom(FromNode from) {
-        if (this.from == from) {
-            return this;
-        }
-        return new ImportNode(this, moduleSpecifier, importClause, from);
+        return new ImportNode(this, moduleSpecifier, importClause);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterImportNode(this)) {
-            LiteralNode<TruffleString> newModuleSpecifier = moduleSpecifier == null ? null : (LiteralNode<TruffleString>) moduleSpecifier.accept(visitor);
+            LiteralNode<TruffleString> newModuleSpecifier = (LiteralNode<TruffleString>) moduleSpecifier.accept(visitor);
             ImportClauseNode newImportClause = importClause == null ? null : (ImportClauseNode) importClause.accept(visitor);
-            FromNode newFrom = from == null ? null : (FromNode) from.accept(visitor);
-            return visitor.leaveImportNode(setModuleSpecifier(newModuleSpecifier).setImportClause(newImportClause).setFrom(newFrom));
+            return visitor.leaveImportNode(setModuleSpecifier(newModuleSpecifier).setImportClause(newImportClause));
         }
 
         return this;
@@ -130,14 +127,31 @@ public class ImportNode extends Node {
     public void toString(StringBuilder sb, boolean printType) {
         sb.append("import");
         sb.append(' ');
-        if (moduleSpecifier != null) {
-            moduleSpecifier.toString(sb, printType);
-        } else {
+        if (importClause != null) {
             importClause.toString(sb, printType);
             sb.append(' ');
-            from.toString(sb, printType);
+            sb.append("from");
+            sb.append(' ');
+        }
+        moduleSpecifier.toString(sb, printType);
+        if (!attributes.isEmpty()) {
+            sb.append(" with ");
+            attributesToString(attributes, sb);
         }
         sb.append(';');
     }
 
+    static void attributesToString(Map<TruffleString, TruffleString> attributes, StringBuilder sb) {
+        sb.append("{");
+        for (var iterator = attributes.entrySet().iterator(); iterator.hasNext();) {
+            var attr = iterator.next();
+            sb.append(attr.getKey());
+            sb.append(": ");
+            sb.append('"').append(attr.getValue()).append('"');
+            if (iterator.hasNext()) {
+                sb.append(", ");
+            }
+        }
+        sb.append("}");
+    }
 }

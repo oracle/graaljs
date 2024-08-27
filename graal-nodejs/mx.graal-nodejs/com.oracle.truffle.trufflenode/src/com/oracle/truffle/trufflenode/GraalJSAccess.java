@@ -172,7 +172,6 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
-import com.oracle.truffle.js.parser.GraalJSEvaluator;
 import com.oracle.truffle.js.parser.GraalJSParserHelper;
 import com.oracle.truffle.js.parser.JSParser;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
@@ -2726,12 +2725,12 @@ public final class GraalJSAccess {
                 target = jsObject;
                 key = HIDDEN_WEAK_CALLBACK;
             } else if (object instanceof JSModuleRecord moduleRecord) {
-                if (moduleRecord.getStatus() == JSModuleRecord.Status.Unlinked) {
+                if (moduleRecord.getStatus() == JSModuleRecord.Status.New || moduleRecord.getStatus() == JSModuleRecord.Status.Unlinked) {
                     assert (callbackPointer == 0);
                     // ClearWeak() called on a module that cannot be weak yet
                     return null;
                 }
-                target = moduleRecord.getContext().getEvaluator().getModuleNamespace(moduleRecord);
+                target = moduleRecord.getModuleNamespace();
                 key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
             } else {
                 System.err.println("Weak references not supported for " + object);
@@ -3365,7 +3364,7 @@ public final class GraalJSAccess {
                 resourceName = Strings.fromJavaString(referrer.getSource().getName());
                 hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
             }
-            return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.getSpecifier(), importAssertions);
+            return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), importAssertions);
         }
     }
 
@@ -3798,17 +3797,18 @@ public final class GraalJSAccess {
         // Get the correct Source instance to be used as weak map key.
         source = parsedModule.getSource();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
-        JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
+        JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader(), hostDefinedOptions);
         return moduleRecord;
     }
 
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
         JSRealm jsRealm = (JSRealm) context;
-        JSContext jsContext = jsRealm.getContext();
+        JSModuleRecord moduleRecord = (JSModuleRecord) module;
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         try {
-            jsContext.getEvaluator().moduleLinking(jsRealm, (JSModuleRecord) module);
+            moduleRecord.loadRequestedModulesSync(jsRealm, moduleRecord.getHostDefined());
+            moduleRecord.link(jsRealm);
         } finally {
             loader.setResolver(0);
         }
@@ -3816,30 +3816,24 @@ public final class GraalJSAccess {
 
     public Object moduleEvaluate(Object context, Object module) {
         JSRealm jsRealm = (JSRealm) context;
-        JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
 
         if (!moduleRecord.hasBeenEvaluated()) {
-            jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+            moduleRecord.evaluate(jsRealm);
         }
 
-        if (!moduleRecord.hasTLA()) {
-            Throwable evaluationError = moduleRecord.getEvaluationError();
-            if (evaluationError != null) {
-                throw JSRuntime.rethrow(evaluationError);
-            }
-        }
         PromiseCapabilityRecord promiseCapability = moduleRecord.getTopLevelCapability();
-        if (promiseCapability == null) {
-            return moduleRecord.getExecutionResult();
-        } else {
+        if (promiseCapability != null) {
             return promiseCapability.getPromise();
+        } else {
+            return moduleRecord.getExecutionResultOrThrow();
         }
     }
 
     public int moduleGetStatus(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
         switch (record.getStatus()) {
+            case New:
             case Unlinked:
                 return 0; // v8::Module::Status::kUninstantiated
             case Linking:
@@ -3850,13 +3844,13 @@ public final class GraalJSAccess {
                 return 3; // v8::Module::Status::Evaluating
             case EvaluatingAsync:
             case Evaluated:
-            default:
-                assert (record.getStatus() == JSModuleRecord.Status.Evaluated || record.getStatus() == JSModuleRecord.Status.EvaluatingAsync);
                 if (record.getEvaluationError() == null) {
                     return 4; // v8::Module::Status::kEvaluated
                 } else {
                     return 5; // v8::Module::Status::kErrored
                 }
+            default:
+                throw Errors.shouldNotReachHereUnexpectedValue(record.getStatus());
         }
     }
 
@@ -3876,8 +3870,7 @@ public final class GraalJSAccess {
 
     public Object moduleGetNamespace(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        GraalJSEvaluator graalEvaluator = (GraalJSEvaluator) record.getContext().getEvaluator();
-        return graalEvaluator.getModuleNamespace(record);
+        return record.getModuleNamespace();
     }
 
     public int moduleGetIdentityHash(Object module) {
@@ -3910,12 +3903,12 @@ public final class GraalJSAccess {
     }
 
     public Object moduleRequestGetSpecifier(Object moduleRequest) {
-        return ((ModuleRequest) moduleRequest).getSpecifier();
+        return ((ModuleRequest) moduleRequest).specifier();
     }
 
     private static Object[] moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
         List<Object> attributes = new ArrayList<>();
-        for (Map.Entry<TruffleString, TruffleString> entry : request.getAttributes().entrySet()) {
+        for (Map.Entry<TruffleString, TruffleString> entry : request.attributes().entrySet()) {
             attributes.add(entry.getKey());
             attributes.add(entry.getValue());
             if (withSourceOffset) {
@@ -4249,7 +4242,7 @@ public final class GraalJSAccess {
         @Override
         public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Map<TruffleString, JSModuleRecord> referrerCache = cache.get(referrer);
-            TruffleString specifier = moduleRequest.getSpecifier();
+            TruffleString specifier = moduleRequest.specifier();
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();
                 cache.put(referrer, referrerCache);
@@ -4269,11 +4262,6 @@ public final class GraalJSAccess {
             JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
             referrerCache.put(specifier, result);
             return result;
-        }
-
-        @Override
-        public JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData) {
-            throw new UnsupportedOperationException();
         }
     }
 

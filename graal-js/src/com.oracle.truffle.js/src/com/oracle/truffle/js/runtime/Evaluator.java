@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,8 +50,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.runtime.objects.ExportResolution;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -100,17 +100,17 @@ public interface Evaluator {
      */
     JSModuleData envParseModule(JSRealm realm, Source source);
 
+    AbstractModuleRecord parseWasmModuleSource(JSRealm realm, Source source);
+
     JSModuleRecord parseJSONModule(JSRealm realm, Source source);
 
-    JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, Module.ModuleRequest moduleRequest);
+    void hostLoadImportedModule(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest, Object hostDefined, Object payload);
+
+    JSPromiseObject loadRequestedModules(JSRealm realm, JSModuleRecord moduleRecord, Object hostDefined);
 
     void moduleLinking(JSRealm realm, JSModuleRecord moduleRecord);
 
     Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
-
-    JSDynamicObject getModuleNamespace(JSModuleRecord moduleRecord);
-
-    ExportResolution resolveExport(JSModuleRecord moduleRecord, TruffleString exportName);
 
     /**
      * Parses a script string. Returns an executable script object.

@@ -154,7 +154,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                     } else {
                         ee = ExportEntry.exportSpecifier(localName);
                     }
-                    if (export.getFrom() == null) {
+                    if (export.getModuleSpecifier() == null) {
                         ImportEntry ie = importedLocalNames.get(localName.toJavaStringUncached());
                         if (ie == null) {
                             addLocalExportEntry(exportToken, ee);
@@ -166,12 +166,12 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                             addIndirectExportEntry(exportToken, ExportEntry.exportIndirect(ee.getExportName(), ie.getModuleRequest(), ie.getImportName()));
                         }
                     } else {
-                        addIndirectExportEntry(exportToken, ee.withFrom(ModuleRequest.create(export.getFrom().getModuleSpecifier().getValue())));
+                        addIndirectExportEntry(exportToken, ee.withFrom(ModuleRequest.create(export.getModuleSpecifier().getValue(), export.getAttributes())));
                     }
                 }
-            } else if (export.getFrom() != null) {
-                TruffleString specifier = export.getFrom().getModuleSpecifier().getValue();
-                ModuleRequest moduleRequest = ModuleRequest.create(specifier, export.getAssertions());
+            } else if (export.getModuleSpecifier() != null) {
+                TruffleString specifier = export.getModuleSpecifier().getValue();
+                ModuleRequest moduleRequest = ModuleRequest.create(specifier, export.getAttributes());
                 if (export.getExportIdentifier() == null) {
                     addStarExportEntry(ExportEntry.exportStarFrom(moduleRequest));
                 } else {

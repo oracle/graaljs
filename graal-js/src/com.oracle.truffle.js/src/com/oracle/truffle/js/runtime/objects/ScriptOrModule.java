@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,10 +45,13 @@ import java.lang.invoke.VarHandle;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 
 /**
  * Script or Module Record.
@@ -74,6 +77,16 @@ public class ScriptOrModule {
 
     public final Source getSource() {
         return source;
+    }
+
+    @TruffleBoundary
+    public AbstractModuleRecord getLoadedModule(JSRealm realm, ModuleRequest moduleRequest) {
+        return realm.getModuleLoader().resolveImportedModule(this, moduleRequest);
+    }
+
+    @TruffleBoundary
+    public AbstractModuleRecord addLoadedModule(JSRealm realm, ModuleRequest moduleRequest, AbstractModuleRecord moduleRecord) {
+        return realm.getModuleLoader().addLoadedModule(moduleRequest, moduleRecord);
     }
 
     /**

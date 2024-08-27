@@ -42,9 +42,15 @@ package com.oracle.truffle.js.test.external.test262;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -60,9 +66,11 @@ import java.util.stream.Stream;
 
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.external.suite.ForwardingFileSystem;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
 import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
@@ -254,6 +262,8 @@ public class Test262Runnable extends TestRunnable {
                     "resizable-arraybuffer",
                     "rest-parameters",
                     "set-methods",
+                    "source-phase-imports",
+                    "source-phase-imports-module-source",
                     "string-trimming",
                     "super",
                     "symbols-as-weakmap-keys",
@@ -270,8 +280,6 @@ public class Test262Runnable extends TestRunnable {
                     "RegExp.escape",
                     "explicit-resource-management",
                     "regexp-modifiers",
-                    "source-phase-imports",
-                    "source-phase-imports-module-source",
                     "tail-call-optimization",
                     "uint8array-base64",
     });
@@ -310,8 +318,11 @@ public class Test262Runnable extends TestRunnable {
         if (features.contains("error-cause")) {
             extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
         }
-        if (features.contains("import-attributes") || features.contains("import-assertions")) {
+        if (features.contains("import-attributes")) {
             extraOptions.put(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true");
+        }
+        if (features.contains("import-assertions")) {
+            extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
         }
         if (features.contains("json-modules")) {
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
@@ -330,6 +341,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("set-methods")) {
             extraOptions.put(JSContextOptions.NEW_SET_METHODS_NAME, "true");
+        }
+        if (features.contains("source-phase-imports")) {
+            extraOptions.put(JSContextOptions.SOURCE_PHASE_IMPORTS_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
@@ -368,6 +382,18 @@ public class Test262Runnable extends TestRunnable {
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;
+                supported = false;
+            }
+        }
+
+        if (features.contains("source-phase-imports-module-source")) {
+            assert features.contains("source-phase-imports") : "feature source-phase-imports-module-source requires source-phase-imports";
+            extraOptions.put(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw");
+            // "<module source>" is provided by a WebAssembly.Module via polyglot FileSystem.
+            if (getConfig().isPolyglot() && !getConfig().isExtLauncher()) {
+                // enable webassembly, so that we can compile the dummy module source
+                extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, "true");
+            } else {
                 supported = false;
             }
         }
@@ -418,7 +444,8 @@ public class Test262Runnable extends TestRunnable {
                     Map<String, String> extraOptions, OutputStream byteArrayOutputStream, OutputStream outputStream) {
         Future<Object> future = null;
         try {
-            TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, extraOptions);
+            IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ModuleSourceFS()).build();
+            TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, extraOptions, ioAccess);
             tc.setOutput(outputStream);
             tc.setError(outputStream);
             if (suite.executeWithSeparateThreads() && getConfig().isUseThreads()) {
@@ -593,4 +620,32 @@ public class Test262Runnable extends TestRunnable {
         return getStrings(scriptCode, FEATURES_PREFIX, FEATURES_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
     }
 
+    private static final class ModuleSourceFS extends ForwardingFileSystem {
+        private static final String MODULE_SOURCE_SPECIFIER = "<module source>";
+        private static final byte[] MINIMAL_WASM_MODULE_BYTES = {0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00};
+
+        @Override
+        public Path parsePath(String path) {
+            // Replace "<module source>" with an actual existing path.
+            if (MODULE_SOURCE_SPECIFIER.equals(path)) {
+                return LazyTempFile.minimalWasmModulePath;
+            }
+            return super.parsePath(path);
+        }
+
+        private static final class LazyTempFile {
+            private static Path minimalWasmModulePath;
+
+            static {
+                try {
+                    File tmpFile = File.createTempFile("minimal", ".wasm");
+                    tmpFile.deleteOnExit();
+                    Files.copy(new ByteArrayInputStream(MINIMAL_WASM_MODULE_BYTES), tmpFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    minimalWasmModulePath = tmpFile.toPath();
+                } catch (IOException ioe) {
+                    throw new UncheckedIOException(ioe);
+                }
+            }
+        }
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,12 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
-import com.oracle.truffle.api.source.Source;
 
 public interface JSModuleLoader {
-    JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest);
+    AbstractModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest);
 
-    JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData);
+    @SuppressWarnings("unused")
+    default AbstractModuleRecord addLoadedModule(ModuleRequest moduleRequest, AbstractModuleRecord moduleRecord) {
+        throw new UnsupportedOperationException();
+    }
 }

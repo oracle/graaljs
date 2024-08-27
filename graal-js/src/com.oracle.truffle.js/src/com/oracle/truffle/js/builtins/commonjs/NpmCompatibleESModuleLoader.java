@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
@@ -121,8 +122,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
      */
     @TruffleBoundary
     @Override
-    public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
-        String specifier = moduleRequest.getSpecifier().toJavaStringUncached();
+    public AbstractModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
+        String specifier = moduleRequest.specifier().toJavaStringUncached();
         log("IMPORT resolve ", specifier);
         String moduleReplacementName = getCoreModuleReplacement(realm, specifier);
         if (moduleReplacementName != null) {
@@ -156,10 +157,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
     }
 
-    private JSModuleRecord loadCoreModuleReplacement(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String moduleReplacementName) {
-        String specifier = moduleRequest.getSpecifier().toJavaStringUncached();
+    private AbstractModuleRecord loadCoreModuleReplacement(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String moduleReplacementName) {
+        String specifier = moduleRequest.specifier().toJavaStringUncached();
         log("IMPORT resolve built-in ", specifier);
-        JSModuleRecord existingModule = moduleMap.get(specifier);
+        AbstractModuleRecord existingModule = moduleMap.get(specifier);
         if (existingModule != null) {
             log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;
@@ -200,8 +201,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         return record;
     }
 
-    private JSModuleRecord tryLoadingAsCommonjsModule(String specifier) {
-        JSModuleRecord existingModule = moduleMap.get(specifier);
+    private AbstractModuleRecord tryLoadingAsCommonjsModule(String specifier) {
+        AbstractModuleRecord existingModule = moduleMap.get(specifier);
         if (existingModule != null) {
             log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;

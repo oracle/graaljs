@@ -88,6 +88,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.AbstractModuleSourcePrototype;
 import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -469,6 +470,9 @@ public class JSRealm {
     private boolean staticRegexResultInvalidated;
     private long staticRegexResultFromIndex;
     private TruffleString staticRegexResultOriginalInputString;
+
+    private final JSFunctionObject abstractModuleSourceConstructor;
+    private final JSDynamicObject abstractModuleSourcePrototype;
 
     /** WebAssembly support. */
     private final Object wasmTableAlloc;
@@ -914,6 +918,10 @@ public class JSRealm {
             this.commonJSRequireCache = null;
         }
 
+        ctor = createAbstractModuleSourcePrototype();
+        this.abstractModuleSourceConstructor = ctor.getFunctionObject();
+        this.abstractModuleSourcePrototype = ctor.getPrototype();
+
         if (context.getLanguageOptions().webAssembly()) {
             if (!isWasmAvailable()) {
                 String msg = "WebAssembly API enabled but wasm language cannot be accessed! Did you forget to set the --polyglot flag?";
@@ -1228,6 +1236,13 @@ public class JSRealm {
         Builtin builtin = Objects.requireNonNull(container.lookupFunctionByKey(key));
         JSFunctionData functionData = builtin.createFunctionData(context);
         return JSFunction.create(this, functionData);
+    }
+
+    public final JSFunctionObject lookupFunctionWithPrototype(JSBuiltinsContainer container, Object key, JSDynamicObject prototype) {
+        assert JSRuntime.isPropertyKey(key);
+        Builtin builtin = Objects.requireNonNull(container.lookupFunctionByKey(key));
+        JSFunctionData functionData = builtin.createFunctionData(context);
+        return JSFunction.createWithPrototype(this, functionData, prototype);
     }
 
     public final Accessor lookupAccessor(JSBuiltinsContainer container, Object key) {
@@ -2524,6 +2539,23 @@ public class JSRealm {
         return prototype;
     }
 
+    private JSConstructor createAbstractModuleSourcePrototype() {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSFunctionObject constructor = lookupFunction(ConstructorBuiltins.BUILTINS, ConstructorBuiltins.Constructor.AbstractModuleSource.getKey());
+        JSObjectUtil.putDataProperty(constructor, JSObject.PROTOTYPE, prototype, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
+        JSObjectUtil.putAccessorsFromContainer(this, prototype, AbstractModuleSourcePrototype.BUILTINS);
+        return new JSConstructor(constructor, prototype);
+    }
+
+    public JSFunctionObject getAbstractModuleSourceConstructor() {
+        return abstractModuleSourceConstructor;
+    }
+
+    public JSDynamicObject getAbstractModuleSourcePrototype() {
+        return abstractModuleSourcePrototype;
+    }
+
     public JSDynamicObject getArrayProtoValuesIterator() {
         return arrayProtoValuesIterator;
     }
@@ -3261,6 +3293,10 @@ public class JSRealm {
 
     public Object getWasmRefNull() {
         return wasmRefNull;
+    }
+
+    public JSFunctionObject getWebAssemblyModuleConstructor() {
+        return webAssemblyModuleConstructor;
     }
 
     public JSDynamicObject getWebAssemblyModulePrototype() {

@@ -71,6 +71,12 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     public static final JSOrdinary INTERNAL_FIELD_INSTANCE = new JSOrdinary();
     public static final JSOrdinary OVERLOADED_OPERATORS_INSTANCE = new JSOrdinary();
 
+    /**
+     * Initial shape for ordinary-like objects, i.e. objects that behave like ordinary objects but
+     * may not extend {@link JSOrdinaryObject}.
+     */
+    public static final CompilableBiFunction<JSContext, JSDynamicObject, Shape> BARE_SHAPE_SUPPLIER = (ctx, proto) -> JSObjectUtil.getProtoChildShape(proto, BARE_INSTANCE, ctx);
+
     private JSOrdinary() {
     }
 

@@ -78,6 +78,7 @@ import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
@@ -1502,9 +1503,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             String localNameJS = localName.toJavaStringUncached();
             JSWriteFrameSlotNode writeLocalNode = (JSWriteFrameSlotNode) environment.findLocalVar(localName).createWriteNode(null);
             JavaScriptNode thisModule = getActiveModule();
-            if (importEntry.getImportName().equals(Module.STAR_NAME)) {
+            if (importEntry.getImportName().equals(Module.STAR_NAME)) { // namespace-object
                 assert functionNode.getBody().getScope().hasSymbol(localNameJS) && functionNode.getBody().getScope().getExistingSymbol(localNameJS).hasBeenDeclared();
                 declarations.add(factory.createResolveStarImport(context, thisModule, moduleRequest, writeLocalNode));
+            } else if (importEntry.getImportName().equals(Module.SOURCE_IMPORT_NAME)) { // source
+                assert functionNode.getBody().getScope().hasSymbol(localNameJS) && functionNode.getBody().getScope().getExistingSymbol(localNameJS).hasBeenDeclared();
+                declarations.add(factory.createResolveSourceImport(context, thisModule, moduleRequest, writeLocalNode));
             } else {
                 assert functionNode.getBody().getScope().hasSymbol(localNameJS) && functionNode.getBody().getScope().getExistingSymbol(localNameJS).isImportBinding();
                 declarations.add(factory.createResolveNamedImport(context, thisModule, moduleRequest, importEntry.getImportName(), writeLocalNode));
@@ -2594,7 +2598,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).isDirectSuper()) {
             call = createCallDirectSuper(function, args, callNode.isDefaultDerivedConstructorSuperCall());
         } else if (callNode.isImport()) {
-            call = createImportCallNode(args);
+            call = createImportCallNode(args, callNode.isImportSource() ? ImportPhase.Source : ImportPhase.Evaluation);
         } else {
             call = factory.createFunctionCall(context, function, args);
         }
@@ -2658,12 +2662,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
-        assert args.length == 1 || (context.getLanguageOptions().importAttributes() && args.length == 2);
-        if (context.getLanguageOptions().importAttributes() && args.length == 2) {
-            return factory.createImportCall(context, args[0], activeScriptOrModule, args[1]);
+    private JavaScriptNode createImportCallNode(JavaScriptNode[] args, ImportPhase phase) {
+        if (args.length == 2 && (context.getLanguageOptions().importAttributes() || context.getLanguageOptions().importAssertions())) {
+            return factory.createImportCall(context, phase, args[0], args[1], activeScriptOrModule);
         }
-        return factory.createImportCall(context, args[0], activeScriptOrModule);
+        assert args.length == 1 : args.length;
+        return factory.createImportCall(context, phase, args[0], null, activeScriptOrModule);
     }
 
     @Override

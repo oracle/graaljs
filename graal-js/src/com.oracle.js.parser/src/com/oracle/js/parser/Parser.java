@@ -147,7 +147,6 @@ import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.ExpressionList;
 import com.oracle.js.parser.ir.ExpressionStatement;
 import com.oracle.js.parser.ir.ForNode;
-import com.oracle.js.parser.ir.FromNode;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.IfNode;
@@ -162,6 +161,7 @@ import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.LiteralNode.ArrayLiteralNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.js.parser.ir.NamedExportsNode;
@@ -204,6 +204,7 @@ public class Parser extends AbstractParser {
     static final String NEW_TARGET_NAME = "new.target";
     static final TruffleString NEW_TARGET_NAME_TS = ParserStrings.constant(NEW_TARGET_NAME);
     private static final TruffleString IMPORT_META_NAME = ParserStrings.constant("import.meta");
+    private static final TruffleString IMPORT_SOURCE_NAME = ParserStrings.constant("import.source");
     private static final String PROTOTYPE_NAME = "prototype";
     /** Function.prototype.apply method name. */
     private static final String APPLY_NAME = "apply";
@@ -255,6 +256,8 @@ public class Parser extends AbstractParser {
     private static final String GET_SPC = "get ";
     private static final String SET_SPC = "set ";
     private static final String META = "meta";
+    private static final String SOURCE = "source";
+    private static final TruffleString SOURCE_TS = ParserStrings.constant("source");
     private static final TruffleString TARGET = ParserStrings.constant("target");
 
     private static final String CONTEXT_ASSIGNMENT_TARGET = "assignment target";
@@ -700,10 +703,6 @@ public class Parser extends AbstractParser {
     private void handleParseException(final ParserException e) {
         // Issue message.
         errors.error(e);
-
-        if (env.dumpOnError) {
-            e.printStackTrace(env.getErr());
-        }
     }
 
     /**
@@ -713,10 +712,6 @@ public class Parser extends AbstractParser {
         if (e != null) {
             // Issue message.
             errors.error(e);
-
-            if (env.dumpOnError) {
-                e.printStackTrace(env.getErr());
-            }
         }
 
         // Skip to a recovery point.
@@ -4853,7 +4848,7 @@ public class Parser extends AbstractParser {
             } else {
                 throw error(AbstractParser.message(MSG_EXPECTED_TARGET), token);
             }
-        } else if (type == IMPORT && isES2020() && lookahead() == LPAREN) {
+        } else if (type == IMPORT && lookaheadIsImportCall()) {
             // new cannot be used with import()
             throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName()), token);
         }
@@ -5089,6 +5084,10 @@ public class Parser extends AbstractParser {
      * ImportCall:
      *     import ( AssignmentExpression ,opt )
      *     import ( AssignmentExpression, AssignmentExpression ,opt )
+     *     import.source ( AssignmentExpression ,opt )
+     *     import.source ( AssignmentExpression, AssignmentExpression ,opt )
+     * ImportMeta:
+     *     import.meta
      * </pre>
      */
     private Expression importExpression(boolean yield, boolean await) {
@@ -5107,29 +5106,38 @@ public class Parser extends AbstractParser {
                 }
                 next();
                 return new IdentNode(importToken, finish, lexer.stringIntern(IMPORT_META_NAME)).setIsImportMeta();
+            } else if (SOURCE.equals(meta) && env.sourcePhaseImports) {
+                next();
+                expectDontAdvance(LPAREN);
+                return importCall(yield, await, importToken, importStart, importLine, IMPORT_SOURCE_NAME, true);
             } else {
                 throw error(AbstractParser.message(MSG_UNEXPECTED_IDENT, meta), token);
             }
         } else if (type == LPAREN) {
-            next();
-            List<Expression> arguments = new ArrayList<>();
-            arguments.add(assignmentExpression(true, yield, await));
-            if (env.importAttributes && type == COMMARIGHT) {
-                next();
-                if (type != RPAREN) {
-                    arguments.add(assignmentExpression(true, yield, await));
-                    if (type == COMMARIGHT) {
-                        next();
-                    }
-                }
-            }
-            expect(RPAREN);
-
-            IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), lexer.stringIntern(IMPORT.getNameTS()));
-            return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, arguments);
+            return importCall(yield, await, importToken, importStart, importLine, IMPORT.getNameTS(), false);
         } else {
             throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName()), importToken);
         }
+    }
+
+    private Expression importCall(boolean yield, boolean await, long importToken, int importStart, int importLine, TruffleString importName, boolean sourcePhase) {
+        assert type == LPAREN;
+        next();
+        List<Expression> arguments = new ArrayList<>();
+        arguments.add(assignmentExpression(true, yield, await));
+        if (type == COMMARIGHT && (env.importAttributes || env.importAssertions)) {
+            next();
+            if (type != RPAREN) {
+                arguments.add(assignmentExpression(true, yield, await));
+                if (type == COMMARIGHT) {
+                    next();
+                }
+            }
+        }
+        expect(RPAREN);
+
+        IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), lexer.stringIntern(importName));
+        return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, arguments, sourcePhase);
     }
 
     private ArrayList<Expression> argumentList(boolean yield, boolean await) {
@@ -6955,6 +6963,44 @@ public class Parser extends AbstractParser {
         return la == PERIOD || la == LPAREN;
     }
 
+    private boolean lookaheadIsImportCall() {
+        assert type == IMPORT;
+        if (!isES2020()) {
+            return false;
+        }
+        // import followed by `(` or `.source(`
+        boolean seenPeriod = false;
+        boolean seenIdent = false;
+        for (int i = 1;; i++) {
+            long currentToken = getToken(k + i);
+            TokenType t = Token.descType(currentToken);
+            switch (t) {
+                case EOL:
+                case COMMENT:
+                    continue;
+                case LPAREN:
+                    return !seenPeriod || seenIdent;
+                case PERIOD:
+                    if (!env.sourcePhaseImports || seenPeriod) {
+                        return false;
+                    }
+                    seenPeriod = true;
+                    continue;
+                case IDENT:
+                    if (!seenPeriod || seenIdent) {
+                        return false;
+                    } else if (SOURCE_TS.equals(getValueNoEscape(currentToken))) {
+                        seenIdent = true;
+                        continue;
+                    } else {
+                        return false;
+                    }
+                default:
+                    return false;
+            }
+        }
+    }
+
     private void declareImportBinding(IdentNode ident, boolean star) {
         Scope moduleScope = lc.getCurrentBlock().getScope();
         assert moduleScope.isModuleScope();
@@ -6972,6 +7018,9 @@ public class Parser extends AbstractParser {
         declareImportBinding(ident, true);
     }
 
+    /**
+     * ImportedBinding.
+     */
     private IdentNode importedBindingIdentifier() {
         return bindingIdentifier(false, isTopLevelAwait(), CONTEXT_IMPORTED_BINDING);
     }
@@ -6981,8 +7030,9 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ImportDeclaration :
-     *     import ImportClause FromClause ;
-     *     import ModuleSpecifier ;
+     *     import ImportClause FromClause WithClause_opt;
+     *     import ModuleSpecifier WithClause_opt;
+     *     import source ImportedBinding FromClause WithClause_opt;
      *     import ImportClause FromClause [no LineTerminator here] AssertClause ;
      *     import ModuleSpecifier [no LineTerminator here] AssertClause ;
      * ImportClause :
@@ -7002,20 +7052,18 @@ public class Parser extends AbstractParser {
     private void importDeclaration(ParserContextModuleNode module) {
         final long importToken = token;
         expect(IMPORT);
-        if (type == STRING || type == ESCSTRING) {
-            // import ModuleSpecifier ;
+        end: if (type == STRING || type == ESCSTRING) {
+            // import ModuleSpecifier WithClause_opt;
             TruffleString moduleSpecifier = (TruffleString) getValue();
             long specifierToken = token;
             next();
             LiteralNode<TruffleString> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
-            Map<TruffleString, TruffleString> attributes = Map.of();
-            if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                attributes = withClause();
-            }
+            Map<TruffleString, TruffleString> attributes = withClause();
+
             module.addModuleRequest(ModuleRequest.create(moduleSpecifier, attributes));
-            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
+            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier, attributes));
         } else {
-            // import ImportClause FromClause ;
+            // import ImportClause FromClause WithClause_opt;
             final List<ImportEntry> importEntries = new ArrayList<>();
             final ImportClauseNode importClause;
             final long startToken = token;
@@ -7029,6 +7077,25 @@ public class Parser extends AbstractParser {
             } else if (isBindingIdentifier()) {
                 // ImportedDefaultBinding
                 IdentNode importedDefaultBinding = importedBindingIdentifier();
+
+                if (env.sourcePhaseImports && SOURCE.equals(importedDefaultBinding.getName()) && isBindingIdentifier() && lookahead() == FROM) {
+                    // import source ImportedBinding FromClause WithClause_opt;
+                    long identToken = token;
+                    IdentNode importedBinding = importedBindingIdentifier();
+                    declareImportStarBinding(importedBinding);
+                    importClause = new ImportClauseNode(identToken, Token.descPosition(identToken), finish, importedBinding);
+
+                    LiteralNode<TruffleString> fromClause = fromClause();
+                    Map<TruffleString, TruffleString> attributes = withClause();
+
+                    module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromClause, attributes));
+                    TruffleString moduleSpecifier = fromClause.getValue();
+                    ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes, ImportPhase.Source);
+                    module.addModuleRequest(moduleRequest);
+                    module.addImportEntry(ImportEntry.importSource(moduleRequest, importedBinding.getNameTS()));
+                    break end;
+                }
+
                 declareImportBinding(importedDefaultBinding);
                 ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getNameTS());
                 importEntries.add(defaultImport);
@@ -7054,13 +7121,11 @@ public class Parser extends AbstractParser {
                 throw error(AbstractParser.message(MSG_EXPECTED_IMPORT));
             }
 
-            FromNode fromNode = fromClause();
-            Map<TruffleString, TruffleString> attributes = Map.of();
-            if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                attributes = withClause();
-            }
-            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode));
-            TruffleString moduleSpecifier = fromNode.getModuleSpecifier().getValue();
+            LiteralNode<TruffleString> specifier = fromClause();
+            Map<TruffleString, TruffleString> attributes = withClause();
+
+            module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, specifier, attributes));
+            TruffleString moduleSpecifier = specifier.getValue();
             ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes);
             module.addModuleRequest(moduleRequest);
             for (int i = 0; i < importEntries.size(); i++) {
@@ -7071,7 +7136,7 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse assert clause.
+     * Parse optional with clause (or legacy assert clause).
      *
      * <pre>
      *     AttributesKeyword { }
@@ -7079,12 +7144,14 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private Map<TruffleString, TruffleString> withClause() {
-        assert (type == ASSERT || type == WITH);
-        next();
-        expect(LBRACE);
-        Map<TruffleString, TruffleString> entries = withEntries();
-        expect(RBRACE);
-        return entries;
+        Map<TruffleString, TruffleString> attributes = Map.of();
+        if ((env.importAttributes && type == WITH) || (env.importAssertions && type == ASSERT && last != EOL)) {
+            next();
+            expect(LBRACE);
+            attributes = withEntries();
+            expect(RBRACE);
+        }
+        return attributes;
     }
 
     /**
@@ -7211,9 +7278,7 @@ public class Parser extends AbstractParser {
      *      from ModuleSpecifier
      * </pre>
      */
-    private FromNode fromClause() {
-        int fromStart = start;
-        long fromToken = token;
+    private LiteralNode<TruffleString> fromClause() {
         expect(FROM);
 
         if (type == STRING || type == ESCSTRING) {
@@ -7221,7 +7286,7 @@ public class Parser extends AbstractParser {
             long specifierToken = token;
             next();
             LiteralNode<TruffleString> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
-            return new FromNode(fromToken, fromStart, finish, specifier);
+            return specifier;
         } else {
             throw error(expectMessage(STRING));
         }
@@ -7232,7 +7297,7 @@ public class Parser extends AbstractParser {
      *
      * <pre>
      * ExportDeclaration :
-     *     export ExportFromClause FromClause ;
+     *     export ExportFromClause FromClause WithClause_opt ;
      *     export ExportFromClause FromClause [no LineTerminator here] AssertClause;
      *     export NamedExports ;
      *     export VariableStatement
@@ -7244,7 +7309,6 @@ public class Parser extends AbstractParser {
      */
     private void exportDeclaration(ParserContextModuleNode module) {
         final long exportToken = token;
-        Map<TruffleString, TruffleString> attributes = Map.of();
         expect(EXPORT);
         final boolean yield = false;
         final boolean await = isTopLevelAwait();
@@ -7256,26 +7320,25 @@ public class Parser extends AbstractParser {
                     next();
                     exportName = moduleExportName();
                 }
-                FromNode from = fromClause();
-                if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                    attributes = withClause();
-                }
-                TruffleString moduleRequest = from.getModuleSpecifier().getValue();
-                module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from, attributes));
+                LiteralNode<TruffleString> fromSpecifier = fromClause();
+                Map<TruffleString, TruffleString> attributes = withClause();
+
+                TruffleString moduleSpecifier = fromSpecifier.getValue();
+                module.addModuleRequest(ModuleRequest.create(moduleSpecifier, attributes));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, fromSpecifier, attributes));
                 endOfLine();
                 break;
             }
             case LBRACE: {
                 NamedExportsNode exportClause = namedExports();
-                FromNode from = null;
+                LiteralNode<TruffleString> fromSpecifier = null;
+                Map<TruffleString, TruffleString> attributes = Map.of();
                 if (type == FROM) {
-                    from = fromClause();
-                    if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                        attributes = withClause();
-                    }
-                    TruffleString moduleRequest = from.getModuleSpecifier().getValue();
-                    module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
+                    fromSpecifier = fromClause();
+                    attributes = withClause();
+
+                    TruffleString moduleSpecifier = fromSpecifier.getValue();
+                    module.addModuleRequest(ModuleRequest.create(moduleSpecifier, attributes));
                 } else {
                     for (ExportSpecifierNode export : exportClause.getExportSpecifiers()) {
                         if (!(export.getIdentifier() instanceof IdentNode)) {
@@ -7283,7 +7346,7 @@ public class Parser extends AbstractParser {
                         }
                     }
                 }
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from, attributes));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, fromSpecifier, attributes));
                 endOfLine();
                 break;
             }

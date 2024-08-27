@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,58 +38,63 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.js.runtime.objects;
 
-package com.oracle.js.parser.ir;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
-import com.oracle.js.parser.ir.visitor.NodeVisitor;
-import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.util.Pair;
 
-public class FromNode extends Node {
+/**
+ * Abstract Module Record.
+ */
+public abstract class AbstractModuleRecord extends ScriptOrModule {
 
-    private final LiteralNode<TruffleString> moduleSpecifier;
-
-    public FromNode(final long token, final int start, final int finish, final LiteralNode<TruffleString> moduleSpecifier) {
-        super(token, start, finish);
-        this.moduleSpecifier = moduleSpecifier;
+    public AbstractModuleRecord(JSContext context, Source source) {
+        super(context, source);
     }
 
-    private FromNode(final FromNode node, final LiteralNode<TruffleString> moduleSpecifier) {
-        super(node);
-        this.moduleSpecifier = moduleSpecifier;
-    }
+    public abstract JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefined);
 
-    public LiteralNode<TruffleString> getModuleSpecifier() {
-        return moduleSpecifier;
-    }
-
-    public FromNode setModuleSpecifier(LiteralNode<TruffleString> moduleSpecifier) {
-        if (this.moduleSpecifier == moduleSpecifier) {
-            return this;
+    public final void loadRequestedModulesSync(JSRealm realm, Object hostDefined) {
+        JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefined);
+        assert !JSPromise.isPending(loadPromise);
+        if (JSPromise.isRejected(loadPromise)) {
+            throw JSRuntime.getException(JSPromise.getPromiseResult(loadPromise));
         }
-        return new FromNode(this, moduleSpecifier);
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
-        if (visitor.enterFromNode(this)) {
-            return visitor.leaveFromNode(setModuleSpecifier((LiteralNode<TruffleString>) moduleSpecifier.accept(visitor)));
-        }
+    public abstract void link(JSRealm realm);
 
-        return this;
+    public abstract Object evaluate(JSRealm realm);
+
+    @TruffleBoundary
+    public final Collection<TruffleString> getExportedNames() {
+        return getExportedNames(new HashSet<>());
     }
 
-    @Override
-    public <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
-        return visitor.enterFromNode(this);
+    public abstract Collection<TruffleString> getExportedNames(Set<JSModuleRecord> exportStarSet);
+
+    @TruffleBoundary
+    public final ExportResolution resolveExport(TruffleString exportName) {
+        return resolveExport(exportName, new HashSet<>());
     }
 
-    @Override
-    public void toString(StringBuilder sb, boolean printType) {
-        sb.append("from");
-        sb.append(' ');
-        moduleSpecifier.toString(sb, printType);
+    public abstract ExportResolution resolveExport(TruffleString exportName, Set<Pair<? extends AbstractModuleRecord, TruffleString>> resolveSet);
+
+    public JSDynamicObject getModuleNamespace() {
+        return Undefined.instance;
     }
+
+    public abstract Object getModuleSource();
 
 }

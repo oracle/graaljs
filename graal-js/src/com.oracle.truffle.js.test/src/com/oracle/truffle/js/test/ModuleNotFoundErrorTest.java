@@ -140,7 +140,7 @@ public class ModuleNotFoundErrorTest {
     public void testAsyncStackTraceOfModuleNotFoundErrorFromDynamicImport() {
         String mainCode = """
                         async function caller() {
-                            await import("./not-found.mjs");
+                            await Promise.resolve().then(() => import("./not-found.mjs"));
                         }
                         try {
                             await caller();
@@ -163,4 +163,30 @@ public class ModuleNotFoundErrorTest {
         }
     }
 
+    @Test
+    public void testSyncStackTraceOfModuleNotFoundErrorFromDynamicImport() {
+        String mainCode = """
+                        async function caller() {
+                            await import("./not-found.mjs");
+                        }
+                        try {
+                            await caller();
+                        } catch (e) {
+                            console.log(e.stack);
+                        }
+                        """;
+        Source fileSource = Source.newBuilder(JavaScriptLanguage.ID, new File("main.mjs")).content(mainCode).buildLiteral();
+        Source literalSource = Source.newBuilder(JavaScriptLanguage.ID, mainCode, "main.mjs").buildLiteral();
+        for (Source mainSource : List.of(fileSource, literalSource)) {
+            ByteArrayOutputStream outs = new ByteArrayOutputStream();
+            try (Context context = JSTest.newContextBuilder().out(outs).allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).build()) {
+                context.eval(mainSource);
+
+                String output = outs.toString(StandardCharsets.UTF_8);
+                assertThat(output, allOf(containsString("Cannot find module"), containsString("not-found.mjs")));
+                assertThat(output, allOf(containsString("imported from"), containsString("main.mjs")));
+                assertThat(output, allOf(containsString("at caller"), containsString("main.mjs:2")));
+            }
+        }
+    }
 }

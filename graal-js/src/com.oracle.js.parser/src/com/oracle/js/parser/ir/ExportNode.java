@@ -51,7 +51,7 @@ public class ExportNode extends Node {
 
     private final NamedExportsNode namedExports;
 
-    private final FromNode from;
+    private final LiteralNode<TruffleString> moduleSpecifier;
 
     private final PropertyKey exportIdent;
 
@@ -61,58 +61,61 @@ public class ExportNode extends Node {
 
     private final boolean isDefault;
 
-    private final Map<TruffleString, TruffleString> assertions;
+    private final Map<TruffleString, TruffleString> attributes;
 
-    public ExportNode(final long token, final int start, final int finish, final PropertyKey ident, final FromNode from, Map<TruffleString, TruffleString> assertions) {
-        this(token, start, finish, null, from, ident, null, null, false, assertions);
+    public ExportNode(long token, int start, int finish, PropertyKey ident,
+                    LiteralNode<TruffleString> moduleSpecifier, Map<TruffleString, TruffleString> attributes) {
+        this(token, start, finish, null, moduleSpecifier, ident, null, null, false, attributes);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final NamedExportsNode exportClause, final FromNode from, Map<TruffleString, TruffleString> assertions) {
-        this(token, start, finish, exportClause, from, null, null, null, false, assertions);
+    public ExportNode(long token, int start, int finish, NamedExportsNode exportClause,
+                    LiteralNode<TruffleString> moduleSpecifier, Map<TruffleString, TruffleString> attributes) {
+        this(token, start, finish, exportClause, moduleSpecifier, null, null, null, false, attributes);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final PropertyKey ident, final Expression expression, final boolean isDefault) {
+    public ExportNode(long token, int start, int finish, PropertyKey ident, Expression expression, boolean isDefault) {
         this(token, start, finish, null, null, ident, null, expression, isDefault, Map.of());
     }
 
-    public ExportNode(final long token, final int start, final int finish, final PropertyKey ident, final VarNode var) {
+    public ExportNode(long token, int start, int finish, PropertyKey ident, VarNode var) {
         this(token, start, finish, null, null, ident, var, null, false, Map.of());
     }
 
-    private ExportNode(final long token, final int start, final int finish, final NamedExportsNode namedExports,
-                    final FromNode from, final PropertyKey exportIdent, final VarNode var, final Expression expression, final boolean isDefault, Map<TruffleString, TruffleString> assertions) {
+    private ExportNode(long token, int start, int finish, NamedExportsNode namedExports,
+                    LiteralNode<TruffleString> moduleSpecifier, PropertyKey exportIdent, VarNode var, Expression expression, boolean isDefault,
+                    Map<TruffleString, TruffleString> attributes) {
         super(token, start, finish);
         this.namedExports = namedExports;
-        this.from = from;
+        this.moduleSpecifier = moduleSpecifier;
         this.exportIdent = exportIdent;
         this.var = var;
         this.expression = expression;
         this.isDefault = isDefault;
-        this.assertions = Map.copyOf(assertions);
+        this.attributes = Map.copyOf(attributes);
         assert (namedExports == null) || (exportIdent == null);
-        assert !isDefault || (namedExports == null && from == null);
+        assert !isDefault || (namedExports == null && moduleSpecifier == null);
         assert (var == null && expression == null) || isDefault || (exportIdent != null && exportIdent == getIdent(var, expression));
     }
 
-    private ExportNode(final ExportNode node, final NamedExportsNode namedExports,
-                    final FromNode from, final PropertyKey exportIdent, final VarNode var, final Expression expression, Map<TruffleString, TruffleString> assertions) {
+    private ExportNode(ExportNode node, NamedExportsNode namedExports,
+                    LiteralNode<TruffleString> moduleSpecifier, PropertyKey exportIdent, VarNode var, Expression expression, Map<TruffleString, TruffleString> attributes) {
         super(node);
         this.isDefault = node.isDefault;
 
         this.namedExports = namedExports;
-        this.from = from;
+        this.moduleSpecifier = moduleSpecifier;
         this.exportIdent = exportIdent;
         this.var = var;
         this.expression = expression;
-        this.assertions = Map.copyOf(assertions);
+        this.attributes = Map.copyOf(attributes);
     }
 
     public NamedExportsNode getNamedExports() {
         return namedExports;
     }
 
-    public FromNode getFrom() {
-        return from;
+    public LiteralNode<TruffleString> getModuleSpecifier() {
+        return moduleSpecifier;
     }
 
     public PropertyKey getExportIdentifier() {
@@ -131,8 +134,8 @@ public class ExportNode extends Node {
         return isDefault;
     }
 
-    public Map<TruffleString, TruffleString> getAssertions() {
-        return assertions;
+    public Map<TruffleString, TruffleString> getAttributes() {
+        return attributes;
     }
 
     public ExportNode setExportClause(NamedExportsNode exportClause) {
@@ -140,28 +143,29 @@ public class ExportNode extends Node {
         if (this.namedExports == exportClause) {
             return this;
         }
-        return new ExportNode(this, exportClause, from, exportIdent, var, expression, assertions);
+        return new ExportNode(this, exportClause, moduleSpecifier, exportIdent, var, expression, attributes);
     }
 
-    public ExportNode setFrom(FromNode from) {
+    public ExportNode setFromSpecifier(LiteralNode<TruffleString> from) {
         assert exportIdent == null;
-        if (this.from == from) {
+        if (this.moduleSpecifier == from) {
             return this;
         }
-        return new ExportNode(this, namedExports, from, exportIdent, var, expression, assertions);
+        return new ExportNode(this, namedExports, from, exportIdent, var, expression, attributes);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterExportNode(this)) {
             NamedExportsNode newExportClause = namedExports == null ? null : (NamedExportsNode) namedExports.accept(visitor);
-            FromNode newFrom = from == null ? null : (FromNode) from.accept(visitor);
+            LiteralNode<TruffleString> newFrom = moduleSpecifier == null ? null : (LiteralNode<TruffleString>) moduleSpecifier.accept(visitor);
             VarNode newVar = var == null ? null : (VarNode) var.accept(visitor);
             Expression newExpression = expression == null ? null : (Expression) expression.accept(visitor);
             PropertyKey newIdent = (exportIdent == null || isDefault()) ? exportIdent : getIdent(newVar, newExpression);
-            ExportNode newNode = (this.namedExports == newExportClause && this.from == newFrom && this.exportIdent == newIdent && this.var == newVar && this.expression == newExpression)
+            ExportNode newNode = (this.namedExports == newExportClause && this.moduleSpecifier == newFrom && this.exportIdent == newIdent && this.var == newVar && this.expression == newExpression)
                             ? this
-                            : new ExportNode(this, namedExports, from, exportIdent, var, expression, assertions);
+                            : new ExportNode(this, namedExports, moduleSpecifier, exportIdent, var, expression, attributes);
             return visitor.leaveExportNode(newNode);
         }
 
@@ -202,13 +206,21 @@ public class ExportNode extends Node {
             if (namedExports == null) {
                 sb.append("* ");
                 if (exportIdent != null) {
-                    sb.append("as ").append(exportIdent).append(' ');
+                    sb.append("as ").append(exportIdent);
                 }
             } else {
                 namedExports.toString(sb, printType);
             }
-            if (from != null) {
-                from.toString(sb, printType);
+            if (moduleSpecifier != null) {
+                sb.append(' ');
+                sb.append("from");
+                sb.append(' ');
+                moduleSpecifier.toString(sb, printType);
+
+                if (!attributes.isEmpty()) {
+                    sb.append(" with ");
+                    ImportNode.attributesToString(attributes, sb);
+                }
             }
             sb.append(';');
         }

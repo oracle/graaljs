@@ -41,8 +41,6 @@
 
 package com.oracle.js.parser;
 
-import java.io.PrintWriter;
-
 /**
  * Parser environment consists of command line options, and output and error writers, etc.
  */
@@ -60,14 +58,8 @@ public final class ScriptEnvironment {
     public static final int ES_2024 = 15;
     public static final int ES_STAGING = Integer.MAX_VALUE;
 
-    /** Error writer for this environment */
-    private final PrintWriter err;
-
     /** Accept "const" keyword and treat it as variable. Interim feature */
     final boolean constAsVar;
-
-    /** Display stack trace upon error, default is false */
-    final boolean dumpOnError;
 
     /** Empty statements should be preserved in the AST */
     final boolean emptyStatements;
@@ -126,6 +118,9 @@ public final class ScriptEnvironment {
     /** Are import attributes enabled. */
     final boolean importAttributes;
 
+    /** Are legacy import assertions enabled. */
+    final boolean importAssertions;
+
     /** Is private field in enabled */
     final boolean privateFieldsIn;
 
@@ -135,14 +130,27 @@ public final class ScriptEnvironment {
     /** Are V8 intrinsics supported? */
     final boolean v8Intrinsics;
 
-    private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
-                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAttributes, boolean privateFieldsIn, boolean topLevelAwait, boolean v8Intrinsics,
-                    FunctionStatementBehavior functionStatementBehavior,
-                    PrintWriter dumpOnError) {
-        this.err = dumpOnError;
+    /** Are source phase imports enabled. */
+    final boolean sourcePhaseImports;
 
+    public ScriptEnvironment(boolean strict,
+                    int ecmaScriptVersion,
+                    boolean emptyStatements,
+                    boolean syntaxExtensions,
+                    boolean scripting,
+                    boolean shebang,
+                    boolean constAsVar,
+                    boolean allowBigInt,
+                    boolean annexB,
+                    boolean classFields,
+                    boolean importAttributes,
+                    boolean importAssertions,
+                    boolean sourcePhaseImports,
+                    boolean privateFieldsIn,
+                    boolean topLevelAwait,
+                    boolean v8Intrinsics,
+                    FunctionStatementBehavior functionStatementBehavior) {
         this.constAsVar = constAsVar;
-        this.dumpOnError = dumpOnError != null;
         this.emptyStatements = emptyStatements;
         this.functionStatement = functionStatementBehavior;
         this.syntaxExtensions = syntaxExtensions;
@@ -154,18 +162,11 @@ public final class ScriptEnvironment {
         this.annexB = annexB;
         this.classFields = classFields;
         this.importAttributes = importAttributes;
+        this.importAssertions = importAssertions;
+        this.sourcePhaseImports = sourcePhaseImports;
         this.privateFieldsIn = privateFieldsIn;
         this.topLevelAwait = topLevelAwait;
         this.v8Intrinsics = v8Intrinsics;
-    }
-
-    /**
-     * Get the error stream for this environment
-     *
-     * @return error print writer
-     */
-    PrintWriter getErr() {
-        return err;
     }
 
     public boolean isStrict() {
@@ -189,11 +190,12 @@ public final class ScriptEnvironment {
         private boolean annexB = true;
         private boolean classFields = true;
         private boolean importAttributes = false;
+        private boolean importAssertions = false;
+        private boolean sourcePhaseImports = false;
         private boolean privateFieldsIn = false;
         private boolean topLevelAwait = false;
         private boolean v8Intrinsics = false;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
-        private PrintWriter dumpOnError;
 
         private Builder() {
         }
@@ -253,6 +255,15 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder importAssertions(boolean importAssertions) {
+            this.importAssertions = importAssertions;
+            return this;
+        }
+
+        public void sourcePhaseImports(boolean sourcePhaseImports) {
+            this.sourcePhaseImports = sourcePhaseImports;
+        }
+
         public Builder privateFieldsIn(boolean privateFieldsIn) {
             this.privateFieldsIn = privateFieldsIn;
             return this;
@@ -273,14 +284,9 @@ public final class ScriptEnvironment {
             return this;
         }
 
-        public Builder dumpOnError(PrintWriter dumpOnError) {
-            this.dumpOnError = dumpOnError;
-            return this;
-        }
-
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAttributes, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior, dumpOnError);
+                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior);
         }
     }
 }

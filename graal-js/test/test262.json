@@ -3665,6 +3665,18 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "language/module-code/source-phase-import/import-source-binding-name-2.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test (see https://github.com/tc39/test262/issues/4193)"
+  }, {
+    "filePath" : "language/module-code/source-phase-import/import-source-binding-name.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test (see https://github.com/tc39/test262/issues/4193)"
+  }, {
+    "filePath" : "language/module-code/source-phase-import/import-source-newlines.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test (see https://github.com/tc39/test262/issues/4193)"
+  }, {
     "filePath" : "language/module-code/top-level-await/syntax/for-await-expr-nested.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -3803,9 +3815,5 @@
     "filePath" : "staging/Temporal/ZonedDateTime/old/string-parsing.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/top-level-await/tla-hang-entry.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
   } ]
 }

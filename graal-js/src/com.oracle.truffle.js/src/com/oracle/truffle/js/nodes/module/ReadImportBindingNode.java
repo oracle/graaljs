@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -132,11 +132,12 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
                     @Cached InlinedBranchProfile slowPath) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, module.getNamespace() != null)) {
-            return module.getNamespace();
+        var namespace = module.getModuleNamespaceOrNull();
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, namespace != null)) {
+            return namespace;
         } else {
             slowPath.enter(this);
-            return getLanguage().getJSContext().getEvaluator().getModuleNamespace(module);
+            return module.getModuleNamespace();
         }
     }
 

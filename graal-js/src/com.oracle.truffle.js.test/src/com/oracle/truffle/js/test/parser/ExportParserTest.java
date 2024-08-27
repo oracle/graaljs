@@ -43,9 +43,11 @@ package com.oracle.truffle.js.test.parser;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 
@@ -60,17 +62,20 @@ import com.oracle.js.parser.ir.ExportNode;
 import com.oracle.js.parser.ir.ExportSpecifierNode;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.ExpressionStatement;
-import com.oracle.js.parser.ir.FromNode;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.LiteralNode;
+import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.VarNode;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
 
 public class ExportParserTest {
 
     private static FunctionNode parseModule(String code) {
-        ScriptEnvironment env = ScriptEnvironment.builder().strict(true).build();
+        ScriptEnvironment env = ScriptEnvironment.builder().strict(true).ecmaScriptVersion(ScriptEnvironment.ES_2020).importAttributes(true).build();
         Parser parser = new Parser(env, Source.sourceFor("name", code), new ErrorManager.ThrowErrorManager());
         return parser.parseModule("moduleName");
     }
@@ -156,8 +161,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        FromNode from = export.getFrom();
-        assertEquals(ImportParserTest.FOO, from.getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
         List<ExportSpecifierNode> specifiers = export.getNamedExports().getExportSpecifiers();
         assertEquals(1, specifiers.size());
         return specifiers.get(0);
@@ -170,8 +174,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        FromNode from = export.getFrom();
-        assertEquals(ImportParserTest.FOO, from.getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
     }
 
     @Test
@@ -212,8 +215,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        FromNode from = export.getFrom();
-        assertEquals(ImportParserTest.FOO, from.getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
         List<ExportSpecifierNode> specifiers = export.getNamedExports().getExportSpecifiers();
         assertEquals(2, specifiers.size());
 
@@ -239,8 +241,7 @@ public class ExportParserTest {
         assertEquals(1, exports.size());
         ExportNode export = exports.get(0);
         assertFalse(export.isDefault());
-        FromNode from = export.getFrom();
-        assertEquals(ImportParserTest.FOO, from.getModuleSpecifier().getValue());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
         List<ExportSpecifierNode> specifiers = export.getNamedExports().getExportSpecifiers();
         assertEquals(2, specifiers.size());
 
@@ -249,6 +250,80 @@ public class ExportParserTest {
 
         specifier = specifiers.get(1);
         assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getPropertyNameTS());
+    }
+
+    @Test
+    public void testExportNamedFromWithAttributes() {
+        String code = """
+                        export {bar} from "foo" with {type: "json"};
+                        """;
+        Module module = parseModule(code).getModule();
+        Map<TruffleString, TruffleString> expectedAttributes = Map.of(Strings.fromJavaString("type"), Strings.fromJavaString("json"));
+
+        List<ExportNode> exports = module.getExports();
+        assertEquals(1, exports.size());
+        ExportNode export = exports.get(0);
+        assertFalse(export.isDefault());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
+        List<ExportSpecifierNode> specifiers = export.getNamedExports().getExportSpecifiers();
+        assertEquals(1, specifiers.size());
+        assertEquals(ImportParserTest.BAR, specifiers.get(0).getIdentifier().getPropertyNameTS());
+
+        assertEquals(export.toString(), expectedAttributes.size(), export.getAttributes().size());
+        assertEquals(export.toString(), expectedAttributes, export.getAttributes());
+
+        assertEquals(1, module.getIndirectExportEntries().size());
+        ExportEntry exportEntry = module.getIndirectExportEntries().get(0);
+        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().attributes().size());
+        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().attributes());
+    }
+
+    @Test
+    public void testExportStarFromWithAttributes() {
+        String code = """
+                        export * from "foo" with {type: "json"};
+                        """;
+        Module module = parseModule(code).getModule();
+        Map<TruffleString, TruffleString> expectedAttributes = Map.of(Strings.fromJavaString("type"), Strings.fromJavaString("json"));
+
+        List<ExportNode> exports = module.getExports();
+        assertEquals(1, exports.size());
+        ExportNode export = exports.get(0);
+        assertFalse(export.isDefault());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
+
+        assertEquals(export.toString(), expectedAttributes.size(), export.getAttributes().size());
+        assertEquals(export.toString(), expectedAttributes, export.getAttributes());
+
+        assertEquals(1, module.getStarExportEntries().size());
+        ExportEntry exportEntry = module.getStarExportEntries().get(0);
+        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().attributes().size());
+        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().attributes());
+    }
+
+    @Test
+    public void testExportNamespaceFromWithAttributes() {
+        String code = """
+                        export * as bar from "foo" with {type: "json"};
+                        """;
+        Module module = parseModule(code).getModule();
+        Map<TruffleString, TruffleString> expectedAttributes = Map.of(Strings.fromJavaString("type"), Strings.fromJavaString("json"));
+
+        List<ExportNode> exports = module.getExports();
+        assertEquals(1, exports.size());
+        ExportNode export = exports.get(0);
+        assertFalse(export.isDefault());
+        assertEquals(ImportParserTest.FOO, export.getModuleSpecifier().getValue());
+        assertNull(export.toString(), export.getNamedExports());
+        assertEquals(export.toString(), ImportParserTest.BAR, export.getExportIdentifier().getPropertyNameTS());
+
+        assertEquals(export.toString(), expectedAttributes.size(), export.getAttributes().size());
+        assertEquals(export.toString(), expectedAttributes, export.getAttributes());
+
+        assertEquals(1, module.getIndirectExportEntries().size());
+        ExportEntry exportEntry = module.getIndirectExportEntries().get(0);
+        assertEquals(exportEntry.toString(), expectedAttributes.size(), exportEntry.getModuleRequest().attributes().size());
+        assertEquals(exportEntry.toString(), expectedAttributes, exportEntry.getModuleRequest().attributes());
     }
 
     @Test

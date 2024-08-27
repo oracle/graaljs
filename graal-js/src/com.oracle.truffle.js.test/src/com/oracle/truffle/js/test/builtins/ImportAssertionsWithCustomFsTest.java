@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,8 +53,10 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -65,30 +67,45 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
+@RunWith(Parameterized.class)
 public class ImportAssertionsWithCustomFsTest {
 
-    private static void executeTest(TestTuple source) throws IOException {
+    @Parameters(name = "{0}")
+    public static List<String> data() {
+        return Arrays.asList("assert", "with");
+    }
+
+    @Parameter(value = 0) public String keyword;
+
+    private void executeTest(TestTuple source) throws IOException {
         executeTest(source, "./test.js");
     }
 
-    private static void executeTest(TestTuple source, String importName) throws IOException {
+    private void executeTest(TestTuple source, String importName) throws IOException {
         TestFileSystem fs = new TestFileSystem();
         fs.add(importName, source.fileContent);
         if (source.additionalModuleName != null) {
             fs.add(source.additionalModuleName, source.additionalModuleBody);
         }
+        String importOptionName = "with".equals(keyword)
+                        ? JSContextOptions.IMPORT_ATTRIBUTES_NAME
+                        : JSContextOptions.IMPORT_ASSERTIONS_NAME;
         IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
         if (source.isAsync) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             try (Context context = JSTest.newContextBuilder().allowIO(ioAccess).out(out).//
                             option(JSContextOptions.CONSOLE_NAME, "true").//
                             option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").//
-                            option(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true").//
+                            option(importOptionName, "true").//
                             option(JSContextOptions.JSON_MODULES_NAME, "true").//
                             build()) {
                 Value asyncFn = context.eval(JavaScriptLanguage.ID, source.statement);
@@ -97,7 +114,7 @@ public class ImportAssertionsWithCustomFsTest {
             Assert.assertEquals(source.expectedValue + "\n", out.toString());
         } else {
             try (Context context = JSTest.newContextBuilder().allowIO(ioAccess).//
-                            option(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true").//
+                            option(importOptionName, "true").//
                             option(JSContextOptions.JSON_MODULES_NAME, "true").//
                             build()) {
                 Value v = context.eval(Source.newBuilder(JavaScriptLanguage.ID, source.statement, "exec.mjs").build());
@@ -106,27 +123,48 @@ public class ImportAssertionsWithCustomFsTest {
         }
     }
 
-    private static void executeStatements(String assertVal) throws IOException {
+    private void executeStatements(String assertVal) throws IOException {
         for (TestTuple statement : getTestTuples(assertVal)) {
             executeTest(statement);
         }
     }
 
-    private static TestTuple[] getTestTuples(String assertVal) {
+    private TestTuple[] getTestTuples(String assertVal) {
         return getTestTuples(assertVal, "./test.js");
     }
 
-    private static TestTuple[] getTestTuples(String assertVal, String importName) {
+    private TestTuple[] getTestTuples(String assertVal, String importName) {
         TestTuple[] testTuples = new TestTuple[5];
-        testTuples[0] = new TestTuple("import { val } from '" + importName + "' assert " + assertVal + "; val;", "export const val = 'value';", "value");
-        testTuples[1] = new TestTuple("import json from '" + importName + "' assert " + assertVal + "; json.val;", "let json = { val: 'value' }; export { json as default };", "value");
-        testTuples[2] = new TestTuple("import { val } from '" + importName + "'; val;", "export { val } from './test2.js' assert " + assertVal + ";", "value", "./test2.js",
+        testTuples[0] = new TestTuple(
+                        "import { val } from '" + importName + "' " + keyword + " " + assertVal + "; val;",
                         "export const val = 'value';",
-                        false);
-        testTuples[3] = new TestTuple("(async function () { let {default:json} = await import('" + importName + "', { assert: " + assertVal + " } ); console.log(json.val); });",
-                        "let json = { val: 'value' }; export { json as default };", "value", true);
-        testTuples[4] = new TestTuple("(async function () { let {default:json} = await import('" + importName + "', { assert: " + assertVal + " }, ); console.log(json.val);});",
-                        "let json = { val: 'value' }; export { json as default };", "value", true);
+                        "value");
+        testTuples[1] = new TestTuple(
+                        "import json from '" + importName + "' " + keyword + " " + assertVal + "; json.val;",
+                        "let json = { val: 'value' }; export { json as default };",
+                        "value");
+        testTuples[2] = new TestTuple(
+                        "import { val } from '" + importName + "'; val;",
+                        "export { val } from './test2.js' " + keyword + " " + assertVal + ";",
+                        "value",
+                        "./test2.js",
+                        "export const val = 'value';", false);
+        testTuples[3] = new TestTuple(String.format("""
+                        (async function () {
+                            let {default:json} = await import('%s', { %s: %s } );
+                            console.log(json.val);
+                        });
+                        """, importName, keyword, assertVal),
+                        "let json = { val: 'value' }; export { json as default };",
+                        "value", true);
+        testTuples[4] = new TestTuple(String.format("""
+                        (async function () {
+                            let {default:json} = await import('%s', { %s: %s }, );
+                            console.log(json.val);
+                        });
+                        """, importName, keyword, assertVal),
+                        "let json = { val: 'value' }; export { json as default };",
+                        "value", true);
         return testTuples;
     }
 
@@ -188,14 +226,44 @@ public class ImportAssertionsWithCustomFsTest {
 
     @Test
     public void testNoLineTerminator() throws IOException {
-        TestTuple t = new TestTuple("var access = ''; Object.defineProperty(globalThis, 'assert', {get:function() { access = 'access'; }}); import { val } from './test.js' " + System.lineSeparator() +
-                        "assert" + System.lineSeparator() + " {}; access + ' ' + val;", "export const val = 'value';", "access value");
-        TestTuple t2 = new TestTuple("var access = ''; Object.defineProperty(globalThis, 'assert', {get:function() { access = 'access'; }}); import json from './test.js' " + System.lineSeparator() +
-                        "assert " + System.lineSeparator() + " {}; access + ' ' + json.val;", "let json = { val: 'value' }; export { json as default };", "access value");
-        TestTuple t3 = new TestTuple("import { val } from './test.js'; val;",
-                        "var access = ''; Object.defineProperty(globalThis, 'assert', {get:function() { access = 'access'; }}); export { val } from './test2.js' " + System.lineSeparator() +
-                                        " assert " + System.lineSeparator() + " {};",
-                        "value", "./test2.js", "export const val = 'value';", false);
+        // import assertions must be on the same line.
+        // import attributes may be on a separate line.
+        String expectedResult = "assert".equals(keyword) ? "assert,value" : "none,value";
+        TestTuple t = new TestTuple(String.format("""
+                        var access = 'none';
+                        Object.defineProperty(globalThis, '%1$s', {get:function() { access = '%1$s'; }});
+                        import { val } from './test.js'
+                        %1$s
+                         {};
+                        access + ',' + val;
+                        """, keyword),
+                        "export const val = 'value';",
+                        expectedResult);
+        TestTuple t2 = new TestTuple(String.format("""
+                        var access = 'none';
+                        Object.defineProperty(globalThis, '%1$s', {get:function() { access = '%1$s'; }});
+                        import json from './test.js'
+                        %1$s\s
+                         {};
+                        access + ',' + json.val;
+                        """, keyword), """
+                        let json = { val: 'value' };
+                        export { json as default };
+                        """,
+                        expectedResult);
+        TestTuple t3 = new TestTuple("""
+                        import { val, access } from './test.js';
+                        access + ',' + val;
+                        """, String.format("""
+                        export var access = 'none';
+                        Object.defineProperty(globalThis, '%1$s', {get:function() { access = '%1$s'; }});
+                        export { val } from './test2.js'\s
+                         %1$s\s
+                         {};
+                        """, keyword),
+                        expectedResult,
+                        "./test2.js",
+                        "export const val = 'value';", false);
         executeTest(t);
         executeTest(t2);
         executeTest(t3);

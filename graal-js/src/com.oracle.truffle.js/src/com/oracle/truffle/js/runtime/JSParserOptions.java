@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,12 +54,13 @@ public record JSParserOptions(boolean strict,
                 boolean syntaxExtensions,
                 boolean constAsVar,
                 boolean functionStatementError,
-                boolean dumpOnError,
                 boolean emptyStatements,
                 boolean annexB,
                 boolean allowBigInt,
                 boolean classFields,
                 boolean importAttributes,
+                boolean importAssertions,
+                boolean sourcePhaseImports,
                 boolean privateFieldsIn,
                 boolean topLevelAwait,
                 boolean v8Intrinsics) {
@@ -72,23 +73,24 @@ public record JSParserOptions(boolean strict,
         boolean syntaxExtensions = options.syntaxExtensions();
         boolean constAsVar = options.constAsVar();
         boolean functionStatementError = options.functionStatementError();
-        boolean dumpOnError = false;
         boolean emptyStatements = false;
         boolean annexB = options.annexB();
         boolean allowBigInt = options.bigInt();
         boolean classFields = options.classFields();
         boolean importAttributes = options.importAttributes();
+        boolean importAssertions = options.importAssertions();
+        boolean sourcePhaseImports = options.sourcePhaseImports();
         boolean privateFieldsIn = options.privateFieldsIn();
         boolean topLevelAwait = options.topLevelAwait();
         boolean v8Intrinsics = options.v8Intrinsics();
-        return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                        classFields, importAttributes, privateFieldsIn, topLevelAwait, v8Intrinsics);
+        return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, emptyStatements, annexB, allowBigInt,
+                        classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics);
     }
 
     public JSParserOptions withStrict(@SuppressWarnings("hiding") boolean strict) {
         if (strict != this.strict) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAttributes, privateFieldsIn, topLevelAwait, v8Intrinsics);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, emptyStatements, annexB, allowBigInt,
+                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics);
         }
         return this;
     }
