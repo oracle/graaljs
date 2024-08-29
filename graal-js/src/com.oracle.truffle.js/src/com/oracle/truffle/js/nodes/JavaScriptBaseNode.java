@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -98,4 +99,15 @@ public abstract class JavaScriptBaseNode extends Node {
         return (CompilerDirectives.inInterpreter() || getLanguageOptions().operatorOverloading()) && JSGuards.hasOverloadedOperators(obj);
     }
 
+    public static void reportLoopCount(Node node, int count) {
+        if (count > 0) {
+            LoopNode.reportLoopCount(node, count);
+        }
+    }
+
+    public static void reportLoopCount(Node node, long count) {
+        if (count > 0) {
+            LoopNode.reportLoopCount(node, count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count);
+        }
+    }
 }

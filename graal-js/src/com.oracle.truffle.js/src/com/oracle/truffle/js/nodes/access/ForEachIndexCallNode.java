@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.BasicArrayOperation;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
@@ -247,7 +246,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                 count++;
                 index = nextElementIndex(target, index, length);
             }
-            BasicArrayOperation.reportLoopCount(this, count);
+            reportLoopCount(this, count);
             return currentResult;
         }
 
@@ -267,7 +266,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     }
                 }
             }
-            BasicArrayOperation.reportLoopCount(this, length - fromIndex);
+            reportLoopCount(this, length - fromIndex);
             return currentResult;
         }
 
@@ -309,7 +308,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                 count++;
                 index = previousElementIndex(target, index);
             }
-            BasicArrayOperation.reportLoopCount(this, count);
+            reportLoopCount(this, count);
             return currentResult;
         }
 
@@ -329,7 +328,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     }
                 }
             }
-            BasicArrayOperation.reportLoopCount(this, fromIndex);
+            reportLoopCount(this, fromIndex);
             return currentResult;
         }
 
