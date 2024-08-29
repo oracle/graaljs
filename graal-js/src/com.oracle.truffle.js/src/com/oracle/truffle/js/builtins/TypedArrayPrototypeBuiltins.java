@@ -463,7 +463,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             rangeCheck(0, sourceLen, offset, targetArray.length(thisObj));
 
             boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
-            for (int i = 0, j = offset; i < sourceLen; i++, j++) {
+            for (long i = 0, j = offset; i < sourceLen; i++, j++) {
                 sourceArray = sourceArrayProf.profile(array.getArrayType());
                 Object value = sourceArray.getElement(array, i);
                 // IntegerIndexedElementSet
@@ -473,6 +473,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 }
                 TruffleSafepoint.poll(this);
             }
+            reportLoopCount(this, sourceLen);
         }
 
         private void setOther(JSTypedArrayObject thisObj, Object array, int offset) {
@@ -501,6 +502,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 }
                 TruffleSafepoint.poll(this);
             }
+            reportLoopCount(this, srcLength);
         }
 
         protected Object toNumber(Object value) {
@@ -638,6 +640,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     }
                     TruffleSafepoint.poll(this);
                 }
+                reportLoopCount(this, sourceLength);
                 return;
             }
 
@@ -673,6 +676,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     TruffleSafepoint.poll(this);
                 }
             }
+            reportLoopCount(this, sourceLength);
         }
 
         private ByteBuffer getByteBufferFromInteropBuffer(JSArrayBufferObject interopBuffer) {
@@ -715,6 +719,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 ((TypedArray.TypedIntArray) clonedType).setIntImpl(clonedArrayBuffer, 0, i, value, interop);
                 TruffleSafepoint.poll(this);
             }
+            reportLoopCount(this, srcByteLength);
             return clonedArrayBuffer;
         }
 
@@ -840,6 +845,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 }
                 TruffleSafepoint.poll(this);
             }
+            reportLoopCount(this, middle);
             return thisObj;
         }
 
@@ -875,6 +881,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 write(thisJSObj, idx, convValue);
                 TruffleSafepoint.poll(this);
             }
+            reportLoopCount(this, lEnd - lStart);
             return thisJSObj;
         }
     }
