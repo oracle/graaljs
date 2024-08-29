@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -374,6 +374,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                 Object kValue = values.get(k);
                 writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
             }
+            reportLoopCount(this, len);
             return obj;
         }
 
@@ -387,6 +388,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             Object kValue = readNode.executeWithTargetAndIndex(object, k);
             writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
         }
+        reportLoopCount(this, len);
         return obj;
     }
 
@@ -426,6 +428,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                 Object kValue = JSInteropUtil.readArrayElementOrDefault(object, k, 0, interop, importValue, this);
                 writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
             }
+            reportLoopCount(this, length);
         }
         return obj;
     }
