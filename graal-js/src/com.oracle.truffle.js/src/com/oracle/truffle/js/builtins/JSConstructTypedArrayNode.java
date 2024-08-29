@@ -389,6 +389,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                 Object kValue = values.get(k);
                 writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
             }
+            reportLoopCount(this, len);
             return obj;
         }
 
@@ -402,6 +403,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             Object kValue = readNode.executeWithTargetAndIndex(object, k);
             writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
         }
+        reportLoopCount(this, len);
         return obj;
     }
 
@@ -441,6 +443,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                 Object kValue = JSInteropUtil.readArrayElementOrDefault(object, k, 0, interop, importValue);
                 writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
             }
+            reportLoopCount(this, length);
         }
         return obj;
     }
