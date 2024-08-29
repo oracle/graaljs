@@ -81,6 +81,22 @@ public class TestBindings {
     }
 
     @Test
+    public void engineEmptyBindings() {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.createBindings();
+        engine.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
+        assertEquals(bindings, engine.getBindings(ScriptContext.ENGINE_SCOPE));
+    }
+
+    @Test
+    public void globalEmptyBindings() {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.createBindings();
+        engine.setBindings(bindings, ScriptContext.GLOBAL_SCOPE);
+        assertEquals(bindings, engine.getBindings(ScriptContext.GLOBAL_SCOPE));
+    }
+
+    @Test
     public void enginePut() throws ScriptException {
         ScriptEngine engine = getEngine();
         engine.put(varName, defaultVarValue);

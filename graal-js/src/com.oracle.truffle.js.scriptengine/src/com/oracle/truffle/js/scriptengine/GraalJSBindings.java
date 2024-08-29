@@ -219,7 +219,11 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     void updateEngineScriptContext(ScriptContext scriptContext) {
         engineScriptContext = scriptContext;
-        updateContextBinding();
+        if (context != null) {
+            updateContextBinding();
+        } else {
+            initContext(); // This will also call updateContextBinding()
+        }
     }
 
 }
