@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.BasicArrayOperation;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
@@ -248,7 +247,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                 count++;
                 index = checkHasProperty ? nextElementIndex(target, index, length) : (index + 1);
             }
-            BasicArrayOperation.reportLoopCount(this, count);
+            reportLoopCount(this, count);
             return currentResult;
         }
 
@@ -268,7 +267,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     }
                 }
             }
-            BasicArrayOperation.reportLoopCount(this, length - fromIndex);
+            reportLoopCount(this, length - fromIndex);
             return currentResult;
         }
 
@@ -310,7 +309,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                 count++;
                 index = checkHasProperty ? previousElementIndex(target, index) : (index - 1);
             }
-            BasicArrayOperation.reportLoopCount(this, count);
+            reportLoopCount(this, count);
             return currentResult;
         }
 
@@ -330,7 +329,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
                     }
                 }
             }
-            BasicArrayOperation.reportLoopCount(this, fromIndex);
+            reportLoopCount(this, fromIndex);
             return currentResult;
         }
 
