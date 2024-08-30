@@ -57,6 +57,9 @@ test-cli-node-print-help: FAIL
 test-crypto-dh-leak: SKIP
 test-worker-memory: SKIP
 
+# Callback of FinalizationRegistry called too late (after exit event)
+test-finalization-registry-shutdown: PASS,FAIL
+
 # Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
 test-fs-write: FAIL
 
