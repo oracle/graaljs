@@ -69,7 +69,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -463,12 +462,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected void reportLoopCount(long count) {
             reportLoopCount(this, count);
-        }
-
-        public static void reportLoopCount(Node node, long count) {
-            if (count > 0) {
-                LoopNode.reportLoopCount(node, count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count);
-            }
         }
     }
 
@@ -1518,6 +1511,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     writeOwn(retObj, n + k, read(elObj, k));
                 }
             }
+            reportLoopCount(len2);
             return n + len2;
         }
 
@@ -1786,7 +1780,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 } else {
                     i = nextElementIndex(thisJSObject, i, length);
                 }
+                TruffleSafepoint.poll(this);
             }
+            reportLoopCount(length);
             return builderToString(sb);
         }
 
@@ -1834,32 +1830,37 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                 }
                 i = nextElementIndex(thisObject, i, length);
+                TruffleSafepoint.poll(this);
             }
             if (appendSep) {
                 calculatedLength += (length - 1) * Strings.length(joinSeparator);
             }
             if (calculatedLength > getContext().getStringLengthLimit()) {
-                CompilerDirectives.transferToInterpreter();
+                errorBranch.enter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             assert calculatedLength <= Integer.MAX_VALUE;
             var sb = stringBuilderProfile.newStringBuilder((int) calculatedLength);
+            int convertedSize = converted.size();
             long lastIndex = 0;
-            for (int j = 0; j < converted.size(); j += 2) {
+            for (int j = 0; j < convertedSize; j += 2) {
                 long index = (long) converted.get(j);
-                Object value = converted.get(j + 1);
+                TruffleString value = (TruffleString) converted.get(j + 1);
                 if (appendSep) {
                     for (long k = lastIndex; k < index; k++) {
                         append(sb, joinSeparator);
                     }
                 }
-                append(sb, (TruffleString) value);
+                append(sb, value);
                 lastIndex = index;
             }
             if (appendSep) {
                 for (long k = lastIndex; k < length - 1; k++) {
                     append(sb, joinSeparator);
                 }
+                reportLoopCount(length);
+            } else {
+                reportLoopCount(convertedSize / 2);
             }
             assert StringBuilderProfile.length(sb) == calculatedLength;
             return builderToString(sb);
@@ -1906,9 +1907,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 } else {
                     userArguments = JSArguments.EMPTY_ARGUMENTS_ARRAY;
                 }
-                long k = 0;
                 var sb = stringBuilderProfile.newStringBuilder();
-                while (k < len) {
+                for (long k = 0; k < len; k++) {
                     if (k > 0) {
                         stringBuilderProfile.append(appendCharNode, sb, ',');
                     }
@@ -1918,8 +1918,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         TruffleString resultString = toStringNode.executeString(result);
                         stringBuilderProfile.append(appendStringNode, sb, resultString);
                     }
-                    k++;
+                    TruffleSafepoint.poll(this);
                 }
+                reportLoopCount(len);
                 return StringBuilderProfile.toString(builderToStringNode, sb);
             } finally {
                 realm.joinStackPop();
@@ -2725,6 +2726,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 var value = read(thisJSObj, length - 1 - i);
                 write(result, i, value);
             }
+            reportLoopCount(length);
             return result;
         }
     }
@@ -2771,6 +2773,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             for (int i = 0; i < length; i++) {
                 write(result, i, array[i]);
             }
+            reportLoopCount(length);
             return result;
         }
     }
@@ -2904,6 +2907,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object[] array = new Object[len];
             for (int index = 0; index < len; index++) {
                 array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue);
+                TruffleSafepoint.poll(this);
             }
             return array;
         }
