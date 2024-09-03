@@ -196,8 +196,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         return !(specifier.startsWith(SLASH) || specifier.startsWith(DOT_SLASH) || specifier.startsWith(DOT_DOT_SLASH));
     }
 
-    protected AbstractModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile maybeModuleFile, String maybeCanonicalPath) throws IOException {
-        TruffleFile moduleFile = maybeModuleFile;
+    protected AbstractModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile moduleFile, String maybeCanonicalPath) throws IOException {
+        TruffleFile canonicalFile;
         String canonicalPath;
         TruffleLanguage.Env env = realm.getEnv();
         if (maybeCanonicalPath == null) {
@@ -205,8 +205,10 @@ public class DefaultESModuleLoader implements JSModuleLoader {
              * We can only canonicalize the path if I/O is allowed and the file exists; otherwise,
              * the lookup may still succeed if the module was loaded already (as literal source).
              */
-            canonicalPath = getCanonicalFileIfExists(moduleFile, env).getPath();
+            canonicalFile = getCanonicalFileIfExists(moduleFile, env);
+            canonicalPath = canonicalFile.getPath();
         } else {
+            canonicalFile = moduleFile;
             canonicalPath = maybeCanonicalPath;
         }
 
@@ -215,10 +217,10 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             return existingModule;
         }
 
-        String mimeType = findMimeType(moduleFile);
+        String mimeType = findMimeType(canonicalFile);
         String language = findLanguage(mimeType);
 
-        Source source = Source.newBuilder(language, moduleFile).name(Strings.toJavaString(moduleRequest.specifier())).mimeType(mimeType).build();
+        Source source = Source.newBuilder(language, canonicalFile).name(Strings.toJavaString(moduleRequest.specifier())).mimeType(mimeType).build();
         Map<TruffleString, TruffleString> attributes = moduleRequest.attributes();
         TruffleString assertedType = attributes.get(JSContext.getTypeImportAttribute());
         if (!doesModuleTypeMatchAssertionType(assertedType, mimeType)) {
