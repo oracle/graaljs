@@ -135,7 +135,10 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractJSObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray.SetSupportedProfileAccess;
+import com.oracle.truffle.js.runtime.array.dyn.ContiguousDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ContiguousIntArray;
+import com.oracle.truffle.js.runtime.array.dyn.ContiguousJSObjectArray;
+import com.oracle.truffle.js.runtime.array.dyn.ContiguousObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesJSObjectArray;
@@ -959,7 +962,8 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedBranchProfile objectValueBranch,
                         @Cached InlinedConditionProfile inBoundsFastIf,
                         @Cached InlinedConditionProfile inBoundsIf,
-                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedNonZeroIf,
+                        @Cached InlinedConditionProfile supportedZeroIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
                         @Cached InlinedConditionProfile supportedHolesIf,
                         @Cached InlinedBranchProfile needPrototypeBranch,
@@ -978,7 +982,8 @@ public class WriteElementNode extends JSTargetableNode {
             return executeWithDoubleValueInner(target, doubleArray, index, doubleValue, root,
                             inBoundsFastIf,
                             inBoundsIf,
-                            supportedIf,
+                            supportedNonZeroIf,
+                            supportedZeroIf,
                             supportedContiguousIf,
                             supportedHolesIf,
                             needPrototypeBranch,
@@ -988,7 +993,8 @@ public class WriteElementNode extends JSTargetableNode {
         private boolean executeWithDoubleValueInner(JSDynamicObject target, AbstractDoubleArray doubleArray, long index, double doubleValue, WriteElementNode root,
                         @Cached InlinedConditionProfile inBoundsFastIf,
                         @Cached InlinedConditionProfile inBoundsIf,
-                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedNonZeroIf,
+                        @Cached InlinedConditionProfile supportedZeroIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
                         @Cached InlinedConditionProfile supportedHolesIf,
                         @Cached InlinedBranchProfile needPrototypeBranch,
@@ -999,18 +1005,20 @@ public class WriteElementNode extends JSTargetableNode {
                 return false;
             }
             int iIndex = (int) index;
-            if (inBoundsFastIf.profile(this, doubleArray.isInBoundsFast(target, index))) {
+            if (inBoundsFastIf.profile(this, doubleArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(doubleArray, target, index))) {
                 doubleArray.setInBoundsFast(target, iIndex, doubleValue);
                 return true;
-            } else if (inBoundsIf.profile(this, doubleArray.isInBounds(target, iIndex))) {
+            } else if (inBoundsIf.profile(this, doubleArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(doubleArray, target, index))) {
                 doubleArray.setInBounds(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
-            } else if (supportedIf.profile(this, doubleArray.isSupported(target, index))) {
+            } else if (supportedNonZeroIf.profile(this, doubleArray.isSupported(target, index) && !mightTransferToNonContiguous(doubleArray, target, index))) {
                 doubleArray.setSupported(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
-                if (supportedContiguousIf.profile(this, !(doubleArray instanceof AbstractContiguousDoubleArray) && doubleArray.isSupportedContiguous(target, index))) {
+                if (supportedZeroIf.profile(this, mightTransferToNonContiguous(doubleArray, target, index) && doubleArray.isSupported(target, index))) {
+                    toArrayType = doubleArray.toNonContiguous(target, iIndex, doubleValue, this, setSupportedProfile);
+                } else if (supportedContiguousIf.profile(this, !(doubleArray instanceof AbstractContiguousDoubleArray) && doubleArray.isSupportedContiguous(target, index))) {
                     toArrayType = doubleArray.toContiguous(target, index, doubleValue);
                 } else if (supportedHolesIf.profile(this, doubleArray.isSupportedHoles(target, index))) {
                     toArrayType = doubleArray.toHoles(target, index, doubleValue);
@@ -1020,6 +1028,10 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return setArrayAndWrite(toArrayType, target, index, doubleValue, root);
             }
+        }
+
+        private static boolean mightTransferToNonContiguous(AbstractDoubleArray doubleArray, JSDynamicObject target, long index) {
+            return doubleArray instanceof ContiguousDoubleArray && index == 0 && doubleArray.firstElementIndex(target) == 1 && JSAbstractArray.arrayGetIndexOffset(target) == 0;
         }
     }
 
@@ -1033,7 +1045,8 @@ public class WriteElementNode extends JSTargetableNode {
         protected boolean doObjectArray(JSDynamicObject target, AbstractObjectArray objectArray, long index, Object value, WriteElementNode root,
                         @Cached InlinedConditionProfile inBoundsFastIf,
                         @Cached InlinedConditionProfile inBoundsIf,
-                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedNonZeroIf,
+                        @Cached InlinedConditionProfile supportedZeroIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
                         @Cached InlinedConditionProfile supportedHolesIf,
                         @Cached InlinedBranchProfile needPrototypeBranch,
@@ -1044,18 +1057,20 @@ public class WriteElementNode extends JSTargetableNode {
                 return false;
             }
             int iIndex = (int) index;
-            if (inBoundsFastIf.profile(this, objectArray.isInBoundsFast(target, index))) {
+            if (inBoundsFastIf.profile(this, objectArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(objectArray, target, index))) {
                 objectArray.setInBoundsFast(target, iIndex, value);
                 return true;
-            } else if (inBoundsIf.profile(this, objectArray.isInBounds(target, iIndex))) {
+            } else if (inBoundsIf.profile(this, objectArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(objectArray, target, index))) {
                 objectArray.setInBounds(target, iIndex, value, this, setSupportedProfile);
                 return true;
-            } else if (supportedIf.profile(this, objectArray.isSupported(target, index))) {
+            } else if (supportedNonZeroIf.profile(this, objectArray.isSupported(target, index) && !mightTransferToNonContiguous(objectArray, target, index))) {
                 objectArray.setSupported(target, iIndex, value, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
-                if (supportedContiguousIf.profile(this, !(objectArray instanceof AbstractContiguousObjectArray) && objectArray.isSupportedContiguous(target, index))) {
+                if (supportedZeroIf.profile(this, mightTransferToNonContiguous(objectArray, target, index) && objectArray.isSupported(target, index))) {
+                    toArrayType = objectArray.toNonContiguous(target, iIndex, value, this, setSupportedProfile);
+                } else if (supportedContiguousIf.profile(this, !(objectArray instanceof AbstractContiguousObjectArray) && objectArray.isSupportedContiguous(target, index))) {
                     toArrayType = objectArray.toContiguous(target, index, value);
                 } else if (supportedHolesIf.profile(this, objectArray.isSupportedHoles(target, index))) {
                     toArrayType = objectArray.toHoles(target, index, value);
@@ -1065,6 +1080,10 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return setArrayAndWrite(toArrayType, target, index, value, root);
             }
+        }
+
+        private static boolean mightTransferToNonContiguous(AbstractObjectArray objectArray, JSDynamicObject target, long index) {
+            return objectArray instanceof ContiguousObjectArray && index == 0 && objectArray.firstElementIndex(target) == 1 && JSAbstractArray.arrayGetIndexOffset(target) == 0;
         }
     }
 
@@ -1080,7 +1099,8 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedBranchProfile objectValueBranch,
                         @Cached InlinedConditionProfile inBoundsFastIf,
                         @Cached InlinedConditionProfile inBoundsIf,
-                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedNonZeroIf,
+                        @Cached InlinedConditionProfile supportedZeroIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
                         @Cached InlinedConditionProfile supportedHolesIf,
                         @Cached InlinedBranchProfile needPrototypeBranch,
@@ -1091,7 +1111,8 @@ public class WriteElementNode extends JSTargetableNode {
                 return executeWithJSObjectValueInner(target, jsobjectArray, index, jsobjectValue, root,
                                 inBoundsFastIf,
                                 inBoundsIf,
-                                supportedIf,
+                                supportedNonZeroIf,
+                                supportedZeroIf,
                                 supportedContiguousIf,
                                 supportedHolesIf,
                                 needPrototypeBranch,
@@ -1105,7 +1126,8 @@ public class WriteElementNode extends JSTargetableNode {
         private boolean executeWithJSObjectValueInner(JSDynamicObject target, AbstractJSObjectArray jsobjectArray, long index, JSDynamicObject jsobjectValue, WriteElementNode root,
                         InlinedConditionProfile inBoundsFastIf,
                         InlinedConditionProfile inBoundsIf,
-                        InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedNonZeroIf,
+                        @Cached InlinedConditionProfile supportedZeroIf,
                         InlinedConditionProfile supportedContiguousIf,
                         InlinedConditionProfile supportedHolesIf,
                         InlinedBranchProfile needPrototypeBranch,
@@ -1116,18 +1138,20 @@ public class WriteElementNode extends JSTargetableNode {
                 needPrototypeBranch.enter(this);
                 return false;
             }
-            if (inBoundsFastIf.profile(this, jsobjectArray.isInBoundsFast(target, index))) {
+            if (inBoundsFastIf.profile(this, jsobjectArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(jsobjectArray, target, index))) {
                 jsobjectArray.setInBoundsFast(target, iIndex, jsobjectValue);
                 return true;
-            } else if (inBoundsIf.profile(this, jsobjectArray.isInBounds(target, iIndex))) {
+            } else if (inBoundsIf.profile(this, jsobjectArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(jsobjectArray, target, index))) {
                 jsobjectArray.setInBounds(target, iIndex, jsobjectValue, this, setSupportedProfile);
                 return true;
-            } else if (supportedIf.profile(this, jsobjectArray.isSupported(target, index))) {
+            } else if (supportedNonZeroIf.profile(this, jsobjectArray.isSupported(target, index) && !mightTransferToNonContiguous(jsobjectArray, target, index))) {
                 jsobjectArray.setSupported(target, iIndex, jsobjectValue, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
-                if (supportedContiguousIf.profile(this, !(jsobjectArray instanceof AbstractContiguousJSObjectArray) && jsobjectArray.isSupportedContiguous(target, index))) {
+                if (supportedZeroIf.profile(this, mightTransferToNonContiguous(jsobjectArray, target, index) && jsobjectArray.isSupported(target, index))) {
+                    toArrayType = jsobjectArray.toNonContiguous(target, iIndex, jsobjectValue, this, setSupportedProfile);
+                } else if (supportedContiguousIf.profile(this, !(jsobjectArray instanceof AbstractContiguousJSObjectArray) && jsobjectArray.isSupportedContiguous(target, index))) {
                     toArrayType = jsobjectArray.toContiguous(target, index, jsobjectValue);
                 } else if (supportedHolesIf.profile(this, jsobjectArray.isSupportedHoles(target, index))) {
                     toArrayType = jsobjectArray.toHoles(target, index, jsobjectValue);
@@ -1137,6 +1161,10 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return setArrayAndWrite(toArrayType, target, index, jsobjectValue, root);
             }
+        }
+
+        private static boolean mightTransferToNonContiguous(AbstractJSObjectArray jsobjectArray, JSDynamicObject target, long index) {
+            return jsobjectArray instanceof ContiguousJSObjectArray && index == 0 && jsobjectArray.firstElementIndex(target) == 1 && JSAbstractArray.arrayGetIndexOffset(target) == 0;
         }
     }
 
