@@ -215,6 +215,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.WorkerAgent;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -600,10 +601,25 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case BigInt64Array:
             case BigUint64Array:
                 if (construct) {
+                    TypedArrayFactory typedArray = switch (builtinEnum) {
+                        case Int8Array -> TypedArrayFactory.Int8Array;
+                        case Uint8Array -> TypedArrayFactory.Uint8Array;
+                        case Uint8ClampedArray -> TypedArrayFactory.Uint8ClampedArray;
+                        case Int16Array -> TypedArrayFactory.Int16Array;
+                        case Uint16Array -> TypedArrayFactory.Uint16Array;
+                        case Int32Array -> TypedArrayFactory.Int32Array;
+                        case Uint32Array -> TypedArrayFactory.Uint32Array;
+                        case Float16Array -> TypedArrayFactory.Float16Array;
+                        case Float32Array -> TypedArrayFactory.Float32Array;
+                        case Float64Array -> TypedArrayFactory.Float64Array;
+                        case BigInt64Array -> TypedArrayFactory.BigInt64Array;
+                        case BigUint64Array -> TypedArrayFactory.BigUint64Array;
+                        default -> throw Errors.shouldNotReachHereUnexpectedValue(builtinEnum);
+                    };
                     if (newTarget) {
-                        return JSConstructTypedArrayNodeGen.create(context, builtin, args().newTarget().fixedArgs(3).createArgumentNodes(context));
+                        return JSConstructTypedArrayNodeGen.create(context, builtin, typedArray, args().newTarget().fixedArgs(3).createArgumentNodes(context));
                     } else {
-                        return JSConstructTypedArrayNodeGen.create(context, builtin, args().function().fixedArgs(3).createArgumentNodes(context));
+                        return JSConstructTypedArrayNodeGen.create(context, builtin, typedArray, args().function().fixedArgs(3).createArgumentNodes(context));
                     }
                 } else {
                     return createCallRequiresNew(context, builtin);
