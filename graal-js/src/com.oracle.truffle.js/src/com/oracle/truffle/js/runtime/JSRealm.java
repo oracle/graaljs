@@ -115,6 +115,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltins;
 import com.oracle.truffle.js.builtins.testing.PolyglotInternalBuiltins;
 import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltins;
 import com.oracle.truffle.js.builtins.web.JSTextDecoder;
+import com.oracle.truffle.js.builtins.web.JSTextEncoder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -530,6 +531,9 @@ public class JSRealm {
 
     private final JSFunctionObject textDecoderConstructor;
     private final JSDynamicObject textDecoderPrototype;
+    private final JSFunctionObject textEncoderConstructor;
+    private final JSDynamicObject textEncoderPrototype;
+
     /**
      * Local time zone ID. Initialized lazily. May be reinitialized by {@link #setLocalTimeZone}.
      */
@@ -1172,6 +1176,9 @@ public class JSRealm {
         ctor = JSTextDecoder.createConstructor(this);
         this.textDecoderConstructor = ctor.getFunctionObject();
         this.textDecoderPrototype = ctor.getPrototype();
+        ctor = JSTextEncoder.createConstructor(this);
+        this.textEncoderConstructor = ctor.getFunctionObject();
+        this.textEncoderPrototype = ctor.getPrototype();
 
         // always create, regardless of context.isOptionForeignObjectPrototype()
         // we use them in some scenarios even when option is turned off
@@ -2195,7 +2202,10 @@ public class JSRealm {
         if (getContextOptions().isAsyncContext()) {
             putGlobalProperty(JSAsyncContext.NAMESPACE_NAME, JSAsyncContext.create(this));
         }
+
         putGlobalProperty(JSTextDecoder.CLASS_NAME, textDecoderConstructor);
+        putGlobalProperty(JSTextEncoder.CLASS_NAME, textEncoderConstructor);
+
         if (context.getLanguageOptions().profileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
@@ -3352,6 +3362,10 @@ public class JSRealm {
 
     public JSDynamicObject getTextDecoderPrototype() {
         return textDecoderPrototype;
+    }
+
+    public JSDynamicObject getTextEncoderPrototype() {
+        return textEncoderPrototype;
     }
 
     public JSDynamicObject getForeignIterablePrototype() {

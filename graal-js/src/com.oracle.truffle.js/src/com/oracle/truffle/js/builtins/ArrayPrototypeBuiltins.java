@@ -465,7 +465,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    protected static class ArraySpeciesConstructorNode extends JavaScriptBaseNode {
+    public static class ArraySpeciesConstructorNode extends JavaScriptBaseNode {
         private final boolean isTypedArrayImplementation; // for reusing array code on TypedArrays
         @Child private JSFunctionCallNode constructorCall;
         @Child private PropertyGetNode getConstructorNode;
@@ -489,7 +489,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @NeverDefault
-        protected static ArraySpeciesConstructorNode create(JSContext context, boolean isTypedArrayImplementation) {
+        public static ArraySpeciesConstructorNode create(JSContext context, boolean isTypedArrayImplementation) {
             return new ArraySpeciesConstructorNode(context, isTypedArrayImplementation);
         }
 

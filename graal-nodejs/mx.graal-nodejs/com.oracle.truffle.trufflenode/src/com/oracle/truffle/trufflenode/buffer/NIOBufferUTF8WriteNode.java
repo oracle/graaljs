@@ -42,12 +42,10 @@ package com.oracle.truffle.trufflenode.buffer;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -187,21 +185,10 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             Boundaries.byteBufferPutArray(rawBuffer, bufferOffset + destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength);
         } else {
             // Write the data byte by byte to the foreign buffer using InteropLibrary
-            interopBufferWriteArraySlice(target.getArrayBuffer(), bufferOffset, destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength, interop);
+            JSInteropUtil.writeBuffer(target.getArrayBuffer(), (long) bufferOffset + destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength, interop);
         }
         LoopNode.reportLoopCount(this, copyLength);
         return copyLength;
-    }
-
-    private static void interopBufferWriteArraySlice(JSArrayBufferObject arrayBuffer, int bufferOffset, int destOffset,
-                    byte[] sourceArray, int sourceArrayOffset, int copyLength, InteropLibrary interop) {
-        try {
-            for (int i = 0; i < copyLength; i++) {
-                interop.writeBufferByte(arrayBuffer, (long) bufferOffset + destOffset + i, sourceArray[sourceArrayOffset + i]);
-            }
-        } catch (InteropException iex) {
-            throw CompilerDirectives.shouldNotReachHere(iex);
-        }
     }
 
     private static boolean isUTF8ContinuationByte(int b) {

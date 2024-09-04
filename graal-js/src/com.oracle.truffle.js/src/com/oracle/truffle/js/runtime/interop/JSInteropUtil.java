@@ -639,4 +639,14 @@ public final class JSInteropUtil {
             throw Errors.createTypeErrorInteropException(buffer, e, "readBuffer", interop);
         }
     }
+
+    public static void writeBuffer(Object destination, long destinationOffset, byte[] source, int sourceOffset, int copyLength, InteropLibrary interop) {
+        try {
+            for (int i = 0; i < copyLength; i++) {
+                interop.writeBufferByte(destination, destinationOffset + i, source[sourceOffset + i]);
+            }
+        } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            throw Errors.createTypeErrorInteropException(destination, e, "writeBuffer", interop);
+        }
+    }
 }
