@@ -3408,17 +3408,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/argument-valid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/do-not-canonicalize-iana-identifiers.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/etc-timezone.js",
     "status" : "FAIL",
@@ -3444,31 +3436,11 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/links-africa.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/links-asia.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/links-backward.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/links-backzone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/links-etcetera.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/links-europe.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/links-northamerica.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
@@ -3576,6 +3548,10 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/time-zone-canonicalized.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test: expects canonical timezones to be observable."
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/until/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -3609,10 +3585,6 @@
     "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/timezone-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/timezone-ids-basic.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
