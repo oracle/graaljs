@@ -1248,16 +1248,15 @@ public final class TemporalUtil {
             newIdentifier = formatTimeZoneOffsetString(result);
             offsetNs = BigInt.valueOf(result);
         } else {
-            assert canonicalizeTimeZoneName(identifier).equals(identifier) : identifier;
             offsetNs = null;
         }
         return JSTemporalTimeZone.create(ctx, realm, proto, offsetNs, newIdentifier);
     }
 
     @TruffleBoundary
-    public static TruffleString canonicalizeTimeZoneName(TruffleString timeZone) {
-        String tzId = JSDateTimeFormat.canonicalizeTimeZoneName(timeZone);
-        return tzId == null ? null : Strings.fromJavaString(tzId);
+    public static Pair<TruffleString, TruffleString> getAvailableNamedTimeZoneIdentifier(TruffleString timeZone) {
+        Pair<String, String> pair = JSDateTimeFormat.getAvailableNamedTimeZoneIdentifier(Strings.toJavaString(timeZone));
+        return (pair == null) ? null : new Pair<>(Strings.fromJavaString(pair.getFirst()), Strings.fromJavaString(pair.getSecond()));
     }
 
     @TruffleBoundary
@@ -3143,13 +3142,33 @@ public final class TemporalUtil {
         return instant.getNanoseconds();
     }
 
-    public static boolean timeZoneEquals(Object tz1, Object tz2, ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier) {
-        if (tz1 == tz2) {
+    public static boolean timeZoneEquals(Object one, Object two, ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier) {
+        if (one == two) {
             return true;
         }
-        TruffleString s1 = toTimeZoneIdentifier.executeString(tz1);
-        TruffleString s2 = toTimeZoneIdentifier.executeString(tz2);
-        return Boundaries.equals(s1, s2);
+        TruffleString timeZoneOne = toTimeZoneIdentifier.executeString(one);
+        TruffleString timeZoneTwo = toTimeZoneIdentifier.executeString(two);
+        if (Boundaries.equals(timeZoneOne, timeZoneTwo)) {
+            return true;
+        } else {
+            boolean numOffsetOne = canParseAsTimeZoneNumericUTCOffset(timeZoneOne);
+            boolean numOffsetTwo = canParseAsTimeZoneNumericUTCOffset(timeZoneTwo);
+            if (numOffsetOne) {
+                if (numOffsetTwo) {
+                    return parseTimeZoneOffsetString(timeZoneOne) == parseTimeZoneOffsetString(timeZoneTwo);
+                } else {
+                    return false;
+                }
+            } else {
+                if (numOffsetTwo) {
+                    return false;
+                } else {
+                    TruffleString primaryOne = getAvailableNamedTimeZoneIdentifier(timeZoneOne).getSecond();
+                    TruffleString primaryTwo = getAvailableNamedTimeZoneIdentifier(timeZoneTwo).getSecond();
+                    return Boundaries.equals(primaryOne, primaryTwo);
+                }
+            }
+        }
     }
 
     public static Object consolidateCalendars(Object one, Object two, ToTemporalCalendarIdentifierNode toCalendarIdentifier) {

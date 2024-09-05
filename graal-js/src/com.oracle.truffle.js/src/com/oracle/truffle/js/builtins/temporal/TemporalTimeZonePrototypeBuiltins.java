@@ -53,6 +53,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltinsFactory.JSTemporalTimeZoneEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltinsFactory.JSTemporalTimeZoneGetInstantForNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltinsFactory.JSTemporalTimeZoneGetNextOrPreviousTransitionNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltinsFactory.JSTemporalTimeZoneGetOffsetNanosecondsForNodeGen;
@@ -68,6 +69,8 @@ import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -98,6 +101,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         id(0),
 
         // methods
+        equals(1),
         getOffsetNanosecondsFor(1),
         getOffsetStringFor(1),
         getPlainDateTimeFor(1),
@@ -134,6 +138,8 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             case toJSON:
                 return JSTemporalTimeZoneGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
 
+            case equals:
+                return JSTemporalTimeZoneEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case getOffsetNanosecondsFor:
                 return JSTemporalTimeZoneGetOffsetNanosecondsForNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case getOffsetStringFor:
@@ -180,6 +186,27 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSTemporalTimeZone(thisObj)")
         protected static Object invalidReceiver(Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
+        }
+    }
+
+    public abstract static class JSTemporalTimeZoneEquals extends JSTemporalBuiltinOperation {
+
+        protected JSTemporalTimeZoneEquals(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected boolean equals(JSTemporalTimeZoneObject timeZone, Object timeZoneLike,
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
+                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier) {
+            Object other = toTimeZoneSlotValue.execute(timeZoneLike);
+            return TemporalUtil.timeZoneEquals(timeZone, other, toTimeZoneIdentifier);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSTemporalTimeZone(thisObj)")
+        protected static boolean invalidReceiver(Object thisObj, Object timeZoneLike) {
             throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
         }
     }

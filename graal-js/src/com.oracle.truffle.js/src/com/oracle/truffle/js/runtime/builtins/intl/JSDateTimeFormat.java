@@ -91,6 +91,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
+import com.oracle.truffle.js.runtime.util.Pair;
 
 public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -104,7 +105,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
      * Maps the upper-case version of a supported time zone to the corresponding case-regularized
      * canonical ID.
      */
-    private static final LazyValue<UnmodifiableEconomicMap<String, String>> canonicalTimeZoneIDMap = new LazyValue<>(JSDateTimeFormat::initCanonicalTimeZoneIDMap);
+    private static final LazyValue<UnmodifiableEconomicMap<String, Pair<String, String>>> canonicalTimeZoneIDMap = new LazyValue<>(JSDateTimeFormat::initCanonicalTimeZoneIDMap);
 
     private JSDateTimeFormat() {
     }
@@ -641,11 +642,15 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                         timeZoneNameOptToSkeleton(timeZoneNameOpt);
     }
 
-    private static UnmodifiableEconomicMap<String, String> initCanonicalTimeZoneIDMap() {
+    private static UnmodifiableEconomicMap<String, Pair<String, String>> initCanonicalTimeZoneIDMap() {
         CompilerAsserts.neverPartOfCompilation();
-        EconomicMap<String, String> map = EconomicMap.create();
+        EconomicMap<String, Pair<String, String>> map = EconomicMap.create();
         for (String available : TimeZone.getAvailableIDs()) {
-            map.put(IntlUtil.toUpperCase(available), TimeZone.getCanonicalID(available));
+            String canonical = TimeZone.getCanonicalID(available);
+            if ("Etc/UTC".equals(canonical) || "Etc/GMT".equals(canonical)) {
+                canonical = "UTC";
+            }
+            map.put(IntlUtil.toUpperCase(available), new Pair<>(available, canonical));
         }
         return map;
     }
@@ -658,21 +663,14 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
      */
     @TruffleBoundary
     public static String canonicalizeTimeZoneName(String tzId) {
-        String ucTzId = IntlUtil.toUpperCase(tzId);
-        String canTzId = canonicalTimeZoneIDMap.get().get(ucTzId);
-        if (canTzId == null) {
-            return null;
-        }
-        if (canTzId.equals("Etc/UTC") || canTzId.equals("Etc/GMT")) {
-            return "UTC";
-        } else {
-            return canTzId;
-        }
+        Pair<String, String> result = getAvailableNamedTimeZoneIdentifier(tzId);
+        return (result == null) ? null : result.getSecond();
     }
 
     @TruffleBoundary
-    public static String canonicalizeTimeZoneName(TruffleString tzId) {
-        return canonicalizeTimeZoneName(Strings.toJavaString(tzId));
+    public static Pair<String, String> getAvailableNamedTimeZoneIdentifier(String tzId) {
+        String ucTzId = IntlUtil.toUpperCase(tzId);
+        return canonicalTimeZoneIDMap.get().get(ucTzId);
     }
 
     private static boolean containsOneOf(String suspect, String containees) {

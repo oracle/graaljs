@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -88,12 +89,12 @@ public abstract class ToTemporalTimeZoneSlotValueNode extends JavaScriptBaseNode
             if (offsetMinutes != null && name == null) {
                 return TemporalUtil.formatTimeZoneOffsetString(TemporalUtil.parseTimeZoneOffsetString(offsetMinutes));
             }
-            TruffleString timeZoneName = TemporalUtil.canonicalizeTimeZoneName(name);
-            if (timeZoneName == null) {
+            Pair<TruffleString, TruffleString> timeZoneIdentifierRecord = TemporalUtil.getAvailableNamedTimeZoneIdentifier(name);
+            if (timeZoneIdentifierRecord == null) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
             }
-            return timeZoneName;
+            return timeZoneIdentifierRecord.getFirst();
         } else {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAString(temporalTimeZoneLike);
