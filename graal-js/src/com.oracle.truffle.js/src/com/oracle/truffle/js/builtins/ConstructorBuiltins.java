@@ -289,6 +289,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.LRUCache;
+import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -1446,10 +1447,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             TruffleString id = idParam;
             boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(id);
             if (!canParse) {
-                id = TemporalUtil.canonicalizeTimeZoneName(id);
-                if (id == null) {
+                Pair<TruffleString, TruffleString> timeZoneIdentifierRecord = TemporalUtil.getAvailableNamedTimeZoneIdentifier(id);
+                if (timeZoneIdentifierRecord == null) {
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
+                id = timeZoneIdentifierRecord.getFirst();
             }
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
