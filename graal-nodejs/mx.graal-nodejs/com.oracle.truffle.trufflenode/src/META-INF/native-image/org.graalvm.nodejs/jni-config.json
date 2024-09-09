@@ -99,6 +99,7 @@
       { "name": "isolateEnqueueMicrotask" },
       { "name": "isolateEnter" },
       { "name": "isolateEnterPolyglotEngine" },
+      { "name": "isolateExecuteRunnable" },
       { "name": "isolateExit" },
       { "name": "isolateGetDoublePlaceholder" },
       { "name": "isolateGetHeapStatistics" },
@@ -363,7 +364,8 @@
       { "name": "getWasmModuleTransferId" },
       { "name": "getWasmModuleFromId" },
       { "name": "notifyWasmStreamingCallback" },
-      { "name": "postWakeUpTask" }
+      { "name": "postWakeUpTask" },
+      { "name": "postRunnableTask" }
     ]
   },
   {

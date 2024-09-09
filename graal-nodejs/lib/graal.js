@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.js.runtime.JSAgent;
+// This module provides an experimental eventLoopExecutor i.e. an instance of
+// java.util.concurrent.Executor that executes runnables in the event loop thread.
 
-public class NodeJSAgent extends JSAgent {
-
-    private Thread thread;
-    private long taskRunnerPointer;
-
-    NodeJSAgent() {
-        super(true);
-    }
-
-    void setThread(Thread thread) {
-        this.thread = thread;
-    }
-
-    Thread getThread() {
-        return thread;
-    }
-
-    void setTaskRunnerPointer(long taskRunnerPointer) {
-        this.taskRunnerPointer = taskRunnerPointer;
-    }
-
-    long getTaskRunnerPointer() {
-        return taskRunnerPointer;
-    }
-
-    @Override
-    public void wake() {
-        NativeAccess.postWakeUpTask(taskRunnerPointer);
-    }
-
-    @Override
-    public void terminate() {
-        // No-op
-    }
-
-}
+module.exports = {
+  eventLoopExecutor: graalExtension,
+};

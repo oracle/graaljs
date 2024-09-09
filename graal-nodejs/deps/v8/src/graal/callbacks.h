@@ -166,4 +166,6 @@ void GraalNotifyWasmStreamingCallback(JNIEnv* env, jclass nativeAccess, jobject 
 
 void GraalPostWakeUpTask(JNIEnv* env, jclass nativeAccess, jlong taskRunnerPointer);
 
+void GraalPostRunnableTask(JNIEnv* env, jclass nativeAccess, jlong taskRunnerPointer, jobject runnable);
+
 #endif /* CALLBACKS_H_ */

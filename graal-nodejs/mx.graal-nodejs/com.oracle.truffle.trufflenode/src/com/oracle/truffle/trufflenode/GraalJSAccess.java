@@ -306,6 +306,7 @@ public final class GraalJSAccess {
     public static final TruffleString NODE_INTERNAL_GRAAL_WASM = Strings.constant("node:internal/graal/wasm");
     public static final TruffleString NODE_INTERNAL_WORKER_IO = Strings.constant("node:internal/worker/io");
     public static final TruffleString NODE_INTERNAL_MAIN_WORKER_THREAD = Strings.constant("node:internal/main/worker_thread");
+    public static final TruffleString NODE_GRAAL = Strings.constant("node:graal");
     public static final TruffleString NODE_INSPECTOR = Strings.constant("node:inspector");
     public static final TruffleString DOT_JS = Strings.constant(".js");
     public static final TruffleString SHEBANG = Strings.constant("#!");
@@ -2294,7 +2295,7 @@ public final class GraalJSAccess {
         }
     }
 
-    private static Object getExtraArgumentOfInternalScript(TruffleString moduleName, JSRealm realm) {
+    private Object getExtraArgumentOfInternalScript(TruffleString moduleName, JSRealm realm) {
         Object extraArgument = null;
         JSContext context = realm.getContext();
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
@@ -2316,6 +2317,8 @@ public final class GraalJSAccess {
             extraArgument = (inspector == null) ? Null.instance : inspector;
         } else if (NODE_INTERNAL_GRAAL_WASM.equals(moduleName)) {
             extraArgument = createWasmStreamingCallback(realm);
+        } else if (NODE_GRAAL.equals(moduleName)) {
+            extraArgument = createEventLoopExecutor();
         }
         return extraArgument;
     }
@@ -4166,6 +4169,19 @@ public final class GraalJSAccess {
     @TruffleBoundary
     private static void notifyWasmStreamingCallback(Object response, Object resolve, Object reject) {
         NativeAccess.notifyWasmStreamingCallback(response, resolve, reject);
+    }
+
+    private Object createEventLoopExecutor() {
+        return mainJSRealm.getEnv().asGuestValue(new EventLoopExecutor(agent));
+    }
+
+    public void isolateExecuteRunnable(Object runnable) {
+        try {
+            ((Runnable) runnable).run();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            System.exit(1);
+        }
     }
 
     public static class WeakCallback extends WeakReference<Object> {

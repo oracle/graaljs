@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,41 +40,23 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.js.runtime.JSAgent;
+import java.util.Objects;
+import java.util.concurrent.Executor;
 
-public class NodeJSAgent extends JSAgent {
+/**
+ * Executor that runs the given runnable in the event loop thread.
+ */
+public class EventLoopExecutor implements Executor {
+    private final NodeJSAgent agent;
 
-    private Thread thread;
-    private long taskRunnerPointer;
-
-    NodeJSAgent() {
-        super(true);
-    }
-
-    void setThread(Thread thread) {
-        this.thread = thread;
-    }
-
-    Thread getThread() {
-        return thread;
-    }
-
-    void setTaskRunnerPointer(long taskRunnerPointer) {
-        this.taskRunnerPointer = taskRunnerPointer;
-    }
-
-    long getTaskRunnerPointer() {
-        return taskRunnerPointer;
+    EventLoopExecutor(NodeJSAgent agent) {
+        this.agent = agent;
     }
 
     @Override
-    public void wake() {
-        NativeAccess.postWakeUpTask(taskRunnerPointer);
-    }
-
-    @Override
-    public void terminate() {
-        // No-op
+    public void execute(Runnable runnable) {
+        Objects.requireNonNull(runnable);
+        NativeAccess.postRunnableTask(agent.getTaskRunnerPointer(), runnable);
     }
 
 }

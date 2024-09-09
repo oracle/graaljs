@@ -227,6 +227,7 @@ enum GraalAccessMethod {
     isolate_schedule_pause_on_next_statement,
     isolate_measure_memory,
     isolate_set_task_runner,
+    isolate_execute_runnable,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -472,6 +473,7 @@ public:
     void Exit();
     void HandleEmptyCallResult();
     void EnqueueMicrotask(v8::Local<v8::Function> microtask);
+    void ExecuteRunnable(jobject runnable);
 
     enum GCCallbackType {
         kIsolateGCCallbackType = 0,
