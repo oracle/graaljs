@@ -3217,6 +3217,7 @@ public final class GraalJSAccess {
     }
 
     public void isolateDispose(boolean exit, int status) {
+        agent.setTaskRunnerPointer(0);
         if (exit) {
             exit(status);
         }

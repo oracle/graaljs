@@ -59,11 +59,11 @@ public class NodeJSAgent extends JSAgent {
         return thread;
     }
 
-    void setTaskRunnerPointer(long taskRunnerPointer) {
+    synchronized void setTaskRunnerPointer(long taskRunnerPointer) {
         this.taskRunnerPointer = taskRunnerPointer;
     }
 
-    long getTaskRunnerPointer() {
+    synchronized long getTaskRunnerPointer() {
         return taskRunnerPointer;
     }
 

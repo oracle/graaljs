@@ -56,7 +56,13 @@ public class EventLoopExecutor implements Executor {
     @Override
     public void execute(Runnable runnable) {
         Objects.requireNonNull(runnable);
-        NativeAccess.postRunnableTask(agent.getTaskRunnerPointer(), runnable);
+        synchronized (agent) {
+            long taskRunnerPointer = agent.getTaskRunnerPointer();
+            if (taskRunnerPointer == 0) {
+                throw new IllegalStateException("Event loop of this executor has been terminated already!");
+            }
+            NativeAccess.postRunnableTask(taskRunnerPointer, runnable);
+        }
     }
 
 }
