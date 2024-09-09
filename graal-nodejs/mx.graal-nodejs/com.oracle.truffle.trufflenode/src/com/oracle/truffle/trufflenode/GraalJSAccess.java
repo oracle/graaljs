@@ -2320,19 +2320,6 @@ public final class GraalJSAccess {
         return extraArgument;
     }
 
-    @TruffleBoundary
-    private static Object[] getInternalModuleUserArguments(Object[] args, TruffleString moduleName, JSRealm realm) {
-        Object[] userArgs = JSArguments.extractUserArguments(args);
-        Object extraArgument = getExtraArgumentOfInternalScript(moduleName, realm);
-        if (extraArgument == null) {
-            return userArgs;
-        }
-        Object[] extendedArgs = new Object[userArgs.length + 1];
-        System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-        extendedArgs[userArgs.length] = extraArgument;
-        return extendedArgs;
-    }
-
     public Object scriptGetUnboundScript(Object script) {
         return new UnboundScript((Script) script);
     }

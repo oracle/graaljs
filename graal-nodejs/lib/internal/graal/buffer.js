@@ -40,7 +40,7 @@
  */
 
 // When NIO buffers are enabled, GraalJSAccess ensures that this module is loaded with the builtins constructor as extra argument.
-const NIOBufferPrototypeAllocator = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
+const NIOBufferPrototypeAllocator = graalExtension;
 
 function patchBufferPrototype(proto) {
 	if (NIOBufferPrototypeAllocator) {
