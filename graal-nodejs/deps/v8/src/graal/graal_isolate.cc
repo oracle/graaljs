@@ -846,6 +846,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_schedule_pause_on_next_statement, "isolateSchedulePauseOnNextStatement", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_measure_memory, "isolateMeasureMemory", "(Ljava/lang/Object;Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_set_task_runner, "isolateSetTaskRunner", "(J)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_execute_runnable, "isolateExecuteRunnable", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -1642,4 +1643,8 @@ void GraalIsolate::JSExecutionViolation(JSExecutionAction action) {
 void GraalIsolate::SetTaskRunner(std::shared_ptr<v8::TaskRunner> task_runner) {
     this->task_runner_ = task_runner;
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_set_task_runner, (jlong) task_runner.get());
+}
+
+void GraalIsolate::ExecuteRunnable(jobject runnable) {
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_execute_runnable, runnable);
 }

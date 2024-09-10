@@ -24,7 +24,7 @@ const {
 } = require('internal/process/pre_execution');
 
 // Passed by Graal.js init phase during global module loading.
-const SharedMemMessagingInit = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
+const SharedMemMessagingInit = graalExtension;
 if (!SharedMemMessagingInit) {
   throw new Error("Fatal: cannot initialize Worker");
 }

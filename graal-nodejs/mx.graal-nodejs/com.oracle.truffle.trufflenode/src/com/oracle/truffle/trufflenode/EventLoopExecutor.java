@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.trufflenode;
 
-// When NIO buffers are enabled, GraalJSAccess ensures that this module is loaded with the builtins constructor as extra argument.
-const NIOBufferPrototypeAllocator = graalExtension;
+import java.util.Objects;
+import java.util.concurrent.Executor;
 
-function patchBufferPrototype(proto) {
-	if (NIOBufferPrototypeAllocator) {
-		const bufferBuiltin = NIOBufferPrototypeAllocator(proto.utf8Write);
-		proto.utf8Write = bufferBuiltin.utf8Write;
-		proto.utf8Slice = bufferBuiltin.utf8Slice;
-	}
-}
+/**
+ * Executor that runs the given runnable in the event loop thread.
+ */
+public class EventLoopExecutor implements Executor {
+    private final NodeJSAgent agent;
 
-module.exports = {
-	install: patchBufferPrototype
+    EventLoopExecutor(NodeJSAgent agent) {
+        this.agent = agent;
+    }
+
+    @Override
+    public void execute(Runnable runnable) {
+        Objects.requireNonNull(runnable);
+        synchronized (agent) {
+            long taskRunnerPointer = agent.getTaskRunnerPointer();
+            if (taskRunnerPointer == 0) {
+                throw new IllegalStateException("Event loop of this executor has been terminated already!");
+            }
+            NativeAccess.postRunnableTask(taskRunnerPointer, runnable);
+        }
+    }
+
 }

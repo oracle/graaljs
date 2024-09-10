@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,17 +39,9 @@
  * SOFTWARE.
  */
 
-// When NIO buffers are enabled, GraalJSAccess ensures that this module is loaded with the builtins constructor as extra argument.
-const NIOBufferPrototypeAllocator = graalExtension;
-
-function patchBufferPrototype(proto) {
-	if (NIOBufferPrototypeAllocator) {
-		const bufferBuiltin = NIOBufferPrototypeAllocator(proto.utf8Write);
-		proto.utf8Write = bufferBuiltin.utf8Write;
-		proto.utf8Slice = bufferBuiltin.utf8Slice;
-	}
-}
+// This module provides an experimental eventLoopExecutor i.e. an instance of
+// java.util.concurrent.Executor that executes runnables in the event loop thread.
 
 module.exports = {
-	install: patchBufferPrototype
-}
+  eventLoopExecutor: graalExtension,
+};

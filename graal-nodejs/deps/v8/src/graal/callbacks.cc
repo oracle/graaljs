@@ -127,6 +127,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("executeInterruptCallback", "(JJ)V", &GraalExecuteInterruptCallback),
     CALLBACK("notifyWasmStreamingCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyWasmStreamingCallback),
     CALLBACK("postWakeUpTask", "(J)V", &GraalPostWakeUpTask),
+    CALLBACK("postRunnableTask", "(JLjava/lang/Object;)V", &GraalPostRunnableTask),
  };
 
 static const int CALLBACK_COUNT = sizeof(callbacks) / sizeof(*callbacks);
@@ -929,5 +930,23 @@ public:
 
 void GraalPostWakeUpTask(JNIEnv* env, jclass nativeAccess, jlong taskRunnerPointer) {
     std::unique_ptr<WakeUpTask> task = std::make_unique<WakeUpTask>();
+    reinterpret_cast<v8::TaskRunner*> (taskRunnerPointer)->PostNonNestableTask(std::move(task));
+}
+
+class RunnableTask : public v8::Task {
+public:
+    RunnableTask(jobject runnable) : runnable_(runnable) {};
+    void Run() {
+        GraalIsolate* isolate = CurrentIsolateChecked();
+        isolate->ExecuteRunnable(runnable_);
+        isolate->GetJNIEnv()->DeleteGlobalRef(runnable_);
+        runnable_ = nullptr;
+    };
+private:
+    jobject runnable_;
+};
+
+void GraalPostRunnableTask(JNIEnv* env, jclass nativeAccess, jlong taskRunnerPointer, jobject runnable) {
+    std::unique_ptr<RunnableTask> task = std::make_unique<RunnableTask>(env->NewGlobalRef(runnable));
     reinterpret_cast<v8::TaskRunner*> (taskRunnerPointer)->PostNonNestableTask(std::move(task));
 }

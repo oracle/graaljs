@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.trufflenode.test;
 
-// When NIO buffers are enabled, GraalJSAccess ensures that this module is loaded with the builtins constructor as extra argument.
-const NIOBufferPrototypeAllocator = graalExtension;
+import java.util.concurrent.Executor;
 
-function patchBufferPrototype(proto) {
-	if (NIOBufferPrototypeAllocator) {
-		const bufferBuiltin = NIOBufferPrototypeAllocator(proto.utf8Write);
-		proto.utf8Write = bufferBuiltin.utf8Write;
-		proto.utf8Slice = bufferBuiltin.utf8Slice;
-	}
-}
+import org.graalvm.polyglot.Value;
 
-module.exports = {
-	install: patchBufferPrototype
+/**
+ * Helper class for tests of eventLoopExecutor.
+ */
+public class EventLoopExecutorTest {
+
+    public static boolean testNullRunnable(Executor executor) {
+        try {
+            executor.execute(null);
+            return false;
+        } catch (NullPointerException npe) {
+            return true;
+        }
+    }
+
+    public static void testAsyncResolution(Executor executor, Value resolve) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException iex) {
+                }
+                // cannot call resolve.execute(42) directly because we are in the wrong thread,
+                // we have to do it in the event loop thread
+                executor.execute(() -> resolve.execute(42));
+            }
+        }).start();
+    }
+
+    public static boolean testFinishedEventLoop(Executor executor) {
+        try {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    System.exit(1); // should not be reached
+                }
+            });
+            return false;
+        } catch (IllegalStateException isex) {
+            return true;
+        }
+    }
+
 }

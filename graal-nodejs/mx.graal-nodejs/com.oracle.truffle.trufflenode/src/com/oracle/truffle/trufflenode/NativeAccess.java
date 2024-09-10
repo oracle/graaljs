@@ -174,4 +174,6 @@ public final class NativeAccess {
 
     public static native void postWakeUpTask(long taskRunnerPointer);
 
+    public static native void postRunnableTask(long taskRunnerPointer, Object runnable);
+
 }
