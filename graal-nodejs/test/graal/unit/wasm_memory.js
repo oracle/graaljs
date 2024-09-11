@@ -122,6 +122,45 @@ if (typeof WebAssembly !== 'undefined') {
         let memory = new WebAssembly.Memory({ initial: 1 });
         assert.strictEqual(module.WasmMemory_Buffer(memory), memory.buffer);
       });
+
+      it('can be sent to a Worker', function(done) {
+        const { Worker } = require('worker_threads');
+
+        const memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
+
+        const w = new Worker(`
+            const { parentPort } = require('worker_threads');
+
+            let memory;
+
+            const notify = function() {
+                const result = Atomics.notify(new Int32Array(memory.buffer), 0);
+                if (result === 1) {
+                    parentPort.postMessage('done');
+                } else {
+                    // There is a tiny chance that the waiting in the other
+                    // thread haven't started yet => try again later
+                    setTimeout(notify, 100);
+                }
+            };
+
+            parentPort.on('message', (message) => {
+                memory = message;
+                notify();
+            });`,
+        {
+            eval: true
+        });
+
+        w.on('message', (message) => {
+            assert.strictEqual(message, 'done');
+            w.terminate().then(() => done());
+        });
+
+        w.postMessage(memory);
+
+        assert.strictEqual(Atomics.wait(new Int32Array(memory.buffer), 0, 0), 'ok');
+      });
     });
   });
 }
