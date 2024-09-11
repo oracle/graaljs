@@ -73,7 +73,7 @@ if (typeof WebAssembly !== 'undefined') {
 
         let calls = 0;
         assert.ok(module.WasmMemory_CheckBackingStore(memory.buffer, (len, elem) => {
-          if (calls == 0) {
+          if (calls === 0) {
             assert.strictEqual(len, 4 * PAGE_SIZE);
             assert.strictEqual(elem, 42);
 
@@ -86,10 +86,10 @@ if (typeof WebAssembly !== 'undefined') {
             array = new Uint8Array(memory.buffer);
             assert.strictEqual(array[0], 42);
             array[0] = 44;
-          } else if (calls == 1) {
+          } else if (calls === 1) {
             // still using old backing store
             // V8 may grow the wasm memory in place, so we allow that as well
-            if (len == 4 * PAGE_SIZE) {
+            if (len === 4 * PAGE_SIZE) {
               // grow with copy
               assert.strictEqual(len, 4 * PAGE_SIZE);
               assert.strictEqual(elem, 42);
@@ -98,7 +98,7 @@ if (typeof WebAssembly !== 'undefined') {
               assert.strictEqual(len, 5 * PAGE_SIZE);
               assert.strictEqual(elem, 44);
             }
-          } else if (calls == 2) {
+          } else if (calls === 2) {
             // GetBackingStore() of detached buffer
             assert.strictEqual(len, 0);
             assert.strictEqual(elem, undefined);
@@ -108,7 +108,7 @@ if (typeof WebAssembly !== 'undefined') {
         assert.strictEqual(calls, 3);
 
         assert.ok(module.WasmMemory_CheckBackingStore(memory.buffer, (len, elem) => {
-          if (calls == 3) {
+          if (calls === 3) {
             // new, grown backing store
             assert.strictEqual(len, 5 * PAGE_SIZE);
             assert.strictEqual(elem, 44);
