@@ -3269,7 +3269,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected JSObject constructMemory(JSDynamicObject newTarget, Object descriptor) {
+        protected JSObject constructMemory(JSDynamicObject newTarget, Object descriptor,
+                        @Cached InlinedConditionProfile isShared) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Memory(): Argument 0 must be a memory descriptor", this);
             }
@@ -3282,7 +3283,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw Errors.createRangeErrorFormat("WebAssembly.Memory(): Property 'initial': value %d is above the upper bound %d", this, initialInt, JSWebAssemblyMemory.MAX_MEMORY_SIZE);
             }
             Boolean shared = getSharedNode.executeValue(descriptor);
-            boolean sharedBoolean = Boolean.TRUE.equals(shared);
+            boolean sharedBoolean = isShared.profile(this, Boolean.TRUE.equals(shared));
             int maximumInt;
             Object maximum = getMaximumNode.getValue(descriptor);
             if (maximum == Undefined.instance) {

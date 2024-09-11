@@ -40,9 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltins;
+import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -103,14 +108,50 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, boolean shared) {
-        Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
-        if (embedderData instanceof JSWebAssemblyMemoryObject) {
-            return (JSWebAssemblyMemoryObject) embedderData;
+        if (shared) {
+            return createShared(context, realm, proto, wasmMemory);
+        } else {
+            Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+            if (embedderData instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
+                return webAssemblyMemory;
+            }
+            JSWebAssemblyMemoryObject webAssemblyMemory = createImpl(context, realm, proto, wasmMemory, false);
+            JSWebAssembly.setEmbedderData(realm, wasmMemory, webAssemblyMemory);
+            return webAssemblyMemory;
         }
+    }
+
+    private static JSWebAssemblyMemoryObject createShared(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory) {
+        synchronized (wasmMemory) {
+            Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+            EconomicMapHolder mapHolder;
+            if (embedderData instanceof EconomicMapHolder) {
+                mapHolder = (EconomicMapHolder) embedderData;
+                JSWebAssemblyMemoryObject webAssemblyMemory = Boundaries.economicMapGet(mapHolder.map, realm.getAgent());
+                if (webAssemblyMemory != null) {
+                    return webAssemblyMemory;
+                }
+            } else {
+                mapHolder = new EconomicMapHolder();
+                JSWebAssembly.setEmbedderData(realm, wasmMemory, mapHolder);
+            }
+            JSWebAssemblyMemoryObject webAssemblyMemory = createImpl(context, realm, proto, wasmMemory, true);
+            Boundaries.economicMapPut(mapHolder.map, realm.getAgent(), webAssemblyMemory);
+            return webAssemblyMemory;
+        }
+    }
+
+    private static JSWebAssemblyMemoryObject createImpl(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, boolean shared) {
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
         var shape = factory.getShape(realm, proto);
         var object = factory.initProto(new JSWebAssemblyMemoryObject(shape, proto, wasmMemory, shared), realm, proto);
-        JSWebAssembly.setEmbedderData(realm, wasmMemory, object);
         return factory.trackAllocation(object);
     }
+
+    // EconomicMap is not an interop value => we cannot pass it to WasmMemory
+    // => we need to wrap it in TruffleObject
+    static class EconomicMapHolder implements TruffleObject {
+        final EconomicMap<JSAgent, JSWebAssemblyMemoryObject> map = Boundaries.economicMapCreate();
+    }
+
 }
