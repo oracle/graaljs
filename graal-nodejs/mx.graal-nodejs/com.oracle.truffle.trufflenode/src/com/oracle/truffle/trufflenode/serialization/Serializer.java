@@ -51,8 +51,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -202,10 +205,10 @@ public class Serializer {
         } else if (value instanceof Symbol) {
             NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(value), COULD_NOT_BE_CLONED));
         } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
-            writeSharedJavaObject(value);
+            writeSharedJavaObject(env.asHostObject(value));
         } else if (value instanceof Long) {
             if (access.getCurrentMessagePortData() != null) {
-                writeSharedJavaObject(env.asBoxedGuestValue(value));
+                writeSharedJavaObject(value);
             } else {
                 writeIntOrDouble(((Long) value).doubleValue());
             }
@@ -417,8 +420,22 @@ public class Serializer {
     }
 
     private void writeJSWebAssemblyMemory(JSWebAssemblyMemoryObject wasmMemory) {
-        // non-shared WebAssembly.Memory cannot be cloned
-        NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(wasmMemory), COULD_NOT_BE_CLONED));
+        if (wasmMemory.isShared()) {
+            writeTag(SerializationTag.WASM_MEMORY_TRANSFER);
+
+            // Write wasm memory
+            writeSharedJavaObject(wasmMemory.getWASMMemory());
+
+            // Write waiter list of the underlying SharedArrayBuffer
+            JSRealm realm = JSRealm.get(null);
+            JSContext context = realm.getContext();
+            JSArrayBufferObject arrayBuffer = wasmMemory.getBufferObject(context, realm);
+            JSAgentWaiterList waiterList = JSArrayBufferObject.getWaiterList(arrayBuffer);
+            writeSharedJavaObject(waiterList);
+        } else {
+            // non-shared WebAssembly.Memory cannot be cloned
+            NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(wasmMemory), COULD_NOT_BE_CLONED));
+        }
     }
 
     private void writeJSObject(JSDynamicObject object) {
@@ -624,7 +641,7 @@ public class Serializer {
         writeTag(SerializationTag.SHARED_JAVA_OBJECT);
         writeVarInt(messagePort.getMessagePortDataPointer());
         assignId(value);
-        messagePort.enqueueJavaRef(env.asHostObject(value));
+        messagePort.enqueueJavaRef(value);
     }
 
     private void writeHostObject(Object object) {
