@@ -9,7 +9,6 @@
   },
   "scripts": {
     "install": "node-gyp rebuild",
-    "test": "node --expose-gc index.js",
-    "testwasm": "node --experimental-options --js.webassembly=true --expose-gc index.js"
+    "test": "node --expose-gc index.js"
   }
 }

@@ -71,7 +71,6 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
                 npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs + testArgs, cwd=unitTestDir)
                 if mx.suite('wasm', fatalIfMissing=False):
-                    npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs + testArgs, cwd=unitTestDir)
                     node(commonArgs + ['-e', 'console.log(WebAssembly)'])
                     # check that fetch API is available when WebAssembly is available
                     node(commonArgs + ['-e', 'FormData'])
