@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -208,40 +209,15 @@ public abstract class Environment {
         return null;
     }
 
-    enum WrapAccess {
-        Read,
-        Write,
-        Delete,
-    }
-
-    @FunctionalInterface
-    interface WrapClosure {
-        JavaScriptNode apply(JavaScriptNode node, WrapAccess access);
-
-        default Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> applyCompound(Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers) {
-            Supplier<JavaScriptNode> readSupplier = suppliers.getFirst();
-            UnaryOperator<JavaScriptNode> writeSupplier = suppliers.getSecond();
-            return new Pair<>(() -> apply(readSupplier.get(), WrapAccess.Read),
-                            (rhs) -> apply(writeSupplier.apply(rhs), WrapAccess.Write));
+    /**
+     * Like {@link Function#compose(Function)}, but allows the receiver function to be null.
+     */
+    static <T> Function<T, T> compose(Function<T, T> inner, Function<T, T> before) {
+        Objects.requireNonNull(before);
+        if (inner == null) {
+            return before;
         }
-
-        static WrapClosure compose(WrapClosure inner, WrapClosure before) {
-            Objects.requireNonNull(before);
-            if (inner == null) {
-                return before;
-            }
-            return new WrapClosure() {
-                @Override
-                public JavaScriptNode apply(JavaScriptNode v, WrapAccess w) {
-                    return inner.apply(before.apply(v, w), w);
-                }
-
-                @Override
-                public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> applyCompound(Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers) {
-                    return inner.applyCompound(before.applyCompound(suppliers));
-                }
-            };
-        }
+        return inner.compose(before);
     }
 
     public final VarRef findLocalVar(TruffleString name) {
@@ -264,7 +240,7 @@ public abstract class Environment {
         Environment current = this;
         int frameLevel = 0;
         int scopeLevel = 0;
-        WrapClosure wrapClosure = null;
+        Function<VarRef, VarRef> wrapClosure = null;
         int wrapFrameLevel = 0;
         do {
             if (current instanceof WithEnvironment) {
@@ -349,121 +325,33 @@ public abstract class Environment {
         }
     }
 
-    private WrapClosure makeEvalWrapClosure(WrapClosure wrapClosure, TruffleString name, int frameLevel, int scopeLevel, Environment current) {
-        final JSFrameSlot dynamicScopeSlot = current.findBlockFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
-        assert dynamicScopeSlot != null;
-        return WrapClosure.compose(wrapClosure, new WrapClosure() {
-            @Override
-            public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
-                JavaScriptNode dynamicScopeNode = new FrameSlotVarRef(dynamicScopeSlot, scopeLevel, frameLevel, FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER, current).createReadNode();
-                JSTargetableNode scopeAccessNode;
-                if (access == WrapAccess.Delete) {
-                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
-                } else if (access == WrapAccess.Write) {
-                    assert delegateNode instanceof WriteNode : delegateNode;
-                    scopeAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
-                } else if (access == WrapAccess.Read) {
-                    assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
-                    scopeAccessNode = factory.createReadProperty(context, null, name);
-                } else {
-                    throw new IllegalArgumentException();
-                }
-                return new EvalVariableNode(context, name, delegateNode, dynamicScopeNode, scopeAccessNode);
-            }
+    private Function<VarRef, VarRef> makeEvalWrapClosure(Function<VarRef, VarRef> wrapClosure, TruffleString name, int frameLevel, int scopeLevel, Environment current) {
+        JSFrameSlot dynamicScopeSlot = Objects.requireNonNull(current.findBlockFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER));
+        return compose(wrapClosure, wrappee -> {
+            VarRef dynamicScopeRef = new FrameSlotVarRef(dynamicScopeSlot, scopeLevel, frameLevel, FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER, current);
+            return new WrappedEvalVarRef(name, wrappee, dynamicScopeRef);
         });
     }
 
-    private WrapClosure makeWithWrapClosure(WrapClosure wrapClosure, TruffleString name, Object withVarName) {
-        return WrapClosure.compose(wrapClosure, new WrapClosure() {
-            @Override
-            public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
-                VarRef withVarNameRef = Objects.requireNonNull(findInternalSlot(withVarName));
-                JSTargetableNode withAccessNode;
-                if (access == WrapAccess.Delete) {
-                    withAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
-                } else if (access == WrapAccess.Write) {
-                    assert delegateNode instanceof WriteNode : delegateNode;
-                    withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode(), false, true);
-                } else if (access == WrapAccess.Read) {
-                    assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
-                    withAccessNode = factory.createReadProperty(context, null, name);
-                } else {
-                    throw new IllegalArgumentException();
-                }
-                JavaScriptNode withTarget = factory.createWithTarget(context, name, withVarNameRef.createReadNode());
-                return factory.createWithVarWrapper(context, name, isStrictMode(), withTarget, withAccessNode, delegateNode);
-            }
-
-            @Override
-            public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> applyCompound(Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers) {
-                // Use temp var to ensure unscopables check is evaluated only once.
-                VarRef withTargetTempVar = Environment.this.createTempVar();
-                VarRef withObjVar = Objects.requireNonNull(findInternalSlot(withVarName));
-                Supplier<JavaScriptNode> innerReadSupplier = suppliers.getFirst();
-                UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
-                Supplier<JavaScriptNode> readSupplier = () -> {
-                    JSTargetableNode readWithProperty = factory.createReadProperty(context, null, name);
-                    return factory.createWithVarWrapper(context, name, isStrictMode(), withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
-                };
-                UnaryOperator<JavaScriptNode> writeSupplier = (rhs) -> {
-                    JavaScriptNode withTarget = factory.createWithTarget(context, name, withObjVar.createReadNode());
-                    WritePropertyNode writeWithProperty = factory.createWriteProperty(null, name, null, context, isStrictMode(), false, true);
-                    return factory.createWithVarWrapper(context, name, isStrictMode(), withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
-                };
-                return new Pair<>(readSupplier, writeSupplier);
-            }
+    private Function<VarRef, VarRef> makeWithWrapClosure(Function<VarRef, VarRef> wrapClosure, TruffleString name, Object withVarName) {
+        return compose(wrapClosure, wrappee -> {
+            VarRef withObjVarRef = Objects.requireNonNull(findInternalSlot(withVarName));
+            return new WrappedWithVarRef(name, wrappee, withObjVarRef);
         });
     }
 
-    private WrapClosure makeGlobalWrapClosure(WrapClosure wrapClosure, TruffleString name) {
-        return WrapClosure.compose(wrapClosure, new WrapClosure() {
-            @Override
-            public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
-                JSTargetableNode scopeAccessNode;
-                if (access == WrapAccess.Delete) {
-                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
-                } else if (access == WrapAccess.Write) {
-                    assert delegateNode instanceof WriteNode : delegateNode;
-                    scopeAccessNode = factory.createWriteProperty(null, name, null, context, true);
-                } else if (access == WrapAccess.Read) {
-                    assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
-                    scopeAccessNode = factory.createReadProperty(context, null, name);
-                } else {
-                    throw new IllegalArgumentException();
-                }
-                JavaScriptNode globalScope = factory.createGlobalScope(context);
-                return factory.createGlobalVarWrapper(name, delegateNode, globalScope, scopeAccessNode);
-            }
-        });
+    private Function<VarRef, VarRef> makeGlobalWrapClosure(Function<VarRef, VarRef> wrapClosure, TruffleString name) {
+        return compose(wrapClosure, wrappee -> new WrappedGlobalVarRef(name, wrappee));
     }
 
-    private WrapClosure makeDebugWrapClosure(WrapClosure wrapClosure, TruffleString name, int frameLevel) {
-        ensureFrameLevelAvailable(frameLevel);
-        return WrapClosure.compose(wrapClosure, new WrapClosure() {
-            @Override
-            public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
-                JSTargetableNode scopeAccessNode;
-                if (access == WrapAccess.Delete) {
-                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
-                } else if (access == WrapAccess.Write) {
-                    assert delegateNode instanceof WriteNode : delegateNode;
-                    scopeAccessNode = factory.createWriteProperty(null, name, null, context, true);
-                } else if (access == WrapAccess.Read) {
-                    assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
-                    scopeAccessNode = factory.createReadProperty(context, null, name);
-                } else {
-                    throw new IllegalArgumentException();
-                }
-                JavaScriptNode debugScope = factory.createDebugScope(context, factory.createAccessCallee(frameLevel - 1));
-                return factory.createDebugVarWrapper(name, delegateNode, debugScope, scopeAccessNode);
-            }
-        });
+    private Function<VarRef, VarRef> makeDebugWrapClosure(Function<VarRef, VarRef> wrapClosure, TruffleString name, int frameLevel) {
+        return compose(wrapClosure, wrappee -> new WrappedDebugVarRef(name, wrappee, frameLevel));
     }
 
-    private VarRef wrapIn(WrapClosure wrapClosure, int wrapFrameLevel, VarRef wrappee) {
+    private VarRef wrapIn(Function<VarRef, VarRef> wrapClosure, int wrapFrameLevel, VarRef wrappee) {
         if (wrapClosure != null) {
             ensureFrameLevelAvailable(wrapFrameLevel);
-            return new WrappedVarRef(wrappee.getName(), wrappee, wrapClosure);
+            return wrapClosure.apply(wrappee);
         }
         return wrappee;
     }
@@ -1065,37 +953,38 @@ public abstract class Environment {
         }
     }
 
-    public class WrappedVarRef extends VarRef {
-        private final VarRef wrappee;
-        private final WrapClosure wrapClosure;
+    public abstract class WrappedVarRef extends VarRef {
+        protected final VarRef wrappee;
 
-        public WrappedVarRef(Object name, VarRef wrappee, WrapClosure wrapClosure) {
+        protected WrappedVarRef(Object name, VarRef wrappee) {
             super(name);
             this.wrappee = wrappee;
-            this.wrapClosure = wrapClosure;
-            assert !(wrappee instanceof WrappedVarRef); // currently unexpected
         }
 
         @Override
         public JavaScriptNode createReadNode() {
-            return wrapClosure.apply(wrappee.createReadNode(), WrapAccess.Read);
+            JavaScriptNode delegateNode = wrappee.createReadNode();
+            assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
+            JSTargetableNode scopeAccessNode = factory.createReadProperty(context, null, getName());
+            return createAccessWrapperNode(delegateNode, scopeAccessNode);
         }
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            JavaScriptNode writeNode = wrappee.isConst() ? factory.createWriteConstantVariable(rhs, true, getName()) : wrappee.createWriteNode(rhs);
-            return wrapClosure.apply(writeNode, WrapAccess.Write);
+            JavaScriptNode delegateNode = wrappee.isConst() ? factory.createWriteConstantVariable(rhs, true, getName()) : wrappee.createWriteNode(rhs);
+            assert delegateNode instanceof WriteNode : delegateNode;
+            JSTargetableNode scopeAccessNode = factory.createWriteProperty(null, getName(), null, context, isStrictMode());
+            return createAccessWrapperNode(delegateNode, scopeAccessNode);
         }
 
         @Override
         public JavaScriptNode createDeleteNode() {
-            return wrapClosure.apply(wrappee.createDeleteNode(), WrapAccess.Delete);
+            JavaScriptNode delegateNode = wrappee.createDeleteNode();
+            JSTargetableNode scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(getName()), isStrictMode());
+            return createAccessWrapperNode(delegateNode, scopeAccessNode);
         }
 
-        @Override
-        public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> createCompoundAssignNode() {
-            return wrapClosure.applyCompound(wrappee.createCompoundAssignNode());
-        }
+        protected abstract JavaScriptNode createAccessWrapperNode(JavaScriptNode delegateNode, JSTargetableNode scopeAccessNode);
 
         @Override
         public boolean isFunctionLocal() {
@@ -1117,18 +1006,109 @@ public abstract class Environment {
         }
 
         @Override
+        public boolean hasTDZCheck() {
+            return wrappee.hasTDZCheck();
+        }
+    }
+
+    class WrappedGlobalVarRef extends WrappedVarRef {
+
+        WrappedGlobalVarRef(Object name, VarRef wrappee) {
+            super(name, wrappee);
+        }
+
+        @Override
         public VarRef withTDZCheck() {
-            return new WrappedVarRef(name, wrappee.withTDZCheck(), wrapClosure);
+            return new WrappedGlobalVarRef(name, wrappee.withTDZCheck());
         }
 
         @Override
         public VarRef withRequired(boolean required) {
-            return new WrappedVarRef(name, wrappee.withRequired(required), wrapClosure);
+            return new WrappedGlobalVarRef(name, wrappee.withRequired(required));
         }
 
         @Override
-        public boolean hasTDZCheck() {
-            return wrappee.hasTDZCheck();
+        protected JavaScriptNode createAccessWrapperNode(JavaScriptNode delegateNode, JSTargetableNode scopeAccessNode) {
+            JavaScriptNode globalScope = factory.createGlobalScope(context);
+            return factory.createGlobalVarWrapper(getName(), delegateNode, globalScope, scopeAccessNode);
+        }
+    }
+
+    class WrappedEvalVarRef extends WrappedVarRef {
+        private final VarRef dynamicScopeRef;
+
+        WrappedEvalVarRef(Object name, VarRef wrappee, VarRef dynamicScopeRef) {
+            super(name, wrappee);
+            this.dynamicScopeRef = dynamicScopeRef;
+        }
+
+        @Override
+        public VarRef withTDZCheck() {
+            return new WrappedEvalVarRef(name, wrappee.withTDZCheck(), dynamicScopeRef);
+        }
+
+        @Override
+        public VarRef withRequired(boolean required) {
+            return new WrappedEvalVarRef(name, wrappee.withRequired(required), dynamicScopeRef);
+        }
+
+        @Override
+        protected JSTargetableNode createAccessWrapperNode(JavaScriptNode delegateNode, JSTargetableNode scopeAccessNode) {
+            JavaScriptNode dynamicScopeNode = dynamicScopeRef.createReadNode();
+            return new EvalVariableNode(context, getName(), delegateNode, dynamicScopeNode, scopeAccessNode);
+        }
+    }
+
+    class WrappedWithVarRef extends WrappedVarRef {
+        private final VarRef withObjVarRef;
+
+        WrappedWithVarRef(Object name, VarRef wrappee, VarRef withObjVarRef) {
+            super(name, wrappee);
+            this.withObjVarRef = withObjVarRef;
+        }
+
+        @Override
+        public VarRef withTDZCheck() {
+            return new WrappedWithVarRef(name, wrappee.withTDZCheck(), withObjVarRef);
+        }
+
+        @Override
+        public VarRef withRequired(boolean required) {
+            return new WrappedWithVarRef(name, wrappee.withRequired(required), withObjVarRef);
+        }
+
+        @Override
+        protected JavaScriptNode createAccessWrapperNode(JavaScriptNode delegateNode, JSTargetableNode withAccessNode) {
+            JavaScriptNode withTarget = factory.createWithTarget(context, getName(), withObjVarRef.createReadNode());
+            return factory.createWithVarWrapper(context, getName(), isStrictMode(), withTarget, withAccessNode, delegateNode);
+        }
+
+        @Override
+        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
+            JavaScriptNode delegateNode = wrappee.isConst() ? factory.createWriteConstantVariable(rhs, true, getName()) : wrappee.createWriteNode(rhs);
+            assert delegateNode instanceof WriteNode : delegateNode;
+            JSTargetableNode withAccessNode = factory.createWriteProperty(null, getName(), null, context, isStrictMode(), false, true);
+            return createAccessWrapperNode(delegateNode, withAccessNode);
+        }
+
+        @Override
+        public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> createCompoundAssignNode() {
+            // Use temp var to ensure unscopables check is evaluated only once.
+            VarRef withTargetTempVar = Environment.this.createTempVar();
+            Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers = wrappee.createCompoundAssignNode();
+            Supplier<JavaScriptNode> innerReadSupplier = suppliers.getFirst();
+            UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
+            Supplier<JavaScriptNode> readSupplier = () -> {
+                JavaScriptNode withTarget = withTargetTempVar.createReadNode();
+                JSTargetableNode readWithProperty = factory.createReadProperty(context, null, getName());
+                return factory.createWithVarWrapper(context, getName(), isStrictMode(), withTarget, readWithProperty, innerReadSupplier.get());
+            };
+            UnaryOperator<JavaScriptNode> writeSupplier = (rhs) -> {
+                JavaScriptNode withTarget = withTargetTempVar.createWriteNode(factory.createWithTarget(context, getName(), withObjVarRef.createReadNode()));
+                WritePropertyNode writeWithProperty = factory.createWriteProperty(null, getName(), null, context, isStrictMode(), false, true);
+                return factory.createWithVarWrapper(context, getName(), isStrictMode(), withTarget, writeWithProperty, innerWriteSupplier.apply(rhs));
+            };
+            return new Pair<>(readSupplier, writeSupplier);
         }
     }
 
@@ -1157,6 +1137,32 @@ public abstract class Environment {
             return factory.createConstantBoolean(false);
         }
 
+    }
+
+    class WrappedDebugVarRef extends WrappedVarRef {
+        private final int frameLevel;
+
+        WrappedDebugVarRef(Object name, VarRef wrappee, int frameLevel) {
+            super(name, wrappee);
+            this.frameLevel = frameLevel;
+            ensureFrameLevelAvailable(frameLevel);
+        }
+
+        @Override
+        public VarRef withTDZCheck() {
+            return new WrappedDebugVarRef(name, wrappee.withTDZCheck(), frameLevel);
+        }
+
+        @Override
+        public VarRef withRequired(boolean required) {
+            return new WrappedDebugVarRef(name, wrappee.withRequired(required), frameLevel);
+        }
+
+        @Override
+        protected JavaScriptNode createAccessWrapperNode(JavaScriptNode delegateNode, JSTargetableNode scopeAccessNode) {
+            JavaScriptNode debugScope = factory.createDebugScope(context, factory.createAccessCallee(frameLevel - 1));
+            return factory.createDebugVarWrapper(getName(), delegateNode, debugScope, scopeAccessNode);
+        }
     }
 
     final class ActiveModuleRef extends AbstractArgumentsVarRef {
