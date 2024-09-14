@@ -225,7 +225,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Fallback
         protected Object doOther(@SuppressWarnings("unused") Object other) {
-            throw Errors.createTypeError("SharedArrayBuffer expected");
+            throw Errors.createTypeErrorSharedArrayBufferExpected();
         }
     }
 

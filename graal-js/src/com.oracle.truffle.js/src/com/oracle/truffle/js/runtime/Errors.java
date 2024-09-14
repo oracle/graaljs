@@ -609,6 +609,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorSharedArrayBufferExpected() {
+        throw Errors.createTypeError("SharedArrayBuffer expected");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorArrayBufferViewExpected() {
         return Errors.createTypeError("TypedArray expected");
     }
