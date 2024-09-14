@@ -63,6 +63,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSInterruptedExecutionException;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -133,7 +134,7 @@ public class DebugJSAgent extends JSAgent {
                         }
                         // Signal received or timeout. Process all pending events.
                         do {
-                            Object next = executor.broadcasts.poll();
+                            JSArrayBufferObject.Shared next = executor.broadcasts.poll();
                             if (next != null) {
                                 executor.executeBroadcastCallback(next);
                                 // broadcast callback may have called agent.leaving().
@@ -174,7 +175,7 @@ public class DebugJSAgent extends JSAgent {
     }
 
     @TruffleBoundary
-    public void broadcast(Object sab) {
+    public void broadcast(JSArrayBufferObject.Shared sab) {
         for (AgentExecutor e : spawnedAgents) {
             e.pushMessage(sab);
         }
@@ -225,7 +226,7 @@ public class DebugJSAgent extends JSAgent {
         private final DebugJSAgent jsAgent;
         private final TruffleContext agentContext;
         private final Thread thread;
-        final Queue<Object> broadcasts;
+        final Queue<JSArrayBufferObject.Shared> broadcasts;
 
         AgentExecutor(Thread thread, DebugJSAgent jsAgent, TruffleContext agentContext) {
             CompilerAsserts.neverPartOfCompilation();
@@ -235,13 +236,13 @@ public class DebugJSAgent extends JSAgent {
             this.broadcasts = new ConcurrentLinkedQueue<>();
         }
 
-        void pushMessage(Object sab) {
+        void pushMessage(JSArrayBufferObject.Shared sab) {
             CompilerAsserts.neverPartOfCompilation();
             broadcasts.add(sab);
             jsAgent.wake();
         }
 
-        void executeBroadcastCallback(Object sab) {
+        void executeBroadcastCallback(JSArrayBufferObject.Shared sab) {
             CompilerAsserts.neverPartOfCompilation();
             assert agentContext.isEntered();
             JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;

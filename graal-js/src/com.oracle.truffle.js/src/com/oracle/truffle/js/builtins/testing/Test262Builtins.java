@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins.testing;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
@@ -62,12 +63,14 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSLoadNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -215,9 +218,14 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         }
 
         @Specialization
-        protected Object broadcast(Object sab) {
+        protected Object doSAB(JSArrayBufferObject.Shared sab) {
             ((DebugJSAgent) getRealm().getAgent()).broadcast(sab);
             return Undefined.instance;
+        }
+
+        @Fallback
+        protected Object doOther(@SuppressWarnings("unused") Object other) {
+            throw Errors.createTypeError("SharedArrayBuffer expected");
         }
     }
 
