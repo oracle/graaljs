@@ -324,9 +324,12 @@ public final class Options {
                         optWebAssembly = Boolean.TRUE;
                         polyglotOptions.put("js.webassembly", "true");
                     }
-                    if (optWebAssembly && optUnsafeWasmMemory == null) {
-                        optUnsafeWasmMemory = Boolean.TRUE;
-                        polyglotOptions.put("wasm.UseUnsafeMemory", "true");
+                    if (optWebAssembly) {
+                        polyglotOptions.put("wasm.Threads", "true");
+                        if (optUnsafeWasmMemory == null) {
+                            optUnsafeWasmMemory = Boolean.TRUE;
+                            polyglotOptions.put("wasm.UseUnsafeMemory", "true");
+                        }
                     }
                 }
                 if (optUnsafeWasmMemory == Boolean.TRUE) {

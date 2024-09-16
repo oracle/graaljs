@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     private final Object wasmMemory;
     private JSArrayBufferObject bufferObject;
-    private boolean shared;
+    private final boolean shared;
 
     protected JSWebAssemblyMemoryObject(Shape shape, JSDynamicObject proto, Object wasmMemory, boolean shared) {
         super(shape, proto);
@@ -68,6 +68,10 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
 
     public Object getWASMMemory() {
         return wasmMemory;
+    }
+
+    public boolean isShared() {
+        return shared;
     }
 
     public JSArrayBufferObject getBufferObject(JSContext context, JSRealm realm) {

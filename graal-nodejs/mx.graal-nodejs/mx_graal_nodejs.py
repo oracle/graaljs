@@ -71,7 +71,6 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
                 npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs + testArgs, cwd=unitTestDir)
                 if mx.suite('wasm', fatalIfMissing=False):
-                    npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs + testArgs, cwd=unitTestDir)
                     node(commonArgs + ['-e', 'console.log(WebAssembly)'])
                     # check that fetch API is available when WebAssembly is available
                     node(commonArgs + ['-e', 'FormData'])
@@ -84,10 +83,15 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                         join('es-module', 'test-wasm-memory-out-of-bound.js'),
                         join('es-module', 'test-wasm-simple.js'),
                         join('es-module', 'test-wasm-web-api.js'),
+                        join('parallel', 'test-blob.js'),
                         join('parallel', 'test-fetch.mjs'),
                         join('parallel', 'test-fetch-disabled.mjs'),
+                        join('parallel', 'test-fetch-mock.js'),
+                        join('parallel', 'test-http-response-setheaders.js'),
+                        join('parallel', 'test-websocket.js'),
                         join('parallel', 'test-whatwg-webstreams-transfer.js'),
-                        join('parallel', 'test-worker-message-port-wasm-module.js')
+                        join('parallel', 'test-worker-message-port-wasm-module.js'),
+                        join('parallel', 'test-worker-message-port-wasm-threads.js')
                     ]
                     for test in wasm_tests:
                         node(commonArgs + [join(_suite.dir, 'test', test)])

@@ -52,6 +52,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
@@ -75,6 +76,8 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -194,8 +197,11 @@ public class Deserializer {
                 return readJSError(realm);
             case WASM_MODULE_TRANSFER:
                 return readWasmModuleTransfer();
+            case WASM_MEMORY_TRANSFER:
+                return readWasmMemoryTransfer(realm);
             case SHARED_JAVA_OBJECT:
-                return readSharedJavaObject(realm);
+                Object hostValue = readSharedJavaObject();
+                return realm.getEnv().asGuestValue(hostValue);
             default:
                 throw Errors.createError("Deserialization of a value tagged " + tag);
         }
@@ -558,14 +564,31 @@ public class Deserializer {
         return assignId(wasmModule);
     }
 
-    public Object readSharedJavaObject(JSRealm realm) {
+    public Object readWasmMemoryTransfer(JSRealm realm) {
+        SerializationTag sharedJavaObjectTag = readTag();
+        assert sharedJavaObjectTag == SerializationTag.SHARED_JAVA_OBJECT;
+        Object wasmMemory = readSharedJavaObject();
+
+        sharedJavaObjectTag = readTag();
+        assert sharedJavaObjectTag == SerializationTag.SHARED_JAVA_OBJECT;
+        JSAgentWaiterList waiterList = (JSAgentWaiterList) readSharedJavaObject();
+
+        JSContext context = realm.getContext();
+        JSWebAssemblyMemoryObject webAssemblyMemory = JSWebAssemblyMemory.create(context, realm, wasmMemory, true);
+        JSArrayBufferObject arrayBuffer = webAssemblyMemory.getBufferObject(context, realm);
+        JSSharedArrayBuffer.setWaiterList(arrayBuffer, waiterList);
+
+        return assignId(webAssemblyMemory);
+    }
+
+    public Object readSharedJavaObject() {
         long messagePortPointer = readVarLong();
         if (messagePortCache == null || messagePortCache.getMessagePortDataPointer() != messagePortPointer) {
             messagePortCache = SharedMemMessagingManager.getMessagePortDataFor(messagePortPointer);
         }
         Object element = messagePortCache.removeJavaRef();
         assert element != null;
-        return realm.getEnv().asGuestValue(element);
+        return element;
     }
 
     public int readBytes(int length) {

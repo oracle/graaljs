@@ -165,7 +165,7 @@ describe('Java interop messages', function() {
                     eval: true
                 });
                 w.on('message', (m) => {
-                    if (++received == workersNum) {
+                    if (++received === workersNum) {
                         assert(map.size() === workersNum);
                         for (var i = 0; i < workersNum; i++) {
                             assert(map.get(42 + i) === true);
