@@ -141,7 +141,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             var resObj = getArraySpeciesConstructorNode().construct(constr, newLen);
             if (!JSSharedArrayBuffer.isJSSharedArrayBuffer(resObj)) {
                 errorBranch.enter(this);
-                throw Errors.createTypeError("SharedArrayBuffer expected");
+                throw Errors.createTypeErrorSharedArrayBufferExpected();
             }
             var newBuffer = (JSArrayBufferObject.Shared) resObj;
             if (resObj == thisObj) {
