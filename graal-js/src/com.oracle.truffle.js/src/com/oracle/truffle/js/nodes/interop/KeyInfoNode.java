@@ -52,14 +52,17 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -145,11 +148,27 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
         return false;
     }
 
-    @Specialization(replaces = "cachedOwnProperty")
-    static boolean member(JSDynamicObject target, String key, int query,
-                    @Cached GetPrototypeNode getPrototype,
+    @Specialization
+    boolean doProxy(JSProxyObject proxy, String key, int query,
+                    @Cached @Shared GetPrototypeNode getPrototype,
                     @Cached @Shared IsCallableNode isCallable,
-                    @Cached IsExtensibleNode isExtensible,
+                    @Cached @Shared IsExtensibleNode isExtensible,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode) {
+        JavaScriptLanguage language = JavaScriptLanguage.get(this);
+        JSRealm realm = JSRealm.get(this);
+        language.interopBoundaryEnter(realm);
+        try {
+            return doNonProxy(proxy, key, query, getPrototype, isCallable, isExtensible, fromJavaStringNode);
+        } finally {
+            language.interopBoundaryExit(realm);
+        }
+    }
+
+    @Specialization(guards = {"!isJSProxy(target)"}, replaces = "cachedOwnProperty")
+    static boolean doNonProxy(JSDynamicObject target, String key, int query,
+                    @Cached @Shared GetPrototypeNode getPrototype,
+                    @Cached @Shared IsCallableNode isCallable,
+                    @Cached @Shared IsExtensibleNode isExtensible,
                     @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode) {
         TruffleString tStringKey = Strings.fromJavaString(fromJavaStringNode, key);
         PropertyDescriptor desc = null;

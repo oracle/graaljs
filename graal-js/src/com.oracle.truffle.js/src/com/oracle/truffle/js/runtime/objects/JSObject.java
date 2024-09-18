@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -130,12 +129,8 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
     }
 
     @ExportMessage
-    public abstract static class GetMembers {
-
-        @Specialization
-        public static Object nonArray(JSObject target, @SuppressWarnings("unused") boolean internal) {
-            return InteropArray.create(JSObject.enumerableOwnNames(target));
-        }
+    public Object getMembers(@SuppressWarnings("unused") boolean internal) {
+        return InteropArray.create(JSObject.enumerableOwnNames(this));
     }
 
     @TruffleBoundary
