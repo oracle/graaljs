@@ -203,6 +203,33 @@ public final class JSProxyObject extends JSClassObject {
         }
     }
 
+    @ExportMessage
+    public void removeMember(String key,
+                    @CachedLibrary("this") InteropLibrary self,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) throws UnsupportedMessageException {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
+        JSRealm realm = JSRealm.get(self);
+        language.interopBoundaryEnter(realm);
+        try {
+            super.removeMember(key, fromJavaString);
+        } finally {
+            language.interopBoundaryExit(realm);
+        }
+    }
+
+    @ExportMessage
+    public Object getMembers(@SuppressWarnings("unused") boolean internal,
+                    @CachedLibrary("this") InteropLibrary self) {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
+        JSRealm realm = JSRealm.get(self);
+        language.interopBoundaryEnter(realm);
+        try {
+            return super.getMembers(internal);
+        } finally {
+            language.interopBoundaryExit(realm);
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     public static final class RevokedTarget implements TruffleObject {
         private final boolean isCallable;

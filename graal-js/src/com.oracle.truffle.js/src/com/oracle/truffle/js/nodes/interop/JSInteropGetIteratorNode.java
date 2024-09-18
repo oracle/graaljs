@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -81,31 +82,37 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
     protected abstract Object execute(JSObject receiver, JavaScriptLanguage language, boolean hasIteratorCheck) throws UnsupportedMessageException;
 
     @Specialization
-    Object doDefault(JSObject receiver, @SuppressWarnings("unused") JavaScriptLanguage language, boolean hasIteratorCheck,
+    Object doDefault(JSObject receiver, JavaScriptLanguage language, boolean hasIteratorCheck,
                     @Cached(value = "create(SYMBOL_ITERATOR, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode iteratorPropertyGetNode,
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached(value = "create(NEXT, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode nextPropertyGetNode,
                     @Cached InlinedBranchProfile exceptionBranch) throws UnsupportedMessageException {
-        Object method = getProperty(receiver, iteratorPropertyGetNode, Symbol.SYMBOL_ITERATOR, null);
-        boolean hasIterator = method != null && isCallableNode.executeBoolean(method);
-        if (hasIteratorCheck) {
-            return hasIterator;
-        }
-        if (hasIterator) {
-            Object iterator = callNode.executeCall(JSArguments.createZeroArg(receiver, method));
-            if (iterator instanceof JSObject) {
-                JSObject jsIterator = (JSObject) iterator;
-                Object nextMethod = getProperty(jsIterator, nextPropertyGetNode, Strings.NEXT, null);
-                if (nextMethod != null && isCallableNode.executeBoolean(nextMethod)) {
-                    return JSIteratorWrapper.create(IteratorRecord.create(jsIterator, nextMethod));
-                }
+        JSRealm realm = JSRealm.get(this);
+        language.interopBoundaryEnter(realm);
+        try {
+            Object method = getProperty(receiver, iteratorPropertyGetNode, Symbol.SYMBOL_ITERATOR, null);
+            boolean hasIterator = method != null && isCallableNode.executeBoolean(method);
+            if (hasIteratorCheck) {
+                return hasIterator;
             }
-            exceptionBranch.enter(this);
-            throw Errors.createTypeErrorNotIterable(receiver, null);
-        } else {
-            exceptionBranch.enter(this);
-            throw UnsupportedMessageException.create();
+            if (hasIterator) {
+                Object iterator = callNode.executeCall(JSArguments.createZeroArg(receiver, method));
+                if (iterator instanceof JSObject) {
+                    JSObject jsIterator = (JSObject) iterator;
+                    Object nextMethod = getProperty(jsIterator, nextPropertyGetNode, Strings.NEXT, null);
+                    if (nextMethod != null && isCallableNode.executeBoolean(nextMethod)) {
+                        return JSIteratorWrapper.create(IteratorRecord.create(jsIterator, nextMethod));
+                    }
+                }
+                exceptionBranch.enter(this);
+                throw Errors.createTypeErrorNotIterable(receiver, null);
+            } else {
+                exceptionBranch.enter(this);
+                throw UnsupportedMessageException.create();
+            }
+        } finally {
+            language.interopBoundaryExit(realm);
         }
     }
 }
