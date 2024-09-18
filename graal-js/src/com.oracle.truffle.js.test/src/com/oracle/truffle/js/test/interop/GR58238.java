@@ -127,6 +127,54 @@ public class GR58238 {
         verifier.assertCalled();
     }
 
+    @Test
+    public void testProxyRemoveMember() {
+        String code = """
+                        let handler = {
+                            deleteProperty(target, key) {
+                                Promise.resolve().then(_ => verifier.call());
+                                return delete target[key];
+                            }
+                        };
+                        new Proxy({ foo: 42 }, handler);
+                        """;
+        Value object = context.eval("js", code);
+        object.removeMember("foo");
+        verifier.assertCalled();
+    }
+
+    @Test
+    public void testProxyGetMemberKeys() {
+        String code = """
+                        let handler = {
+                            ownKeys(target, key) {
+                                Promise.resolve().then(_ => verifier.call());
+                                return Reflect.ownKeys(target);
+                            }
+                        };
+                        new Proxy({ foo: 42 }, handler);
+                        """;
+        Value object = context.eval("js", code);
+        object.getMemberKeys();
+        verifier.assertCalled();
+    }
+
+    @Test
+    public void testProxyCanInvokeMember() {
+        String code = """
+                        let handler = {
+                            getOwnPropertyDescriptor(target, key) {
+                                Promise.resolve().then(_ => verifier.call());
+                                return Reflect.getOwnPropertyDescriptor(target, key);
+                            }
+                        };
+                        new Proxy({ foo() {} }, handler);
+                        """;
+        Value object = context.eval("js", code);
+        object.canInvokeMember("foo");
+        verifier.assertCalled();
+    }
+
     public static class CallbackVerifier {
         private boolean called;
 
