@@ -133,6 +133,7 @@ import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.InNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
+import com.oracle.truffle.js.nodes.binary.JSAddSubNumericUnitNode;
 import com.oracle.truffle.js.nodes.binary.JSAndNode;
 import com.oracle.truffle.js.nodes.binary.JSBitwiseAndNode;
 import com.oracle.truffle.js.nodes.binary.JSBitwiseOrNode;
@@ -280,7 +281,9 @@ public class NodeFactory {
         INSTANCEOF,
         IN,
         DUAL,
-        NULLISH_COALESCING
+        NULLISH_COALESCING,
+        INCREMENT,
+        DECREMENT,
     }
 
     public enum UnaryOperation {
@@ -395,6 +398,12 @@ public class NodeFactory {
                 return InNode.create(context, left, right);
             case DUAL:
                 return DualNode.create(left, right);
+            case INCREMENT:
+                assert right == null;
+                return JSAddSubNumericUnitNode.create(left, true, false);
+            case DECREMENT:
+                assert right == null;
+                return JSAddSubNumericUnitNode.create(left, false, false);
             default:
                 throw new IllegalArgumentException();
         }
@@ -451,10 +460,6 @@ public class NodeFactory {
 
     public JavaScriptNode createConstantSafeInteger(long value) {
         return JSConstantNode.createSafeInteger(SafeInteger.valueOf(value));
-    }
-
-    public JavaScriptNode createConstantNumericUnit() {
-        return JSConstantNode.createConstantNumericUnit();
     }
 
     public JavaScriptNode createConstantDouble(double value) {

@@ -55,7 +55,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -150,10 +149,6 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         return new JSConstantDoubleNode(value);
     }
 
-    public static JSConstantNode createConstantNumericUnit() {
-        return new JSConstantNumericUnitNode();
-    }
-
     public static JSConstantNode createBoolean(boolean value) {
         return new JSConstantBooleanNode(value);
     }
@@ -220,27 +215,6 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         @Override
         public Object getValue() {
             return intValue;
-        }
-    }
-
-    public static final class JSConstantNumericUnitNode extends JSConstantNode {
-
-        private JSConstantNumericUnitNode() {
-        }
-
-        @Override
-        public boolean isInstrumentable() {
-            return false;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            throw Errors.shouldNotReachHere();
-        }
-
-        @Override
-        public Object getValue() {
-            throw Errors.shouldNotReachHere();
         }
     }
 

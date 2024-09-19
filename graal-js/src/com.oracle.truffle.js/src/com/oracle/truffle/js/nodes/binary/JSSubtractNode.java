@@ -55,7 +55,6 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNumericUnitNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Strings;
@@ -71,9 +70,6 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
-        if (right instanceof JSConstantNumericUnitNode) {
-            return JSAddSubNumericUnitNode.create(left, false, truncate);
-        }
         return JSSubtractNodeGen.create(truncate, left, right);
     }
 
