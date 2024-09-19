@@ -2885,15 +2885,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         // if scopeVar is const, the assignment will never succeed and is only there to perform
         // the temporal dead zone check and throw a ReferenceError instead of a TypeError
-        if (!initializationAssignment && scopeVar.isConst()) {
-            rhs = checkMutableBinding(rhs, scopeVar.getName());
-        }
+        boolean constAssignment = !initializationAssignment && scopeVar.isConst();
 
         if (binaryOp == null) {
+            if (constAssignment) {
+                rhs = checkMutableBinding(rhs, scopeVar.getName());
+            }
             return scopeVar.createWriteNode(rhs);
         } else {
             if (isLogicalOp(binaryOp)) {
                 assert !convertLHSToNumeric && !returnOldValue;
+                if (constAssignment) {
+                    rhs = checkMutableBinding(rhs, scopeVar.getName());
+                }
                 JavaScriptNode readNode = tagExpression(scopeVar.createReadNode(), identNode);
                 JavaScriptNode writeNode = scopeVar.createWriteNode(rhs);
                 return factory.createBinary(context, binaryOp, readNode, writeNode);
@@ -2913,6 +2917,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     readNode = prevValueTemp.createWriteNode(readNode);
                 }
                 JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, rhs), identNode);
+                if (constAssignment) {
+                    binOpNode = checkMutableBinding(binOpNode, scopeVar.getName());
+                }
                 JavaScriptNode writeNode = pair.getSecond().apply(binOpNode);
                 if (returnOldValue) {
                     return factory.createDual(context, writeNode, prevValueTemp.createReadNode());
