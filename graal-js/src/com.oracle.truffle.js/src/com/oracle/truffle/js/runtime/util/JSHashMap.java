@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,14 @@ public final class JSHashMap {
          * @return {@code true} if a next entry exists, {@code false} if there is no next entry.
          */
         boolean advance();
+
+        /**
+         * Determines whether the current entry is valid.
+         * 
+         * @return {@code true} if {@code advance()} has not been called yet or if the current entry
+         *         is not valid anymore (i.e. has been removed), returns {@code false} otherwise.
+         */
+        boolean shouldAdvance();
 
         /**
          * The key of the current entry.
@@ -190,6 +198,11 @@ public final class JSHashMap {
                 current = next;
                 return next != null;
             }
+        }
+
+        @Override
+        public boolean shouldAdvance() {
+            return current != null && current.isEmpty();
         }
 
         @Override

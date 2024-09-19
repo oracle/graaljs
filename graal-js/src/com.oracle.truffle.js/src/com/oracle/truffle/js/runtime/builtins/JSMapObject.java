@@ -194,7 +194,7 @@ public final class JSMapObject extends JSNonProxyObject {
 
         @ExportMessage
         boolean hasIteratorNextElement() {
-            if (hasNext == null) {
+            if (hasNext == null || cursor.shouldAdvance()) {
                 hasNext = cursor.advance();
             }
             return hasNext;
