@@ -7,24 +7,24 @@ permalink: /reference-manual/js/JavaInteroperability/
 
 # Java Interoperability
 
-This documentation shows you how to enable interoperability with Java and possible JavaScript-to-Java embedding scenarios. 
+This documentation shows you how to enable interoperability with Java and possible JavaScript-to-Java embedding scenarios.
 
 ## Enabling Java Interoperability
 
-As of GraalVM for JDK 21, all necessary artifacts can be downloaded directly from Maven Central. 
+As of GraalVM for JDK 21, all necessary artifacts can be downloaded directly from Maven Central.
 All artifacts relevant to embedders can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
 
 To embed JavaScript in a Java application, add the following dependencies to the Maven configuration file:
 ```xml
-<dependency> 
-	<groupId>org.graalvm.polyglot</groupId> 
-	<artifactId>polyglot</artifactId> 
-	<version>${graaljs.version}</version> 
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
+	<artifactId>polyglot</artifactId>
+	<version>${graaljs.version}</version>
 </dependency>
-<dependency> 
-	<groupId>org.graalvm.polyglot</groupId> 
-	<artifactId>js</artifactId> 
-	<version>${graaljs.version}</version> 
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
+	<artifactId>js</artifactId>
+	<version>${graaljs.version}</version>
 	<type>pom</type>
 </dependency>
 ```
@@ -372,7 +372,7 @@ More detailed example usages are available in the GraalJS [unit tests](https://g
 
 ## Multithreading
 
-GraalJS supports multithreading when used in combination with Java. 
+GraalJS supports multithreading when used in combination with Java.
 More details about the GraalJS multithreading model can be found in the [Multithreading](Multithreading.md) documentation.
 
 ## Extending Java classes
