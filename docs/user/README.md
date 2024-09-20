@@ -104,7 +104,7 @@ See how to install GraalVM on the [Downloads page](https://www.graalvm.org/downl
     </properties>
     ```
 
-4. Add the regular Maven plugins for compiling and assembling the project into a JAR file with all dependencies to your _pom.xml_ file:
+4. Add the Maven plugins for compiling the project into a JAR file and copying all runtime dependencies into a directory to your _pom.xml_ file:
     ```xml
     <build>
         <plugins>
@@ -118,25 +118,32 @@ See how to install GraalVM on the [Downloads page](https://www.graalvm.org/downl
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.7.1</version>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
                 <configuration>
                     <archive>
                         <manifest>
                             <mainClass>com.example.App</mainClass>
                         </manifest>
                     </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.0</version>
                 <executions>
                     <execution>
-                        <id>make-assembly</id>
+                        <id>copy-dependencies</id>
                         <phase>package</phase>
                         <goals>
-                            <goal>single</goal>
+                            <goal>copy-dependencies</goal>
                         </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/modules</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                            <includeTypes>jar</includeTypes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -144,16 +151,40 @@ See how to install GraalVM on the [Downloads page](https://www.graalvm.org/downl
     </build>
     ```
 
-5. Package the project and run the application:
+5. (Optional.) Add _module-info.java_ to your application.
+    If you would like to run your application on the module path, create a _module-info.java_ file in _src/main/java_ with the following contents:
+    ```java
+    module com.example {
+        requires org.graalvm.polyglot;
+    }
+    ```
+
+6. Compile and package the project:
     ```bash
     mvn clean package
     ```
+
+7.  Run the application using GraalVM or another compatible JDK.
+    If you've included _module-info.java_ in your project (step 5), you can now run the application on the module path, using one of the following commands:
     ```bash
-    java -jar target/helloworld-1.0-SNAPSHOT-jar-with-dependencies.jar GraalVM
+    java --module-path target/modules:target/helloworld-1.0-SNAPSHOT.jar --module com.example/com.example.App "GraalVM"
+    java -p target/modules:target/helloworld-1.0-SNAPSHOT.jar -m com.example/com.example.App "GraalVM"
+    ```
+    Otherwise, you can run with the dependencies on the module path and the application on the class path:
+    ```bash
+    java --module-path target/modules --add-modules=org.graalvm.polyglot -cp target/helloworld-1.0-SNAPSHOT.jar com.example.App "GraalVM"
+    java --module-path target/modules --add-modules=org.graalvm.polyglot -jar target/helloworld-1.0-SNAPSHOT.jar "GraalVM"
+    ```
+    Alternatively, you can run with everything on the class path as well (in this case you need to use `*` or specify all JAR files):
+    ```bash
+    java -cp "target/modules/*:target/helloworld-1.0-SNAPSHOT.jar" com.example.App "GraalVM"
+    # or using shell expansion:
+    java -cp "$(find target/modules -name '*.jar' | tr '\n' :)target/helloworld-1.0-SNAPSHOT.jar" com.example.App "GraalVM"
+    java -cp "$(printf %s: target/modules/*.jar)target/helloworld-1.0-SNAPSHOT.jar" com.example.App "GraalVM"
     ```
 
-    A single JAR with all dependencies was created from language libraries.
-    However, we recommend splitting and using Java modules on the module path, especially if you would like to compile this application ahead of time with GraalVM Native Image.
+    > Note: We discourage bundling all dependencies into a single "fat" JAR (for example, using the Maven Assembly plugin) as it can cause issues and prevent ahead-of-time compilation with [GraalVM Native Image](https://www.graalvm.org/reference-manual/native-image/).
+    > Instead, we recommend using the original, separate JAR files for all `org.graalvm.*` dependencies, preferably on the module path.
     Learn more in the [Guide to Embedding Languages](https://www.graalvm.org/reference-manual/embed-languages/#dependency-setup).
 
 The source code unit can be represented with a String, as shown in the example, a file, read from URL, and [other means](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html).
