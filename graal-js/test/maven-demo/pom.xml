@@ -118,7 +118,7 @@
                 <plugins>
                     <plugin>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>3.1.2</version>
+                        <version>3.2.5</version>
                         <configuration>
                             <argLine>-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI --add-exports=java.base/jdk.internal.misc=jdk.graal.compiler --upgrade-module-path=${compiler.dir}</argLine>
                         </configuration>
@@ -126,7 +126,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-dependency-plugin</artifactId>
-                        <version>3.6.0</version>
+                        <version>3.6.1</version>
                         <executions>
                             <execution>
                                 <id>copy</id>
@@ -255,7 +255,7 @@
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.12.1</version>
                 <configuration>
                     <target>17</target>
                     <source>17</source>
@@ -263,7 +263,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.1.2</version>
+                <version>3.2.5</version>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -304,6 +304,26 @@
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                    <id>enforce-maven</id>
+                    <goals>
+                        <goal>enforce</goal>
+                    </goals>
+                    <configuration>
+                        <rules>
+                            <requireMavenVersion>
+                                <version>3.2.5</version>
+                            </requireMavenVersion>
+                        </rules>
+                    </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
