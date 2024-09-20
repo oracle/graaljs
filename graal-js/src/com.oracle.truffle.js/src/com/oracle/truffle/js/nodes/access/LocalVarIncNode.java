@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,8 +56,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.binary.JSAddNode;
-import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
+import com.oracle.truffle.js.nodes.binary.JSAddSubNumericUnitNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
@@ -223,19 +222,17 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(from.getSlotIndex(), from.getIdentifier(), scopeFrameNode, convert, hasTemporalDeadZone), materializedTags);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(from.getSlotIndex(), from.getIdentifier(), scopeFrameNode, hasTemporalDeadZone);
-        JavaScriptNode one = JSConstantNode.createConstantNumericUnit();
         JavaScriptNode opNode;
         if (from.op instanceof DecOp) {
-            opNode = JSSubtractNode.create(readTmp, one);
+            opNode = JSAddSubNumericUnitNode.create(readTmp, false, false);
         } else {
-            opNode = JSAddNode.create(readTmp, one);
+            opNode = JSAddSubNumericUnitNode.create(readTmp, true, false);
         }
         /*
          * Have to transfer source sections before cloning and materialization. Some nodes might
          * become instrumentable by this operation.
          */
         transferSourceSectionAddExpressionTag(from, readTmp);
-        transferSourceSectionAddExpressionTag(from, one);
         transferSourceSectionAddExpressionTag(from, opNode);
         this.writeNew = cloneUninitialized(JSWriteFrameSlotNode.create(from.getSlotIndex(), from.getIdentifier(), scopeFrameNode, opNode, hasTemporalDeadZone), materializedTags);
         transferSourceSectionAddExpressionTag(from, writeNew);
