@@ -35,7 +35,7 @@ Below is the Maven configuration for a JavaScript embedding:
 </dependency>
 ```
 This enables GraalJS which is built on top of Oracle GraalVM and licensed under the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html).
-Use `js-community` if you want to use GraalJS built on GraalVM Community Edition.
+Use _artifactId_ `js-community` instead of `js` if you want to use GraalJS built on GraalVM Community Edition.
 
 Go step-by-step to create a Maven project, embedding JavaScript in Java, and run it.
 This example application was tested with GraalVM for JDK 23 and the GraalVM Polyglot API version 24.1.0.

@@ -13,23 +13,7 @@ This documentation shows you how to enable interoperability with Java and possib
 
 As of GraalVM for JDK 21, all necessary artifacts can be downloaded directly from Maven Central.
 All artifacts relevant to embedders can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
-
-To embed JavaScript in a Java application, add the following dependencies to the Maven configuration file:
-```xml
-<dependency>
-	<groupId>org.graalvm.polyglot</groupId>
-	<artifactId>polyglot</artifactId>
-	<version>${graaljs.version}</version>
-</dependency>
-<dependency>
-	<groupId>org.graalvm.polyglot</groupId>
-	<artifactId>js</artifactId>
-	<version>${graaljs.version}</version>
-	<type>pom</type>
-</dependency>
-```
-The `pom` type is a requirement for a language dependency.
-Learn more about the dependency setup in the [Java Interoperability guide](JavaInteroperability.md).
+Learn more about the dependency setup in the [Getting Started guide](README.md).
 
 ## Polyglot Context
 
