@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,22 @@ public class TestBindings {
 
     private ScriptEngine getEngine() {
         return manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
+    }
+
+    @Test
+    public void engineEmptyBindings() {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.createBindings();
+        engine.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
+        assertEquals(bindings, engine.getBindings(ScriptContext.ENGINE_SCOPE));
+    }
+
+    @Test
+    public void globalEmptyBindings() {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.createBindings();
+        engine.setBindings(bindings, ScriptContext.GLOBAL_SCOPE);
+        assertEquals(bindings, engine.getBindings(ScriptContext.GLOBAL_SCOPE));
     }
 
     @Test
