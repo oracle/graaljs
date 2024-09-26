@@ -37,7 +37,7 @@ An example _pom.xml_ file can be found in the [GraalJS repository on GitHub](htt
 
 ## Recommendation for Use
 
-To avoid unnecessary recompilation of JavaScript sources, **it is recommended to use `CompiledScript.eval`** instead of `ScriptEngine.eval`. 
+To avoid unnecessary recompilation of JavaScript sources, **it is recommended to use `CompiledScript.eval`** instead of `ScriptEngine.eval`.
 This prevents JIT-compiled code from being garbage-collected as long as the corresponding `CompiledScript` object is alive.
 
 Single-threaded example:
@@ -70,8 +70,8 @@ script.eval();
 
 ## Setting Options via `Bindings`
 
-The `ScriptEngine` interface does not provide a default way to set options. 
-As a workaround, `GraalJSScriptEngine` supports setting some `Context` options through `Bindings`. 
+The `ScriptEngine` interface does not provide a default way to set options.
+As a workaround, `GraalJSScriptEngine` supports setting some `Context` options through `Bindings`.
 These options are:
 * `polyglot.js.allowHostAccess <boolean>`
 * `polyglot.js.allowNativeAccess <boolean>`
@@ -88,7 +88,7 @@ These options control the sandboxing rules applied to evaluated JavaScript code 
 Note that using `ScriptEngine` implies allowing experimental options.
 This is an exhaustive list of allowed options to be passed via `Bindings`; in case you need to pass additional options to GraalJS, you need to manually create a `Context` as shown below.
 
-To set an option via `Bindings`, use `Bindings.put(<option name>, true)` **before** the engine's script context is initialized. 
+To set an option via `Bindings`, use `Bindings.put(<option name>, true)` **before** the engine's script context is initialized.
 Note that even a call to `Bindings#get(String)` may lead to a context initialization.
 The following code shows how to enable `polyglot.js.allowHostAccess` via `Bindings`:
 ```java
@@ -108,7 +108,7 @@ Options to the JavaScript engine can be set via system properties before startin
 java -Dpolyglot.js.ecmascript-version=2022 MyApplication
 ```
 
-Or, options to the JavaScript engine can be set programmatically from within a Java application before creating `ScriptEngine`. 
+Or, options to the JavaScript engine can be set programmatically from within a Java application before creating `ScriptEngine`.
 This, however, only works for the options passed to the JavaScript engine (such as `js.ecmascript-version`), and not for the options mentioned in the example that can be set via `Bindings`.
 Another caveat is that those system properties are shared by all concurrently executed `ScriptEngine`s.
 

@@ -77,6 +77,11 @@ To install GraalJS from a standalone, download and extract the archive from the 
 After the installation, the `js` or `node` executable in the `bin` subdirectory can be used to run JavaScript files or Node modules, respectively.
 If no file is provided on the command line, an interactive shell (REPL) will be spawned.
 
+> Note: If you are using macOS, first remove the quarantine attribute from the archive:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
+    ```
+
 ## Node.js Runtime
 
 GraalJS can run unmodified Node.js applications. 
