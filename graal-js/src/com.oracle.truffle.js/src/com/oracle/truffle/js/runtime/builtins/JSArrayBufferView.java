@@ -297,13 +297,13 @@ public final class JSArrayBufferView extends JSNonProxy {
         return d < JSArrayBufferView.typedArrayGetLength(thisObj);
     }
 
-    public static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSArrayBufferObject arrayBuffer, TypedArray arrayType, int offset, int length) {
-        CompilerAsserts.partialEvaluationConstant(arrayType);
-        assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
+    public static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSArrayBufferObject arrayBuffer,
+                    TypedArrayFactory typedArrayFactory, TypedArray arrayType, int offset, int length) {
+        CompilerAsserts.partialEvaluationConstant(typedArrayFactory);
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
-        JSObjectFactory objectFactory = context.getArrayBufferViewFactory(arrayType.getFactory());
+        JSObjectFactory objectFactory = context.getArrayBufferViewFactory(typedArrayFactory);
         return createArrayBufferView(objectFactory, realm, arrayBuffer, arrayType, offset, length);
     }
 
