@@ -49,6 +49,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -63,6 +64,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -198,13 +200,26 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         boolean anyReturnTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxClose + 1) >= 0;
         boolean anyArgTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxOpen + 1, idxClose) >= 0;
 
+        CallTarget callTarget = createExportAdapterCallTarget(context, paramTypes, anyReturnTypeIsI64, anyArgTypeIsI64, anyReturnTypeIsV128, anyArgTypeIsV128, argCount, returnLength);
+
+        JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
+        JSFunctionObject result = JSFunction.create(realm, functionData);
+        JSObjectUtil.putHiddenProperty(result, JSWebAssembly.FUNCTION_ADDRESS, export);
+        JSWebAssembly.setEmbedderData(realm, export, result);
+        return result;
+    }
+
+    private static CallTarget createExportAdapterCallTarget(JSContext context, TruffleString[] paramTypes, boolean anyReturnTypeIsI64, boolean anyArgTypeIsI64,
+                    boolean anyReturnTypeIsV128, boolean anyArgTypeIsV128, int argCount, int returnLength) {
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @CompilationFinal(dimensions = 1) private final TruffleString[] argTypesArray = paramTypes;
+
             @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNodeGen.create();
             @Child ToJSValueNode toJSValueNode = ToJSValueNodeGen.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             @Child InteropLibrary readArrayElementLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            @CompilationFinal(dimensions = 1) TruffleString[] argTypesArray = paramTypes;
+            @Child DynamicObjectLibrary getExportedFunctionLib = JSObjectUtil.createDispatched(JSWebAssembly.FUNCTION_ADDRESS);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -226,6 +241,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     wasmArgs[i] = toWebAssemblyValueNode.execute(wasmArg, argTypesArray[i]);
                 }
 
+                Object export = getExportedFunctionLib.getOrDefault(JSFrameUtil.getFunctionObject(frame), JSWebAssembly.FUNCTION_ADDRESS, null);
                 try {
                     Object wasmResult;
                     try {
@@ -252,19 +268,14 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         for (int i = 0; i < returnLength; i++) {
                             values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i));
                         }
-                        return JSArray.createConstantObjectArray(context, realm, values);
+                        return JSArray.createConstantObjectArray(context, getRealm(), values);
                     }
                 } catch (InteropException ex) {
                     throw Errors.shouldNotReachHere(ex);
                 }
             }
         }.getCallTarget();
-
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
-        JSFunctionObject result = JSFunction.create(realm, functionData);
-        JSObjectUtil.putHiddenProperty(result, JSWebAssembly.FUNCTION_ADDRESS, export);
-        JSWebAssembly.setEmbedderData(realm, export, result);
-        return result;
+        return callTarget;
     }
 
     @CompilerDirectives.TruffleBoundary
