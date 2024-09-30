@@ -126,7 +126,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         boolean interop = JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
         boolean direct = JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer);
         TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(direct, (offset != 0), interop);
-        JSTypedArrayObject array = JSArrayBufferView.createArrayBufferView(context, realm, buffer, arrayType, offset, length);
+        JSTypedArrayObject array = JSArrayBufferView.createArrayBufferView(context, realm, buffer, TypedArrayFactory.Uint8Array, arrayType, offset, length);
         return new InteropBufferView(buffer, offset, length, array);
     }
 
