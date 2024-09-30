@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.array.ArrayBufferViewGetByteLengthNode;
+import com.oracle.truffle.js.nodes.array.GetViewByteLengthNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -88,16 +91,18 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object exportTypedArray(JSTypedArrayObject typedArray) {
+    protected Object exportTypedArray(JSTypedArrayObject typedArray,
+                    @Cached ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         int offset = JSArrayBufferView.getByteOffset(typedArray, context);
-        int length = JSArrayBufferView.getByteLength(typedArray, context);
+        int length = getByteLengthNode.executeInt(this, typedArray, context);
         return exportBuffer(typedArray.getArrayBuffer(), offset, length);
     }
 
     @Specialization
-    protected Object exportDataView(JSDataViewObject dataView) {
+    protected Object exportDataView(JSDataViewObject dataView,
+                    @Cached GetViewByteLengthNode getByteLengthNode) {
         int offset = JSDataView.dataViewGetByteOffset(dataView);
-        int length = JSDataView.dataViewGetByteLength(dataView);
+        int length = getByteLengthNode.execute(dataView, context);
         return exportBuffer(dataView.getArrayBuffer(), offset, length);
     }
 
