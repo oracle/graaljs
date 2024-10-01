@@ -49,7 +49,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IterableToListNode;
@@ -106,7 +105,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
 
         Object result = callNode.executeCall(JSArguments.create(Undefined.instance, fn, jsArgs));
 
-        TruffleString[] resultTypes = type.resultTypes();
+        WebAssemblyValueType[] resultTypes = type.resultTypes();
         if (resultTypes.length == 0) {
             return Undefined.instance;
         } else if (resultTypes.length == 1) {

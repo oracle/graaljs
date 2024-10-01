@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,50 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import java.util.Arrays;
-import java.util.Objects;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+/**
+ * Represents the value types used in WebAssembly.
+ * 
+ * See org.graalvm.wasm.api.ValueType.
+ */
+public enum WebAssemblyValueType {
+    i32(false),
+    i64(false),
+    f32(false),
+    f64(false),
+    v128(false),
+    anyfunc(true),
+    externref(true);
 
-public record WasmFunctionTypeInfo(
-                @CompilationFinal(dimensions = 1) WebAssemblyValueType[] paramTypes,
-                @CompilationFinal(dimensions = 1) WebAssemblyValueType[] resultTypes,
-                boolean anyTypeIsI64,
-                boolean anyTypeIsV128) {
+    private final boolean reference;
 
-    public int paramLength() {
-        return paramTypes.length;
+    WebAssemblyValueType(boolean reference) {
+        this.reference = reference;
     }
 
-    public int resultLength() {
-        return resultTypes.length;
+    public boolean isReference() {
+        return reference;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        return obj instanceof WasmFunctionTypeInfo that &&
-                        Arrays.equals(this.paramTypes, that.paramTypes) &&
-                        Arrays.equals(this.resultTypes, that.resultTypes) &&
-                        this.anyTypeIsI64 == that.anyTypeIsI64 &&
-                        this.anyTypeIsV128 == that.anyTypeIsV128;
+    public Object getDefaultValue(JSRealm realm) {
+        return switch (this) {
+            case i32 -> 0;
+            case i64 -> 0L;
+            case f32 -> 0f;
+            case f64 -> 0d;
+            case anyfunc -> realm.getWasmRefNull();
+            case externref -> Undefined.instance;
+            default -> throw Errors.shouldNotReachHereUnexpectedValue(this);
+        };
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(Arrays.hashCode(paramTypes), Arrays.hashCode(resultTypes), anyTypeIsI64, anyTypeIsV128);
-    }
-
-    @Override
-    public String toString() {
-        return "(" + String.join(" ", toString(paramTypes)) + ")" + String.join(" ", toString(resultTypes));
-    }
-
-    private static String[] toString(WebAssemblyValueType[] types) {
-        return Arrays.stream(types).map(Enum::name).toArray(String[]::new);
+    public static WebAssemblyValueType lookupType(String type) {
+        return switch (type) {
+            case "i32" -> i32;
+            case "i64" -> i64;
+            case "f32" -> f32;
+            case "f64" -> f64;
+            case "v128" -> v128;
+            case "anyfunc" -> anyfunc;
+            case "externref" -> externref;
+            default -> null;
+        };
     }
 }

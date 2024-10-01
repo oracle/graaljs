@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
@@ -57,7 +56,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
+import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyValueType;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -65,44 +64,44 @@ import com.oracle.truffle.js.runtime.objects.Null;
  * Implementation of ToWebAssemblyValue() operation. See
  * <a href="https://www.w3.org/TR/wasm-js-api/#towebassemblyvalue">Wasm JS-API Spec</a>
  */
-@ImportStatic(JSWebAssemblyValueTypes.class)
+@ImportStatic(WebAssemblyValueType.class)
 @GenerateUncached
 public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
 
     protected ToWebAssemblyValueNode() {
     }
 
-    public abstract Object execute(Object value, TruffleString type);
+    public abstract Object execute(Object value, WebAssemblyValueType type);
 
-    @Specialization(guards = "isI32(type)")
-    static int i32(Object value, @SuppressWarnings("unused") TruffleString type,
+    @Specialization(guards = "type == i32")
+    static int i32(Object value, @SuppressWarnings("unused") WebAssemblyValueType type,
                     @Cached JSToInt32Node toInt32Node) {
         return toInt32Node.executeInt(value);
     }
 
-    @Specialization(guards = "isI64(type)")
-    static long i64(Object value, @SuppressWarnings("unused") TruffleString type,
+    @Specialization(guards = "type == i64")
+    static long i64(Object value, @SuppressWarnings("unused") WebAssemblyValueType type,
                     @Cached JSToBigIntNode toBigIntNode) {
         return toBigIntNode.executeBigInteger(value).longValue();
     }
 
-    @Specialization(guards = "isF32(type)")
-    static float f32(Object value, @SuppressWarnings("unused") TruffleString type,
+    @Specialization(guards = "type == f32")
+    static float f32(Object value, @SuppressWarnings("unused") WebAssemblyValueType type,
                     @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
         Number numberValue = toNumberNode.executeNumber(value);
         double doubleValue = JSRuntime.toDouble(numberValue);
         return (float) doubleValue;
     }
 
-    @Specialization(guards = "isF64(type)")
-    static double f64(Object value, @SuppressWarnings("unused") TruffleString type,
+    @Specialization(guards = "type == f64")
+    static double f64(Object value, @SuppressWarnings("unused") WebAssemblyValueType type,
                     @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
         Number numberValue = toNumberNode.executeNumber(value);
         return JSRuntime.toDouble(numberValue);
     }
 
-    @Specialization(guards = "isAnyfunc(type)")
-    final Object anyfunc(Object value, @SuppressWarnings("unused") TruffleString type,
+    @Specialization(guards = "type == anyfunc")
+    final Object anyfunc(Object value, @SuppressWarnings("unused") WebAssemblyValueType type,
                     @Cached InlinedBranchProfile errorBranch) {
         if (value == Null.instance) {
             return getRealm().getWasmRefNull();
@@ -120,8 +119,8 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
         throw Errors.createTypeError("value is not an exported function");
     }
 
-    @Specialization(guards = "isExternref(type)")
-    final Object externref(Object value, @SuppressWarnings("unused") TruffleString type) {
+    @Specialization(guards = "type == externref")
+    final Object externref(Object value, @SuppressWarnings("unused") WebAssemblyValueType type) {
         if (value == Null.instance) {
             return getRealm().getWasmRefNull();
         } else {
@@ -131,7 +130,7 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
 
     @Fallback
     @TruffleBoundary
-    final Object fallback(@SuppressWarnings("unused") Object value, TruffleString type) {
+    final Object fallback(@SuppressWarnings("unused") Object value, WebAssemblyValueType type) {
         throw Errors.createTypeError("Unknown type: " + type, this);
     }
 }

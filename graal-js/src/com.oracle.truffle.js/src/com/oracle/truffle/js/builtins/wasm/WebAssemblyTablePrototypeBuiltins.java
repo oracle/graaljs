@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetLengthNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetNodeGen;
@@ -68,7 +67,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTableObject;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
+import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyValueType;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssemblyTablePrototypeBuiltins.WebAssemblyTablePrototype> {
@@ -143,12 +142,12 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
             int deltaInt = toDeltaNode.executeInt(delta);
             Object wasmTable = table.getWASMTable();
-            TruffleString elementKind = table.getElementKind();
+            WebAssemblyValueType elementKind = table.getElementKind();
 
             final JSRealm realm = getRealm();
             final Object wasmValue;
             if (args.length == 0) {
-                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(realm, elementKind);
+                wasmValue = elementKind.getDefaultValue(realm);
             } else {
                 wasmValue = toWebAssemblyValueNode.execute(args[0], elementKind);
             }
@@ -220,12 +219,12 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
             int indexInt = toIndexNode.executeInt(index);
             Object wasmTable = table.getWASMTable();
-            TruffleString elementKind = table.getElementKind();
+            WebAssemblyValueType elementKind = table.getElementKind();
             final JSRealm realm = getRealm();
 
             final Object wasmValue;
             if (args.length == 0) {
-                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(realm, elementKind);
+                wasmValue = elementKind.getDefaultValue(realm);
             } else {
                 wasmValue = toWebAssemblyValueNode.execute(args[0], elementKind);
             }
