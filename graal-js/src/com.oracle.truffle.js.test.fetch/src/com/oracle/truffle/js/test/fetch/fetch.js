@@ -830,6 +830,10 @@
 
             let headers = new Headers();
             for (const [name, values] of new Map(httpResponse.headers().map())) {
+                if (name === ":status") {
+                    // Skip HTTP/2 response pseudo-header fields
+                    continue;
+                }
                 for (const value of values) {
                     headers.append(name, value);
                 }
