@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -91,6 +93,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     public static final TruffleString WEB_ASSEMBLY_INSTANCE = Strings.constant("WebAssembly.Instance");
 
     public static final JSWebAssemblyInstance INSTANCE = new JSWebAssemblyInstance();
+    static final TruffleString FUNCTION_ADAPTER_NAME = Strings.constant("wasm-function-adapter");
 
     @Override
     public TruffleString getClassName() {
@@ -191,96 +194,124 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             return embedderData;
         }
 
-        int idxOpen = Strings.indexOf(typeInfo, '(');
-        int idxClose = Strings.indexOf(typeInfo, ')');
-        TruffleString name = Strings.substring(context, typeInfo, 0, idxOpen);
-        TruffleString argTypes = Strings.lazySubstring(typeInfo, idxOpen + 1, idxClose - (idxOpen + 1));
-        TruffleString returnTypes = Strings.lazySubstring(typeInfo, idxClose + 1);
-        TruffleString[] paramTypes = !Strings.isEmpty(argTypes) ? Strings.split(context, argTypes, Strings.SPACE) : new TruffleString[0];
-        TruffleString[] resultTypes = !Strings.isEmpty(returnTypes) ? Strings.split(context, returnTypes, Strings.SPACE) : new TruffleString[0];
-        int argCount = paramTypes.length;
-        int returnLength = resultTypes.length;
-        boolean anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
-        boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
-        boolean anyReturnTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxClose + 1) >= 0;
-        boolean anyArgTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxOpen + 1, idxClose) >= 0;
+        WasmFunctionTypeInfo typeInfoKey = parseWasmFunctionTypeInfo(context, typeInfo);
+        TruffleString name = Strings.substring(context, typeInfo, 0, Strings.indexOf(typeInfo, '('));
+        JSFunctionData functionData = getOrCreateExportedWasmFunctionAdapter(context, typeInfoKey);
 
-        CallTarget callTarget = createExportAdapterCallTarget(context, paramTypes, anyReturnTypeIsI64, anyArgTypeIsI64, anyReturnTypeIsV128, anyArgTypeIsV128, argCount, returnLength);
-
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
         JSFunctionObject result = JSFunction.create(realm, functionData);
+        JSFunction.setFunctionName(result, name);
         JSObjectUtil.putHiddenProperty(result, JSWebAssembly.FUNCTION_ADDRESS, export);
         JSWebAssembly.setEmbedderData(realm, export, result);
         return result;
     }
 
-    private static CallTarget createExportAdapterCallTarget(JSContext context, TruffleString[] paramTypes, boolean anyReturnTypeIsI64, boolean anyArgTypeIsI64,
-                    boolean anyReturnTypeIsV128, boolean anyArgTypeIsV128, int argCount, int returnLength) {
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @CompilationFinal(dimensions = 1) private final TruffleString[] argTypesArray = paramTypes;
+    private static WasmFunctionTypeInfo parseWasmFunctionTypeInfo(JSContext context, TruffleString typeInfo) {
+        int idxOpen = Strings.indexOf(typeInfo, '(');
+        int idxClose = Strings.indexOf(typeInfo, ')');
+        TruffleString argTypes = Strings.lazySubstring(typeInfo, idxOpen + 1, idxClose - (idxOpen + 1));
+        TruffleString returnTypes = Strings.lazySubstring(typeInfo, idxClose + 1);
+        TruffleString[] paramTypes = parseTypeSequence(context, argTypes);
+        TruffleString[] resultTypes = parseTypeSequence(context, returnTypes);
+        boolean anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
+        boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
+        boolean anyReturnTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxClose + 1) >= 0;
+        boolean anyArgTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxOpen + 1, idxClose) >= 0;
+        return new WasmFunctionTypeInfo(paramTypes, resultTypes, anyReturnTypeIsI64 || anyArgTypeIsI64, anyReturnTypeIsV128 || anyArgTypeIsV128);
+    }
 
-            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNodeGen.create();
-            @Child ToJSValueNode toJSValueNode = ToJSValueNodeGen.create();
-            private final BranchProfile errorBranch = BranchProfile.create();
-            @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            @Child InteropLibrary readArrayElementLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            @Child DynamicObjectLibrary getExportedFunctionLib = JSObjectUtil.createDispatched(JSWebAssembly.FUNCTION_ADDRESS);
+    private static TruffleString[] parseTypeSequence(JSContext context, TruffleString typeString) {
+        return Strings.split(context, typeString, Strings.SPACE);
+    }
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                if ((!context.getLanguageOptions().wasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) || (anyReturnTypeIsV128 || anyArgTypeIsV128)) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("wasm function signature contains illegal type");
-                }
+    private static JSFunctionData getOrCreateExportedWasmFunctionAdapter(JSContext context, WasmFunctionTypeInfo funcType) {
+        Map<WasmFunctionTypeInfo, JSFunctionData> cache = context.getWebAssemblyCache().wasmFunctionAdapterCache;
+        JSFunctionData functionData = cache.get(funcType);
+        if (functionData == null) {
+            functionData = cache.computeIfAbsent(funcType, k -> {
+                CallTarget callTarget = new WasmToJSFunctionAdapterRootNode(context, funcType).getCallTarget();
+                return JSFunctionData.createCallOnly(context, callTarget, funcType.paramLength(), FUNCTION_ADAPTER_NAME);
+            });
+        }
+        return functionData;
+    }
 
-                Object[] frameArguments = frame.getArguments();
-                int userArgumentCount = JSArguments.getUserArgumentCount(frameArguments);
-                Object[] wasmArgs = new Object[argCount];
-                for (int i = 0; i < argCount; i++) {
-                    Object wasmArg;
-                    if (i < userArgumentCount) {
-                        wasmArg = JSArguments.getUserArgument(frameArguments, i);
-                    } else {
-                        wasmArg = Undefined.instance;
-                    }
-                    wasmArgs[i] = toWebAssemblyValueNode.execute(wasmArg, argTypesArray[i]);
-                }
+    private static class WasmToJSFunctionAdapterRootNode extends JavaScriptRootNode {
+        private final JSContext context;
+        private final WasmFunctionTypeInfo type;
 
-                Object export = getExportedFunctionLib.getOrDefault(JSFrameUtil.getFunctionObject(frame), JSWebAssembly.FUNCTION_ADDRESS, null);
-                try {
-                    Object wasmResult;
-                    try {
-                        wasmResult = exportFunctionLib.execute(export, wasmArgs);
-                    } catch (GraalJSException jsex) {
-                        errorBranch.enter();
-                        throw jsex;
-                    } catch (AbstractTruffleException tex) {
-                        errorBranch.enter();
-                        ExceptionType type = InteropLibrary.getUncached(tex).getExceptionType(tex);
-                        if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
-                            throw tex;
-                        } else {
-                            throw Errors.createRuntimeError(tex, this);
-                        }
-                    }
+        @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNodeGen.create();
+        @Child ToJSValueNode toJSValueNode = ToJSValueNodeGen.create();
+        private final BranchProfile errorBranch = BranchProfile.create();
+        @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+        @Child InteropLibrary readArrayElementLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+        @Child DynamicObjectLibrary getExportedFunctionLib = JSObjectUtil.createDispatched(JSWebAssembly.FUNCTION_ADDRESS);
 
-                    if (returnLength == 0) {
-                        return Undefined.instance;
-                    } else if (returnLength == 1) {
-                        return toJSValueNode.execute(wasmResult);
-                    } else {
-                        Object[] values = new Object[returnLength];
-                        for (int i = 0; i < returnLength; i++) {
-                            values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i));
-                        }
-                        return JSArray.createConstantObjectArray(context, getRealm(), values);
-                    }
-                } catch (InteropException ex) {
-                    throw Errors.shouldNotReachHere(ex);
-                }
+        WasmToJSFunctionAdapterRootNode(JSContext context, WasmFunctionTypeInfo type) {
+            super(context.getLanguage(), null, null);
+            this.context = context;
+            this.type = type;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if ((!context.getLanguageOptions().wasmBigInt() && type.anyTypeIsI64()) || type.anyTypeIsV128()) {
+                errorBranch.enter();
+                throw Errors.createTypeError("wasm function signature contains illegal type");
             }
-        }.getCallTarget();
-        return callTarget;
+            int argCount = type.paramLength();
+            int returnLength = type.resultLength();
+
+            Object[] frameArguments = frame.getArguments();
+            int userArgumentCount = JSArguments.getUserArgumentCount(frameArguments);
+            Object[] wasmArgs = new Object[argCount];
+            for (int i = 0; i < argCount; i++) {
+                Object wasmArg;
+                if (i < userArgumentCount) {
+                    wasmArg = JSArguments.getUserArgument(frameArguments, i);
+                } else {
+                    wasmArg = Undefined.instance;
+                }
+                wasmArgs[i] = toWebAssemblyValueNode.execute(wasmArg, type.paramTypes()[i]);
+            }
+
+            Object export = getExportedFunctionLib.getOrDefault(JSFrameUtil.getFunctionObject(frame), JSWebAssembly.FUNCTION_ADDRESS, null);
+            try {
+                Object wasmResult;
+                try {
+                    wasmResult = exportFunctionLib.execute(export, wasmArgs);
+                } catch (GraalJSException jsex) {
+                    errorBranch.enter();
+                    throw jsex;
+                } catch (AbstractTruffleException tex) {
+                    errorBranch.enter();
+                    ExceptionType exceptionType = InteropLibrary.getUncached(tex).getExceptionType(tex);
+                    if (exceptionType == ExceptionType.INTERRUPT || exceptionType == ExceptionType.EXIT) {
+                        throw tex;
+                    } else {
+                        throw Errors.createRuntimeError(tex, this);
+                    }
+                }
+
+                if (returnLength == 0) {
+                    return Undefined.instance;
+                } else if (returnLength == 1) {
+                    return toJSValueNode.execute(wasmResult);
+                } else {
+                    Object[] values = new Object[returnLength];
+                    for (int i = 0; i < returnLength; i++) {
+                        values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i));
+                    }
+                    return JSArray.createConstantObjectArray(context, getRealm(), values);
+                }
+            } catch (InteropException ex) {
+                throw Errors.shouldNotReachHere(ex);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return FUNCTION_ADAPTER_NAME.toJavaStringUncached() + ":" + type.toString();
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -316,7 +347,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         wasmValue = JSWebAssembly.getExportedFunction((JSDynamicObject) value);
                     } else {
                         TruffleString typeInfo = asTString(descriptorInterop.readMember(descriptor, "type"));
-                        wasmValue = createHostFunction(context, value, typeInfo);
+                        wasmValue = createHostFunction(value, parseWasmFunctionTypeInfo(context, typeInfo));
                     }
                 } else if (Strings.equals(Strings.GLOBAL, externType)) {
                     boolean isNumber = JSRuntime.isNumber(value);
@@ -379,8 +410,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @TruffleBoundary
-    private static Object createHostFunction(JSContext context, Object fn, TruffleString typeInfo) {
-        return new WebAssemblyHostFunction(context, fn, typeInfo);
+    private static Object createHostFunction(Object fn, WasmFunctionTypeInfo typeInfo) {
+        return new WebAssemblyHostFunction(fn, typeInfo);
     }
 
     private static TruffleString asTString(Object string) {
@@ -390,4 +421,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return Strings.interopAsTruffleString(string);
     }
 
+    public static final class Cache {
+        final Map<WasmFunctionTypeInfo, JSFunctionData> wasmFunctionAdapterCache = new ConcurrentHashMap<>();
+    }
 }

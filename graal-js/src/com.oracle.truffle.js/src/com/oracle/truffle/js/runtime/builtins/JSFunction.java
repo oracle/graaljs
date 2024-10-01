@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -379,6 +379,11 @@ public final class JSFunction extends JSNonProxy {
     @TruffleBoundary
     public static void setFunctionLength(JSDynamicObject functionObj, Number length) {
         JSObject.defineOwnProperty(functionObj, JSFunction.LENGTH, PropertyDescriptor.createData(length, false, false, true));
+    }
+
+    @TruffleBoundary
+    public static void setFunctionName(JSDynamicObject functionObj, TruffleString name) {
+        JSObject.defineOwnProperty(functionObj, JSFunction.NAME, PropertyDescriptor.createData(name, false, false, true));
     }
 
     @TruffleBoundary
