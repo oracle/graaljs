@@ -386,6 +386,11 @@ public final class JSFunction extends JSNonProxy {
     }
 
     @TruffleBoundary
+    public static void setFunctionName(JSDynamicObject functionObj, TruffleString name) {
+        JSObject.defineOwnProperty(functionObj, JSFunction.NAME, PropertyDescriptor.createData(name, false, false, true));
+    }
+
+    @TruffleBoundary
     public static void setBoundFunctionName(JSDynamicObject boundFunction, TruffleString targetName) {
         JSObject.defineOwnProperty(boundFunction, JSFunction.NAME, PropertyDescriptor.createData(Strings.concat(Strings.BOUND_SPC, targetName), false, false, true));
     }

@@ -566,6 +566,8 @@ public class JSContext {
      */
     private final SharedRootNode sharedRootNode;
 
+    private final JSWebAssemblyInstance.Cache webAssemblyCache;
+
     static {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         try {
@@ -763,6 +765,8 @@ public class JSContext {
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
         this.supportedImportAttributes = (languageOptions.importAttributes() || languageOptions.importAssertions()) ? Set.of(TYPE_IMPORT_ATTRIBUTE) : Set.of();
+
+        this.webAssemblyCache = new JSWebAssemblyInstance.Cache();
     }
 
     public final Evaluator getEvaluator() {
@@ -1923,6 +1927,10 @@ public class JSContext {
 
     public static TruffleString getTypeImportAttribute() {
         return TYPE_IMPORT_ATTRIBUTE;
+    }
+
+    public JSWebAssemblyInstance.Cache getWebAssemblyCache() {
+        return webAssemblyCache;
     }
 
     void updateStableOptions(JSContextOptions contextOptions, StableContextOptionValue.UpdateKind kind) {

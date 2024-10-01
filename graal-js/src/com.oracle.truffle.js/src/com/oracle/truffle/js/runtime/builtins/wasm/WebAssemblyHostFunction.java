@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -72,26 +71,12 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 @ExportLibrary(InteropLibrary.class)
 public class WebAssemblyHostFunction implements TruffleObject {
     private final Object fn;
-    private final TruffleString[] resultTypes;
-    private final boolean anyReturnTypeIsI64;
-    private final boolean anyArgTypeIsI64;
-    private final boolean anyReturnTypeIsV128;
-    private final boolean anyArgTypeIsV128;
+    private final WasmFunctionTypeInfo type;
 
-    public WebAssemblyHostFunction(JSContext context, Object fn, TruffleString typeInfo) {
+    public WebAssemblyHostFunction(Object fn, WasmFunctionTypeInfo type) {
         assert JSRuntime.isCallable(fn);
-
         this.fn = fn;
-
-        int idxOpen = Strings.indexOf(typeInfo, '(');
-        int idxClose = Strings.indexOf(typeInfo, ')');
-
-        TruffleString returnTypes = Strings.lazySubstring(typeInfo, idxClose + 1);
-        this.resultTypes = !Strings.isEmpty(returnTypes) ? Strings.split(context, returnTypes, Strings.SPACE) : new TruffleString[0];
-        this.anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
-        this.anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
-        this.anyReturnTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxClose + 1) >= 0;
-        this.anyArgTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxOpen + 1, idxClose) >= 0;
+        this.type = type;
     }
 
     @ExportMessage
@@ -110,7 +95,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @Cached IterableToListNode iterableToListNode,
                     @CachedLibrary("this") InteropLibrary self) {
         JSContext context = JavaScriptLanguage.get(self).getJSContext();
-        if ((!context.getLanguageOptions().wasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) || anyReturnTypeIsV128 || anyArgTypeIsV128) {
+        if ((!context.getLanguageOptions().wasmBigInt() && type.anyTypeIsI64()) || type.anyTypeIsV128()) {
             errorBranch.enter(node);
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }
@@ -121,6 +106,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
 
         Object result = callNode.executeCall(JSArguments.create(Undefined.instance, fn, jsArgs));
 
+        TruffleString[] resultTypes = type.resultTypes();
         if (resultTypes.length == 0) {
             return Undefined.instance;
         } else if (resultTypes.length == 1) {
