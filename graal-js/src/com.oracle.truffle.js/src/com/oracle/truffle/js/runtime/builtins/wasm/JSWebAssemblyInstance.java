@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -52,6 +53,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -240,6 +242,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     private static class WasmToJSFunctionAdapterRootNode extends JavaScriptRootNode {
+        private static final int MAX_UNROLL = 32;
         private final JSContext context;
         private final WasmFunctionTypeInfo type;
 
@@ -266,17 +269,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             int returnLength = type.resultLength();
 
             Object[] frameArguments = frame.getArguments();
-            int userArgumentCount = JSArguments.getUserArgumentCount(frameArguments);
-            Object[] wasmArgs = new Object[argCount];
-            for (int i = 0; i < argCount; i++) {
-                Object wasmArg;
-                if (i < userArgumentCount) {
-                    wasmArg = JSArguments.getUserArgument(frameArguments, i);
-                } else {
-                    wasmArg = Undefined.instance;
-                }
-                wasmArgs[i] = toWebAssemblyValueNode.execute(wasmArg, type.paramTypes()[i]);
-            }
+            Object[] wasmArgs = convertArgsToWasm(frameArguments, argCount);
 
             Object export = getExportedFunctionLib.getOrDefault(JSFrameUtil.getFunctionObject(frame), JSWebAssembly.FUNCTION_ADDRESS, null);
             try {
@@ -310,6 +303,37 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
+        }
+
+        @ExplodeLoop
+        private Object[] convertArgsToWasm(Object[] frameArguments, int paramCount) {
+            CompilerAsserts.partialEvaluationConstant(paramCount);
+            if (paramCount > MAX_UNROLL) {
+                return convertArgsToWasmNoUnroll(frameArguments, paramCount);
+            }
+            Object[] wasmArgs = new Object[paramCount];
+            for (int i = 0; i < paramCount; i++) {
+                wasmArgs[i] = convertArgToWasm(frameArguments, i);
+            }
+            return wasmArgs;
+        }
+
+        private Object[] convertArgsToWasmNoUnroll(Object[] frameArguments, int paramCount) {
+            Object[] wasmArgs = new Object[paramCount];
+            for (int i = 0; i < paramCount; i++) {
+                wasmArgs[i] = convertArgToWasm(frameArguments, i);
+            }
+            return wasmArgs;
+        }
+
+        private Object convertArgToWasm(Object[] frameArguments, int i) {
+            Object wasmArg;
+            if (i < JSArguments.getUserArgumentCount(frameArguments)) {
+                wasmArg = JSArguments.getUserArgument(frameArguments, i);
+            } else {
+                wasmArg = Undefined.instance;
+            }
+            return toWebAssemblyValueNode.execute(wasmArg, type.paramTypes()[i]);
         }
 
         @Override
