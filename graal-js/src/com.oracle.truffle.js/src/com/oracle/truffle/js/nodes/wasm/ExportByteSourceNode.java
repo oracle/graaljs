@@ -40,9 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.array.ArrayBufferViewGetByteLengthNode;
+import com.oracle.truffle.js.nodes.array.GetViewByteLengthNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -77,28 +82,33 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object exportBuffer(JSArrayBufferObject arrayBuffer) {
+    protected Object exportBuffer(JSArrayBufferObject arrayBuffer,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         int length;
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             length = 0;
         } else {
             length = arrayBuffer.getByteLength();
         }
-        return exportBuffer(arrayBuffer, 0, length);
+        return exportBuffer(arrayBuffer, 0, length, errorBranch);
     }
 
     @Specialization
-    protected Object exportTypedArray(JSTypedArrayObject typedArray) {
+    protected Object exportTypedArray(JSTypedArrayObject typedArray,
+                    @Cached ArrayBufferViewGetByteLengthNode getByteLengthNode,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         int offset = JSArrayBufferView.getByteOffset(typedArray, context);
-        int length = JSArrayBufferView.getByteLength(typedArray, context);
-        return exportBuffer(typedArray.getArrayBuffer(), offset, length);
+        int length = getByteLengthNode.executeInt(this, typedArray, context);
+        return exportBuffer(typedArray.getArrayBuffer(), offset, length, errorBranch);
     }
 
     @Specialization
-    protected Object exportDataView(JSDataViewObject dataView) {
+    protected Object exportDataView(JSDataViewObject dataView,
+                    @Cached GetViewByteLengthNode getByteLengthNode,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         int offset = JSDataView.dataViewGetByteOffset(dataView);
-        int length = JSDataView.dataViewGetByteLength(dataView);
-        return exportBuffer(dataView.getArrayBuffer(), offset, length);
+        int length = getByteLengthNode.execute(dataView, context);
+        return exportBuffer(dataView.getArrayBuffer(), offset, length, errorBranch);
     }
 
     @Fallback
@@ -106,9 +116,11 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         throw Errors.createTypeError(nonByteSourceMessage, this);
     }
 
-    private Object exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length) {
+    private Object exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length,
+                    InlinedBranchProfile errorBranch) {
         JSArrayBufferObject buffer = arrayBuffer;
         if (emptyByteSourceMessage != null && length == 0) {
+            errorBranch.enter(this);
             throw Errors.createCompileError(emptyByteSourceMessage, this);
         }
         JSRealm realm = getRealm();
@@ -127,7 +139,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
             bufferType = TypedArray.BUFFER_TYPE_SHARED;
         }
         TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(bufferType, (offset != 0), true);
-        JSTypedArrayObject array = JSArrayBufferView.createArrayBufferView(context, realm, buffer, arrayType, offset, length);
+        JSTypedArrayObject array = JSArrayBufferView.createArrayBufferView(context, realm, buffer, TypedArrayFactory.Uint8Array, arrayType, offset, length);
         return new InteropBufferView(buffer, offset, length, array);
     }
 

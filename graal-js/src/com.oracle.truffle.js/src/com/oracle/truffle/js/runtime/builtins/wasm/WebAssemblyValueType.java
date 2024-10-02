@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSWebAssemblyTableObject extends JSNonProxyObject {
-    private final Object wasmTable;
+/**
+ * Represents the value types used in WebAssembly.
+ * 
+ * See org.graalvm.wasm.api.ValueType.
+ */
+public enum WebAssemblyValueType {
+    i32(false),
+    i64(false),
+    f32(false),
+    f64(false),
+    v128(false),
+    anyfunc(true),
+    externref(true);
 
-    private final WebAssemblyValueType elementKind;
+    private final boolean reference;
 
-    protected JSWebAssemblyTableObject(Shape shape, JSDynamicObject proto, Object wasmTable, WebAssemblyValueType elementKind) {
-        super(shape, proto);
-        this.wasmTable = wasmTable;
-        this.elementKind = elementKind;
+    WebAssemblyValueType(boolean reference) {
+        this.reference = reference;
     }
 
-    public Object getWASMTable() {
-        return wasmTable;
+    public boolean isReference() {
+        return reference;
     }
 
-    public WebAssemblyValueType getElementKind() {
-        return elementKind;
+    public Object getDefaultValue(JSRealm realm) {
+        return switch (this) {
+            case i32 -> 0;
+            case i64 -> 0L;
+            case f32 -> 0f;
+            case f64 -> 0d;
+            case anyfunc -> realm.getWasmRefNull();
+            case externref -> Undefined.instance;
+            default -> throw Errors.shouldNotReachHereUnexpectedValue(this);
+        };
     }
 
-    @Override
-    public TruffleString getClassName() {
-        return JSWebAssemblyTable.WEB_ASSEMBLY_TABLE;
+    public static WebAssemblyValueType lookupType(String type) {
+        return switch (type) {
+            case "i32" -> i32;
+            case "i64" -> i64;
+            case "f32" -> f32;
+            case "f64" -> f64;
+            case "v128" -> v128;
+            case "anyfunc" -> anyfunc;
+            case "externref" -> externref;
+            default -> null;
+        };
     }
 }

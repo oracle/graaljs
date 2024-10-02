@@ -98,11 +98,11 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, Object wasmTable, TruffleString elementKind) {
+    public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, Object wasmTable, WebAssemblyValueType elementKind) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmTable, elementKind);
     }
 
-    public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmTable, TruffleString elementKind) {
+    public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmTable, WebAssemblyValueType elementKind) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmTable);
         if (embedderData instanceof JSWebAssemblyTableObject) {
             return (JSWebAssemblyTableObject) embedderData;

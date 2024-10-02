@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,32 +40,48 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import java.util.Arrays;
+import java.util.Objects;
 
-public final class JSWebAssemblyTableObject extends JSNonProxyObject {
-    private final Object wasmTable;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-    private final WebAssemblyValueType elementKind;
+public record WasmFunctionTypeInfo(
+                @CompilationFinal(dimensions = 1) WebAssemblyValueType[] paramTypes,
+                @CompilationFinal(dimensions = 1) WebAssemblyValueType[] resultTypes,
+                boolean anyTypeIsI64,
+                boolean anyTypeIsV128) {
 
-    protected JSWebAssemblyTableObject(Shape shape, JSDynamicObject proto, Object wasmTable, WebAssemblyValueType elementKind) {
-        super(shape, proto);
-        this.wasmTable = wasmTable;
-        this.elementKind = elementKind;
+    public int paramLength() {
+        return paramTypes.length;
     }
 
-    public Object getWASMTable() {
-        return wasmTable;
-    }
-
-    public WebAssemblyValueType getElementKind() {
-        return elementKind;
+    public int resultLength() {
+        return resultTypes.length;
     }
 
     @Override
-    public TruffleString getClassName() {
-        return JSWebAssemblyTable.WEB_ASSEMBLY_TABLE;
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        return obj instanceof WasmFunctionTypeInfo that &&
+                        Arrays.equals(this.paramTypes, that.paramTypes) &&
+                        Arrays.equals(this.resultTypes, that.resultTypes) &&
+                        this.anyTypeIsI64 == that.anyTypeIsI64 &&
+                        this.anyTypeIsV128 == that.anyTypeIsV128;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(Arrays.hashCode(paramTypes), Arrays.hashCode(resultTypes), anyTypeIsI64, anyTypeIsV128);
+    }
+
+    @Override
+    public String toString() {
+        return "(" + String.join(" ", toString(paramTypes)) + ")" + String.join(" ", toString(resultTypes));
+    }
+
+    private static String[] toString(WebAssemblyValueType[] types) {
+        return Arrays.stream(types).map(Enum::name).toArray(String[]::new);
     }
 }

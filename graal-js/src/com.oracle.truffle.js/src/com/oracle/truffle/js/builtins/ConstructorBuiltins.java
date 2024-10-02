@@ -276,7 +276,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
+import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyValueType;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -3345,12 +3345,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSObject constructTable(JSDynamicObject newTarget, Object descriptor, Object[] args,
                         @Cached JSToStringNode toStringNode,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached ToWebAssemblyValueNode toWebAssemblyValueNode) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Table(): Argument 0 must be a table descriptor", this);
             }
-            TruffleString elementKind = toStringNode.executeString(getElementNode.getValue(descriptor));
-            if (!JSWebAssemblyValueTypes.isReferenceType(elementKind)) {
+            String elementKindStr = toJavaString.execute(toStringNode.executeString(getElementNode.getValue(descriptor)));
+            WebAssemblyValueType elementKind = WebAssemblyValueType.lookupType(elementKindStr);
+            if (elementKind == null || !elementKind.isReference()) {
                 throw Errors.createTypeError("WebAssembly.Table(): Descriptor property 'element' must be 'anyfunc' or 'externref'", this);
             }
             Object initial = getInitialNode.getValue(descriptor);
@@ -3377,14 +3379,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final JSRealm realm = getRealm();
             Object wasmValue;
             if (args.length == 0) {
-                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(realm, elementKind);
+                wasmValue = elementKind.getDefaultValue(realm);
             } else {
                 wasmValue = toWebAssemblyValueNode.execute(args[0], elementKind);
             }
             Object wasmTable;
             try {
                 Object createTable = realm.getWASMTableAlloc();
-                wasmTable = tableAllocLib.execute(createTable, initialInt, maximumInt, elementKind, wasmValue);
+                wasmTable = tableAllocLib.execute(createTable, initialInt, maximumInt, elementKindStr, wasmValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -3416,16 +3418,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached IsObjectNode isObjectNode,
                         @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached JSToStringNode toStringNode,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached ToWebAssemblyValueNode toWebAssemblyValueNode) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Argument 0 must be a global descriptor", this);
             }
             boolean mutable = toBooleanNode.executeBoolean(this, getMutableNode.getValue(descriptor));
-            TruffleString valueType = toStringNode.executeString(getValueNode.getValue(descriptor));
-            if (!JSWebAssemblyValueTypes.isValueType(valueType)) {
+            String valueTypeStr = toJavaString.execute(toStringNode.executeString(getValueNode.getValue(descriptor)));
+            WebAssemblyValueType valueType = WebAssemblyValueType.lookupType(valueTypeStr);
+            if (valueType == null) {
                 throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be a WebAssembly type (i32, i64, f32, f64, anyfunc, externref)", this);
             }
-            if (JSWebAssemblyValueTypes.isV128(valueType)) {
+            if (valueType == WebAssemblyValueType.v128) {
                 throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must not be v128", this);
             }
             final JSRealm realm = getRealm();
@@ -3433,9 +3437,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             // According to the spec only missing values should produce a default value.
             // According to the tests also undefined should use the default value.
             if (args.length == 0 || args[0] == Undefined.instance) {
-                webAssemblyValue = JSWebAssemblyValueTypes.getDefaultValue(realm, valueType);
+                webAssemblyValue = valueType.getDefaultValue(realm);
             } else {
-                if (!getContext().getLanguageOptions().wasmBigInt() && JSWebAssemblyValueTypes.isI64(valueType)) {
+                if (!getContext().getLanguageOptions().wasmBigInt() && valueType == WebAssemblyValueType.i64) {
                     throw Errors.createTypeError("WebAssembly.Global(): Can't set the value of i64 WebAssembly.Global", this);
                 }
                 webAssemblyValue = toWebAssemblyValueNode.execute(args[0], valueType);
@@ -3443,7 +3447,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object wasmGlobal;
             try {
                 Object createGlobal = realm.getWASMGlobalAlloc();
-                wasmGlobal = globalAllocLib.execute(createGlobal, valueType, mutable, webAssemblyValue);
+                wasmGlobal = globalAllocLib.execute(createGlobal, valueTypeStr, mutable, webAssemblyValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }

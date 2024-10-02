@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobalObject;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
+import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyValueType;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssemblyGlobalPrototypeBuiltins.WebAssemblyGlobalPrototype> {
@@ -136,7 +136,7 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached ToJSValueNode toJSValueNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary globalReadLib) {
-            if (JSWebAssemblyValueTypes.isV128(object.getValueType())) {
+            if (object.getValueType() == WebAssemblyValueType.v128) {
                 errorBranch.enter(this);
                 v128TypeError();
             }
@@ -177,7 +177,7 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter(this);
                 throw Errors.createTypeError("set WebAssembly.Global.value: Can't set the value of an immutable global");
             }
-            if (JSWebAssemblyValueTypes.isV128(global.getValueType())) {
+            if (global.getValueType() == WebAssemblyValueType.v128) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("set WebAssembly.Global.value: cannot write value type v128", this);
             }
