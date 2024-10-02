@@ -40,7 +40,7 @@ const url = "http://localhost:8080";
     assertSame('[object Response]', new Response().toString());
 })();
 
-(function shouldSupportProperStringOutput() {
+(function shouldThrowWithInvalidArgument() {
     // init/options must be undefined, null, or an object.
     assertThrows(() => new Headers(42), TypeError);
     assertThrows(() => new Request(url, 42), TypeError);
