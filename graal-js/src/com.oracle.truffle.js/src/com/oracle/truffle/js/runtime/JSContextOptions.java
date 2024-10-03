@@ -345,7 +345,7 @@ public final class JSContextOptions {
                     }));
 
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
-    @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
+    @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
 
     public static final String POLYGLOT_BUILTIN_NAME = JS_OPTION_PREFIX + "polyglot-builtin";
