@@ -47,16 +47,24 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
+import java.nio.file.Files;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.test.JSTest;
 
 /**
@@ -276,6 +284,36 @@ public class PolyglotBuiltinTest extends JSTest {
             } catch (PolyglotException ex) {
                 assertTrue(ex.isGuestException());
                 assertFalse(ex.isInternalError());
+            }
+        }
+    }
+
+    @SuppressWarnings("try")
+    @Test
+    public void testEvalReturnValue() throws Exception {
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new TestLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                String code = request.getSource().getCharacters().toString();
+                if (code.startsWith("\"") && code.endsWith("\"")) {
+                    String string = code.substring(1, code.length() - 1);
+                    return RootNode.createConstantNode(string).getCallTarget();
+                }
+                throw Errors.createSyntaxError(code);
+            }
+        })) {
+            IOAccess fileAccess = IOAccess.newBuilder().allowHostFileAccess(true).build();
+            try (Context context = Context.newBuilder().allowIO(fileAccess).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value result = context.eval(Source.create(JavaScriptLanguage.ID, "Polyglot.eval('" + TestLanguage.ID + "', '\"something\"');"));
+                assertTrue(result.isString());
+                assertEquals("something", result.asString());
+
+                File tmpFile = File.createTempFile("polyglot-evalfile-test", null);
+                tmpFile.deleteOnExit();
+                Files.writeString(tmpFile.toPath(), "\"nanika\"");
+                result = context.eval(Source.create(JavaScriptLanguage.ID, "Polyglot.evalFile('" + TestLanguage.ID + "', " + JSRuntime.quote(tmpFile.getPath()) + ");"));
+                assertTrue(result.isString());
+                assertEquals("nanika", result.asString());
             }
         }
     }
