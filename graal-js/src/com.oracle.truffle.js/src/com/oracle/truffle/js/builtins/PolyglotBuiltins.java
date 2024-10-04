@@ -773,17 +773,29 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Cached TruffleString.EqualNode strEq,
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
+<<<<<<< HEAD
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
             return callNode.call(evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond()));
+=======
+                        @Cached @Shared IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
+            return importValueNode.executeWithTarget(callNode.call(evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond())));
+>>>>>>> 9fbb93aeea ([GR-58687] Fix missing return value conversion in Polyglot.eval[File].)
         }
 
         @Specialization(replaces = "evalCachedLanguage")
         @TruffleBoundary
         protected Object evalString(TruffleString language, TruffleString source,
+<<<<<<< HEAD
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
+=======
+                        @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
+                        @Cached @Shared IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
+>>>>>>> 9fbb93aeea ([GR-58687] Fix missing return value conversion in Polyglot.eval[File].)
             Pair<String, String> pair = getLanguageIdAndMimeType(toJavaStringNode, language);
-            return callNode.call(evalStringIntl(source, pair.getFirst(), pair.getSecond()));
+            return importValueNode.executeWithTarget(callNode.call(evalStringIntl(source, pair.getFirst(), pair.getSecond())));
         }
 
         private CallTarget evalStringIntl(TruffleString sourceText, String languageId, String mimeType) {
@@ -820,17 +832,29 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Cached TruffleString.EqualNode strEq,
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
+<<<<<<< HEAD
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
             return callNode.call(evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond()));
+=======
+                        @Cached @Shared IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
+            return importValueNode.executeWithTarget(callNode.call(evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond())));
+>>>>>>> 9fbb93aeea ([GR-58687] Fix missing return value conversion in Polyglot.eval[File].)
         }
 
         @Specialization(replaces = "evalFileCachedLanguage")
         @TruffleBoundary
         protected Object evalFileString(TruffleString language, TruffleString file,
+<<<<<<< HEAD
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
+=======
+                        @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
+                        @Cached @Shared IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
+>>>>>>> 9fbb93aeea ([GR-58687] Fix missing return value conversion in Polyglot.eval[File].)
             Pair<String, String> pair = getLanguageIdAndMimeType(toJavaStringNode, language);
-            return callNode.call(evalFileIntl(file, pair.getFirst(), pair.getSecond()));
+            return importValueNode.executeWithTarget(callNode.call(evalFileIntl(file, pair.getFirst(), pair.getSecond())));
         }
 
         private CallTarget evalFileIntl(TruffleString fileName, String languageId, String mimeType) {
