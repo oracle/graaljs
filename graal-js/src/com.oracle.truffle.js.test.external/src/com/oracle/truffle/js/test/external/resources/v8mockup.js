@@ -86,6 +86,16 @@ readbuffer = (function() {
     return path => originalReadbuffer(path.startsWith('test/') ? ('lib/testv8/' + path) : path);
 })();
 
+Worker = (function() {
+    let originalWorker = Worker;
+    return function() {
+        if (typeof arguments[0] === 'string' && arguments[0].startsWith('test/')) {
+            arguments[0] = 'lib/testv8/' + arguments[0];
+        }
+        return (new.target === undefined) ? originalWorker(...arguments) : new originalWorker(...arguments);
+    };
+})();
+
 // Save `load` function in another binding so that tests that re-write ``load` binding can still
 // use d8.file.execute.
 let d8_file_execute_load = load;
