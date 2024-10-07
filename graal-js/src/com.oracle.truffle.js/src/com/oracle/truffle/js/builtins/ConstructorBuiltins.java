@@ -457,110 +457,81 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, Constructor builtinEnum) {
         switch (builtinEnum) {
             case Array:
-                if (newTarget) {
-                    return ConstructArrayNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context));
-                }
-                return ConstructArrayNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                return ConstructArrayNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
             case Boolean:
-                return construct ? (newTarget
-                                ? ConstructBooleanNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                : ConstructBooleanNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
+                return construct
+                                ? ConstructBooleanNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context))
                                 : CallBooleanNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case Date:
-                return construct ? (newTarget
-                                ? ConstructDateNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                                : ConstructDateNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
+                return construct
+                                ? ConstructDateNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context))
                                 : CallDateNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case RegExp:
-                return construct ? (newTarget
-                                ? ConstructRegExpNodeGen.create(context, builtin, false, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructRegExpNodeGen.create(context, builtin, false, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                return construct
+                                ? ConstructRegExpNodeGen.create(context, builtin, false, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : ConstructRegExpNodeGen.create(context, builtin, true, false, args().function().fixedArgs(2).createArgumentNodes(context));
             case String:
-                return construct ? (newTarget
-                                ? ConstructStringNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                                : ConstructStringNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
+                return construct
+                                ? ConstructStringNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context))
                                 : CallStringNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
 
             case WeakRef:
                 if (construct) {
-                    return newTarget ? ConstructWeakRefNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructWeakRefNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return ConstructWeakRefNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case FinalizationRegistry:
                 if (construct) {
-                    return newTarget ? ConstructFinalizationRegistryNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructFinalizationRegistryNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return ConstructFinalizationRegistryNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
 
             case Collator:
-                return newTarget
-                                ? ConstructCollatorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructCollatorNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                return ConstructCollatorNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
             case ListFormat:
-                return construct ? (newTarget
-                                ? ConstructListFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructListFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                return construct
+                                ? ConstructListFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case NumberFormat:
-                return newTarget
-                                ? ConstructNumberFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructNumberFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                return ConstructNumberFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
             case PluralRules:
-                return construct ? (newTarget
-                                ? ConstructPluralRulesNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructPluralRulesNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                return construct
+                                ? ConstructPluralRulesNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case DateTimeFormat:
-                return newTarget
-                                ? ConstructDateTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructDateTimeFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                return ConstructDateTimeFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
             case RelativeTimeFormat:
-                return construct ? (newTarget
-                                ? ConstructRelativeTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructRelativeTimeFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                return construct
+                                ? ConstructRelativeTimeFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Segmenter:
-                return construct ? (newTarget
-                                ? ConstructSegmenterNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructSegmenterNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                return construct
+                                ? ConstructSegmenterNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case DisplayNames:
-                return construct ? (newTarget
-                                ? ConstructDisplayNamesNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructDisplayNamesNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                return construct
+                                ? ConstructDisplayNamesNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Locale:
-                return construct ? (newTarget
-                                ? ConstructLocaleNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructLocaleNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                return construct
+                                ? ConstructLocaleNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Object:
-                if (newTarget) {
-                    return ConstructObjectNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context));
-                }
-                return ConstructObjectNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                return ConstructObjectNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
             case Number:
-                return construct ? (newTarget
-                                ? ConstructNumberNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                                : ConstructNumberNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
+                return construct
+                                ? ConstructNumberNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context))
                                 : CallNumberNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case BigInt:
                 return construct ? ConstructBigIntNodeGen.create(context, builtin, args().createArgumentNodes(context))
                                 : CallBigIntNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case Function:
-                if (newTarget) {
-                    return ConstructFunctionNodeGen.create(context, builtin, false, false, true, args().newTarget().varArgs().createArgumentNodes(context));
-                }
-                return ConstructFunctionNodeGen.create(context, builtin, false, false, false, args().function().varArgs().createArgumentNodes(context));
+                return ConstructFunctionNodeGen.create(context, builtin, false, false, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
             case ArrayBuffer:
                 if (construct) {
-                    return newTarget ? ConstructArrayBufferNodeGen.create(context, builtin, false, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                    : ConstructArrayBufferNodeGen.create(context, builtin, false, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                    return ConstructArrayBufferNodeGen.create(context, builtin, false, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -575,15 +546,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case CompileError:
             case LinkError:
             case RuntimeError:
-                if (newTarget) {
-                    return ConstructErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context));
-                }
-                return ConstructErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                return ConstructErrorNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
             case AggregateError:
-                if (newTarget) {
-                    return ConstructAggregateErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(3).createArgumentNodes(context));
-                }
-                return ConstructAggregateErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(3).createArgumentNodes(context));
+                return ConstructAggregateErrorNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(3).createArgumentNodes(context));
 
             case TypedArray:
             case AbstractModuleSource:
@@ -616,181 +581,147 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         case BigUint64Array -> TypedArrayFactory.BigUint64Array;
                         default -> throw Errors.shouldNotReachHereUnexpectedValue(builtinEnum);
                     };
-                    if (newTarget) {
-                        return JSConstructTypedArrayNodeGen.create(context, builtin, typedArray, args().newTarget().fixedArgs(3).createArgumentNodes(context));
-                    } else {
-                        return JSConstructTypedArrayNodeGen.create(context, builtin, typedArray, args().function().fixedArgs(3).createArgumentNodes(context));
-                    }
+                    return JSConstructTypedArrayNodeGen.create(context, builtin, typedArray, args().functionOrNewTarget(newTarget).fixedArgs(3).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case DataView:
                 if (construct) {
-                    return newTarget ? ConstructDataViewNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(3).createArgumentNodes(context))
-                                    : ConstructDataViewNodeGen.create(context, builtin, false, args().function().fixedArgs(3).createArgumentNodes(context));
+                    return ConstructDataViewNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(3).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
 
             case Map:
                 if (construct) {
-                    return newTarget ? ConstructMapNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructMapNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return ConstructMapNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case Set:
                 if (construct) {
-                    return newTarget ? ConstructSetNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructSetNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return ConstructSetNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case WeakMap:
                 if (construct) {
-                    return newTarget ? ConstructWeakMapNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructWeakMapNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return ConstructWeakMapNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case WeakSet:
                 if (construct) {
-                    return newTarget ? ConstructWeakSetNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructWeakSetNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return ConstructWeakSetNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case Iterator:
                 if (construct) {
-                    return newTarget ? ConstructIteratorNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                                    : ConstructIteratorNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                    return ConstructIteratorNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case AsyncIterator:
                 if (construct) {
-                    return newTarget ? ConstructAsyncIteratorNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                                    : ConstructAsyncIteratorNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                    return ConstructAsyncIteratorNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case GeneratorFunction:
-                if (newTarget) {
-                    return ConstructFunctionNodeGen.create(context, builtin, true, false, true, args().newTarget().varArgs().createArgumentNodes(context));
-                }
-                return ConstructFunctionNodeGen.create(context, builtin, true, false, false, args().function().varArgs().createArgumentNodes(context));
+                return ConstructFunctionNodeGen.create(context, builtin, true, false, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
             case SharedArrayBuffer:
                 if (construct) {
-                    return newTarget ? ConstructArrayBufferNodeGen.create(context, builtin, true, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                    : ConstructArrayBufferNodeGen.create(context, builtin, true, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                    return ConstructArrayBufferNodeGen.create(context, builtin, true, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case AsyncFunction:
-                if (newTarget) {
-                    return ConstructFunctionNodeGen.create(context, builtin, false, true, true, args().newTarget().varArgs().createArgumentNodes(context));
-                }
-                return ConstructFunctionNodeGen.create(context, builtin, false, true, false, args().function().varArgs().createArgumentNodes(context));
+                return ConstructFunctionNodeGen.create(context, builtin, false, true, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
             case AsyncGeneratorFunction:
-                if (newTarget) {
-                    return ConstructFunctionNodeGen.create(context, builtin, true, true, true, args().newTarget().varArgs().createArgumentNodes(context));
-                }
-                return ConstructFunctionNodeGen.create(context, builtin, true, true, false, args().function().varArgs().createArgumentNodes(context));
+                return ConstructFunctionNodeGen.create(context, builtin, true, true, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
 
             case Symbol:
                 return construct ? ConstructSymbolNodeGen.create(context, builtin, args().createArgumentNodes(context))
                                 : CallSymbolNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case Proxy:
                 if (construct) {
-                    return newTarget ? ConstructJSProxyNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(3).createArgumentNodes(context))
-                                    : ConstructJSProxyNodeGen.create(context, builtin, false, args().function().fixedArgs(3).createArgumentNodes(context));
+                    return ConstructJSProxyNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(3).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case Promise:
                 if (construct) {
-                    return newTarget ? PromiseConstructorNodeGen.create(context, builtin, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : PromiseConstructorNodeGen.create(context, builtin, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return PromiseConstructorNodeGen.create(context, builtin, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
 
             case PlainTime:
                 if (construct) {
-                    return newTarget ? ConstructTemporalPlainTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(6).createArgumentNodes(context))
-                                    : ConstructTemporalPlainTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(6).createArgumentNodes(context));
+                    return ConstructTemporalPlainTimeNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(6).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case PlainDate:
                 if (construct) {
-                    return newTarget ? ConstructTemporalPlainDateNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                                    : ConstructTemporalPlainDateNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                    return ConstructTemporalPlainDateNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case PlainDateTime:
                 if (construct) {
-                    return newTarget ? ConstructTemporalPlainDateTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(10).createArgumentNodes(context))
-                                    : ConstructTemporalPlainDateTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(10).createArgumentNodes(context));
+                    return ConstructTemporalPlainDateTimeNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(10).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case Duration:
                 if (construct) {
-                    return newTarget ? ConstructTemporalDurationNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(10).createArgumentNodes(context))
-                                    : ConstructTemporalDurationNodeGen.create(context, builtin, false, args().function().fixedArgs(10).createArgumentNodes(context));
+                    return ConstructTemporalDurationNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(10).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case Calendar:
                 if (construct) {
-                    return newTarget ? ConstructTemporalCalendarNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructTemporalCalendarNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return ConstructTemporalCalendarNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
 
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case PlainYearMonth:
                 if (construct) {
-                    return newTarget ? ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                                    : ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                    return ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case PlainMonthDay:
                 if (construct) {
-                    return newTarget ? ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                                    : ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                    return ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case Instant:
                 if (construct) {
-                    return newTarget ? ConstructTemporalInstantNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                                    : ConstructTemporalInstantNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                    return ConstructTemporalInstantNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case TimeZone:
                 if (construct) {
-                    return newTarget ? ConstructTemporalTimeZoneNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                                    : ConstructTemporalTimeZoneNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                    return ConstructTemporalTimeZoneNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
 
             case ZonedDateTime:
                 if (construct) {
-                    return newTarget ? ConstructTemporalZonedDateTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                                    : ConstructTemporalZonedDateTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                    return ConstructTemporalZonedDateTimeNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case ShadowRealm:
                 if (construct) {
-                    return newTarget ? ConstructShadowRealmNodeGen.create(context, builtin, true, args().newTarget().createArgumentNodes(context))
-                                    : ConstructShadowRealmNodeGen.create(context, builtin, false, args().function().createArgumentNodes(context));
+                    return ConstructShadowRealmNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -799,34 +730,28 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case JavaImporter:
                 return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case Global:
-                return construct ? (newTarget
-                                ? ConstructWebAssemblyGlobalNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).varArgs().createArgumentNodes(context))
-                                : ConstructWebAssemblyGlobalNodeGen.create(context, builtin, false, args().function().fixedArgs(1).varArgs().createArgumentNodes(context)))
+                return construct
+                                ? ConstructWebAssemblyGlobalNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).varArgs().createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Instance:
-                return construct ? (newTarget
-                                ? ConstructWebAssemblyInstanceNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructWebAssemblyInstanceNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                return construct
+                                ? ConstructWebAssemblyInstanceNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Memory:
-                return construct ? (newTarget
-                                ? ConstructWebAssemblyMemoryNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                : ConstructWebAssemblyMemoryNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
+                return construct
+                                ? ConstructWebAssemblyMemoryNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Module:
-                return construct ? (newTarget
-                                ? ConstructWebAssemblyModuleNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                : ConstructWebAssemblyModuleNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
+                return construct
+                                ? ConstructWebAssemblyModuleNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Table:
-                return construct ? (newTarget
-                                ? ConstructWebAssemblyTableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).varArgs().createArgumentNodes(context))
-                                : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).varArgs().createArgumentNodes(context)))
+                return construct
+                                ? ConstructWebAssemblyTableNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).varArgs().createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Worker:
                 if (construct) {
-                    return newTarget ? ConstructWorkerNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                    : ConstructWorkerNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                    return ConstructWorkerNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
