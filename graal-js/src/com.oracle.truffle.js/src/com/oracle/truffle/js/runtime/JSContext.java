@@ -125,6 +125,7 @@ import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.JSWorker;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
@@ -407,7 +408,8 @@ public class JSContext {
         ExportGetter,
         OrdinaryWrappedFunctionCall,
         DecoratorContextAddInitializer,
-        DedentCallback
+        DedentCallback,
+        WorkerProcessMessage,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -547,6 +549,7 @@ public class JSContext {
     private final JSObjectFactory webAssemblyGlobalFactory;
 
     private final JSObjectFactory shadowRealmFactory;
+    private final JSObjectFactory workerFactory;
     private final JSObjectFactory asyncContextSnapshotFactory;
     private final JSObjectFactory asyncContextVariableFactory;
     private final JSObjectFactory rawJSONFactory;
@@ -753,6 +756,7 @@ public class JSContext {
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
 
         this.shadowRealmFactory = builder.create(JSShadowRealm.INSTANCE);
+        this.workerFactory = languageOptions.worker() ? builder.create(JSWorker.INSTANCE) : null;
         this.asyncContextSnapshotFactory = builder.create(JSAsyncContextSnapshot.INSTANCE);
         this.asyncContextVariableFactory = builder.create(JSAsyncContextVariable.INSTANCE);
         this.rawJSONFactory = JSObjectFactory.createBound(this, Null.instance, JSRawJSON.makeInitialShape(this));
@@ -1308,6 +1312,10 @@ public class JSContext {
 
     public final JSObjectFactory getShadowRealmFactory() {
         return shadowRealmFactory;
+    }
+
+    public final JSObjectFactory getWorkerFactory() {
+        return workerFactory;
     }
 
     public final JSObjectFactory getAsyncContextSnapshotFactory() {

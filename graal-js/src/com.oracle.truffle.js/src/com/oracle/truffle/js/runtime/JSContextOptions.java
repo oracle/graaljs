@@ -599,6 +599,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> STACK_TRACE_API = new OptionKey<>(false);
     @CompilationFinal private boolean stackTraceAPI;
 
+    public static final String WORKER_NAME = JS_OPTION_PREFIX + "worker";
+    @Option(name = WORKER_NAME, category = OptionCategory.EXPERT, help = "Enable Worker API.") //
+    public static final OptionKey<Boolean> WORKER = new OptionKey<>(false);
+    @CompilationFinal private boolean worker;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -816,6 +821,7 @@ public final class JSContextOptions {
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
         this.arrayElementsAmongMembers = readBooleanOption(ARRAY_ELEMENTS_AMONG_MEMBERS);
         this.stackTraceAPI = STACK_TRACE_API.hasBeenSet(optionValues) ? readBooleanOption(STACK_TRACE_API) : (v8CompatibilityMode || nashornCompatibilityMode);
+        this.worker = WORKER.hasBeenSet(optionValues) ? readBooleanOption(WORKER) : testV8Mode;
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -1300,4 +1306,9 @@ public final class JSContextOptions {
     public short getFrequencyBasedPropertyCacheLimit() {
         return frequencyBasedPropertyCacheLimit;
     }
+
+    public boolean isWorker() {
+        return worker;
+    }
+
 }

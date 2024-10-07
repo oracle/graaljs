@@ -395,6 +395,8 @@ public final class Strings {
     public static final TruffleString EXIT = constant("exit");
     public static final TruffleString QUIT = constant("quit");
     public static final TruffleString PARSE_TO_JSON = constant("parseToJSON");
+    public static final TruffleString POST_MESSAGE = constant("postMessage");
+    public static final TruffleString ONMESSAGE = constant("onmessage");
     public static final TruffleString PRINT = constant("print");
     public static final TruffleString PRINT_ERR = constant("printErr");
     public static final TruffleString GRAAL = constant("Graal");

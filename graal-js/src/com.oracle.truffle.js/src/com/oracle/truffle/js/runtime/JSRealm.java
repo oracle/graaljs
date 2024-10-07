@@ -163,6 +163,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.JSWorker;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContext;
@@ -513,6 +514,9 @@ public class JSRealm {
 
     private final JSFunctionObject shadowRealmConstructor;
     private final JSDynamicObject shadowRealmPrototype;
+
+    private final JSFunctionObject workerConstructor;
+    private final JSDynamicObject workerPrototype;
 
     private final JSFunctionObject asyncContextSnapshotConstructor;
     private final JSDynamicObject asyncContextSnapshotPrototype;
@@ -1139,6 +1143,14 @@ public class JSRealm {
         } else {
             this.shadowRealmConstructor = null;
             this.shadowRealmPrototype = null;
+        }
+        if (context.getLanguageOptions().worker()) {
+            ctor = JSWorker.createConstructor(this);
+            this.workerConstructor = ctor.getFunctionObject();
+            this.workerPrototype = ctor.getPrototype();
+        } else {
+            this.workerConstructor = null;
+            this.workerPrototype = null;
         }
         if (context.getLanguageOptions().asyncContext()) {
             ctor = JSAsyncContextSnapshot.createConstructor(this);
@@ -1996,6 +2008,14 @@ public class JSRealm {
         return shadowRealmPrototype;
     }
 
+    public final JSFunctionObject getWorkerConstructor() {
+        return workerConstructor;
+    }
+
+    public final JSDynamicObject getWorkerPrototype() {
+        return workerPrototype;
+    }
+
     public final JSFunctionObject getAsyncContextSnapshotConstructor() {
         return asyncContextSnapshotConstructor;
     }
@@ -2161,6 +2181,9 @@ public class JSRealm {
         }
         if (getContextOptions().isShadowRealm()) {
             putGlobalProperty(JSShadowRealm.CLASS_NAME, getShadowRealmConstructor());
+        }
+        if (getContextOptions().isWorker()) {
+            putGlobalProperty(JSWorker.CLASS_NAME, getWorkerConstructor());
         }
         if (getContextOptions().isAsyncContext()) {
             putGlobalProperty(JSAsyncContext.NAMESPACE_NAME, JSAsyncContext.create(this));

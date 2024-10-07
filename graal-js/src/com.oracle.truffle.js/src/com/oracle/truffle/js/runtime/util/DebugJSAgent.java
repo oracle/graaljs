@@ -266,6 +266,7 @@ public class DebugJSAgent extends JSAgent {
     @TruffleBoundary
     @Override
     public void terminate() {
+        super.terminate();
         if (spawnedAgents.isEmpty()) {
             return;
         }
