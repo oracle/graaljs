@@ -253,17 +253,19 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Cached TruffleString.EqualNode strEq,
                         @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
-                        @Cached @Shared IndirectCallNode callNode) {
-            return callNode.call(evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond()));
+                        @Cached @Shared IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
+            return importValueNode.executeWithTarget(callNode.call(evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond())));
         }
 
         @Specialization(replaces = "evalCachedLanguage")
         @TruffleBoundary
         protected Object evalString(TruffleString language, TruffleString source,
                         @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
-                        @Cached @Shared IndirectCallNode callNode) {
+                        @Cached @Shared IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
             Pair<String, String> pair = getLanguageIdAndMimeType(toJavaStringNode, language);
-            return callNode.call(evalStringIntl(source, pair.getFirst(), pair.getSecond()));
+            return importValueNode.executeWithTarget(callNode.call(evalStringIntl(source, pair.getFirst(), pair.getSecond())));
         }
 
         private CallTarget evalStringIntl(TruffleString sourceText, String languageId, String mimeType) {
@@ -300,17 +302,19 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Cached TruffleString.EqualNode strEq,
                         @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
-                        @Cached @Shared IndirectCallNode callNode) {
-            return callNode.call(evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond()));
+                        @Cached @Shared IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
+            return importValueNode.executeWithTarget(callNode.call(evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond())));
         }
 
         @Specialization(replaces = "evalFileCachedLanguage")
         @TruffleBoundary
         protected Object evalFileString(TruffleString language, TruffleString file,
                         @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
-                        @Cached @Shared IndirectCallNode callNode) {
+                        @Cached @Shared IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
             Pair<String, String> pair = getLanguageIdAndMimeType(toJavaStringNode, language);
-            return callNode.call(evalFileIntl(file, pair.getFirst(), pair.getSecond()));
+            return importValueNode.executeWithTarget(callNode.call(evalFileIntl(file, pair.getFirst(), pair.getSecond())));
         }
 
         private CallTarget evalFileIntl(TruffleString fileName, String languageId, String mimeType) {
