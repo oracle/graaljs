@@ -148,6 +148,21 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         return factory.trackAllocation(object);
     }
 
+    // Invoked when the memory is resized
+    public static void resetBuffers(JSRealm realm, Object wasmMemory) {
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+        if (embedderData instanceof JSWebAssemblyMemoryObject webAssemblyMemory) {
+            webAssemblyMemory.resetBufferObject();
+        } else if (embedderData instanceof EconomicMapHolder mapHolder) {
+            synchronized (wasmMemory) {
+                for (JSWebAssemblyMemoryObject webAssemblyMemory : mapHolder.map.getValues()) {
+                    webAssemblyMemory.resetBufferObject();
+                }
+            }
+        }
+
+    }
+
     // EconomicMap is not an interop value => we cannot pass it to WasmMemory
     // => we need to wrap it in TruffleObject
     static class EconomicMapHolder implements TruffleObject {

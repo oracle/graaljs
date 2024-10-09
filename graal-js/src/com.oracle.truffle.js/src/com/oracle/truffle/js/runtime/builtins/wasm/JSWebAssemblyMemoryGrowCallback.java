@@ -68,10 +68,7 @@ public final class JSWebAssemblyMemoryGrowCallback implements TruffleObject {
     @ExportMessage
     Object execute(Object[] arguments) {
         assert arguments.length == 1;
-        Object embedderData = JSWebAssembly.getEmbedderData(realm, arguments[0]);
-        if (embedderData instanceof JSWebAssemblyMemoryObject) {
-            ((JSWebAssemblyMemoryObject) embedderData).resetBufferObject();
-        }
+        JSWebAssemblyMemory.resetBuffers(realm, arguments[0]);
         return Undefined.instance;
     }
 }
