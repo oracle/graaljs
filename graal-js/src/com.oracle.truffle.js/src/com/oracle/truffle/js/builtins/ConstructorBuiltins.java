@@ -3306,7 +3306,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 Object createMemory = realm.getWASMMemAlloc();
                 wasmMemory = memAllocLib.execute(createMemory, initialInt, maximumInt, sharedBoolean);
             } catch (AbstractTruffleException tex) {
-                throw Errors.createRangeError("WebAssembly.Memory(): could not allocate memory");
+                throw createCouldNotAllocateMemoryError(tex);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -3317,6 +3317,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getWebAssemblyMemoryPrototype();
+        }
+
+        @TruffleBoundary
+        private JSException createCouldNotAllocateMemoryError(AbstractTruffleException cause) {
+            return Errors.createRangeErrorFormat("WebAssembly.Memory(): %s", this, cause.getMessage());
         }
 
     }
