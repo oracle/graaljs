@@ -115,7 +115,7 @@ public abstract class TestSuite {
     private int testCount;
     private List<String> textOutputList;
     private final List<String> htmlOutputList;
-    private final List<TestRunnable> activeTests = new ArrayList<>();
+    private final Set<TestRunnable> activeTests = new HashSet<>();
     private final ExecutorService extLauncherPipePool;
     private final Engine sharedEngine;
 
@@ -988,7 +988,7 @@ public abstract class TestSuite {
         return Arrays.stream(cause.getStackTrace()).limit(REPORTED_STACK_TRACE_ELEMENTS).map(StackTraceElement::toString).collect(Collectors.joining(", ", "at ", ""));
     }
 
-    public List<TestRunnable> getActiveTests() {
+    public Set<TestRunnable> getActiveTests() {
         assert Thread.holdsLock(this);
         return activeTests;
     }
