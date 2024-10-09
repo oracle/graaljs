@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Testing and debug JSAgent used by test262.
@@ -75,7 +76,7 @@ public class DebugJSAgent extends JSAgent {
     private final Deque<Object> reportValues;
 
     private boolean quit;
-    private Object debugReceiveBroadcast;
+    private JSFunctionObject debugReceiveBroadcast;
     private final Queue<JSArrayBufferObject.Shared> broadcasts;
     private Thread thread;
 
@@ -170,8 +171,8 @@ public class DebugJSAgent extends JSAgent {
     }
 
     @TruffleBoundary
-    public void setDebugReceiveBroadcast(Object lambda) {
-        this.debugReceiveBroadcast = lambda;
+    public void setDebugReceiveBroadcast(JSFunctionObject broadcast) {
+        this.debugReceiveBroadcast = broadcast;
     }
 
     @TruffleBoundary
@@ -237,8 +238,7 @@ public class DebugJSAgent extends JSAgent {
 
     private void executeBroadcastCallback(JSArrayBufferObject.Shared sab) {
         CompilerAsserts.neverPartOfCompilation();
-        JSFunctionObject cb = (JSFunctionObject) debugReceiveBroadcast;
-        JSFunction.call(cb, cb, new Object[]{sab});
+        JSFunction.call(debugReceiveBroadcast, Undefined.instance, new Object[]{sab});
     }
 
     @TruffleBoundary

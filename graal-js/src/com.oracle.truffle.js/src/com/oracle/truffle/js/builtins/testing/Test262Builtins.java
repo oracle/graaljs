@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -273,9 +274,14 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         }
 
         @Specialization
-        protected Object receiveBroadcast(Object lambda) {
-            ((DebugJSAgent) getRealm().getAgent()).setDebugReceiveBroadcast(lambda);
+        protected Object doJSFunction(JSFunctionObject broadcast) {
+            ((DebugJSAgent) getRealm().getAgent()).setDebugReceiveBroadcast(broadcast);
             return Undefined.instance;
+        }
+
+        @Specialization(guards = {"!isJSFunction(broadcast)"})
+        protected Object doOther(Object broadcast) {
+            throw Errors.createTypeErrorNotAFunction(broadcast, this);
         }
     }
 
