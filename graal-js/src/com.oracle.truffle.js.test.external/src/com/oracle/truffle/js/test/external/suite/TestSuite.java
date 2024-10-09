@@ -115,7 +115,7 @@ public abstract class TestSuite {
     private int testCount;
     private List<String> textOutputList;
     private final List<String> htmlOutputList;
-    private final List<TestRunnable> activeTests = new ArrayList<>();
+    private final Set<TestRunnable> activeTests = new HashSet<>();
     private final ExecutorService extLauncherPipePool;
     private final Engine sharedEngine;
 
@@ -560,6 +560,15 @@ public abstract class TestSuite {
     }
 
     public int runTestSuite(String[] selectedTestDirs) throws InterruptedException {
+        Thread activeTestsHook = addActiveTestsShutdownHook();
+        try {
+            return runTestSuiteImpl(selectedTestDirs);
+        } finally {
+            Runtime.getRuntime().removeShutdownHook(activeTestsHook);
+        }
+    }
+
+    private int runTestSuiteImpl(String[] selectedTestDirs) throws InterruptedException {
         long startTime = System.currentTimeMillis();
 
         deleteFiles(getReportFileName(), getHTMLFileName());
@@ -988,9 +997,25 @@ public abstract class TestSuite {
         return Arrays.stream(cause.getStackTrace()).limit(REPORTED_STACK_TRACE_ELEMENTS).map(StackTraceElement::toString).collect(Collectors.joining(", ", "at ", ""));
     }
 
-    public List<TestRunnable> getActiveTests() {
+    public Set<TestRunnable> getActiveTests() {
         assert Thread.holdsLock(this);
         return activeTests;
+    }
+
+    private Thread addActiveTestsShutdownHook() {
+        Thread hook = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                synchronized (TestSuite.this) {
+                    System.out.println("ACTIVE TESTS:");
+                    for (TestRunnable test : getActiveTests()) {
+                        System.out.println(test.getName());
+                    }
+                }
+            }
+        });
+        Runtime.getRuntime().addShutdownHook(hook);
+        return hook;
     }
 
     public static void parseDefaultArgs(String[] args, SuiteConfig.Builder builder) {
