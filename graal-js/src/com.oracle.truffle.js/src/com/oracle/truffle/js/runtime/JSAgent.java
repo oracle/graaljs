@@ -105,7 +105,7 @@ public abstract class JSAgent {
 
     private AsyncContext asyncContextMapping = AsyncContext.empty();
 
-    private final List<JSAgent> childAgents = new ArrayList<>();
+    protected final List<JSAgent> childAgents = new ArrayList<>();
 
     public JSAgent(boolean canBlock) {
         this.signifier = signifierGenerator.incrementAndGet();
