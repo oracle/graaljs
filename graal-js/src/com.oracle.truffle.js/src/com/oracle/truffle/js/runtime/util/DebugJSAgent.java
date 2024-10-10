@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.runtime.util;
 
 import java.util.Deque;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -68,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Testing and debug JSAgent used by test262.
@@ -75,10 +74,11 @@ import com.oracle.truffle.js.runtime.objects.Null;
 public class DebugJSAgent extends JSAgent {
 
     private final Deque<Object> reportValues;
-    private final List<AgentExecutor> spawnedAgents;
 
     private boolean quit;
-    private Object debugReceiveBroadcast;
+    private JSFunctionObject debugReceiveBroadcast;
+    private final Queue<JSArrayBufferObject.Shared> broadcasts;
+    private Thread thread;
 
     private final Lock queueLock;
     private final Condition queueCondition;
@@ -88,7 +88,7 @@ public class DebugJSAgent extends JSAgent {
     public DebugJSAgent(boolean canBlock) {
         super(canBlock);
         this.reportValues = new ConcurrentLinkedDeque<>();
-        this.spawnedAgents = new LinkedList<>();
+        this.broadcasts = new ConcurrentLinkedQueue<>();
         this.queueLock = new ReentrantLock();
         this.queueCondition = queueLock.newCondition();
     }
@@ -108,13 +108,14 @@ public class DebugJSAgent extends JSAgent {
 
         agentContext.initializePublic(null, JavaScriptLanguage.ID);
 
-        Thread thread = env.newTruffleThreadBuilder(new Runnable() {
+        Thread newThread = env.newTruffleThreadBuilder(new Runnable() {
             @Override
             public void run() {
                 JSRealm innerContext = JavaScriptLanguage.getCurrentJSRealm();
                 DebugJSAgent childAgent = (DebugJSAgent) innerContext.getAgent();
+                childAgent.thread = Thread.currentThread();
                 DebugJSAgent parentAgent = DebugJSAgent.this;
-                AgentExecutor executor = parentAgent.registerChildAgent(Thread.currentThread(), childAgent, agentContext);
+                parentAgent.registerChildAgent(childAgent);
 
                 CallTarget callTarget = innerContext.getEnv().parsePublic(agentSource);
                 callTarget.call();
@@ -135,7 +136,7 @@ public class DebugJSAgent extends JSAgent {
                         }
                         // Signal received or timeout. Process all pending events.
                         do {
-                            JSArrayBufferObject.Shared original = executor.broadcasts.poll();
+                            JSArrayBufferObject.Shared original = childAgent.broadcasts.poll();
                             if (original != null) {
                                 // Create SharedArrayBuffer for this agent
                                 // (sharing the ByteBuffer with the original)
@@ -143,14 +144,14 @@ public class DebugJSAgent extends JSAgent {
                                                 original.getByteBuffer());
                                 current.setWaiterList(original.getWaiterList());
 
-                                executor.executeBroadcastCallback(current);
+                                childAgent.executeBroadcastCallback(current);
                                 // broadcast callback may have called agent.leaving().
                                 if (childAgent.quit) {
                                     return;
                                 }
                             }
-                            executor.processPromises();
-                        } while (!executor.broadcasts.isEmpty());
+                            childAgent.processAllPromises(true);
+                        } while (!childAgent.broadcasts.isEmpty());
                     }
                 } catch (InterruptedException e) {
                     System.err.println("Interrupted " + Thread.currentThread());
@@ -160,8 +161,8 @@ public class DebugJSAgent extends JSAgent {
             }
         }).context(agentContext).build();
 
-        thread.setName("Debug-JSAgent-Worker-Thread");
-        thread.start();
+        newThread.setName("Debug-JSAgent-Worker-Thread");
+        newThread.start();
         try {
             barrier.await();
         } catch (InterruptedException e) {
@@ -170,29 +171,30 @@ public class DebugJSAgent extends JSAgent {
     }
 
     @TruffleBoundary
-    public void setDebugReceiveBroadcast(Object lambda) {
-        this.debugReceiveBroadcast = lambda;
-    }
-
-    @TruffleBoundary
-    public AgentExecutor registerChildAgent(Thread thread, DebugJSAgent jsAgent, TruffleContext agentContext) {
-        AgentExecutor spawned = new AgentExecutor(thread, jsAgent, agentContext);
-        spawnedAgents.add(spawned);
-        return spawned;
+    public void setDebugReceiveBroadcast(JSFunctionObject broadcast) {
+        this.debugReceiveBroadcast = broadcast;
     }
 
     @TruffleBoundary
     public void broadcast(JSArrayBufferObject.Shared sab) {
-        for (AgentExecutor e : spawnedAgents) {
-            e.pushMessage(sab);
+        synchronized (childAgents) {
+            for (JSAgent agent : childAgents) {
+                if (agent instanceof DebugJSAgent debugAgent) {
+                    debugAgent.pushMessage(sab);
+                }
+            }
         }
     }
 
     @TruffleBoundary
     public Object getReport() {
-        for (AgentExecutor e : spawnedAgents) {
-            if (e.jsAgent.reportValues.size() > 0) {
-                return e.jsAgent.reportValues.pollLast();
+        synchronized (childAgents) {
+            for (JSAgent agent : childAgents) {
+                if (agent instanceof DebugJSAgent debugAgent) {
+                    if (!debugAgent.reportValues.isEmpty()) {
+                        return debugAgent.reportValues.pollLast();
+                    }
+                }
             }
         }
         return Null.instance;
@@ -228,67 +230,35 @@ public class DebugJSAgent extends JSAgent {
         }
     }
 
-    private static final class AgentExecutor {
+    private void pushMessage(JSArrayBufferObject.Shared sab) {
+        CompilerAsserts.neverPartOfCompilation();
+        broadcasts.add(sab);
+        wake();
+    }
 
-        private final DebugJSAgent jsAgent;
-        private final TruffleContext agentContext;
-        private final Thread thread;
-        final Queue<JSArrayBufferObject.Shared> broadcasts;
-
-        AgentExecutor(Thread thread, DebugJSAgent jsAgent, TruffleContext agentContext) {
-            CompilerAsserts.neverPartOfCompilation();
-            this.thread = thread;
-            this.jsAgent = jsAgent;
-            this.agentContext = agentContext;
-            this.broadcasts = new ConcurrentLinkedQueue<>();
-        }
-
-        void pushMessage(JSArrayBufferObject.Shared sab) {
-            CompilerAsserts.neverPartOfCompilation();
-            broadcasts.add(sab);
-            jsAgent.wake();
-        }
-
-        void executeBroadcastCallback(JSArrayBufferObject.Shared sab) {
-            CompilerAsserts.neverPartOfCompilation();
-            assert agentContext.isEntered();
-            JSFunctionObject cb = (JSFunctionObject) jsAgent.debugReceiveBroadcast;
-            JSFunction.call(cb, cb, new Object[]{sab});
-        }
-
-        void processPromises() {
-            CompilerAsserts.neverPartOfCompilation();
-            assert agentContext.isEntered();
-            jsAgent.processAllPromises(false);
-        }
+    private void executeBroadcastCallback(JSArrayBufferObject.Shared sab) {
+        CompilerAsserts.neverPartOfCompilation();
+        JSFunction.call(debugReceiveBroadcast, Undefined.instance, new Object[]{sab});
     }
 
     @TruffleBoundary
     @Override
     public void terminate() {
-        if (spawnedAgents.isEmpty()) {
-            return;
-        }
-        boolean alive = false;
-        for (AgentExecutor executor : spawnedAgents) {
-            if (executor.thread.isAlive()) {
-                alive = true;
-                executor.thread.interrupt();
-            }
-        }
-        if (alive) {
-            for (AgentExecutor executor : spawnedAgents) {
-                if (executor.thread.isAlive()) {
-                    try {
-                        executor.thread.join();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
+        super.terminate();
+        synchronized (childAgents) {
+            try {
+                for (JSAgent agent : childAgents) {
+                    if (agent instanceof DebugJSAgent debugAgent) {
+                        debugAgent.thread.join();
                     }
                 }
+            } catch (InterruptedException iex) {
+                Thread.currentThread().interrupt();
             }
         }
-        spawnedAgents.clear();
+        if (thread != null) {
+            thread.interrupt();
+        }
     }
 
 }

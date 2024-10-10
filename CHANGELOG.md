@@ -9,6 +9,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Updated Node.js to version 20.15.1.
 * Implemented the [`Promise.try`](https://github.com/tc39/proposal-promise-try) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Source Phase Imports](https://github.com/tc39/proposal-source-phase-imports) proposal. It is available behind the experimental option (`--js.source-phase-imports`).
+* Implemented basic Worker API (resembling the API available in `d8`). It is available behind the experimental option `--js.worker`.
 * Added option `js.stack-trace-api` that enables/disables `Error.captureStackTrace`, `Error.prepareStackTrace` and `Error.stackTraceLimit`. These non-standard extensions are disabled by default (unless `js.v8-compat` or `js.nashorn-compat` is used).
 * Made option `js.webassembly` stable.
 * Made options `js.load`, `js.print`, and `js.graal-builtin` stable and allowed in `SandboxPolicy.UNTRUSTED`.

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -66,15 +67,20 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
 
     public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, int byteLength, int maxByteLength) {
         JSObjectFactory factory = context.getSharedArrayBufferFactory();
-        return createSharedArrayBuffer(realm, proto, DirectByteBufferHelper.allocateDirect(Math.max(byteLength, maxByteLength)), factory, byteLength, maxByteLength);
+        return createSharedArrayBuffer(realm, proto, DirectByteBufferHelper.allocateDirect(Math.max(byteLength, maxByteLength)), factory, new AtomicInteger(byteLength), maxByteLength);
     }
 
     public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
         JSObjectFactory factory = context.getSharedArrayBufferFactory();
-        return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory, buffer.capacity(), JSArrayBuffer.FIXED_LENGTH);
+        return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory, new AtomicInteger(buffer.capacity()), JSArrayBuffer.FIXED_LENGTH);
     }
 
-    private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory, int byteLength, int maxByteLength) {
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer, AtomicInteger byteLength, int maxByteLength) {
+        JSObjectFactory factory = context.getSharedArrayBufferFactory();
+        return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory, byteLength, maxByteLength);
+    }
+
+    private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory, AtomicInteger byteLength, int maxByteLength) {
         assert buffer != null;
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSArrayBufferObject.Shared(shape, proto, buffer, new JSAgentWaiterList(), byteLength, maxByteLength), realm, proto);

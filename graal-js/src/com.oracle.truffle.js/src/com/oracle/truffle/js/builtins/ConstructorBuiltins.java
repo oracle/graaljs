@@ -40,15 +40,20 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -66,9 +71,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.AbstractClassConstructorNodeGen;
@@ -129,9 +136,11 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAss
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyMemoryNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyModuleNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyTableNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWorkerNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
 import com.oracle.truffle.js.builtins.helper.CanBeHeldWeaklyNode;
+import com.oracle.truffle.js.builtins.json.JSONBuiltins;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -203,11 +212,13 @@ import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.WorkerAgent;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -224,6 +235,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -243,6 +255,7 @@ import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.JSWorker;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
@@ -380,6 +393,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Table(1),
 
         ShadowRealm(0),
+
+        Worker(2),
 
         // Temporal
         PlainTime(0),
@@ -792,6 +807,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructWebAssemblyTableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).varArgs().createArgumentNodes(context))
                                 : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).varArgs().createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
+            case Worker:
+                if (construct) {
+                    return newTarget ? ConstructWorkerNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                    : ConstructWorkerNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
         }
         return null;
 
@@ -3465,6 +3487,118 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getWebAssemblyGlobalPrototype();
         }
 
+    }
+
+    public abstract static class ConstructWorkerNode extends ConstructWithNewTargetNode {
+        private static final TruffleString STRINGIFY = Strings.constant("stringify");
+        private static final TruffleString CLASSIC = Strings.constant("classic");
+
+        public ConstructWorkerNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected final JSObject construct(JSDynamicObject newTarget, Object codeParam, Object options) {
+            JSRealm realm = getRealm();
+
+            if (!(codeParam instanceof TruffleString) && !JSFunction.isJSFunction(codeParam)) {
+                throw Errors.createError("1st argument must be a string or a function");
+            }
+
+            String code = null;
+            if (JSRuntime.isObject(options)) {
+                Object typeValue = JSRuntime.get(options, Strings.TYPE);
+                Object arguments = JSRuntime.get(options, Strings.ARGUMENTS);
+                if (typeValue instanceof TruffleString type) {
+                    if (Strings.equals(type, CLASSIC)) {
+                        code = codeFromFileName(realm, codeParam);
+                    } else if (Strings.equals(type, Strings.FUNCTION)) {
+                        code = codeFromFunction(realm, codeParam, arguments);
+                    } else if (Strings.equals(type, Strings.STRING)) {
+                        if (codeParam instanceof TruffleString codeTS) {
+                            code = Strings.toJavaString(codeTS);
+                        }
+                    }
+                }
+            } else {
+                code = codeFromFileName(realm, codeParam);
+            }
+            if (code == null) {
+                throw Errors.createError("Invalid argument");
+            }
+
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            WorkerAgent agent = new WorkerAgent();
+            agent.start(code);
+            return JSWorker.create(getContext(), realm, proto, agent);
+        }
+
+        @TruffleBoundary
+        private static String codeFromFileName(JSRealm realm, Object fileNameParam) {
+            if (fileNameParam instanceof TruffleString fileName) {
+                try {
+                    TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(Strings.toJavaString(fileName), realm.getEnv());
+                    if (file.isRegularFile()) {
+                        return new String(file.readAllBytes(), StandardCharsets.UTF_8);
+                    } else {
+                        throw cannotLoadScript(fileName);
+                    }
+                } catch (IOException | SecurityException | IllegalArgumentException ex) {
+                    throw Errors.createErrorFromException(ex);
+                }
+            }
+            return null;
+        }
+
+        @TruffleBoundary
+        private static JSException cannotLoadScript(TruffleString fileName) {
+            return Errors.createError("Cannot load script: " + fileName);
+        }
+
+        @TruffleBoundary
+        private static String codeFromFunction(JSRealm realm, Object functionParam, Object arguments) {
+            if (!JSFunction.isJSFunction(functionParam)) {
+                return null;
+            }
+            JSFunctionObject function = (JSFunctionObject) functionParam;
+            CallTarget callTarget = JSFunction.getCallTarget(function);
+            if (!(callTarget instanceof RootCallTarget)) {
+                return null;
+            }
+            RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
+            SourceSection sourceSection = rootNode.getSourceSection();
+            if (sourceSection == null || !sourceSection.isAvailable() || sourceSection.getSource().isInternal()) {
+                return null;
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append('(');
+            sb.append(sourceSection.getCharacters().toString());
+            sb.append(")(");
+            if (arguments != Undefined.instance) {
+                if (JSArray.isJSArray(arguments)) {
+                    JSFunctionObject stringify = realm.lookupFunction(JSONBuiltins.BUILTINS, STRINGIFY);
+                    JSArrayObject args = (JSArrayObject) arguments;
+                    long length = JSAbstractArray.arrayGetLength(args);
+                    for (long i = 0; i < length; i++) {
+                        Object argument = JSObject.get(args, i);
+                        if (i != 0) {
+                            sb.append(',');
+                        }
+                        Object json = JSFunction.call(stringify, Undefined.instance, new Object[]{argument});
+                        sb.append(JSRuntime.toString(json));
+                    }
+                } else {
+                    throw Errors.createError("'arguments' must be an array");
+                }
+            }
+            sb.append(')');
+            return sb.toString();
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return getRealm().getWorkerPrototype();
+        }
     }
 
 }

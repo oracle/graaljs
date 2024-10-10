@@ -509,15 +509,19 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
         JSAgentWaiterList waiterList;
         AtomicInteger byteLength;
 
-        protected Shared(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, JSAgentWaiterList waiterList, int byteLength, int maxByteLength) {
+        protected Shared(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, JSAgentWaiterList waiterList, AtomicInteger byteLength, int maxByteLength) {
             super(shape, proto, byteBuffer, /* unused */ -1, maxByteLength);
             this.waiterList = waiterList;
-            this.byteLength = new AtomicInteger(byteLength);
+            this.byteLength = byteLength;
         }
 
         @Override
         public int getByteLength() {
             return byteLength.get();
+        }
+
+        public AtomicInteger getByteLengthObject() {
+            return byteLength;
         }
 
         public boolean updateByteLength(int expectedByteLength, int newByteLength) {

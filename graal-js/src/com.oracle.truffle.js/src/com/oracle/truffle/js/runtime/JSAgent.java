@@ -42,8 +42,10 @@ package com.oracle.truffle.js.runtime;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -102,6 +104,8 @@ public abstract class JSAgent {
     private PromiseRejectionTracker promiseRejectionTracker;
 
     private AsyncContext asyncContextMapping = AsyncContext.empty();
+
+    protected final List<JSAgent> childAgents = new ArrayList<>();
 
     public JSAgent(boolean canBlock) {
         this.signifier = signifierGenerator.incrementAndGet();
@@ -264,10 +268,22 @@ public abstract class JSAgent {
         this.canBlock = canBlock;
     }
 
+    protected void registerChildAgent(JSAgent agent) {
+        synchronized (childAgents) {
+            childAgents.add(agent);
+        }
+    }
+
     /**
      * Terminate the agent.
      */
-    public abstract void terminate();
+    public void terminate() {
+        synchronized (childAgents) {
+            for (JSAgent childAgent : childAgents) {
+                childAgent.terminate();
+            }
+        }
+    }
 
     public static JSAgent get(Node node) {
         return JSRealm.getMain(node).getAgent();

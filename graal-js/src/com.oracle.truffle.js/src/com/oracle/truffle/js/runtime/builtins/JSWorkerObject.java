@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.runtime.builtins;
 
-/**
- * Default class implementing a dummy ECMA2017 8.7 Agent for the JS main thread.
- */
-public final class MainJSAgent extends JSAgent {
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.WorkerAgent;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-    public MainJSAgent() {
-        super(false);
+public final class JSWorkerObject extends JSNonProxyObject {
+    private final WorkerAgent agent;
+
+    protected JSWorkerObject(Shape shape, JSDynamicObject proto, WorkerAgent agent) {
+        super(shape, proto);
+        this.agent = agent;
     }
 
     @Override
-    public void wake() {
-        // No-op
+    public TruffleString getClassName() {
+        return JSWorker.CLASS_NAME;
     }
+
+    public WorkerAgent getAgent() {
+        return agent;
+    }
+
 }

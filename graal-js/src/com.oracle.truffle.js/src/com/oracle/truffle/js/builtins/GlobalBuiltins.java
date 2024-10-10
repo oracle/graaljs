@@ -99,6 +99,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalLoadNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalLoadWithNewGlobalNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalParseFloatNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalParseIntNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalPostMessageNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalPrintNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
@@ -134,6 +135,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.WorkerAgent;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -160,6 +162,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     public static final JSBuiltinsContainer GLOBAL_NASHORN_EXTENSIONS = new GlobalNashornScriptingBuiltins();
     public static final JSBuiltinsContainer GLOBAL_PRINT = new GlobalPrintBuiltins();
     public static final JSBuiltinsContainer GLOBAL_LOAD = new GlobalLoadBuiltins();
+    public static final JSBuiltinsContainer GLOBAL_WORKER = new GlobalWorkerBuiltins();
 
     protected GlobalBuiltins() {
         super(Global.class);
@@ -388,6 +391,39 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return GlobalScriptingEXECNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
                 case importScriptEngineGlobalBindings:
                     return JSGlobalImportScriptEngineGlobalBindingsNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Built-ins available in a worker only.
+     */
+    public static final class GlobalWorkerBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalWorkerBuiltins.GlobalWorker> {
+        protected GlobalWorkerBuiltins() {
+            super(GlobalWorker.class);
+        }
+
+        public enum GlobalWorker implements BuiltinEnum<GlobalWorker> {
+            postMessage(1);
+
+            private final int length;
+
+            GlobalWorker(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalWorker builtinEnum) {
+            switch (builtinEnum) {
+                case postMessage:
+                    return JSGlobalPostMessageNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             }
             return null;
         }
@@ -1763,4 +1799,19 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
     }
+
+    public abstract static class JSGlobalPostMessageNode extends JSBuiltinNode {
+
+        public JSGlobalPostMessageNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object postMessage(Object message) {
+            ((WorkerAgent) getRealm().getAgent()).postOutMessage(message);
+            return Undefined.instance;
+        }
+
+    }
+
 }
