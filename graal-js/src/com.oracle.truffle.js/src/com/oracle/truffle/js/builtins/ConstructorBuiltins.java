@@ -3535,11 +3535,19 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(Strings.toJavaString(fileName), realm.getEnv());
                     if (file.isRegularFile()) {
                         return new String(file.readAllBytes(), StandardCharsets.UTF_8);
+                    } else {
+                        throw cannotLoadScript(fileName);
                     }
                 } catch (IOException | SecurityException | IllegalArgumentException ex) {
+                    throw Errors.createErrorFromException(ex);
                 }
             }
             return null;
+        }
+
+        @TruffleBoundary
+        private static JSException cannotLoadScript(TruffleString fileName) {
+            return Errors.createError("Cannot load script: " + fileName);
         }
 
         @TruffleBoundary
