@@ -70,6 +70,7 @@ import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.web.JSTextDecoder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ThrowTypeErrorRootNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
@@ -554,6 +555,7 @@ public class JSContext {
     private final JSObjectFactory asyncContextVariableFactory;
     private final JSObjectFactory rawJSONFactory;
 
+    private final JSObjectFactory textDecoderFactory;
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
@@ -761,6 +763,7 @@ public class JSContext {
         this.asyncContextVariableFactory = builder.create(JSAsyncContextVariable.INSTANCE);
         this.rawJSONFactory = JSObjectFactory.createBound(this, Null.instance, JSRawJSON.makeInitialShape(this));
 
+        this.textDecoderFactory = builder.create(JSTextDecoder.INSTANCE);
         this.factoryCount = builder.finish();
 
         this.regExpGroupsEmptyShape = JSRegExp.makeInitialGroupsObjectShape(this);
@@ -1328,6 +1331,10 @@ public class JSContext {
 
     public final JSObjectFactory getRawJSONFactory() {
         return rawJSONFactory;
+    }
+
+    public final JSObjectFactory getTextDecoderFactory() {
+        return textDecoderFactory;
     }
 
     private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";

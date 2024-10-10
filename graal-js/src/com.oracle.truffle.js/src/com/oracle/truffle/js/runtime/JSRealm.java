@@ -114,6 +114,7 @@ import com.oracle.truffle.js.builtins.json.JSON;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltins;
 import com.oracle.truffle.js.builtins.testing.PolyglotInternalBuiltins;
 import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltins;
+import com.oracle.truffle.js.builtins.web.JSTextDecoder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -527,6 +528,8 @@ public class JSRealm {
     private final JSDynamicObject foreignIterablePrototype;
     private final JSDynamicObject foreignIteratorPrototype;
 
+    private final JSFunctionObject textDecoderConstructor;
+    private final JSDynamicObject textDecoderPrototype;
     /**
      * Local time zone ID. Initialized lazily. May be reinitialized by {@link #setLocalTimeZone}.
      */
@@ -1165,6 +1168,10 @@ public class JSRealm {
             this.asyncContextVariableConstructor = null;
             this.asyncContextVariablePrototype = null;
         }
+
+        ctor = JSTextDecoder.createConstructor(this);
+        this.textDecoderConstructor = ctor.getFunctionObject();
+        this.textDecoderPrototype = ctor.getPrototype();
 
         // always create, regardless of context.isOptionForeignObjectPrototype()
         // we use them in some scenarios even when option is turned off
@@ -2188,6 +2195,7 @@ public class JSRealm {
         if (getContextOptions().isAsyncContext()) {
             putGlobalProperty(JSAsyncContext.NAMESPACE_NAME, JSAsyncContext.create(this));
         }
+        putGlobalProperty(JSTextDecoder.CLASS_NAME, textDecoderConstructor);
         if (context.getLanguageOptions().profileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
@@ -3340,6 +3348,10 @@ public class JSRealm {
 
     public JSDynamicObject getWebAssemblyGlobalPrototype() {
         return webAssemblyGlobalPrototype;
+    }
+
+    public JSDynamicObject getTextDecoderPrototype() {
+        return textDecoderPrototype;
     }
 
     public JSDynamicObject getForeignIterablePrototype() {
