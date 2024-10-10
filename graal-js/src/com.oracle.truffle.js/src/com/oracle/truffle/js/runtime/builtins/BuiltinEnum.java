@@ -108,7 +108,7 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
     }
 
     default boolean isOptional() {
-        return false;
+        return isConstructor();
     }
 
     @SuppressWarnings("unused")
