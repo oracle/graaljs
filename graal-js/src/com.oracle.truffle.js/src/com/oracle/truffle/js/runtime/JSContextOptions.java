@@ -710,6 +710,11 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> FREQUENCY_BASED_PROPERTY_CACHE_LIMIT = new OptionKey<>(5, integerRange(0, Short.MAX_VALUE));
     @CompilationFinal private short frequencyBasedPropertyCacheLimit;
 
+    public static final String TEXT_ENCODING_NAME = JS_OPTION_PREFIX + "text-encoding";
+    @Option(name = TEXT_ENCODING_NAME, category = OptionCategory.EXPERT, help = "Enable TextDecoder and TextEncoder Web APIs.") //
+    public static final OptionKey<Boolean> TEXT_ENCODING = new OptionKey<>(false);
+    @CompilationFinal private boolean textEncoding;
+
     private static OptionType<Integer> integerRange(int min, int max) {
         return new OptionType<>("Integer", sv -> {
             try {
@@ -822,6 +827,7 @@ public final class JSContextOptions {
         this.arrayElementsAmongMembers = readBooleanOption(ARRAY_ELEMENTS_AMONG_MEMBERS);
         this.stackTraceAPI = STACK_TRACE_API.hasBeenSet(optionValues) ? readBooleanOption(STACK_TRACE_API) : (v8CompatibilityMode || nashornCompatibilityMode);
         this.worker = WORKER.hasBeenSet(optionValues) ? readBooleanOption(WORKER) : testV8Mode;
+        this.textEncoding = readBooleanOption(TEXT_ENCODING);
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -1305,6 +1311,10 @@ public final class JSContextOptions {
 
     public short getFrequencyBasedPropertyCacheLimit() {
         return frequencyBasedPropertyCacheLimit;
+    }
+
+    public boolean isTextEncoding() {
+        return textEncoding;
     }
 
     public boolean isWorker() {

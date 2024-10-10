@@ -1173,12 +1173,19 @@ public class JSRealm {
             this.asyncContextVariablePrototype = null;
         }
 
-        ctor = JSTextDecoder.createConstructor(this);
-        this.textDecoderConstructor = ctor.getFunctionObject();
-        this.textDecoderPrototype = ctor.getPrototype();
-        ctor = JSTextEncoder.createConstructor(this);
-        this.textEncoderConstructor = ctor.getFunctionObject();
-        this.textEncoderPrototype = ctor.getPrototype();
+        if (contextOptions.isTextEncoding()) {
+            ctor = JSTextDecoder.createConstructor(this);
+            this.textDecoderConstructor = ctor.getFunctionObject();
+            this.textDecoderPrototype = ctor.getPrototype();
+            ctor = JSTextEncoder.createConstructor(this);
+            this.textEncoderConstructor = ctor.getFunctionObject();
+            this.textEncoderPrototype = ctor.getPrototype();
+        } else {
+            this.textDecoderConstructor = null;
+            this.textDecoderPrototype = null;
+            this.textEncoderConstructor = null;
+            this.textEncoderPrototype = null;
+        }
 
         // always create, regardless of context.isOptionForeignObjectPrototype()
         // we use them in some scenarios even when option is turned off
@@ -2202,9 +2209,10 @@ public class JSRealm {
         if (getContextOptions().isAsyncContext()) {
             putGlobalProperty(JSAsyncContext.NAMESPACE_NAME, JSAsyncContext.create(this));
         }
-
-        putGlobalProperty(JSTextDecoder.CLASS_NAME, textDecoderConstructor);
-        putGlobalProperty(JSTextEncoder.CLASS_NAME, textEncoderConstructor);
+        if (getContextOptions().isTextEncoding()) {
+            putGlobalProperty(JSTextEncoder.CLASS_NAME, textEncoderConstructor);
+            putGlobalProperty(JSTextDecoder.CLASS_NAME, textDecoderConstructor);
+        }
 
         if (context.getLanguageOptions().profileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
