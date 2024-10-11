@@ -435,6 +435,7 @@ suite = {
           "com.oracle.truffle.js.builtins to org.graalvm.nodejs",
           "com.oracle.truffle.js.builtins.helper to org.graalvm.nodejs",
           "com.oracle.truffle.js.builtins.json to org.graalvm.nodejs",
+          "com.oracle.truffle.js.builtins.web to org.graalvm.nodejs",
           "com.oracle.truffle.js.lang to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.access to org.graalvm.nodejs",
