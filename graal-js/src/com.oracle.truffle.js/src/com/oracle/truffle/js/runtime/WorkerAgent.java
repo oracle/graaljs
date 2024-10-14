@@ -220,7 +220,7 @@ public final class WorkerAgent extends JSAgent {
     @TruffleBoundary
     public Object getOutMessage(JSRealm realm) {
         Object message = Undefined.instance;
-        if (!finished) {
+        if (!finished || !outMessages.isEmpty()) {
             try {
                 message = outMessages.take().deserialize(realm);
             } catch (InterruptedException iex) {
