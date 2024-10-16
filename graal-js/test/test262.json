@@ -303,12 +303,172 @@
     },
     "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
   }, {
+    "filePath" : "built-ins/Date/prototype/setDate/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setDate/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setHours/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setHours/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setMilliseconds/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setMilliseconds/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setMinutes/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setMinutes/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setMonth/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setMonth/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setSeconds/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setSeconds/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCDate/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCDate/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCHours/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCHours/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCMilliseconds/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCMilliseconds/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCMinutes/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCMinutes/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCMonth/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCMonth/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCSeconds/date-value-read-before-tonumber-when-date-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Date/prototype/setUTCSeconds/date-value-read-before-tonumber-when-date-is-valid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/bigints.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/error-subclass.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/errors-other-realm.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/errors.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/fake-errors.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/is-a-constructor.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/name.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/non-error-objects-other-realm.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/non-error-objects.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/primitives.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Error/isError/symbols.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Function/prototype/toString/built-in-function-object.js",
     "status" : "PASS",
     "statusOverrides" : {
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "built-ins/Iterator/from/get-return-method-when-call-return.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Iterator/from/return-method-calls-base-return-method.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Iterator/from/return-method-returns-iterator-result.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Iterator/from/return-method-throws-for-invalid-this.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
@@ -798,6 +958,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Garay.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Georgian.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -829,6 +993,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Gurmukhi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Gurung_Khema.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Han.js",
     "status" : "SKIP",
@@ -917,6 +1085,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Khudawadi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Kirat_Rai.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Lao.js",
     "status" : "SKIP",
@@ -1066,6 +1238,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Ol_Onal.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Old_Hungarian.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1190,6 +1366,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Sunuwar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Syloti_Nagri.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1258,9 +1438,17 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Todhri.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Toto.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Tulu_Tigalari.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Ugaritic.js",
     "status" : "SKIP",
@@ -1450,6 +1638,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Garay.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Georgian.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1481,6 +1673,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Gurmukhi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Gurung_Khema.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Han.js",
     "status" : "SKIP",
@@ -1569,6 +1765,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Khudawadi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Kirat_Rai.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Lao.js",
     "status" : "SKIP",
@@ -1718,6 +1918,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Ol_Onal.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Old_Hungarian.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1842,6 +2046,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Sunuwar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Syloti_Nagri.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1910,9 +2118,17 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Todhri.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Toto.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Tulu_Tigalari.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Ugaritic.js",
     "status" : "SKIP",
@@ -1954,6 +2170,18 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/strings/Basic_Emoji.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/strings/RGI_Emoji.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/strings/RGI_Emoji_Flag_Sequence.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Terminal_Punctuation.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1982,6 +2210,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/unicodeSets/generated/rgi-emoji-16.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
@@ -1996,6 +2228,14 @@
     "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
@@ -2021,6 +2261,10 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -2029,6 +2273,10 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/round-and-balance-calendar-units-with-increment-disallowed.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -2036,6 +2284,10 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-datetime.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-zoneddatetime-wrong-offset.js",
     "status" : "FAIL",
@@ -2161,6 +2413,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/from/monthcode-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2168,6 +2424,10 @@
     "filePath" : "built-ins/Temporal/PlainDate/from/observable-get-overflow-argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/from/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/from/order-of-operations.js",
     "status" : "FAIL",
@@ -2233,6 +2493,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/with/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/with/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2253,6 +2517,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/from/monthcode-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2260,6 +2528,10 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/from/observable-get-overflow-argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/from/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/from/order-of-operations.js",
     "status" : "FAIL",
@@ -2333,6 +2605,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toString/rounding-edge-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/fixed-offset-near-date-time-limits.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2348,6 +2624,10 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/wrapping-at-end-of-month.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/with/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/with/order-of-operations.js",
     "status" : "FAIL",
@@ -2385,6 +2665,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/monthcode-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2392,6 +2676,10 @@
     "filePath" : "built-ins/Temporal/PlainMonthDay/from/observable-get-overflow-argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/from/order-of-operations.js",
     "status" : "FAIL",
@@ -2408,6 +2696,10 @@
     "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/toPlainDate/default-overflow-behaviour.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/with/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/with/order-of-operations.js",
     "status" : "FAIL",
@@ -2444,6 +2736,18 @@
     "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-unknown-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/from/observable-get-overflow-argument-string-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/from/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/from/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/add/argument-string-duration-too-large.js",
     "status" : "FAIL",
@@ -2517,6 +2821,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/with/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/with/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/calendar-iso-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2537,6 +2849,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/from/monthcode-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2544,6 +2860,10 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/from/observable-get-overflow-argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/from/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/from/order-of-operations.js",
     "status" : "FAIL",
@@ -2601,6 +2921,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/with/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/with/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2616,6 +2940,10 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-string-limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-string-minus-sign.js",
     "status" : "FAIL",
@@ -2633,6 +2961,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-minus-sign.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2640,6 +2972,10 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-time-zone-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/monthcode-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
@@ -2652,6 +2988,14 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/offset-overrides-critical-flag.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/offset-string-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/order-of-operations.js",
     "status" : "FAIL",
@@ -2680,6 +3024,10 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-string-limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-string-minus-sign.js",
     "status" : "FAIL",
@@ -2765,6 +3113,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-string-limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-string-minus-sign.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2793,6 +3145,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-string-limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-string-minus-sign.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2812,6 +3168,10 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/offset-property-invalid-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/options-wrong-type.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/order-of-operations.js",
     "status" : "FAIL",
@@ -2848,6 +3208,22 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/key-is-canonical-invalid-index-prototype-chain-set.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/key-is-valid-index-prototype-chain-set.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/key-is-canonical-invalid-index-prototype-chain-set.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/key-is-valid-index-prototype-chain-set.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Collator/prototype/resolvedOptions/ignorePunctuation-default.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2856,17 +3232,33 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-not-overlapping-options.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-not-overlapping-options.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-not-overlapping-options.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-not-overlapping-options.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
@@ -2901,6 +3293,10 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/language-tags-canonicalized.js",
     "status" : "PASS",
@@ -2960,9 +3356,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
   }, {
+    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/default-includes-time-not-time-zone-name.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/locales-undefined.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/lone-options-accepted.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/options-conflict.js",
     "status" : "FAIL",
@@ -2980,9 +3384,17 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/from/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/canonicalize-era-codes.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/from/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -3040,6 +3452,10 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/lone-options-accepted.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/options-conflict.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -3051,6 +3467,10 @@
     "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toZonedDateTime/dst-skipped-cross-midnight.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/until/canonicalize-calendar.js",
     "status" : "FAIL",
@@ -3084,6 +3504,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/with/non-iso-calendar-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/withCalendar/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -3104,9 +3528,17 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/from/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/from/canonicalize-era-codes.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/from/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -3152,9 +3584,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/default-includes-time-not-time-zone-name.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/locales-undefined.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/lone-options-accepted.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/options-conflict.js",
     "status" : "FAIL",
@@ -3196,6 +3636,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/with/non-iso-calendar-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/withCalendar/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -3211,6 +3655,10 @@
     "filePath" : "intl402/Temporal/PlainMonthDay/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/from/canonicalize-calendar.js",
     "status" : "FAIL",
@@ -3256,6 +3704,10 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/lone-options-accepted.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/options-undefined.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -3272,9 +3724,21 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
   }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/with/non-iso-calendar-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/default-does-not-include-date-and-time-zone-name.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/locales-undefined.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/lone-options-accepted.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/options-conflict.js",
     "status" : "FAIL",
@@ -3300,9 +3764,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-02-23"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/from/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/canonicalize-era-codes.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/from/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -3376,6 +3848,10 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/lone-options-accepted.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/options-undefined.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -3391,6 +3867,10 @@
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/until/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/with/non-iso-calendar-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/canonicalize-calendar.js",
     "status" : "FAIL",
@@ -3408,9 +3888,21 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/canonicalize-era-codes.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/dst-skipped-cross-midnight.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/etc-timezone.js",
     "status" : "FAIL",
@@ -3508,6 +4000,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/hoursInDay/dst-skipped-cross-midnight.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/round/dst-skipped-cross-midnight.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -3515,6 +4015,10 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/startOfDay/dst-skipped-cross-midnight.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/calendar-mismatch.js",
     "status" : "FAIL",
@@ -3524,9 +4028,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/default-includes-time-and-time-zone-name.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/locales-undefined.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/lone-options-accepted.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/offset-time-zone-not-supported.js",
     "status" : "FAIL",
@@ -3568,6 +4080,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/with/non-iso-calendar-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/with/offset-property-sub-minute.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -3575,6 +4091,10 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withCalendar/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withPlainTime/dst-skipped-cross-midnight.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/yearOfWeek/gregory-iso-weekofyear.js",
     "status" : "FAIL",
@@ -3601,6 +4121,86 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/expressions/delete/super-property-topropertykey.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/expressions/delete/super-property-uninitialized-this.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue-compound-assign.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue-increment.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-15.1.0-class-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-15.1.0-class.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-15.1.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-15.1.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-16.0.0-class-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-16.0.0-class.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-16.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/part-unicode-16.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-15.1.0-class-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-15.1.0-class.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-15.1.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-15.1.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-16.0.0-class-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-16.0.0-class.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-16.0.0-escaped.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/identifiers/start-unicode-16.0.0.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
@@ -3676,6 +4276,30 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/statements/with/get-binding-value-call-with-proxy-env.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/statements/with/get-binding-value-idref-with-proxy-env.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/statements/with/get-mutable-binding-binding-deleted-in-get-unscopables-strict-mode.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "language/statements/with/set-mutable-binding-idref-compound-assign-with-proxy-env.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months.js",
     "status" : "FAIL",
