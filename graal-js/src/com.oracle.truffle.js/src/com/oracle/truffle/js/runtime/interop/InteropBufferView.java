@@ -95,12 +95,6 @@ public final class InteropBufferView implements TruffleObject {
     }
 
     @ExportMessage
-    void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int readLength,
-                    @CachedLibrary("this.arrayBuffer") InteropLibrary bufferInterop) throws UnsupportedMessageException, InvalidBufferOffsetException {
-        bufferInterop.readBuffer(arrayBuffer, checkFromIndexSize(byteOffset, readLength), destination, destinationOffset, readLength);
-    }
-
-    @ExportMessage
     byte readBufferByte(long byteOffset,
                     @CachedLibrary("this.arrayBuffer") InteropLibrary bufferInterop) throws UnsupportedMessageException, InvalidBufferOffsetException {
         return bufferInterop.readBufferByte(arrayBuffer, checkFromIndexSize(byteOffset, Byte.BYTES));
