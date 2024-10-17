@@ -4277,14 +4277,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
     "filePath" : "language/statements/with/get-binding-value-call-with-proxy-env.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
