@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -64,6 +64,7 @@ var logHandler = {
 
 checkOutput(`
 has y true
+has y true
 get y 42
 --
 has y true
@@ -76,6 +77,7 @@ deleted
 has y false
 set y 42 true
 --
+has y true
 has y true
 get y 42
 `);

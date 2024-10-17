@@ -557,6 +557,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
+    "filePath" : "mjsunit/es6/proxies-with-unscopables.js",
+    "status" : "FAIL",
+    "comment" : "Off spec - does not expect HasProperty() in GetBindingValue()."
+  }, {
     "filePath" : "mjsunit/es6/regress/regress-576662.js",
     "status" : "FAIL"
   }, {

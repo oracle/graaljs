@@ -4277,22 +4277,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "language/statements/with/get-binding-value-call-with-proxy-env.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "language/statements/with/get-binding-value-idref-with-proxy-env.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "language/statements/with/get-mutable-binding-binding-deleted-in-get-unscopables-strict-mode.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "language/statements/with/set-mutable-binding-idref-compound-assign-with-proxy-env.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
     "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"

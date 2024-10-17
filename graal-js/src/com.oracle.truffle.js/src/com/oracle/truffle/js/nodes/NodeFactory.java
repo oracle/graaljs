@@ -1149,8 +1149,9 @@ public class NodeFactory {
         return WithNode.create(expression, statement);
     }
 
-    public JavaScriptNode createWithVarWrapper(TruffleString propertyName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
-        return WithVarWrapperNode.create(propertyName, withTarget, withAccessNode, globalDelegate);
+    public JavaScriptNode createWithVarWrapper(JSContext context, TruffleString propertyName, boolean isStrict, JavaScriptNode withTarget, JSTargetableNode withAccessNode,
+                    JavaScriptNode globalDelegate) {
+        return WithVarWrapperNode.create(context, propertyName, isStrict, withTarget, withAccessNode, globalDelegate);
     }
 
     public JavaScriptNode createWithTarget(JSContext context, TruffleString propertyName, JavaScriptNode withVariable) {
