@@ -165,6 +165,7 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
         if next((arg.startswith('-e') for arg in reversed(vmArgs) if arg in ['-ea', '-da', '-enableassertions', '-disableassertions']), False):
             vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
         vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
+        vmArgs += ['--enable-native-access=org.graalvm.truffle,org.graalvm.truffle.runtime']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
@@ -278,7 +279,7 @@ def graaljs_cmd_line(args, append_default_args=True, jdk=None):
             + mx_truffle.resolve_truffle_dist_names()
             + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:INSIGHT_HEAP'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
             + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []),
-            jdk=jdk) + ['--enable-native-access=org.graalvm.truffle.runtime']
+            jdk=jdk) + ['--enable-native-access=org.graalvm.truffle,org.graalvm.truffle.runtime']
     main_dist = mx.distribution('GRAALJS_LAUNCHER')
     main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
     return _js_cmd_line(args, main_class=main_class_arg, runtime_jvm_args=runtime_jvm_args, append_default_args=append_default_args)
