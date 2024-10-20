@@ -454,22 +454,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "built-ins/Iterator/from/get-return-method-when-call-return.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "built-ins/Iterator/from/return-method-calls-base-return-method.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "built-ins/Iterator/from/return-method-returns-iterator-result.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "built-ins/Iterator/from/return-method-throws-for-invalid-this.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
     "comment" : "Long running test"

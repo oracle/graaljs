@@ -119,10 +119,6 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
             throw Errors.createTypeErrorNotAnObject(iterator, this);
         }
         Object nextMethod = getNextMethodNode.getValue(iterator);
-        if (!isCallableNode.executeBoolean(nextMethod)) {
-            errorBranch.enter(this);
-            throw Errors.createTypeErrorNotAFunction(nextMethod, this);
-        }
         IteratorRecord iteratorRecord = IteratorRecord.create(iterator, nextMethod, false);
         if (async && !alreadyAsync) {
             return createAsyncFromSyncIteratorNode.execute(this, iteratorRecord);
