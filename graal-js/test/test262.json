@@ -4114,14 +4114,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
   }, {
-    "filePath" : "language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue-compound-assign.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue-increment.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
     "statusOverrides" : {
