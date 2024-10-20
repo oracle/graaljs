@@ -2527,13 +2527,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         if (baseNode.isSuper()) {
-            // delete UnaryExpression:
-            // Let ref be ? Evaluation of UnaryExpression.
             // If IsSuperReference(ref) is true, throw a ReferenceError exception.
-            // => ToPropertyKey(key) must be evaluated for 'delete super[key]' before we throw
-            return tagExpression(factory.createDual(context,
-                            factory.createToPropertyKey(key),
-                            factory.createThrowError(JSErrorType.ReferenceError, UNSUPPORTED_REFERENCE_TO_SUPER)), deleteNode);
+            return tagExpression(factory.createThrowError(JSErrorType.ReferenceError, UNSUPPORTED_REFERENCE_TO_SUPER), deleteNode);
         }
 
         if (baseNode.isOptionalChain()) {

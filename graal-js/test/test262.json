@@ -4106,14 +4106,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "language/expressions/delete/super-property-topropertykey.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "language/expressions/delete/super-property-uninitialized-this.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
     "statusOverrides" : {
