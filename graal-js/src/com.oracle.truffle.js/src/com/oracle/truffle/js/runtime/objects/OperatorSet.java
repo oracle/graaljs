@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.objects;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.js.runtime.Symbol;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
@@ -140,7 +141,7 @@ public class OperatorSet {
 
     @TruffleBoundary
     public static Object getOperatorImplementation(Object left, Object right, TruffleString operatorName) {
-        if (JSRuntime.isNullOrUndefined(left) || JSRuntime.isNullOrUndefined(right)) {
+        if (isUnsupportedPrimitive(left) || isUnsupportedPrimitive(right)) {
             return null;
         }
         OperatorSet leftOperatorSet = getOperatorSet(left);
@@ -163,5 +164,9 @@ public class OperatorSet {
                 return null;
             }
         }
+    }
+
+    public static boolean isUnsupportedPrimitive(Object value) {
+        return JSRuntime.isNullOrUndefined(value) || value instanceof Boolean || value instanceof Symbol;
     }
 }
