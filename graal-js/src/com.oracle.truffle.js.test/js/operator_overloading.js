@@ -350,12 +350,12 @@ assertSame("a" + STR("b"), "ab");
 
 
 // Using undefined operators or type combinations should result in type errors
-assertThrows(() => V(1, 2, 3) / V(2, 3, 4), TypeError);
-assertThrows(() => 1 + V(1, 2, 3), TypeError);
-assertThrows(() => S(1) + V(1, 2, 3), TypeError);
-assertThrows(() => V(1, 2, 3) + STR("a"), TypeError);
-assertThrows(() => { let v = V(1, 2, 3); v++; }, TypeError);
-assertThrows(() => { let v = V(1, 2, 3); v--; }, TypeError);
+assertThrows(() => V(1, 2, 3) / V(2, 3, 4), TypeError, "No overload found for Vector / Vector");
+assertThrows(() => 1 + V(1, 2, 3), TypeError, "No overload found for Number + Vector");
+assertThrows(() => S(1) + V(1, 2, 3), TypeError, "No overload found for Scalar + Vector");
+assertThrows(() => V(1, 2, 3) + STR("a"), TypeError, "No overload found for Vector + CustomString");
+assertThrows(() => { let v = V(1, 2, 3); v++; }, TypeError, "No overload found for ++ Vector");
+assertThrows(() => { let v = V(1, 2, 3); v--; }, TypeError, "No overload found for -- Vector");
 
 
 // Handle null, undefined and non-numeric primitives when dispatching operators that use ToOperand
@@ -363,22 +363,25 @@ assertThrows(() => { let v = V(1, 2, 3); v--; }, TypeError);
 // The cases below are not covered explicitly by the operator overloading proposal, but this
 // behavior implied by the proposal spec.
 
-function illegalValueThrowsTypeError(illegalValue) {
-    assertThrows(() => S(1) + illegalValue, TypeError);
+function illegalValueThrowsTypeError(illegalValue, valueDisplayName) {
+    assertThrows(() => S(1) + illegalValue, TypeError, "No overload found for Scalar + " + valueDisplayName);
     // For equality checks, a missing operator is interpreted as a negative result.
     assertFalse(S(1) == illegalValue);
     assertTrue(S(1) != illegalValue);
-    assertThrows(() => S(1) < illegalValue, TypeError);
-    assertThrows(() => S(1) <= illegalValue, TypeError);
-    assertThrows(() => S(1) > illegalValue, TypeError);
-    assertThrows(() => S(1) >= illegalValue, TypeError);
+    assertThrows(() => S(1) < illegalValue, TypeError, "No overload found for Scalar < " + valueDisplayName);
+    // x <= y is translated to !(y < x)
+    assertThrows(() => S(1) <= illegalValue, TypeError, "No overload found for " + valueDisplayName + " < Scalar");
+    // x < y is translated to y < x
+    assertThrows(() => S(1) > illegalValue, TypeError, "No overload found for " + valueDisplayName + " < Scalar");
+    // x >= y is translated to !(x < y)
+    assertThrows(() => S(1) >= illegalValue, TypeError, "No overload found for Scalar < " + valueDisplayName);
 }
 
-illegalValueThrowsTypeError(undefined);
-illegalValueThrowsTypeError(null);
-illegalValueThrowsTypeError(false);
-illegalValueThrowsTypeError(true);
-illegalValueThrowsTypeError(Symbol("foo"));
+illegalValueThrowsTypeError(undefined, "undefined");
+illegalValueThrowsTypeError(null, "null");
+illegalValueThrowsTypeError(false, "Boolean");
+illegalValueThrowsTypeError(true, "Boolean");
+illegalValueThrowsTypeError(Symbol("foo"), "Symbol");
 
 
 // The Operators function can reject junk input

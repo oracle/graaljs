@@ -297,8 +297,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = "isUnsupportedPrimitive(right)")
-        protected Object doOverloadedUnsupportedPrimitive(@SuppressWarnings("unused") JSOverloadedOperatorsObject left, @SuppressWarnings("unused") Object right) {
-            return missingImplementation();
+        protected Object doOverloadedUnsupportedPrimitive(JSOverloadedOperatorsObject left, Object right) {
+            return missingImplementation(left, right);
         }
 
         @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)", "isNumber(left)"}, limit = "LIMIT")
@@ -329,8 +329,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = "isUnsupportedPrimitive(left)")
-        protected Object doUnsupportedPrimitiveOverloaded(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSOverloadedOperatorsObject right) {
-            return missingImplementation();
+        protected Object doUnsupportedPrimitiveOverloaded(Object left, JSOverloadedOperatorsObject right) {
+            return missingImplementation(left, right);
         }
 
         @ReportPolymorphism.Megamorphic
@@ -341,17 +341,17 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        private boolean missingImplementation() {
+        private boolean missingImplementation(Object left, Object right) {
             if (isEquality()) {
                 return false;
             } else {
-                throw Errors.createTypeErrorNoOverloadFound(getOverloadedOperatorName(), this);
+                throw Errors.createTypeErrorNoOverloadFoundBinary(getOverloadedOperatorName(), left, right, this);
             }
         }
 
         private Object performOverloaded(JSFunctionCallNode callNode, Object operatorImplementation, Object left, Object right) {
             if (operatorImplementation == null) {
-                return missingImplementation();
+                return missingImplementation(left, right);
             }
             // What should be the value of 'this' when invoking overloaded operators?
             // Currently, we set it to 'undefined'.
