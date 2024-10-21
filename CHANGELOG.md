@@ -14,6 +14,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Made option `js.webassembly` stable.
 * Made options `js.load`, `js.print`, and `js.graal-builtin` stable and allowed in `SandboxPolicy.UNTRUSTED`.
 * Added an experimental `java.util.concurrent.Executor` that can be used to post tasks into the event loop thread in `graal-nodejs`. It is available as `require('node:graal').eventLoopExecutor`.
+* Implemented the `TextDecoder` and `TextEncoder` APIs of the [WHATWG Encoding Standard](https://encoding.spec.whatwg.org/). They are available behind the experimental option (`--js.text-encoding`).
 
 ## Version 24.1.0
 * ECMAScript 2024 mode/features enabled by default.
