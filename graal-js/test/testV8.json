@@ -1376,18 +1376,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-950328.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-961709-classes-opt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-961709-classes.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-100859.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1403,10 +1391,6 @@
     }
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1041232.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1053939.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
@@ -1801,14 +1785,6 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests, Skipped now as it accounts for more than 1 minute when run in isolation"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-961709-1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-961709-2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-980529.js",
     "status" : "FAIL",
