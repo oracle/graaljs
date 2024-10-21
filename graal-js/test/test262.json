@@ -3196,15 +3196,7 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
   }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/key-is-valid-index-prototype-chain-set.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
     "filePath" : "built-ins/TypedArrayConstructors/internals/Set/key-is-canonical-invalid-index-prototype-chain-set.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/key-is-valid-index-prototype-chain-set.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
   }, {
@@ -3280,7 +3272,7 @@
   }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/unicode-ext-canonicalize-timezone.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
+    "comment" : "Based on new data in CLDR 46"
   }, {
     "filePath" : "intl402/language-tags-canonicalized.js",
     "status" : "PASS",
