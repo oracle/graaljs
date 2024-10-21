@@ -67,7 +67,7 @@ public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, Wr
         this.withAccessNode = withAccessNode;
         this.globalDelegate = globalDelegate;
         this.withTarget = withTarget;
-        this.hasProperty = (withAccessNode instanceof PropertyNode) ? HasPropertyCacheNode.create(varName, context) : null;
+        this.hasProperty = (withAccessNode instanceof PropertyNode && !context.isOptionNashornCompatibilityMode()) ? HasPropertyCacheNode.create(varName, context) : null;
         this.context = context;
         this.varName = varName;
         this.isStrict = isStrict;
