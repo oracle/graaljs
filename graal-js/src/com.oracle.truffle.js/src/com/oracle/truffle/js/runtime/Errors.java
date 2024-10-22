@@ -209,9 +209,32 @@ public final class Errors {
         return createTypeError("Locale object expected.");
     }
 
+    private static TruffleString displayOperand(Object operand) {
+        if (JSRuntime.isObject(operand)) {
+            return JSRuntime.getConstructorName((JSObject) operand);
+        } else if (operand instanceof Boolean) {
+            return Strings.UC_BOOLEAN;
+        } else if (JSRuntime.isNumber(operand) || operand instanceof Long) {
+            return Strings.UC_NUMBER;
+        } else if (Strings.isTString(operand)) {
+            return Strings.UC_STRING;
+        } else if (operand instanceof Symbol) {
+            return Strings.UC_SYMBOL;
+        } else {
+            return JSRuntime.toString(operand);
+        }
+    }
+
     @TruffleBoundary
-    public static JSException createTypeErrorNoOverloadFound(TruffleString operatorName, Node originatingNode) {
-        return createTypeError("No overload found for " + Strings.toJavaString(operatorName), originatingNode);
+    public static JSException createTypeErrorNoOverloadFoundUnary(TruffleString operatorName, Object operand, Node originatingNode) {
+        return createTypeError(String.format("No overload found for %s %s", Strings.toJavaString(operatorName), Strings.toJavaString(displayOperand(operand))), originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorNoOverloadFoundBinary(TruffleString operatorName, Object left, Object right, Node originatingNode) {
+        return createTypeError(
+                        String.format("No overload found for %s %s %s", Strings.toJavaString(displayOperand(left)), Strings.toJavaString(operatorName), Strings.toJavaString(displayOperand(right))),
+                        originatingNode);
     }
 
     @TruffleBoundary

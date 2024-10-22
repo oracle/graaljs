@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Check {@link JSAddNode} for an example of using this node.
  * </p>
  */
+@ImportStatic(OperatorSet.class)
 public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
     /**
@@ -295,9 +296,9 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = "isNullOrUndefined(right)")
-        protected Object doOverloadedNullish(@SuppressWarnings("unused") JSOverloadedOperatorsObject left, @SuppressWarnings("unused") Object right) {
-            return missingImplementation();
+        @Specialization(guards = "isUnsupportedPrimitive(right)")
+        protected Object doOverloadedUnsupportedPrimitive(JSOverloadedOperatorsObject left, Object right) {
+            return missingImplementation(left, right);
         }
 
         @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)", "isNumber(left)"}, limit = "LIMIT")
@@ -327,9 +328,9 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = "isNullOrUndefined(left)")
-        protected Object doNullishOverloaded(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSOverloadedOperatorsObject right) {
-            return missingImplementation();
+        @Specialization(guards = "isUnsupportedPrimitive(left)")
+        protected Object doUnsupportedPrimitiveOverloaded(Object left, JSOverloadedOperatorsObject right) {
+            return missingImplementation(left, right);
         }
 
         @ReportPolymorphism.Megamorphic
@@ -340,17 +341,17 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        private boolean missingImplementation() {
+        private boolean missingImplementation(Object left, Object right) {
             if (isEquality()) {
                 return false;
             } else {
-                throw Errors.createTypeErrorNoOverloadFound(getOverloadedOperatorName(), this);
+                throw Errors.createTypeErrorNoOverloadFoundBinary(getOverloadedOperatorName(), left, right, this);
             }
         }
 
         private Object performOverloaded(JSFunctionCallNode callNode, Object operatorImplementation, Object left, Object right) {
             if (operatorImplementation == null) {
-                return missingImplementation();
+                return missingImplementation(left, right);
             }
             // What should be the value of 'this' when invoking overloaded operators?
             // Currently, we set it to 'undefined'.

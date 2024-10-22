@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -155,6 +155,12 @@ const VectorOperators = Operators({
             }
         }
         return false;
+    },
+    "pos"(a) {
+        return new Vector(a.contents.slice());
+    },
+    "neg"(a) {
+        return new Vector(a.contents.map(e => -e));
     }
 }, {
     right: Number,
@@ -239,9 +245,10 @@ function STR(string) {
 }
 
 
-// Basic tests on vectors: addition, subtraction, equality
+// Basic tests on vectors: addition, subtraction, unary negation, equality
 assertEqual(V(1, 2, 3) + V(2, 3, 4), V(3, 5, 7));
 assertEqual(V(1, 2, 3) - V(2, 3, 4), V(-1, -1, -1));
+assertTrue(-V(1, 2, 3) == V(-1, -2, -3))
 
 // Update operators should work too
 let A = V(1, 2, 3);
@@ -343,29 +350,38 @@ assertSame("a" + STR("b"), "ab");
 
 
 // Using undefined operators or type combinations should result in type errors
-assertThrows(() => V(1, 2, 3) / V(2, 3, 4), TypeError);
-assertThrows(() => 1 + V(1, 2, 3), TypeError);
-assertThrows(() => S(1) + V(1, 2, 3), TypeError);
-assertThrows(() => V(1, 2, 3) + STR("a"), TypeError);
+assertThrows(() => V(1, 2, 3) / V(2, 3, 4), TypeError, "No overload found for Vector / Vector");
+assertThrows(() => 1 + V(1, 2, 3), TypeError, "No overload found for Number + Vector");
+assertThrows(() => S(1) + V(1, 2, 3), TypeError, "No overload found for Scalar + Vector");
+assertThrows(() => V(1, 2, 3) + STR("a"), TypeError, "No overload found for Vector + CustomString");
+assertThrows(() => { let v = V(1, 2, 3); v++; }, TypeError, "No overload found for ++ Vector");
+assertThrows(() => { let v = V(1, 2, 3); v--; }, TypeError, "No overload found for -- Vector");
 
 
-// Handle null and undefined when dispatching operators that use ToOperand (ToPrimitive) internally
-// the cases below are not covered by the operator overloading proposal
-assertThrows(() => S(1) + undefined, TypeError);
-assertFalse(S(1) == undefined);
-assertTrue(S(1) != undefined);
-assertThrows(() => S(1) < undefined, TypeError);
-assertThrows(() => S(1) <= undefined, TypeError);
-assertThrows(() => S(1) > undefined, TypeError);
-assertThrows(() => S(1) >= undefined, TypeError);
+// Handle null, undefined and non-numeric primitives when dispatching operators that use ToOperand
+// (ToPrimitive) internally.
+// The cases below are not covered explicitly by the operator overloading proposal, but this
+// behavior implied by the proposal spec.
 
-assertThrows(() => S(1) + null, TypeError);
-assertFalse(S(1) == null);
-assertTrue(S(1) != null);
-assertThrows(() => S(1) < null, TypeError);
-assertThrows(() => S(1) <= null, TypeError);
-assertThrows(() => S(1) > null, TypeError);
-assertThrows(() => S(1) >= null, TypeError);
+function illegalValueThrowsTypeError(illegalValue, valueDisplayName) {
+    assertThrows(() => S(1) + illegalValue, TypeError, "No overload found for Scalar + " + valueDisplayName);
+    // For equality checks, a missing operator is interpreted as a negative result.
+    assertFalse(S(1) == illegalValue);
+    assertTrue(S(1) != illegalValue);
+    assertThrows(() => S(1) < illegalValue, TypeError, "No overload found for Scalar < " + valueDisplayName);
+    // x <= y is translated to !(y < x)
+    assertThrows(() => S(1) <= illegalValue, TypeError, "No overload found for " + valueDisplayName + " < Scalar");
+    // x < y is translated to y < x
+    assertThrows(() => S(1) > illegalValue, TypeError, "No overload found for " + valueDisplayName + " < Scalar");
+    // x >= y is translated to !(x < y)
+    assertThrows(() => S(1) >= illegalValue, TypeError, "No overload found for Scalar < " + valueDisplayName);
+}
+
+illegalValueThrowsTypeError(undefined, "undefined");
+illegalValueThrowsTypeError(null, "null");
+illegalValueThrowsTypeError(false, "Boolean");
+illegalValueThrowsTypeError(true, "Boolean");
+illegalValueThrowsTypeError(Symbol("foo"), "Symbol");
 
 
 // The Operators function can reject junk input
