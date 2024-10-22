@@ -13,7 +13,7 @@ load('assert.js');
 // Original test-case
 assertThrows(function() {
     class C { static x = delete super[0()]; }
-}, TypeError);
+}, ReferenceError);
 
 var toPropertyKeyInvoked = false;
 var toPropertyKeyReporter = {
@@ -23,8 +23,8 @@ var toPropertyKeyReporter = {
     }
 };
 
-// ToPropertyKey(key) should be evaluated before ReferenceError is thrown
+// ToPropertyKey(key) should not be evaluated before ReferenceError is thrown
 assertThrows(function() {
     class C { static x = delete super[toPropertyKeyReporter]; }
 }, ReferenceError);
-assertTrue(toPropertyKeyInvoked);
+assertFalse(toPropertyKeyInvoked);

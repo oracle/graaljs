@@ -2012,7 +2012,9 @@ public class Parser extends AbstractParser {
             default:
                 if (nameTokenType == GET || nameTokenType == SET) {
                     // `get` or `set` not followed by `;`, `=`, or `}`, must be an accessor method
-                    return false;
+                    if (type != MUL) {
+                        return false;
+                    } // else cannot be an accessor, but can be a field followed by a generator
                 }
                 // not a method, either a field or syntax error
                 if (last == EOL) {

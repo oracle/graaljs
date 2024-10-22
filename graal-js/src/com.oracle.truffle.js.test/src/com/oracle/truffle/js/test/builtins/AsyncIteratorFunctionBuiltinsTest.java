@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,13 +99,6 @@ public class AsyncIteratorFunctionBuiltinsTest {
 
             result = context.eval(JavaScriptLanguage.ID, "var x = (async function* test(){})(); AsyncIterator.from(x) === x");
             Assert.assertTrue(result.asBoolean());
-
-            try {
-                context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({[Symbol.asyncIterator]: async () => ({next: () => ({done: true})})})");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
         }
     }
 }

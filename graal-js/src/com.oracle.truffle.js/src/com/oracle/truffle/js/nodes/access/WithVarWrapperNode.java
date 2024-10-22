@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,12 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, WriteNode {
@@ -55,17 +57,24 @@ public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, Wr
     @Child private JSTargetableNode withAccessNode;
     @Child private JavaScriptNode globalDelegate;
     @Child private JavaScriptNode withTarget;
+    @Child private HasPropertyCacheNode hasProperty;
+    private final BranchProfile errorBranch = BranchProfile.create();
+    private final JSContext context;
     private final TruffleString varName;
+    private final boolean isStrict;
 
-    protected WithVarWrapperNode(TruffleString varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+    protected WithVarWrapperNode(JSContext context, TruffleString varName, boolean isStrict, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
         this.withAccessNode = withAccessNode;
         this.globalDelegate = globalDelegate;
         this.withTarget = withTarget;
+        this.hasProperty = (withAccessNode instanceof PropertyNode && !context.isOptionNashornCompatibilityMode()) ? HasPropertyCacheNode.create(varName, context) : null;
+        this.context = context;
         this.varName = varName;
+        this.isStrict = isStrict;
     }
 
-    public static JavaScriptNode create(TruffleString varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
-        return new WithVarWrapperNode(varName, withTarget, withAccessNode, globalDelegate);
+    public static JavaScriptNode create(JSContext context, TruffleString varName, boolean isStrict, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+        return new WithVarWrapperNode(context, varName, isStrict, withTarget, withAccessNode, globalDelegate);
     }
 
     @Override
@@ -91,7 +100,16 @@ public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, Wr
             if (withAccessNode instanceof WritePropertyNode) {
                 return ((WritePropertyNode) withAccessNode).executeWithValue(target, ((WriteNode) globalDelegate).getRhs().execute(frame));
             }
-            return withAccessNode.executeWithTarget(frame, target);
+            if (hasProperty == null || hasProperty.hasProperty(target)) {
+                return withAccessNode.executeWithTarget(frame, target);
+            } else {
+                if (isStrict) {
+                    errorBranch.enter();
+                    throw Errors.createReferenceErrorNotDefined(varName, this);
+                } else {
+                    return Undefined.instance;
+                }
+            }
         } else {
             // property not found or blocked
             return globalDelegate.execute(frame);
@@ -105,7 +123,8 @@ public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, Wr
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(varName, cloneUninitialized(withTarget, materializedTags), cloneUninitialized(withAccessNode, materializedTags), cloneUninitialized(globalDelegate, materializedTags));
+        return create(context, varName, isStrict, cloneUninitialized(withTarget, materializedTags), cloneUninitialized(withAccessNode, materializedTags),
+                        cloneUninitialized(globalDelegate, materializedTags));
     }
 
     @Override

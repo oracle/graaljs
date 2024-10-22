@@ -714,7 +714,15 @@ public final class DatePrototypeBuiltins {
 
         @Specialization
         protected double doOperation(Object thisDate, Object date) {
-            return JSDate.setDate(asDate(thisDate), toDouble(date), isUTC, this);
+            JSDateObject dateObject = asDate(thisDate);
+            double t = dateObject.getTimeMillis();
+            double dt = toDouble(date);
+            if (Double.isNaN(t)) {
+                return Double.NaN;
+            }
+            double u = JSDate.setDate(t, dt, isUTC, this);
+            dateObject.setTimeMillis(u);
+            return u;
         }
     }
 
@@ -726,7 +734,11 @@ public final class DatePrototypeBuiltins {
 
         @Specialization
         protected double setYear(Object thisDate, Object year) {
-            return JSDate.setYear(asDate(thisDate), toDouble(year), this);
+            JSDateObject dateObject = asDate(thisDate);
+            double t = dateObject.getTimeMillis();
+            double u = JSDate.setYear(t, toDouble(year), this);
+            dateObject.setTimeMillis(u);
+            return u;
         }
     }
 
@@ -738,11 +750,14 @@ public final class DatePrototypeBuiltins {
 
         @Specialization
         protected double setFullYear(Object thisDate, Object[] args) {
-            JSDateObject asDate = asDate(thisDate);
+            JSDateObject dateObject = asDate(thisDate);
+            double t = dateObject.getTimeMillis();
             double iYear = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double iMonth = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double iDay = toDouble(JSRuntime.getArgOrUndefined(args, 2));
-            return JSDate.setFullYear(asDate, iYear, iMonth, args.length >= 2, iDay, args.length >= 3, isUTC, this);
+            double u = JSDate.setFullYear(t, iYear, iMonth, args.length >= 2, iDay, args.length >= 3, isUTC, this);
+            dateObject.setTimeMillis(u);
+            return u;
         }
     }
 
@@ -754,10 +769,16 @@ public final class DatePrototypeBuiltins {
 
         @Specialization
         protected double setMonth(Object thisDate, Object[] args) {
-            JSDateObject date = asDate(thisDate);
+            JSDateObject dateObject = asDate(thisDate);
+            double t = dateObject.getTimeMillis();
             double month = toDouble(JSRuntime.getArgOrUndefined(args, 0));
-            double date2 = toDouble(JSRuntime.getArgOrUndefined(args, 1));
-            return JSDate.setMonth(date, month, date2, args.length >= 2, isUTC, this);
+            double date = toDouble(JSRuntime.getArgOrUndefined(args, 1));
+            if (Double.isNaN(t)) {
+                return Double.NaN;
+            }
+            double u = JSDate.setMonth(t, month, date, args.length >= 2, isUTC, this);
+            dateObject.setTimeMillis(u);
+            return u;
         }
     }
 
@@ -769,12 +790,18 @@ public final class DatePrototypeBuiltins {
 
         @Specialization
         protected double setHours(Object thisDate, Object[] args) {
-            JSDateObject date = asDate(thisDate);
+            JSDateObject dateObject = asDate(thisDate);
+            double t = dateObject.getTimeMillis();
             double hour = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double min = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 2));
             double ms = toDouble(JSRuntime.getArgOrUndefined(args, 3));
-            return JSDate.setHours(date, hour, min, args.length >= 2, sec, args.length >= 3, ms, args.length >= 4, isUTC, this);
+            if (Double.isNaN(t)) {
+                return Double.NaN;
+            }
+            double u = JSDate.setHours(t, hour, min, args.length >= 2, sec, args.length >= 3, ms, args.length >= 4, isUTC, this);
+            dateObject.setTimeMillis(u);
+            return u;
         }
     }
 
@@ -786,11 +813,17 @@ public final class DatePrototypeBuiltins {
 
         @Specialization
         protected double doOperation(Object thisDate, Object[] args) {
-            JSDateObject date = asDate(thisDate);
+            JSDateObject dateObject = asDate(thisDate);
+            double t = dateObject.getTimeMillis();
             double min = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double ms = toDouble(JSRuntime.getArgOrUndefined(args, 2));
-            return JSDate.setMinutes(date, min, sec, args.length >= 2, ms, args.length >= 3, isUTC, this);
+            if (Double.isNaN(t)) {
+                return Double.NaN;
+            }
+            double u = JSDate.setMinutes(t, min, sec, args.length >= 2, ms, args.length >= 3, isUTC, this);
+            dateObject.setTimeMillis(u);
+            return u;
         }
     }
 
@@ -802,10 +835,16 @@ public final class DatePrototypeBuiltins {
 
         @Specialization
         protected double setSeconds(Object thisDate, Object[] args) {
-            JSDateObject date = asDate(thisDate);
+            JSDateObject dateObject = asDate(thisDate);
+            double t = dateObject.getTimeMillis();
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double ms = toDouble(JSRuntime.getArgOrUndefined(args, 1));
-            return JSDate.setSeconds(date, sec, ms, args.length >= 2, isUTC, this);
+            if (Double.isNaN(t)) {
+                return Double.NaN;
+            }
+            double u = JSDate.setSeconds(t, sec, ms, args.length >= 2, isUTC, this);
+            dateObject.setTimeMillis(u);
+            return u;
         }
     }
 
@@ -816,8 +855,16 @@ public final class DatePrototypeBuiltins {
         }
 
         @Specialization
-        protected double setMilliseconds(Object thisDate, Object ms) {
-            return JSDate.setMilliseconds(asDate(thisDate), toDouble(ms), isUTC, this);
+        protected double setMilliseconds(Object thisDate, Object msParam) {
+            JSDateObject dateObject = asDate(thisDate);
+            double t = dateObject.getTimeMillis();
+            double ms = toDouble(msParam);
+            if (Double.isNaN(t)) {
+                return Double.NaN;
+            }
+            double u = JSDate.setMilliseconds(t, ms, isUTC, this);
+            dateObject.setTimeMillis(u);
+            return u;
         }
     }
 

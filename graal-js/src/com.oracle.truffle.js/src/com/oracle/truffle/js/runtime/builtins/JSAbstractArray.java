@@ -328,37 +328,31 @@ public abstract class JSAbstractArray extends JSNonProxy {
         JSDynamicObject current = JSObject.getPrototype(thisObj);
         Object propertyName = null;
         while (current != Null.instance) {
-            if (JSProxy.isJSProxy(current)) {
+            if (JSProxy.isJSProxy(current) || JSArrayBufferView.isJSArrayBufferView(current)) {
                 return JSObject.getJSClass(current).set(current, index, value, receiver, false, encapsulatingNode);
             }
-            if (canHaveReadOnlyOrAccessorProperties(current)) {
-                if (JSObject.hasOwnProperty(current, index)) {
-                    if (propertyName == null) {
-                        propertyName = Strings.fromLong(index);
-                    }
-                    PropertyDescriptor desc = JSObject.getOwnProperty(current, propertyName);
-                    if (desc != null) {
-                        if (desc.isAccessorDescriptor()) {
-                            invokeAccessorPropertySetter(desc, thisObj, propertyName, value, receiver, isStrict, encapsulatingNode);
-                            return true;
-                        } else if (!desc.getWritable()) {
-                            if (isStrict) {
-                                throw Errors.createTypeError("Cannot assign to read only property '" + index + "' of " + JSObject.defaultToString(thisObj));
-                            }
-                            return true;
-                        } else {
-                            break;
+            if (JSObject.hasOwnProperty(current, index)) {
+                if (propertyName == null) {
+                    propertyName = Strings.fromLong(index);
+                }
+                PropertyDescriptor desc = JSObject.getOwnProperty(current, propertyName);
+                if (desc != null) {
+                    if (desc.isAccessorDescriptor()) {
+                        invokeAccessorPropertySetter(desc, thisObj, propertyName, value, receiver, isStrict, encapsulatingNode);
+                        return true;
+                    } else if (!desc.getWritable()) {
+                        if (isStrict) {
+                            throw Errors.createTypeError("Cannot assign to read only property '" + index + "' of " + JSObject.defaultToString(thisObj));
                         }
+                        return true;
+                    } else {
+                        break;
                     }
                 }
             }
             current = JSObject.getPrototype(current);
         }
         return false;
-    }
-
-    private static boolean canHaveReadOnlyOrAccessorProperties(JSDynamicObject current) {
-        return !JSArrayBufferView.isJSArrayBufferView(current);
     }
 
     private static boolean setElement(JSDynamicObject thisObj, long index, Object value, boolean isStrict) {

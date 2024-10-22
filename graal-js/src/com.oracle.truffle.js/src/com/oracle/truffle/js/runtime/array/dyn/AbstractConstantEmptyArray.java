@@ -132,14 +132,13 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     private AbstractIntArray createWritableIntContiguous(JSDynamicObject object, int capacity, long index, int[] initialArray, Node node, CreateWritableProfileAccess profile) {
-        long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
         if (profile.indexLessThanLength(node, index < initialArray.length)) {
             arrayOffset = (int) index;
             indexOffset = 0;
         }
-        return ContiguousIntArray.makeContiguousIntArray(object, length, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
+        return ContiguousIntArray.makeContiguousIntArray(object, capacity, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
     }
 
     private static int calcNewArraySize(int capacity, Node node, CreateWritableProfileAccess profile) {
@@ -180,14 +179,13 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     private AbstractDoubleArray createWritableDoubleContiguous(JSDynamicObject object, int capacity, long index, double[] initialArray, Node node, CreateWritableProfileAccess profile) {
-        long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
         if (profile.indexLessThanLength(node, index < initialArray.length)) {
             arrayOffset = (int) index;
             indexOffset = 0;
         }
-        return ContiguousDoubleArray.makeContiguousDoubleArray(object, length, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
+        return ContiguousDoubleArray.makeContiguousDoubleArray(object, capacity, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
     }
 
     @Override
@@ -209,14 +207,13 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     private AbstractJSObjectArray createWritableJSObjectContiguous(JSDynamicObject object, int capacity, long index, JSDynamicObject[] initialArray, Node node, CreateWritableProfileAccess profile) {
-        long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
         if (profile.indexLessThanLength(node, index < initialArray.length)) {
             arrayOffset = (int) index;
             indexOffset = 0;
         }
-        return ContiguousJSObjectArray.makeContiguousJSObjectArray(object, length, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
+        return ContiguousJSObjectArray.makeContiguousJSObjectArray(object, capacity, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
     }
 
     @Override
@@ -238,14 +235,13 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     private AbstractObjectArray createWritableObjectContiguous(JSDynamicObject object, int capacity, long index, Object[] initialArray, Node node, CreateWritableProfileAccess profile) {
-        long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
         if (profile.indexLessThanLength(node, index < initialArray.length)) {
             arrayOffset = (int) index;
             indexOffset = 0;
         }
-        return ContiguousObjectArray.makeContiguousObjectArray(object, length, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
+        return ContiguousObjectArray.makeContiguousObjectArray(object, capacity, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
     }
 
     @Override

@@ -391,7 +391,7 @@ public abstract class Environment {
                     throw new IllegalArgumentException();
                 }
                 JavaScriptNode withTarget = factory.createWithTarget(context, name, withVarNameRef.createReadNode());
-                return factory.createWithVarWrapper(name, withTarget, withAccessNode, delegateNode);
+                return factory.createWithVarWrapper(context, name, isStrictMode(), withTarget, withAccessNode, delegateNode);
             }
 
             @Override
@@ -403,12 +403,12 @@ public abstract class Environment {
                 UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
                 Supplier<JavaScriptNode> readSupplier = () -> {
                     JSTargetableNode readWithProperty = factory.createReadProperty(context, null, name);
-                    return factory.createWithVarWrapper(name, withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
+                    return factory.createWithVarWrapper(context, name, isStrictMode(), withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
                 };
                 UnaryOperator<JavaScriptNode> writeSupplier = (rhs) -> {
                     JavaScriptNode withTarget = factory.createWithTarget(context, name, withObjVar.createReadNode());
                     WritePropertyNode writeWithProperty = factory.createWriteProperty(null, name, null, context, isStrictMode(), false, true);
-                    return factory.createWithVarWrapper(name, withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
+                    return factory.createWithVarWrapper(context, name, isStrictMode(), withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
                 };
                 return new Pair<>(readSupplier, writeSupplier);
             }

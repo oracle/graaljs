@@ -2527,13 +2527,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         if (baseNode.isSuper()) {
-            // delete UnaryExpression:
-            // Let ref be ? Evaluation of UnaryExpression.
             // If IsSuperReference(ref) is true, throw a ReferenceError exception.
-            // => ToPropertyKey(key) must be evaluated for 'delete super[key]' before we throw
-            return tagExpression(factory.createDual(context,
-                            factory.createToPropertyKey(key),
-                            factory.createThrowError(JSErrorType.ReferenceError, UNSUPPORTED_REFERENCE_TO_SUPER)), deleteNode);
+            return tagExpression(factory.createThrowError(JSErrorType.ReferenceError, UNSUPPORTED_REFERENCE_TO_SUPER), deleteNode);
         }
 
         if (baseNode.isOptionalChain()) {
@@ -3009,15 +3004,23 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             JavaScriptNode target1;
             JavaScriptNode target2;
-            if ((elem instanceof JSConstantNode && target instanceof RepeatableNode) || (target instanceof SuperPropertyReferenceNode)) {
+            if ((elem instanceof JSConstantNode && target instanceof RepeatableNode)) {
                 // Cannot be used for any indexNode and any target RepeatableNode
                 // because there is an invocation of indexNode in between targets
                 target1 = target;
                 target2 = factory.copy(target);
             } else {
                 VarRef targetTemp = environment.createTempVar();
-                target1 = targetTemp.createWriteNode(target);
-                target2 = targetTemp.createReadNode();
+                if (target instanceof SuperPropertyReferenceNode superTarget) {
+                    // Various places depend on 'instanceof SuperPropertyReferenceNode',
+                    // so we cannot use the branch below, but we can use a similar
+                    // SuperPropertyReferenceNode-specific approach
+                    target1 = tagExpression(factory.createSuperPropertyReference(targetTemp.createWriteNode(superTarget.getBaseValue()), superTarget.getThisValue()), indexNode.getBase());
+                    target2 = tagExpression(factory.createSuperPropertyReference(targetTemp.createReadNode(), superTarget.getThisValue()), indexNode.getBase());
+                } else {
+                    target1 = targetTemp.createWriteNode(target);
+                    target2 = targetTemp.createReadNode();
+                }
             }
 
             if (isLogicalOp(binaryOp)) {

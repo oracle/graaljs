@@ -586,93 +586,74 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         return v;
     }
 
-    public static double setMilliseconds(JSDateObject thisDate, double ms, boolean isUTC, Node node) {
-        double t = localTime(getTimeMillisField(thisDate), isUTC, node);
+    public static double setMilliseconds(double tParam, double ms, boolean isUTC, Node node) {
+        double t = localTime(tParam, isUTC, node);
         double time = makeTime(hourFromTime(t), minFromTime(t), secFromTime(t), ms);
         double u = timeClip(utc(makeDate(day(t), time), isUTC, node));
-        setTimeMillisField(thisDate, u);
         return u;
     }
 
-    public static double setSeconds(JSDateObject thisDate, double s, double ms, boolean msSpecified, boolean isUTC, Node node) {
-        double t = localTime(getTimeMillisField(thisDate), isUTC, node);
+    public static double setSeconds(double tParam, double s, double ms, boolean msSpecified, boolean isUTC, Node node) {
+        double t = localTime(tParam, isUTC, node);
         double milli = msSpecified ? ms : msFromTime(t);
         double date = makeDate(day(t), makeTime(hourFromTime(t), minFromTime(t), s, milli));
         double u = timeClip(utc(date, isUTC, node));
-        setTimeMillisField(thisDate, u);
         return u;
     }
 
-    public static double setMinutes(JSDateObject thisDate, double m, double s, boolean sSpecified, double ms, boolean msSpecified, boolean isUTC, Node node) {
-        double t = localTime(getTimeMillisField(thisDate), isUTC, node);
+    public static double setMinutes(double tParam, double m, double s, boolean sSpecified, double ms, boolean msSpecified, boolean isUTC, Node node) {
+        double t = localTime(tParam, isUTC, node);
         double milli = msSpecified ? ms : msFromTime(t);
         double sec = sSpecified ? s : secFromTime(t);
         double date = makeDate(day(t), makeTime(hourFromTime(t), m, sec, milli));
         double u = timeClip(utc(date, isUTC, node));
-        setTimeMillisField(thisDate, u);
         return u;
     }
 
-    public static double setHours(JSDateObject thisDate, double h, double m, boolean mSpecified, double s, boolean sSpecified, double ms, boolean msSpecified, boolean isUTC, Node node) {
-        double t = localTime(getTimeMillisField(thisDate), isUTC, node);
+    public static double setHours(double tParam, double h, double m, boolean mSpecified, double s, boolean sSpecified, double ms, boolean msSpecified, boolean isUTC, Node node) {
+        double t = localTime(tParam, isUTC, node);
         double milli = msSpecified ? ms : msFromTime(t);
         double sec = sSpecified ? s : secFromTime(t);
         double min = mSpecified ? m : minFromTime(t);
         double date = makeDate(day(t), makeTime(h, min, sec, milli));
         double u = timeClip(utc(date, isUTC, node));
-        setTimeMillisField(thisDate, u);
         return u;
     }
 
-    public static double setDate(JSDateObject thisDate, double date, boolean isUTC, Node node) {
-        double t = localTime(getTimeMillisField(thisDate), isUTC, node);
-        double u;
-        if (Double.isNaN(t)) {
-            u = Double.NaN;
-        } else {
-            double newDate = makeDate(makeDay(yearFromTime((long) t), monthFromTime(t), date), timeWithinDay(t));
-            u = timeClip(utc(newDate, isUTC, node));
-        }
-        setTimeMillisField(thisDate, u);
+    public static double setDate(double tParam, double date, boolean isUTC, Node node) {
+        double t = localTime(tParam, isUTC, node);
+        assert !Double.isNaN(t);
+        double newDate = makeDate(makeDay(yearFromTime((long) t), monthFromTime(t), date), timeWithinDay(t));
+        double u = timeClip(utc(newDate, isUTC, node));
         return u;
     }
 
-    public static double setMonth(JSDateObject thisDate, double month, double date, boolean dateSpecified, boolean isUTC, Node node) {
-        double t = localTime(getTimeMillisField(thisDate), isUTC, node);
-        double newDate;
-        if (Double.isNaN(t)) {
-            newDate = Double.NaN;
-        } else {
-            double dt = dateSpecified ? date : dateFromTime(t);
-            newDate = timeClip(utc(makeDate(makeDay(yearFromTime((long) t), month, dt), timeWithinDay(t)), isUTC, node));
-        }
-        setTimeMillisField(thisDate, newDate);
-        return newDate;
+    public static double setMonth(double tParam, double month, double date, boolean dateSpecified, boolean isUTC, Node node) {
+        double t = localTime(tParam, isUTC, node);
+        assert !Double.isNaN(t);
+        double dt = dateSpecified ? date : dateFromTime(t);
+        double u = timeClip(utc(makeDate(makeDay(yearFromTime((long) t), month, dt), timeWithinDay(t)), isUTC, node));
+        return u;
     }
 
-    public static double setFullYear(JSDateObject thisDate, double year, double month, boolean monthSpecified, double date, boolean dateSpecified, boolean isUTC, Node node) {
-        double timeFieldValue = getTimeMillisField(thisDate);
-        double t = Double.isNaN(timeFieldValue) ? 0 : localTime(timeFieldValue, isUTC, node);
+    public static double setFullYear(double tParam, double year, double month, boolean monthSpecified, double date, boolean dateSpecified, boolean isUTC, Node node) {
+        double t = Double.isNaN(tParam) ? 0 : localTime(tParam, isUTC, node);
         double dt = dateSpecified ? date : dateFromTime(t);
         double m = monthSpecified ? month : monthFromTime(t);
         double newDate = makeDate(makeDay(year, m, dt), timeWithinDay(t));
         double u = timeClip(utc(newDate, isUTC, node));
-        setTimeMillisField(thisDate, u);
         return u;
     }
 
-    public static double setYear(JSDateObject thisDate, double year, Node node) {
-        double t = getTimeMillisField(thisDate);
-        t = Double.isNaN(t) ? 0 : localTime(t, node); // cf. B.2.5, clause 1
+    public static double setYear(double tParam, double year, Node node) {
+        double t = Double.isNaN(tParam) ? 0 : localTime(tParam, node); // cf. B.2.5, clause 1
         if (Double.isNaN(year)) {
-            setTimeMillisField(thisDate, Double.NaN);
             return Double.NaN;
         }
-        double fullYear = toFullYear(year);
-        double r5 = makeDay(fullYear, monthFromTime(t), dateFromTime(t));
-        double r6 = timeClip(utc(makeDate(r5, timeWithinDay(t)), node));
-        setTimeMillisField(thisDate, r6);
-        return r6;
+        double yyyy = toFullYear(year);
+        double d = makeDay(yyyy, monthFromTime(t), dateFromTime(t));
+        double u = timeClip(utc(makeDate(d, timeWithinDay(t)), node));
+        return u;
     }
 
     private static double toFullYear(double year) {

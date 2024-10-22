@@ -227,7 +227,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
             return -1;
         }
-        if (!JSRuntime.isInteger(numericIndex)) {
+        if (!JSRuntime.isInteger(numericIndex) && !(numericIndex instanceof Long)) {
             return -1;
         }
         if (numericIndex instanceof Double && JSRuntime.isNegativeZero(((Double) numericIndex).doubleValue())) {

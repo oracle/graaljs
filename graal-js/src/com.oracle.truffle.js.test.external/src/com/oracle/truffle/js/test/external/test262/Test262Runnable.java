@@ -274,6 +274,7 @@ public class Test262Runnable extends TestRunnable {
     });
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "Atomics.pause",
+                    "Error.isError",
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "Math.sumPrecise",
