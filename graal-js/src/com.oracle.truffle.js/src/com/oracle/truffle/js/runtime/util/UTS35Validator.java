@@ -177,7 +177,7 @@ public class UTS35Validator {
 
     private static String extensions() {
         // extensions = unicode_locale_extensions | transformed_extensions | other_extensions
-        return group(unicodeLocaleExtensions() + "|" + transformedExtentensions() + "|" + otherExtensions());
+        return group(unicodeLocaleExtensions() + "|" + transformedExtensions() + "|" + otherExtensions());
     }
 
     private static String unicodeLocaleExtensions() {
@@ -185,7 +185,7 @@ public class UTS35Validator {
         return group(sep() + "[uU]" + group(group(sep() + keyword()) + "+|" + group(sep() + attribute()) + "+" + group(sep() + keyword()) + "*"));
     }
 
-    private static String transformedExtentensions() {
+    private static String transformedExtensions() {
         // transformed_extensions = sep [tT] ((sep tlang (sep tfield)*) | (sep tfield)+)
         return group(sep() + "[tT]" + group(group(sep() + tLang() + group(sep() + tField()) + "*") + "|" + group(sep() + tField()) + "+"));
     }
