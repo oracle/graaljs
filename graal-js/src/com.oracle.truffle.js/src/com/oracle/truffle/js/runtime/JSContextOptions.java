@@ -67,6 +67,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleOptionDescriptors;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.util.UTS35Validator;
 
 /**
  * Defines, and provides access to, all JS (context and language) options.
@@ -439,8 +440,18 @@ public final class JSContextOptions {
     @CompilationFinal private boolean validateRegExpLiterals;
 
     public static final String LOCALE_NAME = JS_OPTION_PREFIX + "locale";
-    @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<locale>", help = "Use a specific default locale for locale-sensitive operations.") //
-    public static final OptionKey<String> LOCALE = new OptionKey<>("");
+    @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<locale>", //
+                    help = "Set the default locale (Unicode BCP 47 locale identifier) to be used for locale-sensitive operations. If empty, Locale.getDefault() will be used.") //
+    public static final OptionKey<String> LOCALE = new OptionKey<>("", new OptionType<>("Locale", new Function<>() {
+        @Override
+        public String apply(String tag) {
+            if (tag.isEmpty() || UTS35Validator.isWellFormedUnicodeBCP47LocaleIdentifier(tag)) {
+                return tag;
+            } else {
+                throw new IllegalArgumentException(String.format("Language tag is not well-formed: %s", tag));
+            }
+        }
+    }));
 
     public static final String FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "function-constructor-cache-size";
     @Option(name = FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum size of the parsing cache used by the Function constructor to avoid re-parsing known sources.") //
