@@ -440,7 +440,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean validateRegExpLiterals;
 
     public static final String LOCALE_NAME = JS_OPTION_PREFIX + "locale";
-    @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<locale>", //
+    @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "<locale>", //
                     help = "Set the default locale (Unicode BCP 47 locale identifier) to be used for locale-sensitive operations. If empty, Locale.getDefault() will be used.") //
     public static final OptionKey<String> LOCALE = new OptionKey<>("", new OptionType<>("Locale", new Function<>() {
         @Override
