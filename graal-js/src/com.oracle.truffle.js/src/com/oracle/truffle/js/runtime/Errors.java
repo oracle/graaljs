@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Utility class to to create all kinds of ECMAScript-defined Error Objects.
@@ -210,16 +211,14 @@ public final class Errors {
     }
 
     private static TruffleString displayOperand(Object operand) {
-        if (JSRuntime.isObject(operand)) {
+        if (operand == Undefined.instance) {
+            return Strings.UNDEFINED;
+        } else if (operand == Null.instance) {
+            return Strings.NULL;
+        } else if (JSRuntime.isObject(operand)) {
             return JSRuntime.getConstructorName((JSObject) operand);
-        } else if (operand instanceof Boolean) {
-            return Strings.UC_BOOLEAN;
-        } else if (JSRuntime.isNumber(operand) || operand instanceof Long) {
-            return Strings.UC_NUMBER;
-        } else if (Strings.isTString(operand)) {
-            return Strings.UC_STRING;
-        } else if (operand instanceof Symbol) {
-            return Strings.UC_SYMBOL;
+        } else if (JSRuntime.isJSPrimitive(operand)) {
+            return JSRuntime.getPrimitiveConstructorName(operand);
         } else {
             return JSRuntime.toString(operand);
         }
