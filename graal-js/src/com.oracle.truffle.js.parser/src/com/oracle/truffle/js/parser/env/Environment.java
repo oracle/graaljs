@@ -241,12 +241,10 @@ public abstract class Environment {
         int frameLevel = 0;
         int scopeLevel = 0;
         Function<VarRef, VarRef> wrapClosure = null;
-        int wrapFrameLevel = 0;
         do {
             if (current instanceof WithEnvironment) {
                 if (!skipWith) {
                     wrapClosure = makeWithWrapClosure(wrapClosure, name, ((WithEnvironment) current).getWithVarIdentifier());
-                    wrapFrameLevel = frameLevel;
                 }
                 // with environments don't introduce any variables, skip lookup
             } else if (current instanceof GlobalEnvironment) {
@@ -258,14 +256,13 @@ public abstract class Environment {
                 // .. Dynamically resolved using lexical global scope and global object lookups.
                 GlobalEnvironment globalEnv = (GlobalEnvironment) current;
                 if (globalEnv.hasLexicalDeclaration(name)) {
-                    return wrapIn(wrapClosure, wrapFrameLevel, new GlobalLexVarRef(name, globalEnv.hasConstDeclaration(name), globalEnv));
+                    return wrapIn(wrapClosure, new GlobalLexVarRef(name, globalEnv.hasConstDeclaration(name), globalEnv));
                 } else if (!globalEnv.hasVarDeclaration(name)) {
                     wrapClosure = makeGlobalWrapClosure(wrapClosure, name);
                 }
             } else if (current instanceof DebugEnvironment) {
                 if (((DebugEnvironment) current).hasMember(name)) {
                     wrapClosure = makeDebugWrapClosure(wrapClosure, name, frameLevel);
-                    wrapFrameLevel = frameLevel;
                 }
             } else {
                 int effectiveScopeLevel = scopeLevel;
@@ -287,19 +284,18 @@ public abstract class Environment {
                             assert frameLevel == 0 || JSFrameUtil.isClosedOver(slot) || (current.getScope() != null && current.getScope().hasNestedEval()) : slot;
                             varRef = new FrameSlotVarRef(slot, effectiveScopeLevel, frameLevel, name, current);
                         }
-                        return wrapIn(wrapClosure, wrapFrameLevel, varRef);
+                        return wrapIn(wrapClosure, varRef);
                     }
                 }
 
                 if (!skipEval && current.function().isDynamicallyScoped() && current.findBlockFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER) != null) {
                     wrapClosure = makeEvalWrapClosure(wrapClosure, name, frameLevel, scopeLevel, current);
-                    wrapFrameLevel = frameLevel;
                 }
 
                 if (current instanceof FunctionEnvironment) {
                     FunctionEnvironment fnEnv = current.function();
                     if (fnEnv.isNamedFunctionExpression() && fnEnv.getFunctionName().equals(name)) {
-                        return wrapIn(wrapClosure, wrapFrameLevel, new FunctionCalleeVarRef(frameLevel, name, current));
+                        return wrapIn(wrapClosure, new FunctionCalleeVarRef(frameLevel, name, current));
                     }
 
                     frameLevel++;
@@ -315,7 +311,7 @@ public abstract class Environment {
             return null;
         }
 
-        return wrapIn(wrapClosure, wrapFrameLevel, new GlobalVarRef(name));
+        return wrapIn(wrapClosure, new GlobalVarRef(name));
     }
 
     void ensureFrameLevelAvailable(int frameLevel) {
@@ -348,9 +344,8 @@ public abstract class Environment {
         return compose(wrapClosure, wrappee -> new WrappedDebugVarRef(name, wrappee, frameLevel));
     }
 
-    private VarRef wrapIn(Function<VarRef, VarRef> wrapClosure, int wrapFrameLevel, VarRef wrappee) {
+    private static VarRef wrapIn(Function<VarRef, VarRef> wrapClosure, VarRef wrappee) {
         if (wrapClosure != null) {
-            ensureFrameLevelAvailable(wrapFrameLevel);
             return wrapClosure.apply(wrappee);
         }
         return wrappee;
