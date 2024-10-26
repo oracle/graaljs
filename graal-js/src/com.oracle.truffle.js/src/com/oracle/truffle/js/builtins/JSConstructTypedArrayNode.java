@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_INTEROP
 import static com.oracle.truffle.js.runtime.array.TypedArray.BUFFER_TYPE_SHARED;
 
 import java.nio.ByteBuffer;
-import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -115,18 +114,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     private final TypedArrayFactory factory;
 
-    public JSConstructTypedArrayNode(JSContext context, JSBuiltin builtin) {
+    protected JSConstructTypedArrayNode(JSContext context, JSBuiltin builtin, TypedArrayFactory factory) {
         super(context, builtin);
-        this.factory = findTypedArrayFactory(builtin.getName());
-    }
-
-    private static TypedArrayFactory findTypedArrayFactory(TruffleString name) {
-        for (TypedArrayFactory typedArrayFactory : TypedArray.factories()) {
-            if (Strings.equals(typedArrayFactory.getName(), name)) {
-                return typedArrayFactory;
-            }
-        }
-        throw new NoSuchElementException(Strings.toJavaString(name));
+        this.factory = factory;
     }
 
     private long toIndex(Object target) {

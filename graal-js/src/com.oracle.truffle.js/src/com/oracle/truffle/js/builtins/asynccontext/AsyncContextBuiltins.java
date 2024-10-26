@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,15 +108,13 @@ public final class AsyncContextBuiltins extends JSBuiltinsContainer.SwitchEnum<A
         switch (builtinEnum) {
             case Snapshot:
                 if (construct) {
-                    return newTarget ? ConstructAsyncContextSnapshotNodeGen.create(context, builtin, true, args().newTarget().createArgumentNodes(context))
-                                    : ConstructAsyncContextSnapshotNodeGen.create(context, builtin, false, args().function().createArgumentNodes(context));
+                    return ConstructAsyncContextSnapshotNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).createArgumentNodes(context));
                 } else {
                     return ConstructorBuiltins.createCallRequiresNew(context, builtin);
                 }
             case Variable:
                 if (construct) {
-                    return newTarget ? ConstructAsyncContextVariableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructAsyncContextVariableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return ConstructAsyncContextVariableNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return ConstructorBuiltins.createCallRequiresNew(context, builtin);
                 }

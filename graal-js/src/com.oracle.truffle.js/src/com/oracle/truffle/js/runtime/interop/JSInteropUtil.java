@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -629,5 +630,23 @@ public final class JSInteropUtil {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
         return null;
+    }
+
+    public static void readBuffer(Object buffer, long byteOffset, byte[] destination, int destinationOffset, int byteLength, InteropLibrary interop) {
+        try {
+            interop.readBuffer(buffer, byteOffset, destination, destinationOffset, byteLength);
+        } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            throw Errors.createTypeErrorInteropException(buffer, e, "readBuffer", interop);
+        }
+    }
+
+    public static void writeBuffer(Object destination, long destinationOffset, byte[] source, int sourceOffset, int copyLength, InteropLibrary interop) {
+        try {
+            for (int i = 0; i < copyLength; i++) {
+                interop.writeBufferByte(destination, destinationOffset + i, source[sourceOffset + i]);
+            }
+        } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            throw Errors.createTypeErrorInteropException(destination, e, "writeBuffer", interop);
+        }
     }
 }

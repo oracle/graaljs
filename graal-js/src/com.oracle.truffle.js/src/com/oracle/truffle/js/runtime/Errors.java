@@ -1023,4 +1023,9 @@ public final class Errors {
     public static JSException createTypeErrorWrongDecoratorReturn(Node originatingNode) {
         return Errors.createTypeError("Class decorator must return undefined or function", originatingNode);
     }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorEncodingNotSupported(TruffleString encoding) {
+        return Errors.createRangeError("Unsupported encoding: " + encoding);
+    }
 }
