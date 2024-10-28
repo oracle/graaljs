@@ -163,7 +163,7 @@ local ci = import '../ci.jsonnet';
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]),
 
     // PGO profiles
-    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
+    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles', timelimit: '1:00:00'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
       excludePlatforms([common.darwin_amd64]),   # Too slow
   ], defaultTarget=common.weekly),
