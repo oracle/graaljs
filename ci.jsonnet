@@ -92,7 +92,6 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   supportedPlatforms:: [
     common.jdk21 + common.linux_amd64,
     common.jdk21 + common.linux_aarch64,
-    common.jdk21 + common.darwin_amd64,
     common.jdk21 + common.darwin_aarch64,
     common.jdk21 + common.windows_amd64,
     common.jdklatest + common.linux_amd64,
