@@ -273,6 +273,8 @@ test-strace-openat-openssl: FAIL
 [$system==win32]
 # windows-only test, fails with "Wrong exit code of 1! Expected 134 for abort"
 test-windows-failed-heap-allocation: FAIL
+# Subtest "TZ environment variable" fails consistently on windows
+test-dotenv-node-options: FAIL
 
 # Unclassified
 test-datetime-change-notify: FAIL
