@@ -2440,6 +2440,22 @@ public final class JSRuntime {
         return JSObject.getClassName(receiver);
     }
 
+    public static TruffleString getPrimitiveConstructorName(Object primitive) {
+        assert isJSPrimitive(primitive) && !isNullOrUndefined(primitive);
+        if (primitive instanceof Boolean) {
+            return JSBoolean.CLASS_NAME;
+        } else if (isNumber(primitive) || primitive instanceof Long) {
+            return JSNumber.CLASS_NAME;
+        } else if (isBigInt(primitive)) {
+            return JSBigInt.CLASS_NAME;
+        } else if (Strings.isTString(primitive)) {
+            return JSString.CLASS_NAME;
+        } else if (primitive instanceof Symbol) {
+            return JSSymbol.CLASS_NAME;
+        }
+        throw Errors.shouldNotReachHereUnexpectedValue(primitive);
+    }
+
     public static Object getDataProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         JSDynamicObject current = thisObj;
@@ -2951,5 +2967,4 @@ public final class JSRuntime {
                 throw CompilerDirectives.shouldNotReachHere();
         }
     }
-
 }

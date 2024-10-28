@@ -467,20 +467,6 @@ public abstract class GraalJSException extends AbstractTruffleException {
         return new JSStackTraceElement(fileName, functionName, sourceSection, thisObj, functionObj, null, strict, false, false, inNashornMode, async, hasPath, -1);
     }
 
-    private static TruffleString getPrimitiveConstructorName(Object thisObj) {
-        assert JSRuntime.isJSPrimitive(thisObj);
-        if (thisObj instanceof Boolean) {
-            return Strings.UC_BOOLEAN;
-        } else if (JSRuntime.isNumber(thisObj) || thisObj instanceof Long) {
-            return Strings.UC_NUMBER;
-        } else if (Strings.isTString(thisObj)) {
-            return Strings.UC_STRING;
-        } else if (thisObj instanceof Symbol) {
-            return Strings.UC_SYMBOL;
-        }
-        return null;
-    }
-
     private static int sourceSectionOffset(SourceSection callNodeSourceSection, SourceSection targetSourceSection) {
         int offset = 0;
         String code = callNodeSourceSection.getCharacters().toString();
@@ -689,7 +675,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
                     if (JSDynamicObject.isJSDynamicObject(thisObject)) {
                         return JSRuntime.getConstructorName((JSDynamicObject) thisObject);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
-                        return getPrimitiveConstructorName(thisObject);
+                        return JSRuntime.getPrimitiveConstructorName(thisObject);
                     }
                 }
                 return null;
