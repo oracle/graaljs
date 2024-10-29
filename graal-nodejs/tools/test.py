@@ -650,6 +650,9 @@ class TestOutput(object):
       # Timed out tests will have exit_code -signal.SIGTERM.
       if self.output.timed_out:
         return False
+      if self.output.exit_code == 99:
+        # SVM abort() uses exit code 99 instead of -signal.SIGABRT.
+        return True
       return self.output.exit_code < 0
 
   def HasTimedOut(self):

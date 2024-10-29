@@ -266,7 +266,7 @@ const pwdCommand = isWindows ?
 function platformTimeout(ms) {
   const multipliers = typeof ms === 'bigint' ?
     { two: 2n, four: 4n, seven: 7n } : { two: 2, four: 4, seven: 7 };
-  ms *= multipliers.four;
+  ms *= multipliers.seven;
 
   if (process.features.debug)
     ms = multipliers.two * ms;

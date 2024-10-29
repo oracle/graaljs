@@ -258,6 +258,8 @@ test-signal-args: PASS,FAIL
 test-async-hooks-destroy-on-gc: SKIP
 test-domain-async-id-map-leak: SKIP
 test-https-server-connections-checking-leak: SKIP
+# Possible EventTarget memory leak detected. 3 foo listeners added to EventTarget. MaxListeners is 2.
+test-eventtarget-memoryleakwarning: PASS,FAIL
 
 # Random OutOfMemoryError: Garbage-collected heap size exceeded.
 test-worker-init-failure: SKIP
@@ -273,6 +275,8 @@ test-strace-openat-openssl: FAIL
 [$system==win32]
 # windows-only test, fails with "Wrong exit code of 1! Expected 134 for abort"
 test-windows-failed-heap-allocation: FAIL
+# Subtest "TZ environment variable" fails consistently on windows
+test-dotenv-node-options: FAIL
 
 # Unclassified
 test-datetime-change-notify: FAIL

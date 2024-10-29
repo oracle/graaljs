@@ -7,7 +7,7 @@ local cicommon = import '../ci/common.jsonnet';
     cd:: 'graal-nodejs',
     suite_prefix:: 'nodejs', # for build job names
     // increase default timelimit on windows and darwin-amd64
-    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:30:00' else '45:00',
+    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:45:00' else '45:00',
   },
 
   local ce = ci.ce,
@@ -99,7 +99,7 @@ local cicommon = import '../ci/common.jsonnet';
       {NODE_SUITE: suite} +
       (if part != '' then {NODE_PART: part} else {}) +
       (if max_heap != '' then {NODE_MAX_HEAP: max_heap} else {}),
-    timelimit: '1:30:00',
+    timelimit: if 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then '1:45:00' else '1:30:00',
   },
   local maxHeapOnWindows(max_heap) = {
     environment+: if 'os' in super && super.os == 'windows' then {

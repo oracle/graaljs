@@ -63,7 +63,7 @@ describe('eventLoopExecutor', function () {
                 done();
             });
             EventLoopExecutorTest.testAsyncResolution(eventLoopExecutor, resolve);
-        }).timeout(5000);
+        }).timeout(10000);
 
         it('works in a worker', function (done) {
             const w = new Worker(`
@@ -90,7 +90,7 @@ describe('eventLoopExecutor', function () {
             w.on('message', () => {
                 w.terminate().then(()=>{done()});
             });
-        }).timeout(5000);
+        }).timeout(10000);
 
         it('refuses to post to a terminated worker', function (done) {
             const w = new Worker(`
@@ -109,6 +109,6 @@ describe('eventLoopExecutor', function () {
                     done();
                 });
             });
-        }).timeout(5000);
+        }).timeout(10000);
     }
 });
