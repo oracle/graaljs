@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -226,8 +226,9 @@ public class ESModuleTest {
     public void testFunctionExport() throws IOException {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules("resources/functionexporttest.js", "resources" +
-                            "/functionexportmodule.js");
+            allFilesArray = prepareTestFileAndModules(
+                            "resources/functionexporttest.js",
+                            "resources/functionexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
@@ -244,8 +245,9 @@ public class ESModuleTest {
     public void testFunctionExportNoMimeType() throws IOException {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules("resources/functionexporttest.js", "resources" +
-                            "/functionexportmodule.js");
+            allFilesArray = prepareTestFileAndModules(
+                            "resources/functionexporttest.js",
+                            "resources/functionexportmodule.js");
             String mainFilePath = allFilesArray[0].getAbsolutePath();
             String[] mainFileBaseAndExtension = baseAndExtension(mainFilePath);
             File mainFileWithMjsExtension = new File(mainFileBaseAndExtension[0] + ".mjs");
@@ -266,8 +268,9 @@ public class ESModuleTest {
     public void testDefaultFunctionExport() throws IOException {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules("resources/defaultfunctionexporttest.js", "resources/diagmodule" +
-                            ".js");
+            allFilesArray = prepareTestFileAndModules(
+                            "resources/defaultfunctionexporttest.js",
+                            "resources/diagmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
@@ -284,8 +287,9 @@ public class ESModuleTest {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
 
-            allFilesArray = prepareTestFileAndModules("resources/renamedexporttest.js", "resources" +
-                            "/renamedexportmodule.js");
+            allFilesArray = prepareTestFileAndModules(
+                            "resources/renamedexporttest.js",
+                            "resources/renamedexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
@@ -301,7 +305,9 @@ public class ESModuleTest {
     public void testClassExport() throws IOException {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules("resources/classexporttest.js", "resources/classexportmodule.js");
+            allFilesArray = prepareTestFileAndModules(
+                            "resources/classexporttest.js",
+                            "resources/classexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
@@ -317,8 +323,9 @@ public class ESModuleTest {
     public void testDefaultClassExport() throws IOException {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules("resources/defaultclassexporttest.js", "resources/mymathmodule" +
-                            ".js");
+            allFilesArray = prepareTestFileAndModules(
+                            "resources/defaultclassexporttest.js",
+                            "resources/mymathmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
@@ -333,8 +340,9 @@ public class ESModuleTest {
      */
     @Test
     public void testImportWithCustomFileSystem() throws IOException {
-        File[] allFilesArray = prepareTestFileAndModules("resources/importwithcustomfilesystemtest.js", "resources" +
-                        "/functionexportmodule.js");
+        File[] allFilesArray = prepareTestFileAndModules(
+                        "resources/importwithcustomfilesystemtest.js",
+                        "resources/functionexportmodule.js");
 
         FileSystem fileSystem = new FileSystem() {
             final java.nio.file.FileSystem fullIO = FileSystems.getDefault();
@@ -356,8 +364,7 @@ public class ESModuleTest {
             @Override
             public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
                 if (linkOptions.length > 0) {
-                    throw new UnsupportedOperationException("CheckAccess for this FileSystem is unsupported with non " +
-                                    "empty link options.");
+                    throw new UnsupportedOperationException("CheckAccess for this FileSystem is unsupported with non-empty link options.");
                 }
                 fullIO.provider().checkAccess(path, modes.toArray(new AccessMode[]{}));
             }
@@ -469,7 +476,9 @@ public class ESModuleTest {
     public void testNestedImportNamespace() throws IOException {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules("resources/importexport.js", "resources/mymathmodule.js");
+            allFilesArray = prepareTestFileAndModules(
+                            "resources/importexport.js",
+                            "resources/mymathmodule.js");
             Source source = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value exports = context.eval(source);
             Assert.assertTrue(exports.hasMembers());
@@ -504,7 +513,9 @@ public class ESModuleTest {
     public void testTopLevelAwaitImports() throws IOException {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules("resources/importexporttlawait.js", "resources/classexportmodule.js");
+            allFilesArray = prepareTestFileAndModules(
+                            "resources/importexporttlawait.js",
+                            "resources/classexportmodule.js");
             Source source = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value exports = context.eval(source);
             Assert.assertTrue(exports.hasMembers());
@@ -519,7 +530,9 @@ public class ESModuleTest {
     @Test
     public void testBareModulesVirtualFsAccesses() throws IOException {
         final String expectedBarePath = "bare.js";
-        final File[] allFilesArray = prepareTestFileAndModules("resources/importbarevirtualfs.js", "resources/folder/subfolder.js/foo.js");
+        final File[] allFilesArray = prepareTestFileAndModules(
+                        "resources/importbarevirtualfs.js",
+                        "resources/folder/subfolder.js/foo.js");
 
         FileSystem fileSystem = new FileSystem() {
             final java.nio.file.FileSystem fullIO = FileSystems.getDefault();
@@ -541,8 +554,7 @@ public class ESModuleTest {
             @Override
             public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
                 if (linkOptions.length > 0) {
-                    throw new UnsupportedOperationException("CheckAccess for this FileSystem is unsupported with non " +
-                                    "empty link options.");
+                    throw new UnsupportedOperationException("CheckAccess for this FileSystem is unsupported with non-empty link options.");
                 }
                 fullIO.provider().checkAccess(path, modes.toArray(new AccessMode[]{}));
             }
