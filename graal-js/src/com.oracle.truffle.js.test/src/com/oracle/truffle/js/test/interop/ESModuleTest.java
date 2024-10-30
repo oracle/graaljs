@@ -54,17 +54,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
+import java.net.URL;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystemAlreadyExistsException;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.ProviderNotFoundException;
 import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -74,15 +79,38 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
 
 /**
  * Various tests for EcmaScript 6 module loading via {@link Source}.
  */
+@RunWith(Parameterized.class)
 public class ESModuleTest {
+
+    @Parameters(name = "{0}")
+    public static List<Boolean> data() {
+        return List.of(Boolean.FALSE, Boolean.TRUE);
+    }
+
+    @Parameter(value = 0) public boolean url;
+
+    private final List<File> filesToDelete = new ArrayList<>();
+
+    @After
+    public void tearDown() {
+        deleteFiles(filesToDelete);
+        filesToDelete.clear();
+    }
 
     private static void commonCheck(Value v) {
         assertTrue(v.hasArrayElements());
@@ -92,10 +120,6 @@ public class ESModuleTest {
         assertEquals(5, v.getArrayElement(1).asInt());
         assertTrue(v.getArrayElement(2).isNumber());
         assertEquals(11, v.getArrayElement(2).asInt());
-    }
-
-    private static void copyResourceToFile(String resource, File file) throws IOException {
-        copyResourceToFile(resource, file, new String[0][0]);
     }
 
     /**
@@ -110,14 +134,14 @@ public class ESModuleTest {
      *            <code>"'" + a[0] + "'"</code> on each line with <code>"'" + a[1] + "'"</code>. The
      *            replacements are processed in the order specified by the first array.
      */
-    private static void copyResourceToFile(String resource, File file, String[][] moduleNameReplacements) throws IOException {
-        InputStream inputStream = ESModuleTest.class.getResourceAsStream(resource);
+    private static void copyResourceToFile(String resource, File file, Map<String, String> moduleNameReplacements) throws IOException {
+        InputStream inputStream = toResourceURL(resource).openStream();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
                         BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
             String line;
             while ((line = br.readLine()) != null) {
-                for (String[] moduleNameReplacement : moduleNameReplacements) {
-                    line = line.replace(moduleNameReplacement[0], moduleNameReplacement[1]);
+                for (var moduleNameReplacement : moduleNameReplacements.entrySet()) {
+                    line = line.replace(moduleNameReplacement.getKey(), moduleNameReplacement.getValue());
                 }
                 bw.write(line);
                 bw.write(System.lineSeparator());
@@ -147,6 +171,9 @@ public class ESModuleTest {
         return new String[]{fileNameBase, fileNameExtension};
     }
 
+    private record TestResources(Source mainSource, List<Source> allSources, List<File> allFiles) {
+    }
+
     /**
      * Copies the main file resource and its module resources to files, replacing the references to
      * the modules in the main file as necessary.
@@ -155,38 +182,39 @@ public class ESModuleTest {
      * @param moduleFileResources references to module files resources.
      * @return array of files where all the contents have been copied.
      */
-    private static File[] prepareTestFileAndModules(String mainFileResource, String... moduleFileResources) throws IOException {
+    private TestResources prepareTestFileAndModules(String mainFileResource, String... moduleFileResources) throws IOException {
         List<String> moduleNames = new ArrayList<>();
         List<File> moduleFiles = new ArrayList<>();
-        int moduleNamesWithExtensionCount = 0;
+        List<Source> moduleSources = new ArrayList<>();
         for (String moduleFileResource : moduleFileResources) {
             String moduleName = stripToLastSlash(moduleFileResource);
             String[] moduleNameBaseAndExtension = baseAndExtension(moduleName);
             String moduleNameBase = moduleNameBaseAndExtension[0];
             String moduleNameExtension = moduleNameBaseAndExtension[1];
-            if (!moduleNameExtension.isEmpty()) {
-                moduleNamesWithExtensionCount++;
+
+            Source moduleSource;
+            if (url) {
+                moduleSource = sourceFromResourceURL(moduleFileResource);
+            } else {
+                File moduleFile = createTempFileFromResource(moduleFileResource, moduleNameBase, moduleNameExtension, Map.of());
+                moduleFiles.add(moduleFile);
+                moduleSource = sourceFromFile(moduleFile);
             }
 
-            File moduleFile = File.createTempFile(moduleNameBase, moduleNameExtension);
-            moduleFile.deleteOnExit();
-            copyResourceToFile(moduleFileResource, moduleFile);
-
             moduleNames.add(moduleName);
-            moduleFiles.add(moduleFile);
+            moduleSources.add(moduleSource);
         }
 
-        String[][] moduleNameReplacements = new String[moduleFiles.size() + moduleNamesWithExtensionCount][];
-        int replacementIndex = 0;
-        for (int i = 0; i < moduleFiles.size(); i++) {
+        Map<String, String> moduleNameReplacements = new LinkedHashMap<>();
+        for (int i = 0; i < moduleSources.size(); i++) {
             String moduleName = moduleNames.get(i);
-            String moduleTempFileName = moduleFiles.get(i).getName();
+            String moduleTempFileName = moduleSources.get(i).getName();
 
-            moduleNameReplacements[replacementIndex++] = new String[]{moduleName, moduleTempFileName};
+            moduleNameReplacements.put(moduleName, moduleTempFileName);
             if (moduleName.contains(".")) {
                 String moduleNameBase = "'" + baseAndExtension(moduleName)[0] + "'";
                 String moduleTempFileNameBase = "'" + baseAndExtension(moduleTempFileName)[0] + "'";
-                moduleNameReplacements[replacementIndex++] = new String[]{moduleNameBase, moduleTempFileNameBase};
+                moduleNameReplacements.put(moduleNameBase, moduleTempFileNameBase);
             }
         }
 
@@ -195,21 +223,42 @@ public class ESModuleTest {
         String mainFileNameBase = mainFileNameBaseAndExtension[0];
         String mainFileNameExtension = mainFileNameBaseAndExtension[1];
 
-        File mainFile = File.createTempFile(mainFileNameBase, mainFileNameExtension);
-        mainFile.deleteOnExit();
-        copyResourceToFile(mainFileResource, mainFile, moduleNameReplacements);
+        Source mainSource;
+        if (url) {
+            mainSource = sourceFromResourceURL(mainFileResource);
+        } else {
+            File mainFile = createTempFileFromResource(mainFileResource, mainFileNameBase, mainFileNameExtension, moduleNameReplacements);
+            moduleFiles.add(0, mainFile);
+            mainSource = sourceFromFile(mainFile);
+        }
+        moduleSources.add(0, mainSource);
+        return new TestResources(mainSource, moduleSources, moduleFiles);
+    }
 
-        List<File> allFilesList = new ArrayList<>();
-        allFilesList.add(mainFile);
-        allFilesList.addAll(moduleFiles);
+    private File createTempFileFromResource(String moduleFileResource, String moduleNameBase, String moduleNameExtension, Map<String, String> moduleNameReplacements) throws IOException {
+        File moduleFile = File.createTempFile(moduleNameBase, moduleNameExtension);
+        filesToDelete.add(moduleFile);
+        copyResourceToFile(moduleFileResource, moduleFile, moduleNameReplacements);
+        return moduleFile;
+    }
 
-        return allFilesList.toArray(new File[0]);
+    private static URL toResourceURL(String moduleFileResource) {
+        return ESModuleTest.class.getResource(moduleFileResource);
+    }
+
+    private static Source sourceFromResourceURL(String moduleFileResource) throws IOException {
+        URL resourceURL = toResourceURL(moduleFileResource);
+        return Source.newBuilder(JavaScriptLanguage.ID, resourceURL).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
+    }
+
+    private static Source sourceFromFile(File moduleFile) throws IOException {
+        return Source.newBuilder(JavaScriptLanguage.ID, moduleFile).mimeType(MODULE_MIME_TYPE).build();
     }
 
     /**
      * Deletes specified files.
      */
-    private static void deleteFiles(File[] filesArray) {
+    private static void deleteFiles(Iterable<File> filesArray) {
         if (filesArray != null) {
             for (File file : filesArray) {
                 // noinspection ResultOfMethodCallIgnored
@@ -218,22 +267,34 @@ public class ESModuleTest {
         }
     }
 
+    private Context createContextWithIOAccess() {
+        return createContextWithIOAccess(null);
+    }
+
+    private Context createContextWithIOAccess(FileSystem fileSystemOpt) {
+        var io = IOAccess.newBuilder();
+        if (fileSystemOpt != null) {
+            io.fileSystem(fileSystemOpt);
+        } else {
+            io.allowHostFileAccess(!url);
+        }
+        io.allowHostSocketAccess(url);
+        return JSTest.newContextBuilder().allowIO(io.build()).build();
+    }
+
     /**
      * Test basic function export. To be able to use the module API, MIME type
      * "application/javascript+module" is specified for the main file.
      */
     @Test
     public void testFunctionExport() throws IOException {
-        File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules(
+        try (Context context = createContextWithIOAccess()) {
+            var src = prepareTestFileAndModules(
                             "resources/functionexporttest.js",
                             "resources/functionexportmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Source mainSource = src.mainSource();
             Value v = context.eval(mainSource);
             commonCheck(v);
-        } finally {
-            deleteFiles(allFilesArray);
         }
     }
 
@@ -243,21 +304,21 @@ public class ESModuleTest {
      */
     @Test
     public void testFunctionExportNoMimeType() throws IOException {
-        File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules(
+        Assume.assumeFalse(url);
+        try (Context context = createContextWithIOAccess()) {
+            var testResources = prepareTestFileAndModules(
                             "resources/functionexporttest.js",
                             "resources/functionexportmodule.js");
-            String mainFilePath = allFilesArray[0].getAbsolutePath();
+            String mainFilePath = testResources.allFiles.get(0).getAbsolutePath();
             String[] mainFileBaseAndExtension = baseAndExtension(mainFilePath);
             File mainFileWithMjsExtension = new File(mainFileBaseAndExtension[0] + ".mjs");
             // noinspection ResultOfMethodCallIgnored
-            allFilesArray[0].renameTo(mainFileWithMjsExtension);
+            testResources.allFiles.get(0).renameTo(mainFileWithMjsExtension);
+            filesToDelete.add(mainFileWithMjsExtension);
+
             Source mainSource = Source.newBuilder(ID, mainFileWithMjsExtension).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
-        } finally {
-            deleteFiles(allFilesArray);
         }
     }
 
@@ -266,16 +327,13 @@ public class ESModuleTest {
      */
     @Test
     public void testDefaultFunctionExport() throws IOException {
-        File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules(
+        try (Context context = createContextWithIOAccess()) {
+            var testResources = prepareTestFileAndModules(
                             "resources/defaultfunctionexporttest.js",
                             "resources/diagmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Source mainSource = testResources.mainSource();
             Value v = context.eval(mainSource);
             commonCheck(v);
-        } finally {
-            deleteFiles(allFilesArray);
         }
     }
 
@@ -284,17 +342,13 @@ public class ESModuleTest {
      */
     @Test
     public void testRenamedExport() throws IOException {
-        File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-
-            allFilesArray = prepareTestFileAndModules(
+        try (Context context = createContextWithIOAccess()) {
+            var testResources = prepareTestFileAndModules(
                             "resources/renamedexporttest.js",
                             "resources/renamedexportmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Source mainSource = testResources.mainSource();
             Value v = context.eval(mainSource);
             commonCheck(v);
-        } finally {
-            deleteFiles(allFilesArray);
         }
     }
 
@@ -303,16 +357,13 @@ public class ESModuleTest {
      */
     @Test
     public void testClassExport() throws IOException {
-        File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules(
+        try (Context context = createContextWithIOAccess()) {
+            var testResources = prepareTestFileAndModules(
                             "resources/classexporttest.js",
                             "resources/classexportmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Source mainSource = testResources.mainSource();
             Value v = context.eval(mainSource);
             commonCheck(v);
-        } finally {
-            deleteFiles(allFilesArray);
         }
     }
 
@@ -321,16 +372,13 @@ public class ESModuleTest {
      */
     @Test
     public void testDefaultClassExport() throws IOException {
-        File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules(
+        try (Context context = createContextWithIOAccess()) {
+            var testResources = prepareTestFileAndModules(
                             "resources/defaultclassexporttest.js",
                             "resources/mymathmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Source mainSource = testResources.mainSource();
             Value v = context.eval(mainSource);
             commonCheck(v);
-        } finally {
-            deleteFiles(allFilesArray);
         }
     }
 
@@ -340,80 +388,38 @@ public class ESModuleTest {
      */
     @Test
     public void testImportWithCustomFileSystem() throws IOException {
-        File[] allFilesArray = prepareTestFileAndModules(
+        var testResources = prepareTestFileAndModules(
                         "resources/importwithcustomfilesystemtest.js",
                         "resources/functionexportmodule.js");
 
-        FileSystem fileSystem = new FileSystem() {
-            final java.nio.file.FileSystem fullIO = FileSystems.getDefault();
-
-            @Override
-            public Path parsePath(URI uri) {
-                return fullIO.provider().getPath(uri);
-            }
-
+        var fileSystem = new DelegatingFileSystem() {
             @Override
             public Path parsePath(String path) {
                 if (!Files.exists(Paths.get(path)) && !path.endsWith(".js")) {
-                    String expected = allFilesArray[1].getAbsolutePath();
-                    return fullIO.getPath(expected);
+                    String replacement = testResources.allFiles().get(1).getAbsolutePath();
+                    return super.parsePath(replacement);
                 }
-                return fullIO.getPath(path);
+                return super.parsePath(path);
             }
 
             @Override
-            public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-                if (linkOptions.length > 0) {
-                    throw new UnsupportedOperationException("CheckAccess for this FileSystem is unsupported with non-empty link options.");
+            public Path parsePath(URI uri) {
+                if ("jar".equals(uri.getScheme())) {
+                    if (!uri.toString().endsWith(".js") && !uri.toString().endsWith(".mjs")) {
+                        Source replacementSource = testResources.allSources().get(1);
+                        URI replacement = replacementSource.getURI();
+                        return jarURIToPath(replacement);
+                    }
                 }
-                fullIO.provider().checkAccess(path, modes.toArray(new AccessMode[]{}));
-            }
-
-            @Override
-            public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-                fullIO.provider().createDirectory(dir, attrs);
-            }
-
-            @Override
-            public void delete(Path path) throws IOException {
-                fullIO.provider().delete(path);
-            }
-
-            @Override
-            public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options,
-                            FileAttribute<?>... attrs) throws IOException {
-                return fullIO.provider().newByteChannel(path, options, attrs);
-            }
-
-            @Override
-            public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-                return fullIO.provider().newDirectoryStream(dir, filter);
-            }
-
-            @Override
-            public Path toAbsolutePath(Path path) {
-                return path.toAbsolutePath();
-            }
-
-            @Override
-            public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-                return path.toRealPath(linkOptions);
-            }
-
-            @Override
-            public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-                return fullIO.provider().readAttributes(path, attributes, options);
+                return super.parsePath(uri);
             }
         };
 
-        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build()).build()) {
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+        try (Context context = createContextWithIOAccess(fileSystem)) {
+            Source mainSource = testResources.mainSource();
             Value v = context.eval(mainSource);
             commonCheck(v);
-        } finally {
-            deleteFiles(allFilesArray);
         }
-
     }
 
     /**
@@ -474,12 +480,11 @@ public class ESModuleTest {
      */
     @Test
     public void testNestedImportNamespace() throws IOException {
-        File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules(
+            var testResources = prepareTestFileAndModules(
                             "resources/importexport.js",
                             "resources/mymathmodule.js");
-            Source source = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Source source = testResources.mainSource();
             Value exports = context.eval(source);
             Assert.assertTrue(exports.hasMembers());
             Assert.assertTrue(exports.hasMember("sqrtPlusOne"));
@@ -511,12 +516,12 @@ public class ESModuleTest {
      */
     @Test
     public void testTopLevelAwaitImports() throws IOException {
-        File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(IOAccess.ALL).build()) {
-            allFilesArray = prepareTestFileAndModules(
+            var testResources = prepareTestFileAndModules(
                             "resources/importexporttlawait.js",
                             "resources/classexportmodule.js");
-            Source source = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+
+            Source source = testResources.mainSource();
             Value exports = context.eval(source);
             Assert.assertTrue(exports.hasMembers());
             Assert.assertTrue(exports.hasMember("sqrtPlusOne"));
@@ -530,79 +535,121 @@ public class ESModuleTest {
     @Test
     public void testBareModulesVirtualFsAccesses() throws IOException {
         final String expectedBarePath = "bare.js";
-        final File[] allFilesArray = prepareTestFileAndModules(
+
+        var testResources = prepareTestFileAndModules(
                         "resources/importbarevirtualfs.js",
                         "resources/folder/subfolder.js/foo.js");
 
-        FileSystem fileSystem = new FileSystem() {
-            final java.nio.file.FileSystem fullIO = FileSystems.getDefault();
-
-            @Override
-            public Path parsePath(URI uri) {
-                return fullIO.provider().getPath(uri);
-            }
-
+        var fileSystem = new DelegatingFileSystem() {
             @Override
             public Path parsePath(String path) {
                 if (expectedBarePath.equals(path)) {
-                    String replacement = allFilesArray[1].getAbsolutePath();
-                    return Paths.get(replacement);
+                    String replacement = testResources.allFiles().get(1).getAbsolutePath();
+                    return super.parsePath(replacement);
                 }
-                return fullIO.getPath(path);
+                return super.parsePath(path);
             }
 
             @Override
-            public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-                if (linkOptions.length > 0) {
-                    throw new UnsupportedOperationException("CheckAccess for this FileSystem is unsupported with non-empty link options.");
+            public Path parsePath(URI uri) {
+                if ("jar".equals(uri.getScheme())) {
+                    if (uri.toString().endsWith(expectedBarePath)) {
+                        Source replacementSource = testResources.allSources().get(1);
+                        URI replacement = replacementSource.getURI();
+                        return jarURIToPath(replacement);
+                    }
                 }
-                fullIO.provider().checkAccess(path, modes.toArray(new AccessMode[]{}));
+                return super.parsePath(uri);
             }
 
-            @Override
-            public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-                fullIO.provider().createDirectory(dir, attrs);
-            }
-
-            @Override
-            public void delete(Path path) throws IOException {
-                fullIO.provider().delete(path);
-            }
-
-            @Override
-            public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options,
-                            FileAttribute<?>... attrs) throws IOException {
-                return fullIO.provider().newByteChannel(path, options, attrs);
-            }
-
-            @Override
-            public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-                return fullIO.provider().newDirectoryStream(dir, filter);
-            }
-
-            @Override
-            public Path toAbsolutePath(Path path) {
-                return path.toAbsolutePath();
-            }
-
-            @Override
-            public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-                return path.toRealPath(linkOptions);
-            }
-
-            @Override
-            public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-                return fullIO.provider().readAttributes(path, attributes, options);
-            }
         };
 
-        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build()).build()) {
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+        try (Context context = createContextWithIOAccess(fileSystem)) {
+            Source mainSource = testResources.mainSource();
             Value v = context.eval(mainSource);
             assertTrue(v.isString());
             assertEquals("HELLO GRAALJS", v.asString());
-        } finally {
-            deleteFiles(allFilesArray);
+        }
+    }
+
+    public static class DelegatingFileSystem implements FileSystem {
+        protected final java.nio.file.FileSystem fullIO = FileSystems.getDefault();
+
+        public DelegatingFileSystem() {
+        }
+
+        @Override
+        public Path parsePath(URI uri) {
+            return fullIO.provider().getPath(uri);
+        }
+
+        @Override
+        public Path parsePath(String path) {
+            return fullIO.getPath(path);
+        }
+
+        @Override
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+            if (linkOptions.length > 0) {
+                throw new UnsupportedOperationException("CheckAccess for this FileSystem is unsupported with non-empty link options.");
+            }
+            path.getFileSystem().provider().checkAccess(path, modes.toArray(new AccessMode[]{}));
+        }
+
+        @Override
+        public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+            dir.getFileSystem().provider().createDirectory(dir, attrs);
+        }
+
+        @Override
+        public void delete(Path path) throws IOException {
+            path.getFileSystem().provider().delete(path);
+        }
+
+        @Override
+        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options,
+                        FileAttribute<?>... attrs) throws IOException {
+            return path.getFileSystem().provider().newByteChannel(path, options, attrs);
+        }
+
+        @Override
+        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+            return dir.getFileSystem().provider().newDirectoryStream(dir, filter);
+        }
+
+        @Override
+        public Path toAbsolutePath(Path path) {
+            return path.toAbsolutePath();
+        }
+
+        @Override
+        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+            return path.toRealPath(linkOptions);
+        }
+
+        @Override
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+            return path.getFileSystem().provider().readAttributes(path, attributes, options);
+        }
+
+        protected static Path jarURIToPath(URI replacement) {
+            try {
+                do {
+                    try {
+                        var jarFS = FileSystems.getFileSystem(replacement);
+                        return jarFS.provider().getPath(replacement);
+                    } catch (FileSystemNotFoundException e) {
+                        try {
+                            var jarFS = FileSystems.newFileSystem(replacement, Map.of());
+                            return jarFS.provider().getPath(replacement);
+                        } catch (FileSystemAlreadyExistsException retry) {
+                            continue;
+                        }
+                    }
+                } while (true);
+            } catch (ProviderNotFoundException | FileSystemNotFoundException | SecurityException | IOException e) {
+                throw new IllegalArgumentException(e);
+            }
         }
     }
 }
