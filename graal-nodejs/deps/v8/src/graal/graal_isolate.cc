@@ -531,7 +531,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         options.push_back({const_cast<char*>("-Dsun.java.command=node"), nullptr});
 
         options.push_back({const_cast<char*>("--enable-native-access=org.graalvm.truffle"), nullptr});
-        options.push_back({const_cast<char*>("--enable-native-access=org.graalvm.truffle.runtime"), nullptr}); // GR-57817
 
     #if defined(DEBUG)
         std::string debugPort = getstdenv("DEBUG_PORT");
