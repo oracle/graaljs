@@ -165,7 +165,7 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
         if next((arg.startswith('-e') for arg in reversed(vmArgs) if arg in ['-ea', '-da', '-enableassertions', '-disableassertions']), False):
             vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
         vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
-        vmArgs += ['--enable-native-access=org.graalvm.truffle,org.graalvm.truffle.runtime']
+        vmArgs += ['--enable-native-access=org.graalvm.truffle']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
@@ -264,6 +264,7 @@ def _append_default_js_vm_args(vm_args, min_heap='2g', max_heap='2g', stack_size
     if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vm_args + get_jdk().java_args):
         vm_args += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
+    vm_args += ['--enable-native-access=org.graalvm.truffle']
     return vm_args
 
 def _js_cmd_line(args, main_class, runtime_jvm_args=None, append_default_args=True):
@@ -279,7 +280,7 @@ def graaljs_cmd_line(args, append_default_args=True, jdk=None):
             + mx_truffle.resolve_truffle_dist_names()
             + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:INSIGHT_HEAP'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
             + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []),
-            jdk=jdk) + ['--enable-native-access=org.graalvm.truffle,org.graalvm.truffle.runtime']
+            jdk=jdk)
     main_dist = mx.distribution('GRAALJS_LAUNCHER')
     main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
     return _js_cmd_line(args, main_class=main_class_arg, runtime_jvm_args=runtime_jvm_args, append_default_args=append_default_args)
