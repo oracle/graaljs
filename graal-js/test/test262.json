@@ -303,6 +303,26 @@
     },
     "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
   }, {
+    "filePath" : "built-ins/Error/isError/bigints.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: uses 'new BigInt(0)' instead of 'BigInt(0)'."
+  }, {
+    "filePath" : "built-ins/Error/isError/error-subclass.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: invokes AggregateError constructor with no arguments."
+  }, {
+    "filePath" : "built-ins/Error/isError/errors-other-realm.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: invokes AggregateError constructor with no arguments."
+  }, {
+    "filePath" : "built-ins/Error/isError/errors.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: invokes AggregateError constructor with no arguments."
+  }, {
+    "filePath" : "built-ins/Error/isError/symbols.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: uses 'new Symbol()' instead of 'Symbol()'."
+  }, {
     "filePath" : "built-ins/Function/prototype/toString/built-in-function-object.js",
     "status" : "PASS",
     "statusOverrides" : {
