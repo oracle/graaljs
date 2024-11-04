@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,33 +45,74 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ErrorFunctionBuiltinsFactory.ErrorCaptureStackTraceNodeGen;
+import com.oracle.truffle.js.builtins.ErrorFunctionBuiltinsFactory.ErrorIsErrorNodeGen;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
+import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains builtins for {@linkplain JSError} function (constructor).
  */
-public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
+public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ErrorFunctionBuiltins.ErrorFunction> {
     public static final JSBuiltinsContainer BUILTINS = new ErrorFunctionBuiltins();
 
     protected ErrorFunctionBuiltins() {
-        super(JSError.CLASS_NAME);
-        defineFunction(Strings.CAPTURE_STACK_TRACE, 2, JSAttributes.getDefault(),
-                        (context, builtin) -> ErrorCaptureStackTraceNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context)));
+        super(JSError.CLASS_NAME, ErrorFunction.class);
+    }
+
+    public enum ErrorFunction implements BuiltinEnum<ErrorFunction> {
+        captureStackTrace(2),
+        isError(1);
+
+        private final int length;
+
+        ErrorFunction(int length) {
+            this.length = length;
+        }
+
+        @Override
+        public int getLength() {
+            return length;
+        }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == isError) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
+
+        @Override
+        public boolean isOptional() {
+            return (this == captureStackTrace);
+        }
+
+    }
+
+    @Override
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ErrorFunction builtinEnum) {
+        switch (builtinEnum) {
+            case captureStackTrace:
+                return ErrorCaptureStackTraceNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case isError:
+                return ErrorIsErrorNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+        }
+        return null;
     }
 
     public abstract static class ErrorCaptureStackTraceNode extends JSBuiltinNode {
@@ -107,6 +148,17 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
         @Override
         public boolean countsTowardsStackTraceLimit() {
             return false;
+        }
+    }
+
+    public abstract static class ErrorIsErrorNode extends JSBuiltinNode {
+        public ErrorIsErrorNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected boolean isError(Object argument) {
+            return (argument instanceof JSErrorObject);
         }
     }
 }

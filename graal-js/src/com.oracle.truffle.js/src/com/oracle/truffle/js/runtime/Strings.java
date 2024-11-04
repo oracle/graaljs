@@ -458,7 +458,6 @@ public final class Strings {
     public static final TruffleString FULFILLED = constant("fulfilled");
     public static final TruffleString REJECTED = constant("rejected");
 
-    public static final TruffleString CAPTURE_STACK_TRACE = constant("captureStackTrace");
     public static final TruffleString JAVA_CLASS_BRACKET = constant("JavaClass[");
     public static final TruffleString JAVA_OBJECT_BRACKET = constant("JavaObject[");
     public static final TruffleString RESOLVED = constant("resolved");

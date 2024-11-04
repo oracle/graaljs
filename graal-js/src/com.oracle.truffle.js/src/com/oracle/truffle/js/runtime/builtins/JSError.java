@@ -210,9 +210,12 @@ public final class JSError extends JSNonProxy {
         JSObjectUtil.putConstructorProperty(classPrototype, errorConstructor);
         JSObjectUtil.putDataProperty(classPrototype, NAME, name, MESSAGE_ATTRIBUTES);
         JSObjectUtil.putConstructorPrototypeProperty(errorConstructor, classPrototype);
-        if (realm.getContextOptions().isStackTraceAPI() && errorType == JSErrorType.Error) {
+        if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, ErrorFunctionBuiltins.BUILTINS);
-            JSObjectUtil.putDataProperty(errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(realm.getOptions()), JSAttributes.getDefault());
+            if (realm.getContextOptions().isStackTraceAPI()) {
+                JSObjectUtil.putFunctionFromContainer(realm, errorConstructor, ErrorFunctionBuiltins.BUILTINS, ErrorFunctionBuiltins.ErrorFunction.captureStackTrace.getKey());
+                JSObjectUtil.putDataProperty(errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(realm.getOptions()), JSAttributes.getDefault());
+            }
         }
 
         return new JSConstructor(errorConstructor, classPrototype);
