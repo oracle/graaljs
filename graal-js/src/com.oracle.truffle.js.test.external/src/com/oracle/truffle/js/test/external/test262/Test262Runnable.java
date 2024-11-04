@@ -116,6 +116,7 @@ public class Test262Runnable extends TestRunnable {
                     "DataView.prototype.getUint16",
                     "DataView.prototype.getUint32",
                     "DataView.prototype.setUint8",
+                    "Error.isError",
                     "FinalizationRegistry",
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Float16Array",
@@ -274,7 +275,6 @@ public class Test262Runnable extends TestRunnable {
     });
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "Atomics.pause",
-                    "Error.isError",
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "Math.sumPrecise",
@@ -286,6 +286,7 @@ public class Test262Runnable extends TestRunnable {
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Array.fromAsync",
+                    "Error.isError",
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Float16Array",
                     "Intl.Locale-info",
