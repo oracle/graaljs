@@ -7,6 +7,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 
 ## Version 24.2.0
 * Updated Node.js to version 20.15.1.
+* Implemented the [`Error.isError`](https://github.com/tc39/proposal-is-error) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Promise.try`](https://github.com/tc39/proposal-promise-try) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Source Phase Imports](https://github.com/tc39/proposal-source-phase-imports) proposal. It is available behind the experimental option (`--js.source-phase-imports`).
 * Implemented basic Worker API (resembling the API available in `d8`). It is available behind the experimental option `--js.worker`.
