@@ -14,6 +14,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Added option `js.stack-trace-api` that enables/disables `Error.captureStackTrace`, `Error.prepareStackTrace` and `Error.stackTraceLimit`. These non-standard extensions are disabled by default (unless `js.v8-compat` or `js.nashorn-compat` is used).
 * Made option `js.webassembly` stable.
 * Made options `js.load`, `js.print`, and `js.graal-builtin` stable and allowed in `SandboxPolicy.UNTRUSTED`.
+* Made option `js.locale` stable and allowed in `SandboxPolicy.UNTRUSTED`. Its value, if non-empty, must be a well-formed Unicode BCP 47 locale identifier and is now validated.
 * Added an experimental `java.util.concurrent.Executor` that can be used to post tasks into the event loop thread in `graal-nodejs`. It is available as `require('node:graal').eventLoopExecutor`.
 * Implemented the `TextDecoder` and `TextEncoder` APIs of the [WHATWG Encoding Standard](https://encoding.spec.whatwg.org/). They are available behind the experimental option (`--js.text-encoding`).
 
