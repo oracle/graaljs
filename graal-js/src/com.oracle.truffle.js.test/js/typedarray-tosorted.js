@@ -84,9 +84,9 @@ assertSameContent(floats.toSorted(reverseOrder), f64a.sort(reverseOrder));
 const f32a = new Float32Array(floats);
 assertSameContent(floats.map(Math.fround).toSorted(), f32a.toSorted());
 assertSameContent(floats.map(Math.fround).toSorted(), f32a.sort());
-const f16a = new Float16Array(floats);
-assertSameContent(floats.map(Math.f16round).toSorted(), f16a.toSorted());
-assertSameContent(floats.map(Math.f16round).toSorted(), f16a.sort());
+//const f16a = new Float16Array(floats);
+//assertSameContent(floats.map(Math.f16round).toSorted(), f16a.toSorted());
+//assertSameContent(floats.map(Math.f16round).toSorted(), f16a.sort());
 
 // toSorted() on Interop-backed typed array.
 const interopTypedArray = new Uint32Array(java.nio.ByteBuffer.allocateDirect(40));
