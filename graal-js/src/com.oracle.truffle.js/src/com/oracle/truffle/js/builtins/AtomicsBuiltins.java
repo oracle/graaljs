@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -57,6 +58,7 @@ import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsComputeNodeG
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsIsLockFreeNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsLoadNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsNotifyNodeGen;
+import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsPauseNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsStoreNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsWaitAsyncNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsWaitNodeGen;
@@ -147,7 +149,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         notify(3),
 
         // ES 2024
-        waitAsync(4);
+        waitAsync(4),
+
+        pause(0);
 
         private final int length;
 
@@ -165,6 +169,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return switch (this) {
                 case notify -> JSConfig.ECMAScript2019;
                 case waitAsync -> JSConfig.ECMAScript2024;
+                case pause -> JSConfig.StagingECMAScriptVersion;
                 default -> JSConfig.ECMAScript2017;
             };
         }
@@ -206,6 +211,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 return AtomicsIsLockFreeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case waitAsync:
                 return AtomicsWaitAsyncNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
+            case pause:
+                return AtomicsPauseNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -1261,6 +1268,45 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization
         protected Object doGeneric(VirtualFrame frame, Object maybeTarget, Object index, Object value, Object timeout) {
             return doWait(frame, maybeTarget, index, value, timeout, true);
+        }
+    }
+
+    @ImportStatic({JSRuntime.class})
+    public abstract static class AtomicsPauseNode extends JSBuiltinNode {
+
+        protected AtomicsPauseNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isUndefined(n)")
+        protected static Object pauseOnce(Object n) {
+            Thread.onSpinWait();
+            return Undefined.instance;
+        }
+
+        @Specialization
+        protected static Object pauseInt(int n) {
+            for (int i = 0; i < n; i++) {
+                Thread.onSpinWait();
+            }
+            return Undefined.instance;
+        }
+
+        @Specialization(guards = "isIntegralNumber(n)")
+        protected static Object pauseDouble(double n) {
+            return pauseInt((int) n);
+        }
+
+        @Specialization
+        protected static Object pauseLong(long n) {
+            return pauseInt((int) Math.min(Math.max(n, 0), Integer.MAX_VALUE));
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        protected static Object illegalArgument(Object n) {
+            throw Errors.createTypeError("Atomics.pause argument must be undefined or an integer");
         }
     }
 
