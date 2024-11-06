@@ -105,6 +105,7 @@ public class Test262Runnable extends TestRunnable {
                     "Array.prototype.values",
                     "ArrayBuffer",
                     "Atomics",
+                    "Atomics.pause",
                     "Atomics.waitAsync",
                     "BigInt",
                     "DataView",
@@ -274,7 +275,6 @@ public class Test262Runnable extends TestRunnable {
                     "well-formed-json-stringify",
     });
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
-                    "Atomics.pause",
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "Math.sumPrecise",
@@ -286,6 +286,7 @@ public class Test262Runnable extends TestRunnable {
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Array.fromAsync",
+                    "Atomics.pause",
                     "Error.isError",
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Float16Array",
