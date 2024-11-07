@@ -27,10 +27,6 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/resolved-options.js",
-    "status" : "FAIL",
-    "comment" : "ICU4J 74.1 update"
-  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -65,10 +61,6 @@
     "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "intl/regress-10526.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/regress-10527.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
