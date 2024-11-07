@@ -611,37 +611,39 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
     }
 
+    private void fixHolesArrayStartingWithAHole(JSDynamicObject object, long index, int preparedindex) {
+        long nextNonHoles = nextElementIndexHoles(object, index);
+        if (nextNonHoles == JSRuntime.MAX_SAFE_INTEGER_LONG) {
+            // there are no more elements in this Object
+            setArrayOffset(object, 0);
+            arraySetUsedLength(object, 0);
+            arraySetHoleCount(object, 0);
+        } else {
+            int preparedNextNonHoles = prepareInBoundsFast(object, (int) nextNonHoles);
+            int delta = preparedNextNonHoles - preparedindex;
+            setArrayOffset(object, preparedindex + delta);
+            arraySetUsedLength(object, arrayGetUsedLength(object) - delta);
+            incrementHolesCount(object, -countHolesPrepared(object, preparedindex, preparedNextNonHoles));
+        }
+    }
+
     protected final ScriptArray deleteElementHoles(JSDynamicObject object, long index) {
         if (isInBoundsFast(object, index)) {
             int preparedindex = prepareInBoundsFast(object, (int) index);
             if (!isHolePrepared(object, preparedindex)) {
                 int arrayOffset = getArrayOffset(object);
                 if (arrayOffset == preparedindex) {
-                    long nextNonHoles = nextElementIndexHoles(object, index);
-                    if (nextNonHoles == JSRuntime.MAX_SAFE_INTEGER_LONG) {
-                        // there are no more elements in this Object
-                        setArrayOffset(object, 0);
-                        arraySetUsedLength(object, 0);
-                        arraySetHoleCount(object, 0);
-                    } else {
-                        int preparedNextNonHoles = prepareInBoundsFast(object, (int) nextNonHoles);
-                        int delta = preparedNextNonHoles - preparedindex;
-                        setArrayOffset(object, preparedindex + delta);
-                        arraySetUsedLength(object, arrayGetUsedLength(object) - delta);
-                        incrementHolesCount(object, -countHolesPrepared(object, preparedindex, preparedNextNonHoles));
-                    }
-                    setHoleValue(object, preparedindex); // clear unused
+                    fixHolesArrayStartingWithAHole(object, index, preparedindex);
                 } else if (arrayOffset + arrayGetUsedLength(object) == preparedindex) {
                     long previousNonHoles = previousElementIndexHoles(object, index);
                     assert previousNonHoles >= 0;
                     int preparedPreviousNonHoles = prepareInBoundsFast(object, (int) previousNonHoles);
                     arraySetUsedLength(object, arrayGetUsedLength(object) - preparedindex + preparedPreviousNonHoles);
                     incrementHolesCount(object, -countHolesPrepared(object, preparedPreviousNonHoles, preparedindex));
-                    setHoleValue(object, preparedindex); // clear unused
                 } else {
                     incrementHolesCount(object, +1);
-                    setHoleValue(object, preparedindex);
                 }
+                setHoleValue(object, preparedindex); // clear unused
             }
         }
         assert assertHoleCount(object);
@@ -824,6 +826,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
 
         removeRangeContiguous(object, start, end);
+        arrayOffset = getArrayOffset(object);
+        if (isHolePrepared(object, arrayOffset)) {
+            fixHolesArrayStartingWithAHole(object, arrayOffset + getIndexOffset(object), arrayOffset);
+        }
         return this;
     }
 
