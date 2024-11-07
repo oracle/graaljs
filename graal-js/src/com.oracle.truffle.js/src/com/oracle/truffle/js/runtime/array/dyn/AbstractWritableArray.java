@@ -670,7 +670,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             Object array = getArrayObject(object);
             int usedLength = getUsedLength(object);
             int arrayLength = getArrayLength(array);
-            if (arrayOffset + usedLength + size < arrayLength) {
+            if (arrayOffset + usedLength + size <= arrayLength) {
                 int lastIndex = (arrayOffset + usedLength);
                 int effectiveOffset = (int) (offset - indexOffset);
                 int copySize = (lastIndex - effectiveOffset);
@@ -691,9 +691,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     private ScriptArray addRangeGrow(JSDynamicObject object, Object array, int arrayLength, int usedLength, int length, int offset, int size, int arrayOffset, long indexOffset) {
         Object newArray = allocateArray(nextPower(arrayLength + size));
-        if (offset - arrayOffset > arrayLength) {
-            System.arraycopy(array, arrayOffset, newArray, arrayOffset, arrayLength);
-            fillWithHoles(newArray, usedLength, usedLength + size);
+        if (offset >= arrayLength) {
+            System.arraycopy(array, arrayOffset, newArray, arrayOffset, arrayLength - arrayOffset);
+            fillWithHoles(newArray, arrayOffset + usedLength, arrayOffset + usedLength + size);
             return ensureHolesArray(object, length + size, newArray, indexOffset, arrayOffset, usedLength + size, arrayGetHoleCount(object) + size);
         } else {
             System.arraycopy(array, arrayOffset, newArray, arrayOffset, offset - arrayOffset);
