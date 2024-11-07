@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.array;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -64,10 +61,7 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
  */
 public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
 
-    protected final JSContext context;
-
-    protected JSArrayToDenseObjectArrayNode(JSContext context) {
-        this.context = Objects.requireNonNull(context);
+    protected JSArrayToDenseObjectArrayNode() {
     }
 
     public abstract Object[] executeObjectArray(JSDynamicObject array, ScriptArray arrayType, long length);
@@ -76,7 +70,7 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
                     "cachedArrayType.firstElementIndex(array)==0"}, limit = "5")
     protected static Object[] fromDenseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Cached("create(context)") @Shared("readElement") ReadElementNode readNode) {
+                    @Cached("create(getJSContext())") @Shared ReadElementNode readNode) {
         assert JSRuntime.longIsRepresentableAsInt(length);
         int iLen = (int) length;
 
@@ -92,8 +86,8 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
     protected static Object[] fromSparseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
                     @Bind("this") Node node,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("growBranch") InlinedBranchProfile growProfile) {
+                    @Cached("create(getJSContext())") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared InlinedBranchProfile growProfile) {
         long pos = cachedArrayType.firstElementIndex(array);
         SimpleArrayList<Object> list = new SimpleArrayList<>();
         while (pos <= cachedArrayType.lastElementIndex(array)) {
@@ -106,9 +100,9 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"fromDenseArray", "fromSparseArray"})
     protected Object[] doUncached(JSDynamicObject array, ScriptArray arrayType, long length,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached("create(context)") @Shared("readElement") ReadElementNode readNode,
-                    @Cached @Shared("growBranch") InlinedBranchProfile growProfile) {
+                    @Cached("create(getJSContext())") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached("create(getJSContext())") @Shared ReadElementNode readNode,
+                    @Cached @Shared InlinedBranchProfile growProfile) {
         if (arrayType.isHolesType() || arrayType.hasHoles(array) || arrayType.firstElementIndex(array) != 0) {
             return fromSparseArray(array, arrayType, length, arrayType, this, nextElementIndexNode, growProfile);
         } else {

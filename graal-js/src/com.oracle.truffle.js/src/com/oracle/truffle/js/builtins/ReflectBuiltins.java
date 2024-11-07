@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -190,11 +190,10 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
     public abstract static class ReflectApplyNode extends JSBuiltinNode {
 
         @Child private JSFunctionCallNode call = JSFunctionCallNode.createCall();
-        @Child private JSToObjectArrayNode toObjectArray;
+        @Child private JSToObjectArrayNode toObjectArray = JSToObjectArrayNodeGen.create();
 
         public ReflectApplyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.toObjectArray = JSToObjectArrayNodeGen.create(getContext());
         }
 
         @Specialization(guards = "isJSFunction(target)")
@@ -209,8 +208,9 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         private Object apply(Object target, Object thisArgument, Object argumentsList) {
-            Object[] applyUserArgs = toObjectArray.executeObjectArray(argumentsList);
-            assert applyUserArgs.length <= getContext().getLanguageOptions().maxApplyArgumentLength();
+            int maxApplyArgumentLength = getContext().getLanguageOptions().maxApplyArgumentLength();
+            Object[] applyUserArgs = toObjectArray.executeObjectArray(argumentsList, maxApplyArgumentLength);
+            assert applyUserArgs.length <= maxApplyArgumentLength;
             Object[] passedOnArguments = JSArguments.create(thisArgument, target, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }
@@ -231,11 +231,10 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
     public abstract static class ReflectConstructNode extends ReflectOperation {
 
         @Child private JSFunctionCallNode constructCall = JSFunctionCallNode.createNewTarget();
-        @Child private JSToObjectArrayNode toObjectArray;
+        @Child private JSToObjectArrayNode toObjectArray = JSToObjectArrayNodeGen.create();
 
         public ReflectConstructNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.toObjectArray = JSToObjectArrayNodeGen.create(context);
         }
 
         @Specialization
@@ -259,7 +258,9 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             if (!JSRuntime.isObject(argumentsList)) {
                 throw Errors.createTypeError("Reflect.construct: Arguments list has wrong type");
             }
-            Object[] args = toObjectArray.executeObjectArray(argumentsList);
+            int maxApplyArgumentLength = getContext().getLanguageOptions().maxApplyArgumentLength();
+            Object[] args = toObjectArray.executeObjectArray(argumentsList, maxApplyArgumentLength);
+            assert args.length <= maxApplyArgumentLength;
             Object[] passedOnArguments = JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, target, newTarget, args);
             return constructCall.executeCall(passedOnArguments);
         }

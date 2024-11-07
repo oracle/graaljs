@@ -751,6 +751,11 @@ public final class Errors {
         throw new IllegalStateException("should not reach here", exception);
     }
 
+    public static RuntimeException shouldNotReachHereUnexpectedValue(Object value) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw shouldNotReachHere("unexpected value: " + value);
+    }
+
     @TruffleBoundary
     public static OutOfMemoryError outOfMemoryError() {
         return new OutOfMemoryError();
