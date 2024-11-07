@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -263,7 +263,7 @@ public class NashornJSONParser {
     private TruffleString parseString() {
         // String buffer is only instantiated if string contains escape sequences.
         int start = ++pos;
-        TruffleStringBuilder sb = null;
+        TruffleStringBuilderUTF16 sb = null;
 
         while (pos < length) {
             final int c = next();

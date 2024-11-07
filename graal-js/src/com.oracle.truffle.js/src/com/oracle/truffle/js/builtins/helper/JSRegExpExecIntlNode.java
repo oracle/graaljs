@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -333,6 +333,8 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             this.setIndicesNode = JSObjectUtil.createDispatched(JSRegExp.INDICES);
             this.setIndicesRegexResultNode = JSObjectUtil.createDispatched(JSArray.LAZY_REGEX_RESULT_ID);
             this.setIndicesGroupsNode = JSObjectUtil.createDispatched(JSRegExp.GROUPS);
+            this.getLastIndexNode = PropertyGetNode.create(JSRegExp.LAST_INDEX, context);
+            this.toLengthNode = JSToLengthNode.create();
         }
 
         @NeverDefault
@@ -479,18 +481,10 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         private long getLastIndex(JSDynamicObject regExp) {
-            if (getLastIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getLastIndexNode = insert(PropertyGetNode.create(JSRegExp.LAST_INDEX, false, context));
-            }
             Object lastIndex = getLastIndexNode.getValue(regExp);
             if (ecmaScriptVersion < 6) {
                 return JSRuntime.toInteger(lastIndex);
             } else {
-                if (toLengthNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    toLengthNode = insert(JSToLengthNode.create());
-                }
                 return toLengthNode.executeLong(lastIndex);
             }
         }

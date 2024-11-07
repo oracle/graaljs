@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSErrorType;
@@ -216,7 +215,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         JSDynamicObject module = (JSDynamicObject) maybeModule;
         // Wrap any exported symbol in an ES module.
         List<TruffleString> exportedValues = JSObject.enumerableOwnNames(module);
-        TruffleStringBuilder moduleBody = Strings.builderCreate();
+        var moduleBody = Strings.builderCreate();
         Strings.builderAppend(moduleBody, "const builtinModule = require('");
         Strings.builderAppend(moduleBody, specifier);
         Strings.builderAppend(moduleBody, "');\n");

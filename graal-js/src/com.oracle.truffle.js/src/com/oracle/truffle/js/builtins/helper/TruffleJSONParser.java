@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins.helper;
 import com.oracle.js.parser.ParserException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -290,7 +290,7 @@ public class TruffleJSONParser {
         int posBackslash = posFirstBackslash;
 
         int curPos = 0;
-        TruffleStringBuilder builder = Strings.builderCreate(sLength);
+        var builder = Strings.builderCreate(sLength);
         while (posBackslash >= 0) {
             Strings.builderAppend(builder, string, curPos, posBackslash);
             curPos = posBackslash;
@@ -346,7 +346,7 @@ public class TruffleJSONParser {
         return value;
     }
 
-    protected void unquoteJSONUnicode(TruffleString string, int posBackslash, TruffleStringBuilder builder) {
+    protected void unquoteJSONUnicode(TruffleString string, int posBackslash, TruffleStringBuilderUTF16 builder) {
         char c1 = Strings.charAt(string, posBackslash + 2);
         char c2 = Strings.charAt(string, posBackslash + 3);
         char c3 = Strings.charAt(string, posBackslash + 4);

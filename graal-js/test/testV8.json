@@ -1429,10 +1429,6 @@
     "runInIsolation" : true,
     "comment" : "memory intensive test"
   }, {
-    "filePath" : "mjsunit/regress/regress-786573.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/regress/regress-797581.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
@@ -503,7 +502,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             timePart.append("S");
         }
         TruffleString signPart = sign < 0 ? Strings.SYMBOL_MINUS : Strings.EMPTY_STRING;
-        TruffleStringBuilder result = Strings.builderCreate();
+        var result = Strings.builderCreate();
         Strings.builderAppend(result, signPart);
         Strings.builderAppend(result, "P");
         Strings.builderAppend(result, datePart.toString());

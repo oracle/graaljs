@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,7 +70,6 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.AbstractClassConstructorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeGen;
@@ -2128,7 +2127,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @TruffleBoundary
         private static TruffleString join(TruffleString[] params) {
             assert params.length > 0;
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             Strings.builderAppend(sb, params[0]);
             for (int i = 1; i < params.length; i++) {
                 Strings.builderAppend(sb, Strings.COMMA);
