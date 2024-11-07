@@ -209,9 +209,14 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         } else if (b == Double.NEGATIVE_INFINITY) {
             return 1;
         } else {
-            BigDecimal thisValue = new BigDecimal(value);
-            BigDecimal theOtherValue = new BigDecimal(b);
-            return thisValue.compareTo(theOtherValue);
+            if (value.bitLength() > 1024) {
+                // value uses more bits than can fit into double
+                return value.signum();
+            } else {
+                BigDecimal thisValue = new BigDecimal(value);
+                BigDecimal theOtherValue = new BigDecimal(b);
+                return thisValue.compareTo(theOtherValue);
+            }
         }
     }
 
