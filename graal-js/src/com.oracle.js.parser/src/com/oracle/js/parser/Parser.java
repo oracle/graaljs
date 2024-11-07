@@ -7441,6 +7441,7 @@ public class Parser extends AbstractParser {
         if (!fn.isProgram()) {
             assert fn.isDerivedConstructor();
             fn.setFlag(FunctionNode.HAS_DIRECT_SUPER);
+            addIdentifierReference(THIS.getName());
         }
     }
 
