@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.array.dyn;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayOffset;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetHoleCount;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetIndexOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetIndexOffset;
@@ -108,11 +107,6 @@ public abstract class AbstractContiguousDoubleArray extends AbstractDoubleArray 
     @Override
     public final long lastElementIndex(JSDynamicObject object) {
         return getIndexOffset(object) + getArrayOffset(object) + getUsedLength(object) - 1;
-    }
-
-    @Override
-    public boolean hasHoles(JSDynamicObject object) {
-        return arrayGetHoleCount(object) > 0;
     }
 
     @Override
