@@ -601,8 +601,8 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached(inline = true) @Shared ArrayWriteElementCacheDispatchNode arrayDispatch) {
             JSDynamicObject targetObject = ((JSDynamicObject) target);
             if (arrayIf.profile(this, isArrayNode.execute(targetObject))) {
-                ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
+                ScriptArray array = JSObject.getArray(targetObject);
 
                 if (intOrStringIndexIf.profile(this, objIndex instanceof Long)) {
                     long longIndex = (Long) objIndex;
