@@ -1274,6 +1274,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
     @ImportStatic({JSRuntime.class})
     public abstract static class AtomicsPauseNode extends JSBuiltinNode {
 
+        private static final int MAX_SPIN_WAIT = 1024;
+
         protected AtomicsPauseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -1287,7 +1289,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         @Specialization
         protected static Object pauseInt(int n) {
-            for (int i = 0; i < n; i++) {
+            int iterations = Math.min(n, MAX_SPIN_WAIT);
+            for (int i = 0; i < iterations; i++) {
                 Thread.onSpinWait();
             }
             return Undefined.instance;
