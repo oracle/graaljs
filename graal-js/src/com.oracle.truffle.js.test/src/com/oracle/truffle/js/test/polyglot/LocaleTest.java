@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.js.test.polyglot;
 
-import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 import java.util.Locale;
@@ -103,11 +104,20 @@ public class LocaleTest {
                 Assert.assertEquals(upperCase.toLowerCase(locale), result.asString());
             }
         } else {
-            assertThrows(IllegalArgumentException.class, () -> {
+            assertThrows(() -> {
                 try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.LOCALE_NAME, localeId).build()) {
                     context.initialize(JavaScriptLanguage.ID);
                 }
-            });
+            }, IllegalArgumentException.class);
+        }
+    }
+
+    private static void assertThrows(Runnable runnable, Class<? extends Throwable> expectedException) {
+        try {
+            runnable.run();
+            fail("Expected " + expectedException.getName());
+        } catch (Throwable e) {
+            assertTrue("Expected " + expectedException.getName() + ", caught " + e.getClass().getName(), expectedException.isInstance(e));
         }
     }
 }
