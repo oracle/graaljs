@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,7 +82,8 @@ public abstract class PowNode extends MathOperation {
             return a * a;
         } else if (hasSeenThree && b == 3) {
             return a * a * a;
-        } else if ((hasSeenZeroPointFive || hasSeenOnePointFive || hasSeenTwoPointFive) && (a < 0.0 || a == -0.0)) {
+        } else if ((hasSeenZeroPointFive || hasSeenOnePointFive || hasSeenTwoPointFive) &&
+                        (a < 0.0 || JSRuntime.isNegativeZero(a))) {
             // sqrt behaves differently, counter example is Math.pow(-Infinity,0.5)
             return powIntl(a, b);
         } else if (hasSeenZeroPointFive && b == 0.5) {
@@ -143,7 +144,7 @@ public abstract class PowNode extends MathOperation {
         int ib = (int) b;
         if (branch1.profile(this, JSRuntime.doubleIsRepresentableAsInt(b, true) && b > 0)) {
             return positivePow(a, ib);
-        } else if (branch2.profile(this, ib + 0.5 == b && b > 0 && a > 0 && a != -0.0)) {
+        } else if (branch2.profile(this, ib + 0.5 == b && b > 0 && a > 0 && !JSRuntime.isNegativeZero(a))) {
             return positivePow(a, ib) * Math.sqrt(a);
         } else {
             return powIntl(a, b);
