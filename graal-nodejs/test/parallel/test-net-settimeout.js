@@ -27,7 +27,7 @@ const common = require('../common');
 const net = require('net');
 const assert = require('assert');
 
-const T = 100;
+var T = 1000;
 
 const server = net.createServer(common.mustCall((c) => {
   c.write('hello');

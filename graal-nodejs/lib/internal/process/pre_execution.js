@@ -276,6 +276,13 @@ function patchProcessObject(expandArgv1) {
   addReadOnlyProcessAlias('_breakFirstLine', '--inspect-brk', false);
   addReadOnlyProcessAlias('_breakNodeFirstLine', '--inspect-brk-node', false);
 
+  if (process._breakFirstLine) {
+    process.binding('inspector').callAndPauseOnStart = function(fn, self, ...args) {
+      require('internal/graal/debug').setBreakPoint(fn, 0, 0, undefined, true);
+      return fn.apply(self, args);
+    }
+  }
+
   return mainEntry;
 }
 
@@ -315,12 +322,14 @@ function setupWarningHandler() {
 // https://fetch.spec.whatwg.org/
 // https://websockets.spec.whatwg.org/
 function setupUndici() {
-  if (getOptionValue('--no-experimental-fetch')) {
+  if (getOptionValue('--no-experimental-fetch') || typeof WebAssembly === 'undefined') {
     delete globalThis.fetch;
     delete globalThis.FormData;
     delete globalThis.Headers;
     delete globalThis.Request;
     delete globalThis.Response;
+  } else {
+    require('internal/graal/wasm');
   }
 
   if (getOptionValue('--no-experimental-websocket')) {

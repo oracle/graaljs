@@ -4,6 +4,70 @@ prefix sequential
 # below, without ".js", followed by ": PASS,FLAKY". Example:
 # sample-test                       : PASS,FLAKY
 
+### graal-nodejs-specific ###
+
+[true] # This section applies to all platforms
+
+# unstable timing-sensitive test
+test-perf-hooks : SKIP
+
+# heapdump/heapsnapshot is not supported
+test-get-heapsnapshot-options: FAIL
+test-heapdump: SKIP
+test-heapdump-flag: SKIP
+test-heapdump-flag-custom-dir: SKIP
+test-worker-heapsnapshot-options: FAIL
+test-write-heapsnapshot-options: FAIL
+
+# single executable app (needs WebAssembly)
+test-single-executable-application: PASS
+test-single-executable-application-assets: FAIL
+test-single-executable-application-assets-raw: FAIL
+test-single-executable-application-disable-experimental-sea-warning: PASS
+test-single-executable-application-empty: FAIL
+test-single-executable-application-snapshot: FAIL
+test-single-executable-application-snapshot-and-code-cache: FAIL
+test-single-executable-application-use-code-cache: PASS
+
+# Custom MicrotaskQueue is not supported
+test-vm-timeout-escape-promise-module-2: FAIL
+
+# Profiling is not supported
+test-worker-prof: FAIL
+
+# Unclassified
+test-gc-http-client: SKIP
+test-gc-http-client-onerror: SKIP
+test-gc-http-client-timeout: SKIP
+test-vm-break-on-sigint: FAIL
+test-watch-mode: SKIP
+test-worker-fshandles-open-close-on-termination: SKIP
+test-worker-http2-stream-terminate: SKIP
+
+[$system==solaris]
+
+# Needs too many system resources (starts 80 child processes)
+test-child-process-pass-fd: SKIP
+
+[$system==win32]
+
+# Triggers stack-overflow that may not be handled well
+test-fs-stat-sync-overflow: SKIP
+
+# Needs too many system resources
+test-child-process-pass-fd: SKIP
+test-worker-fshandles-error-on-termination: SKIP
+test-worker-fshandles-open-close-on-termination: SKIP
+
+# transient failure due to "unexpected output from openssl client" on windows
+test-tls-session-timeout: PASS,FAIL
+
+[$system==macos]
+# setrlimit to increase file descriptor limit failed, errno 22
+test-child-process-emfile: SKIP
+
+### graal-nodejs-specific end ###
+
 [true] # This section applies to all platforms
 # https://github.com/nodejs/node/issues/27611#issuecomment-613100468
 test-cpu-prof-dir-worker: PASS, FLAKY

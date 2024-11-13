@@ -67,7 +67,13 @@
       ],
       'conditions': [
         ['clang==0', {
-          'msvs_precompiled_header': 'tools/msvs/pch/node_pch.h',
+          'conditions': [
+            [ 'ninja=="true"', {
+              'msvs_precompiled_header': '../../tools/msvs/pch/node_pch.h',
+            }, {
+              'msvs_precompiled_header': 'tools/msvs/pch/node_pch.h',
+            }],
+          ],
           'msvs_precompiled_source': 'tools/msvs/pch/node_pch.cc',
           'sources': [
             '<(_msvs_precompiled_header)',
@@ -292,7 +298,7 @@
     [ '(OS=="freebsd" or OS=="linux") and node_shared=="false"'
         ' and force_load=="true"', {
       'ldflags': [
-        '-Wl,-z,noexecstack',
+        '-Wl,-z,noexecstack,--allow-multiple-definition',
         '-Wl,--whole-archive <(v8_base)',
         '-Wl,--no-whole-archive',
       ]
@@ -345,11 +351,6 @@
     }],
     [ 'OS=="sunos"', {
       'ldflags': [ '-Wl,-M,/usr/lib/ld/map.noexstk' ],
-    }],
-    [ 'OS=="linux"', {
-      'libraries!': [
-        '-lrt'
-      ],
     }],
     [ 'OS in "freebsd linux"', {
       'ldflags': [ '-Wl,-z,relro',

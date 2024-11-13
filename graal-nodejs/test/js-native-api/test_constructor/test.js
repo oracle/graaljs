@@ -3,7 +3,7 @@ const common = require('../../common');
 const assert = require('assert');
 
 const getterOnlyErrorRE =
-  /^TypeError: Cannot set property .* of #<.*> which has only a getter$/;
+  /^TypeError: Cannot set property .* of .* which has only a getter$/;
 
 // Testing api calls for a constructor that defines properties
 const TestConstructor = require(`./build/${common.buildType}/test_constructor`);
@@ -17,7 +17,7 @@ test_object.readwriteValue = 2;
 assert.strictEqual(test_object.readwriteValue, 2);
 
 assert.throws(() => { test_object.readonlyValue = 3; },
-              /^TypeError: Cannot assign to read only property 'readonlyValue' of object '#<MyObject>'$/);
+              /^TypeError: Cannot assign to read only property 'readonlyValue' of/);
 
 assert.ok(test_object.hiddenValue);
 

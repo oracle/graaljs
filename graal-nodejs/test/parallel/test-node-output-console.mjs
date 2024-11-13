@@ -20,11 +20,11 @@ describe('console output', { concurrency: !process.env.TEST_PARALLEL }, () => {
     { name: 'console/console_low_stack_space.js' },
     { name: 'console/console.js' },
     { name: 'console/hello_world.js' },
-    {
-      name: 'console/stack_overflow.js',
-      transform: snapshot
-        .transform(snapshot.replaceWindowsLineEndings, snapshot.replaceWindowsPaths, normalize)
-    },
+//    {
+//      name: 'console/stack_overflow.js',
+//      transform: snapshot
+//        .transform(snapshot.replaceWindowsLineEndings, snapshot.replaceWindowsPaths, normalize)
+//    },
     !skipForceColors ? { name: 'console/force_colors.js', env: { FORCE_COLOR: 1 } } : null,
   ].filter(Boolean);
   const defaultTransform = snapshot

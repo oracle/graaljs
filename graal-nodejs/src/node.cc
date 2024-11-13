@@ -814,6 +814,23 @@ static ExitCode ProcessGlobalArgsInternal(std::vector<std::string>* args,
     env_opts->abort_on_uncaught_exception = true;
   }
 
+  const DebugOptions& debug_options = env_opts->debug_options();
+  auto full_option = [&debug_options](std::string option){
+      option += debug_options.host_port.host();
+      option += ":";
+      option += std::to_string(debug_options.host_port.port());
+      return option;
+  };
+  if (debug_options.inspector_enabled) {
+      v8_args.push_back(full_option("--inspect="));
+  }
+  if (debug_options.break_first_line) {
+      v8_args.push_back(full_option("--inspect-brk="));
+  }
+  if (debug_options.break_node_first_line) {
+      v8_args.push_back(full_option("--inspect-brk-node="));
+  }
+
 #ifdef __POSIX__
   // Block SIGPROF signals when sleeping in epoll_wait/kevent/etc.  Avoids the
   // performance penalty of frequent EINTR wakeups when the profiler is running.
@@ -1546,6 +1563,81 @@ int Start(int argc, char** argv) {
 int Stop(Environment* env, StopFlags::Flags flags) {
   env->ExitEnv(flags);
   return 0;
+}
+
+// GRAAL EXTENSIONS
+
+static void os_setenv(const char * name, const char * value) {
+#ifdef __POSIX__
+    setenv(name, value, 1);
+#else
+    _putenv_s(name, value);
+#endif
+}
+
+long GraalArgumentsPreprocessing(int argc, char *argv[]) {
+  long result = -1;
+  for (int i = 1; i < argc; i++) {
+    const char *arg = argv[i];
+    const char *nptr = nullptr;
+    const char *classpath = nullptr;
+    if (!strncmp(arg, "--vm.Xss", sizeof("--vm.Xss") - 1)) {
+      nptr = arg + sizeof("--vm.Xss") - 1;
+    } else if (!strncmp(arg, "--jvm.Xss", sizeof("--jvm.Xss") - 1)) {
+      nptr = arg + sizeof("--jvm.Xss") - 1;
+    } else if(!strncmp(arg, "--native.Xss", sizeof("--native.Xss") - 1)) {
+      nptr = arg + sizeof("--native.Xss") - 1;
+    } else if (!strncmp(arg, "--vm.classpath", sizeof ("--vm.classpath") - 1)) {
+      classpath = arg + sizeof ("--vm.classpath") - 1;
+    } else if (!strncmp(arg, "--vm.cp", sizeof ("--vm.cp") - 1)) {
+      classpath = arg + sizeof ("--vm.cp") - 1;
+    } else if (!strncmp(arg, "--jvm.classpath", sizeof ("--jvm.classpath") - 1)) {
+      classpath = arg + sizeof ("--jvm.classpath") - 1;
+    } else if (!strncmp(arg, "--jvm.cp", sizeof ("--jvm.cp") - 1)) {
+      classpath = arg + sizeof ("--jvm.cp") - 1;
+    } else if (arg[0] != '-') { // stop at first non-option argument
+        break;
+    }
+    if (classpath != nullptr) {
+      if (classpath[0] == '=') {
+        os_setenv("NODE_JVM_CLASSPATH", classpath + 1);
+      } else if (classpath[0] == 0 && i + 1 < argc) {
+        os_setenv("NODE_JVM_CLASSPATH", argv[++i]);
+        // Hack: replace the argument with the classpath by a string full of '-'.
+        // This ensures that it looks like an option (i.e. is passed to JS engine
+        // options, i.e., is not considered to be a name of the script to execute).
+        memset(argv[i], '-', strlen(argv[i]));
+      } else {
+        fprintf(stderr, "the --vm.classpath and --vm.cp arguments must be of the form --vm.[classpath|cp]=<classpath>");
+        exit(9);
+      }
+    }
+    if (nptr != nullptr) {
+      // NOTE: if more than one value is specified, return the last one. If
+      // --native and --jvm are mixed, let the parsing code for all arguments
+      // handle this.
+      char *endptr;
+      long value = strtol(nptr, &endptr, 10);
+      if (endptr != nptr) {
+        long multiplier;
+        if (*endptr == '\0') {
+          multiplier = 1;
+        } else if(!strcmp("k", endptr) || !strcmp("K", endptr)) {
+          multiplier = 1000;
+        } else if(!strcmp("m", endptr) || !strcmp("M", endptr)) {
+          multiplier = 1000000;
+        } else if(!strcmp("g", endptr) || !strcmp("G", endptr)) {
+          multiplier = 1000000000;
+        } else {
+          multiplier = -1; // garbage
+        }
+        if (multiplier > -1) {
+          result = value * multiplier;
+        }
+      }
+    }
+  }
+  return result;
 }
 
 }  // namespace node

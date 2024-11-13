@@ -700,6 +700,16 @@ function normalizeSpawnArguments(file, args, options) {
     }
   }
 
+  if (!env.LD_LIBRARY_PATH) {
+    var graalNodeKeys = ['LD_LIBRARY_PATH', 'JAVA_HOME', 'GRAAL_SDK_JAR_PATH', 'LAUNCHER_COMMON_JAR_PATH', 'GRAALJS_JAR_PATH', 'TRUFFLENODE_JAR_PATH', 'NODE_JVM_OPTIONS', 'NODE_JVM_LIB', 'NODE_STACK_SIZE', 'NODE_JVM_CLASSPATH', 'NODE_JVM_MODULE_PATH', 'NODE_JVM_BOOTCLASSPATH', 'ICU4J_DATA_PATH'];
+    graalNodeKeys.forEach(function(key) {
+      var origValue = process.env[key];
+      if (origValue && !env[key]) {
+        envPairs.push(key + '=' + origValue);
+      }
+    });
+  }
+
   return {
     // Make a shallow copy so we don't clobber the user's options object.
     __proto__: null,

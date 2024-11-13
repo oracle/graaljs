@@ -23,6 +23,12 @@ const {
   markBootstrapComplete,
 } = require('internal/process/pre_execution');
 
+// Passed by Graal.js init phase during global module loading.
+const SharedMemMessagingInit = graalExtension;
+if (!SharedMemMessagingInit) {
+  throw new Error("Fatal: cannot initialize Worker");
+}
+
 const {
   threadId,
   getEnvMessagePort,
@@ -66,6 +72,9 @@ debug(`[${threadId}] is setting up worker child environment`);
 
 // Set up the message port and start listening
 const port = getEnvMessagePort();
+// Graal.js: explicitly initialize support for Java objects in messages,
+// since env message port does not call oninit()
+port.sharedMemMessaging = SharedMemMessagingInit();
 
 // If the main thread is spawned with env NODE_CHANNEL_FD, it's probably
 // spawned by our child_process module. In the work threads, mark the

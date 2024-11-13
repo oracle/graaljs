@@ -289,6 +289,9 @@ static void uv__process_child_init(const uv_process_options_t* options,
    * are enabled. We are not allowed to touch RT signal handlers, glibc uses
    * them internally.
    */
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = SIG_DFL;
   for (n = 1; n < 32; n += 1) {
     if (n == SIGKILL || n == SIGSTOP)
       continue;  /* Can't be changed. */
@@ -298,7 +301,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
       continue;  /* Can't be changed. */
 #endif
 
-    if (SIG_ERR != signal(n, SIG_DFL))
+    if (0 == sigaction(n, &sa, NULL))
       continue;
 
     uv__write_errno(error_fd);

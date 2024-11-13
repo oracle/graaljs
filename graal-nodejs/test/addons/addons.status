@@ -6,6 +6,12 @@ prefix addons
 
 [true] # This section applies to all platforms
 
+# cppgc is not supported
+cppgc-object/test: SKIP
+
+# Unstable test (even on the original Node.js): https://github.com/nodejs/node/issues/34410
+register-signal-handler/test: SKIP
+
 [$arch==arm]
 # https://github.com/nodejs/node/issues/30786
 openssl-binding/test: PASS,FLAKY

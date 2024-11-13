@@ -461,6 +461,10 @@ Environment* CreateEnvironment(
   }
 #endif
 
+  if (env->options()->debug_options().break_node_first_line) {
+    isolate->SchedulePauseOnNextStatement();
+  }
+
   if (!use_snapshot && env->principal_realm()->RunBootstrapping().IsEmpty()) {
     FreeEnvironment(env);
     return nullptr;

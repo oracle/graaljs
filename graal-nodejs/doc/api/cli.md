@@ -3086,9 +3086,11 @@ one is included in the list below.
 * `--inspect-publish-uid`
 * `--inspect-wait`
 * `--inspect`
+* `--jvm`
 * `--localstorage-file`
 * `--max-http-header-size`
 * `--napi-modules`
+* `--native`
 * `--network-family-autoselection-attempt-timeout`
 * `--no-addons`
 * `--no-deprecation`
@@ -3108,6 +3110,7 @@ one is included in the list below.
 * `--openssl-legacy-provider`
 * `--openssl-shared-config`
 * `--pending-deprecation`
+* `--polyglot`
 * `--preserve-symlinks-main`
 * `--preserve-symlinks`
 * `--prof-process`
@@ -3514,7 +3517,13 @@ documented here:
 
 ### `--jitless`
 
+### `--jvm`
+
 ### `--interpreted-frames-native-stack`
+
+### `--native`
+
+### `--polyglot`
 
 ### `--prof`
 

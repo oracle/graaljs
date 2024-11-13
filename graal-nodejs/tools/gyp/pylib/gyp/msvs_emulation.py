@@ -1061,13 +1061,13 @@ class PrecompiledHeader:
             pch_output = ["/Yc" + self._PchHeader()]
             if command == "cxx":
                 return (
-                    [("cflags_cc", map(expand_special, cflags_cc + pch_output))],
+                    [("cflags_cc", list(map(expand_special, cflags_cc + pch_output)))],
                     self.output_obj,
                     [],
                 )
             elif command == "cc":
                 return (
-                    [("cflags_c", map(expand_special, cflags_c + pch_output))],
+                    [("cflags_c", list(map(expand_special, cflags_c + pch_output)))],
                     self.output_obj,
                     [],
                 )

@@ -950,6 +950,7 @@ Maybe<bool> MessagePort::PostMessage(Environment* env,
   if (!error.empty())
     ProcessEmitWarning(env, error.c_str());
 
+  message_was_enqueued_ = true;
   return res;
 }
 
@@ -1089,9 +1090,11 @@ void MessagePort::PostMessage(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
-  Maybe<bool> res = port->PostMessage(env, context, args[0], transfer_list);
-  if (res.IsJust())
-    args.GetReturnValue().Set(res.FromJust());
+  port->message_was_enqueued_ = false;
+  port->PostMessage(env, context, args[0], transfer_list);
+
+  if (port->message_was_enqueued_)
+    args.GetReturnValue().Set(true);
 }
 
 void MessagePort::Start() {
@@ -1137,6 +1140,15 @@ void MessagePort::Drain(const FunctionCallbackInfo<Value>& args) {
   MessagePort* port;
   ASSIGN_OR_RETURN_UNWRAP(&port, args[0].As<Object>());
   port->OnMessage(MessageProcessingMode::kForceReadMessages);
+}
+
+void MessagePort::MessageData(const FunctionCallbackInfo<Value>& args) {
+  MessagePort* port;
+  ASSIGN_OR_RETURN_UNWRAP(&port, args.This());
+  // Graal.js: keep track of the internal `data_` to enable sharing of Java
+  // objects even when a MessagePort is transferred to another worker.
+  Local<v8::External> external_data = v8::External::New(args.GetIsolate(), port->data_.get());
+  args.GetReturnValue().Set(external_data);
 }
 
 void MessagePort::ReceiveMessage(const FunctionCallbackInfo<Value>& args) {
@@ -1226,6 +1238,7 @@ Local<FunctionTemplate> GetMessagePortConstructorTemplate(
 
     SetProtoMethod(isolate, m, "postMessage", MessagePort::PostMessage);
     SetProtoMethod(isolate, m, "start", MessagePort::Start);
+    SetProtoMethod(isolate, m, "messageData", MessagePort::MessageData);
 
     isolate_data->set_message_port_constructor_template(m);
   }

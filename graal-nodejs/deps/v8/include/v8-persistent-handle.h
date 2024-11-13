@@ -9,6 +9,7 @@
 #include "v8-local-handle.h"        // NOLINT(build/include_directory)
 #include "v8-weak-callback-info.h"  // NOLINT(build/include_directory)
 #include "v8config.h"               // NOLINT(build/include_directory)
+#include "../src/graal/graal_handle_content.h"
 
 namespace v8 {
 
@@ -116,12 +117,20 @@ class PersistentBase : public api_internal::IndirectHandleBase {
 
   template <class S>
   V8_INLINE bool operator==(const PersistentBase<S>& that) const {
-    return internal::HandleHelper::EqualHandles(*this, that);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
+    if (a == nullptr) return b == nullptr;
+    if (b == nullptr) return false;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S>
   V8_INLINE bool operator==(const Local<S>& that) const {
-    return internal::HandleHelper::EqualHandles(*this, that);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(*that);
+    if (a == nullptr) return b == nullptr;
+    if (b == nullptr) return false;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S>

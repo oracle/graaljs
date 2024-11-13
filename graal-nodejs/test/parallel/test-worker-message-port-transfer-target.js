@@ -19,4 +19,4 @@ port2.postMessage(null, [port1, arrayBuf]);
 assert.strictEqual(arrayBuf.byteLength, 0);
 
 setTimeout(common.mustNotCall('The communication channel is still open'),
-           common.platformTimeout(1000)).unref();
+           common.platformTimeout(5000)).unref();

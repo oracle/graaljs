@@ -813,7 +813,7 @@ class NinjaWriter:
                 if self.flavor == "win":
                     # WriteNewNinjaRule uses unique_name to create a rsp file on win.
                     extra_bindings.append(
-                        ("unique_name", hashlib.md5(outputs[0]).hexdigest())
+                        ("unique_name", hashlib.md5(outputs[0].encode('utf-8')).hexdigest())
                     )
 
                 self.ninja.build(
@@ -868,12 +868,12 @@ class NinjaWriter:
         copy_headers = spec["mac_framework_headers"]
         output = self.GypPathToUniqueOutput("headers.hmap")
         self.xcode_settings.header_map_path = output
-        all_headers = map(
+        all_headers = list(map(
             self.GypPathToNinja, filter(lambda x: x.endswith(".h"), all_sources)
-        )
+        ))
         variables = [
             ("framework", framework),
-            ("copy_headers", map(self.GypPathToNinja, copy_headers)),
+            ("copy_headers", list(map(self.GypPathToNinja, copy_headers))),
         ]
         outputs.extend(
             self.ninja.build(
@@ -897,7 +897,7 @@ class NinjaWriter:
         for output, res in gyp.xcode_emulation.GetMacBundleResources(
             generator_default_variables["PRODUCT_DIR"],
             self.xcode_settings,
-            map(self.GypPathToNinja, resources),
+            list(map(self.GypPathToNinja, resources)),
         ):
             output = self.ExpandSpecial(output)
             if os.path.splitext(output)[-1] != ".xcassets":
@@ -1133,7 +1133,7 @@ class NinjaWriter:
         )
         if self.flavor == "win":
             self.WriteVariableList(
-                ninja_file, "asmflags", map(self.ExpandSpecial, asmflags)
+                ninja_file, "asmflags", list(map(self.ExpandSpecial, asmflags))
             )
             self.WriteVariableList(
                 ninja_file,
@@ -1191,21 +1191,21 @@ class NinjaWriter:
 
         arflags = config.get("arflags", [])
 
-        self.WriteVariableList(ninja_file, "cflags", map(self.ExpandSpecial, cflags))
+        self.WriteVariableList(ninja_file, "cflags", list(map(self.ExpandSpecial, cflags)))
         self.WriteVariableList(
-            ninja_file, "cflags_c", map(self.ExpandSpecial, cflags_c)
+            ninja_file, "cflags_c", list(map(self.ExpandSpecial, cflags_c))
         )
         self.WriteVariableList(
-            ninja_file, "cflags_cc", map(self.ExpandSpecial, cflags_cc)
+            ninja_file, "cflags_cc", list(map(self.ExpandSpecial, cflags_cc))
         )
         if self.flavor == "mac":
             self.WriteVariableList(
-                ninja_file, "cflags_objc", map(self.ExpandSpecial, cflags_objc)
+                ninja_file, "cflags_objc", list(map(self.ExpandSpecial, cflags_objc))
             )
             self.WriteVariableList(
-                ninja_file, "cflags_objcc", map(self.ExpandSpecial, cflags_objcc)
+                ninja_file, "cflags_objcc", list(map(self.ExpandSpecial, cflags_objcc))
             )
-        self.WriteVariableList(ninja_file, "arflags", map(self.ExpandSpecial, arflags))
+        self.WriteVariableList(ninja_file, "arflags", list(map(self.ExpandSpecial, arflags)))
         ninja_file.newline()
         outputs = []
         has_rc_source = False
@@ -1473,7 +1473,7 @@ class NinjaWriter:
                 else:
                     ldflags.append("-Wl,-rpath=%s" % self.target_rpath)
                 ldflags.append("-Wl,-rpath-link=%s" % rpath)
-        self.WriteVariableList(ninja_file, "ldflags", map(self.ExpandSpecial, ldflags))
+        self.WriteVariableList(ninja_file, "ldflags", list(map(self.ExpandSpecial, ldflags)))
 
         library_dirs = config.get("library_dirs", [])
         if self.flavor == "win":
@@ -1493,7 +1493,7 @@ class NinjaWriter:
             ]
 
         libraries = gyp.common.uniquer(
-            map(self.ExpandSpecial, spec.get("libraries", []))
+            list(map(self.ExpandSpecial, spec.get("libraries", [])))
         )
         if self.flavor == "mac":
             libraries = self.xcode_settings.AdjustLibraries(libraries, config_name)

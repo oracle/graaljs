@@ -153,6 +153,10 @@
             'cflags': [ '-fPIC' ],
             'ldflags': [ '-fPIC' ]
           }],
+          ['target_arch=="sparcv9"', {
+            'cflags': [ '-m64' ],
+            'ldflags': [ '-m64' ]
+          }],
           ['clang==1', {
             'msbuild_toolset': 'ClangCL',
           }],
@@ -243,6 +247,10 @@
           ['OS == "android"', {
             'cflags': [ '-fPIC', '-I<(android_ndk_path)/sources/android/cpufeatures' ],
             'ldflags': [ '-fPIC' ]
+          }],
+          ['target_arch=="sparcv9"', {
+            'cflags': [ '-m64' ],
+            'ldflags': [ '-m64' ]
           }],
           ['clang==1', {
             'msbuild_toolset': 'ClangCL',

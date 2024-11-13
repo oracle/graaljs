@@ -330,6 +330,10 @@ def headers(options, action):
     'src/node_version.h',
   ], 'include/node/')
 
+  action(options, [
+    'deps/v8/src/graal/graal_handle_content.h',
+  ], 'include/src/graal/')
+
   # Add the expfile that is created on AIX
   if sys.platform.startswith('aix') or sys.platform == "os400":
     action(options, ['out/Release/node.exp'], 'include/node/')

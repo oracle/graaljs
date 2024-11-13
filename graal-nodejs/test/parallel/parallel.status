@@ -4,6 +4,312 @@ prefix parallel
 # below, without ".js", followed by ": PASS,FLAKY". Example:
 # sample-test                        : PASS,FLAKY
 
+### graal-nodejs-specific ###
+
+[true] # This section applies to all platforms
+
+# Triggers stack-overflow that may not be handled well
+test-async-wrap-pop-id-during-load: SKIP
+test-promise-reject-callback-exception: SKIP
+test-ttywrap-stack: SKIP
+
+# Different error message
+# object is not extensible versus Cannot add new property ... to non-extensible ...
+test-assert-calltracker-getCalls: FAIL
+# Unexpected end of input versus Expected an operand but found eof
+test-cli-eval: FAIL
+# Unexpected identifier versus Expected ; but found bar
+test-cli-syntax-piped-bad: FAIL
+test-repl-pretty-custom-stack: FAIL
+test-repl-pretty-stack: FAIL
+# Cannot convert undefined or null to object versus String.prototype.match called on null or undefined
+test-errors-systemerror: FAIL
+# Invalid array buffer length versus Array buffer allocation failed
+test-fs-write-buffer-large: FAIL
+# Invalid regular expression flags versus Invalid flags supplied to RegExp constructor ...
+test-runner-string-to-regexp: FAIL
+# ports is not iterable versus 0 is not iterable
+test-worker-message-event: FAIL
+# Unexpected number versus expected BindingIdentifier or BindingPattern
+test-node-output-vm: FAIL
+
+# Different stack-traces (for example, different column numbers)
+test-node-output-errors: FAIL
+
+# Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
+test-buffer-backing-arraybuffer: FAIL
+
+# Tests the content of Node.js original help (--help option).
+# We print a different help message.
+test-cli-node-print-help: FAIL
+
+# Suspicious test - executes a memory intensive section and then
+# looks for a memory leak by checking whether rss was increased
+# It fails because JVM increases its heap size and does not decrease
+# it once the memory intensive section is done (despite there is no
+# memory leak).
+test-crypto-dh-leak: SKIP
+test-worker-memory: SKIP
+
+# Sometimes crashes on svm due to an intentional stack overflow
+test-error-serdes: PASS, CRASH
+
+# Uses --harmony-struct (Structs proposal)
+test-experimental-shared-value-conveyor: FAIL
+
+# Callback of FinalizationRegistry called too late (after exit event)
+test-finalization-registry-shutdown: FAIL
+
+# Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
+test-fs-write: FAIL
+
+# uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint)
+test-http-same-map: FAIL
+test-v8-flags: FAIL
+
+# heapsnapshot/heapdump/EmbedderGraph is not supported
+test-heapdump-async-hooks-init-promise: SKIP
+test-heapsnapshot-near-heap-limit-by-api-in-worker: SKIP
+test-heapsnapshot-near-heap-limit-worker: SKIP
+test-http2-ping-settings-heapdump: SKIP
+test-v8-getheapsnapshot-twice: SKIP
+test-worker-exit-heapsnapshot: SKIP
+test-worker-heap-snapshot: SKIP
+
+# https://example.com does not work in CI
+test-https-agent-unref-socket: SKIP
+
+# missing support for ModifyCodeGenerationFromStringsCallback
+test-source-map-api: FAIL
+
+# missing support for script.sourceMapURL
+test-node-output-sourcemaps: FAIL
+test-vm-source-map-url: FAIL
+
+# checks v8-specific asm-related warning
+test-node-output-v8-warning: FAIL
+
+# ShadowRealm
+test-shadow-realm-allowed-builtin-modules: FAIL
+test-shadow-realm-gc: FAIL
+test-shadow-realm-gc-module: FAIL
+test-shadow-realm-import-value-resolve: FAIL
+test-shadow-realm-globals: FAIL
+test-shadow-realm-module: FAIL
+test-shadow-realm-prepare-stack-trace: FAIL
+test-shadow-realm-custom-loaders: FAIL
+
+# Worker resource limits are not supported
+test-worker-resource-limits: FAIL
+test-worker-nearheaplimit-deadlock: SKIP
+
+# Custom v8::ArrayBuffer::Allocator is not supported
+test-worker-sharedarraybuffer-from-worker-thread: SKIP
+
+# Profiling is not supported
+test-cli-node-options: SKIP
+test-tick-processor-arguments: FAIL
+
+# v8::Object::GetConstructorName() returns `Klass` for
+# Object.setPrototypeOf(new Klass(), null) (which graal-nodejs is unable to return)
+test-util-format: FAIL
+
+# v8::Object::GetConstructorName() returns `Klass` for
+# Object.setPrototypeOf(new Klass(), null) (which graal-nodejs is unable to return) +
+# some differences in the handling of weak collections
+test-util-inspect: FAIL
+
+# v8.queryObjects (based on v8::HeapProfiler::QueryObjects()) not supported
+test-v8-query-objects: FAIL
+
+# v8.cachedDataVersionTag() not supported
+test-v8-version-tag: FAIL
+
+# Different error message (Unexpected token } x Expected eof but found }) +
+# missing support for lineOffset and columnOffset in ScriptOrigin
+test-vm-basic: FAIL
+
+# Missing support for lineOffset and columnOffset in ScriptOrigin
+test-vm-context: FAIL
+
+# JS Proxy as vm context not handled well
+test-vm-proxy-failure-CP: FAIL
+test-vm-set-property-proxy: SKIP
+
+# WebAssembly is not enabled by default
+test-blob: FAIL
+test-fetch: FAIL
+test-fetch-disabled: FAIL
+test-fetch-mock: FAIL
+test-http-response-setheaders: FAIL
+test-vm-codegen: FAIL
+test-websocket: FAIL
+test-whatwg-webstreams-transfer: FAIL
+test-worker-message-port-wasm-module: FAIL
+test-worker-message-port-wasm-threads: FAIL
+
+# Custom MicrotaskQueue is not supported
+test-vm-timeout-escape-promise: FAIL
+test-vm-timeout-escape-promise-module: FAIL
+test-vm-timeout-escape-promise-2: FAIL
+
+# run-time user-land snapshots are not supported
+test-snapshot-api: FAIL
+test-snapshot-argv1: FAIL
+test-snapshot-basic: FAIL
+test-snapshot-child-process-sync: FAIL
+test-snapshot-cjs-main: FAIL
+test-snapshot-config: FAIL
+test-snapshot-cwd: FAIL
+test-snapshot-dns-lookup-localhost: FAIL
+test-snapshot-dns-lookup-localhost-promise: FAIL
+test-snapshot-dns-resolve-localhost: FAIL
+test-snapshot-dns-resolve-localhost-promise: FAIL
+test-snapshot-error: FAIL
+test-snapshot-eval: FAIL
+test-snapshot-gzip: FAIL
+test-snapshot-incompatible: FAIL
+test-snapshot-namespaced-builtin: FAIL
+test-snapshot-net: FAIL
+test-snapshot-typescript: FAIL
+test-snapshot-umd: FAIL
+test-snapshot-warning: FAIL
+test-snapshot-weak-reference: FAIL
+test-snapshot-worker: FAIL
+
+# Contains an unused invalid regular expression
+# (which works on V8 where the regexp syntax check is lazy).
+test-trace-exit: FAIL
+
+# Tracing is not supported
+test-throw-error-with-getter-throw-traced: FAIL
+test-throw-undefined-or-null-traced: FAIL
+test-trace-atomics-wait: SKIP
+test-trace-events-all: SKIP
+test-trace-events-api: SKIP
+test-trace-events-async-hooks: SKIP
+test-trace-events-async-hooks-dynamic: SKIP
+test-trace-events-async-hooks-worker: SKIP
+test-trace-events-binding: SKIP
+test-trace-events-bootstrap: SKIP
+test-trace-events-category-used: SKIP
+test-trace-events-console: SKIP
+test-trace-events-environment: SKIP
+test-trace-events-file-pattern: SKIP
+test-trace-events-fs-async: SKIP
+test-trace-events-fs-sync: SKIP
+test-trace-events-http: SKIP
+test-trace-events-metadata: SKIP
+test-trace-events-net: SKIP
+test-trace-events-net-abstract-socket: SKIP
+test-trace-events-none: SKIP
+test-trace-events-process-exit: SKIP
+test-trace-events-promises: SKIP
+test-trace-events-threadpool: SKIP
+test-trace-events-v8: SKIP
+test-trace-events-vm: SKIP
+test-trace-events-worker-metadata: SKIP
+test-trace-events-worker-metadata-with-name: SKIP
+
+# Unclassified
+test-async-hooks-http-parser-destroy: SKIP
+test-crypto-op-during-process-exit: SKIP
+test-crypto-sign-verify: FAIL
+test-domain-no-error-handler-abort-on-uncaught-0: FAIL
+test-domain-no-error-handler-abort-on-uncaught-1: FAIL
+test-domain-no-error-handler-abort-on-uncaught-2: FAIL
+test-domain-no-error-handler-abort-on-uncaught-3: FAIL
+test-domain-no-error-handler-abort-on-uncaught-4: FAIL
+test-domain-no-error-handler-abort-on-uncaught-5: FAIL
+test-domain-no-error-handler-abort-on-uncaught-6: FAIL
+test-domain-no-error-handler-abort-on-uncaught-7: FAIL
+test-domain-no-error-handler-abort-on-uncaught-8: FAIL
+test-domain-no-error-handler-abort-on-uncaught-9: FAIL
+test-domain-throw-error-then-throw-from-uncaught-exception-handler: FAIL
+test-fs-promises-file-handle-close: FAIL
+test-gc-http-client-connaborted: SKIP
+test-gc-net-timeout: SKIP
+test-gc-tls-external-memory: SKIP
+test-http-server-keepalive-req-gc: SKIP
+test-http2-response-splitting: SKIP
+test-net-connect-memleak: FAIL
+test-repl: FAIL
+test-runner-output: FAIL
+test-runner-watch-mode: SKIP
+test-tls-connect-memleak: FAIL
+test-ttywrap-stack: FAIL
+test-vm-global-setter: FAIL
+test-vm-low-stack-space: SKIP
+test-vm-new-script-new-context: FAIL
+test-vm-syntax-error-stderr: FAIL
+test-worker-cleanexit-with-js: SKIP
+test-worker-cleanexit-with-moduleload: SKIP
+test-worker-error-stack-getter-throws: FAIL
+test-worker-stack-overflow-stack-size: SKIP
+test-zlib-invalid-input-memory: FAIL
+test-zlib-unused-weak: FAIL
+
+# Fails randomly
+test-http-outgoing-end-cork: SKIP
+test-http-server-request-timeouts-mixed: PASS,FLAKY
+test-http2-server-rst-stream: SKIP
+test-signal-args: PASS,FAIL
+# GC-based random failures
+test-async-hooks-destroy-on-gc: SKIP
+test-domain-async-id-map-leak: SKIP
+test-https-server-connections-checking-leak: SKIP
+# Possible EventTarget memory leak detected. 3 foo listeners added to EventTarget. MaxListeners is 2.
+test-eventtarget-memoryleakwarning: PASS,FAIL
+
+# Random OutOfMemoryError: Garbage-collected heap size exceeded.
+test-worker-init-failure: SKIP
+
+# RangeError: Maximum call stack size exceeded, or:
+# Error: async hook stack has become corrupted (actual: 69, expected: 68)
+test-async-hooks-recursive-stack-runInAsyncScope: PASS,FAIL
+
+[$system==linux]
+# linux-only test, fails with "The following openat call are missing: /etc/ssl/openssl.cnf"
+test-strace-openat-openssl: FAIL
+
+[$system==win32]
+# windows-only test, fails with "Wrong exit code of 1! Expected 134 for abort"
+test-windows-failed-heap-allocation: FAIL
+# Subtest "TZ environment variable" fails consistently on windows
+test-dotenv-node-options: FAIL
+
+# Unclassified
+test-datetime-change-notify: FAIL
+test-domain-with-abort-on-uncaught-exception: FAIL
+test-icu-env: FAIL
+
+[$system==macos]
+# copies node executable to a temp dir, fork() may then fail because libjsig.dylib is not found relative to that path.
+test-child-process-fork-exec-path: PASS,FAIL
+test-module-loading-globalpaths: PASS,FAIL
+
+# RangeError: Maximum call stack size exceeded
+test-async-local-storage-deep-stack: PASS,FAIL
+test-async-local-storage-exit-does-not-leak: PASS,FAIL
+
+# Random timeouts.
+test-child-process-stdio-inherit: PASS,FAIL
+
+[$system==solaris]
+test-http2-respond-file-fd-invalid : FAIL
+
+# SIGBUS at DES_encrypt2.constprop
+test-crypto: FAIL
+test-crypto-binary-default: FAIL
+test-crypto-cipheriv-decipheriv: FAIL
+test-crypto-rsa-dsa: FAIL
+test-https-pfx: FAIL
+test-tls-multi-pfx: FAIL
+test-tls-ocsp-callback: FAIL
+test-tls-passphrase: FAIL
+
+### graal-nodejs-specific end ###
+
 [true] # This section applies to all platforms
 # https://github.com/nodejs/node/issues/52273
 test-net-write-fully-async-hex-string: PASS, FLAKY

@@ -22,6 +22,8 @@
 // This test cannot run in strict mode because it tests that `baseFoo` is
 // treated as a global without being declared with `var`/`let`/`const`.
 
+// Flags: --no-experimental-fetch
+
 /* eslint-disable strict */
 const common = require('../common');
 const fixtures = require('../common/fixtures');
@@ -56,7 +58,6 @@ for (const moduleName of builtinModules) {
     'setInterval',
     'setTimeout',
     'structuredClone',
-    'fetch',
     'crypto',
     'navigator',
   ];

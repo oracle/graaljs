@@ -31,6 +31,7 @@ const { getSystemErrorName } = require('util');
     process.removeAllListeners('uncaughtException');
     hooks.disable();
     delete providers.NONE;  // Should never be used.
+    if (global.Graal) delete providers.HEAPSNAPSHOT; // not supported by graal-nodejs
 
     // See test/pseudo-tty/test-async-wrap-getasyncid-tty.js
     // Requires an 'actual' tty fd to be available.
@@ -315,7 +316,7 @@ if (common.hasCrypto) { // eslint-disable-line node-core/crypto-check
 }
 
 // PROVIDER_HEAPDUMP
-{
+if (!global.Graal) { // not supported by graal-nodejs
   v8.getHeapSnapshot().destroy();
 }
 

@@ -739,69 +739,15 @@ class V8_EXPORT Object : public Value {
 // --- Implementation ---
 
 Local<Data> Object::GetInternalField(int index) {
-#ifndef V8_ENABLE_CHECKS
-  using A = internal::Address;
-  using I = internal::Internals;
-  A obj = internal::ValueHelper::ValueAsAddress(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  int instance_type = I::GetInstanceType(obj);
-  if (I::CanHaveInternalField(instance_type)) {
-    int offset = I::kJSObjectHeaderSize + (I::kEmbedderDataSlotSize * index);
-    A value = I::ReadRawField<A>(obj, offset);
-#ifdef V8_COMPRESS_POINTERS
-    // We read the full pointer value and then decompress it in order to avoid
-    // dealing with potential endiannes issues.
-    value = I::DecompressTaggedField(obj, static_cast<uint32_t>(value));
-#endif
-
-    auto isolate = reinterpret_cast<v8::Isolate*>(
-        internal::IsolateFromNeverReadOnlySpaceObject(obj));
-    return Local<Data>::New(isolate, value);
-  }
-#endif
   return SlowGetInternalField(index);
 }
 
 void* Object::GetAlignedPointerFromInternalField(v8::Isolate* isolate,
                                                  int index) {
-#if !defined(V8_ENABLE_CHECKS)
-  using A = internal::Address;
-  using I = internal::Internals;
-  A obj = internal::ValueHelper::ValueAsAddress(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  auto instance_type = I::GetInstanceType(obj);
-  if (V8_LIKELY(I::CanHaveInternalField(instance_type))) {
-    int offset = I::kJSObjectHeaderSize + (I::kEmbedderDataSlotSize * index) +
-                 I::kEmbedderDataSlotExternalPointerOffset;
-    A value =
-        I::ReadExternalPointerField<internal::kEmbedderDataSlotPayloadTag>(
-            isolate, obj, offset);
-    return reinterpret_cast<void*>(value);
-  }
-#endif
   return SlowGetAlignedPointerFromInternalField(isolate, index);
 }
 
 void* Object::GetAlignedPointerFromInternalField(int index) {
-#if !defined(V8_ENABLE_CHECKS)
-  using A = internal::Address;
-  using I = internal::Internals;
-  A obj = internal::ValueHelper::ValueAsAddress(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  auto instance_type = I::GetInstanceType(obj);
-  if (V8_LIKELY(I::CanHaveInternalField(instance_type))) {
-    int offset = I::kJSObjectHeaderSize + (I::kEmbedderDataSlotSize * index) +
-                 I::kEmbedderDataSlotExternalPointerOffset;
-    Isolate* isolate = I::GetIsolateForSandbox(obj);
-    A value =
-        I::ReadExternalPointerField<internal::kEmbedderDataSlotPayloadTag>(
-            isolate, obj, offset);
-    return reinterpret_cast<void*>(value);
-  }
-#endif
   return SlowGetAlignedPointerFromInternalField(index);
 }
 

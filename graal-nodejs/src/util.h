@@ -500,6 +500,142 @@ class MaybeStackBuffer {
   T buf_st_[kStackStorageSize];
 };
 
+template <size_t kStackStorageSize>
+class MaybeStackBuffer<v8::Local<v8::Value>, kStackStorageSize> {
+ public:
+  const v8::Local<v8::Value>* out() const {
+    return buf_;
+  }
+
+  v8::Local<v8::Value>* out() {
+    return buf_;
+  }
+
+  // operator* for compatibility with `v8::String::(Utf8)Value`
+  v8::Local<v8::Value>* operator*() {
+    return buf_;
+  }
+
+  const v8::Local<v8::Value>* operator*() const {
+    return buf_;
+  }
+
+  v8::Local<v8::Value>& operator[](size_t index) {
+    CHECK_LT(index, length());
+    return buf_[index];
+  }
+
+  const v8::Local<v8::Value>& operator[](size_t index) const {
+    CHECK_LT(index, length());
+    return buf_[index];
+  }
+
+  size_t length() const {
+    return length_;
+  }
+
+  // Current maximum capacity of the buffer with which SetLength() can be used
+  // without first calling AllocateSufficientStorage().
+  size_t capacity() const {
+    return IsAllocated() ? capacity_ :
+                           IsInvalidated() ? 0 : kStackStorageSize;
+  }
+
+  // Make sure enough space for `storage` entries is available.
+  // This method can be called multiple times throughout the lifetime of the
+  // buffer, but once this has been called Invalidate() cannot be used.
+  // Content of the buffer in the range [0, length()) is preserved.
+  void AllocateSufficientStorage(size_t storage) {
+    CHECK(!IsInvalidated());
+    if (storage > capacity()) {
+      bool was_allocated = IsAllocated();
+      v8::Local<v8::Value>* allocated_ptr = was_allocated ? buf_ : nullptr;
+      buf_ = Realloc(allocated_ptr, storage);
+      // zero-fill new handles (so they look like as if Local() constructor was called)
+      memset(buf_ + length_, 0, (storage - length_) * sizeof(buf_[0]));
+      capacity_ = storage;
+      if (!was_allocated && length_ > 0) {
+        memcpy(buf_, buf_st_, length_ * sizeof(buf_[0]));
+        // ensure that the content of handles copied from the stack is not released twice
+        memset(buf_st_, 0, length_ * sizeof(buf_[0]));
+      }
+    }
+
+    length_ = storage;
+  }
+
+  void SetLength(size_t length) {
+    // capacity() returns how much memory is actually available.
+    CHECK_LE(length, capacity());
+    length_ = length;
+  }
+
+  void SetLengthAndZeroTerminate(size_t length) {
+    // capacity() returns how much memory is actually available.
+    CHECK_LE(length + 1, capacity());
+    SetLength(length);
+
+    // T() is 0 for integer types, nullptr for pointers, etc.
+    buf_[length] = nullptr;
+  }
+
+  // Make derefencing this object return nullptr.
+  // This method can be called multiple times throughout the lifetime of the
+  // buffer, but once this has been called AllocateSufficientStorage() cannot
+  // be used.
+  void Invalidate() {
+    CHECK(!IsAllocated());
+    length_ = 0;
+    buf_ = nullptr;
+  }
+
+  // If the buffer is stored in the heap rather than on the stack.
+  bool IsAllocated() const {
+    return !IsInvalidated() && buf_ != buf_st_;
+  }
+
+  // If Invalidate() has been called.
+  bool IsInvalidated() const {
+    return buf_ == nullptr;
+  }
+
+  // Release ownership of the malloc'd buffer.
+  // Note: This does not free the buffer.
+  void Release() {
+    CHECK(IsAllocated());
+    buf_ = buf_st_;
+    length_ = 0;
+    capacity_ = 0;
+  }
+
+  MaybeStackBuffer() : length_(0), capacity_(0), buf_(buf_st_) {
+    // Default to a zero-length, null-terminated buffer.
+    buf_[0] = nullptr;
+  }
+
+  explicit MaybeStackBuffer(size_t storage) : MaybeStackBuffer() {
+    AllocateSufficientStorage(storage);
+  }
+
+  ~MaybeStackBuffer() {
+    if (IsAllocated()) {
+      // heap-allocated buffer => we have to release the content of the handles
+      // explicitly as the destructor of the handles will not be called
+      for (size_t i = 0; i < length_; i++) {
+        buf_[i].Clear();
+      }
+      free(buf_);
+    }
+  }
+
+ private:
+  size_t length_;
+  // capacity of the malloc'ed buf_
+  size_t capacity_;
+  v8::Local<v8::Value>* buf_;
+  v8::Local<v8::Value> buf_st_[kStackStorageSize];
+};
+
 // Provides access to an ArrayBufferView's storage, either the original,
 // or for small data, a copy of it. This object's lifetime is bound to the
 // original ArrayBufferView's lifetime.
@@ -804,11 +940,7 @@ class PersistentToLocal {
   static inline v8::Local<TypeName> Default(
       v8::Isolate* isolate,
       const v8::PersistentBase<TypeName>& persistent) {
-    if (persistent.IsWeak()) {
-      return PersistentToLocal::Weak(isolate, persistent);
-    } else {
-      return PersistentToLocal::Strong(persistent);
-    }
+    return v8::Local<TypeName>::New(isolate, persistent);
   }
 
   // Unchecked conversion from a non-weak Persistent<T> to Local<T>,
@@ -820,8 +952,7 @@ class PersistentToLocal {
   static inline v8::Local<TypeName> Strong(
       const v8::PersistentBase<TypeName>& persistent) {
     DCHECK(!persistent.IsWeak());
-    return *reinterpret_cast<v8::Local<TypeName>*>(
-        const_cast<v8::PersistentBase<TypeName>*>(&persistent));
+    return v8::Local<TypeName>::New(v8::Isolate::GetCurrent(), persistent);
   }
 
   template <class TypeName>

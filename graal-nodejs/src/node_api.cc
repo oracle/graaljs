@@ -984,6 +984,11 @@ napi_status NAPI_CDECL napi_make_callback(napi_env env,
   v8::Local<v8::Function> v8func;
   CHECK_TO_FUNCTION(env, v8func, func);
 
+  v8::Local<v8::Value>* args = new v8::Local<v8::Value>[argc];
+  for (size_t i = 0; i < argc; i++) {
+    args[i] = v8impl::V8LocalValueFromJsValue(argv[i]);
+  }
+
   v8::MaybeLocal<v8::Value> callback_result;
 
   if (async_context == nullptr) {
@@ -992,7 +997,7 @@ napi_status NAPI_CDECL napi_make_callback(napi_env env,
         v8recv,
         v8func,
         argc,
-        reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)),
+        args,
         {0, 0});
   } else {
     v8impl::AsyncContext* node_async_context =
@@ -1001,8 +1006,10 @@ napi_status NAPI_CDECL napi_make_callback(napi_env env,
         v8recv,
         v8func,
         argc,
-        reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)));
+        args);
   }
+
+  delete[] args;
 
   if (try_catch.HasCaught()) {
     return napi_set_last_error(env, napi_pending_exception);

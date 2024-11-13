@@ -421,46 +421,11 @@ class V8_EXPORT Context : public Data {
 // --- Implementation ---
 
 Local<Value> Context::GetEmbedderData(int index) {
-#ifndef V8_ENABLE_CHECKS
-  using A = internal::Address;
-  using I = internal::Internals;
-  A ctx = internal::ValueHelper::ValueAsAddress(this);
-  A embedder_data =
-      I::ReadTaggedPointerField(ctx, I::kNativeContextEmbedderDataOffset);
-  int value_offset =
-      I::kEmbedderDataArrayHeaderSize + (I::kEmbedderDataSlotSize * index);
-  A value = I::ReadRawField<A>(embedder_data, value_offset);
-#ifdef V8_COMPRESS_POINTERS
-  // We read the full pointer value and then decompress it in order to avoid
-  // dealing with potential endiannes issues.
-  value = I::DecompressTaggedField(embedder_data, static_cast<uint32_t>(value));
-#endif
-
-  auto isolate = reinterpret_cast<v8::Isolate*>(
-      internal::IsolateFromNeverReadOnlySpaceObject(ctx));
-  return Local<Value>::New(isolate, value);
-#else
   return SlowGetEmbedderData(index);
-#endif
 }
 
 void* Context::GetAlignedPointerFromEmbedderData(int index) {
-#if !defined(V8_ENABLE_CHECKS)
-  using A = internal::Address;
-  using I = internal::Internals;
-  A ctx = internal::ValueHelper::ValueAsAddress(this);
-  A embedder_data =
-      I::ReadTaggedPointerField(ctx, I::kNativeContextEmbedderDataOffset);
-  int value_offset = I::kEmbedderDataArrayHeaderSize +
-                     (I::kEmbedderDataSlotSize * index) +
-                     I::kEmbedderDataSlotExternalPointerOffset;
-  Isolate* isolate = I::GetIsolateForSandbox(ctx);
-  return reinterpret_cast<void*>(
-      I::ReadExternalPointerField<internal::kEmbedderDataSlotPayloadTag>(
-          isolate, embedder_data, value_offset));
-#else
   return SlowGetAlignedPointerFromEmbedderData(index);
-#endif
 }
 
 template <class T>

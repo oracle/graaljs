@@ -599,7 +599,7 @@ struct FastApiCallbackOptions {
    */
   union {
     uintptr_t data_ptr;
-    v8::Local<v8::Value> data;
+    v8::Value** data;
   };
 
   /**

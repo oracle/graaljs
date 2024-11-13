@@ -2116,24 +2116,23 @@ napi_status NAPI_CDECL napi_call_function(napi_env env,
     CHECK_ARG(env, argv);
   }
 
-  v8::Local<v8::Context> context = env->context();
-
-  v8::Local<v8::Value> v8recv = v8impl::V8LocalValueFromJsValue(recv);
-
   v8::Local<v8::Function> v8func;
   CHECK_TO_FUNCTION(env, v8func, func);
 
-  auto maybe = v8func->Call(
-      context,
-      v8recv,
-      argc,
-      reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)));
+  jobject maybe = reinterpret_cast<GraalFunction*> (*v8func)->Call(
+          reinterpret_cast<jobject> (recv),
+          argc,
+          reinterpret_cast<jobject*> (const_cast<napi_value*>(argv)));
 
-  CHECK_MAYBE_EMPTY_WITH_PREAMBLE(env, maybe, napi_generic_failure);
-  if (result != nullptr) {
-    *result = v8impl::JsValueFromV8LocalValue(maybe.ToLocalChecked());
+  if (try_catch.HasCaught()) {
+    return napi_set_last_error(env, napi_pending_exception);
+  } else {
+    if (result != nullptr) {
+      RETURN_STATUS_IF_FALSE(env, maybe != NULL, napi_generic_failure);
+      *result = reinterpret_cast<napi_value> (maybe);
+    }
+    return napi_clear_last_error(env);
   }
-  return napi_clear_last_error(env);
 }
 
 napi_status NAPI_CDECL napi_get_global(napi_env env, napi_value* result) {
@@ -2942,10 +2941,13 @@ napi_status NAPI_CDECL napi_new_instance(napi_env env,
   v8::Local<v8::Function> ctor;
   CHECK_TO_FUNCTION(env, ctor, constructor);
 
-  auto maybe = ctor->NewInstance(
-      context,
-      argc,
-      reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)));
+  v8::Local<v8::Value>* args = new v8::Local<v8::Value>[argc];
+  for (size_t i = 0; i < argc; i++) {
+      args[i] = v8impl::V8LocalValueFromJsValue(argv[i]);
+  }
+
+  auto maybe = ctor->NewInstance(context, argc, args);
+  delete[] args;
 
   CHECK_MAYBE_EMPTY(env, maybe, napi_pending_exception);
 

@@ -773,7 +773,7 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
       !isUndetectableObject(value)) {
     return formatPrimitive(ctx.stylize, value, ctx);
   }
-  if (value === null) {
+  if (value == null) {
     return ctx.stylize('null', 'null');
   }
 

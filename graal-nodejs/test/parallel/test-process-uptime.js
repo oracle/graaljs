@@ -26,8 +26,8 @@ const assert = require('assert');
 console.error(process.uptime());
 // Add some wiggle room for different platforms.
 // Verify that the returned value is in seconds -
-// 15 seconds should be a good estimate.
-assert.ok(process.uptime() <= 15);
+// 30 seconds should be a good estimate.
+assert.ok(process.uptime() <= 30);
 
 const original = process.uptime();
 

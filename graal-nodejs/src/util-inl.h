@@ -345,14 +345,15 @@ v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
   if (isolate == nullptr) isolate = context->GetIsolate();
   v8::EscapableHandleScope handle_scope(isolate);
 
-  MaybeStackBuffer<v8::Local<v8::Value>, 128> arr(vec.size());
-  arr.SetLength(vec.size());
+  v8::Local<v8::Array> array = v8::Array::New(isolate, vec.size());
+  v8::Local<v8::Value> item;
   for (size_t i = 0; i < vec.size(); ++i) {
-    if (!ToV8Value(context, vec[i], isolate).ToLocal(&arr[i]))
+    if (!ToV8Value(context, vec[i], isolate).ToLocal(&item))
       return v8::MaybeLocal<v8::Value>();
+    array->Set(context, i, item).Check();
   }
 
-  return handle_scope.Escape(v8::Array::New(isolate, arr.out(), arr.length()));
+  return handle_scope.Escape(array);
 }
 
 template <typename T>

@@ -4,6 +4,10 @@
 #include "js_native_api_types.h"
 #include "js_native_api_v8_internals.h"
 
+#include "current_isolate.h"
+#include "graal_value.h"
+#include "graal_function.h"
+
 inline napi_status napi_clear_last_error(node_api_basic_env env);
 
 namespace v8impl {
@@ -308,13 +312,19 @@ static_assert(sizeof(v8::Local<v8::Value>) == sizeof(napi_value),
               "Cannot convert between v8::Local<v8::Value> and napi_value");
 
 inline napi_value JsValueFromV8LocalValue(v8::Local<v8::Value> local) {
-  return reinterpret_cast<napi_value>(*local);
+  if (local.IsEmpty()) {
+    return nullptr;
+  }
+  GraalHandleContent* graal_handle = reinterpret_cast<GraalHandleContent*> (*local);
+  return reinterpret_cast<napi_value> (graal_handle->ToNewLocalJavaObject());
 }
 
 inline v8::Local<v8::Value> V8LocalValueFromJsValue(napi_value v) {
-  v8::Local<v8::Value> local;
-  memcpy(static_cast<void*>(&local), &v, sizeof(v));
-  return local;
+  if (v == nullptr) {
+    return v8::Local<v8::Value>();
+  }
+  GraalValue* graal_value = GraalValue::FromJavaObject(CurrentIsolate(), reinterpret_cast<jobject> (v), true);
+  return reinterpret_cast<v8::Value*> (graal_value);
 }
 
 // Adapter for napi_finalize callbacks.

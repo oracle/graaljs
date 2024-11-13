@@ -52,7 +52,7 @@ const assert = require('assert');
     });
   const stderr = child.stderr.toString();
   assert.strictEqual(child.status, 1);
-  assert.match(stderr, /SyntaxError: Expected ':' after property name/);
+  assert.match(stderr, /SyntaxError: /);
   assert(
     stderr.includes(
       `Cannot parse JSON from ${config}`

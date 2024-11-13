@@ -1269,6 +1269,9 @@ bool ContextifyScript::EvalMachine(Local<Context> context,
       PersistentToLocal::Default(env->isolate(), wrapped_script->script_);
   Local<Script> script = unbound_script->BindToCurrentContext();
 
+  if (break_on_first_line) {
+    env->isolate()->SchedulePauseOnNextStatement();
+  }
 #if HAVE_INSPECTOR
   if (break_on_first_line) {
     if (!env->permission()->is_granted(env,
@@ -1578,8 +1581,11 @@ Local<Object> ContextifyContext::CompileFunctionAndCacheResult(
 // error message as when `await` is used in a sync function, so we don't use it
 // as a disambiguation.
 static std::vector<std::string_view> esm_syntax_error_messages = {
+    "Expected an operand but found import",
     "Cannot use import statement outside a module",  // `import` statements
+    "Expected an operand but found export",
     "Unexpected token 'export'",                     // `export` statements
+    "Cannot use import.meta outside a module",
     "Cannot use 'import.meta' outside a module"};    // `import.meta` references
 
 // Another class of error messages that we need to check for are syntax errors
@@ -1594,10 +1600,15 @@ static std::vector<std::string_view> esm_syntax_error_messages = {
 //   in ESM.
 static std::vector<std::string_view> throws_only_in_cjs_error_messages = {
     "Identifier 'module' has already been declared",
+    "Variable \"module\" has already been declared",
     "Identifier 'exports' has already been declared",
+    "Variable \"exports\" has already been declared",
     "Identifier 'require' has already been declared",
+    "Variable \"require\" has already been declared",
     "Identifier '__filename' has already been declared",
+    "Variable \"__filename\" has already been declared",
     "Identifier '__dirname' has already been declared",
+    "Variable \"__dirname\" has already been declared",
     "await is only valid in async functions and "
     "the top level bodies of modules"};
 

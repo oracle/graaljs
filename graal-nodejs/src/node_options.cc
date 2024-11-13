@@ -277,7 +277,8 @@ void Parse(
     args, exec_args, v8_args, options, required_env_settings, errors);
 }
 #else
-const EnvironmentOptionsParser _eop_instance{};
+const DebugOptionsParser _dop_instance{};
+const EnvironmentOptionsParser _eop_instance{_dop_instance};
 #endif  // HAVE_INSPECTOR
 const PerIsolateOptionsParser _piop_instance{_eop_instance};
 const PerProcessOptionsParser _ppop_instance{_piop_instance};
@@ -1036,7 +1037,7 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             &PerProcessOptions::print_bash_completion);
   AddOption("--help",
             "print node command line options",
-            &PerProcessOptions::print_help);
+            &PerProcessOptions::print_v8_help);
   AddAlias("-h", "--help");
   AddOption(
       "--version", "print Node.js version", &PerProcessOptions::print_version);
@@ -1149,6 +1150,10 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "enable printing JavaScript stacktrace on SIGINT",
             &PerProcessOptions::trace_sigint,
             kAllowedInEnvvar);
+
+  AddOption("--jvm", "", V8Option{}, kAllowedInEnvironment);
+  AddOption("--native", "", V8Option{}, kAllowedInEnvironment);
+  AddOption("--polyglot", "", V8Option{}, kAllowedInEnvironment);
 
   Insert(iop, &PerProcessOptions::get_per_isolate_options);
 

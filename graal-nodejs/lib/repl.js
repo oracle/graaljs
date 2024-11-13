@@ -673,6 +673,7 @@ function REPLServer(prompt,
     let errStack = '';
 
     if (typeof e === 'object' && e !== null) {
+      try {
       overrideStackTrace.set(e, (error, stackFrames) => {
         let frames;
         if (typeof stackFrames === 'object') {
@@ -695,6 +696,9 @@ function REPLServer(prompt,
         }
         return ErrorPrepareStackTrace(error, frames);
       });
+      } catch (weakMapSetError) {
+        // ignore - foreign objects are not supported by WeakMap
+      }
       decorateErrorStack(e);
 
       if (e.domainThrown) {

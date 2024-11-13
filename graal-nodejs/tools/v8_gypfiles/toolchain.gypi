@@ -303,6 +303,11 @@
           'CAN_USE_FPU_INSTRUCTIONS'
         ],
       }],
+      ['v8_target_arch=="sparcv9"', {
+        'defines': [
+          'V8_TARGET_ARCH_SPARCV9',
+        ],
+      }],
       ['v8_target_arch=="loong64"', {
         'defines': [
           'V8_TARGET_ARCH_LOONG64',
