@@ -365,7 +365,7 @@ public class JSModuleRecord extends AbstractModuleRecord {
          * Source Text Module Record provides a GetModuleSource implementation that always returns
          * an abrupt completion indicating that a source phase import is not available.
          */
-        throw Errors.createReferenceError("Source phase import is not available for Source Text Module");
+        throw Errors.createSyntaxError("Source phase import is not available for Source Text Module");
     }
 
     @Override
