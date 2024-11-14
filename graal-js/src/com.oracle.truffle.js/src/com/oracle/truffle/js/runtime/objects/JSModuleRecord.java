@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.oracle.js.parser.ir.Module;
@@ -63,8 +61,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -77,8 +73,6 @@ public class JSModuleRecord extends CyclicModuleRecord {
     private final JSModuleData parsedModule;
     private final JSModuleLoader moduleLoader;
 
-    /** Lazily initialized Module Namespace object ({@code [[Namespace]]}). */
-    private JSModuleNamespaceObject namespace;
     /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
     private JSDynamicObject importMeta;
 
@@ -240,33 +234,6 @@ public class JSModuleRecord extends CyclicModuleRecord {
             }
         }
         return starResolution;
-    }
-
-    @Override
-    public JSDynamicObject getModuleNamespaceOrNull() {
-        return namespace;
-    }
-
-    @TruffleBoundary
-    @Override
-    public JSDynamicObject getModuleNamespace() {
-        if (namespace != null) {
-            return namespace;
-        }
-        Collection<TruffleString> exportedNames = getExportedNames();
-        List<Map.Entry<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
-        for (TruffleString exportedName : exportedNames) {
-            ExportResolution resolution = resolveExport(exportedName);
-            if (resolution.isNull()) {
-                throw Errors.createSyntaxError("Could not resolve export");
-            } else if (!resolution.isAmbiguous()) {
-                unambiguousNames.add(Map.entry(exportedName, resolution));
-            }
-        }
-        unambiguousNames.sort((a, b) -> a.getKey().compareCharsUTF16Uncached(b.getKey()));
-        JSModuleNamespaceObject ns = JSModuleNamespace.create(getContext(), JSRealm.get(null), this, unambiguousNames);
-        this.namespace = ns;
-        return ns;
     }
 
     @Override
