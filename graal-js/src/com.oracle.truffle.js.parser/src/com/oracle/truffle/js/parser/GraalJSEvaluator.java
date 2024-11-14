@@ -117,16 +117,17 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Completion;
-import com.oracle.truffle.js.runtime.objects.ExportResolution;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -494,7 +495,7 @@ public final class GraalJSEvaluator implements JSParser {
         int pendingModulesCount;
         PromiseCapabilityRecord promiseCapability;
         Object hostDefined;
-        Set<JSModuleRecord> visited;
+        Set<CyclicModuleRecord> visited;
 
         GraphLoadingState(PromiseCapabilityRecord promiseCapability, Object hostDefined) {
             this.isLoading = true;
@@ -507,7 +508,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public JSPromiseObject loadRequestedModules(JSRealm realm, JSModuleRecord moduleRecord, Object hostDefined) {
+    public JSPromiseObject loadRequestedModules(JSRealm realm, CyclicModuleRecord moduleRecord, Object hostDefined) {
         PromiseCapabilityRecord pc = NewPromiseCapabilityNode.createDefault(realm);
         GraphLoadingState state = new GraphLoadingState(pc, hostDefined);
         try {
@@ -521,12 +522,12 @@ public final class GraalJSEvaluator implements JSParser {
 
     private void innerModuleLoading(JSRealm realm, GraphLoadingState state, AbstractModuleRecord module, boolean recursiveLoad) {
         assert state.isLoading;
-        if (recursiveLoad && module instanceof JSModuleRecord moduleRecord && moduleRecord.getStatus() == Status.New &&
+        if (recursiveLoad && module instanceof CyclicModuleRecord moduleRecord && moduleRecord.getStatus() == Status.New &&
                         !state.visited.contains(moduleRecord)) {
             state.visited.add(moduleRecord);
-            int requestedModuleCount = moduleRecord.getModule().getRequestedModules().size();
+            int requestedModuleCount = moduleRecord.getRequestedModules().size();
             state.pendingModulesCount += requestedModuleCount;
-            for (ModuleRequest required : moduleRecord.getModule().getRequestedModules()) {
+            for (ModuleRequest required : moduleRecord.getRequestedModules()) {
                 AbstractModuleRecord resolved = moduleRecord.getLoadedModule(realm, required);
                 if (resolved != null) {
                     boolean innerRecursiveLoad = required.phase() != ImportPhase.Source;
@@ -628,9 +629,9 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public void moduleLinking(JSRealm realm, JSModuleRecord moduleRecord) {
+    public void moduleLinking(JSRealm realm, CyclicModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() != Status.Linking && moduleRecord.getStatus() != Status.Evaluating && moduleRecord.getStatus() != Status.New : moduleRecord.getStatus();
-        Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
+        Deque<CyclicModuleRecord> stack = new ArrayDeque<>(4);
 
         try {
             innerModuleLinking(realm, moduleRecord, stack, 0);
@@ -643,16 +644,20 @@ public final class GraalJSEvaluator implements JSParser {
         assert stack.isEmpty();
     }
 
-    private static void handleModuleLinkingError(JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack) {
-        for (JSModuleRecord m : stack) {
+    private static void handleModuleLinkingError(CyclicModuleRecord moduleRecord, Deque<CyclicModuleRecord> stack) {
+        for (CyclicModuleRecord m : stack) {
             assert m.getStatus() == Status.Linking;
             m.setUnlinked();
         }
         assert moduleRecord.getStatus() == Status.Unlinked;
     }
 
-    private int innerModuleLinking(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
+    private int innerModuleLinking(JSRealm realm, AbstractModuleRecord abstractModule, Deque<CyclicModuleRecord> stack, int index0) {
         int index = index0;
+        if (!(abstractModule instanceof CyclicModuleRecord moduleRecord)) {
+            abstractModule.link(realm);
+            return index;
+        }
         if (moduleRecord.getStatus() == Status.Linking || moduleRecord.getStatus() == Status.Linked || moduleRecord.getStatus() == Status.EvaluatingAsync ||
                         moduleRecord.getStatus() == Status.Evaluated) {
             return index;
@@ -664,27 +669,28 @@ public final class GraalJSEvaluator implements JSParser {
         index++;
         stack.push(moduleRecord);
 
-        Module module = moduleRecord.getModule();
-        for (ModuleRequest required : module.getRequestedModules()) {
+        for (ModuleRequest required : moduleRecord.getRequestedModules()) {
             if (required.phase() != ImportPhase.Evaluation) {
                 continue;
             }
-            JSModuleRecord requiredModule = (JSModuleRecord) moduleRecord.getImportedModule(required);
-            index = innerModuleLinking(realm, requiredModule, stack, index);
-            assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
-                            requiredModule.getStatus() == Status.EvaluatingAsync || requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
-            assert (requiredModule.getStatus() == Status.Linking) == stack.contains(requiredModule);
-            if (requiredModule.getStatus() == Status.Linking) {
-                moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
+            AbstractModuleRecord requiredAbstractModule = moduleRecord.getImportedModule(required);
+            index = innerModuleLinking(realm, requiredAbstractModule, stack, index);
+            if (requiredAbstractModule instanceof CyclicModuleRecord requiredModule) {
+                assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
+                                requiredModule.getStatus() == Status.EvaluatingAsync || requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
+                assert (requiredModule.getStatus() == Status.Linking) == stack.contains(requiredModule);
+                if (requiredModule.getStatus() == Status.Linking) {
+                    moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
+                }
             }
         }
-        moduleInitializeEnvironment(realm, moduleRecord);
+        moduleRecord.initializeEnvironment(realm);
 
         assert occursExactlyOnce(moduleRecord, stack);
         assert moduleRecord.getDFSAncestorIndex() <= moduleRecord.getDFSIndex();
         if (moduleRecord.getDFSAncestorIndex() == moduleRecord.getDFSIndex()) {
             while (true) {
-                JSModuleRecord requiredModule = stack.pop();
+                CyclicModuleRecord requiredModule = stack.pop();
                 requiredModule.setStatus(Status.Linked);
                 if (requiredModule.equals(moduleRecord)) {
                     break;
@@ -694,30 +700,12 @@ public final class GraalJSEvaluator implements JSParser {
         return index;
     }
 
-    private static void moduleInitializeEnvironment(JSRealm realm, JSModuleRecord moduleRecord) {
-        assert moduleRecord.getStatus() == Status.Linking;
-        Module module = moduleRecord.getModule();
-        for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
-            ExportResolution resolution = moduleRecord.resolveExport(exportEntry.getExportName());
-            if (resolution.isNull() || resolution.isAmbiguous()) {
-                throw Errors.createSyntaxError("Could not resolve indirect export entry");
-            }
-        }
-
-        // Initialize the environment by executing the module function.
-        // It will automatically yield when the module is linked.
-        var moduleFunction = JSFunction.create(realm, moduleRecord.getFunctionData());
-        Object[] arguments = JSArguments.create(Undefined.instance, moduleFunction, moduleRecord);
-        // The [[Construct]] target of a module is used to initialize the environment.
-        JSFunction.getConstructTarget(moduleFunction).call(arguments);
-    }
-
     @TruffleBoundary
     @Override
-    public Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord) {
+    public Object moduleEvaluation(JSRealm realm, CyclicModuleRecord moduleRecord) {
         // Evaluate ( ) Concrete Method
-        JSModuleRecord module = moduleRecord;
-        Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
+        CyclicModuleRecord module = moduleRecord;
+        Deque<CyclicModuleRecord> stack = new ArrayDeque<>(4);
         if (realm.getContext().isOptionTopLevelAwait()) {
             assert module.getStatus() == Status.Linked || module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated : module.getStatus();
             if (module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated) {
@@ -757,8 +745,8 @@ public final class GraalJSEvaluator implements JSParser {
         }
     }
 
-    private static void handleModuleEvaluationError(JSModuleRecord module, Deque<JSModuleRecord> stack, AbstractTruffleException e) {
-        for (JSModuleRecord m : stack) {
+    private static void handleModuleEvaluationError(CyclicModuleRecord module, Deque<CyclicModuleRecord> stack, AbstractTruffleException e) {
+        for (CyclicModuleRecord m : stack) {
             assert m.getStatus() == Status.Evaluating;
             m.setStatus(Status.Evaluated);
             m.setEvaluationError(e);
@@ -779,9 +767,19 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private int innerModuleEvaluation(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
+    private int innerModuleEvaluation(JSRealm realm, AbstractModuleRecord abstractModule, Deque<CyclicModuleRecord> stack, int index0) {
         // InnerModuleEvaluation( module, stack, index )
         int index = index0;
+        if (!(abstractModule instanceof CyclicModuleRecord moduleRecord)) {
+            Object result = abstractModule.evaluate(realm);
+            if (result instanceof JSPromiseObject promise) {
+                assert !JSPromise.isPending(promise);
+                if (JSPromise.isRejected(promise)) {
+                    throw JSRuntime.getException(JSPromise.getPromiseResult(promise));
+                }
+            }
+            return index;
+        }
         if (moduleRecord.getStatus() == Status.EvaluatingAsync || moduleRecord.getStatus() == Status.Evaluated) {
             if (moduleRecord.getEvaluationError() == null) {
                 return index;
@@ -801,30 +799,31 @@ public final class GraalJSEvaluator implements JSParser {
         index++;
         stack.push(moduleRecord);
 
-        Module module = moduleRecord.getModule();
-        for (ModuleRequest required : module.getRequestedModules()) {
+        for (ModuleRequest required : moduleRecord.getRequestedModules()) {
             if (required.phase() != ImportPhase.Evaluation) {
                 continue;
             }
-            JSModuleRecord requiredModule = (JSModuleRecord) moduleRecord.getImportedModule(required);
+            AbstractModuleRecord requiredAbstractModule = moduleRecord.getImportedModule(required);
             // Note: Link must have completed successfully prior to invoking this method,
             // so every requested module is guaranteed to resolve successfully.
-            index = innerModuleEvaluation(realm, requiredModule, stack, index);
-            assert requiredModule.getStatus() == Status.Evaluating || requiredModule.getStatus() == Status.EvaluatingAsync ||
-                            requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
-            assert (requiredModule.getStatus() == Status.Evaluating) == stack.contains(requiredModule);
-            if (requiredModule.getStatus() == Status.Evaluating) {
-                moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
-            } else {
-                requiredModule = requiredModule.getCycleRoot();
-                assert requiredModule.getStatus() == Status.EvaluatingAsync || requiredModule.getStatus() == Status.Evaluated;
-                if (requiredModule.getEvaluationError() != null) {
-                    throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
+            index = innerModuleEvaluation(realm, requiredAbstractModule, stack, index);
+            if (requiredAbstractModule instanceof CyclicModuleRecord requiredModule) {
+                assert requiredModule.getStatus() == Status.Evaluating || requiredModule.getStatus() == Status.EvaluatingAsync ||
+                                requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
+                assert (requiredModule.getStatus() == Status.Evaluating) == stack.contains(requiredModule);
+                if (requiredModule.getStatus() == Status.Evaluating) {
+                    moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
+                } else {
+                    requiredModule = requiredModule.getCycleRoot();
+                    assert requiredModule.getStatus() == Status.EvaluatingAsync || requiredModule.getStatus() == Status.Evaluated;
+                    if (requiredModule.getEvaluationError() != null) {
+                        throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
+                    }
                 }
-            }
-            if (requiredModule.isAsyncEvaluation()) {
-                moduleRecord.incPendingAsyncDependencies();
-                requiredModule.appendAsyncParentModules(moduleRecord);
+                if (requiredModule.isAsyncEvaluation()) {
+                    moduleRecord.incPendingAsyncDependencies();
+                    requiredModule.appendAsyncParentModules(moduleRecord);
+                }
             }
         }
         if (moduleRecord.getPendingAsyncDependencies() > 0 || moduleRecord.hasTLA()) {
@@ -839,7 +838,7 @@ public final class GraalJSEvaluator implements JSParser {
                 moduleAsyncExecution(realm, moduleRecord);
             }
         } else {
-            Object result = moduleExecution(realm, moduleRecord, null);
+            Object result = moduleRecord.executeModule(realm, (PromiseCapabilityRecord) null);
             moduleRecord.setExecutionResult(result);
         }
 
@@ -847,7 +846,7 @@ public final class GraalJSEvaluator implements JSParser {
         assert moduleRecord.getDFSAncestorIndex() <= moduleRecord.getDFSIndex();
         if (moduleRecord.getDFSAncestorIndex() == moduleRecord.getDFSIndex()) {
             while (true) {
-                JSModuleRecord requiredModule = stack.pop();
+                CyclicModuleRecord requiredModule = stack.pop();
                 if (!requiredModule.isAsyncEvaluation()) {
                     requiredModule.setStatus(Status.Evaluated);
                 } else {
@@ -863,7 +862,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static void moduleAsyncExecution(JSRealm realm, JSModuleRecord module) {
+    private static void moduleAsyncExecution(JSRealm realm, CyclicModuleRecord module) {
         // ExecuteAsyncModule ( module )
         assert module.getStatus() == Status.Evaluating || module.getStatus() == Status.EvaluatingAsync;
         assert module.hasTLA();
@@ -872,11 +871,11 @@ public final class GraalJSEvaluator implements JSParser {
         JSFunctionObject onRejected = createCallAsyncModuleRejected(realm, module);
         Object then = JSObject.get(capability.getPromise(), Strings.THEN);
         JSFunction.call(JSArguments.create(capability.getPromise(), then, onFulfilled, onRejected));
-        moduleExecution(realm, module, capability);
+        module.executeModule(realm, capability);
     }
 
     @TruffleBoundary
-    private static JSFunctionObject createCallAsyncModuleFulfilled(JSRealm realm, JSModuleRecord module) {
+    private static JSFunctionObject createCallAsyncModuleFulfilled(JSRealm realm, CyclicModuleRecord module) {
         // AsyncModuleExecutionFulfilled ( module )
         JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionFulfilled, (c) -> createAsyncModuleExecutionFulfilledImpl(c));
         JSFunctionObject function = JSFunction.create(realm, functionData);
@@ -899,7 +898,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static JSFunctionObject createCallAsyncModuleRejected(JSRealm realm, JSModuleRecord module) {
+    private static JSFunctionObject createCallAsyncModuleRejected(JSRealm realm, CyclicModuleRecord module) {
         // AsyncModuleExecutionRejected ( module )
         JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionRejected, (c) -> createAsyncModuleExecutionRejectedImpl(c));
         JSFunctionObject function = JSFunction.create(realm, functionData);
@@ -923,9 +922,9 @@ public final class GraalJSEvaluator implements JSParser {
         return JSFunctionData.createCallOnly(context, new AsyncModuleExecutionRejectedRoot().getCallTarget(), 1, Strings.EMPTY_STRING);
     }
 
-    private static void gatherAvailableAncestors(JSModuleRecord module, Set<JSModuleRecord> execList) {
+    private static void gatherAvailableAncestors(CyclicModuleRecord module, Set<CyclicModuleRecord> execList) {
         // GatherAvailableAncestors ( module, execList )
-        for (JSModuleRecord m : module.getAsyncParentModules()) {
+        for (CyclicModuleRecord m : module.getAsyncParentModules()) {
             if (!execList.contains(m) && m.getCycleRoot().getEvaluationError() == null) {
                 assert m.getStatus() == Status.EvaluatingAsync;
                 assert m.getEvaluationError() == null;
@@ -957,21 +956,21 @@ public final class GraalJSEvaluator implements JSParser {
             assert module.getCycleRoot() == module;
             JSFunction.call(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), Undefined.instance));
         }
-        Set<JSModuleRecord> execList = new TreeSet<>(new Comparator<JSModuleRecord>() {
+        Set<CyclicModuleRecord> execList = new TreeSet<>(new Comparator<CyclicModuleRecord>() {
             @Override
-            public int compare(JSModuleRecord o1, JSModuleRecord o2) {
+            public int compare(CyclicModuleRecord o1, CyclicModuleRecord o2) {
                 return Long.compare(o1.getAsyncEvaluatingOrder(), o2.getAsyncEvaluatingOrder());
             }
         });
         gatherAvailableAncestors(module, execList);
-        for (JSModuleRecord m : execList) {
+        for (CyclicModuleRecord m : execList) {
             if (m.getStatus() == Status.Evaluated) {
                 assert m.getEvaluationError() != null;
             } else if (m.hasTLA()) {
                 moduleAsyncExecution(realm, m);
             } else {
                 try {
-                    moduleExecution(realm, m, null);
+                    m.executeModule(realm, (PromiseCapabilityRecord) null);
                     m.setAsyncEvaluation(false);
                     m.setStatus(Status.Evaluated);
                     if (m.getTopLevelCapability() != null) {
@@ -987,7 +986,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static Object asyncModuleExecutionRejected(JSRealm realm, JSModuleRecord module, Object error) {
+    private static Object asyncModuleExecutionRejected(JSRealm realm, CyclicModuleRecord module, Object error) {
         assert error != null : "Cannot reject a module creation with null error";
         if (module.getStatus() == Status.Evaluated) {
             assert module.getEvaluationError() != null;
@@ -1005,7 +1004,7 @@ public final class GraalJSEvaluator implements JSParser {
          * [[AsyncEvaluation]] internal slot is unused when its [[EvaluationError]] internal slot is
          * not ~empty~.
          */
-        for (JSModuleRecord m : module.getAsyncParentModules()) {
+        for (CyclicModuleRecord m : module.getAsyncParentModules()) {
             asyncModuleExecutionRejected(realm, m, error);
         }
         if (module.getTopLevelCapability() != null) {
@@ -1015,18 +1014,7 @@ public final class GraalJSEvaluator implements JSParser {
         return Undefined.instance;
     }
 
-    private static Object moduleExecution(JSRealm realm, JSModuleRecord moduleRecord, PromiseCapabilityRecord capability) {
-        JSFunctionObject moduleFunction = JSFunction.create(realm, moduleRecord.getFunctionData());
-        if (!moduleRecord.hasTLA()) {
-            assert capability == null;
-            return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, moduleRecord));
-        } else {
-            assert capability != null;
-            return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, moduleRecord, capability));
-        }
-    }
-
-    private static boolean occursExactlyOnce(JSModuleRecord moduleRecord, Collection<JSModuleRecord> stack) {
+    private static <S extends AbstractModuleRecord, T extends S> boolean occursExactlyOnce(T moduleRecord, Collection<S> stack) {
         return stack.stream().filter(moduleRecord::equals).count() == 1;
     }
 

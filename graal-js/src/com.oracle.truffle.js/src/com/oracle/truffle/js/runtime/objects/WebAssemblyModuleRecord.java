@@ -61,7 +61,7 @@ public class WebAssemblyModuleRecord extends AbstractModuleRecord {
     private final JSWebAssemblyModuleObject webAssemblyModule;
 
     public WebAssemblyModuleRecord(JSContext context, Source source, JSWebAssemblyModuleObject webAssemblyModule) {
-        super(context, source);
+        super(context, source, null);
         this.webAssemblyModule = webAssemblyModule;
     }
 

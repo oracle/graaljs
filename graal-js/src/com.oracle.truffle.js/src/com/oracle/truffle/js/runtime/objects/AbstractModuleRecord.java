@@ -45,6 +45,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -59,22 +61,45 @@ import com.oracle.truffle.js.runtime.util.Pair;
  */
 public abstract class AbstractModuleRecord extends ScriptOrModule {
 
-    public AbstractModuleRecord(JSContext context, Source source) {
+    /** Lazily initialized frame ({@code [[Environment]]}). */
+    private MaterializedFrame environment;
+
+    // [HostDefined]
+    private Object hostDefined;
+
+    protected AbstractModuleRecord(JSContext context, Source source, Object hostDefined) {
         super(context, source);
+        this.hostDefined = hostDefined;
     }
 
-    public abstract JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefined);
+    /**
+     * Prepares the module for linking by recursively loading all its dependencies.
+     */
+    public abstract JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefinedArg);
 
-    public final void loadRequestedModulesSync(JSRealm realm, Object hostDefined) {
-        JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefined);
+    public final void loadRequestedModulesSync(JSRealm realm, Object hostDefinedArg) {
+        JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefinedArg);
         assert !JSPromise.isPending(loadPromise);
         if (JSPromise.isRejected(loadPromise)) {
             throw JSRuntime.getException(JSPromise.getPromiseResult(loadPromise));
         }
     }
 
+    /**
+     * Prepare the module for evaluation by transitively resolving all module dependencies and
+     * creating a Module Environment Record.
+     *
+     * LoadRequestedModules must have completed successfully prior to invoking this method.
+     */
     public abstract void link(JSRealm realm);
 
+    /**
+     * Returns a promise for the evaluation of this module and its dependencies, resolving on
+     * successful evaluation or if it has already been evaluated successfully, and rejecting for an
+     * evaluation error or if it has already been evaluated unsuccessfully.
+     *
+     * Link must have completed successfully prior to invoking this method.
+     */
     public abstract Object evaluate(JSRealm realm);
 
     @TruffleBoundary
@@ -95,6 +120,30 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
         return Undefined.instance;
     }
 
+    public JSDynamicObject getModuleNamespaceOrNull() {
+        return null;
+    }
+
     public abstract Object getModuleSource();
 
+    public final MaterializedFrame getEnvironment() {
+        return environment;
+    }
+
+    public final void setEnvironment(MaterializedFrame environment) {
+        assert this.environment == null;
+        this.environment = environment;
+    }
+
+    protected final void clearEnvironment() {
+        this.environment = null;
+    }
+
+    public FrameDescriptor getFrameDescriptor() {
+        return environment.getFrameDescriptor();
+    }
+
+    public final Object getHostDefined() {
+        return this.hostDefined;
+    }
 }

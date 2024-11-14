@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -153,7 +154,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     public static Object getBindingValue(ExportResolution binding) {
         TruffleString bindingName = binding.getBindingName();
-        JSModuleRecord targetModule = binding.getModule();
+        AbstractModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();
         if (targetEnv == null) {
             // Module has not been linked yet.
