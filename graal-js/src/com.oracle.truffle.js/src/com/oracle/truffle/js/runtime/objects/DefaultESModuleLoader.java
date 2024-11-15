@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.objects;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystemException;
 import java.nio.file.NoSuchFileException;
@@ -57,6 +58,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -95,10 +97,12 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     @Override
     public AbstractModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
+        URI refURI = null;
         String refPath = null;
         String refPathOrName = null;
         if (referrer != null) {
             Source referrerSource = referrer.getSource();
+            refURI = isNonFileURLSource(referrerSource) ? referrerSource.getURI() : null;
             refPath = referrerSource.getPath();
             refPathOrName = refPath != null ? refPath : referrerSource.getName();
         }
@@ -115,7 +119,15 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 canonicalPath = maybeCustomPath.toJavaStringUncached();
                 moduleFile = getCanonicalFileIfExists(env.getPublicTruffleFile(canonicalPath), env);
             } else {
-                if (refPath == null) {
+                if (refURI != null || (maybeUri != null && !isFileURI(maybeUri))) {
+                    URI moduleURI;
+                    if (maybeUri != null) {
+                        moduleURI = maybeUri;
+                    } else {
+                        moduleURI = refURI.resolve(specifier);
+                    }
+                    return loadModuleFromURL(referrer, moduleRequest, moduleURI);
+                } else if (refPath == null) {
                     if (maybeUri != null) {
                         moduleFile = env.getPublicTruffleFile(maybeUri);
                     } else {
@@ -136,7 +148,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 }
                 canonicalPath = null;
             }
-            return loadModuleFromUrl(referrer, moduleRequest, moduleFile, canonicalPath);
+            return loadModuleFromFile(referrer, moduleRequest, moduleFile, canonicalPath);
         } catch (FileSystemException fsex) {
             throw createErrorFromFileSystemException(fsex, refPathOrName);
         } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
@@ -196,7 +208,45 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         return !(specifier.startsWith(SLASH) || specifier.startsWith(DOT_SLASH) || specifier.startsWith(DOT_DOT_SLASH));
     }
 
-    protected AbstractModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile moduleFile, String maybeCanonicalPath) throws IOException {
+    private static boolean isFileURI(URI uri) {
+        return uri.isAbsolute() && "file".equals(uri.getScheme());
+    }
+
+    private static boolean isNonFileURLSource(Source source) {
+        return source.getURL() != null && !"file".equals(source.getURL().getProtocol());
+    }
+
+    protected AbstractModuleRecord loadModuleFromURL(ScriptOrModule referrer, ModuleRequest moduleRequest, URI moduleURI) throws IOException {
+        assert !isFileURI(moduleURI) : moduleURI;
+        String canonicalPath = moduleURI.toString();
+        AbstractModuleRecord existingModule = moduleMap.get(canonicalPath);
+        if (existingModule != null) {
+            return existingModule;
+        }
+
+        // Try loading through the custom file system first, if any.
+        TruffleLanguage.Env env = realm.getEnv();
+        if (env.isFileIOAllowed()) {
+            try {
+                TruffleFile moduleFile = env.getPublicTruffleFile(moduleURI);
+                return loadModuleFromFile(referrer, moduleRequest, moduleFile, canonicalPath);
+            } catch (IllegalArgumentException | UnsupportedOperationException e) {
+                // File system does not support this URI scheme.
+            }
+        }
+
+        if (!env.isSocketIOAllowed()) {
+            throw new AccessDeniedException(canonicalPath, null, "Socket IO is not allowed");
+        }
+        URL url = moduleURI.toURL();
+        String mimeType = findMimeType(url);
+        String language = findLanguage(mimeType);
+
+        Source source = Source.newBuilder(language, url).mimeType(mimeType).build();
+        return loadModuleFromSource(referrer, moduleRequest, source, mimeType, canonicalPath);
+    }
+
+    protected AbstractModuleRecord loadModuleFromFile(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile moduleFile, String maybeCanonicalPath) throws IOException {
         TruffleFile canonicalFile;
         String canonicalPath;
         TruffleLanguage.Env env = realm.getEnv();
@@ -221,6 +271,10 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         String language = findLanguage(mimeType);
 
         Source source = Source.newBuilder(language, canonicalFile).name(Strings.toJavaString(moduleRequest.specifier())).mimeType(mimeType).build();
+        return loadModuleFromSource(referrer, moduleRequest, source, mimeType, canonicalPath);
+    }
+
+    private AbstractModuleRecord loadModuleFromSource(ScriptOrModule referrer, ModuleRequest moduleRequest, Source source, String mimeType, String canonicalPath) {
         Map<TruffleString, TruffleString> attributes = moduleRequest.attributes();
         TruffleString assertedType = attributes.get(JSContext.getTypeImportAttribute());
         if (!doesModuleTypeMatchAssertionType(assertedType, mimeType)) {
@@ -267,6 +321,24 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
         if (foundMimeType == null) {
             foundMimeType = findMimeTypeFromExtension(moduleFile.getName());
+        }
+        return filterSupportedMimeType(foundMimeType, defaultMimeType);
+    }
+
+    private String findMimeType(URL moduleUrl) {
+        final String defaultMimeType = JavaScriptLanguage.MODULE_MIME_TYPE;
+        if (moduleUrl == null) {
+            return defaultMimeType;
+        }
+        String foundMimeType;
+        try {
+            // Source.findMimeType may return null.
+            foundMimeType = Source.findMimeType(moduleUrl);
+        } catch (IOException | SecurityException e) {
+            foundMimeType = null;
+        }
+        if (foundMimeType == null && moduleUrl.getPath() != null) {
+            foundMimeType = findMimeTypeFromExtension(moduleUrl.getPath());
         }
         return filterSupportedMimeType(foundMimeType, defaultMimeType);
     }
@@ -321,6 +393,9 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     private String getCanonicalPath(Source source) {
+        if (isNonFileURLSource(source)) {
+            return source.getURI().toString();
+        }
         String path = source.getPath();
         String canonicalPath;
         if (path == null) {
