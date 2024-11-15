@@ -68,7 +68,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.ProviderNotFoundException;
 import java.nio.file.attribute.FileAttribute;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -104,12 +106,17 @@ public class ESModuleTest {
 
     @Parameter(value = 0) public boolean url;
 
-    private final List<File> filesToDelete = new ArrayList<>();
+    private Path tempDir;
+    private final Deque<Path> filesToDelete = new ArrayDeque<>();
 
     @After
-    public void tearDown() {
+    public void tearDown() throws IOException {
         deleteFiles(filesToDelete);
         filesToDelete.clear();
+    }
+
+    private void deleteAfter(Path absPath) {
+        filesToDelete.addFirst(absPath);
     }
 
     private static void commonCheck(Value v) {
@@ -188,15 +195,11 @@ public class ESModuleTest {
         List<Source> moduleSources = new ArrayList<>();
         for (String moduleFileResource : moduleFileResources) {
             String moduleName = stripToLastSlash(moduleFileResource);
-            String[] moduleNameBaseAndExtension = baseAndExtension(moduleName);
-            String moduleNameBase = moduleNameBaseAndExtension[0];
-            String moduleNameExtension = moduleNameBaseAndExtension[1];
-
             Source moduleSource;
             if (url) {
                 moduleSource = sourceFromResourceURL(moduleFileResource);
             } else {
-                File moduleFile = createTempFileFromResource(moduleFileResource, moduleNameBase, moduleNameExtension, Map.of());
+                File moduleFile = createTempFileFromResource(moduleFileResource, Map.of());
                 moduleFiles.add(moduleFile);
                 moduleSource = sourceFromFile(moduleFile);
             }
@@ -218,16 +221,11 @@ public class ESModuleTest {
             }
         }
 
-        String mainFileName = stripToLastSlash(mainFileResource);
-        String[] mainFileNameBaseAndExtension = baseAndExtension(mainFileName);
-        String mainFileNameBase = mainFileNameBaseAndExtension[0];
-        String mainFileNameExtension = mainFileNameBaseAndExtension[1];
-
         Source mainSource;
         if (url) {
             mainSource = sourceFromResourceURL(mainFileResource);
         } else {
-            File mainFile = createTempFileFromResource(mainFileResource, mainFileNameBase, mainFileNameExtension, moduleNameReplacements);
+            File mainFile = createTempFileFromResource(mainFileResource, moduleNameReplacements);
             moduleFiles.add(0, mainFile);
             mainSource = sourceFromFile(mainFile);
         }
@@ -235,11 +233,50 @@ public class ESModuleTest {
         return new TestResources(mainSource, moduleSources, moduleFiles);
     }
 
-    private File createTempFileFromResource(String moduleFileResource, String moduleNameBase, String moduleNameExtension, Map<String, String> moduleNameReplacements) throws IOException {
-        File moduleFile = File.createTempFile(moduleNameBase, moduleNameExtension);
-        filesToDelete.add(moduleFile);
-        copyResourceToFile(moduleFileResource, moduleFile, moduleNameReplacements);
-        return moduleFile;
+    private Path createTempDirOnce() throws IOException {
+        if (tempDir != null) {
+            return tempDir;
+        }
+        tempDir = Files.createTempDirectory(ESModuleTest.class.getSimpleName());
+        deleteAfter(tempDir);
+        return tempDir;
+    }
+
+    private Path createTempFilePath(String moduleFileResource) throws IOException {
+        Path relPath = Path.of(moduleFileResource);
+        if (relPath.startsWith("resources")) {
+            relPath = relPath.subpath(1, relPath.getNameCount());
+        }
+        Path absPath = createTempDirOnce().resolve(relPath);
+        if (relPath.getNameCount() > 1) {
+            assert absPath.endsWith(relPath);
+            final Path absDir = absPath.getParent();
+            // find first existing parent dir
+            Path parent = absDir;
+            for (int existingParents = relPath.getNameCount() - 1; existingParents > 0; existingParents--) {
+                if (Files.exists(parent)) {
+                    break;
+                } else {
+                    parent = parent.getParent();
+                }
+            }
+            if (parent != null) {
+                // create missing parent directories
+                for (Path dirName : parent.relativize(absDir)) {
+                    parent = parent.resolve(dirName);
+                    Files.createDirectory(parent);
+                    deleteAfter(parent);
+                }
+            }
+        }
+        return absPath;
+    }
+
+    private File createTempFileFromResource(String moduleFileResource, Map<String, String> moduleNameReplacements) throws IOException {
+        Path moduleFile = createTempFilePath(moduleFileResource);
+        deleteAfter(moduleFile);
+        copyResourceToFile(moduleFileResource, moduleFile.toFile(), moduleNameReplacements);
+        return moduleFile.toFile();
     }
 
     private static URL toResourceURL(String moduleFileResource) {
@@ -258,11 +295,12 @@ public class ESModuleTest {
     /**
      * Deletes specified files.
      */
-    private static void deleteFiles(Iterable<File> filesArray) {
+    private static void deleteFiles(Iterable<Path> filesArray) throws IOException {
         if (filesArray != null) {
-            for (File file : filesArray) {
+            for (Path file : filesArray) {
+                assert file.isAbsolute() : file;
                 // noinspection ResultOfMethodCallIgnored
-                file.delete();
+                Files.deleteIfExists(file);
             }
         }
     }
@@ -314,7 +352,7 @@ public class ESModuleTest {
             File mainFileWithMjsExtension = new File(mainFileBaseAndExtension[0] + ".mjs");
             // noinspection ResultOfMethodCallIgnored
             testResources.allFiles.get(0).renameTo(mainFileWithMjsExtension);
-            filesToDelete.add(mainFileWithMjsExtension);
+            deleteAfter(mainFileWithMjsExtension.toPath());
 
             Source mainSource = Source.newBuilder(ID, mainFileWithMjsExtension).build();
             Value v = context.eval(mainSource);
@@ -529,6 +567,21 @@ public class ESModuleTest {
             Value result = sqrtPlusOne.execute(121);
             Assert.assertTrue(result.fitsInInt());
             Assert.assertEquals(14, result.asInt());
+        }
+    }
+
+    /**
+     * Test relative paths in imports.
+     */
+    @Test
+    public void testImportRelativePath() throws IOException {
+        try (Context context = createContextWithIOAccess()) {
+            var src = prepareTestFileAndModules(
+                            "resources/folder/subfolder.js/up.js",
+                            "resources/diagmodule.js");
+            Source mainSource = src.mainSource();
+            Value v = context.eval(mainSource);
+            commonCheck(v);
         }
     }
 
