@@ -124,7 +124,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                     if (maybeUri != null) {
                         moduleURI = maybeUri;
                     } else {
-                        moduleURI = refURI.resolve(specifier);
+                        moduleURI = resolveSibling(refURI, specifier);
                     }
                     return loadModuleFromURL(referrer, moduleRequest, moduleURI);
                 } else if (refPath == null) {
@@ -438,5 +438,24 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             }
         }
         return file;
+    }
+
+    /**
+     * Like {@link URI#resolve(String)}, but also works for "jar" URLs.
+     */
+    private static URI resolveSibling(URI refURI, String specifier) {
+        URI uri = URI.create(specifier);
+        if (uri.isAbsolute()) {
+            return uri;
+        }
+        // URI.resolve does not work for opaque paths.
+        if (refURI.isOpaque() && "jar".equals(refURI.getScheme())) {
+            String schemeSpecificPart = refURI.getRawSchemeSpecificPart();
+            int pathStart = schemeSpecificPart.indexOf("!/") + 1;
+            String newPath = URI.create(schemeSpecificPart.substring(pathStart)).resolve(uri).getRawPath();
+            assert newPath.startsWith("/") : newPath;
+            return URI.create(refURI.getScheme() + ":" + schemeSpecificPart.substring(0, pathStart) + newPath);
+        }
+        return refURI.resolve(uri);
     }
 }
