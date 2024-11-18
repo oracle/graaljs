@@ -6,7 +6,14 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   // Used to run fewer jobs
   local useOverlay = true,
 
-  local overlay = '727b5a6a3998f9deeaf65cecce392841fb670610',
+  overlay_imports: {
+    // Values are provided by the CI overlay; do not add internal endpoints here.
+    RUBYGEMS_MIRROR: "",
+    STAGING_DEPLOY_CMD: [["echo", "1"]],
+    WEBSITE_GIT: "",
+  },
+
+  local overlay = '3cae10abb97df48de23cee121e5689188d4550f7',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
@@ -21,7 +28,90 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     "tier4": "post-merge",
   },
 
-  builds: graalJs.builds + graalNodeJs.builds,
+  local jsWebsiteBuild = {
+    name: "js-website-build",
+    targets: ["tier1"],
+    guard: {
+      includes: ["docs/site/**"],
+    },
+    timelimit: "20:00",
+    capabilities: ["linux", "amd64"],
+    docker: {
+      image: "buildslave_ol7",
+      mount_modules: true,
+    },
+    packages: {
+      ruby: "==3.2.2",
+      libyaml: "==0.2.5",
+      mx: "7.34.1",
+      python3: "==3.8.10",
+    },
+    environment: {
+      JEKYLL_ENV: "production",
+      BUNDLE_PATH: "$PWD/../bundle-path",
+      GEM_HOME: "$PWD/../gem-home",
+      CI: "true",
+    },
+    run: [
+      ["mkdir", "-p", "$GEM_HOME"],
+      ["export", "PATH=$GEM_HOME/bin:$PATH"],
+      ["cd", "docs/site"],
+      ["gem", "install", "--no-document", "--source", $.overlay_imports.RUBYGEMS_MIRROR, "bundler", "-v", "2.5.9"],
+      ["bundle", "config", "set", "mirror.https://rubygems.org", $.overlay_imports.RUBYGEMS_MIRROR],
+      ["bundle", "install"],
+      ["bundle", "exec", "jekyll", "build"],
+    ],
+    publishArtifacts: [
+      {
+        name: "js-website-build-artifact",
+        dir: "docs/site/_site",
+        patterns: ["*"],
+      },
+    ],
+  },
+
+  local jsWebsiteDeployStaging = {
+    name: "js-website-deploy-staging",
+    targets: ["deploy"],
+    capabilities: ["linux", "amd64"],
+    requireArtifacts: [
+      {
+        name: "js-website-build-artifact",
+        dir: "_site",
+      },
+    ],
+    run+: if std.length($.overlay_imports.STAGING_DEPLOY_CMD) == 0 then [] else [$.overlay_imports.STAGING_DEPLOY_CMD],
+  },
+
+  local jsWebsiteDeployProduction = {
+    name: "js-website-deploy-production",
+    targets: ["deploy"],
+    capabilities: ["linux", "amd64"],
+    packages: {
+      mx: "7.34.1",
+      python3: "==3.8.10",
+    },
+    requireArtifacts: [
+      {
+        name: "js-website-build-artifact",
+        dir: "_site",
+      },
+    ],
+    run: [
+      ["git", "clone", $.overlay_imports.WEBSITE_GIT],
+      ["rsync", "-a", "--delete", "_site/", "graalvm-website/javascript"],
+      ["git", "-C", "graalvm-website", "add", "."],
+      ["git", "-C", "graalvm-website", "status"],
+      ["git", "-C", "graalvm-website", "-c", "user.name=Web Publisher", "-c", "user.email=graalvm-dev@oss.oracle.com", "commit", "-m", "Update GraalJS website"],
+      ["git", "-C", "graalvm-website", "push", "origin", "HEAD"],
+      ["git", "branch", "--force", "--no-track", "published"],
+      ["git", "push", "--force", "origin", "published"],
+    ],
+  },
+
+  websiteBuilds: [jsWebsiteBuild, jsWebsiteDeployStaging, jsWebsiteDeployProduction],
+
+  builds: graalJs.builds + graalNodeJs.builds + self.websiteBuilds,
 
   // Set this flag to false to switch off the use of artifacts (pipelined builds).
   useArtifacts:: useOverlay,

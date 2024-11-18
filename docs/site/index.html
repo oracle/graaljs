@@ -1,0 +1,336 @@
+---
+layout: base
+permalink: /
+---
+<!-- Showcase row -->
+<section class="content-section langpage__screenback">
+  <div class="wrapper">
+    <div class="langpage__homescreen">
+      <div class="container">
+        <h2 class="langpage__title">GraalJS</h2>
+        <div class="langpage__subtitle">
+          <h5>High-performance embeddable JavaScript runtime for Java</h5>
+        </div>
+        <div class="langpage__buttons">
+          <a href="#getting-started" class="btn btn-primary lang-start">Quick Start</a>
+          <a href='{{ "/docs/" | relative_url }}' class="btn btn-primary lang-start">Documentation</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Benefits -->
+<section class="content-section">
+  <div class="wrapper">
+    <div class="langpage__benefits">
+      <div class="container">
+        <h3 class="langpage__title-02">Benefits</h3>
+        <div class="langpage__benefits-row">
+          <div class="langpage__benefits-card">
+            <div class="langpage__benefits-icon">
+              <img src='{{ "/assets/img/icon-set-general/coffee-beans-icon.svg" | relative_url }}' alt="coffee beans icon">
+            </div>
+            <div class="langpage__benefits-title">
+              <h4>JavaScript for Java
+              </h4>
+            </div>
+            <div class="langpage__benefits-text">
+              <h5>Use JavaScript modules and scripts directly in Java
+              </h5>
+            </div>
+          </div>
+          <div class="langpage__benefits-card">
+            <div class="langpage__benefits-icon">
+              <img src='{{ "/assets/img/icon-set-general/compatibility.svg" | relative_url }}' alt="compatibility icon">
+            </div>
+            <div class="langpage__benefits-title">
+              <h4>ECMAScript Compliant</h4>
+            </div>
+            <div class="langpage__benefits-text">
+              <h5>Fully implements the <a href="https://262.ecma-international.org/17.0/index.html">ECMAScript 2026 Language Specification</a>
+              </h5>
+            </div>
+          </div>
+          <div class="langpage__benefits-card">
+            <div class="langpage__benefits-icon">
+              <img src='{{ "/assets/img/icon-set-general/speed-icon.svg" | relative_url }}' alt="performance icon">
+            </div>
+            <div class="langpage__benefits-title">
+              <h4>Fastest JavaScript on the JVM</h4>
+            </div>
+            <div class="langpage__benefits-text">
+              <h5><a href="https://www.graalvm.org/latest/reference-manual/java/compiler/">Graal JIT</a> compiles JavaScript for native code speed</h5>
+            </div>
+          </div>
+        </div>
+        <div class="langpage__benefits-row">
+          <div class="langpage__benefits-card">
+            <div class="langpage__benefits-icon">
+              <img src='{{ "/assets/img/icon-set-general/upgrade.svg" | relative_url }}' alt="upgrade up arrow icon">
+            </div>
+            <div class="langpage__benefits-title">
+              <h4>Modern JavaScript for the JVM</h4>
+            </div>
+            <div class="langpage__benefits-text">
+              <h5>An upgrade path for Nashorn and Rhino applications to ECMAScript 2025</h5>
+            </div>
+          </div>
+          <div class="langpage__benefits-card">
+            <div class="langpage__benefits-icon">
+              <img src='{{ "/assets/img/icon-set-general/home-code.svg" | relative_url }}' alt="code icon">
+            </div>
+            <div class="langpage__benefits-title">
+              <h4>Script Java with JavaScript</h4>
+            </div>
+            <div class="langpage__benefits-text">
+              <h5>Extend applications with JavaScript that interacts with Java classes and frameworks
+              </h5>
+            </div>
+          </div>
+          <div class="langpage__benefits-card">
+            <div class="langpage__benefits-icon">
+              <img src='{{ "/assets/img/icon-set-general/wasm-integration-icon.svg" | relative_url }}' alt="wasm integration icon">
+            </div>
+            <div class="langpage__benefits-title">
+              <h4>WebAssembly Integration</h4>
+            </div>
+            <div class="langpage__benefits-text">
+              <h5>Use WebAssembly modules through the JavaScript WebAssembly API</h5>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Get Started -->
+<section class="content-section">
+  <div class="wrapper">
+    <div class="languages__example truffles__example">
+      <div class="container">
+        <h3 id="getting-started" class="languages__title-section truffles__title-section">How to Get Started</h3>
+        <div class="languages__example-card truffles__example-card">
+          <div class="languages__example-box truffles__example-box">
+            <div class="example-logo-box">
+              <img src='{{"/assets/img/logos/maven-logo.svg"| relative_url }}' class="languages__example-logo truffles__example-logo">
+            </div>
+            <div class="languages__snippet truffles__snippet">
+              <div class="language__example-subtitle truffle__example-subtitle">
+                <h4>1. Add GraalJS as a dependency from <a href="https://central.sonatype.com/artifact/org.graalvm.polyglot/js" target="_blank">Maven Central</a></h4>
+              </div>
+              <pre><code class="xml">
+  &lt;dependency&gt;
+    &lt;groupId&gt;org.graalvm.polyglot&lt;/groupId&gt;
+    &lt;artifactId&gt;polyglot&lt;/artifactId&gt;
+    &lt;version&gt;25.0.4.1&lt;/version&gt;
+  &lt;/dependency&gt;
+  &lt;dependency&gt;
+    &lt;groupId>org.graalvm.polyglot&lt;/groupId&gt;
+    &lt;artifactId&gt;js&lt;/artifactId&gt;
+    &lt;version>25.0.4.1&lt;/version&gt;
+    &lt;type&gt;pom&lt;/type&gt;
+  &lt;/dependency&gt;
+                </code></pre>
+            </div>
+          </div>
+          <div class="languages__example-box truffles__example-box">
+            <div class="example-logo-box">
+              <img src='{{"/assets/img/logos/gradle-logo.svg"| relative_url }}' class="languages__example-logo truffles__example-logo">
+            </div>
+            <div class="languages__snippet truffles__snippet">
+              <div class="language__text-secondary truffle__text-secondary">
+                <h4>or
+                </h4>
+              </div>
+              <pre><code class="groovy">
+  implementation("org.graalvm.polyglot:polyglot:25.0.4.1")
+  implementation("org.graalvm.polyglot:js:25.0.4.1")
+                </code></pre>
+            </div>
+          </div>
+          <div class="languages__example-box truffles__example-box">
+            <div class="example-logo-box">
+              <img src='{{"/assets/img/logos/java-logo.svg"| relative_url }}' class="languages__example-logo truffles__example-logo">
+            </div>
+            <div class="languages__snippet truffles__snippet">
+              <div class="language__example-subtitle truffle__example-subtitle">
+                <h4>2. Embed JavaScript code in Java</h4>
+              </div>
+              <pre><code class="java">
+  import org.graalvm.polyglot.Context;
+
+  try (Context context = Context.create()) {
+      context.eval("js", "console.log('Hello from GraalJS!')");
+  }
+                </code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+</section>
+<!-- GraalJS Starter Guide -->
+<section class="content-section">
+  <div class="wrapper">
+    <div class="langstarter">
+      <div class="container">
+        <h3 class="langstarter__title"><a href="https://github.com/graalvm/graal-languages-demos/blob/main/graaljs/graaljs-starter/" target="_blank">GraalJS Quick Start</a></h3>
+        <div class="langstarter__descrip">
+          <h5>Jump right in with <a href="https://github.com/graalvm/graal-languages-demos/tree/main/graaljs/graaljs-starter" target="_blank">this starter project</a></h5>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Use Cases -->
+<section class="content-section">
+  <div class="wrapper">
+    <div class="langcases">
+      <div class="container">
+        <h3 class="langpage__title-02">Use Cases</h3>
+        <div class="langcases-row">
+          <div class="langcases__card">
+            <div class="langcases__section">
+              <div class="langcases__title">
+                <h4>Micronaut’s React SSR: boosting performance with GraalJS</h4>
+              </div>
+              <div class="langcases__subtitle">
+                <h5>Micronaut’s React SSR runs JavaScript with high performance using GraalJS</h5>
+              </div>
+              <div class="langcases__link langcases__link-bot">
+                <a href="https://micronaut-projects.github.io/micronaut-views/latest/guide/#react" target="_blank">Read More</a>
+              </div>
+            </div>
+          </div>
+          <div class="langcases__card">
+            <div class="langcases__card-row">
+              <div class="langcases__section">
+                <div class="langcases__title">
+                  <h4>GraalJS-powered execution engine for the HTTP Client in IntelliJ</h4>
+                </div>
+                <div class="langcases__subtitle">
+                  <h5>IntelliJ IDEA upgraded the JavaScript execution engine used in the HTTP Client to GraalJS</h5>
+                </div>
+                <div class="langcases__link langcases__link-bot">
+                  <a href="https://blog.jetbrains.com/idea/2024/06/intellij-idea-2024-2-eap-5/#graaljs-as-the-execution-engine-for-the-http-client" target="_blank">Read More</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="langcases-row">
+          <div class="langcases__card">
+            <div>
+              <div class="langcases__section">
+                <div class="langcases__title">
+                  <h4>High-performance server-side rendering on the JVM</h4>
+                </div>
+                <div class="langcases__subtitle">
+                  <h5>High-performance server-side rendering for React.js and other client frameworks</h5>
+                </div>
+                <div class="langcases__link langcases__link-bot">
+                  <a href="https://medium.com/graalvm/improve-react-js-server-side-rendering-by-150-with-graalvm-58a06ccb45df"
+                    target="_blank">Read More</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="langcases__card">
+            <div class="langcases__card-row">
+              <div class="langcases__section">
+                <div class="langcases__title">
+                  <h4>NetSuite leverages GraalJS for its SuiteScript extension language</h4>
+                </div>
+                <div class="langcases__subtitle">
+                  <h5>NetSuite chose GraalJS as their JavaScript runtime because of its support for the latest ECMAScript standards and enhanced performance</h5>
+                </div>
+                <div class="langcases__link langcases__link-bot">
+                  <a href="https://blogs.oracle.com/graal/oracle-netsuite-on-graalvm"
+                    target="_blank">Read More</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% comment %}
+<!-- Benchmarks -->
+<section class="content-section">
+  <div class="wrapper">
+    <div class="langperform">
+      <div class="container">
+        <h3 class="langpage__title-02">High Performance</h3>
+        <div class="langperform__text">
+          <h5>GraalVM Community, GraalVM Enterprise, and V8 Benchmarks Comparison</h5>
+        </div>
+        <div>
+          <img src='{{ "/assets/img/javascript/js-performance-chart.svg" | relative_url }}' alt="JavaScript benchmarking">
+        </diV>
+      </div>
+    </div>
+  </div>
+</section>
+{% endcomment %}
+<!-- Quotation -->
+<section class="content-section">
+  <div class="wrapper">
+    <div class="langquote">
+      <div class="container">
+        <img src='{{ "/assets/img/icon-set-general/quote-icon.svg" | relative_url }}' class="langquote__icon" alt="box">
+        <div class="langquote__text">
+          <p>There are significant benefits with the GraalJS runtime environment and how that gives
+            SuiteScript developers access to the most current ECMAScript features and syntax out of the box.
+            Aligning SuiteScript with ECMAScript delivers enhanced developer productivity, more maintainable code and
+            ensures ongoing conformance to an evolving standard.</p>
+        </div>
+        <div class="langquote__author">
+          <h5 class="lang-author">Ashwin Krishnamurthy</h5>
+          <h6 class="lang-position">Senior Product Manager, SuiteCloud Platform</h6>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Articles -->
+<section class="content-section">
+  <div class="wrapper">
+    <div class="lang-article">
+      <div class="container">
+        <h3 class="langpage__title-02">Making a Difference in Production</h3>
+        <div class="lang-article__row">
+          <div class="lang-article__card">
+            <a href="https://www.netsuite.com/blog/graal-runtime-technology-improves-netsuite-platform-developer-productivity">
+              <div class="langpage__article-image">
+                <img src='{{ "/assets/img/javascript/article-01.png" | relative_url }}' alt="article image">
+              </div>
+              <div class="langpage__article-title">
+                <h5>Improving NetSuite Platform Developer Productivity</h5>
+              </div>
+            </a>
+          </div>
+          <div class="lang-article__card">
+            <a href="https://medium.com/graalvm/mle-executing-javascript-in-oracle-database-c545feb1a010">
+              <div class="langpage__article-image">
+                <img src='{{ "/assets/img/javascript/article-02.png" | relative_url }}' alt="article image">
+              </div>
+              <div class="langpage__article-title">
+                <h5>Multilingual Engine: Executing JavaScript in Oracle Database</h5>
+              </div>
+            </a>
+          </div>
+          <div class="lang-article__card">
+            <div class="langpage__article-image">
+              <img src='{{ "/assets/img/javascript/article-03.png" | relative_url }}' alt="article image">
+            </div>
+            <div class="langpage__article-title">
+              <h5>Launching React.js in Java with GraalVM</h5>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

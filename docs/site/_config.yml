@@ -1,0 +1,25 @@
+baseurl: "/javascript"
+url: "https://graalvm.org"
+github: "oracle/graaljs"
+
+plugins:
+  - jekyll-relative-links
+  - jekyll-seo-tag
+  - graal-languages-jekyll-theme
+
+theme: graal-languages-jekyll-theme
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: none
+  syntax_highlighter_opts:
+    disable: true
+
+sass:
+  quiet_deps: true
+
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
