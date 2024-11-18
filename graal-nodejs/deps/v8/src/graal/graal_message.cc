@@ -52,30 +52,37 @@ GraalHandleContent* GraalMessage::CopyImpl(jobject java_object_copy) {
 }
 
 v8::Local<v8::StackTrace> GraalMessage::GetStackTrace() const {
-    JNI_CALL(jobject, java_stack_trace, Isolate(), GraalAccessMethod::message_get_stack_trace, Object, GetJavaObject());
-    GraalStackTrace* graal_stack_trace = GraalStackTrace::Allocate(Isolate(), java_stack_trace);
-    return reinterpret_cast<v8::StackTrace*> (graal_stack_trace);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_stack_trace, graal_isolate, GraalAccessMethod::message_get_stack_trace, Object, GetJavaObject());
+    GraalStackTrace* graal_stack_trace = GraalStackTrace::Allocate(graal_isolate, java_stack_trace);
+    v8::StackTrace* v8_stack_trace = reinterpret_cast<v8::StackTrace*> (graal_stack_trace);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::StackTrace>::New(v8_isolate, v8_stack_trace);
 }
 
 v8::Local<v8::Value> GraalMessage::GetScriptResourceName() const {
     GraalIsolate* graal_isolate = Isolate();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     JNI_CALL(jobject, java_resource_name, graal_isolate, GraalAccessMethod::message_get_script_resource_name, Object, GetJavaObject());
     if (java_resource_name == nullptr) {
-        return v8::String::NewFromUtf8(reinterpret_cast<v8::Isolate*> (graal_isolate), "unknown").ToLocalChecked();
+        return v8::String::NewFromUtf8(v8_isolate, "unknown").ToLocalChecked();
     } else {
         GraalString* graal_resource_name = GraalString::Allocate(graal_isolate, java_resource_name);
-        return reinterpret_cast<v8::Value*> (graal_resource_name);
+        v8::Value* v8_resource_name = reinterpret_cast<v8::Value*> (graal_resource_name);
+        return v8::Local<v8::Value>::New(v8_isolate, v8_resource_name);
     }
 }
 
 v8::Local<v8::String> GraalMessage::GetSourceLine() const {
     GraalIsolate* graal_isolate = Isolate();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     JNI_CALL(jobject, java_source_line, graal_isolate, GraalAccessMethod::message_get_source_line, Object, GetJavaObject());
     if (java_source_line == nullptr) {
-        return v8::String::NewFromUtf8(reinterpret_cast<v8::Isolate*> (graal_isolate), "unknown").ToLocalChecked();
+        return v8::String::NewFromUtf8(v8_isolate, "unknown").ToLocalChecked();
     } else {
         GraalString* graal_source_line = GraalString::Allocate(graal_isolate, java_source_line);
-        return reinterpret_cast<v8::String*> (graal_source_line);
+        v8::String* v8_source_line = reinterpret_cast<v8::String*> (graal_source_line);
+        return v8::Local<v8::String>::New(v8_isolate, v8_source_line);
     }
 }
 
@@ -94,9 +101,12 @@ v8::Maybe<int> GraalMessage::GetLineNumber() const {
 }
 
 v8::Local<v8::String> GraalMessage::Get() const {
-    JNI_CALL(jobject, java_message, Isolate(), GraalAccessMethod::message_get, Object, GetJavaObject());
-    GraalString* graal_message = GraalString::Allocate(Isolate(), java_message);
-    return reinterpret_cast<v8::String*> (graal_message);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_message, graal_isolate, GraalAccessMethod::message_get, Object, GetJavaObject());
+    GraalString* graal_message = GraalString::Allocate(graal_isolate, java_message);
+    v8::String* v8_message = reinterpret_cast<v8::String*> (graal_message);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_message);
 }
 
 int GraalMessage::GetStartPosition() const {

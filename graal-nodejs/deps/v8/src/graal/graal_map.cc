@@ -57,7 +57,8 @@ v8::Local<v8::Map> GraalMap::New(v8::Isolate* isolate) {
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_map, graal_isolate, GraalAccessMethod::map_new, Object, java_context);
     GraalMap* graal_map = new GraalMap(graal_isolate, java_map);
-    return reinterpret_cast<v8::Map*> (graal_map);
+    v8::Map* v8_map = reinterpret_cast<v8::Map*> (graal_map);
+    return v8::Local<v8::Map>::New(isolate, v8_map);
 }
 
 v8::MaybeLocal<v8::Map> GraalMap::Set(v8::Local<v8::Context> context, v8::Local<v8::Value> key, v8::Local<v8::Value> value) {
@@ -69,5 +70,7 @@ v8::MaybeLocal<v8::Map> GraalMap::Set(v8::Local<v8::Context> context, v8::Local<
     jobject java_key = graal_key->GetJavaObject();
     jobject java_value = graal_value->GetJavaObject();
     JNI_CALL_VOID(graal_isolate, GraalAccessMethod::map_set, java_map, java_key, java_value);
-    return v8::Local<v8::Map>(reinterpret_cast<v8::Map*> (this));
+    v8::Map* v8_map = reinterpret_cast<v8::Map*> (this);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Map>::New(v8_isolate, v8_map);
 }

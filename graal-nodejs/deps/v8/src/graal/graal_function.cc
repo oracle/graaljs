@@ -66,14 +66,17 @@ jobjectArray GraalFunction::CreateJavaObjectArray(int argc, v8::Local<v8::Value>
 }
 
 v8::Local<v8::Object> GraalFunction::NewInstance(int argc, v8::Local<v8::Value> argv[]) const {
-    JNIEnv* env = Isolate()->GetJNIEnv();
+    GraalIsolate* graal_isolate = Isolate();
+    JNIEnv* env = graal_isolate->GetJNIEnv();
     env->ExceptionClear();
     jobjectArray arguments = CreateJavaObjectArray(argc, argv);
-    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::function_new_instance, Object, GetJavaObject(), arguments);
+    JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_new_instance, Object, GetJavaObject(), arguments);
     env->DeleteLocalRef(arguments);
     EXCEPTION_CHECK(env, v8::Object)
-    GraalValue* graal_value = GraalValue::FromJavaObject(Isolate(), java_object);
-    return reinterpret_cast<v8::Object*> (graal_value);
+    GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object);
+    v8::Object* v8_value = reinterpret_cast<v8::Object*> (graal_value);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Object>::New(v8_isolate, v8_value);
 }
 
 void GraalFunction::SetName(v8::Local<v8::String> name) {
@@ -82,9 +85,12 @@ void GraalFunction::SetName(v8::Local<v8::String> name) {
 }
 
 v8::Local<v8::Value> GraalFunction::GetName() const {
-    JNI_CALL(jobject, java_name, Isolate(), GraalAccessMethod::function_get_name, Object, GetJavaObject());
-    GraalString* graal_name = GraalString::Allocate(Isolate(), java_name);
-    return reinterpret_cast<v8::Value*> (graal_name);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_name, graal_isolate, GraalAccessMethod::function_get_name, Object, GetJavaObject());
+    GraalString* graal_name = GraalString::Allocate(graal_isolate, java_name);
+    v8::Value* v8_name = reinterpret_cast<v8::Value*> (graal_name);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_name);
 }
 
 v8::Local<v8::Value> GraalFunction::Call(v8::Local<v8::Value> recv, int argc, v8::Local<v8::Value> argv[]) {
@@ -93,7 +99,7 @@ v8::Local<v8::Value> GraalFunction::Call(v8::Local<v8::Value> recv, int argc, v8
                 "v8::Function::Call", "Function to be called is a null pointer");
     }
     if (!Isolate()->CheckJSExecutionAllowed()) {
-        return nullptr;
+        return v8::Local<v8::Value>();
     }
     jobject java_receiver = reinterpret_cast<GraalValue*> (*recv)->GetJavaObject();
     jobject java_object;
@@ -282,16 +288,18 @@ jobject GraalFunction::Call(jobject recv, jobjectArray arguments) {
 
 v8::ScriptOrigin GraalFunction::GetScriptOrigin() const {
     GraalIsolate* graal_isolate = Isolate();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     JNI_CALL(jobject, java_resource_name, graal_isolate, GraalAccessMethod::function_resource_name, Object, GetJavaObject());
     GraalValue* resource_name = (java_resource_name == nullptr) ? graal_isolate->GetUndefined() : GraalString::Allocate(graal_isolate, java_resource_name);
+    v8::Value* v8_resource_name = reinterpret_cast<v8::Value*> (resource_name);
     return v8::ScriptOrigin(
-        reinterpret_cast<v8::Isolate*> (graal_isolate),
-        reinterpret_cast<v8::Value*> (resource_name),
+        v8_isolate,
+        v8::Local<v8::Value>::New(v8_isolate, v8_resource_name),
         0, // resource_line_offset
         0, // resource_column_offset
         false, // resource_is_shared_cross_origin
         -1, // script_id
-        reinterpret_cast<v8::Value*> (graal_isolate->GetUndefined()) // source_map_url
+        v8::Undefined(v8_isolate) // source_map_url
     );
 }
 

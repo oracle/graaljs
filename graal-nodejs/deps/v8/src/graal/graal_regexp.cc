@@ -64,7 +64,9 @@ v8::Local<v8::RegExp> GraalRegExp::New(v8::Local<v8::Context> context, v8::Local
     jint java_flags = static_cast<jint> (flags);
     JNI_CALL(jobject, java_regexp, graal_isolate, GraalAccessMethod::regexp_new, Object, java_context, java_pattern, java_flags);
     GraalRegExp* graal_regexp = new GraalRegExp(graal_isolate, java_regexp);
-    return reinterpret_cast<v8::RegExp*> (graal_regexp);
+    v8::RegExp* v8_regexp = reinterpret_cast<v8::RegExp*> (graal_regexp);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::RegExp>::New(v8_isolate, v8_regexp);
 }
 
 v8::Local<v8::String> GraalRegExp::GetSource() const {
@@ -72,7 +74,9 @@ v8::Local<v8::String> GraalRegExp::GetSource() const {
     jobject java_regexp = GetJavaObject();
     JNI_CALL(jobject, java_source, graal_isolate, GraalAccessMethod::regexp_get_source, Object, java_regexp);
     GraalString* graal_source = GraalString::Allocate(graal_isolate, java_source);
-    return reinterpret_cast<v8::String*> (graal_source);
+    v8::String* v8_source = reinterpret_cast<v8::String*> (graal_source);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_source);
 }
 
 v8::RegExp::Flags GraalRegExp::GetFlags() const {

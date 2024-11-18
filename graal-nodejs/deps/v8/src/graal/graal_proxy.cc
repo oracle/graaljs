@@ -63,7 +63,9 @@ v8::Local<v8::Value> GraalProxy::GetTarget() {
     jobject java_proxy = GetJavaObject();
     JNI_CALL(jobject, java_target, graal_isolate, GraalAccessMethod::proxy_get_target, Object, java_proxy);
     GraalValue* graal_target = GraalValue::FromJavaObject(graal_isolate, java_target);
-    return reinterpret_cast<v8::Value*> (graal_target);
+    v8::Value* v8_target = reinterpret_cast<v8::Value*> (graal_target);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_target);
 }
 
 v8::Local<v8::Value> GraalProxy::GetHandler() {
@@ -71,5 +73,7 @@ v8::Local<v8::Value> GraalProxy::GetHandler() {
     jobject java_proxy = GetJavaObject();
     JNI_CALL(jobject, java_handler, graal_isolate, GraalAccessMethod::proxy_get_handler, Object, java_proxy);
     GraalValue* graal_handler = GraalValue::FromJavaObject(graal_isolate, java_handler);
-    return reinterpret_cast<v8::Object*> (graal_handler);
+    v8::Object* v8_handler = reinterpret_cast<v8::Object*> (graal_handler);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_handler);
 }

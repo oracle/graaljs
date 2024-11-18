@@ -66,7 +66,8 @@ v8::Local<v8::Object> GraalObject::New(v8::Isolate* isolate) {
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_object, isolate, GraalAccessMethod::object_new, Object, java_context);
     GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
-    return reinterpret_cast<v8::Object*> (graal_object);
+    v8::Object* v8_object = reinterpret_cast<v8::Object*> (graal_object);
+    return v8::Local<v8::Object>::New(isolate, v8_object);
 }
 
 bool GraalObject::Set(v8::Local<v8::Value> key, v8::Local<v8::Value> value) {
@@ -107,13 +108,16 @@ v8::Local<v8::Value> GraalObject::Get(uint32_t index) {
 }
 
 v8::Local<v8::Value> GraalObject::GetRealNamedProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key) {
+    GraalIsolate* graal_isolate = Isolate();
     jobject java_key = reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
-    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get_real_named_property, Object, GetJavaObject(), java_key);
+    JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::object_get_real_named_property, Object, GetJavaObject(), java_key);
     if (java_object == NULL) {
         return v8::Local<v8::Value>();
     } else {
-        GraalValue* graal_value = GraalObject::FromJavaObject(Isolate(), java_object);
-        return reinterpret_cast<v8::Value*> (graal_value);
+        GraalValue* graal_value = GraalObject::FromJavaObject(graal_isolate, java_object);
+        v8::Value* v8_value = reinterpret_cast<v8::Value*> (graal_value);
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+        return v8::Local<v8::Value>::New(v8_isolate, v8_value);
     }
 }
 
@@ -197,19 +201,11 @@ void GraalObject::SetInternalFieldImpl(int index, GraalHandleContent* handle) {
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_set_internal_field, GetJavaObject(), (jint) index, java_value);
 }
 
-void GraalObject::SetInternalField(int index, v8::Local<v8::Value> value) {
+void GraalObject::SetInternalField(int index, v8::Local<v8::Data> value) {
     SetInternalFieldImpl(index, reinterpret_cast<GraalHandleContent*> (*value));
 }
 
-void GraalObject::SetInternalFieldForNodeCore(int index, v8::Local<v8::Module> value) {
-    SetInternalFieldImpl(index, reinterpret_cast<GraalHandleContent*> (*value));
-}
-
-void GraalObject::SetInternalFieldForNodeCore(int index, v8::Local<v8::UnboundScript> value) {
-    SetInternalFieldImpl(index, reinterpret_cast<GraalHandleContent*> (*value));
-}
-
-v8::Local<v8::Value> GraalObject::SlowGetInternalField(int index) {
+v8::Local<v8::Data> GraalObject::SlowGetInternalField(int index) {
     JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_slow_get_internal_field, Object, GetJavaObject(), (jint) index);
     return HandleCallResult(java_object);
 }
@@ -224,15 +220,21 @@ void* GraalObject::SlowGetAlignedPointerFromInternalField(int index) {
 }
 
 v8::Local<v8::Object> GraalObject::Clone() {
-    JNI_CALL(jobject, java_clone, Isolate(), GraalAccessMethod::object_clone, Object, GetJavaObject());
-    GraalValue* graal_clone = GraalValue::FromJavaObject(Isolate(), java_clone);
-    return reinterpret_cast<v8::Object*> (graal_clone);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_clone, graal_isolate, GraalAccessMethod::object_clone, Object, GetJavaObject());
+    GraalValue* graal_clone = GraalValue::FromJavaObject(graal_isolate, java_clone);
+    v8::Object* v8_clone = reinterpret_cast<v8::Object*> (graal_clone);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Object>::New(v8_isolate, v8_clone);
 }
 
 v8::Local<v8::Value> GraalObject::GetPrototype() {
-    JNI_CALL(jobject, java_prototype, Isolate(), GraalAccessMethod::object_get_prototype, Object, GetJavaObject());
-    GraalValue* graal_prototype = (java_prototype == NULL) ? Isolate()->GetNull() : GraalValue::FromJavaObject(Isolate(), java_prototype);
-    return reinterpret_cast<v8::Object*> (graal_prototype);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_prototype, graal_isolate, GraalAccessMethod::object_get_prototype, Object, GetJavaObject());
+    GraalValue* graal_prototype = (java_prototype == NULL) ? graal_isolate->GetNull() : GraalValue::FromJavaObject(graal_isolate, java_prototype);
+    v8::Object* v8_prototype = reinterpret_cast<v8::Object*> (graal_prototype);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_prototype);
 }
 
 bool GraalObject::SetPrototype(v8::Local<v8::Value> prototype) {
@@ -243,15 +245,21 @@ bool GraalObject::SetPrototype(v8::Local<v8::Value> prototype) {
 }
 
 v8::Local<v8::String> GraalObject::GetConstructorName() {
-    JNI_CALL(jobject, java_name, Isolate(), GraalAccessMethod::object_get_constructor_name, Object, GetJavaObject());
-    GraalString* graal_name = GraalString::Allocate(Isolate(), java_name);
-    return reinterpret_cast<v8::String*> (graal_name);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_name, graal_isolate, GraalAccessMethod::object_get_constructor_name, Object, GetJavaObject());
+    GraalString* graal_name = GraalString::Allocate(graal_isolate, java_name);
+    v8::String* v8_name = reinterpret_cast<v8::String*> (graal_name);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_name);
 }
 
 v8::Local<v8::Array> GraalObject::GetOwnPropertyNames() {
-    JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_own_property_names, Object, GetJavaObject());
-    GraalArray* graal_names = GraalArray::Allocate(Isolate(), java_names);
-    return reinterpret_cast<v8::Array*> (graal_names);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_names, graal_isolate, GraalAccessMethod::object_get_own_property_names, Object, GetJavaObject());
+    GraalArray* graal_names = GraalArray::Allocate(graal_isolate, java_names);
+    v8::Array* v8_names = reinterpret_cast<v8::Array*> (graal_names);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Array>::New(v8_isolate, v8_names);
 }
 
 v8::MaybeLocal<v8::Array> GraalObject::GetPropertyNames(v8::Local<v8::Context> context, v8::KeyCollectionMode mode, v8::PropertyFilter property_filter, v8::IndexFilter index_filter, v8::KeyConversionMode key_conversion) {
@@ -263,25 +271,32 @@ v8::MaybeLocal<v8::Array> GraalObject::GetPropertyNames(v8::Local<v8::Context> c
     jboolean skipSymbols = (property_filter & v8::PropertyFilter::SKIP_SYMBOLS) != 0;
     jboolean skipStrings = (property_filter & v8::PropertyFilter::SKIP_STRINGS) != 0;
     jboolean keepNumbers = key_conversion == v8::KeyConversionMode::kKeepNumbers;
-    JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_property_names, Object, GetJavaObject(),
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_names, graal_isolate, GraalAccessMethod::object_get_property_names, Object, GetJavaObject(),
             ownOnly, enumerableOnly, configurableOnly, writableOnly, skipIndices, skipSymbols, skipStrings, keepNumbers);
-    GraalArray* graal_names = GraalArray::Allocate(Isolate(), java_names);
-    v8::Local<v8::Array> v8_names = reinterpret_cast<v8::Array*> (graal_names);
-    return v8_names;
+    GraalArray* graal_names = GraalArray::Allocate(graal_isolate, java_names);
+    v8::Array* v8_names = reinterpret_cast<v8::Array*> (graal_names);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Array>::New(v8_isolate, v8_names);
 }
 
 v8::Local<v8::Context> GraalObject::CreationContext() {
-    JNI_CALL(jobject, java_context, Isolate(), GraalAccessMethod::object_creation_context, Object, GetJavaObject());
-    GraalContext* graal_context = GraalContext::Allocate(Isolate(), java_context);
-    return reinterpret_cast<v8::Context*> (graal_context);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_context, graal_isolate, GraalAccessMethod::object_creation_context, Object, GetJavaObject());
+    GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
+    v8::Context* v8_context = reinterpret_cast<v8::Context*> (graal_context);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Context>::New(v8_isolate, v8_context);
 }
 
 v8::MaybeLocal<v8::Value> GraalObject::GetPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key) {
+    GraalIsolate* graal_isolate = Isolate();
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
-    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get_private, Object, GetJavaObject(), java_key);
-    GraalValue* graal_value = GraalObject::FromJavaObject(Isolate(), java_object);
-    v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
-    return v8_value;
+    JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::object_get_private, Object, GetJavaObject(), java_key);
+    GraalValue* graal_value = GraalObject::FromJavaObject(graal_isolate, java_object);
+    v8::Value* v8_value = reinterpret_cast<v8::Value*> (graal_value);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_value);
 }
 
 v8::Maybe<bool> GraalObject::SetPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key, v8::Local<v8::Value> value) {
@@ -304,11 +319,13 @@ v8::Maybe<bool> GraalObject::DeletePrivate(v8::Local<v8::Context> context, v8::L
 }
 
 v8::MaybeLocal<v8::Value> GraalObject::GetOwnPropertyDescriptor(v8::Local<v8::Context> context, v8::Local<v8::Name> key) {
+    GraalIsolate* graal_isolate = Isolate();
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
-    JNI_CALL(jobject, result, Isolate(), GraalAccessMethod::object_get_own_property_descriptor, Object, GetJavaObject(), java_key);
-    GraalValue* graal_result = GraalValue::FromJavaObject(Isolate(), result);
-    v8::Local<v8::Value> v8_result = reinterpret_cast<v8::Value*> (graal_result);
-    return v8_result;
+    JNI_CALL(jobject, result, graal_isolate, GraalAccessMethod::object_get_own_property_descriptor, Object, GetJavaObject(), java_key);
+    GraalValue* graal_result = GraalValue::FromJavaObject(graal_isolate, result);
+    v8::Value* v8_result = reinterpret_cast<v8::Value*> (graal_result);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_result);
 }
 
 v8::Maybe<bool> GraalObject::CreateDataProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::Local<v8::Value> value) {
@@ -350,8 +367,9 @@ v8::MaybeLocal<v8::Array> GraalObject::PreviewEntries(bool* is_key_value) {
         graal_isolate->ResetSharedBuffer();
         *is_key_value = graal_isolate->ReadInt32FromSharedBuffer() != 0;
         GraalValue* graal_entries = GraalValue::FromJavaObject(graal_isolate, java_entries);
-        v8::Local<v8::Array> v8_entries = reinterpret_cast<v8::Array*> (graal_entries);
-        return v8_entries;
+        v8::Array* v8_entries = reinterpret_cast<v8::Array*> (graal_entries);
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+        return v8::Local<v8::Array>::New(v8_isolate, v8_entries);
     }
 }
 

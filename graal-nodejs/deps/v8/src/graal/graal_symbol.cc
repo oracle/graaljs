@@ -55,7 +55,8 @@ v8::Local<v8::Symbol> GraalSymbol::New(v8::Isolate* isolate, v8::Local<v8::Strin
     jobject java_name = graal_name->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_new, Object, java_name);
     GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
-    return reinterpret_cast<v8::Symbol*> (graal_symbol);
+    v8::Symbol* v8_symbol = reinterpret_cast<v8::Symbol*> (graal_symbol);
+    return v8::Local<v8::Symbol>::New(isolate, v8_symbol);
 }
 
 v8::Local<v8::Private> GraalSymbol::NewPrivate(v8::Isolate* isolate, v8::Local<v8::String> description) {
@@ -64,7 +65,8 @@ v8::Local<v8::Private> GraalSymbol::NewPrivate(v8::Isolate* isolate, v8::Local<v
     jobject java_description = graal_description->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_private_new, Object, java_description);
     GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
-    return reinterpret_cast<v8::Private*> (graal_symbol);
+    v8::Private* v8_symbol = reinterpret_cast<v8::Private*> (graal_symbol);
+    return v8::Local<v8::Private>::New(isolate, v8_symbol);
 }
 
 #define SYMBOL_GETTER(getter, method_id) \
@@ -72,7 +74,9 @@ v8::Local<v8::Symbol> GraalSymbol::getter(v8::Isolate* isolate) { \
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate); \
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::method_id, Object); \
     GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol); \
-    return reinterpret_cast<v8::Symbol*> (graal_symbol); \
+    v8::Symbol* v8_symbol = reinterpret_cast<v8::Symbol*> (graal_symbol); \
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate); \
+    return v8::Local<v8::Symbol>::New(v8_isolate, v8_symbol); \
 }
 
 SYMBOL_GETTER(GetAsyncIterator, symbol_get_async_iterator)
@@ -93,7 +97,8 @@ v8::Local<v8::Symbol> GraalSymbol::For(v8::Isolate* isolate, v8::Local<v8::Strin
     jobject java_description = graal_description->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_for, Object, java_description);
     GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
-    return reinterpret_cast<v8::Symbol*> (graal_symbol);
+    v8::Symbol* v8_symbol = reinterpret_cast<v8::Symbol*> (graal_symbol);
+    return v8::Local<v8::Symbol>::New(isolate, v8_symbol);
 }
 
 v8::Local<v8::Symbol> GraalSymbol::ForApi(v8::Isolate* isolate, v8::Local<v8::String> description) {
@@ -102,7 +107,8 @@ v8::Local<v8::Symbol> GraalSymbol::ForApi(v8::Isolate* isolate, v8::Local<v8::St
     jobject java_description = graal_description->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_for_api, Object, java_description);
     GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
-    return reinterpret_cast<v8::Symbol*> (graal_symbol);
+    v8::Symbol* v8_symbol = reinterpret_cast<v8::Symbol*> (graal_symbol);
+    return v8::Local<v8::Symbol>::New(isolate, v8_symbol);
 }
 
 v8::Local<v8::Private> GraalSymbol::PrivateForApi(v8::Isolate* isolate, v8::Local<v8::String> description) {
@@ -111,7 +117,8 @@ v8::Local<v8::Private> GraalSymbol::PrivateForApi(v8::Isolate* isolate, v8::Loca
     jobject java_description = graal_description->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_private_for_api, Object, java_description);
     GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
-    return reinterpret_cast<v8::Private*> (graal_symbol);
+    v8::Private* v8_symbol = reinterpret_cast<v8::Private*> (graal_symbol);
+    return v8::Local<v8::Private>::New(isolate, v8_symbol);
 }
 
 v8::Local<v8::Value> GraalSymbol::Name() const {
@@ -119,7 +126,9 @@ v8::Local<v8::Value> GraalSymbol::Name() const {
     jobject java_symbol = GetJavaObject();
     JNI_CALL(jobject, java_name, graal_isolate, GraalAccessMethod::symbol_name, Object, java_symbol);
     GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_name);
-    return reinterpret_cast<v8::Value*> (graal_value);
+    v8::Value* v8_value = reinterpret_cast<v8::Value*> (graal_value);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_value);
 }
 
 bool GraalSymbol::IsSymbol() const {

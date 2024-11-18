@@ -55,7 +55,6 @@ public:
             v8::AccessorGetterCallback getter,
             v8::AccessorSetterCallback setter,
             v8::Local<v8::Value> data,
-            v8::AccessControl settings,
             v8::PropertyAttribute attribute);
     void SetHandler(const v8::NamedPropertyHandlerConfiguration& configuration);
     void SetHandler(const v8::IndexedPropertyHandlerConfiguration& configuration);

@@ -58,7 +58,9 @@ v8::Local<v8::Value> GraalPromise::Result() {
     jobject java_promise = GetJavaObject();
     JNI_CALL(jobject, java_result, graal_isolate, GraalAccessMethod::promise_result, Object, java_promise);
     GraalValue* graal_result = GraalValue::FromJavaObject(graal_isolate, java_result);
-    return reinterpret_cast<v8::Value*> (graal_result);
+    v8::Value* v8_result = reinterpret_cast<v8::Value*> (graal_result);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_result);
 }
 
 v8::Promise::PromiseState GraalPromise::State() {
@@ -75,7 +77,8 @@ v8::MaybeLocal<v8::Promise::Resolver> GraalPromise::ResolverNew(v8::Local<v8::Co
     JNI_CALL(jobject, java_resolver, graal_isolate, GraalAccessMethod::promise_resolver_new, Object, java_context);
     GraalPromise* graal_resolver = new GraalPromise(graal_isolate, java_resolver);
     v8::Promise::Resolver* v8_resolver = reinterpret_cast<v8::Promise::Resolver*> (graal_resolver);
-    return v8::Local<v8::Promise::Resolver>(v8_resolver);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Promise::Resolver>::New(v8_isolate, v8_resolver);
 }
 
 v8::Maybe<bool> GraalPromise::ResolverResolve(v8::Promise::Resolver* resolver, v8::Local<v8::Value> value) {
@@ -99,5 +102,6 @@ v8::Maybe<bool> GraalPromise::ResolverReject(v8::Promise::Resolver* resolver, v8
 }
 
 v8::Local<v8::Promise> GraalPromise::ResolverGetPromise(v8::Promise::Resolver* resolver) {
-    return reinterpret_cast<v8::Promise*> (resolver);
+    v8::Promise* v8_promise = reinterpret_cast<v8::Promise*> (resolver);
+    return v8::Local<v8::Promise>::New(v8_promise->GetIsolate(), v8_promise);
 }

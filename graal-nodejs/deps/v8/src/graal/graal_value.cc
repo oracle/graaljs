@@ -378,7 +378,8 @@ double GraalValue::NumberValue() const {
 
 v8::Local<v8::Object> GraalValue::ToObject(v8::Isolate* isolate) const {
     if (IsObject()) {
-        return reinterpret_cast<v8::Object*> (const_cast<GraalValue*> (this));
+        v8::Object* v8_object = reinterpret_cast<v8::Object*> (const_cast<GraalValue*> (this));
+        return v8::Local<v8::Object>::New(isolate, v8_object);
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_context = graal_isolate->CurrentJavaContext();
@@ -387,12 +388,14 @@ v8::Local<v8::Object> GraalValue::ToObject(v8::Isolate* isolate) const {
         return v8::Local<v8::Object>();
     }
     GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
-    return reinterpret_cast<v8::Object*> (graal_object);
+    v8::Object* v8_object = reinterpret_cast<v8::Object*> (graal_object);
+    return v8::Local<v8::Object>::New(isolate, v8_object);
 }
 
 v8::Local<v8::String> GraalValue::ToString(v8::Isolate* isolate) const {
     if (IsString()) {
-        return reinterpret_cast<v8::String*> (const_cast<GraalValue*> (this));
+        v8::String* v8_string = reinterpret_cast<v8::String*> (const_cast<GraalValue*> (this));
+        return v8::Local<v8::String>::New(isolate, v8_string);
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_string, graal_isolate, GraalAccessMethod::value_to_string, Object, GetJavaObject());
@@ -400,17 +403,20 @@ v8::Local<v8::String> GraalValue::ToString(v8::Isolate* isolate) const {
         return v8::Local<v8::String>();
     }
     GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
-    return reinterpret_cast<v8::String*> (graal_string);
+    v8::String* v8_string = reinterpret_cast<v8::String*> (graal_string);
+    return v8::Local<v8::String>::New(isolate, v8_string);
 }
 
 v8::Local<v8::Boolean> GraalValue::ToBoolean(v8::Isolate* isolate) const {
     if (IsBoolean()) {
-        return reinterpret_cast<v8::Boolean*> (const_cast<GraalValue*> (this));
+        v8::Boolean* v8_boolean = reinterpret_cast<v8::Boolean*> (const_cast<GraalValue*> (this));
+        return v8::Local<v8::Boolean>::New(isolate, v8_boolean);
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jboolean, result, graal_isolate, GraalAccessMethod::value_to_boolean, Boolean, GetJavaObject());
     GraalBoolean* graal_boolean = result ? graal_isolate->GetTrue() : graal_isolate->GetFalse();
-    return reinterpret_cast<v8::Boolean*> (graal_boolean);
+    v8::Boolean* v8_boolean = reinterpret_cast<v8::Boolean*> (graal_boolean);
+    return v8::Local<v8::Boolean>::New(isolate, v8_boolean);
 }
 
 v8::Local<v8::Integer> GraalValue::ToInteger(v8::Isolate* isolate) const {
@@ -418,34 +424,40 @@ v8::Local<v8::Integer> GraalValue::ToInteger(v8::Isolate* isolate) const {
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::value_to_integer, Object, GetJavaObject());
     JNI_CALL(double, value_double, isolate, GraalAccessMethod::value_double, Double, java_number);
     GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value_double, java_number);
-    return reinterpret_cast<v8::Integer*> (graal_number);
+    v8::Integer* v8_number = reinterpret_cast<v8::Integer*> (graal_number);
+    return v8::Local<v8::Integer>::New(isolate, v8_number);
 }
 
 v8::Local<v8::Int32> GraalValue::ToInt32(v8::Isolate* isolate) const {
     if (IsInt32()) {
-        return reinterpret_cast<v8::Int32*> (const_cast<GraalValue*> (this));
+        v8::Int32* v8_int32 = reinterpret_cast<v8::Int32*> (const_cast<GraalValue*> (this));
+        return v8::Local<v8::Int32>::New(isolate, v8_int32);
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::value_to_int32, Object, GetJavaObject());
     JNI_CALL(double, value_double, isolate, GraalAccessMethod::value_double, Double, java_number);
     GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value_double, java_number);
-    return reinterpret_cast<v8::Int32*> (graal_number);
+    v8::Int32* v8_int32 = reinterpret_cast<v8::Int32*> (graal_number);
+    return v8::Local<v8::Int32>::New(isolate, v8_int32);
 }
 
 v8::Local<v8::Uint32> GraalValue::ToUint32(v8::Isolate* isolate) const {
     if (IsUint32()) {
-        return reinterpret_cast<v8::Uint32*> (const_cast<GraalValue*> (this));
+        v8::Uint32* v8_uint32 = reinterpret_cast<v8::Uint32*> (const_cast<GraalValue*> (this));
+        return v8::Local<v8::Uint32>::New(isolate, v8_uint32);
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::value_to_uint32, Object, GetJavaObject());
     JNI_CALL(double, value_double, isolate, GraalAccessMethod::value_double, Double, java_number);
     GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value_double, java_number);
-    return reinterpret_cast<v8::Uint32*> (graal_number);
+    v8::Uint32* v8_uint32 = reinterpret_cast<v8::Uint32*> (graal_number);
+    return v8::Local<v8::Uint32>::New(isolate, v8_uint32);
 }
 
 v8::Local<v8::Number> GraalValue::ToNumber(v8::Isolate* isolate) const {
     if (IsNumber()) {
-        return reinterpret_cast<v8::Number*> (const_cast<GraalValue*> (this));
+        v8::Number* v8_number = reinterpret_cast<v8::Number*> (const_cast<GraalValue*> (this));
+        return v8::Local<v8::Number>::New(isolate, v8_number);
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::value_to_number, Object, GetJavaObject());
@@ -456,7 +468,8 @@ v8::Local<v8::Number> GraalValue::ToNumber(v8::Isolate* isolate) const {
         JNI_CALL(double, value_double, isolate, GraalAccessMethod::value_double, Double, java_number);
         graal_number = GraalNumber::Allocate(graal_isolate, value_double, java_number);
     }
-    return reinterpret_cast<v8::Number*> (graal_number);
+    v8::Number* v8_number = reinterpret_cast<v8::Number*> (graal_number);
+    return v8::Local<v8::Number>::New(isolate, v8_number);
 }
 
 v8::Local<v8::Uint32> GraalValue::ToArrayIndex() const {
@@ -469,7 +482,9 @@ v8::Local<v8::Uint32> GraalValue::ToArrayIndex() const {
         graal_isolate->ResetSharedBuffer();
         graal_index = GraalValue::FromJavaObject(graal_isolate, java_number, 6/*NUMBER_VALUE*/, true);
     }
-    return reinterpret_cast<v8::Uint32*> (graal_index);
+    v8::Uint32* v8_index = reinterpret_cast<v8::Uint32*> (graal_index);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Uint32>::New(v8_isolate, v8_index);
 }
 
 v8::Maybe<bool> GraalValue::Equals(v8::Local<v8::Value> that) const {
@@ -789,13 +804,16 @@ v8::Local<v8::String> GraalValue::TypeOf(v8::Isolate* isolate) {
     jobject java_value = GetJavaObject();
     JNI_CALL(jobject, java_type, graal_isolate, GraalAccessMethod::value_type_of, Object, java_value);
     GraalString* graal_type = GraalString::Allocate(graal_isolate, java_type);
-    return reinterpret_cast<v8::String*> (graal_type);
+    v8::String* v8_type = reinterpret_cast<v8::String*> (graal_type);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_type);
 }
 
 v8::MaybeLocal<v8::String> GraalValue::ToDetailString(v8::Local<v8::Context> context) const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_string, graal_isolate, GraalAccessMethod::value_to_detail_string, Object, GetJavaObject());
     GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
-    v8::Local<v8::String> v8_string = reinterpret_cast<v8::String*> (graal_string);
-    return v8_string;
+    v8::String* v8_string = reinterpret_cast<v8::String*> (graal_string);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_string);
 }

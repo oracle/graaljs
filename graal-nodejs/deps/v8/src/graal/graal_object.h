@@ -71,11 +71,9 @@ public:
             v8::AccessControl settings,
             v8::PropertyAttribute attributes);
     int InternalFieldCount();
-    void SetInternalField(int index, v8::Local<v8::Value> value);
-    void SetInternalFieldForNodeCore(int index, v8::Local<v8::Module> value);
-    void SetInternalFieldForNodeCore(int index, v8::Local<v8::UnboundScript> value);
+    void SetInternalField(int index, v8::Local<v8::Data> value);
     void SetAlignedPointerInInternalField(int index, void* value);
-    v8::Local<v8::Value> SlowGetInternalField(int index);
+    v8::Local<v8::Data> SlowGetInternalField(int index);
     void* SlowGetAlignedPointerFromInternalField(int index);
     v8::Local<v8::Object> Clone();
     v8::Local<v8::Value> GetPrototype();

@@ -65,7 +65,7 @@ namespace v8 {
         memcpy(backing_store->Data(), bytes_.data(), bytes_.size());
 
         JNIEnv* env = isolate_->GetJNIEnv();
-        Local<Value> thiz = reinterpret_cast<Value*> (isolate_->GetUndefined());
+        Local<Value> thiz = v8::Undefined(v8_isolate);
         Local<Value> arg = array_buffer.As<Value>();
         GraalFunction::Allocate(isolate_, env->NewLocalRef(resolve_))->Call(thiz, 1, &arg);
     }
@@ -78,7 +78,8 @@ namespace v8 {
         if (!exception.IsEmpty()) {
             Local<Value> exc = exception.ToLocalChecked();
             JNIEnv* env = isolate_->GetJNIEnv();
-            Local<Value> thiz = reinterpret_cast<Value*> (isolate_->GetUndefined());
+            Isolate* v8_isolate = reinterpret_cast<Isolate*> (isolate_);
+            Local<Value> thiz = v8::Undefined(v8_isolate);
             GraalFunction::Allocate(isolate_, env->NewLocalRef(reject_))->Call(thiz, 1, &exc);
         }
     }

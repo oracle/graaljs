@@ -54,14 +54,19 @@ int GraalStackTrace::GetFrameCount() const {
 }
 
 v8::Local<v8::StackFrame> GraalStackTrace::GetFrame(uint32_t index) const {
-    jobject java_frame = Isolate()->GetJNIEnv()->GetObjectArrayElement((jobjectArray) GetJavaObject(), index);
-    GraalStackFrame* graal_frame = GraalStackFrame::Allocate(Isolate(), java_frame);
-    return reinterpret_cast<v8::StackFrame*> (graal_frame);
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_frame = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) GetJavaObject(), index);
+    GraalStackFrame* graal_frame = GraalStackFrame::Allocate(graal_isolate, java_frame);
+    v8::StackFrame* v8_frame = reinterpret_cast<v8::StackFrame*> (graal_frame);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::StackFrame>::New(v8_isolate, v8_frame);
 }
 
 v8::Local<v8::StackTrace> GraalStackTrace::CurrentStackTrace(v8::Isolate* isolate, int frame_limit, v8::StackTrace::StackTraceOptions options) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_stack_trace, graal_isolate, GraalAccessMethod::stack_trace_current_stack_trace, Object, (jint) frame_limit);
     GraalStackTrace* graal_stack_trace = new GraalStackTrace(graal_isolate, java_stack_trace);
-    return reinterpret_cast<v8::StackTrace*> (graal_stack_trace);
+    v8::StackTrace* v8_stack_trace = reinterpret_cast<v8::StackTrace*> (graal_stack_trace);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::StackTrace>::New(v8_isolate, v8_stack_trace);
 }

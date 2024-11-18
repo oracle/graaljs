@@ -1555,8 +1555,9 @@ void GraalIsolate::HandleEmptyCallResult() {
             jobject java_context = CurrentJavaContext();
             JNI_CALL(jobject, exception_object, this, GraalAccessMethod::try_catch_exception, Object, java_context, java_exception);
             GraalValue* graal_exception = GraalValue::FromJavaObject(this, exception_object);
-            v8::Value* exception = reinterpret_cast<v8::Value*> (graal_exception);
+            v8::Value* v8_exception = reinterpret_cast<v8::Value*> (graal_exception);
             v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (this);
+            v8::Local<v8::Value> exception = v8::Local<v8::Value>::New(v8_isolate, v8_exception);
             NotifyMessageListener(v8::Exception::CreateMessage(v8_isolate, exception), exception, java_exception);
             if (error_to_ignore_ != nullptr) {
                 env->DeleteGlobalRef(error_to_ignore_);

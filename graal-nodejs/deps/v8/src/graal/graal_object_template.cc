@@ -55,7 +55,8 @@ v8::Local<v8::ObjectTemplate> GraalObjectTemplate::New(v8::Isolate* isolate, v8:
     jobject java_constructor = constructor.IsEmpty() ? nullptr : reinterpret_cast<GraalFunctionTemplate*> (*constructor)->GetJavaObject();
     JNI_CALL(jobject, java_object_template, isolate, GraalAccessMethod::object_template_new, Object, java_constructor);
     GraalObjectTemplate* graal_object_template = new GraalObjectTemplate(graal_isolate, java_object_template);
-    return reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
+    v8::ObjectTemplate* v8_object_template = reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
+    return v8::Local<v8::ObjectTemplate>::New(isolate, v8_object_template);
 }
 
 GraalHandleContent* GraalObjectTemplate::CopyImpl(jobject java_object_copy) {
@@ -68,7 +69,9 @@ v8::Local<v8::Object> GraalObjectTemplate::NewInstance(v8::Local<v8::Context> co
     jobject java_context = graal_context->GetJavaObject();
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::object_template_new_instance, Object, java_context, GetJavaObject());
     GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
-    return reinterpret_cast<v8::Object*> (graal_object);
+    v8::Object* v8_object = reinterpret_cast<v8::Object*> (graal_object);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Object>::New(v8_isolate, v8_object);
 }
 
 void GraalObjectTemplate::SetInternalFieldCount(int count) {
@@ -81,7 +84,6 @@ void GraalObjectTemplate::SetAccessor(
         v8::AccessorGetterCallback getter,
         v8::AccessorSetterCallback setter,
         v8::Local<v8::Value> data,
-        v8::AccessControl settings,
         v8::PropertyAttribute attribute) {
     jobject java_name = reinterpret_cast<GraalString*> (*name)->GetJavaObject();
     jlong java_getter = (jlong) getter;

@@ -571,7 +571,9 @@ public:
     }
 
     inline v8::Local<v8::Context> GetCurrentContext() {
-        return ContextEntered() ? contexts.back() : nullptr;
+        v8::Context* v8_context = ContextEntered() ? contexts.back() : nullptr;
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (this);
+        return v8::Local<v8::Context>::New(v8_isolate, v8_context);
     }
 
     inline bool ContextEntered() {

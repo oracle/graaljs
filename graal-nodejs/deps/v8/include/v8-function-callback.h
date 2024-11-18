@@ -376,16 +376,18 @@ template <typename T>
 void ReturnValue<T>::Set(double i) {
   static_assert(std::is_base_of<T, Number>::value, "type check");
   using I = internal::Internals;
-  GetIsolate()->SaveReturnValue(i);
-  SetNonEmpty(Local<T>(reinterpret_cast<T*> (I::GetRootSlot(GetIsolate(), I::kDoubleReturnValuePlaceholderIndex))));
+  Isolate* isolate = GetIsolate();
+  isolate->SaveReturnValue(i);
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRootSlot(isolate, I::kDoubleReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
 void ReturnValue<T>::Set(int32_t i) {
   static_assert(std::is_base_of<T, Integer>::value, "type check");
   using I = internal::Internals;
-  GetIsolate()->SaveReturnValue(i);
-  SetNonEmpty(Local<T>(reinterpret_cast<T*> (I::GetRootSlot(GetIsolate(), I::kInt32ReturnValuePlaceholderIndex))));
+  Isolate* isolate = GetIsolate();
+  isolate->SaveReturnValue(i);
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRootSlot(isolate, I::kInt32ReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
@@ -398,8 +400,9 @@ void ReturnValue<T>::Set(uint32_t i) {
     return;
   }
   using I = internal::Internals;
-  GetIsolate()->SaveReturnValue(i);
-  SetNonEmpty(Local<T>(reinterpret_cast<T*> (I::GetRootSlot(GetIsolate(), I::kUint32ReturnValuePlaceholderIndex))));
+  Isolate* isolate = GetIsolate();
+  isolate->SaveReturnValue(i);
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRootSlot(GetIsolate(), I::kUint32ReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
@@ -461,32 +464,33 @@ FunctionCallbackInfo<T>::FunctionCallbackInfo(internal::Address* implicit_args,
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::operator[](int i) const {
+  Isolate* isolate = GetIsolate();
   // values_ points to the first argument (not the receiver).
-  if (i < 0 || length_ <= i) return Undefined(GetIsolate());
-  return Local<Value>(*reinterpret_cast<Value**>(values_ + i));
+  if (i < 0 || length_ <= i) return Undefined(isolate);
+  return Local<Value>::New(isolate, *reinterpret_cast<Value**>(values_ + i));
 }
 
 template <typename T>
 Local<Object> FunctionCallbackInfo<T>::This() const {
   // values_ points to the first argument (not the receiver).
-  return Local<Object>(*reinterpret_cast<Object**>(values_ - 1));
+  return Local<Object>::New(GetIsolate(), *reinterpret_cast<Object**>(values_ - 1));
 }
 
 template <typename T>
 Local<Object> FunctionCallbackInfo<T>::Holder() const {
-   return Local<Object>(
+   return Local<Object>::New(GetIsolate(),
       reinterpret_cast<Object*>(implicit_args_[kHolderIndex]));
 }
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::NewTarget() const {
-   return Local<Value>(
+   return Local<Value>::New(GetIsolate(),
       reinterpret_cast<Value*>(implicit_args_[kNewTargetIndex]));
 }
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::Data() const {
-  return Local<Value>(reinterpret_cast<Value*>(implicit_args_[kDataIndex]));
+  return Local<Value>::New(GetIsolate(), reinterpret_cast<Value*>(implicit_args_[kDataIndex]));
 }
 
 template <typename T>
@@ -516,17 +520,17 @@ Isolate* PropertyCallbackInfo<T>::GetIsolate() const {
 
 template <typename T>
 Local<Value> PropertyCallbackInfo<T>::Data() const {
-  return Local<Value>(reinterpret_cast<Value*>(args_[kDataIndex]));
+  return Local<Value>::New(GetIsolate(), reinterpret_cast<Value*>(args_[kDataIndex]));
 }
 
 template <typename T>
 Local<Object> PropertyCallbackInfo<T>::This() const {
-  return Local<Object>(reinterpret_cast<Object*>(args_[kThisIndex]));
+  return Local<Object>::New(GetIsolate(), reinterpret_cast<Object*>(args_[kThisIndex]));
 }
 
 template <typename T>
 Local<Object> PropertyCallbackInfo<T>::Holder() const {
-  return Local<Object>(reinterpret_cast<Object*>(args_[kHolderIndex]));
+  return Local<Object>::New(GetIsolate(), reinterpret_cast<Object*>(args_[kHolderIndex]));
 }
 
 template <typename T>

@@ -425,9 +425,11 @@ class V8_TRIVIAL_ABI Local : public LocalBase<T>,
     return Local<T>(LocalBase<T>::New(isolate, value));
   }
 
+public:
   V8_INLINE static Local<T> New(Isolate* isolate, T* that) {
     return Local<T>(LocalBase<T>::New(isolate, that));
   }
+private:
 
   // Unsafe cast, should be avoided.
   template <class S>
@@ -725,12 +727,7 @@ class V8_EXPORT V8_NODISCARD EscapableHandleScope
   V8_INLINE ~EscapableHandleScope() = default;
   template <class T>
   V8_INLINE Local<T> Escape(Local<T> value) {
-#ifdef V8_ENABLE_DIRECT_LOCAL
     return value;
-#else
-    if (value.IsEmpty()) return value;
-    return Local<T>::FromSlot(EscapeSlot(value.slot()));
-#endif
   }
 
   template <class T>

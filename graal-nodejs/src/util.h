@@ -610,7 +610,7 @@ class MaybeStackBuffer<v8::Local<v8::Value>, kStackStorageSize> {
 
   MaybeStackBuffer() : length_(0), capacity_(0), buf_(buf_st_) {
     // Default to a zero-length, null-terminated buffer.
-    buf_[0] = nullptr;
+    buf_[0] = v8::Local<v8::Value>();
   }
 
   explicit MaybeStackBuffer(size_t storage) : MaybeStackBuffer() {

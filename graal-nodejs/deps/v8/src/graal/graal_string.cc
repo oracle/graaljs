@@ -206,7 +206,8 @@ v8::Local<v8::String> GraalString::NewFromModifiedUtf8(v8::Isolate* isolate, con
     JNI_CALL(jobject, java_truffle_string, graal_isolate, GraalAccessMethod::string_new, Object, java_string);
 
     GraalString* graal_string = GraalString::Allocate(graal_isolate, java_truffle_string);
-    return reinterpret_cast<v8::String*> (graal_string);
+    v8::String* v8_string = reinterpret_cast<v8::String*> (graal_string);
+    return v8::Local<v8::String>::New(isolate, v8_string);
 }
 
 v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::NewStringType type, int length) {
@@ -236,7 +237,8 @@ v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const ui
     }
 
     GraalString* graal_string = GraalString::Allocate(graal_isolate, java_result);
-    return reinterpret_cast<v8::String*> (graal_string);
+    v8::String* v8_string = reinterpret_cast<v8::String*> (graal_string);
+    return v8::Local<v8::String>::New(isolate, v8_string);
 }
 
 bool GraalString::IsString() const {

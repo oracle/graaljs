@@ -54,9 +54,12 @@ GraalHandleContent* GraalContext::CopyImpl(jobject java_object_copy) {
 }
 
 v8::Local<v8::Object> GraalContext::Global() {
-    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::context_global, Object, GetJavaObject());
-    GraalObject* graal_object = GraalObject::Allocate(Isolate(), java_object);
-    return reinterpret_cast<v8::Object*> (graal_object);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::context_global, Object, GetJavaObject());
+    GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
+    v8::Object* v8_object = reinterpret_cast<v8::Object*> (graal_object);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Object>::New(v8_isolate, v8_object);
 }
 
 void GraalContext::SetAlignedPointerInEmbedderData(int index, void* value) {
@@ -89,9 +92,12 @@ void GraalContext::SetEmbedderData(int index, v8::Local<v8::Value> value) {
 }
 
 v8::Local<v8::Value> GraalContext::SlowGetEmbedderData(int index) {
-    JNI_CALL(jobject, java_value, Isolate(), GraalAccessMethod::context_get_embedder_data, Object, GetJavaObject(), (jint) index);
-    GraalValue* value = GraalValue::FromJavaObject(Isolate(), java_value);
-    return reinterpret_cast<v8::Value*> (value);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_value, graal_isolate, GraalAccessMethod::context_get_embedder_data, Object, GetJavaObject(), (jint) index);
+    GraalValue* value = GraalValue::FromJavaObject(graal_isolate, java_value);
+    v8::Value* v8_value = reinterpret_cast<v8::Value*> (value);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_value);
 }
 
 void GraalContext::SetSecurityToken(v8::Local<v8::Value> token) {
@@ -101,9 +107,12 @@ void GraalContext::SetSecurityToken(v8::Local<v8::Value> token) {
 }
 
 v8::Local<v8::Value> GraalContext::GetSecurityToken() {
-    JNI_CALL(jobject, java_token, Isolate(), GraalAccessMethod::context_get_security_token, Object, GetJavaObject());
-    GraalValue* graal_token = GraalValue::FromJavaObject(Isolate(), java_token);
-    return reinterpret_cast<v8::Value*> (graal_token);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_token, graal_isolate, GraalAccessMethod::context_get_security_token, Object, GetJavaObject());
+    GraalValue* graal_token = GraalValue::FromJavaObject(graal_isolate, java_token);
+    v8::Value* v8_token = reinterpret_cast<v8::Value*> (graal_token);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_token);
 }
 
 void GraalContext::UseDefaultSecurityToken() {
@@ -111,9 +120,12 @@ void GraalContext::UseDefaultSecurityToken() {
 }
 
 v8::Local<v8::Object> GraalContext::GetExtrasBindingObject() {
-    JNI_CALL(jobject, java_extras, Isolate(), GraalAccessMethod::context_get_extras_binding_object, Object, GetJavaObject());
-    GraalObject* graal_extras = GraalObject::Allocate(Isolate(), java_extras);
-    return reinterpret_cast<v8::Object*> (graal_extras);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_extras, graal_isolate, GraalAccessMethod::context_get_extras_binding_object, Object, GetJavaObject());
+    GraalObject* graal_extras = GraalObject::Allocate(graal_isolate, java_extras);
+    v8::Object* v8_extras = reinterpret_cast<v8::Object*> (graal_extras);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Object>::New(v8_isolate, v8_extras);
 }
 
 void GraalContext::SetPromiseHooks(v8::Local<v8::Function> init_hook, v8::Local<v8::Function> before_hook, v8::Local<v8::Function> after_hook, v8::Local<v8::Function> resolve_hook) {

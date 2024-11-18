@@ -323,8 +323,11 @@ inline v8::Local<v8::Value> V8LocalValueFromJsValue(napi_value v) {
   if (v == nullptr) {
     return v8::Local<v8::Value>();
   }
-  GraalValue* graal_value = GraalValue::FromJavaObject(CurrentIsolate(), reinterpret_cast<jobject> (v), true);
-  return reinterpret_cast<v8::Value*> (graal_value);
+  GraalIsolate* graal_isolate = CurrentIsolate();
+  GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, reinterpret_cast<jobject> (v), true);
+  v8::Value* v8_value = reinterpret_cast<v8::Value*> (graal_value);
+  v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+  return v8::Local<v8::Value>::New(v8_isolate, v8_value);
 }
 
 // Adapter for napi_finalize callbacks.
