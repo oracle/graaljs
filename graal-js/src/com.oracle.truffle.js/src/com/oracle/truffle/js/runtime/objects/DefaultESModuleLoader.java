@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -238,12 +239,22 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         if (!env.isSocketIOAllowed()) {
             throw new AccessDeniedException(canonicalPath, null, "Socket IO is not allowed");
         }
-        URL url = moduleURI.toURL();
+        URL url = uriToURL(moduleURI);
         String mimeType = findMimeType(url);
         String language = findLanguage(mimeType);
 
         Source source = Source.newBuilder(language, url).mimeType(mimeType).build();
         return loadModuleFromSource(referrer, moduleRequest, source, mimeType, canonicalPath);
+    }
+
+    private static URL uriToURL(URI moduleURI) throws MalformedURLException {
+        if (!JSConfig.SubstrateVM) {
+            try {
+                return moduleURI.toURL();
+            } catch (MalformedURLException e) {
+            }
+        }
+        throw new MalformedURLException("Unsupported URI scheme " + moduleURI.getScheme());
     }
 
     protected AbstractModuleRecord loadModuleFromFile(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile moduleFile, String maybeCanonicalPath) throws IOException {
