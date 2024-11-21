@@ -377,7 +377,7 @@ void ReturnValue<T>::Set(double i) {
   static_assert(std::is_base_of<T, Number>::value, "type check");
   using I = internal::Internals;
   Isolate* isolate = GetIsolate();
-  isolate->SaveReturnValue(i);
+  internal::SaveReturnValue(isolate, i);
   SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kDoubleReturnValuePlaceholderIndex))));
 }
 
@@ -386,7 +386,7 @@ void ReturnValue<T>::Set(int32_t i) {
   static_assert(std::is_base_of<T, Integer>::value, "type check");
   using I = internal::Internals;
   Isolate* isolate = GetIsolate();
-  isolate->SaveReturnValue(i);
+  internal::SaveReturnValue(isolate, i);
   SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kInt32ReturnValuePlaceholderIndex))));
 }
 
@@ -401,7 +401,7 @@ void ReturnValue<T>::Set(uint32_t i) {
   }
   using I = internal::Internals;
   Isolate* isolate = GetIsolate();
-  isolate->SaveReturnValue(i);
+  internal::SaveReturnValue(isolate, i);
   SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kUint32ReturnValuePlaceholderIndex))));
 }
 
@@ -447,7 +447,7 @@ Isolate* ReturnValue<T>::GetIsolate() const {
 
 template <typename T>
 Local<Value> ReturnValue<T>::Get() const {
-  return GetIsolate()->CorrectReturnValue(*value_);
+  return internal::CorrectReturnValue<Local<Value>>(GetIsolate(), *value_);
 }
 
 template <typename T>

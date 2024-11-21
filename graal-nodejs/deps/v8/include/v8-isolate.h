@@ -752,8 +752,6 @@ class V8_EXPORT Isolate {
   // graal-node.js extensions
   void Dispose(bool exit, int status);
   void SchedulePauseOnNextStatement();
-  void SaveReturnValue(double value);
-  Local<Value> CorrectReturnValue(internal::Address value);
   void EnterPolyglotEngine(void* param1, void* param2, void* args, void* exec_args, void (*callback) (void* isolate, void* param1, void* param2, void* args, void* exec_args));
 
   /**

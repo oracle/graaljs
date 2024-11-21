@@ -1412,6 +1412,27 @@ jobject GraalIsolate::CorrectReturnValue(GraalValue* value, jobject null_replace
     return result;
 }
 
+v8::Local<v8::Value> GraalIsolate::CorrectReturnValue(v8::internal::Address value) {
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (this);
+    GraalValue* graal_value = reinterpret_cast<GraalValue*> (value);
+    v8::Local<v8::Value> v8_value;
+    if (graal_value == nullptr) {
+        v8_value = Undefined(isolate);
+    } else {
+        jobject java_value = graal_value->GetJavaObject();
+        if (java_value == this->int32_placeholder_) {
+            v8_value = GraalNumber::New(isolate, (int32_t) this->return_value_);
+        } else if (java_value == this->uint32_placeholder_) {
+            v8_value = GraalNumber::NewFromUnsigned(isolate, (uint32_t) this->return_value_);
+        } else if (java_value == this->double_placeholder_) {
+            v8_value = GraalNumber::New(isolate, this->return_value_);
+        } else {
+            v8_value = v8::Local<v8::Value>::New(isolate, reinterpret_cast<v8::Value*> (graal_value));
+        }
+    }
+    return v8_value;
+}
+
 int GraalIsolate::argc = 0;
 char** GraalIsolate::argv = nullptr;
 int GraalIsolate::mode = GraalIsolate::kModeDefault;

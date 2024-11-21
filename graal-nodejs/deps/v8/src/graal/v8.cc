@@ -136,6 +136,14 @@ namespace v8 {
         class Isolate : public v8::Isolate {
         };
 
+        void SaveReturnValue(v8::Isolate* isolate, double value) {
+            reinterpret_cast<GraalIsolate*> (isolate)->SaveReturnValue(value);
+        }
+
+        template<> v8::Local<v8::Value> CorrectReturnValue<v8::Local<v8::Value>>(v8::Isolate* isolate, v8::internal::Address value) {
+            return reinterpret_cast<GraalIsolate*> (isolate)->CorrectReturnValue(value);
+        }
+
         namespace wasm {
 
             class NativeModule {
@@ -2180,31 +2188,6 @@ namespace v8 {
 
     RegExp::Flags RegExp::GetFlags() const {
         return reinterpret_cast<const GraalRegExp*> (this)->GetFlags();
-    }
-
-    void Isolate::SaveReturnValue(double value) {
-        reinterpret_cast<GraalIsolate*> (this)->SaveReturnValue(value);
-    }
-
-    Local<Value> Isolate::CorrectReturnValue(internal::Address value) {
-        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (this);
-        GraalValue* graal_value = reinterpret_cast<GraalValue*> (value);
-        Local<Value> v8_value;
-        if (graal_value == nullptr) {
-            v8_value = Undefined(this);
-        } else {
-            jobject java_value = graal_value->GetJavaObject();
-            if (java_value == graal_isolate->int32_placeholder_) {
-                v8_value = GraalNumber::New(this, (int32_t) graal_isolate->return_value_);
-            } else if (java_value == graal_isolate->uint32_placeholder_) {
-                v8_value = GraalNumber::NewFromUnsigned(this, (uint32_t) graal_isolate->return_value_);
-            } else if (java_value == graal_isolate->double_placeholder_) {
-                v8_value = GraalNumber::New(this, graal_isolate->return_value_);
-            } else {
-                v8_value = Local<Value>::New(this, reinterpret_cast<Value*> (graal_value));
-            }
-        }
-        return v8_value;
     }
 
     void Isolate::EnterPolyglotEngine(void* param1, void* param2, void* args, void* exec_args, void (*callback) (void* isolate, void* param1, void* param2, void* args, void* exec_args)) {

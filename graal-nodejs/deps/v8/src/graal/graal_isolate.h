@@ -683,7 +683,8 @@ public:
     inline void SaveReturnValue(double value) {
         return_value_ = value;
     }
-
+    
+    v8::Local<v8::Value> CorrectReturnValue(v8::internal::Address value);
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
     void SchedulePauseOnNextStatement();

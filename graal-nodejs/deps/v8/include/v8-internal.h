@@ -1398,6 +1398,10 @@ class HandleHelper final {
 
 V8_EXPORT void VerifyHandleIsNonEmpty(bool is_empty);
 
+// graal-node.js extensions
+void SaveReturnValue(v8::Isolate* isolate, double value);
+template <typename T> T CorrectReturnValue(v8::Isolate* isolate, Address value);
+
 }  // namespace internal
 }  // namespace v8
 
