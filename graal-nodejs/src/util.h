@@ -550,14 +550,14 @@ class MaybeStackBuffer<v8::Local<v8::Value>, kStackStorageSize> {
     if (storage > capacity()) {
       bool was_allocated = IsAllocated();
       v8::Local<v8::Value>* allocated_ptr = was_allocated ? buf_ : nullptr;
-      buf_ = Realloc(allocated_ptr, storage);
+      buf_ = (v8::Local<v8::Value>*) Realloc((char*) allocated_ptr, MultiplyWithOverflowCheck(sizeof(buf_[0]), storage));
       // zero-fill new handles (so they look like as if Local() constructor was called)
-      memset(buf_ + length_, 0, (storage - length_) * sizeof(buf_[0]));
+      memset((void*) (buf_ + length_), 0, (storage - length_) * sizeof(buf_[0]));
       capacity_ = storage;
       if (!was_allocated && length_ > 0) {
-        memcpy(buf_, buf_st_, length_ * sizeof(buf_[0]));
+        memcpy((void*) buf_, buf_st_, length_ * sizeof(buf_[0]));
         // ensure that the content of handles copied from the stack is not released twice
-        memset(buf_st_, 0, length_ * sizeof(buf_[0]));
+        memset((void*) buf_st_, 0, length_ * sizeof(buf_[0]));
       }
     }
 
