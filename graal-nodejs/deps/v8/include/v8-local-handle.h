@@ -4,6 +4,7 @@
 
 #ifndef INCLUDE_V8_LOCAL_HANDLE_H_
 #define INCLUDE_V8_LOCAL_HANDLE_H_
+#define V8_ENABLE_DIRECT_LOCAL 1
 
 #include <stddef.h>
 
@@ -12,7 +13,6 @@
 
 #include "v8-handle-base.h"  // NOLINT(build/include_directory)
 #include "v8-internal.h"     // NOLINT(build/include_directory)
-#include "../src/graal/graal_handle_content.h"
 
 namespace v8 {
 
@@ -287,20 +287,12 @@ class V8_TRIVIAL_ABI Local : public LocalBase<T>,
 
   template <class S>
   V8_INLINE bool operator==(const Local<S>& that) const {
-    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
-    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(*that);
-    if (a == nullptr) return b == nullptr;
-    if (b == nullptr) return false;
-    return GraalHandleContent::SameData(a, b);
+    return internal::HandleHelper::EqualHandles(*this, that);
   }
 
   template <class S>
   V8_INLINE bool operator==(const PersistentBase<S>& that) const {
-    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
-    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
-    if (a == nullptr) return b == nullptr;
-    if (b == nullptr) return false;
-    return GraalHandleContent::SameData(a, b);
+    return internal::HandleHelper::EqualHandles(*this, that);
   }
 
   template <class S>

@@ -386,8 +386,13 @@ namespace v8 {
 
     internal::Address* HandleScope::CreateHandle(internal::Isolate* isolate, internal::Address value) {
         GraalHandleContent* graal_original = reinterpret_cast<GraalHandleContent*> (value);
-        GraalHandleContent* graal_copy = graal_original->Copy(false);
-        return reinterpret_cast<internal::Address*> (graal_copy);
+        GraalHandleContent* graal_local;
+        if (graal_original->IsGlobal()) {
+            graal_local = graal_original->Copy(false);
+        } else {
+            graal_local = graal_original;
+        }
+        return reinterpret_cast<internal::Address*> (graal_local);
     }
 
     HandleScope::~HandleScope() {
@@ -397,6 +402,9 @@ namespace v8 {
     HandleScope::HandleScope(Isolate* isolate) {
         this->i_isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
         reinterpret_cast<GraalIsolate*> (isolate)->HandleScopeEnter();
+    }
+
+    EscapableHandleScopeBase::EscapableHandleScopeBase(Isolate* v8_isolate) : HandleScope(v8_isolate) {
     }
 
     void HeapProfiler::StartTrackingHeapObjects(bool) {
@@ -3304,8 +3312,8 @@ namespace v8 {
     }
 
     internal::Address* api_internal::CopyGlobalReference(internal::Address* from) {
-        reinterpret_cast<GraalHandleContent*> (from)->ReferenceAdded();
-        return from;
+        GraalHandleContent* copy = reinterpret_cast<GraalHandleContent*> (from)->Copy(true);
+        return reinterpret_cast<internal::Address*> (copy);
     }
 
     double Date::ValueOf() const {

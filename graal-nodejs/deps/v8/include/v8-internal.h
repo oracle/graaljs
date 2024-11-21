@@ -4,6 +4,7 @@
 
 #ifndef INCLUDE_V8_INTERNAL_H_
 #define INCLUDE_V8_INTERNAL_H_
+#define V8_ENABLE_DIRECT_LOCAL 1
 
 #include <stddef.h>
 #include <stdint.h>
@@ -15,6 +16,7 @@
 #include <type_traits>
 
 #include "v8config.h"  // NOLINT(build/include_directory)
+#include "../src/graal/graal_handle_content.h"
 
 namespace v8 {
 
@@ -944,7 +946,7 @@ class Internals {
   V8_INLINE static Address* GetRootSlot(v8::Isolate* isolate, int index) {
     Address addr = reinterpret_cast<Address>(isolate) + kIsolateRootsOffset +
                    index * kApiSystemPointerSize;
-    return *reinterpret_cast<Address**>(addr);
+    return reinterpret_cast<Address*>(addr);
   }
 
   V8_INLINE static Address GetRoot(v8::Isolate* isolate, int index) {
@@ -1316,7 +1318,7 @@ class ValueHelper final {
  public:
 #ifdef V8_ENABLE_DIRECT_LOCAL
   static constexpr Address kTaggedNullAddress = 1;
-  static constexpr Address kEmpty = kTaggedNullAddress;
+  static constexpr Address kEmpty = kNullAddress;
 #else
   static constexpr Address kEmpty = kNullAddress;
 #endif  // V8_ENABLE_DIRECT_LOCAL
@@ -1384,7 +1386,9 @@ class HandleHelper final {
   V8_INLINE static bool EqualHandles(const T1& lhs, const T2& rhs) {
     if (lhs.IsEmpty()) return rhs.IsEmpty();
     if (rhs.IsEmpty()) return false;
-    return lhs.ptr() == rhs.ptr();
+    GraalHandleContent* lhs_value = reinterpret_cast<GraalHandleContent*>(lhs.ptr());
+    GraalHandleContent* rhs_value = reinterpret_cast<GraalHandleContent*>(rhs.ptr());
+    return GraalHandleContent::SameData(lhs_value, rhs_value);
   }
 
   static V8_EXPORT bool IsOnStack(const void* ptr);

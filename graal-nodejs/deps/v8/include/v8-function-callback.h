@@ -314,7 +314,7 @@ void ReturnValue<T>::Set(const Global<S>& handle) {
   if (V8_UNLIKELY(handle.IsEmpty())) {
     SetTheHole();
   } else {
-    SetInternal(reinterpret_cast<internal::Address>(*handle));
+    SetInternal(handle.ptr());
   }
 }
 
@@ -325,7 +325,7 @@ void ReturnValue<T>::SetNonEmpty(const Global<S>& handle) {
 #ifdef V8_ENABLE_CHECKS
   internal::VerifyHandleIsNonEmpty(handle.IsEmpty());
 #endif  // V8_ENABLE_CHECKS
-  SetInternal(reinterpret_cast<internal::Address>(*handle));
+  SetInternal(handle.ptr());
 }
 
 template <typename T>
@@ -335,7 +335,7 @@ void ReturnValue<T>::Set(const BasicTracedReference<S>& handle) {
   if (V8_UNLIKELY(handle.IsEmpty())) {
     SetTheHole();
   } else {
-    SetInternal(reinterpret_cast<internal::Address>(*handle));
+    SetInternal(handle.ptr());
   }
 }
 
@@ -346,7 +346,7 @@ void ReturnValue<T>::SetNonEmpty(const BasicTracedReference<S>& handle) {
 #ifdef V8_ENABLE_CHECKS
   internal::VerifyHandleIsNonEmpty(handle.IsEmpty());
 #endif  // V8_ENABLE_CHECKS
-  SetInternal(reinterpret_cast<internal::Address>(*handle));
+  SetInternal(handle.ptr());
 }
 
 template <typename T>
@@ -357,7 +357,7 @@ void ReturnValue<T>::Set(const Local<S> handle) {
   if (V8_UNLIKELY(handle.IsEmpty())) {
     SetTheHole();
   } else {
-    SetInternal(reinterpret_cast<internal::Address>(*handle));
+    SetInternal(handle.ptr());
   }
 }
 
@@ -369,7 +369,7 @@ void ReturnValue<T>::SetNonEmpty(const Local<S> handle) {
 #ifdef V8_ENABLE_CHECKS
   internal::VerifyHandleIsNonEmpty(handle.IsEmpty());
 #endif  // V8_ENABLE_CHECKS
-  SetInternal(reinterpret_cast<internal::Address>(*handle));
+  SetInternal(handle.ptr());
 }
 
 template <typename T>
@@ -378,7 +378,7 @@ void ReturnValue<T>::Set(double i) {
   using I = internal::Internals;
   Isolate* isolate = GetIsolate();
   isolate->SaveReturnValue(i);
-  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRootSlot(isolate, I::kDoubleReturnValuePlaceholderIndex))));
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kDoubleReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
@@ -387,7 +387,7 @@ void ReturnValue<T>::Set(int32_t i) {
   using I = internal::Internals;
   Isolate* isolate = GetIsolate();
   isolate->SaveReturnValue(i);
-  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRootSlot(isolate, I::kInt32ReturnValuePlaceholderIndex))));
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kInt32ReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
@@ -402,7 +402,7 @@ void ReturnValue<T>::Set(uint32_t i) {
   using I = internal::Internals;
   Isolate* isolate = GetIsolate();
   isolate->SaveReturnValue(i);
-  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRootSlot(GetIsolate(), I::kUint32ReturnValuePlaceholderIndex))));
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kUint32ReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
@@ -419,7 +419,7 @@ void ReturnValue<T>::Set(bool value) {
 
 template <typename T>
 void ReturnValue<T>::SetTheHole() {
-  SetUndefined();
+  SetInternal(reinterpret_cast<internal::Address>(*Undefined(GetIsolate())));
 }
 
 template <typename T>

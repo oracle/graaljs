@@ -4,6 +4,7 @@
 
 #ifndef INCLUDE_V8_HANDLE_BASE_H_
 #define INCLUDE_V8_HANDLE_BASE_H_
+#define V8_ENABLE_DIRECT_LOCAL 1
 
 #include "v8-internal.h"  // NOLINT(build/include_directory)
 
@@ -100,21 +101,49 @@ class DirectHandleBase {
  public:
   // Returns true if the handle is empty.
   V8_INLINE bool IsEmpty() const {
-    return ptr_ == internal::ValueHelper::kEmpty;
+    return (ptr_ == internal::ValueHelper::kEmpty) ? true : reinterpret_cast<GraalHandleContent*>(ptr_)->IsEmpty();
   }
 
   // Sets the handle to be empty. IsEmpty() will then return true.
-  V8_INLINE void Clear() { ptr_ = internal::ValueHelper::kEmpty; }
+  V8_INLINE void Clear() {
+    if (ptr_ != internal::ValueHelper::kEmpty) {
+      reinterpret_cast<GraalHandleContent*> (ptr_)->ReferenceRemoved();
+      ptr_ = internal::ValueHelper::kEmpty;
+    }
+  }
 
  protected:
   friend class internal::ValueHelper;
   friend class internal::HandleHelper;
 
   V8_INLINE DirectHandleBase() = default;
-  V8_INLINE DirectHandleBase(const DirectHandleBase& other) = default;
-  V8_INLINE DirectHandleBase& operator=(const DirectHandleBase& that) = default;
+  V8_INLINE DirectHandleBase(const DirectHandleBase& other) : ptr_(other.ptr_) {
+    if (ptr_ != internal::ValueHelper::kEmpty) {
+      reinterpret_cast<GraalHandleContent*> (ptr_)->ReferenceAdded();
+    }
+  }
+  V8_INLINE DirectHandleBase& operator=(const DirectHandleBase& that) {
+    if (ptr_ != internal::ValueHelper::kEmpty) {
+      reinterpret_cast<GraalHandleContent*> (ptr_)->ReferenceRemoved();
+    }
+    ptr_ = that.ptr_;
+    if (ptr_ != internal::ValueHelper::kEmpty) {
+      reinterpret_cast<GraalHandleContent*> (ptr_)->ReferenceAdded();
+    }
+    return *this;
+  }
 
-  V8_INLINE explicit DirectHandleBase(internal::Address ptr) : ptr_(ptr) {}
+  V8_INLINE explicit DirectHandleBase(internal::Address ptr) : ptr_(ptr) {
+    if (ptr_ != internal::ValueHelper::kEmpty) {
+      reinterpret_cast<GraalHandleContent*> (ptr_)->ReferenceAdded();
+    }
+  }
+
+  ~DirectHandleBase() {
+    if (ptr_ != internal::ValueHelper::kEmpty) {
+      reinterpret_cast<GraalHandleContent*> (ptr_)->ReferenceRemoved();
+    }
+  }
 
   // Returns the address of the referenced object.
   V8_INLINE internal::Address ptr() const { return ptr_; }
@@ -126,7 +155,6 @@ class DirectHandleBase {
     return reinterpret_cast<T*>(ptr_);
   }
 
- private:
   internal::Address ptr_ = internal::ValueHelper::kEmpty;
 };
 

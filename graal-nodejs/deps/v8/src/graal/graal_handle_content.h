@@ -108,6 +108,10 @@ public:
         return java_object_;
     }
 
+    inline bool IsGlobal() const {
+        return ((ref_type_ & GLOBAL_FLAG) != 0);
+    }
+
     inline bool IsWeak() const {
         return ((ref_type_ & WEAK_FLAG) != 0);
     }
@@ -128,10 +132,6 @@ private:
     int ref_count;
     static const int GLOBAL_FLAG = 1;
     static const int WEAK_FLAG = 2;
-
-    inline bool IsGlobal() const {
-        return ((ref_type_ & GLOBAL_FLAG) != 0);
-    }
 
     bool IsWeakCollected() const;
 };
