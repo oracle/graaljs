@@ -967,6 +967,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createLinkError(String message, Node originatingNode) {
+        return JSException.create(JSErrorType.LinkError, message, originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createLinkError(Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.LinkError, cause.getMessage(), cause, originatingNode);
     }

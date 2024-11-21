@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,6 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalGetValueNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalSetValueNodeGen;
-import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalValueOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
@@ -64,6 +63,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyValueType;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssemblyGlobalPrototypeBuiltins.WebAssemblyGlobalPrototype> {
@@ -116,39 +116,12 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WebAssemblyGlobalPrototype builtinEnum) {
         switch (builtinEnum) {
             case valueOf:
-                return WebAssemblyGlobalValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case value:
                 return WebAssemblyGlobalGetValueNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case set_value:
                 return WebAssemblyGlobalSetValueNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
         }
         return null;
-    }
-
-    @ImportStatic(JSConfig.class)
-    public abstract static class WebAssemblyGlobalValueOfNode extends JSBuiltinNode {
-
-        public WebAssemblyGlobalValueOfNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Object valueOf(Object thiz,
-                        @Cached ToJSValueNode toJSValueNode,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary globalReadLib) {
-            if (!JSWebAssemblyGlobal.isJSWebAssemblyGlobal(thiz)) {
-                throw Errors.createTypeError("WebAssembly.Global.valueOf(): Receiver is not a WebAssembly.Global");
-            }
-            JSWebAssemblyGlobalObject object = (JSWebAssemblyGlobalObject) thiz;
-            Object wasmGlobal = object.getWASMGlobal();
-            try {
-                Object globalRead = getRealm().getWASMGlobalRead();
-                return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal));
-            } catch (InteropException ex) {
-                throw Errors.shouldNotReachHere(ex);
-            }
-        }
-
     }
 
     @ImportStatic(JSConfig.class)
@@ -160,8 +133,13 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected Object getValue(JSWebAssemblyGlobalObject object,
+                        @Cached InlinedBranchProfile errorBranch,
                         @Cached ToJSValueNode toJSValueNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary globalReadLib) {
+            if (object.getValueType() == WebAssemblyValueType.v128) {
+                errorBranch.enter(this);
+                v128TypeError();
+            }
             Object wasmGlobal = object.getWASMGlobal();
             Object globalRead = getRealm().getWASMGlobalRead();
             try {
@@ -174,7 +152,12 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @TruffleBoundary
         @Fallback
         protected Object doIncompatibleReceiver(@SuppressWarnings("unused") Object thisObj) {
-            throw Errors.createTypeError("get WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
+            throw Errors.createTypeError(getBuiltin().getFullName() + ": Receiver is not a WebAssembly.Global", this);
+        }
+
+        @TruffleBoundary
+        private void v128TypeError() {
+            throw Errors.createTypeError(getBuiltin().getFullName() + ": cannot read value type v128", this);
         }
     }
 
@@ -193,6 +176,10 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (!global.isMutable()) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("set WebAssembly.Global.value: Can't set the value of an immutable global");
+            }
+            if (global.getValueType() == WebAssemblyValueType.v128) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("set WebAssembly.Global.value: cannot write value type v128", this);
             }
             Object wasmGlobal = global.getWASMGlobal();
             try {

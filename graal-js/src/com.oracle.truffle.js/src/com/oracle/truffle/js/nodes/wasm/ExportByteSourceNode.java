@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -54,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.interop.InteropBufferView;
 
 /**
  * Exports byte source such that it can be read by WASM.
@@ -76,7 +80,8 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object exportBuffer(JSArrayBufferObject arrayBuffer) {
+    protected Object exportBuffer(JSArrayBufferObject arrayBuffer,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         int length;
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             length = 0;
@@ -90,21 +95,23 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
                 length = JSArrayBuffer.getHeapByteLength(arrayBuffer);
             }
         }
-        return exportBuffer(arrayBuffer, 0, length);
+        return exportBuffer(arrayBuffer, 0, length, errorBranch);
     }
 
     @Specialization
-    protected Object exportTypedArray(JSTypedArrayObject typedArray) {
+    protected Object exportTypedArray(JSTypedArrayObject typedArray,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         int offset = JSArrayBufferView.getByteOffset(typedArray, context);
         int length = JSArrayBufferView.getByteLength(typedArray, context);
-        return exportBuffer(typedArray.getArrayBuffer(), offset, length);
+        return exportBuffer(typedArray.getArrayBuffer(), offset, length, errorBranch);
     }
 
     @Specialization
-    protected Object exportDataView(JSDataViewObject dataView) {
+    protected Object exportDataView(JSDataViewObject dataView,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         int offset = JSDataView.typedArrayGetLengthChecked(dataView);
         int length = JSDataView.typedArrayGetOffsetChecked(dataView);
-        return exportBuffer(dataView.getArrayBuffer(), offset, length);
+        return exportBuffer(dataView.getArrayBuffer(), offset, length, errorBranch);
     }
 
     @Fallback
@@ -112,9 +119,11 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         throw Errors.createTypeError(nonByteSourceMessage, this);
     }
 
-    private Object exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length) {
+    private Object exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length,
+                    InlinedBranchProfile errorBranch) {
         JSArrayBufferObject buffer = arrayBuffer;
         if (emptyByteSouceMessage != null && length == 0) {
+            errorBranch.enter(this);
             throw Errors.createCompileError(emptyByteSouceMessage, this);
         }
         JSRealm realm = getRealm();
@@ -125,7 +134,8 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         boolean interop = JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
         boolean direct = JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer);
         TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(direct, (offset != 0), interop);
-        return JSArrayBufferView.createArrayBufferView(context, realm, buffer, arrayType, offset, length);
+        JSTypedArrayObject array = JSArrayBufferView.createArrayBufferView(context, realm, buffer, TypedArrayFactory.Uint8Array, arrayType, offset, length);
+        return new InteropBufferView(buffer, offset, length, array);
     }
 
 }

@@ -234,11 +234,9 @@ public final class Strings {
     public static final TruffleString WITH = constant("with");
 
     /* method names */
-    public static final TruffleString ANYFUNC = constant("anyfunc");
     public static final TruffleString AT = constant("at");
     public static final TruffleString COPY_WITHIN = constant("copyWithin");
     public static final TruffleString EVAL_FILE = constant("evalFile");
-    public static final TruffleString EXTERNREF = constant("externref");
     public static final TruffleString FILL = constant("fill");
     public static final TruffleString FIND = constant("find");
     public static final TruffleString FIND_INDEX = constant("findIndex");
@@ -399,12 +397,6 @@ public final class Strings {
     public static final TruffleString ESCAPE_U_00 = constant("\\u00");
     public static final TruffleString ESCAPE_BACKSLASH = constant("\\\\");
     public static final TruffleString ESCAPE_QUOTE = constant("\\\"");
-
-    /* WASM */
-    public static final TruffleString I_64 = constant("i64");
-    public static final TruffleString I_32 = constant("i32");
-    public static final TruffleString F_32 = constant("f32");
-    public static final TruffleString F_64 = constant("f64");
 
     /* JSProxy */
     public static final TruffleString PROXY = constant("proxy");
