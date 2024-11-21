@@ -3511,7 +3511,7 @@ namespace v8 {
         return false;
     }
 
-    SnapshotCreator::SnapshotCreator(v8::Isolate* isolate, const v8::Isolate::CreateParams& params) {
+    SnapshotCreator::SnapshotCreator(v8::Isolate* isolate, const intptr_t* external_references, const StartupData* existing_blob, bool owns_isolate) {
         TRACE
         fprintf(stderr, "Snapshot creation is not supported by graal-nodes.js!");
         exit(1);
@@ -4018,6 +4018,82 @@ namespace v8 {
         reinterpret_cast<ObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, attribute, getter_side_effect_type, setter_side_effect_type);
     }
 
+    bool String::StringEquals(Local<String> str) const {
+        TRACE
+        return false;
+    }
+
+    MaybeLocal<Value> Map::Get(Local<Context> context, Local<Value> key) {
+        TRACE
+        return Undefined(Isolate::GetCurrent());
+    }
+
+    Maybe<bool> Map::Delete(Local<Context> context, Local<Value> key) {
+        TRACE
+        return Just(true);
+    }
+
+    Maybe<void> Array::Iterate(Local<Context> context, IterationCallback callback, void* callback_data) {
+        TRACE
+        return JustVoid();
+    }
+
+    bool Module::IsGraphAsync() const {
+        TRACE
+        return true;
+    }
+
+    bool Module::IsSourceTextModule() const {
+        TRACE
+        return true;
+    }
+
+    std::pair<LocalVector<Module>, LocalVector<Message>> Module::GetStalledTopLevelAwaitMessages(Isolate* isolate) {
+        TRACE
+        LocalVector<Module> modules(isolate);
+        LocalVector<Message> messages(isolate);
+        return {modules, messages};
+    }
+
+    v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase(v8::Isolate* isolate) {
+        TRACE
+        heap_ = reinterpret_cast<v8::internal::Heap*> (isolate);
+    }
+
+    v8::internal::Address* v8::internal::StrongRootAllocatorBase::allocate_impl(size_t n) {
+        TRACE
+        return (v8::internal::Address*) malloc(n*sizeof(v8::internal::Address));
+    }
+
+    void v8::internal::StrongRootAllocatorBase::deallocate_impl(v8::internal::Address* p, size_t n) noexcept {
+        TRACE
+        free(p);
+    }
+
+    std::string Isolate::GetDefaultLocale() {
+        TRACE
+        return "";
+    }
+
+    void Isolate::SetContinuationPreservedEmbedderData(Local<Value> data) {
+        TRACE
+    }
+
+    Local<Value> Isolate::GetContinuationPreservedEmbedderData() {
+        TRACE
+        return Local<Value>();
+    }
+
+    bool v8::ValueSerializer::Delegate::HasCustomHostObject(Isolate* isolate) {
+        TRACE
+        return false;
+    }
+
+    Maybe<bool> v8::ValueSerializer::Delegate::IsHostObject(Isolate* isolate, Local<Object> object) {
+        TRACE
+        return Just(false);
+    }
+
     void Array::CheckCast(v8::Value* obj) {}
     void ArrayBuffer::CheckCast(v8::Value* obj) {}
     void ArrayBufferView::CheckCast(v8::Value* obj) {}
@@ -4074,7 +4150,7 @@ namespace v8 {
 }
 
 namespace cppgc {
-    void InitializeProcess(PageAllocator* page_allocator) {
+    void InitializeProcess(PageAllocator* page_allocator, size_t desired_heap_size) {
         TRACE
     }
 
