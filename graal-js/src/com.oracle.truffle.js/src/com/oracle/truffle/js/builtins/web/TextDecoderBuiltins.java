@@ -68,7 +68,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.GetBooleanOptionNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -398,10 +397,8 @@ public class TextDecoderBuiltins {
                 if (prefixLen != 0) {
                     System.arraycopy(prefix, 0, sourceBytes, 0, prefixLen);
                 }
-                // Note: If byteLength == 0, the buffer may be detached.
-                if (byteLength != 0) {
-                    copyFromBuffer(buffer, byteOffset, sourceBytes, prefixLen, byteLength, interop);
-                }
+                JSInteropUtil.copyFromBuffer(buffer, byteOffset, sourceBytes, prefixLen, byteLength, interop);
+                reportLoopCount(this, byteLength);
 
                 if (appendReplacementCharacter) {
                     putCharUTF16(sourceBytes, allocLength - Character.BYTES, UNICODE_REPLACEMENT_CHARACTER, sourceEncoding);
@@ -421,19 +418,6 @@ public class TextDecoderBuiltins {
             } finally {
                 thisObj.endDecode(stream, error);
             }
-        }
-
-        private void copyFromBuffer(JSArrayBufferObject buffer, int byteOffset, byte[] destination, int destinationOffset, int byteLength, InteropLibrary interop) {
-            if (buffer instanceof JSArrayBufferObject.Heap heapBuffer) {
-                System.arraycopy(heapBuffer.getByteArray(), byteOffset, destination, destinationOffset, byteLength);
-            } else if (buffer instanceof JSArrayBufferObject.DirectBase directBuffer) {
-                Boundaries.byteBufferGet(directBuffer.getByteBuffer(), byteOffset, destination, destinationOffset, byteLength);
-            } else if (buffer instanceof JSArrayBufferObject.Interop interopBuffer) {
-                JSInteropUtil.readBuffer(interopBuffer.getInteropBuffer(), byteOffset, destination, destinationOffset, byteLength, interop);
-            } else {
-                throw Errors.shouldNotReachHereUnexpectedValue(buffer);
-            }
-            reportLoopCount(this, byteLength);
         }
 
         private static boolean arrayStartsWith(byte[] bytes, byte[] prefix) {
