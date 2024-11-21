@@ -143,6 +143,7 @@ public final class Strings {
     public static final TruffleString ACCESSOR = constant("accessor");
     public static final TruffleString ADD = constant("add");
     public static final TruffleString ALL = Strings.constant("all");
+    public static final TruffleString ALPHABET = constant("alphabet");
     public static final TruffleString ANY = Strings.constant("any");
     public static final TruffleString APPLY = Strings.constant("apply");
     public static final TruffleString ARGUMENTS = Strings.constant("arguments");
@@ -174,6 +175,7 @@ public final class Strings {
     public static final TruffleString JSON = constant("json");
     public static final TruffleString KEY = constant("key");
     public static final TruffleString KEYS = constant("keys");
+    public static final TruffleString LAST_CHUNK_HANDLING = constant("lastChunkHandling");
     public static final TruffleString LENGTH = constant("length");
     public static final TruffleString MESSAGE = constant("message");
     public static final TruffleString MODULE = constant("module");
@@ -185,12 +187,14 @@ public final class Strings {
     public static final TruffleString NULL = constant("null");
     public static final TruffleString UC_NUMBER = constant("Number");
     public static final TruffleString OBJECT = constant("object");
+    public static final TruffleString OMIT_PADDING = constant("omitPadding");
     public static final TruffleString PARSE = constant("parse");
     public static final TruffleString POS = constant("pos");
     public static final TruffleString PRIMITIVE_VALUE = constant("PrimitiveValue");
     public static final TruffleString PROMISE = constant("promise");
     public static final TruffleString RAW = constant("raw");
     public static final TruffleString RAW_JSON = constant("rawJSON");
+    public static final TruffleString READ = Strings.constant("read");
     public static final TruffleString REJECT = constant("reject");
     public static final TruffleString RESOLVE = constant("resolve");
     public static final TruffleString RETURN = constant("return");
@@ -213,6 +217,7 @@ public final class Strings {
     public static final TruffleString VALUE = constant(VALUE_JLS);
     public static final TruffleString VALUES = constant("values");
     public static final TruffleString WITH = constant("with");
+    public static final TruffleString WRITTEN = Strings.constant("written");
 
     /* method names */
     public static final TruffleString AT = constant("at");

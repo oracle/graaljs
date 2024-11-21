@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -74,6 +75,7 @@ public abstract class GetStringOptionNode extends JavaScriptBaseNode {
 
     public abstract String executeValue(Object options);
 
+    @NeverDefault
     public static GetStringOptionNode create(JSContext context, TruffleString property, List<String> values, String fallback) {
         return GetStringOptionNodeGen.create(context, property, values, fallback);
     }

@@ -50,6 +50,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.Uint8ArrayBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -70,6 +71,8 @@ import com.oracle.truffle.js.runtime.util.IteratorUtil;
 public final class JSArrayBufferView extends JSNonProxy {
     public static final TruffleString CLASS_NAME = Strings.constant("TypedArray");
     public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
+    public static final TruffleString UINT8ARRAY_CONSTRUCTOR_NAME = Strings.constant("Uint8Array");
+    public static final TruffleString UINT8ARRAY_PROTOTYPE_NAME = Strings.concat(UINT8ARRAY_CONSTRUCTOR_NAME, Strings.DOT_PROTOTYPE);
 
     private static final TruffleString BYTES_PER_ELEMENT = Strings.constant("BYTES_PER_ELEMENT");
 
@@ -360,6 +363,13 @@ public final class JSArrayBufferView extends JSNonProxy {
         JSObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.getBytesPerElement(), factory, taConstructor.getPrototype());
         JSObjectUtil.putConstructorPrototypeProperty(arrayBufferViewConstructor, arrayBufferViewPrototype);
         JSObjectUtil.putDataProperty(arrayBufferViewConstructor, BYTES_PER_ELEMENT, factory.getBytesPerElement(), JSAttributes.notConfigurableNotEnumerableNotWritable());
+
+        if (factory == TypedArrayFactory.Uint8Array) {
+            // Uint8Array to/from base64 and hex
+            JSObjectUtil.putFunctionsFromContainer(realm, arrayBufferViewConstructor, Uint8ArrayBuiltins.CONSTRUCTOR_BUILTINS);
+            JSObjectUtil.putFunctionsFromContainer(realm, arrayBufferViewPrototype, Uint8ArrayBuiltins.PROTOTYPE_BUILTINS);
+        }
+
         return new JSConstructor(arrayBufferViewConstructor, arrayBufferViewPrototype);
     }
 
