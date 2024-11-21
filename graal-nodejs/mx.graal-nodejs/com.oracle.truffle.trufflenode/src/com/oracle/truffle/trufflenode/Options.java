@@ -250,6 +250,10 @@ public final class Options {
                     polyglotOptions.put("js.import-attributes", "true");
                     continue;
                 }
+                if ("no-harmony-import-assertions".equals(normalizedKey)) {
+                    polyglotOptions.put("js.import-assertions", "false");
+                    continue;
+                }
                 if ("harmony-import-assertions".equals(normalizedKey)) {
                     polyglotOptions.put("js.import-assertions", "true");
                     continue;
