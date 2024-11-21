@@ -266,6 +266,10 @@ public final class Options {
                     polyglotOptions.put("js.disable-eval", "true");
                     continue;
                 }
+                if ("allow-natives-syntax".equals(normalizedKey)) {
+                    polyglotOptions.put("js.v8-intrinsics", "true");
+                    continue;
+                }
                 // Convert -h to --help
                 if ("-h".equals(arg)) {
                     unprocessedArguments.add("--help");
