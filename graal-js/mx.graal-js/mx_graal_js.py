@@ -480,6 +480,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                                         'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
                                         isolate_build_options=isolate_build_options)
 
+def is_wasm_available():
+    return any(wasm_suite in mx.get_dynamic_imports() for wasm_suite in [('wasm', True), ('wasm-enterprise', True)])
+
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
@@ -506,6 +509,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     truffle_jars=[
         'graal-js:GRAALJS',
         'sdk:MAVEN_DOWNLOADER',
+        *(['wasm:WASM'] if is_wasm_available() else []),
     ],
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',
@@ -513,14 +517,17 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     library_configs=[
         mx_sdk.LanguageLibraryConfig(
             launchers=['bin/<exe:js>'],
-            jar_distributions=['graal-js:GRAALJS_LAUNCHER'],
+            jar_distributions=[
+                'graal-js:GRAALJS_LAUNCHER',
+                *(['wasm:WASM'] if is_wasm_available() else [])
+            ],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
             build_args=[],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
             ] if not mx.is_windows() else [],
-            language='js'
+            language='js',
         )
     ],
     boot_jars=[],
