@@ -101,9 +101,7 @@ assert.throws(
   function testFastPath(buf1, buf2) {
     return crypto.timingSafeEqual(buf1, buf2);
   }
-  eval('%PrepareFunctionForOptimization(testFastPath)');
   assert.strictEqual(testFastPath(foo, bar), false);
-  eval('%OptimizeFunctionOnNextCall(testFastPath)');
   assert.strictEqual(testFastPath(foo, bar), false);
   assert.strictEqual(testFastPath(foo, foo), true);
   assert.throws(() => testFastPath(foo, longer), {
