@@ -2957,6 +2957,13 @@ public class Parser extends AbstractParser {
                     if (!await) {
                         throw error(AbstractParser.message(MSG_INVALID_FOR_AWAIT_OF), token);
                     }
+                    if (isModule) {
+                        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+                        if (currentFunction.isModule()) {
+                            // Top-level for-await: mark the module function as async.
+                            currentFunction.setFlag(FunctionNode.IS_ASYNC);
+                        }
+                    }
                     isForAwaitOf = true;
                     next();
                 }
