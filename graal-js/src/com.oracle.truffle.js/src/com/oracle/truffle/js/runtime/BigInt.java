@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -209,9 +209,14 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         } else if (b == Double.NEGATIVE_INFINITY) {
             return 1;
         } else {
-            BigDecimal thisValue = new BigDecimal(value);
-            BigDecimal theOtherValue = new BigDecimal(b);
-            return thisValue.compareTo(theOtherValue);
+            if (value.bitLength() > 1024) {
+                // value uses more bits than can fit into double
+                return value.signum();
+            } else {
+                BigDecimal thisValue = new BigDecimal(value);
+                BigDecimal theOtherValue = new BigDecimal(b);
+                return thisValue.compareTo(theOtherValue);
+            }
         }
     }
 
@@ -525,5 +530,10 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
             return this;
         }
         return new BigInt(value, foreign);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public int bitLength() {
+        return value.bitLength();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,13 +48,12 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesSelectNodeGen;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesSelectRangeNodeGen;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRulesObject;
@@ -131,8 +130,9 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public Object doSelect(JSPluralRulesObject pluralRules, Object value) {
-            return JSPluralRules.select(pluralRules, value);
+        public Object doSelect(JSPluralRulesObject pluralRules, Object value,
+                        @Cached JSToDoubleNode toDoubleNode) {
+            return JSPluralRules.select(pluralRules, toDoubleNode.executeDouble(value));
         }
 
         @Fallback
@@ -150,15 +150,15 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public Object doSelectRange(JSPluralRulesObject pluralRules, Object start, Object end,
-                        @Cached JSToNumberNode startToNumber,
-                        @Cached JSToNumberNode endToNumber,
+                        @Cached JSToDoubleNode startToDouble,
+                        @Cached JSToDoubleNode endToDouble,
                         @Cached InlinedBranchProfile errorBranch) {
             if (start == Undefined.instance || end == Undefined.instance) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("invalid range");
             }
-            double x = JSRuntime.doubleValue(startToNumber.executeNumber(start));
-            double y = JSRuntime.doubleValue(endToNumber.executeNumber(end));
+            double x = startToDouble.executeDouble(start);
+            double y = endToDouble.executeDouble(end);
             if (Double.isNaN(x) || Double.isNaN(y)) {
                 errorBranch.enter(this);
                 throw Errors.createRangeError("invalid range");

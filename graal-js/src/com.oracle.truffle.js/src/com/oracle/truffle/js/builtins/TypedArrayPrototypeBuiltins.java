@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Comparator;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferOperation;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferSliceNode;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.AbstractArraySortNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayForEachIndexCallOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
@@ -77,7 +78,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayMapNo
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayReduceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.GetTypedArrayBufferOrNameNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.GetTypedArrayLengthOrOffsetNodeGen;
@@ -87,10 +87,12 @@ import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArray
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewReverseNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewSetNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewSubarrayNodeGen;
+import com.oracle.truffle.js.builtins.sort.SortComparator;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.array.JSTypedArraySortNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -114,6 +116,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -236,8 +239,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSArrayReduceNodeGen.create(context, builtin, true, true, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
             case reduceRight:
                 return JSArrayReduceNodeGen.create(context, builtin, true, false, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
-            case sort:
-                return JSArraySortNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case slice:
                 return JSArraySliceNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case every:
@@ -281,8 +282,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             case toReversed:
                 return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case sort:
             case toSorted:
-                return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return TypedArrayPrototypeBuiltinsFactory.TypedArraySortMethodNodeGen.create(context, builtin, builtinEnum == TypedArrayPrototype.toSorted,
+                                args().withThis().fixedArgs(1).createArgumentNodes(context));
             case with:
                 return ArrayPrototypeBuiltinsFactory.JSArrayWithNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
@@ -426,8 +429,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          * @param offset destination array offset
          * @return void
          */
-        @Specialization(guards = "isJSArrayBufferView(targetObj)")
-        protected Object set(JSDynamicObject targetObj, Object array, Object offset) {
+        @Specialization
+        protected Object set(JSTypedArrayObject targetObj, Object array, Object offset) {
             long targetOffsetLong = toInteger(offset);
             if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
                 needErrorBranch.enter();
@@ -438,7 +441,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (arrayIsArrayBufferView.profile(JSArrayBufferView.isJSArrayBufferView(array))) {
                 setArrayBufferView(targetObj, (JSDynamicObject) array, targetOffset);
             } else if (arrayIsFastArray.profile(JSArray.isJSFastArray(array))) {
-                setFastArray(targetObj, (JSDynamicObject) array, targetOffset);
+                setFastArray(targetObj, (JSArrayObject) array, targetOffset);
             } else {
                 setOther(targetObj, array, targetOffset);
             }
@@ -451,16 +454,17 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
-        private void setFastArray(JSDynamicObject thisObj, JSDynamicObject array, int offset) {
+        private void setFastArray(JSTypedArrayObject thisObj, JSArrayObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert JSArray.isJSFastArray(array);
-            ScriptArray sourceArray = sourceArrayProf.profile(arrayGetArrayType(array));
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
+            ScriptArray sourceArray = sourceArrayProf.profile(array.getArrayType());
+            TypedArray targetArray = targetArrayProf.profile(thisObj.getArrayType());
             long sourceLen = sourceArray.length(array);
             rangeCheck(0, sourceLen, offset, targetArray.length(thisObj));
 
             boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
             for (int i = 0, j = offset; i < sourceLen; i++, j++) {
+                sourceArray = sourceArrayProf.profile(array.getArrayType());
                 Object value = sourceArray.getElement(array, i);
                 // IntegerIndexedElementSet
                 Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
@@ -471,14 +475,15 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
         }
 
-        private void setOther(JSDynamicObject thisObj, Object array, int offset) {
+        private void setOther(JSTypedArrayObject thisObj, Object array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSFastArray(array);
+            TypedArray targetArray = targetArrayProf.profile(thisObj.getArrayType());
+            long targetLength = targetArray.length(thisObj);
             Object src = toObject(array);
             long srcLength = objectGetLength(src);
-            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
 
-            rangeCheck(0, srcLength, offset, targetArray.length(thisObj));
+            rangeCheck(0, srcLength, offset, targetLength);
 
             boolean isJSObject = JSDynamicObject.isJSDynamicObject(src);
             boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
@@ -871,6 +876,43 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 TruffleSafepoint.poll(this);
             }
             return thisJSObj;
+        }
+    }
+
+    public abstract static class TypedArraySortMethodNode extends AbstractArraySortNode {
+
+        private final boolean toSorted;
+
+        protected TypedArraySortMethodNode(JSContext context, JSBuiltin builtin, boolean toSorted) {
+            super(context, builtin, true);
+            this.toSorted = toSorted;
+        }
+
+        @Specialization
+        protected final JSTypedArrayObject sortTypedArray(Object thisObj, Object compare,
+                        @Cached JSTypedArraySortNode typedArraySortNode,
+                        @Cached InlinedConditionProfile isCompareUndefined) {
+            checkCompareCallableOrUndefined(compare);
+            JSTypedArrayObject thisArray = validateTypedArray(thisObj);
+            int len = JSArrayBufferView.typedArrayGetLength(thisArray);
+
+            JSTypedArrayObject resultArray;
+            if (toSorted) {
+                resultArray = typedArrayCreateSameType(thisArray, len);
+                if (len == 0) {
+                    return resultArray;
+                }
+            } else {
+                resultArray = thisArray;
+                if (len <= 1) {
+                    // nothing to do
+                    return resultArray;
+                }
+            }
+
+            Comparator<Object> comparator = isCompareUndefined.profile(this, compare == Undefined.instance) ? null : new SortComparator(compare);
+            typedArraySortNode.execute(thisArray, resultArray, len, comparator);
+            return resultArray;
         }
     }
 

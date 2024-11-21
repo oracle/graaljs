@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
 
     protected enum Test {
         HasHoles,
+        HasHolesOrUnused,
         IsSealed,
     }
 
@@ -78,6 +79,11 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
     }
 
     @NeverDefault
+    public static TestArrayNode createHasHolesOrUnused() {
+        return create(Test.HasHolesOrUnused);
+    }
+
+    @NeverDefault
     public static TestArrayNode createIsSealed() {
         return create(Test.IsSealed);
     }
@@ -89,6 +95,8 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
                     @Cached("getArrayType(target)") ScriptArray arrayType) {
         if (test == Test.HasHoles) {
             return arrayType.hasHoles(target);
+        } else if (test == Test.HasHolesOrUnused) {
+            return arrayType.hasHolesOrUnused(target);
         } else if (test == Test.IsSealed) {
             return arrayType.isSealed();
         } else {

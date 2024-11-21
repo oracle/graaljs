@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -278,5 +280,37 @@ public final class Boundaries {
     @TruffleBoundary
     public static <T> void queueAdd(Queue<? super T> queue, T request) {
         queue.add(request);
+    }
+
+    @TruffleBoundary
+    public static <T> void arraySort(T[] array, Comparator<? super T> comparator) {
+        try {
+            Arrays.sort(array, comparator);
+        } catch (IllegalArgumentException e) {
+            /*
+             * Arrays.sort throws IllegalArgumentException when the comparator violates its general
+             * consistent ordering contract. We can just ignore the exception in this case because,
+             * if "comparefn" is not a consistent comparator for the elements of this array, or is
+             * undefined (i.e. using natural ordering), and all applications of ToString do not
+             * produce the same result, the behavior of sort is implementation-defined.
+             *
+             * See SortIndexedProperties, https://tc39.es/ecma262/#sec-sortindexedproperties.
+             */
+        }
+    }
+
+    @TruffleBoundary
+    public static void arraySort(int[] array) {
+        Arrays.sort(array);
+    }
+
+    @TruffleBoundary
+    public static void arraySort(long[] array) {
+        Arrays.sort(array);
+    }
+
+    @TruffleBoundary
+    public static void arraySort(double[] array) {
+        Arrays.sort(array);
     }
 }

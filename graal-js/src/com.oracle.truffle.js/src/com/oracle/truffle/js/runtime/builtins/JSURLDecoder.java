@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -90,7 +90,7 @@ public class JSURLDecoder {
     @TruffleBoundary(transferToInterpreterOnException = false)
     public TruffleString decode(TruffleString string) {
         int strLen = Strings.length(string);
-        TruffleStringBuilder sb = null;
+        TruffleStringBuilderUTF16 sb = null;
         CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
         int k = 0;
 
@@ -111,7 +111,7 @@ public class JSURLDecoder {
         return sb != null ? Strings.builderToString(sb) : string;
     }
 
-    private int decodeConvert(TruffleString string, int strLen, int start, TruffleStringBuilder buffer, CharsetDecoder decoder) {
+    private int decodeConvert(TruffleString string, int strLen, int start, TruffleStringBuilderUTF16 buffer, CharsetDecoder decoder) {
         int k = start;
         if (k + 2 >= strLen) {
             throw Errors.createURIError("illegal escape sequence");
@@ -133,7 +133,7 @@ public class JSURLDecoder {
         return k;
     }
 
-    private int decodeConvertIntl(TruffleString string, int strLen, int kParam, byte b, TruffleStringBuilder buffer, CharsetDecoder decoder) {
+    private int decodeConvertIntl(TruffleString string, int strLen, int kParam, byte b, TruffleStringBuilderUTF16 buffer, CharsetDecoder decoder) {
         int k = kParam;
         int n = findN(b);
         if (n == 1 || n > 4) {

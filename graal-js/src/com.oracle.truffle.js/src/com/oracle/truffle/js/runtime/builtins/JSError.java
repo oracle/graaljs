@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ErrorFunctionBuiltins;
@@ -378,7 +378,7 @@ public final class JSError extends JSNonProxy {
 
     @TruffleBoundary
     private static TruffleString formatStackTrace(JSStackTraceElement[] stackTrace, JSDynamicObject errObj, JSRealm realm) {
-        TruffleStringBuilder builder = Strings.builderCreate();
+        var builder = Strings.builderCreate();
         if (!realm.getContext().isOptionNashornCompatibilityMode() || isInstanceOfJSError(errObj, realm)) {
             TruffleString name = getName(errObj);
             TruffleString message = getMessage(errObj);
@@ -400,7 +400,7 @@ public final class JSError extends JSNonProxy {
         return Strings.builderToString(builder);
     }
 
-    private static void formatStackTraceIntl(JSStackTraceElement[] stackTrace, TruffleStringBuilder builder, JSContext context) {
+    private static void formatStackTraceIntl(JSStackTraceElement[] stackTrace, TruffleStringBuilderUTF16 builder, JSContext context) {
         boolean nashornCompatibilityMode = context.isOptionNashornCompatibilityMode();
         for (JSStackTraceElement elem : stackTrace) {
             Strings.builderAppend(builder, Strings.LINE_SEPARATOR);

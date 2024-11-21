@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,7 @@ import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.CodeRange;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateStringIteratorNodeGen;
@@ -1195,7 +1196,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
                         @Cached TruffleStringBuilder.ToStringNode sbToStringNode) {
             requireObjectCoercible(thisObj);
-            TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
+            var sb = stringBuilderProfile.newStringBuilder();
             stringBuilderProfile.append(appendStringNode, sb, toString(thisObj));
             for (Object o : args) {
                 stringBuilderProfile.append(appendStringNode, sb, toString2Node.executeString(o));
@@ -1222,20 +1223,20 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return ReplaceStringParser.parse(getContext(), replaceValue, 0, false);
         }
 
-        protected static void appendSubstitution(TruffleStringBuilder sb, TruffleString input, TruffleString replaceStr, TruffleString searchStr, int pos, JSStringReplaceBaseNode node,
+        protected static void appendSubstitution(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString replaceStr, TruffleString searchStr, int pos, JSStringReplaceBaseNode node,
                         Node profileNode, InlinedBranchProfile dollarProfile) {
             ReplaceStringParser.process(node.getContext(), replaceStr, 0, false, new ReplaceStringConsumer(sb, input, replaceStr, searchStr, pos), node, profileNode, dollarProfile);
         }
 
-        protected static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<JSStringReplaceBaseNode, TruffleStringBuilder> {
+        protected static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<JSStringReplaceBaseNode, TruffleStringBuilderUTF16> {
 
-            private final TruffleStringBuilder sb;
+            private final TruffleStringBuilderUTF16 sb;
             private final TruffleString input;
             private final TruffleString searchStr;
             private final TruffleString replaceStr;
             private final int matchedPos;
 
-            private ReplaceStringConsumer(TruffleStringBuilder sb, TruffleString input, TruffleString replaceStr, TruffleString searchStr, int matchedPos) {
+            private ReplaceStringConsumer(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString replaceStr, TruffleString searchStr, int matchedPos) {
                 this.sb = sb;
                 this.input = input;
                 this.replaceStr = replaceStr;
@@ -1274,7 +1275,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            public TruffleStringBuilder getResult() {
+            public TruffleStringBuilderUTF16 getResult() {
                 return sb;
             }
         }
@@ -1287,19 +1288,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return functionReplaceCallNode.executeCall(JSArguments.create(separator, splitter, args));
         }
 
-        void append(TruffleStringBuilder sb, TruffleString s) {
+        void append(TruffleStringBuilderUTF16 sb, TruffleString s) {
             Strings.builderAppend(appendStringNode, sb, s);
         }
 
-        void append(TruffleStringBuilder sb, TruffleString s, int fromIndex, int toIndex) {
+        void append(TruffleStringBuilderUTF16 sb, TruffleString s, int fromIndex, int toIndex) {
             Strings.builderAppend(appendSubStringNode, sb, s, fromIndex, toIndex);
         }
 
-        void appendLen(TruffleStringBuilder sb, TruffleString s, int fromIndex, int length) {
+        void appendLen(TruffleStringBuilderUTF16 sb, TruffleString s, int fromIndex, int length) {
             Strings.builderAppendLen(appendSubStringNode, sb, s, fromIndex, length);
         }
 
-        TruffleString builderToString(TruffleStringBuilder sb) {
+        TruffleString builderToString(TruffleStringBuilderUTF16 sb) {
             return Strings.builderToString(builderToStringNode, sb);
         }
 
@@ -1371,7 +1372,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (replaceNecessaryProfile.profile(pos < 0)) {
                 return input;
             }
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             append(sb, input, 0, pos);
             if (functionalReplaceProfile.profile(functionalReplace)) {
                 Object replValue = functionReplaceCall(replParam, Undefined.instance, new Object[]{searchString, pos, input});
@@ -1390,7 +1391,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (replaceNecessaryProfile.profile(pos < 0)) {
                 return input;
             }
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             append(sb, input, 0, pos);
             if (parsedReplaceParam == null) {
                 appendSubstitution(sb, input, replaceString, searchString, pos, this, node, dollarProfile);
@@ -1449,7 +1450,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             TruffleString thisStr = toString(thisObj);
             if (isSearchValueEmpty.profile(node, Strings.isEmpty(searchValue))) {
                 int len = Strings.length(thisStr);
-                TruffleStringBuilder sb = Strings.builderCreate((len + 1) * Strings.length(replaceValue) + len);
+                var sb = Strings.builderCreate((len + 1) * Strings.length(replaceValue) + len);
                 append(sb, replaceValue);
                 for (int i = 0; i < len; i++) {
                     appendLen(sb, thisStr, i, 1);
@@ -1457,7 +1458,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
                 return builderToString(sb);
             }
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             int position = 0;
             while (position < Strings.length(thisStr)) {
                 int nextPosition = Strings.indexOf(stringIndexOfStringNode, thisStr, searchValue, position);
@@ -1510,7 +1511,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         TruffleString.ByteIndexOfStringNode stringIndexOfStringNode, InlinedConditionProfile isSearchValueEmpty, InlinedBranchProfile dollarProfile) {
             TruffleString thisStr = toString(thisObj);
             TruffleString searchString = toString2Node.executeString(searchValue);
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             int position = 0;
 
             boolean functionalReplace = isCallableNode.executeBoolean(replParam);
@@ -1541,7 +1542,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return builderToString(sb);
         }
 
-        private void builtinReplace(TruffleString searchString, boolean functionalReplace, Object replParam, TruffleString input, int lastPosition, int curPosition, TruffleStringBuilder sb,
+        private void builtinReplace(TruffleString searchString, boolean functionalReplace, Object replParam, TruffleString input, int lastPosition, int curPosition, TruffleStringBuilderUTF16 sb,
                         Node node, JSToStringNode toString3Node, InlinedBranchProfile dollarProfile) {
             if (replaceNecessaryProfile.profile(curPosition < 0)) {
                 append(sb, input, lastPosition, Strings.length(input));
@@ -1557,7 +1558,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private void builtinReplaceString(TruffleString searchString, TruffleString replaceString, TruffleString input, ReplaceStringParser.Token[] parsedReplaceParam,
-                        int lastPosition, int curPosition, TruffleStringBuilder sb,
+                        int lastPosition, int curPosition, TruffleStringBuilderUTF16 sb,
                         Node node, InlinedBranchProfile dollarProfile) {
             if (replaceNecessaryProfile.profile(curPosition < 0)) {
                 append(sb, input, lastPosition, Strings.length(input));
@@ -1704,7 +1705,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return thisStr;
             }
             int end = start + Strings.length(searchStr);
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             append(sb, thisStr, 0, start);
             replacer.appendReplacementString(sb, thisStr, searchStr, start, replaceValue, this, tRegexCompiledRegex);
             append(sb, thisStr, end, Strings.length(thisStr));
@@ -1727,7 +1728,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private <T> TruffleString replace(TruffleString thisStr, Object result, int groupCount, Replacer<T> replacer, T replaceValue, Object tRegexCompiledRegex, Node node) {
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             int matchStart = TRegexResultAccessor.captureGroupStart(result, 0, node, getStart);
             int matchEnd = TRegexResultAccessor.captureGroupEnd(result, 0, node, getEnd);
             append(sb, thisStr, 0, matchStart);
@@ -1744,7 +1745,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (ifIsMatch.profile(node, !TRegexResultAccessor.isMatch(result, node, readIsMatch))) {
                 return input;
             }
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             int thisIndex = 0;
             int lastIndex = 0;
             while (TRegexResultAccessor.isMatch(result, node, readIsMatch)) {
@@ -1776,10 +1777,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 this.parentNode = parent;
             }
 
-            abstract void appendReplacementRegex(TruffleStringBuilder sb, TruffleString input, Object result, int groupCount, T replaceValue, JSStringReplaceES5Node parent,
+            abstract void appendReplacementRegex(TruffleStringBuilderUTF16 sb, TruffleString input, Object result, int groupCount, T replaceValue, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex, int matchStart, int matchEnd);
 
-            abstract void appendReplacementString(TruffleStringBuilder sb, TruffleString input, TruffleString matchedString, int pos, T replaceValue, JSStringReplaceES5Node parent,
+            abstract void appendReplacementString(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString matchedString, int pos, T replaceValue, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex);
         }
 
@@ -1797,7 +1798,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacementRegex(TruffleStringBuilder sb, TruffleString input, Object result, int groupCount, TruffleString replaceStr, JSStringReplaceES5Node parent,
+            void appendReplacementRegex(TruffleStringBuilderUTF16 sb, TruffleString input, Object result, int groupCount, TruffleString replaceStr, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex, int matchStart, int matchEnd) {
                 if (emptyReplace.profile(!Strings.isEmpty(replaceStr))) {
                     ReplaceStringParser.process(parent.getContext(), replaceStr, groupCount, false,
@@ -1807,18 +1808,18 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacementString(TruffleStringBuilder sb, TruffleString input, TruffleString matchedString, int pos, TruffleString replaceValue, JSStringReplaceES5Node parent,
+            void appendReplacementString(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString matchedString, int pos, TruffleString replaceValue, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex) {
                 JSStringReplaceNode.appendSubstitution(sb, input, replaceValue, matchedString, pos, parent, null, InlinedBranchProfile.getUncached());
             }
 
             @Override
-            public void append(TruffleStringBuilder sb, TruffleString s) {
+            public void append(TruffleStringBuilderUTF16 sb, TruffleString s) {
                 parentNode.append(sb, s);
             }
 
             @Override
-            public void append(TruffleStringBuilder sb, TruffleString s, int fromIndex, int toIndex) {
+            public void append(TruffleStringBuilderUTF16 sb, TruffleString s, int fromIndex, int toIndex) {
                 parentNode.append(sb, s, fromIndex, toIndex);
             }
 
@@ -1851,13 +1852,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacementRegex(TruffleStringBuilder sb, TruffleString input, Object result, int groupCount, JSDynamicObject replaceFunc, JSStringReplaceES5Node parent,
+            void appendReplacementRegex(TruffleStringBuilderUTF16 sb, TruffleString input, Object result, int groupCount, JSDynamicObject replaceFunc, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex, int matchStart, int matchEnd) {
                 parent.append(sb, callReplaceValueFunc(parent.getContext(), result, input, groupCount, replaceFunc, matchStart));
             }
 
             @Override
-            void appendReplacementString(TruffleStringBuilder sb, TruffleString input, TruffleString matchedString, int pos, JSDynamicObject replaceFunc, JSStringReplaceES5Node parent,
+            void appendReplacementString(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString matchedString, int pos, JSDynamicObject replaceFunc, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex) {
                 Object[] arguments = createArguments(new Object[]{matchedString}, pos, input, replaceFunc);
                 Object replaceValue = functionCallNode.executeCall(arguments);
@@ -2952,7 +2953,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             assert !Strings.isEmpty(fillStr);
             int pos = len - Strings.length(thisStr);
             int fillLen = Strings.length(fillStr);
-            TruffleStringBuilder sb = Strings.builderCreate(len);
+            var sb = Strings.builderCreate(len);
             if (!atStart) {
                 Strings.builderAppend(appendStringNode, sb, thisStr);
             }

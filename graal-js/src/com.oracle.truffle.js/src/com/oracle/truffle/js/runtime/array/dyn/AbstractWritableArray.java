@@ -253,7 +253,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, newCapacity > JSConfig.SOFT_MAX_ARRAY_LENGTH)) {
                 if (JSConfig.SOFT_MAX_ARRAY_LENGTH < minCapacity) {
                     profile.enterArrayTooLargeBranch(node);
-                    throw outOfMemoryError();
+                    throw Errors.outOfMemoryError();
                 }
                 newCapacity = JSConfig.SOFT_MAX_ARRAY_LENGTH;
             }
@@ -269,11 +269,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
             resizeArray(object, (int) newCapacity, capacity, offset);
             return offset;
         }
-    }
-
-    @TruffleBoundary
-    private static OutOfMemoryError outOfMemoryError() {
-        return new OutOfMemoryError();
     }
 
     private int ensureCapacityContiguous(JSDynamicObject object, int internalIndex, Node node, SetSupportedProfileAccess profile) {
@@ -611,37 +606,39 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
     }
 
+    private void fixHolesArrayStartingWithAHole(JSDynamicObject object, long index, int preparedindex) {
+        long nextNonHoles = nextElementIndexHoles(object, index);
+        if (nextNonHoles == JSRuntime.MAX_SAFE_INTEGER_LONG) {
+            // there are no more elements in this Object
+            setArrayOffset(object, 0);
+            arraySetUsedLength(object, 0);
+            arraySetHoleCount(object, 0);
+        } else {
+            int preparedNextNonHoles = prepareInBoundsFast(object, (int) nextNonHoles);
+            int delta = preparedNextNonHoles - preparedindex;
+            setArrayOffset(object, preparedindex + delta);
+            arraySetUsedLength(object, arrayGetUsedLength(object) - delta);
+            incrementHolesCount(object, -countHolesPrepared(object, preparedindex, preparedNextNonHoles));
+        }
+    }
+
     protected final ScriptArray deleteElementHoles(JSDynamicObject object, long index) {
         if (isInBoundsFast(object, index)) {
             int preparedindex = prepareInBoundsFast(object, (int) index);
             if (!isHolePrepared(object, preparedindex)) {
                 int arrayOffset = getArrayOffset(object);
                 if (arrayOffset == preparedindex) {
-                    long nextNonHoles = nextElementIndexHoles(object, index);
-                    if (nextNonHoles == JSRuntime.MAX_SAFE_INTEGER_LONG) {
-                        // there are no more elements in this Object
-                        setArrayOffset(object, 0);
-                        arraySetUsedLength(object, 0);
-                        arraySetHoleCount(object, 0);
-                    } else {
-                        int preparedNextNonHoles = prepareInBoundsFast(object, (int) nextNonHoles);
-                        int delta = preparedNextNonHoles - preparedindex;
-                        setArrayOffset(object, preparedindex + delta);
-                        arraySetUsedLength(object, arrayGetUsedLength(object) - delta);
-                        incrementHolesCount(object, -countHolesPrepared(object, preparedindex, preparedNextNonHoles));
-                    }
-                    setHoleValue(object, preparedindex); // clear unused
+                    fixHolesArrayStartingWithAHole(object, index, preparedindex);
                 } else if (arrayOffset + arrayGetUsedLength(object) == preparedindex) {
                     long previousNonHoles = previousElementIndexHoles(object, index);
                     assert previousNonHoles >= 0;
                     int preparedPreviousNonHoles = prepareInBoundsFast(object, (int) previousNonHoles);
                     arraySetUsedLength(object, arrayGetUsedLength(object) - preparedindex + preparedPreviousNonHoles);
                     incrementHolesCount(object, -countHolesPrepared(object, preparedPreviousNonHoles, preparedindex));
-                    setHoleValue(object, preparedindex); // clear unused
                 } else {
                     incrementHolesCount(object, +1);
-                    setHoleValue(object, preparedindex);
                 }
+                setHoleValue(object, preparedindex); // clear unused
             }
         }
         assert assertHoleCount(object);
@@ -673,7 +670,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             Object array = getArrayObject(object);
             int usedLength = getUsedLength(object);
             int arrayLength = getArrayLength(array);
-            if (arrayOffset + usedLength + size < arrayLength) {
+            if (arrayOffset + usedLength + size <= arrayLength) {
                 int lastIndex = (arrayOffset + usedLength);
                 int effectiveOffset = (int) (offset - indexOffset);
                 int copySize = (lastIndex - effectiveOffset);
@@ -694,9 +691,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     private ScriptArray addRangeGrow(JSDynamicObject object, Object array, int arrayLength, int usedLength, int length, int offset, int size, int arrayOffset, long indexOffset) {
         Object newArray = allocateArray(nextPower(arrayLength + size));
-        if (offset - arrayOffset > arrayLength) {
-            System.arraycopy(array, arrayOffset, newArray, arrayOffset, arrayLength);
-            fillWithHoles(newArray, usedLength, usedLength + size);
+        if (offset >= arrayOffset + usedLength) {
+            System.arraycopy(array, arrayOffset, newArray, arrayOffset, usedLength);
+            fillWithHoles(newArray, arrayOffset + usedLength, arrayOffset + usedLength + size);
             return ensureHolesArray(object, length + size, newArray, indexOffset, arrayOffset, usedLength + size, arrayGetHoleCount(object) + size);
         } else {
             System.arraycopy(array, arrayOffset, newArray, arrayOffset, offset - arrayOffset);
@@ -824,7 +821,24 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
 
         removeRangeContiguous(object, start, end);
+        arrayOffset = getArrayOffset(object);
+        if (isHolePrepared(object, arrayOffset)) {
+            fixHolesArrayStartingWithAHole(object, arrayOffset + getIndexOffset(object), arrayOffset);
+        }
         return this;
+    }
+
+    @Override
+    public boolean hasHoles(JSDynamicObject object) {
+        assert arrayGetHoleCount(object) == 0 : arrayGetHoleCount(object);
+        return false;
+    }
+
+    @Override
+    public boolean hasHolesOrUnused(JSDynamicObject object) {
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        return usedLength < length || hasHoles(object);
     }
 
     protected final int countHoles(JSDynamicObject object) {

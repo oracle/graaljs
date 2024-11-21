@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.JSConfig;
 
@@ -151,7 +152,7 @@ public class SimpleArrayList<E> {
         if (newCapacity > MAX_ARRAY_SIZE) {
             if (MAX_ARRAY_SIZE < minCapacity) {
                 CompilerDirectives.transferToInterpreter();
-                throw new OutOfMemoryError();
+                throw Errors.outOfMemoryError();
             }
             newCapacity = MAX_ARRAY_SIZE;
         }

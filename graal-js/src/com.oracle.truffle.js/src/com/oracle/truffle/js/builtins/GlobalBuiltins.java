@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalNashornExtensionParseToJSONNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalScriptingEXECNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDecodeURINodeGen;
@@ -1360,7 +1360,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         @Cached InlinedConditionProfile argumentsCount,
                         @Cached InlinedBranchProfile consoleIndentation) {
             // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
-            TruffleStringBuilder builder = Strings.builderCreate();
+            var builder = Strings.builderCreate();
             JSConsoleUtil consoleUtil = getRealm().getConsoleUtil();
             if (consoleUtil.getConsoleIndentation() > 0) {
                 consoleIndentation.enter(this);
@@ -1380,7 +1380,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private Object printIntl(TruffleStringBuilder builder) {
+        private Object printIntl(TruffleStringBuilderUTF16 builder) {
             JSRealm realm = getRealm();
             if (!noNewLine) {
                 Strings.builderAppend(builder, Strings.LINE_SEPARATOR);
@@ -1634,7 +1634,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private static TruffleString readImpl(BufferedReader reader) throws IOException {
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             final char[] arr = new char[BUFFER_SIZE];
             try {
                 int numChars;
