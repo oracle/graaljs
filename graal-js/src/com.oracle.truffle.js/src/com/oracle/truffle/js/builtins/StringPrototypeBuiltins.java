@@ -103,8 +103,7 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSpl
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringStartsWithNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSubstrNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSubstringNodeGen;
-import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleLowerCaseIntlNodeGen;
-import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleUpperCaseIntlNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleLowerOrUpperCaseNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLowerCaseNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToStringNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToUpperCaseNodeGen;
@@ -340,7 +339,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringToLowerCaseNodeGen.create(context, builtin, false, args().withThis().createArgumentNodes(context));
             case toLocaleLowerCase:
                 if (context.isOptionIntl402()) {
-                    return JSStringToLocaleLowerCaseIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                    return JSStringToLocaleLowerOrUpperCaseNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return JSStringToLowerCaseNodeGen.create(context, builtin, true, args().withThis().createArgumentNodes(context));
                 }
@@ -348,7 +347,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringToUpperCaseNodeGen.create(context, builtin, false, args().withThis().createArgumentNodes(context));
             case toLocaleUpperCase:
                 if (context.isOptionIntl402()) {
-                    return JSStringToLocaleUpperCaseIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                    return JSStringToLocaleLowerOrUpperCaseNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return JSStringToUpperCaseNodeGen.create(context, builtin, true, args().withThis().createArgumentNodes(context));
                 }
@@ -1985,63 +1984,46 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
-    public abstract static class JSStringToLocaleXCaseIntl extends JSStringOperation {
+    /**
+     * Implementation of the String.prototype.toLocaleLowerCase() and toLocaleUpperCase() methods as
+     * specified by ECMAScript Internationalization API, 1.0.
+     *
+     * https://tc39.github.io/ecma402/#sup-string.prototype.tolocalelowercase
+     * https://tc39.github.io/ecma402/#sup-string.prototype.tolocaleuppercase
+     */
+    public abstract static class JSStringToLocaleLowerOrUpperCaseNode extends JSStringOperation {
 
+        private final boolean toUpperCase;
         @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
 
-        public JSStringToLocaleXCaseIntl(JSContext context, JSBuiltin builtin) {
+        public JSStringToLocaleLowerOrUpperCaseNode(JSContext context, JSBuiltin builtin, boolean toUpperCase) {
             super(context, builtin);
+            this.toUpperCase = toUpperCase;
             this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         }
 
         @Specialization
-        protected Object toDesiredCase(Object thisObj, Object locale) {
-            requireObjectCoercible(thisObj);
-            TruffleString thisStr = toString(thisObj);
+        protected final TruffleString doString(TruffleString thisStr, Object locale,
+                        @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode) {
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(locale);
             if (Strings.isEmpty(thisStr)) {
                 return thisStr;
             }
-            return toXCase(Strings.toJavaString(thisStr), locales);
+            String thisJStr = Strings.toJavaString(toJavaStringNode, thisStr);
+            String resultJStr = toUpperCase
+                            ? IntlUtil.toUpperCase(getContext(), thisJStr, locales)
+                            : IntlUtil.toLowerCase(getContext(), thisJStr, locales);
+            return Strings.fromJavaString(fromJavaStringNode, resultJStr);
         }
 
-        @SuppressWarnings("unused")
-        protected TruffleString toXCase(String thisStr, String[] locales) {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    /**
-     * Implementation of the String.prototype.toLocaleLowerCase() method as specified by ECMAScript
-     * Internationalization API, 1.0.
-     * https://tc39.github.io/ecma402/#sup-string.prototype.tolocalelowercase
-     */
-    public abstract static class JSStringToLocaleLowerCaseIntlNode extends JSStringToLocaleXCaseIntl {
-
-        public JSStringToLocaleLowerCaseIntlNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Override
-        protected TruffleString toXCase(String thisStr, String[] locales) {
-            return IntlUtil.toLowerCase(getContext(), thisStr, locales);
-        }
-    }
-
-    /**
-     * Implementation of the String.prototype.toLocaleUpperCase() method as specified by ECMAScript
-     * Internationalization API, 1.0.
-     * https://tc39.github.io/ecma402/#sup-string.prototype.tolocaleuppercase
-     */
-    public abstract static class JSStringToLocaleUpperCaseIntlNode extends JSStringToLocaleXCaseIntl {
-
-        public JSStringToLocaleUpperCaseIntlNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Override
-        protected TruffleString toXCase(String thisStr, String[] locales) {
-            return IntlUtil.toUpperCase(getContext(), thisStr, locales);
+        @Specialization(replaces = "doString")
+        protected final TruffleString doGeneric(Object thisObj, Object locale,
+                        @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode) {
+            requireObjectCoercible(thisObj);
+            TruffleString thisStr = toString(thisObj);
+            return doString(thisStr, locale, toJavaStringNode, fromJavaStringNode);
         }
     }
 
