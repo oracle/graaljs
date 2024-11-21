@@ -767,8 +767,8 @@ public final class JSContextOptions {
         this.annexB = readBooleanOption(ANNEX_B);
         this.intl402 = INTL_402.hasBeenSet(optionValues) ? readBooleanOption(INTL_402) : !nashornCompatibilityMode;
         this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT);
-        this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
-        this.regexpUnicodeSets = REGEXP_UNICODE_SETS.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_UNICODE_SETS) : getEcmaScriptVersion() >= JSConfig.ECMAScript2024;
+        this.regexpMatchIndices = readBooleanOption(REGEXP_MATCH_INDICES, JSConfig.ECMAScript2022);
+        this.regexpUnicodeSets = readBooleanOption(REGEXP_UNICODE_SETS, JSConfig.ECMAScript2024);
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER);
         this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN);
@@ -806,27 +806,27 @@ public final class JSContextOptions {
         this.maxApplyArgumentLength = readIntegerOption(MAX_APPLY_ARGUMENT_LENGTH);
         this.maxPrototypeChainLength = readIntegerOption(MAX_PROTOTYPE_CHAIN_LENGTH);
         this.asyncStackTraces = readBooleanOption(ASYNC_STACK_TRACES);
-        this.topLevelAwait = TOP_LEVEL_AWAIT.hasBeenSet(optionValues) ? readBooleanOption(TOP_LEVEL_AWAIT) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        this.topLevelAwait = readBooleanOption(TOP_LEVEL_AWAIT, JSConfig.ECMAScript2022);
         this.useUTCForLegacyDates = USE_UTC_FOR_LEGACY_DATES.hasBeenSet(optionValues) ? readBooleanOption(USE_UTC_FOR_LEGACY_DATES) : !v8CompatibilityMode;
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
-        this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
-        this.atomicsWaitAsync = ATOMICS_WAIT_ASYNC.hasBeenSet(optionValues) ? readBooleanOption(ATOMICS_WAIT_ASYNC) : getEcmaScriptVersion() >= JSConfig.ECMAScript2024;
+        this.newSetMethods = readBooleanOption(NEW_SET_METHODS, JSConfig.ECMAScript2025);
+        this.atomicsWaitAsync = readBooleanOption(ATOMICS_WAIT_ASYNC, JSConfig.ECMAScript2024);
         this.asyncIteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ASYNC_ITERATOR_HELPERS);
-        this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && (this.asyncIteratorHelpers || readBooleanOption(ITERATOR_HELPERS));
+        this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && (this.asyncIteratorHelpers || readBooleanOption(ITERATOR_HELPERS, JSConfig.ECMAScript2025));
         this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
         this.asyncContext = readBooleanOption(ASYNC_CONTEXT);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
-        this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
-        this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES);
+        this.errorCause = readBooleanOption(ERROR_CAUSE, JSConfig.ECMAScript2022);
+        this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES, JSConfig.ECMAScript2025);
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
-        this.jsonModules = readBooleanOption(JSON_MODULES);
+        this.jsonModules = readBooleanOption(JSON_MODULES, JSConfig.ECMAScript2025);
         this.sourcePhaseImports = readBooleanOption(SOURCE_PHASE_IMPORTS);
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
         this.printNoNewline = readBooleanOption(PRINT_NO_NEWLINE);
         this.mleMode = readBooleanOption(MLE_MODE) || readBooleanOption(INTEROP_COMPLETE_PROMISES);
-        this.privateFieldsIn = PRIVATE_FIELDS_IN.hasBeenSet(optionValues) ? readBooleanOption(PRIVATE_FIELDS_IN) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        this.privateFieldsIn = readBooleanOption(PRIVATE_FIELDS_IN, JSConfig.ECMAScript2022);
         this.esmBareSpecifierRelativeLookup = readBooleanOption(ESM_BARE_SPECIFIER_RELATIVE_LOOKUP);
         this.temporal = readBooleanOption(TEMPORAL);
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
@@ -847,6 +847,10 @@ public final class JSContextOptions {
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
         return key.getValue(optionValues);
+    }
+
+    private boolean readBooleanOption(OptionKey<Boolean> key, int finishedESVersion) {
+        return key.hasBeenSet(optionValues) ? key.getValue(optionValues) : getEcmaScriptVersion() >= finishedESVersion;
     }
 
     private int readIntegerOption(OptionKey<Integer> key) {

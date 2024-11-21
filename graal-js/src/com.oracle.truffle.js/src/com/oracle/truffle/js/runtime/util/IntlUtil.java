@@ -700,21 +700,21 @@ public final class IntlUtil {
     }
 
     @TruffleBoundary
-    public static TruffleString toLowerCase(JSContext ctx, String s, String[] locales) {
+    public static String toLowerCase(JSContext ctx, String s, String[] locales) {
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
         StringBuilder result = new StringBuilder();
         Lower tr = CaseMap.toLower();
         tr.apply(strippedLocale, s, result, null);
-        return Strings.fromJavaString(result.toString());
+        return result.toString();
     }
 
     @TruffleBoundary
-    public static TruffleString toUpperCase(JSContext ctx, String s, String[] locales) {
+    public static String toUpperCase(JSContext ctx, String s, String[] locales) {
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
         StringBuilder result = new StringBuilder();
         Upper tr = CaseMap.toUpper();
         tr.apply(strippedLocale, s, result, null);
-        return Strings.fromJavaString(result.toString());
+        return result.toString();
     }
 
     @TruffleBoundary
