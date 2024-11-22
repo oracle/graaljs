@@ -4017,8 +4017,14 @@ namespace v8 {
     }
 
     Maybe<void> Array::Iterate(Local<Context> context, IterationCallback callback, void* callback_data) {
-        TRACE
-        return JustVoid();
+        TryCatch try_catch(context->GetIsolate());
+        uint32_t length = Length();
+        for (uint32_t i = 0; i < length; i++) {
+            if (CallbackResult::kContinue != callback(i, Get(context, i).ToLocalChecked(), callback_data)) {
+                break;
+            }
+        }
+        return try_catch.HasCaught() ? Nothing<void>() : JustVoid();
     }
 
     bool Module::IsGraphAsync() const {
