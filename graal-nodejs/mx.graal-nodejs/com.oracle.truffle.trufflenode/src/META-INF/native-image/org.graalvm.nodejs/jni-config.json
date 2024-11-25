@@ -139,6 +139,7 @@
       { "name": "moduleGetNamespace" },
       { "name": "moduleGetStatus" },
       { "name": "moduleGetUnboundModuleScript" },
+      { "name": "moduleIsGraphAsync" },
       { "name": "moduleRequestGetImportAssertions" },
       { "name": "moduleRequestGetSpecifier" },
       { "name": "moduleSetSyntheticModuleExport" },

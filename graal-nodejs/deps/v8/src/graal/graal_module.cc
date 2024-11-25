@@ -174,3 +174,8 @@ v8::Local<v8::FixedArray> GraalModule::GetModuleRequests() const {
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     return v8::Local<v8::FixedArray>::New(v8_isolate, v8_requests);
 }
+
+bool GraalModule::IsGraphAsync() const {
+    JNI_CALL(jboolean, java_is_graph_async, Isolate(), GraalAccessMethod::module_is_graph_async, Boolean, GetJavaObject());
+    return (bool) java_is_graph_async;
+}

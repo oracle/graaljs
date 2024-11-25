@@ -3868,6 +3868,11 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
+    public boolean moduleIsGraphAsync(Object module) {
+        JSModuleRecord record = (JSModuleRecord) module;
+        return record.hasTLA() || record.isAsyncEvaluation();
+    }
+
     public Object moduleCreateSyntheticModule(Object moduleName, Object[] exportNames, final long evaluationStepsCallback) {
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
         for (Object exportName : exportNames) {

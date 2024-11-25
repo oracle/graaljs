@@ -4028,8 +4028,7 @@ namespace v8 {
     }
 
     bool Module::IsGraphAsync() const {
-        TRACE
-        return true;
+        return reinterpret_cast<const GraalModule*> (this)->IsGraphAsync();
     }
 
     bool Module::IsSourceTextModule() const {

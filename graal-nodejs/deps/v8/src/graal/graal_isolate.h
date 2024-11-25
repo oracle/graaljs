@@ -364,6 +364,7 @@ enum GraalAccessMethod {
     module_get_module_requests,
     module_request_get_specifier,
     module_request_get_import_assertions,
+    module_is_graph_async,
     script_or_module_get_resource_name,
     script_or_module_get_host_defined_options,
     value_serializer_new,
