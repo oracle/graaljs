@@ -662,63 +662,6 @@ public final class JSRuntime {
     }
 
     /**
-     * Implementation of ECMA 7.1.10 "ToUInt8".
-     *
-     * @param value an Object to be converted to a UInt8
-     * @return an Object representing the Number value of the parameter
-     */
-    public static int toUInt8(Object value) {
-        Number number = toNumber(value);
-        return toUInt8(number);
-    }
-
-    @TruffleBoundary
-    public static int toUInt8(Number number) {
-        if (number instanceof Double) {
-            Double d = (Double) number;
-            if (isPositiveInfinity(d)) {
-                return 0;
-            }
-        }
-        return toUInt8(number.longValue());
-    }
-
-    public static int toUInt8(long number) {
-        return (int) (number & 0x000000FF);
-    }
-
-    /**
-     * Implementation of ECMA 7.1.9 "ToInt8".
-     *
-     * @param value an Object to be converted to a Int8
-     * @return an Object representing the Number value of the parameter
-     */
-    public static int toInt8(Object value) {
-        Number number = toNumber(value);
-        return toInt8(number);
-    }
-
-    @TruffleBoundary
-    public static int toInt8(Number number) {
-        if (number instanceof Double) {
-            Double d = (Double) number;
-            if (isPositiveInfinity(d)) {
-                return 0;
-            }
-        }
-        return toInt8(number.longValue());
-    }
-
-    @TruffleBoundary
-    public static int toInt8(long number) {
-        int res = floorMod(number, 256);
-        if (res >= 128) {
-            res = res - 256;
-        }
-        return res;
-    }
-
-    /**
      * Implementation of ECMA 9.7 "ToUInt16".
      *
      * @param value an Object to be converted to a UInt16
@@ -744,43 +687,6 @@ public final class JSRuntime {
     }
 
     /**
-     * Implementation of ECMA 7.1.7 "ToInt16".
-     *
-     * @param value an Object to be converted to a Int16
-     * @return an Object representing the Number value of the parameter
-     */
-    public static int toInt16(Object value) {
-        Number number = toNumber(value);
-        return toInt16(number);
-    }
-
-    @TruffleBoundary()
-    public static int toInt16(Number number) {
-        if (number instanceof Double) {
-            Double d = (Double) number;
-            if (isPositiveInfinity(d)) {
-                return 0;
-            }
-        }
-        return toInt16(number.longValue());
-    }
-
-    @TruffleBoundary()
-    public static int toInt16(long number) {
-        int res = floorMod(number, 65536);
-        if (res >= 32768) {
-            res = res - 65536;
-        }
-        return res;
-    }
-
-    public static int floorMod(long x, int y) {
-        // Result cannot overflow the range of int.
-        long divisor = y;
-        return (int) Math.floorMod(x, divisor);
-    }
-
-    /**
      * Implementation of ECMA 9.6 "ToUInt32".
      *
      * @param value an Object to be converted to a UInt32
@@ -790,11 +696,18 @@ public final class JSRuntime {
         return toUInt32(toNumber(value));
     }
 
+    /**
+     * ToUint32 after previous ToNumber conversion.
+     */
     public static long toUInt32(Number number) {
-        if (number instanceof Double) {
-            return toUInt32(((Double) number).doubleValue());
+        if (number instanceof Integer) {
+            return Integer.toUnsignedLong((int) number);
+        } else if (number instanceof Double) {
+            return toUInt32((double) number);
+        } else if (number instanceof SafeInteger) {
+            return toUInt32(((SafeInteger) number).longValue());
         }
-        return toUInt32(longValue(number));
+        return toUInt32(longValueVirtual(number));
     }
 
     public static long toUInt32(long value) {
@@ -835,6 +748,9 @@ public final class JSRuntime {
         }
         if (number instanceof Integer) {
             return (int) number;
+        }
+        if (number instanceof SafeInteger) {
+            return (int) number.longValue();
         }
         if (number instanceof Long) {
             return (int) (long) number;
@@ -895,7 +811,7 @@ public final class JSRuntime {
             return Null.NAME;
         } else if (value instanceof Boolean) {
             return booleanToString((Boolean) value);
-        } else if (isNumber(value)) {
+        } else if (isNumber(value) || value instanceof Long) {
             return numberToString((Number) value);
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
@@ -1436,7 +1352,7 @@ public final class JSRuntime {
             return true;
         } else if (x instanceof Integer && y instanceof Integer) {
             return (int) x == (int) y;
-        } else if (isNumber(x) && isNumber(y)) {
+        } else if ((isNumber(x) || x instanceof Long) && (isNumber(y) || y instanceof Long)) {
             double xd = doubleValue((Number) x);
             double yd = doubleValue((Number) y);
             return Double.compare(xd, yd) == 0;
@@ -1970,7 +1886,8 @@ public final class JSRuntime {
     }
 
     public static boolean isJSPrimitive(Object value) {
-        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
+        return isNumber(value) || value instanceof Long || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance ||
+                        value instanceof Symbol;
     }
 
     public static TruffleString toStringIsString(Object value) {
@@ -2053,6 +1970,9 @@ public final class JSRuntime {
         if (number instanceof Integer) {
             return ((Integer) number).doubleValue();
         }
+        if (number instanceof SafeInteger) {
+            return ((SafeInteger) number).doubleValue();
+        }
         return doubleValueVirtual(number);
     }
 
@@ -2109,13 +2029,6 @@ public final class JSRuntime {
     @TruffleBoundary
     private static long longValueVirtual(Number n) {
         return n.longValue();
-    }
-
-    /**
-     * Convert JS number to long.
-     */
-    public static long toLong(Number value) {
-        return longValue(value);
     }
 
     /**

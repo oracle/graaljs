@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -137,12 +138,14 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 }
             }
         }
-        return result.toArray(new String[]{});
+        return Boundaries.listToStringArray(result);
     }
 
     @Specialization(guards = {"isForeignObject(object)"})
     protected String[] doForeignType(Object object,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrayInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary valueInterop,
+                    @Cached ImportValueNode importValueNode,
                     @Cached @Shared("typeOfNode") TypeOfNode typeOfNode,
                     @Cached @Shared("toStringNode") JSToStringNode toStringNode,
                     @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
@@ -150,33 +153,38 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
         List<String> result = new ArrayList<>();
         long len;
         try {
-            len = interop.getArraySize(object);
+            len = arrayInterop.getArraySize(object);
         } catch (UnsupportedMessageException e) {
             errorBranch.enter();
             throw Errors.createTypeErrorInteropException(object, e, "getArraySize", this);
         }
         for (long k = 0; k < len; k++) {
-            if (interop.isArrayElementReadable(object, k)) {
-                Object kValue;
+            if (arrayInterop.isArrayElementReadable(object, k)) {
+                String tag;
                 try {
-                    kValue = interop.readArrayElement(object, k);
+                    Object foreignValue = arrayInterop.readArrayElement(object, k);
+                    if (valueInterop.isString(foreignValue)) {
+                        tag = valueInterop.asString(foreignValue);
+                    } else {
+                        Object kValue = importValueNode.executeWithTarget(foreignValue);
+                        TruffleString typeOfKValue = typeOfNode.executeString(kValue);
+                        if (!Strings.equals(equalsNode, Strings.STRING, typeOfKValue) && !Strings.equals(equalsNode, Strings.OBJECT, typeOfKValue)) {
+                            errorBranch.enter();
+                            throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
+                        }
+                        tag = Strings.toJavaString(toJavaStringNode, toStringNode.executeString(kValue));
+                    }
                 } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                     errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(object, e, "readArrayElement", k, this);
                 }
-                TruffleString typeOfKValue = typeOfNode.executeString(kValue);
-                if (!Strings.equals(equalsNode, Strings.STRING, typeOfKValue) && !Strings.equals(equalsNode, Strings.OBJECT, typeOfKValue)) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
-                }
-                String lt = Strings.toJavaString(toJavaStringNode, toStringNode.executeString(kValue));
-                String canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
-                if (!Boundaries.listContains(result, canonicalizedLt)) {
-                    Boundaries.listAdd(result, canonicalizedLt);
+                String canonicalizedTag = IntlUtil.validateAndCanonicalizeLanguageTag(tag);
+                if (!Boundaries.listContains(result, canonicalizedTag)) {
+                    Boundaries.listAdd(result, canonicalizedTag);
                 }
             }
         }
-        return result.toArray(new String[]{});
+        return Boundaries.listToStringArray(result);
     }
 
     private static String[] doJavaString(String s) {

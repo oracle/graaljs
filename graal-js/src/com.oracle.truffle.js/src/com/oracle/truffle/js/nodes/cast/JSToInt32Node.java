@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -73,6 +74,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * This node implements the behavior of ToInt32. Not to confuse with ToInteger, etc.
  *
  */
+@ImportStatic({JSRuntime.class})
 @GenerateUncached
 public abstract class JSToInt32Node extends JavaScriptBaseNode {
 
@@ -121,9 +123,14 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
         return JSRuntime.booleanToNumber(value);
     }
 
-    @Specialization(guards = "isLongRepresentableAsInt32(value)")
-    protected int doLong(long value) {
+    @Specialization(guards = "isSafeInteger(value)")
+    protected static int doLong(long value) {
         return (int) value;
+    }
+
+    @Specialization(guards = "!isSafeInteger(value)")
+    protected static int doLongNotSafeInteger(long value) {
+        return (int) (long) (double) value;
     }
 
     @Specialization(guards = "!isDoubleLargerThan2e32(value)")
@@ -199,6 +206,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
         return toInt32Node.executeInt(toPrimitiveNode.execute(object));
     }
 
+    @ImportStatic({JSRuntime.class})
     @NodeInfo(shortName = "|")
     public abstract static class JSToInt32UnaryNode extends JSUnaryNode {
 
@@ -236,9 +244,14 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
             return JSRuntime.booleanToNumber(value);
         }
 
-        @Specialization(guards = "isLongRepresentableAsInt32(value)")
-        protected int doLong(long value) {
+        @Specialization(guards = "isSafeInteger(value)")
+        protected static int doLong(long value) {
             return (int) value;
+        }
+
+        @Specialization(guards = "!isSafeInteger(value)")
+        protected static int doLongNotSafeInteger(long value) {
+            return (int) (long) (double) value;
         }
 
         @Specialization(guards = "!isDoubleLargerThan2e32(value)")

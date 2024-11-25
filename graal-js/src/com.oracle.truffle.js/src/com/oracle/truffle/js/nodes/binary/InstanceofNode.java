@@ -163,6 +163,11 @@ public abstract class InstanceofNode extends JSBinaryNode {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }
 
+    @Specialization
+    protected boolean doLongTarget(@SuppressWarnings("unused") Object obj, long target) {
+        throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
+    }
+
     @Specialization()
     protected boolean doBooleanTarget(@SuppressWarnings("unused") Object obj, boolean target) {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);

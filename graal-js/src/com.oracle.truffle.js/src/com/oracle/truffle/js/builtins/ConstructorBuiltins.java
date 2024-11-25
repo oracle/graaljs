@@ -854,7 +854,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @CompilationFinal private ConstructArrayAllocationSite arrayAllocationSite = createAllocationSite();
 
         protected static boolean isOneNumberArg(Object[] args) {
-            return args.length == 1 && JSRuntime.isNumber(args[0]);
+            return args.length == 1 && (JSRuntime.isNumber(args[0]) || args[0] instanceof Long);
         }
 
         protected static boolean isOneForeignArg(Object[] args) {
@@ -901,11 +901,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return arguments[0];
         }
 
+        /*
+         * GR-53718: Cannot use @CachedLibrary(firstArg(args)) here because then firstArg is being
+         * evaluated before the guard checking the array length.
+         */
         @SuppressWarnings("truffle-static-method")
-        @Specialization(guards = "isOneForeignArg(args)", limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isOneForeignArg(args)"})
         protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
                         @Bind("this") Node node,
-                        @CachedLibrary("firstArg(args)") InteropLibrary interop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
                         @Cached @Exclusive InlinedConditionProfile isNumber,
                         @Cached @Exclusive InlinedBranchProfile rangeErrorProfile) {

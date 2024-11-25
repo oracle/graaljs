@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,8 +55,9 @@ import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewG
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewSetNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -244,15 +245,18 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class DataViewSetNode extends DataViewAccessNode {
-        @Child private JSToNumberNode toNumberNode;
         @Child private JSToBigIntNode toBigIntNode;
+        @Child private JSToDoubleNode toDoubleNode;
+        @Child private JSToInt32Node toInt32Node;
 
         public DataViewSetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             if (factory.isBigInt()) {
                 this.toBigIntNode = JSToBigIntNode.create();
+            } else if (factory.isFloat()) {
+                this.toDoubleNode = JSToDoubleNode.create();
             } else {
-                this.toNumberNode = JSToNumberNode.create();
+                this.toInt32Node = JSToInt32Node.create();
             }
         }
 
@@ -264,7 +268,11 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached InlinedExactClassProfile bufferTypeProfile,
                         @Cached InlinedExactClassProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
-            Object numberValue = factory.isBigInt() ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
+            Object numberValue = switch (factory) {
+                case BigInt64Array, BigUint64Array -> toBigIntNode.executeBigInteger(value);
+                case Float64Array, Float32Array -> toDoubleNode.executeDouble(value);
+                default -> toInt32Node.executeInt(value);
+            };
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(this, JSDataView.getArrayBuffer(dataView));

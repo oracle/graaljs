@@ -2651,7 +2651,7 @@ public final class TemporalUtil {
     public static long getOffsetNanosecondsFor(JSDynamicObject timeZone, JSDynamicObject instant) {
         Object getOffsetNanosecondsFor = JSObject.getMethod(timeZone, GET_OFFSET_NANOSECONDS_FOR);
         Object offsetNanoseconds = JSRuntime.call(getOffsetNanosecondsFor, timeZone, new Object[]{instant});
-        if (!JSRuntime.isNumber(offsetNanoseconds)) {
+        if (!(JSRuntime.isNumber(offsetNanoseconds) || offsetNanoseconds instanceof Long)) {
             throw Errors.createTypeError("Number expected");
         }
         Double nanos = ((Number) offsetNanoseconds).doubleValue();

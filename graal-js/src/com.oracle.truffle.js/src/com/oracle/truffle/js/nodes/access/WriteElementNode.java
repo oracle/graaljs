@@ -101,7 +101,6 @@ import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.WriteElementTy
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNoToPropertyKeyNode;
@@ -120,7 +119,6 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray.CreateWritableProfileAccess;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
-import com.oracle.truffle.js.runtime.array.TypedArray.AbstractUint32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.AbstractUint8ClampedArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedBigIntArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedFloatArray;
@@ -1504,7 +1502,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         protected static boolean isSpecial(TypedIntArray typedArray) {
-            return typedArray instanceof AbstractUint32Array || typedArray instanceof AbstractUint8ClampedArray;
+            return typedArray instanceof AbstractUint8ClampedArray;
         }
 
         @Specialization(guards = "!isSpecial(typedArray)", replaces = "doTypedIntArrayIntValue")
@@ -1512,14 +1510,6 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached JSToInt32Node toIntNode,
                         @Cached @Shared InlinedConditionProfile inBoundsIf) {
             int iValue = toIntNode.executeInt(value); // could throw
-            return doTypedIntArrayIntValue(target, typedArray, index, iValue, root, inBoundsIf);
-        }
-
-        @Specialization(replaces = "doTypedIntArrayIntValue")
-        protected final boolean doTypedIntArray(JSDynamicObject target, AbstractUint32Array typedArray, long index, Object value, WriteElementNode root,
-                        @Cached JSToNumberNode toNumberNode,
-                        @Cached @Shared InlinedConditionProfile inBoundsIf) {
-            int iValue = (int) JSRuntime.toUInt32(toNumberNode.executeNumber(value));
             return doTypedIntArrayIntValue(target, typedArray, index, iValue, root, inBoundsIf);
         }
 

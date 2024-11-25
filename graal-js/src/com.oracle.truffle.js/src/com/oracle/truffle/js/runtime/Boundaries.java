@@ -176,6 +176,11 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
+    public static String[] listToStringArray(List<String> list) {
+        return list.toArray(new String[0]);
+    }
+
+    @TruffleBoundary
     public static <T> boolean iteratorHasNext(Iterator<T> it) {
         return it.hasNext();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,6 +80,20 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
         return JSRuntime.booleanToNumber(value);
     }
 
+    @Specialization(guards = "isLongRepresentableAsInt32(value)")
+    protected static int doLongInt32Range(long value) {
+        return (int) value;
+    }
+
+    @Specialization(guards = "!isLongRepresentableAsInt32(value)")
+    protected static int doLongOther(long value) {
+        if (value < 0) {
+            return Integer.MIN_VALUE;
+        } else {
+            return Integer.MAX_VALUE;
+        }
+    }
+
     @Specialization(guards = "isLongRepresentableAsInt32(value.longValue())")
     protected static int doSafeIntegerInt32Range(SafeInteger value) {
         return value.intValue();
@@ -87,11 +101,7 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isLongRepresentableAsInt32(value.longValue())")
     protected static int doSafeIntegerOther(SafeInteger value) {
-        if (value.isNegative()) {
-            return Integer.MIN_VALUE;
-        } else {
-            return Integer.MAX_VALUE;
-        }
+        return doLongOther(value.longValue());
     }
 
     @Specialization
