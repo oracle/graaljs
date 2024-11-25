@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.regress;
 
-import static org.junit.Assert.assertEquals;
+import diag from '../../diagmodule.js'; // import default function
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+var dg = diag(3, 4);
+[121, dg, 11];
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.io.IOAccess;
-import org.junit.Test;
-
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.test.JSTest;
-
-public class GR32763 {
-
-    @Test
-    public void testUnknownImportUrl() throws IOException {
-        assertErrorMessage("foo", "Error: Operation is not allowed for: foo");
-    }
-
-    @Test
-    public void testSchemeNotSupported() throws IOException {
-        assertErrorMessage("foo://bar.mjs", "Error: Unsupported URI scheme foo");
-    }
-
-    private static void assertErrorMessage(String importUrl, String expected) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        IOAccess io = IOAccess.newBuilder().allowHostSocketAccess(true).build();
-        try (Context context = JSTest.newContextBuilder().out(out).err(out).allowIO(io).option("engine.WarnInterpreterOnly", Boolean.toString(false)).build()) {
-            context.eval(JavaScriptLanguage.ID, "import('" + importUrl + "').then(console.log).catch(console.log);");
-            out.flush();
-        }
-        assertEquals(expected, out.toString().trim());
-    }
-}

@@ -142,11 +142,11 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                     // A custom Truffle FS might still try to map a package specifier to some file.
                     TruffleFile maybeFile = env.getPublicTruffleFile(specifier);
                     if (maybeFile.exists() && !maybeFile.isDirectory()) {
-                        return loadModuleFromUrl(referencingModule, moduleRequest, maybeFile, maybeFile.getPath());
+                        return loadModuleFromFile(referencingModule, moduleRequest, maybeFile, maybeFile.getPath());
                     }
                 } else if (resolution != null) {
                     TruffleFile file = env.getPublicTruffleFile(resolution);
-                    return loadModuleFromUrl(referencingModule, moduleRequest, file, file.getPath());
+                    return loadModuleFromFile(referencingModule, moduleRequest, file, file.getPath());
                 }
             }
             // Really could not load as ESM.
@@ -176,7 +176,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                 assert resolution != null;
                 try {
                     TruffleFile file = env.getPublicTruffleFile(resolution);
-                    return loadModuleFromUrl(referencingModule, moduleRequest, file, file.getPath());
+                    return loadModuleFromFile(referencingModule, moduleRequest, file, file.getPath());
                 } catch (IOException e) {
                     throw fail(FAILED_BUILTIN, specifier);
                 }
