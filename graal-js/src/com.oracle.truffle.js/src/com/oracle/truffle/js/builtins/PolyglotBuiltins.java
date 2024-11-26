@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -773,17 +773,19 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Cached TruffleString.EqualNode strEq,
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
-                        @Cached @Shared("callNode") IndirectCallNode callNode) {
-            return callNode.call(evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond()));
+                        @Cached @Shared("callNode") IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
+            return importValueNode.executeWithTarget(callNode.call(evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond())));
         }
 
         @Specialization(replaces = "evalCachedLanguage")
         @TruffleBoundary
         protected Object evalString(TruffleString language, TruffleString source,
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
-                        @Cached @Shared("callNode") IndirectCallNode callNode) {
+                        @Cached @Shared("callNode") IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
             Pair<String, String> pair = getLanguageIdAndMimeType(toJavaStringNode, language);
-            return callNode.call(evalStringIntl(source, pair.getFirst(), pair.getSecond()));
+            return importValueNode.executeWithTarget(callNode.call(evalStringIntl(source, pair.getFirst(), pair.getSecond())));
         }
 
         private CallTarget evalStringIntl(TruffleString sourceText, String languageId, String mimeType) {
@@ -820,17 +822,19 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Cached TruffleString.EqualNode strEq,
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
-                        @Cached @Shared("callNode") IndirectCallNode callNode) {
-            return callNode.call(evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond()));
+                        @Cached @Shared("callNode") IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
+            return importValueNode.executeWithTarget(callNode.call(evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond())));
         }
 
         @Specialization(replaces = "evalFileCachedLanguage")
         @TruffleBoundary
         protected Object evalFileString(TruffleString language, TruffleString file,
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
-                        @Cached @Shared("callNode") IndirectCallNode callNode) {
+                        @Cached @Shared("callNode") IndirectCallNode callNode,
+                        @Cached @Shared ImportValueNode importValueNode) {
             Pair<String, String> pair = getLanguageIdAndMimeType(toJavaStringNode, language);
-            return callNode.call(evalFileIntl(file, pair.getFirst(), pair.getSecond()));
+            return importValueNode.executeWithTarget(callNode.call(evalFileIntl(file, pair.getFirst(), pair.getSecond())));
         }
 
         private CallTarget evalFileIntl(TruffleString fileName, String languageId, String mimeType) {
