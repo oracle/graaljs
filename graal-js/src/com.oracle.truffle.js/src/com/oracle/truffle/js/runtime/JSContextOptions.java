@@ -288,7 +288,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHELL = new OptionKey<>(false);
 
     public static final String PRINT_NAME = JS_OPTION_PREFIX + "print";
-    @Option(name = PRINT_NAME, category = OptionCategory.USER, help = "Provide 'print' global function.") //
+    @Option(name = PRINT_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'print' global function.") //
     public static final OptionKey<Boolean> PRINT = new OptionKey<>(true);
 
     public static final String PRINT_NO_NEWLINE_NAME = JS_OPTION_PREFIX + "print-no-newline";
@@ -297,7 +297,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean printNoNewline;
 
     public static final String LOAD_NAME = JS_OPTION_PREFIX + "load";
-    @Option(name = LOAD_NAME, category = OptionCategory.USER, help = "Provide 'load' global function.") //
+    @Option(name = LOAD_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'load' global function.") //
     public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
 
     public static final String LOAD_FROM_URL_NAME = JS_OPTION_PREFIX + "load-from-url";
@@ -345,7 +345,7 @@ public final class JSContextOptions {
                     }));
 
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
-    @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
+    @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
 
     public static final String POLYGLOT_BUILTIN_NAME = JS_OPTION_PREFIX + "polyglot-builtin";

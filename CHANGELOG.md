@@ -7,6 +7,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 
 ## Version 23.1.6
 * Made option `js.webassembly` stable.
+* Made options `js.load`, `js.print`, and `js.graal-builtin` stable and allowed in `SandboxPolicy.UNTRUSTED`.
 
 ## Version 23.1.5
 * Updated Node.js to version 18.20.4.
