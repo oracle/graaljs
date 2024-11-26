@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -219,7 +219,11 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     void updateEngineScriptContext(ScriptContext scriptContext) {
         engineScriptContext = scriptContext;
-        updateContextBinding();
+        if (context != null) {
+            updateContextBinding();
+        } else {
+            initContext(); // This will also call updateContextBinding()
+        }
     }
 
 }
