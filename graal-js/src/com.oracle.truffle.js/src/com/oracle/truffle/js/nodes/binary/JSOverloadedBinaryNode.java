@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Check {@link JSAddNode} for an example of using this node.
  * </p>
  */
+@ImportStatic(OperatorSet.class)
 public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
     /**
@@ -295,8 +296,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = "isNullOrUndefined(right)")
-        protected Object doOverloadedNullish(@SuppressWarnings("unused") JSOverloadedOperatorsObject left, @SuppressWarnings("unused") Object right) {
+        @Specialization(guards = "isUnsupportedPrimitive(right)")
+        protected Object doOverloadedUnsupportedPrimitive(@SuppressWarnings("unused") JSOverloadedOperatorsObject left, @SuppressWarnings("unused") Object right) {
             return missingImplementation();
         }
 
@@ -327,8 +328,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = "isNullOrUndefined(left)")
-        protected Object doNullishOverloaded(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSOverloadedOperatorsObject right) {
+        @Specialization(guards = "isUnsupportedPrimitive(left)")
+        protected Object doUnsupportedPrimitiveOverloaded(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSOverloadedOperatorsObject right) {
             return missingImplementation();
         }
 
