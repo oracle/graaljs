@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 23.1.6
+* Made option `js.webassembly` stable.
+
 ## Version 23.1.5
 * Updated Node.js to version 18.20.4.
 
