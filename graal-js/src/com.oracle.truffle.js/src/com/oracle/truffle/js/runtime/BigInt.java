@@ -119,8 +119,7 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @TruffleBoundary
-    private static BigInteger parseBigInteger(final String valueString) {
-
+    private static BigInteger parseBigInteger(String valueString) {
         String trimmedString = valueString.trim();
 
         if (trimmedString.isEmpty()) {
@@ -130,17 +129,24 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         if (trimmedString.charAt(0) == '0') {
             if (trimmedString.length() > 2) {
                 switch (trimmedString.charAt(1)) {
-                    case 'x':
-                    case 'X':
-                        return new BigInteger(trimmedString.substring(2), 16);
-                    case 'o':
-                    case 'O':
-                        return new BigInteger(trimmedString.substring(2), 8);
-                    case 'b':
-                    case 'B':
-                        return new BigInteger(trimmedString.substring(2), 2);
-                    default:
+                    case 'x', 'X' -> {
+                        if (JSRuntime.isHex(trimmedString.charAt(2))) {
+                            return new BigInteger(trimmedString.substring(2), 16);
+                        }
+                    }
+                    case 'o', 'O' -> {
+                        if (JSRuntime.valueInRadix(trimmedString.charAt(2), 8) != -1) {
+                            return new BigInteger(trimmedString.substring(2), 8);
+                        }
+                    }
+                    case 'b', 'B' -> {
+                        if (JSRuntime.valueInRadix(trimmedString.charAt(2), 2) != -1) {
+                            return new BigInteger(trimmedString.substring(2), 2);
+                        }
+                    }
+                    default -> {
                         return new BigInteger(trimmedString, 10);
+                    }
                 }
             } else if (trimmedString.length() == 1) {
                 return BigInteger.ZERO;
