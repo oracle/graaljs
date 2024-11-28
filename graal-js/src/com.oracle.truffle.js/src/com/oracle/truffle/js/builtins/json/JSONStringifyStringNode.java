@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
@@ -625,20 +624,12 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return JSInteropUtil.getArraySize(obj, InteropLibrary.getUncached(), this);
     }
 
-    private Object truffleRead(Object obj, TruffleString keyStr) {
-        try {
-            return JSRuntime.importValue(InteropLibrary.getUncached().readMember(obj, Strings.toJavaString(keyStr)));
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readMember", keyStr, this);
-        }
+    private static Object truffleRead(Object obj, TruffleString keyStr) {
+        return JSInteropUtil.readMemberOrDefault(obj, keyStr, Undefined.instance);
     }
 
-    private Object truffleRead(Object obj, int index) {
-        try {
-            return JSRuntime.importValue(InteropLibrary.getUncached().readArrayElement(obj, index));
-        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", index, this);
-        }
+    private static Object truffleRead(Object obj, int index) {
+        return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);
     }
 
     private void append(TruffleStringBuilderUTF16 sb, TruffleString s) {
