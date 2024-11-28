@@ -8,6 +8,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 ## Version 23.1.6
 * Made option `js.webassembly` stable.
 * Made options `js.load`, `js.print`, and `js.graal-builtin` stable and allowed in `SandboxPolicy.UNTRUSTED`.
+* Made option `js.locale` stable and allowed in `SandboxPolicy.UNTRUSTED`. Its value, if non-empty, must be a well-formed Unicode BCP 47 locale identifier and is now validated.
 
 ## Version 23.1.5
 * Updated Node.js to version 18.20.4.
