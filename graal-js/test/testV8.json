@@ -582,6 +582,13 @@
     "runInIsolation" : true,
     "comment" : "Triggers 576 GCs."
   }, {
+    "filePath" : "mjsunit/es6/typedarray-proto.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Fails due to additional to/from base64 and hex methods on Uint8Array.prototype"
+  }, {
     "filePath" : "mjsunit/es6/typedarray-set-bytelength-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"

@@ -473,6 +473,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSIsArrayNode isArrayNode;
         @Child private IsConstructorNode isConstructorNode = IsConstructorNode.create();
         @Child private ArrayCreateNode arrayCreateNode;
+        @Child private TypedArrayLengthNode typedArrayLengthNode;
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile arraySpeciesIsArray = BranchProfile.create();
         private final BranchProfile arraySpeciesGetSymbol = BranchProfile.create();
@@ -486,6 +487,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.isTypedArrayImplementation = isTypedArrayImplementation;
             this.isArrayNode = JSIsArrayNode.createIsArray();
             this.constructorCall = JSFunctionCallNode.createNew();
+            this.typedArrayLengthNode = isTypedArrayImplementation ? TypedArrayLengthNode.create() : null;
         }
 
         @NeverDefault
@@ -513,11 +515,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         /**
-         * 22.2.4.6 TypedArrayCreate().
+         * TypedArrayCreateFromConstructor(constructor, argumentList).
          */
-        public final JSTypedArrayObject typedArrayCreate(Object constr, Object... args) {
-            Object newObject = construct(constr, args);
-            if (!JSArrayBufferView.isJSArrayBufferView(newObject)) {
+        public final JSTypedArrayObject typedArrayCreate(Object constructor, Object... args) {
+            assert isTypedArrayImplementation;
+            Object newObject = construct(constructor, args);
+            if (!(newObject instanceof JSTypedArrayObject)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferViewExpected();
             }
@@ -527,12 +530,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeErrorOutOfBoundsTypedArray();
             }
             if (args.length == 1 && JSRuntime.isNumber(args[0])) {
-                if (newTypedArray.getLength() < JSRuntime.doubleValue((Number) args[0])) {
+                if (typedArrayLengthNode.execute(null, newTypedArray, context) < JSRuntime.doubleValue((Number) args[0])) {
                     errorBranch.enter();
                     throw Errors.createTypeError("invalid TypedArray created");
                 }
             }
             return newTypedArray;
+        }
+
+        public final JSTypedArrayObject typedArrayCreate(Object constructor, int length) {
+            return typedArrayCreate(constructor, (Object) length);
         }
 
         /**

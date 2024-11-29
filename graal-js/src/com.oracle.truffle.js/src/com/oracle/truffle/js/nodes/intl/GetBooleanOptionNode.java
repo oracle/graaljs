@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -62,6 +63,7 @@ public abstract class GetBooleanOptionNode extends JavaScriptBaseNode {
 
     public abstract Boolean executeValue(Object options);
 
+    @NeverDefault
     public static GetBooleanOptionNode create(JSContext context, TruffleString property, Boolean fallback) {
         return GetBooleanOptionNodeGen.create(context, property, fallback);
     }

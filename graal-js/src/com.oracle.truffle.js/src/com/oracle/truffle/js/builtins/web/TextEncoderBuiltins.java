@@ -215,15 +215,13 @@ public class TextEncoderBuiltins {
     @ImportStatic({TypedArrayFactory.class, JSConfig.class})
     public abstract static class EncodeIntoNode extends JSBuiltinNode {
 
-        public static final TruffleString READ = Strings.constant("read");
-        public static final TruffleString WRITTEN = Strings.constant("written");
         @Child private CreateDataPropertyNode createReadDataPropertyNode;
         @Child private CreateDataPropertyNode createWrittenDataPropertyNode;
 
         protected EncodeIntoNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createReadDataPropertyNode = CreateDataPropertyNode.create(context, READ);
-            this.createWrittenDataPropertyNode = CreateDataPropertyNode.create(context, WRITTEN);
+            this.createReadDataPropertyNode = CreateDataPropertyNode.create(context, Strings.READ);
+            this.createWrittenDataPropertyNode = CreateDataPropertyNode.create(context, Strings.WRITTEN);
         }
 
         @SuppressWarnings("unused")

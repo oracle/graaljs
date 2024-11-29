@@ -272,6 +272,7 @@ public class Test262Runnable extends TestRunnable {
                     "template",
                     "top-level-await",
                     "u180e",
+                    "uint8array-base64",
                     "well-formed-json-stringify",
     });
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
@@ -282,7 +283,6 @@ public class Test262Runnable extends TestRunnable {
                     "explicit-resource-management",
                     "regexp-modifiers",
                     "tail-call-optimization",
-                    "uint8array-base64",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Array.fromAsync",
@@ -295,6 +295,7 @@ public class Test262Runnable extends TestRunnable {
                     "decorators",
                     "json-parse-with-source",
                     "promise-try",
+                    "uint8array-base64",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

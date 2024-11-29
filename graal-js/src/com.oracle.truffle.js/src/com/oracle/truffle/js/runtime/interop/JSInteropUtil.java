@@ -66,6 +66,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -637,6 +638,22 @@ public final class JSInteropUtil {
             interop.readBuffer(buffer, byteOffset, destination, destinationOffset, byteLength);
         } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
             throw Errors.createTypeErrorInteropException(buffer, e, "readBuffer", interop);
+        }
+    }
+
+    public static void copyFromBuffer(JSArrayBufferObject buffer, int byteOffset, byte[] destination, int destinationOffset, int byteLength, InteropLibrary interop) {
+        // Note: If byteLength == 0, the buffer may be detached.
+        if (byteLength == 0) {
+            return;
+        }
+        if (buffer instanceof JSArrayBufferObject.Heap heapBuffer) {
+            System.arraycopy(heapBuffer.getByteArray(), byteOffset, destination, destinationOffset, byteLength);
+        } else if (buffer instanceof JSArrayBufferObject.DirectBase directBuffer) {
+            Boundaries.byteBufferGet(directBuffer.getByteBuffer(), byteOffset, destination, destinationOffset, byteLength);
+        } else if (buffer instanceof JSArrayBufferObject.Interop interopBuffer) {
+            readBuffer(interopBuffer.getInteropBuffer(), byteOffset, destination, destinationOffset, byteLength, interop);
+        } else {
+            throw Errors.shouldNotReachHereUnexpectedValue(buffer);
         }
     }
 

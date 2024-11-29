@@ -1753,6 +1753,13 @@ public final class JSRuntime {
         };
     }
 
+    public static boolean isAsciiWhitespace(char cp) {
+        return switch (cp) {
+            case 0x0009, 0x000A, 0x000C, 0x000D, 0x0020 -> true;
+            default -> false;
+        };
+    }
+
     /**
      * Checks whether a long value is within the valid range of array lengths. Note the difference
      * to isArrayIndex, that does not allow the MAX_ARRAY_LENGTH value.

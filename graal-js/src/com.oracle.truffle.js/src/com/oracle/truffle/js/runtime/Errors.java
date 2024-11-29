@@ -641,6 +641,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorUint8ArrayExpected() {
+        return Errors.createTypeError("Uint8Array expected");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorCallableExpected() {
         return Errors.createTypeError("Callable expected");
     }
