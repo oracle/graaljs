@@ -394,7 +394,7 @@ describe('Module syntax detection', { concurrency: !process.env.TEST_PARALLEL },
         fixtures.path('es-modules/package-without-type/module.js'),
       ]);
 
-      match(stderr, /SyntaxError: Unexpected token 'export'/);
+      match(stderr, /SyntaxError: (Unexpected token 'export'|Expected an operand but found export)/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);

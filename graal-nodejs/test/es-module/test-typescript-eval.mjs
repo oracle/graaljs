@@ -107,7 +107,7 @@ test('expect fail eval TypeScript ESM syntax with input-type commonjs', async ()
     const text: string = 'Hello, TypeScript!'
     console.log(util.styleText('red', text));`]);
   strictEqual(result.stdout, '');
-  match(result.stderr, /Cannot use import statement outside a module/);
+  match(result.stderr, /Cannot use import statement outside a module|Expected an operand but found import/);
   strictEqual(result.code, 1);
 });
 

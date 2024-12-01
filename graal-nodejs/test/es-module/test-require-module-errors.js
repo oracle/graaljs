@@ -14,7 +14,7 @@ spawnSyncAndExit(process.execPath, [
   signal: null,
   stderr(output) {
     assert.match(output, /var foo bar;/);
-    assert.match(output, /SyntaxError: Unexpected identifier 'bar'/);
+    assert.match(output, /SyntaxError: (Unexpected identifier 'bar'|Expected ; but found bar)/);
     return true;
   },
 });

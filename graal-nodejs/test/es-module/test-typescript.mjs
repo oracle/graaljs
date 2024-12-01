@@ -145,7 +145,7 @@ test('expect error when executing a TypeScript file with experimental decorators
     fixtures.path('typescript/ts/test-experimental-decorators.ts'),
   ]);
   // This error should be thrown at runtime
-  match(result.stderr, /Invalid or unexpected token/);
+  match(result.stderr, /Invalid or unexpected token|Expected an operand but found error/);
   strictEqual(result.stdout, '');
   strictEqual(result.code, 1);
 });
