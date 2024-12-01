@@ -11,18 +11,32 @@ prefix es-module
 # missing support for source maps
 test-esm-loader-hooks                : FAIL
 test-esm-source-map                  : FAIL
+test-typescript-transform            : FAIL
 
 # Module doesn't see const variable created in global scope by a custom loader
 test-esm-loader-side-effect          : FAIL
 
+# Missing detection of unsettled top-level-await
+test-esm-detect-ambiguous            : FAIL
+test-esm-tla-unfinished              : FAIL
+
 # WebAssembly is not enabled
 test-esm-extensionless-esm-and-wasm  : FAIL
+test-esm-loader-entry-url            : FAIL
+test-esm-loader-http-imports         : FAIL
 test-esm-type-flag-loose-files       : FAIL
 test-esm-type-flag-package-scopes    : FAIL
 test-esm-wasm                        : FAIL
 test-wasm-memory-out-of-bound        : FAIL
 test-wasm-simple                     : FAIL
 test-wasm-web-api                    : FAIL
+test-typescript                      : FAIL
+test-typescript-eval                 : FAIL
+test-typescript-commonjs             : FAIL
+test-typescript-module               : FAIL
+
+# Unclassified
+test-require-module-tla              : SKIP
 
 [$system==linux || $system==freebsd]
 # https://github.com/nodejs/node/issues/47836
