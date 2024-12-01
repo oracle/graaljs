@@ -120,7 +120,9 @@ EXPORT_TO_JS(CheckNamedHandlerWithInternalFields) {
     Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
     int expectedCount = 3;
     objectTemplate->SetInternalFieldCount(expectedCount);
-    NamedPropertyHandlerConfiguration handler;
+    NamedPropertyHandlerConfiguration handler(
+            (NamedPropertyGetterCallback) nullptr
+    );
     objectTemplate->SetHandler(handler);
 
     Local<Context> context = isolate->GetCurrentContext();
@@ -133,7 +135,7 @@ EXPORT_TO_JS(CreateWithEmptyIndexedEnumerator) {
     Isolate* isolate = args.GetIsolate();
     Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
     IndexedPropertyHandlerConfiguration handler(
-            nullptr, // getter
+            (IndexedPropertyGetterCallback) nullptr, // getter
             nullptr, // setter
             nullptr, // query
             nullptr, // deleter
@@ -150,13 +152,12 @@ EXPORT_TO_JS(CreateWithEmptyNamedEnumerator) {
     Isolate* isolate = args.GetIsolate();
     Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
     NamedPropertyHandlerConfiguration handler(
-            nullptr, // getter
+            (NamedPropertyGetterCallback) nullptr, // getter
             nullptr, // setter
             nullptr, // query
             nullptr, // deleter
             EmptyPropertyEnumeratorCallback // enumerator
     );
-    objectTemplate->SetHandler(handler);
 
     Local<Context> context = isolate->GetCurrentContext();
     Local<Object> instance = objectTemplate->NewInstance(context).ToLocalChecked();
