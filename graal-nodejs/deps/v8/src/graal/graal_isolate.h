@@ -396,6 +396,8 @@ enum GraalAccessMethod {
     big_int_to_words_array,
     map_new,
     map_set,
+    map_get,
+    map_delete,
     set_new,
     set_add,
     shared_array_buffer_new,

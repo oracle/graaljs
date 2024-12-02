@@ -74,3 +74,26 @@ v8::MaybeLocal<v8::Map> GraalMap::Set(v8::Local<v8::Context> context, v8::Local<
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     return v8::Local<v8::Map>::New(v8_isolate, v8_map);
 }
+
+v8::MaybeLocal<v8::Value> GraalMap::Get(v8::Local<v8::Context> context, v8::Local<v8::Value> key) {
+    GraalValue* graal_map = reinterpret_cast<GraalValue*> (this);
+    GraalValue* graal_key = reinterpret_cast<GraalValue*> (*key);
+    GraalIsolate* graal_isolate = graal_map->Isolate();
+    jobject java_map = graal_map->GetJavaObject();
+    jobject java_key = graal_key->GetJavaObject();
+    JNI_CALL(jobject, java_value, graal_isolate, GraalAccessMethod::map_get, Object, java_map, java_key);
+    GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_value);
+    v8::Value* v8_value = reinterpret_cast<v8::Value*> (graal_value);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_value);
+}
+
+v8::Maybe<bool> GraalMap::Delete(v8::Local<v8::Context> context, v8::Local<v8::Value> key) {
+    GraalValue* graal_map = reinterpret_cast<GraalValue*> (this);
+    GraalValue* graal_key = reinterpret_cast<GraalValue*> (*key);
+    GraalIsolate* graal_isolate = graal_map->Isolate();
+    jobject java_map = graal_map->GetJavaObject();
+    jobject java_key = graal_key->GetJavaObject();
+    JNI_CALL(jboolean, java_result, graal_isolate, GraalAccessMethod::map_delete, Boolean, java_map, java_key);
+    return v8::Just((bool) java_result);
+}

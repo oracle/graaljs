@@ -4054,6 +4054,17 @@ public final class GraalJSAccess {
         JSMap.getInternalMap(object).put(JSSet.normalize(key), value);
     }
 
+    public Object mapGet(Object set, Object key) {
+        JSDynamicObject object = (JSDynamicObject) set;
+        Object value = JSMap.getInternalMap(object).get(JSSet.normalize(key));
+        return JSRuntime.nullToUndefined(value);
+    }
+
+    public boolean mapDelete(Object set, Object key) {
+        JSDynamicObject object = (JSDynamicObject) set;
+        return JSMap.getInternalMap(object).remove(JSSet.normalize(key));
+    }
+
     public Object setNew(Object context) {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();

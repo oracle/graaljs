@@ -2991,7 +2991,6 @@ namespace v8 {
     }
 
     void Isolate::SetIdle(bool is_idle) {
-        TRACE
     }
 
     bool Value::SameValue(Local<Value> that) const {
@@ -4007,13 +4006,11 @@ namespace v8 {
     }
 
     MaybeLocal<Value> Map::Get(Local<Context> context, Local<Value> key) {
-        TRACE
-        return Undefined(Isolate::GetCurrent());
+        return reinterpret_cast<GraalMap*> (this)->Get(context, key);
     }
 
     Maybe<bool> Map::Delete(Local<Context> context, Local<Value> key) {
-        TRACE
-        return Just(true);
+        return reinterpret_cast<GraalMap*> (this)->Delete(context, key);
     }
 
     Maybe<void> Array::Iterate(Local<Context> context, IterationCallback callback, void* callback_data) {

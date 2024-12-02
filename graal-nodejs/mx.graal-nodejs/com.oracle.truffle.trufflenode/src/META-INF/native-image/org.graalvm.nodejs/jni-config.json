@@ -119,6 +119,8 @@
       { "name": "jsonParse" },
       { "name": "jsonStringify" },
       { "name": "makeWeak" },
+      { "name": "mapDelete" },
+      { "name": "mapGet" },
       { "name": "mapNew" },
       { "name": "mapSet" },
       { "name": "messageGet" },
