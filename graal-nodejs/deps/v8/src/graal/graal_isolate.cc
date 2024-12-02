@@ -531,6 +531,9 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         options.push_back({const_cast<char*>("-Dsun.java.command=node"), nullptr});
 
         options.push_back({const_cast<char*>("--enable-native-access=org.graalvm.truffle"), nullptr});
+#if JAVA_FEATURE_VERSION >= 23
+        options.push_back({const_cast<char*>("--sun-misc-unsafe-memory-access=allow"), nullptr});
+#endif
 
     #if defined(DEBUG)
         std::string debugPort = getstdenv("DEBUG_PORT");
