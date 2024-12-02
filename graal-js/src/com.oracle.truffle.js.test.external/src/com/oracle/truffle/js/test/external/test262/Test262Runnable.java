@@ -259,6 +259,7 @@ public class Test262Runnable extends TestRunnable {
                     "regexp-duplicate-named-groups",
                     "regexp-lookbehind",
                     "regexp-match-indices",
+                    "regexp-modifiers",
                     "regexp-named-groups",
                     "regexp-unicode-property-escapes",
                     "regexp-v-flag",
@@ -281,7 +282,6 @@ public class Test262Runnable extends TestRunnable {
                     "IsHTMLDDA",
                     "Math.sumPrecise",
                     "explicit-resource-management",
-                    "regexp-modifiers",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
