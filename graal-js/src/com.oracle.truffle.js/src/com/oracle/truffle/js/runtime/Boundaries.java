@@ -74,6 +74,16 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
+    public static boolean characterIsSpaceChar(int cp) {
+        return Character.isSpaceChar(cp);
+    }
+
+    @TruffleBoundary
+    public static String integerToString(int i, int radix) {
+        return Integer.toString(i, radix);
+    }
+
+    @TruffleBoundary
     public static boolean equals(Object a, Object b) {
         return a.equals(b);
     }
