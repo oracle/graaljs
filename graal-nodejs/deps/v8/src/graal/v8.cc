@@ -4001,8 +4001,7 @@ namespace v8 {
     }
 
     bool String::StringEquals(Local<String> str) const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalString*> (this)->StringEquals(str);
     }
 
     MaybeLocal<Value> Map::Get(Local<Context> context, Local<Value> key) {

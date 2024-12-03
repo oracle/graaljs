@@ -424,3 +424,12 @@ bool GraalString::ContainsOnlyOneByte() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::string_contains_only_one_byte, Boolean, GetJavaObject());
     return result;
 }
+
+bool GraalString::StringEquals(v8::Local<v8::String> str) const {
+    GraalString* graal_str = reinterpret_cast<GraalString*> (*str);
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_this = GetJavaObject();
+    jobject java_str = graal_str->GetJavaObject();
+    JNI_CALL(jboolean, result, graal_isolate, GraalAccessMethod::string_equals, Boolean, java_this, java_str);
+    return result;
+}
