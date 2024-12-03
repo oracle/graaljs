@@ -101,6 +101,7 @@
       { "name": "isolateEnterPolyglotEngine" },
       { "name": "isolateExecuteRunnable" },
       { "name": "isolateExit" },
+      { "name": "isolateGetDefaultLocale" },
       { "name": "isolateGetDoublePlaceholder" },
       { "name": "isolateGetHeapStatistics" },
       { "name": "isolateGetIntPlaceholder" },

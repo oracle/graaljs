@@ -4055,8 +4055,7 @@ namespace v8 {
     }
 
     std::string Isolate::GetDefaultLocale() {
-        TRACE
-        return "";
+        return reinterpret_cast<GraalIsolate*> (this)->GetDefaultLocale();
     }
 
     void Isolate::SetContinuationPreservedEmbedderData(Local<Value> data) {

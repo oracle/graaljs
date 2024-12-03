@@ -3216,6 +3216,10 @@ public final class GraalJSAccess {
         return DOUBLE_PLACEHOLDER;
     }
 
+    public String isolateGetDefaultLocale() {
+        return mainJSContext.getLocale().toLanguageTag();
+    }
+
     public void isolateDispose(boolean exit, int status) {
         agent.setTaskRunnerPointer(0);
         if (exit) {

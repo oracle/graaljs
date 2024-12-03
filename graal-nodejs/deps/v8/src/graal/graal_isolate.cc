@@ -846,6 +846,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_measure_memory, "isolateMeasureMemory", "(Ljava/lang/Object;Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_set_task_runner, "isolateSetTaskRunner", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_execute_runnable, "isolateExecuteRunnable", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_get_default_locale, "isolateGetDefaultLocale", "()Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -1671,4 +1672,12 @@ void GraalIsolate::SetTaskRunner(std::shared_ptr<v8::TaskRunner> task_runner) {
 
 void GraalIsolate::ExecuteRunnable(jobject runnable) {
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_execute_runnable, runnable);
+}
+
+std::string GraalIsolate::GetDefaultLocale() {
+    JNI_CALL(jobject, java_locale, this, GraalAccessMethod::isolate_get_default_locale, Object);
+    const char *chars = jni_env_->GetStringUTFChars((jstring) java_locale, nullptr);
+    std::string locale = std::string(chars);
+    jni_env_->ReleaseStringUTFChars((jstring) java_locale, chars);
+    return locale;
 }

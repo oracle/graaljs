@@ -228,6 +228,7 @@ enum GraalAccessMethod {
     isolate_measure_memory,
     isolate_set_task_runner,
     isolate_execute_runnable,
+    isolate_get_default_locale,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -678,6 +679,7 @@ public:
     void SetFunctionTemplateData(unsigned id, GraalValue* data);
     void SetFunctionTemplateCallback(unsigned id, v8::FunctionCallback callback);
     void ReportAPIFailure(const char* location, const char* message);
+    std::string GetDefaultLocale();
 
     inline void SetFatalErrorHandler(v8::FatalErrorCallback callback) {
         fatal_error_handler_ = callback;
