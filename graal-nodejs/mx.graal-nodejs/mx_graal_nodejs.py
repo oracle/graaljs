@@ -425,8 +425,14 @@ def processDevkitRoot(env=None):
             _setEnvVar('GYP_MSVS_VERSION', devkit_version, _env)
 
 def _prepare_build_env(build_env=None):
+    env = build_env or os.environ
+
+    # GR-59703: Migrate sun.misc.* usages.
+    for flags_var in ('CXXFLAGS', 'CFLAGS'):
+        other_flags = env.get(flags_var)
+        _setEnvVar(flags_var, f"-DJAVA_FEATURE_VERSION={mx.get_jdk(tag='default').version.parts[0]}{' ' + other_flags if other_flags else ''}", env)
+
     if _current_os == 'darwin' and _current_arch == 'amd64':
-        env = build_env or os.environ
         min_version = env.get('MACOSX_DEPLOYMENT_TARGET')
         if min_version:
             # override MACOSX_DEPLOYMENT_TARGET in common.gypi
