@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,6 +79,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstanceObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -261,15 +262,16 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                 throw Errors.createTypeError("WebAssembly.instantiate(): Argument 1 must be an object", this);
             }
 
+            JSRealm realm = getRealm();
             if (byteSourceOrModule instanceof JSWebAssemblyModuleObject) {
                 Object wasmModule = ((JSWebAssemblyModuleObject) byteSourceOrModule).getWASMModule();
-                return instantiateModule(getContext(), wasmModule, importObject);
+                return instantiateModule(getContext(), realm, wasmModule, importObject, instantiateModuleLib);
             }
 
             Object wasmByteSource = exportByteSourceNode.execute(byteSourceOrModule);
+            Object decode = realm.getWASMModuleDecode();
 
             try {
-                Object decode = getRealm().getWASMModuleDecode();
                 try {
                     Object wasmModule = decodeModuleLib.execute(decode, wasmByteSource);
                     return new InstantiatedSourceInfo(wasmModule, importObject);
@@ -287,18 +289,15 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             }
         }
 
-        protected Object instantiateModule(JSContext context, Object wasmModule, Object importObject) {
-            JSRealm realm = getRealm();
+        public static JSWebAssemblyInstanceObject instantiateModule(JSContext context, JSRealm realm, Object wasmModule, Object importObject, InteropLibrary instantiateModuleLib) {
             Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(context, realm, wasmModule, importObject);
             Object instantiate = realm.getWASMModuleInstantiate();
             Object wasmInstance;
             try {
                 wasmInstance = instantiateModuleLib.execute(instantiate, wasmModule, wasmImportObject);
             } catch (GraalJSException jsex) {
-                errorBranch.enter();
                 throw jsex;
             } catch (AbstractTruffleException ex) {
-                errorBranch.enter();
                 throw Errors.createLinkError(ex, null);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
@@ -307,12 +306,14 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             return JSWebAssemblyInstance.create(context, realm, wasmInstance, wasmModule);
         }
 
-        private JSFunctionData createSourceInstantiationImpl(JSContext context) {
+        private static JSFunctionData createSourceInstantiationImpl(JSContext context) {
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
+                @Child private InteropLibrary instantiateModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+
                 @Override
                 public Object execute(VirtualFrame frame) {
                     InstantiatedSourceInfo info = (InstantiatedSourceInfo) JSArguments.getUserArgument(frame.getArguments(), 0);
-                    Object jsInstance = instantiateModule(context, info.getWasmModule(), info.getImportObject());
+                    Object jsInstance = instantiateModule(context, getRealm(), info.getWasmModule(), info.getImportObject(), instantiateModuleLib);
                     return toJSInstantiatedSource(info.getWasmModule(), jsInstance);
                 }
 
