@@ -85,7 +85,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
 
     @ExportMessage
     public final Object execute(Object[] args,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
                     @Cached ToJSValueNode toJSValueNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
