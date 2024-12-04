@@ -116,6 +116,8 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
     CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
     CALLBACK("executePrepareStackTraceCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePrepareStackTraceCallback),
+    CALLBACK("hasCustomHostObject", "(J)Z", &GraalHasCustomHostObject),
+    CALLBACK("isHostObject", "(JLjava/lang/Object;)Z", &GraalIsHostObject),
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
     CALLBACK("throwDataCloneError", "(JLjava/lang/Object;)V", &GraalThrowDataCloneError),
@@ -847,6 +849,25 @@ jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, 
         GraalValue* graal_stack = reinterpret_cast<GraalValue*> (*v8_stack);
         return env->NewLocalRef(graal_stack->GetJavaObject());
     }
+}
+
+jboolean GraalHasCustomHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(v8_isolate);
+    v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
+    return d->HasCustomHostObject(v8_isolate);
+}
+
+jboolean GraalIsHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject java_object) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(v8_isolate);
+    GraalValue* graal_object = GraalValue::FromJavaObject(graal_isolate, java_object);
+    v8::Object* v8_object = reinterpret_cast<v8::Object*> (graal_object);
+    v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
+    v8::Maybe<bool> result = d->IsHostObject(v8_isolate, v8::Local<v8::Object>::New(v8_isolate, v8_object));
+    return result.IsJust() && result.FromJust();
 }
 
 void GraalWriteHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject java_object) {

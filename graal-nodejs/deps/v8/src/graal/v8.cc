@@ -4067,12 +4067,10 @@ namespace v8 {
     }
 
     bool v8::ValueSerializer::Delegate::HasCustomHostObject(Isolate* isolate) {
-        TRACE
         return false;
     }
 
     Maybe<bool> v8::ValueSerializer::Delegate::IsHostObject(Isolate* isolate, Local<Object> object) {
-        TRACE
         return Just(false);
     }
 

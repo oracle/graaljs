@@ -360,6 +360,8 @@
       { "name": "notifyImportMetaInitializer" },
       { "name": "executeResolveCallback" },
       { "name": "executeImportModuleDynamicallyCallback" },
+      { "name": "hasCustomHostObject" },
+      { "name": "isHostObject" },
       { "name": "writeHostObject" },
       { "name": "readHostObject" },
       { "name": "throwDataCloneError" },

@@ -152,6 +152,10 @@ public final class NativeAccess {
 
     public static native Object executePrepareStackTraceCallback(Object context, Object error, Object structuredStackTrace);
 
+    public static native boolean hasCustomHostObject(long delegate);
+
+    public static native boolean isHostObject(long delegate, Object object);
+
     public static native void writeHostObject(long delegate, Object object);
 
     public static native Object readHostObject(long delegate);
