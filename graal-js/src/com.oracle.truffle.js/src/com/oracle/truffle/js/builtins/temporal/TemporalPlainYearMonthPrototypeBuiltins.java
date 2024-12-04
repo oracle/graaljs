@@ -453,7 +453,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected JSTemporalPlainYearMonthObject addDurationToOrSubtractDurationFromPlainYearMonth(
                         JSTemporalPlainYearMonthObject yearMonth, Object temporalDurationLike, Object optParam,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached ToTemporalDurationNode toTemporalDurationNode,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
@@ -527,7 +527,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSTemporalDurationObject differenceTemporalPlainYearMonth(JSTemporalPlainYearMonthObject thisYearMonth, Object otherParam, Object options,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,

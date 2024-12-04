@@ -107,7 +107,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     static Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached InlinedConditionProfile getType,

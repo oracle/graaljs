@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -191,7 +191,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization
     protected final Object doJSObject(JSObject object,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Exclusive @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
                     @Exclusive @Cached IsPrimitiveNode isPrimitive,
                     @Exclusive @Cached InlinedConditionProfile exoticToPrimProfile,
@@ -216,7 +216,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     protected final Object doForeignObject(Object object,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("object") InteropLibrary interop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary resultInterop,
                     @Exclusive @Cached InlinedConditionProfile exoticToPrimProfile,

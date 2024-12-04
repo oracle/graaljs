@@ -225,7 +225,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Specialization(guards = "getCompiledRegex(regExp) == cachedCompiledRegex", limit = "LIMIT")
         Object doCached(JSRegExpObject regExp, TruffleString input, long lastIndex,
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,
                         @Cached(inline = true) @Shared InvokeExecMethodNode invokeExec,
                         @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch) {
@@ -351,7 +351,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "getCompiledRegex(regExp) == cachedCompiledRegex", limit = "LIMIT")
         Object doCached(JSRegExpObject regExp, TruffleString input,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
                         @Cached @Shared InlinedConditionProfile invalidLastIndex,
                         @Cached @Shared InlinedCountingConditionProfile match,
@@ -372,7 +372,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @SuppressWarnings("truffle-static-method")
         @Specialization(replaces = "doCached")
         Object doDynamic(JSRegExpObject regExp, TruffleString input,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared InlinedConditionProfile invalidLastIndex,
                         @Cached @Shared InlinedCountingConditionProfile match,
                         @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,

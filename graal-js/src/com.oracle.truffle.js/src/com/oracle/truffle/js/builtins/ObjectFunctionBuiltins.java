@@ -436,7 +436,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @InliningCutoff
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject getForeignObject(Object thisObj,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared FromPropertyDescriptorNode fromPropertyDescriptorNode,
                         @CachedLibrary(limit = "PropertyCacheLimit") @Shared DynamicObjectLibrary putPropDescNode,
                         @CachedLibrary("thisObj") InteropLibrary interop,
@@ -588,7 +588,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSNull(prototype)")
         protected JSObject createPrototypeNull(@SuppressWarnings("unused") Object prototype, Object properties,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared InlinedBranchProfile definePropertiesBranch,
                         @Cached @Shared @SuppressWarnings("unused") InlinedConditionProfile isNull) {
             JSObject ret = JSOrdinary.createWithNullPrototype(getContext());
@@ -598,7 +598,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"}, limit = "InteropLibraryLimit")
         protected JSObject createForeignNullOrInvalidPrototype(Object prototype, Object properties,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared InlinedBranchProfile definePropertiesBranch,
                         @CachedLibrary("prototype") InteropLibrary interop,
                         @Cached @Shared InlinedConditionProfile isNull) {

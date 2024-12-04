@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -156,7 +156,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     @InliningCutoff
     @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "InteropLibraryLimit")
     protected JSObject doEnumerateTruffleObject(Object iteratedObject,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("iteratedObject") InteropLibrary interop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
                     @Cached InlinedBranchProfile notIterable,

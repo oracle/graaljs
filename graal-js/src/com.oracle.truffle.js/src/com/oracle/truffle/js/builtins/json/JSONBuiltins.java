@@ -288,7 +288,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isUndefined(replacer)")
         protected Object stringifyWithReplacer(Object value, Object replacer, Object space,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Exclusive GetGapNode getGapNode,
                         @Cached IsCallableNode isCallableNode,
                         @Cached("createIsArrayLike()") JSIsArrayNode isArrayNode,

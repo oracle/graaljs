@@ -343,7 +343,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isObject.executeBoolean(template)", "!isCallable.executeBoolean(template)"})
         protected static Object dedentTemplate(Object template, Object[] substitutions,
-                        @Bind("this") Node self,
+                        @Bind Node self,
                         @Bind("getContext()") JSContext context,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObject,

@@ -286,7 +286,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSRegExpObject compile(JSRegExpObject thisRegExp, Object patternObj, Object flagsObj,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("create(LAST_INDEX, false, getContext(), true)") PropertySetNode setLastIndexNode,
                         @Cached("create(getContext())") CompileRegexNode compileRegexNode,
                         @Cached("createUndefinedToEmpty()") JSToStringNode toStringNode,
@@ -378,7 +378,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSDynamicObject exec(JSRegExpObject thisRegExp, Object input,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached JSToStringNode toStringNode,
                         @Cached("create(getContext())") JSRegExpExecBuiltinNode regExpNode,
                         @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
@@ -722,7 +722,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Specialization
             protected static JSArrayObject split(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached("create(FLAGS, context)") PropertyGetNode getFlags,
                             @Cached("create(LENGTH, context)") PropertyGetNode getLength,
                             @Cached JSToStringNode toString2,
@@ -810,7 +810,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Specialization(guards = {"getCompiledRegex(rx) == tRegexCompiledRegex"}, limit = "1")
             protected static JSArrayObject doCached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
                             @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
@@ -902,7 +902,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Specialization(replaces = "doCached")
             protected static JSArrayObject doUncached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
@@ -1142,7 +1142,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected static TruffleString doCached(JSRegExpObject rx, TruffleString s, TruffleString replaceString,
                             ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
                             JSContext context, JSRegExpReplaceNode parent,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
                             @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
                             @Cached @Shared AdvanceStringIndexNode advanceStringIndex,
@@ -1235,7 +1235,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected static TruffleString doUncached(JSRegExpObject rx, TruffleString s, TruffleString replaceString,
                             ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
                             JSContext context, JSRegExpReplaceNode parent,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
                             @Cached @Shared AdvanceStringIndexNode advanceStringIndex,
                             @Cached @Shared JSToLengthNode toLength,
@@ -1269,7 +1269,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             @Specialization
             protected static TruffleString replaceAccordingToSpec(JSDynamicObject rx, TruffleString s, Object replaceValue, boolean functionalReplace,
                             JSContext context, JSRegExpReplaceNode parent,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached AdvanceStringIndexNode advanceStringIndex,
                             @Cached JSToLengthNode toLength,
                             @Cached JSToIntegerAsIntNode toIntegerNode,
@@ -1686,7 +1686,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected Object match(JSDynamicObject rx, Object param,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
                         @Cached JSToStringNode toStringNodeForFlags,
@@ -1779,7 +1779,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isObjectNode.executeBoolean(regex)", limit = "1")
         protected final Object matchAll(JSDynamicObject regex, Object stringObj,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached JSToStringNode toStringNodeForInput,
                         @Cached("create(getContext(), false)") ArraySpeciesConstructorNode speciesConstructNode,
                         @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,

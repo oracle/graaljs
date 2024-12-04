@@ -93,7 +93,7 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     @SuppressWarnings("truffle-static-method")
     @Specialization(limit = "3")
     Object doField(JSObject target, HiddenKey key,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("target") DynamicObjectLibrary access,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
         if (Properties.containsKey(access, target, key)) {

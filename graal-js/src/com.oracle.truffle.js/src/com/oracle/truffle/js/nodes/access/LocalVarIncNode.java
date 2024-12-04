@@ -384,7 +384,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"frame.isObject(slot)"})
     public Object doObject(Frame frame,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached InlinedConditionProfile isNumberProfile,
                     @Cached InlinedConditionProfile isIntegerProfile,
                     @Cached InlinedConditionProfile isBigIntProfile,
@@ -534,7 +534,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"frame.isObject(slot)"})
     public Object doObject(Frame frame,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached InlinedConditionProfile isNumberProfile,
                     @Cached InlinedConditionProfile isIntegerProfile,
                     @Cached InlinedConditionProfile isBigIntProfile,

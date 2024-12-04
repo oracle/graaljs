@@ -164,7 +164,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(JSDynamicObject arrayObj, int length,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
                         @Cached @Shared ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
@@ -210,7 +210,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(JSDynamicObject arrayObj, int length,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
                         @Cached @Shared ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;

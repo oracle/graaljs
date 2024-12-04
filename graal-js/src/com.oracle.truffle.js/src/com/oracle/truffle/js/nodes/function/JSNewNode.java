@@ -181,7 +181,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isForeignObject(target)"})
     public Object doNewForeignObject(VirtualFrame frame, Object target,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                     @Cached ExportValueNode convert,
                     @Cached ImportValueNode toJSType,

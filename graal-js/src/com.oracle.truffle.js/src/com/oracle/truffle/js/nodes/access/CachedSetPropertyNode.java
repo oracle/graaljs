@@ -127,7 +127,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     void doGeneric(JSDynamicObject target, Object key, Object value, Object receiver,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached InlinedConditionProfile getType,
                     @Cached @Shared JSClassProfile jsclassProfile,
