@@ -179,3 +179,8 @@ bool GraalModule::IsGraphAsync() const {
     JNI_CALL(jboolean, java_is_graph_async, Isolate(), GraalAccessMethod::module_is_graph_async, Boolean, GetJavaObject());
     return (bool) java_is_graph_async;
 }
+
+bool GraalModule::IsSourceTextModule() const {
+    JNI_CALL(jboolean, java_is_source_text, Isolate(), GraalAccessMethod::module_is_source_text_module, Boolean, GetJavaObject());
+    return (bool) java_is_source_text;
+}

@@ -4028,8 +4028,7 @@ namespace v8 {
     }
 
     bool Module::IsSourceTextModule() const {
-        TRACE
-        return true;
+        return reinterpret_cast<const GraalModule*> (this)->IsSourceTextModule();
     }
 
     std::pair<LocalVector<Module>, LocalVector<Message>> Module::GetStalledTopLevelAwaitMessages(Isolate* isolate) {

@@ -65,6 +65,7 @@ public:
     v8::Maybe<bool> SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value);
     v8::Local<v8::UnboundModuleScript> GetUnboundModuleScript();
     bool IsGraphAsync() const;
+    bool IsSourceTextModule() const;
 protected:
     inline GraalModule(GraalIsolate* isolate, jobject java_module);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;

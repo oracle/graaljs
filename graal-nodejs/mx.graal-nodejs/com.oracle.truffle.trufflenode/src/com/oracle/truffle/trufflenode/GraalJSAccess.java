@@ -3877,6 +3877,10 @@ public final class GraalJSAccess {
         return record.hasTLA() || record.isAsyncEvaluation();
     }
 
+    public boolean moduleIsSourceTextModule(Object module) {
+        return !(module instanceof NativeBackedModuleRecord);
+    }
+
     public Object moduleCreateSyntheticModule(Object moduleName, Object[] exportNames, final long evaluationStepsCallback) {
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
         for (Object exportName : exportNames) {
