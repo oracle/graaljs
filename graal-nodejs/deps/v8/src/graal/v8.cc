@@ -2107,6 +2107,8 @@ namespace v8 {
             "large_object_space",
             "code_large_object_space",
             "shared_large_object_space",
+            "trusted_large_object_space",
+            "trusted_space",
         };
         space_statistics->space_name_ = names[index];
         space_statistics->space_size_ = 0;
@@ -2117,7 +2119,7 @@ namespace v8 {
     }
 
     size_t Isolate::NumberOfHeapSpaces() {
-        return 9;
+        return 11;
     }
 
     MaybeLocal<String> String::NewExternalOneByte(Isolate* isolate, ExternalOneByteStringResource* resource) {
