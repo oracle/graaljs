@@ -2807,9 +2807,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected Object codePointAt(Object thisObj, Object position,
                         @Cached TruffleString.CodePointAtByteIndexNode codePointAtRawNode,
-                        @Cached InlinedBranchProfile undefinedBranch,
-                        @Cached InlinedBranchProfile needSecondBranch,
-                        @Cached InlinedBranchProfile needCalculationBranch) {
+                        @Cached InlinedBranchProfile undefinedBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int pos = toIntegerAsInt(position);
@@ -2817,18 +2815,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 undefinedBranch.enter(this);
                 return Undefined.instance;
             }
-            int first = Strings.codePointAt(codePointAtRawNode, thisStr, pos);
-            boolean isEnd = (pos + 1 == Strings.length(thisStr));
-            if (isEnd || first < 0xD800 || first > 0xDBFF) {
-                return first;
-            }
-            needSecondBranch.enter(this);
-            int second = Strings.codePointAt(codePointAtRawNode, thisStr, pos + 1);
-            if (second < 0xDC00 || second > 0xDFFF) {
-                return first;
-            }
-            needCalculationBranch.enter(this);
-            return ((first - 0xD800) * 1024) + (second - 0xDC00) + 0x10000;
+            return Strings.codePointAt(codePointAtRawNode, thisStr, pos);
         }
     }
 

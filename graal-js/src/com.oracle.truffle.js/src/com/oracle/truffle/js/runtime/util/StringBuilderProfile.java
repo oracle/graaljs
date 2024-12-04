@@ -88,6 +88,14 @@ public final class StringBuilderProfile extends NodeCloneable {
         return Strings.builderToString(node, builder);
     }
 
+    public void append(TruffleStringBuilder.AppendJavaStringUTF16Node node, TruffleStringBuilderUTF16 builder, String str) {
+        if ((Strings.builderLength(builder) + str.length()) > stringLengthLimit) {
+            errorBranch.enter();
+            throw Errors.createRangeErrorInvalidStringLength();
+        }
+        Strings.builderAppend(node, builder, str);
+    }
+
     public void append(TruffleStringBuilder.AppendStringNode node, TruffleStringBuilderUTF16 builder, TruffleString str) {
         if ((Strings.builderLength(builder) + Strings.length(str)) > stringLengthLimit) {
             errorBranch.enter();
@@ -114,7 +122,7 @@ public final class StringBuilderProfile extends NodeCloneable {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        node.execute(builder, codePoint, repeat);
+        Strings.builderAppend(node, builder, codePoint, repeat);
     }
 
     public void append(TruffleStringBuilder.AppendIntNumberNode node, TruffleStringBuilderUTF16 builder, int intValue) {
