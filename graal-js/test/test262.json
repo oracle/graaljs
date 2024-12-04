@@ -334,10 +334,6 @@
     "status" : "SKIP",
     "comment" : "Long running test"
   }, {
-    "filePath" : "built-ins/Object/freeze/typedarray-backed-by-resizable-buffer.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-12-04"
-  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -4072,18 +4068,6 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
-  }, {
-    "filePath" : "staging/built-ins/Object/preventExtensions/preventExtensions-variable-length-typed-arrays.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-12-04"
-  }, {
-    "filePath" : "staging/built-ins/Object/seal/seal-variable-length-typed-arrays.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-12-04"
-  }, {
-    "filePath" : "staging/built-ins/Reflect/preventExtensions/preventExtensions-variable-length-typed-arrays.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-12-04"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months.js",
     "status" : "FAIL",
