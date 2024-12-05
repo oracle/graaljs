@@ -545,6 +545,10 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
 GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_object, int type, bool use_shared_buffer, void* placement) {
     if (java_object == NULL) {
         fprintf(stderr, "*** NULL passed to FromJavaObject ***\n");
+        JNIEnv* env = isolate->GetJNIEnv();
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+        }
         return isolate->GetNull();
     }
 
