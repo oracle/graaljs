@@ -153,7 +153,8 @@ local ci = import '../ci.jsonnet';
 
     // downstream graal gate
     graalJs + downstreamGraal                                                                             + {name: 'downstream-graal'} +
-      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64]),
+      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64]) +
+      excludePlatforms([common.jdklatest]),     # GR-60309: fails on JDK 24
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'downstream-substratevm-enterprise'} + gateOnMain +
       excludePlatforms([common.darwin_amd64]) + # Too slow
       excludePlatforms([common.linux_aarch64]), # Fails on Linux AArch64 with "Creation of the VM failed."
