@@ -104,7 +104,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isJSProxy(target)", "index >= 0"}, replaces = {"doIntIndex"}, limit = "1")
     void doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object value, Object receiver,
                     @Cached @SuppressWarnings("unused") ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
-                    @Bind("toArrayIndexNode.executeLong(this, key)") long index,
+                    @Bind("toArrayIndexNode.executeLong($node, key)") long index,
                     @Cached @Shared JSClassProfile jsclassProfile) {
         assert JSRuntime.isArrayIndex(index) : index;
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
@@ -127,7 +127,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     void doGeneric(JSDynamicObject target, Object key, Object value, Object receiver,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached InlinedConditionProfile getType,
                     @Cached @Shared JSClassProfile jsclassProfile,

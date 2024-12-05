@@ -241,7 +241,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isForeignObjectOrNumber(thisObj)", limit = "InteropLibraryLimit")
         protected Object toStringForeignObject(Object thisObj, Object radix,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached JSToIntegerAsIntNode toIntegerNode,
                         @Shared @Cached JSDoubleToStringNode doubleToString,
                         @Shared @Cached InlinedBranchProfile radixOtherBranch,
@@ -309,7 +309,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isNumber.execute(node, thisNumber)", limit = "1")
         protected static Object doNumber(Object thisNumber,
-                        @Bind("this") @SuppressWarnings("unused") Node node,
+                        @Bind @SuppressWarnings("unused") Node node,
                         @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Cached JSToDoubleNode toDouble) {
             double d = toDouble.executeDouble(thisNumber);
@@ -358,7 +358,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isNumber.execute(node, thisNumber)", limit = "1")
         protected final TruffleString javaNumberToLocaleString(Object thisNumber, Object locales, Object options,
-                        @Bind("this") @SuppressWarnings("unused") Node node,
+                        @Bind @SuppressWarnings("unused") Node node,
                         @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Cached JSToDoubleNode toDouble) {
             double doubleValue = toDouble.executeDouble(thisNumber);
@@ -395,7 +395,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isNumber.execute(node, thisNumber)", limit = "1")
         protected static double valueOfPrimitive(Object thisNumber,
-                        @Bind("this") @SuppressWarnings("unused") Node node,
+                        @Bind @SuppressWarnings("unused") Node node,
                         @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Cached JSToDoubleNode toDouble) {
             return toDouble.executeDouble(thisNumber);
@@ -448,7 +448,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isForeignObjectOrNumber(thisNumber)", limit = "InteropLibraryLimit")
         protected Object toFixedForeignObject(Object thisNumber, Object fractionDigits,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached JSToIntegerAsIntNode toIntegerNode,
                         @Shared @Cached JSDoubleToStringNode doubleToString,
                         @Shared @Cached InlinedBranchProfile digitsErrorBranch,
@@ -511,7 +511,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"isNumber.execute(node, thisNumber)", "isUndefined(fractionDigits)"})
         protected static Object toExponentialPrimitiveUndefined(Object thisNumber, Object fractionDigits,
-                        @Bind("this") @SuppressWarnings("unused") Node node,
+                        @Bind @SuppressWarnings("unused") Node node,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToDoubleNode toDouble) {
             double doubleValue = toDouble.executeDouble(thisNumber);
@@ -520,7 +520,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"isNumber.execute(node, thisNumber)", "!isUndefined(fractionDigits)"})
         protected final Object toExponentialPrimitive(Object thisNumber, Object fractionDigits,
-                        @Bind("this") @SuppressWarnings("unused") Node node,
+                        @Bind @SuppressWarnings("unused") Node node,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToDoubleNode toDouble,
                         @Shared @Cached InlinedBranchProfile digitsErrorBranch,
@@ -540,7 +540,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "!isUndefined(fractionDigits)"}, limit = "InteropLibraryLimit")
         protected Object toExponentialForeignObject(Object thisNumber, Object fractionDigits,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile digitsErrorBranch,
                         @Shared @Cached JSToIntegerAsIntNode toIntegerNode,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {
@@ -639,7 +639,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "!isUndefined(precision)"}, limit = "InteropLibraryLimit")
         protected Object toPrecisionForeignObject(Object thisNumber, Object precision,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached JSToNumberNode toNumberNode,
                         @Shared @Cached InlinedBranchProfile errorBranch,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {

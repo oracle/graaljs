@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -132,7 +132,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"record.isGetter() || record.isSetter()", "record.hasDecorators()"})
     protected void decorateGetterSetter(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, SimpleArrayList<Object> extraInitializers,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Shared @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Shared @Cached InlinedBranchProfile errorBranch,
@@ -158,7 +158,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"record.isAutoAccessor()", "record.hasDecorators()"})
     protected void decorateAuto(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, SimpleArrayList<Object> extraInitializers,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Shared @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Cached("create(GET, context)") PropertyGetNode getGetterNode,

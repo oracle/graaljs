@@ -112,7 +112,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isJSFastArray(object)", "isArrayIndex(index)", "cachedArrayType.isInstance(getArrayType(object))"}, limit = "MAX_ARRAY_TYPES")
     public boolean arrayLongCached(JSDynamicObject object, long index,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("getArrayType(object)") ScriptArray cachedArrayType,
                     @Shared @Cached InlinedConditionProfile hasElementProfile) {
         return checkInteger(object, index, cachedArrayType.cast(getArrayType(object)), node, hasElementProfile);

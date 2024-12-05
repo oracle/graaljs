@@ -366,7 +366,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected final Object arrayFromAsync(Object thisObj, Object asyncItems, Object mapFn, Object thisArg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("create(getContext())") NewPromiseCapabilityNode newPromiseCapability,
                         @Cached("create(getContext(), SYMBOL_ASYNC_ITERATOR)") GetMethodNode getAsyncIteratorMethodNode,
                         @Cached("create(getContext(), SYMBOL_ITERATOR)") GetMethodNode getIteratorMethodNode,

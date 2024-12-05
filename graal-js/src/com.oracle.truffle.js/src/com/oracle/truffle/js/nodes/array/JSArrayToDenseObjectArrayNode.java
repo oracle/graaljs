@@ -87,7 +87,7 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "cachedArrayType.isHolesType()"}, limit = "5")
     protected static Object[] fromSparseArray(JSArrayObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("create(getJSContext())") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached @Shared InlinedBranchProfile growProfile) {
         long pos = cachedArrayType.firstElementIndex(array);

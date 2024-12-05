@@ -878,7 +878,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"isOneForeignArg(args)"})
         protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached("create(getContext())") @Shared ArrayCreateNode arrayCreateNode,
                         @Cached @Exclusive InlinedConditionProfile isNumber,
@@ -1477,7 +1477,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSObject constructRegExp(JSDynamicObject newTarget, Object pattern, Object flags,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
                         @Cached InlinedBranchProfile regexpObject,
                         @Cached InlinedBranchProfile regexpMatcherObject,
@@ -1946,7 +1946,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "InteropLibraryLimit")
         protected Object constructObjectJSObject(@SuppressWarnings("unused") JSDynamicObject newTarget, Object[] arguments,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached JSToObjectNode toObjectNode,
                         @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,
                         @Cached InlinedConditionProfile isNull) {
@@ -2770,7 +2770,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isNullOrUndefined(iterable)")
         protected final JSObject constructMapFromIterable(JSDynamicObject newTarget, Object iterable,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached IsObjectNode isObjectNode,
                         @Cached IsCallableNode isCallableNode,
@@ -2834,7 +2834,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isNullOrUndefined(iterable)")
         protected JSObject constructSetFromIterable(JSDynamicObject newTarget, Object iterable,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached IsCallableNode isCallableNode,
                         @Cached(inline = true) GetIteratorNode getIteratorNode,
                         @Cached InlinedBranchProfile errorBranch) {

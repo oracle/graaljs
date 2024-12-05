@@ -169,7 +169,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     @InliningCutoff
     @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
     protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNamesForeign(Object obj,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asString,

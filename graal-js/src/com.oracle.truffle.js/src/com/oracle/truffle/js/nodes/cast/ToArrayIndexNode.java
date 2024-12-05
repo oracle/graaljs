@@ -165,7 +165,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization(guards = {"notArrayIndex(value)", "toArrayIndex(value, interop) < 0"}, limit = "InteropLibraryLimit")
     protected final Object doNonArrayIndex(Object value,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop,
                     @Cached JSToPropertyKeyNode toPropertyKey,
                     @Cached ToArrayIndexNoToPropertyKeyNode propertyKeyToArrayIndex) {

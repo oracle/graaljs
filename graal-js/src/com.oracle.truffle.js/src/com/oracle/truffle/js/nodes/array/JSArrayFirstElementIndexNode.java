@@ -99,7 +99,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long doWithHolesCached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached @Shared InlinedConditionProfile isZero) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);

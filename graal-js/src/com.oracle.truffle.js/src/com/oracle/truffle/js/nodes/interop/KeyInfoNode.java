@@ -95,7 +95,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isJSProxy(target)", "property != null"}, limit = "2")
     static boolean cachedOwnProperty(JSDynamicObject target, @SuppressWarnings("unused") String key, int query,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @Bind("fromJavaString(fromJavaStringNode, key)") TruffleString tStringKey,

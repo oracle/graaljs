@@ -127,7 +127,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isObjectNode.executeBoolean(target)"}, limit = "1")
     protected boolean doJSObject(Object obj, JSDynamicObject target,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                     @Cached("createGetMethodHasInstance()") GetMethodNode getMethodHasInstanceNode,
                     @Cached(inline = true) JSToBooleanNode toBooleanNode,

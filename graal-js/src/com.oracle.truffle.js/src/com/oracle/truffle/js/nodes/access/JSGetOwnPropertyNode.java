@@ -123,7 +123,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization
     final PropertyDescriptor array(JSArrayObject thisObj, Object propertyKey,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached JSArrayGetOwnPropertyNode arrayGetOwnProperty,
                     @Cached InlinedBranchProfile noSuchElementBranch) {

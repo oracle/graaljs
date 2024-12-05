@@ -98,7 +98,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long previousWithHolesCached(JSDynamicObject object, long currentIndex, boolean isArray,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
                     @Cached("create(context)") @Shared JSArrayPreviousElementIndexNode previousElementIndexNode,
                     @Cached @Shared InlinedConditionProfile isMinusOne) {

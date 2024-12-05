@@ -226,7 +226,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger",
                     "doIntSafeInteger", "doSafeIntegerInt", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
     protected static Object doPrimitiveConversion(Object a, Object b,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveB,
                     @Cached JSToNumericNode toNumericA,

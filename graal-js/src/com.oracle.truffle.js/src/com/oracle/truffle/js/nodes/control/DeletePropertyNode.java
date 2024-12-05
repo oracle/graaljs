@@ -197,7 +197,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isJSOrdinaryObject(targetObject)", "!isJSGlobalObject(targetObject)"})
     protected final boolean doJSObject(JSDynamicObject targetObject, Object key,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,
                     @Cached InlinedConditionProfile arrayProfile,
                     @Shared @Cached ToArrayIndexNode toArrayIndexNode,

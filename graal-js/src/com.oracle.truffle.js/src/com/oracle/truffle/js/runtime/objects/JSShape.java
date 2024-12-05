@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.lang.invoke.MethodHandles;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -97,6 +99,8 @@ public final class JSShape {
      * Marks objects, [[GetOwnProperty]] of which is not implemented using OrdinaryGetOwnProperty.
      */
     public static final int UNORDINARY_GETOWNPROPERTY_FLAG = 1 << 6;
+
+    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     private JSShape() {
     }
@@ -231,7 +235,7 @@ public final class JSShape {
      * Internal constructor for null and undefined shapes.
      */
     public static Shape makeStaticRoot(JSClass jsclass) {
-        return Shape.newBuilder().layout(getLayout(jsclass)).dynamicType(jsclass).build();
+        return Shape.newBuilder().layout(getLayout(jsclass), LOOKUP).dynamicType(jsclass).build();
     }
 
     public static Shape makeEmptyRoot(JSClass jsclass, JSContext context) {
@@ -273,7 +277,7 @@ public final class JSShape {
     public static Shape.Builder newBuilder(JSContext context, JSClass jsclass, JSDynamicObject proto, int shapeFlags) {
         assert !context.isMultiContext() || (proto == null || proto == Null.instance);
         return Shape.newBuilder().//
-                        layout(getLayout(jsclass)).//
+                        layout(getLayout(jsclass), LOOKUP).//
                         dynamicType(jsclass).//
                         sharedData(JSShape.makeJSSharedData(context, proto)).//
                         shapeFlags(shapeFlags | getDefaultShapeFlags(jsclass)).//

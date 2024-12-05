@@ -2036,7 +2036,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             @Specialization(guards = {"cachedArrayType.isInstance(arrayType)"}, limit = "5")
             static void doCached(JSDynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
                             @Cached("arrayType") ScriptArray cachedArrayType,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached @Shared GetPrototypeNode getPrototypeNode,
                             @Cached @Shared InlinedConditionProfile arrayElementwise) {
                 if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, actualDeleteCount, itemCount, cachedArrayType.cast(arrayType), getPrototypeNode))) {
@@ -2048,7 +2048,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             @Specialization(replaces = "doCached")
             static void doUncached(JSDynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached @Shared GetPrototypeNode getPrototypeNode,
                             @Cached @Shared InlinedConditionProfile arrayElementwise) {
                 if (arrayElementwise.profile(node, parent.mustUseElementwise(array, len, actualDeleteCount, itemCount, arrayType, getPrototypeNode))) {

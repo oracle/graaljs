@@ -425,7 +425,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSTemporalDurationObject differenceTemporalPlainDate(JSTemporalPlainDateObject temporalDate, Object otherObj, Object options,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
                         @Cached TemporalDifferenceDateNode differenceDate,

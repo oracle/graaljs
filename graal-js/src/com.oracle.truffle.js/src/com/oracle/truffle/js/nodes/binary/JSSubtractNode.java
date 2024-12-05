@@ -111,7 +111,7 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doDouble", "doBigInt"})
     protected static Object doGeneric(Object a, Object b,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached JSToNumericNode toNumericA,
                     @Cached JSToNumericNode toNumericB,
                     @Cached("copyRecursive()") JavaScriptNode subtract,

@@ -479,7 +479,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSTemporalDurationObject round(JSTemporalDurationObject duration, Object roundToParam,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached InlinedConditionProfile roundToIsTString,
                         @Cached InlinedConditionProfile relativeToIsZonedDateTime,
@@ -637,7 +637,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected final double total(JSTemporalDurationObject duration, Object totalOfParam,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
