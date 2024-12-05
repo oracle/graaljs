@@ -20,6 +20,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Added an experimental `java.util.concurrent.Executor` that can be used to post tasks into the event loop thread in `graal-nodejs`. It is available as `require('node:graal').eventLoopExecutor`.
 * Implemented the `TextDecoder` and `TextEncoder` APIs of the [WHATWG Encoding Standard](https://encoding.spec.whatwg.org/). They are available behind the experimental option (`--js.text-encoding`).
 * Implemented the [`RegExp.escape`](https://github.com/tc39/proposal-regex-escaping) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [Regular Expression Pattern Modifiers](https://github.com/tc39/proposal-regexp-modifiers) proposal.
 
 ## Version 24.1.0
 * ECMAScript 2024 mode/features enabled by default.
