@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
@@ -209,7 +208,7 @@ public class WebAssemblyModuleRecord extends CyclicModuleRecord {
                 TruffleString name = Strings.interopAsTruffleString(InteropLibrary.getUncached().readMember(importDesc, "name"));
 
                 AbstractModuleRecord importedModule = getImportedModule(ModuleRequest.create(importedModuleName));
-                Object value = JSModuleNamespace.getBindingValue(importedModule.resolveExport(name));
+                Object value = importedModule.getModuleNamespace().getValue(name);
 
                 JSObject moduleImportsObject = (JSObject) importObject.getValue(importedModuleName);
                 JSRuntime.createDataProperty(moduleImportsObject, name, value);
