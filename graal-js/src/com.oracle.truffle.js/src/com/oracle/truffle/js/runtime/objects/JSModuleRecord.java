@@ -162,7 +162,7 @@ public class JSModuleRecord extends CyclicModuleRecord {
             exportedNames.add(exportEntry.getExportName());
         }
         for (ExportEntry exportEntry : getModule().getStarExportEntries()) {
-            JSModuleRecord requestedModule = (JSModuleRecord) getImportedModule(exportEntry.getModuleRequest());
+            AbstractModuleRecord requestedModule = getImportedModule(exportEntry.getModuleRequest());
             Collection<TruffleString> starNames = requestedModule.getExportedNames(exportStarSet);
             for (TruffleString starName : starNames) {
                 if (!starName.equals(com.oracle.js.parser.ir.Module.DEFAULT_NAME)) {
@@ -206,7 +206,7 @@ public class JSModuleRecord extends CyclicModuleRecord {
         }
         for (ExportEntry exportEntry : getModule().getIndirectExportEntries()) {
             if (exportEntry.getExportName().equals(exportName)) {
-                JSModuleRecord importedModule = (JSModuleRecord) getImportedModule(exportEntry.getModuleRequest());
+                AbstractModuleRecord importedModule = getImportedModule(exportEntry.getModuleRequest());
                 if (exportEntry.getImportName().equals(Module.STAR_NAME)) {
                     // Assert: module does not provide the direct binding for this export.
                     return ExportResolution.resolved(importedModule, Module.NAMESPACE_EXPORT_BINDING_NAME);
@@ -223,7 +223,7 @@ public class JSModuleRecord extends CyclicModuleRecord {
         }
         ExportResolution starResolution = ExportResolution.notFound();
         for (ExportEntry exportEntry : getModule().getStarExportEntries()) {
-            JSModuleRecord importedModule = (JSModuleRecord) getImportedModule(exportEntry.getModuleRequest());
+            AbstractModuleRecord importedModule = getImportedModule(exportEntry.getModuleRequest());
             ExportResolution resolution = importedModule.resolveExport(exportName, resolveSet);
             if (resolution.isAmbiguous()) {
                 return resolution;

@@ -80,8 +80,9 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -287,7 +288,7 @@ public class ImportCallNode extends JavaScriptNode {
      * Captures of linkAndEvaluateClosure.
      */
     private record LinkAndEvaluateArgs(
-                    JSModuleRecord moduleRecord,
+                    AbstractModuleRecord moduleRecord,
                     PromiseCapabilityRecord promiseCapability,
                     JSFunctionObject onRejected) {
     }
@@ -321,7 +322,7 @@ public class ImportCallNode extends JavaScriptNode {
             @Override
             public Object executeInRealm(VirtualFrame frame) {
                 PromiseCapabilityRecord importPromiseCapability = (PromiseCapabilityRecord) promiseCapabilityArgument.execute(frame);
-                JSModuleRecord module = (JSModuleRecord) moduleRecordArgument.execute(frame);
+                var module = (AbstractModuleRecord) moduleRecordArgument.execute(frame);
                 JSRealm realm = getRealm();
 
                 JSPromiseObject loadPromise = module.loadRequestedModules(realm, Undefined.instance);
@@ -339,7 +340,7 @@ public class ImportCallNode extends JavaScriptNode {
                 return rejectedClosure;
             }
 
-            private JSFunctionObject createLinkAndEvaluateClosure(JSContext cx, JSRealm realm, JSModuleRecord module, PromiseCapabilityRecord promiseCapability, JSFunctionObject onRejected) {
+            private JSFunctionObject createLinkAndEvaluateClosure(JSContext cx, JSRealm realm, AbstractModuleRecord module, PromiseCapabilityRecord promiseCapability, JSFunctionObject onRejected) {
                 JSFunctionData functionData = cx.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ContinueDynamicImportLinkAndEvaluateClosure, (c) -> createLinkAndEvaluateImpl(c));
                 JSFunctionObject linkAndEvaluateClosure = JSFunction.create(realm, functionData);
                 setLinkAndEvaluateCaptures.setValue(linkAndEvaluateClosure, new LinkAndEvaluateArgs(module, promiseCapability, onRejected));
@@ -370,7 +371,7 @@ public class ImportCallNode extends JavaScriptNode {
             protected Object executeInRealm(VirtualFrame frame) {
                 JSDynamicObject thisFunction = (JSDynamicObject) JSArguments.getFunctionObject(frame.getArguments());
                 LinkAndEvaluateArgs captures = (LinkAndEvaluateArgs) getCaptures.getValue(thisFunction);
-                JSModuleRecord moduleRecord = captures.moduleRecord;
+                AbstractModuleRecord moduleRecord = captures.moduleRecord;
                 PromiseCapabilityRecord importPromiseCapability = captures.promiseCapability;
                 JSFunctionObject onRejected = captures.onRejected;
 
@@ -383,13 +384,13 @@ public class ImportCallNode extends JavaScriptNode {
                     // Evaluate() should always return a promise.
                     // Yet, if top-level-await is disabled, returns/throws the result instead.
                     Object evaluatePromise = moduleRecord.evaluate(realm);
-                    if (context.isOptionTopLevelAwait()) {
+                    if (context.isOptionTopLevelAwait() || !(moduleRecord instanceof CyclicModuleRecord cyclicModuleRecord)) {
                         assert evaluatePromise instanceof JSPromiseObject : evaluatePromise;
                         JSFunctionObject onFulfilled = createFulfilledClosure(context, realm, captures);
                         promiseThenNode.execute((JSPromiseObject) evaluatePromise, onFulfilled, onRejected);
                     } else {
                         // Rethrow any previous execution errors.
-                        moduleRecord.getExecutionResultOrThrow();
+                        cyclicModuleRecord.getExecutionResultOrThrow();
                         var namespace = moduleRecord.getModuleNamespace();
                         callPromiseResolve.executeCall(JSArguments.createOneArg(Undefined.instance, importPromiseCapability.getResolve(), namespace));
                     }
@@ -429,7 +430,7 @@ public class ImportCallNode extends JavaScriptNode {
                 JSFunctionObject thisFunction = (JSFunctionObject) JSArguments.getFunctionObject(frame.getArguments());
                 LinkAndEvaluateArgs captures = (LinkAndEvaluateArgs) getCaptures.getValue(thisFunction);
                 PromiseCapabilityRecord promiseCapability = captures.promiseCapability;
-                JSModuleRecord moduleRecord = captures.moduleRecord;
+                AbstractModuleRecord moduleRecord = captures.moduleRecord;
 
                 var namespace = moduleRecord.getModuleNamespace();
                 callPromiseResolve.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), namespace));
