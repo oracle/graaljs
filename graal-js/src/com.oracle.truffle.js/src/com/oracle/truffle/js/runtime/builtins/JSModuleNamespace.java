@@ -166,7 +166,9 @@ public final class JSModuleNamespace extends JSNonProxy {
             // If it is an uninitialized binding, throw a ReferenceError
             throw Errors.createReferenceErrorNotDefined(bindingName, null);
         }
-        return targetEnv.getValue(slot);
+        Object value = targetEnv.getValue(slot);
+        assert !(value instanceof ExportResolution) : value;
+        return value;
     }
 
     @TruffleBoundary
