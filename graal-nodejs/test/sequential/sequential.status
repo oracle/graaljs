@@ -56,6 +56,7 @@ test-fs-stat-sync-overflow: SKIP
 
 # Needs too many system resources
 test-child-process-pass-fd: SKIP
+test-error-serdes: SKIP
 test-worker-fshandles-error-on-termination: SKIP
 test-worker-fshandles-open-close-on-termination: SKIP
 
