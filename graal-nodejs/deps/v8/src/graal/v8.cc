@@ -819,6 +819,10 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (this)->SlowGetAlignedPointerFromInternalField(index);
     }
 
+    void* Object::SlowGetAlignedPointerFromInternalField(v8::Isolate* isolate, int index) {
+        return reinterpret_cast<GraalObject*> (this)->SlowGetAlignedPointerFromInternalField(index);
+    }
+
     MaybeLocal<Value> Object::CallAsFunction(Local<Context> context, Local<Value> recv, int argc, Local<Value> argv[]) {
         return reinterpret_cast<Function*> (this)->Call(context, recv, argc, argv);
     }
@@ -3495,8 +3499,12 @@ namespace v8 {
         return false;
     }
 
+    SnapshotCreator::SnapshotCreator(const intptr_t* external_references, const StartupData* existing_blob) {
+        fprintf(stderr, "Snapshot creation is not supported by graal-nodes.js!");
+        exit(1);
+    }
+
     SnapshotCreator::SnapshotCreator(v8::Isolate* isolate, const intptr_t* external_references, const StartupData* existing_blob, bool owns_isolate) {
-        TRACE
         fprintf(stderr, "Snapshot creation is not supported by graal-nodes.js!");
         exit(1);
     }
