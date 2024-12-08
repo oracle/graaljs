@@ -144,6 +144,7 @@ public final class Options {
         // elsewhere or can be ignored without almost any harm).
         private static final Set<String> IGNORED_OPTIONS = Set.of(new String[]{
                         "debug-code",
+                        "enable-sharedarraybuffer-per-context",
                         "es-staging",
                         "experimental-modules",
                         "expose-debug-as",
