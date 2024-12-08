@@ -97,6 +97,11 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     }
 
     @TruffleBoundary
+    protected static JSException lengthOutOfBounds() {
+        throw setErrorCode(Errors.createRangeError("\"length\" is outside of buffer bounds"), ERR_BUFFER_OUT_OF_BOUNDS);
+    }
+
+    @TruffleBoundary
     protected final JSException stringTooLong() {
         throw setErrorCode(Errors.createError(String.format("Cannot create a string longer than 0x%x characters", getContext().getStringLengthLimit())), ERR_STRING_TOO_LONG);
     }
