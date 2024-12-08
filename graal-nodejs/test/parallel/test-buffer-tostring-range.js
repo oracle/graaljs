@@ -104,5 +104,7 @@ assert.throws(() => {
 // when start and end are above the threshold
 common.skipIf32Bits();
 const threshold = 0xFFFFFFFF;
+if (typeof Graal === 'undefined') { // graal-js cannot allocate typed array of this size
 const largeBuffer = Buffer.alloc(threshold + 20);
 largeBuffer.toString('utf8', threshold, threshold + 20);
+}

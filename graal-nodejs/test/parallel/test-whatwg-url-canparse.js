@@ -27,9 +27,9 @@ assert.strictEqual(URL.canParse('https://example.org'), true);
     assert.strictEqual(URL.canParse('/', 'http://n'), true);
   }
 
-  eval('%PrepareFunctionForOptimization(URL.canParse)');
+//  eval('%PrepareFunctionForOptimization(URL.canParse)');
   testFastPaths();
-  eval('%OptimizeFunctionOnNextCall(URL.canParse)');
+//  eval('%OptimizeFunctionOnNextCall(URL.canParse)');
   testFastPaths();
 
   if (common.isDebug) {
