@@ -550,6 +550,7 @@ Global<T>::Global(Global&& other) /*: PersistentBase<T>(other.slot())*/ {
       reinterpret_cast<internal::Address**> (&other.ptr_),
       reinterpret_cast<internal::Address**> (&this->ptr_)
     );
+    reinterpret_cast<GraalHandleContent*> (this->ptr_)->ReferenceAdded();
     other.Clear();
   }
 }
@@ -566,6 +567,7 @@ Global<T>& Global<T>::operator=(Global<S>&& rhs) {
         reinterpret_cast<internal::Address**> (&rhs.ptr_),
         reinterpret_cast<internal::Address**> (&this->ptr_)
       );
+      reinterpret_cast<GraalHandleContent*> (this->ptr_)->ReferenceAdded();
       rhs.Clear();
     }
   }
