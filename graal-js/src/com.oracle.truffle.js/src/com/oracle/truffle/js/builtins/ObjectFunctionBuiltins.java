@@ -1050,13 +1050,22 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return;
             }
             try {
-                Object members = fromInterop.getMembers(from);
-                long length = JSInteropUtil.getArraySize(members, keysInterop, this);
-                for (long i = 0; i < length; i++) {
-                    Object key = keysInterop.readArrayElement(members, i);
-                    String stringKey = Strings.interopAsString(stringInterop, key);
-                    Object value = toJSType.executeWithTarget(fromInterop.readMember(from, stringKey));
-                    write.executeWithTargetAndIndexAndValue(to, Strings.fromJavaString(fromJavaString, stringKey), value);
+                if (fromInterop.hasArrayElements(from)) {
+                    long length = JSInteropUtil.getArraySize(from, fromInterop, this);
+                    for (long i = 0; i < length; i++) {
+                        Object value = toJSType.executeWithTarget(fromInterop.readArrayElement(from, i));
+                        write.executeWithTargetAndIndexAndValue(to, Strings.fromLong(i), value);
+                    }
+                }
+                if (fromInterop.hasMembers(from)) {
+                    Object members = fromInterop.getMembers(from);
+                    long length = JSInteropUtil.getArraySize(members, keysInterop, this);
+                    for (long i = 0; i < length; i++) {
+                        Object key = keysInterop.readArrayElement(members, i);
+                        String stringKey = Strings.interopAsString(stringInterop, key);
+                        Object value = toJSType.executeWithTarget(fromInterop.readMember(from, stringKey));
+                        write.executeWithTargetAndIndexAndValue(to, Strings.fromJavaString(fromJavaString, stringKey), value);
+                    }
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
                 throw Errors.createTypeErrorInteropException(from, e, "CopyDataProperties", this);
