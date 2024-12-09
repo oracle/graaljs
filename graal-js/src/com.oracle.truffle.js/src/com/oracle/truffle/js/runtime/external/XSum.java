@@ -71,7 +71,7 @@ public class XSum {
     // CONSTANTS DEFINING THE FLOATING POINT FORMAT
 
     /**
-     * Bits in fp mantissa, excludes implict 1.
+     * Bits in fp mantissa, excludes implicit 1.
      */
     private static final int XSUM_MANTISSA_BITS = 52;
 
@@ -236,13 +236,13 @@ public class XSum {
                 // justifying some overhead to begin, but later stretches of unused
                 // chunks may not be as large.
 
-                int e = u - 3;
+                int e = u - 3; // go only to 3 before so won't access beyond chunk array
                 do {
-                    if (((chunk[i] | chunk[i + 1]) | (chunk[i + 2] | chunk[i + 3])) != 0) {
+                    if ((chunk[i] | chunk[i + 1] | chunk[i + 2] | chunk[i + 3]) != 0) {
                         break;
                     }
                     i += 4;
-                } while (i < e);
+                } while (i <= e);
 
                 do {
                     long c; // Set to the chunk at index i (next non-zero one)
@@ -319,8 +319,8 @@ public class XSum {
                 // one fewer non-zero chunks.
 
                 while (chunk[uix] == -1 && uix > 0) {
-                    // A shift of a negative number is undefined according to the standard, so
-                    // do a multiply - it's all presumably constant-folded by the compiler.
+                    // Left shift of a negative number is undefined according to the standard,
+                    // so do a multiply - it's all presumably constant-folded by the compiler.
                     chunk[uix - 1] += (-1L) * (1L << XSUM_LOW_MANTISSA_BITS);
                     chunk[uix] = 0;
                     uix -= 1;
@@ -340,10 +340,12 @@ public class XSum {
          * Add one number to a small accumulator assuming no carry propagation is required.
          */
         private void add1NoCarry(double value) {
-            // Extract exponent and mantissa.
+            // Extract exponent and mantissa. Split exponent into high and low parts.
             long ivalue = Double.doubleToRawLongBits(value);
-            long mantissa = ivalue & XSUM_MANTISSA_MASK;
             int exp = (int) ((ivalue >> XSUM_MANTISSA_BITS) & XSUM_EXP_MASK);
+            long mantissa = ivalue & XSUM_MANTISSA_MASK;
+            int highExp = exp >> XSUM_LOW_EXP_BITS;
+            int lowExp = exp & XSUM_LOW_EXP_MASK;
 
             // Categorize number as normal, denormalized, or Inf/NaN according to
             // the value of the exponent field.
@@ -354,7 +356,7 @@ public class XSum {
                     return;
                 }
                 // Denormalized mantissa has no implicit 1, but exponent is 1 not 0.
-                exp = 1;
+                exp = lowExp = 1;
             } else if (exp == XSUM_EXP_MASK) { // Inf or NaN
                 // Just update flags in accumulator structure.
                 addInfNan(ivalue);
@@ -364,22 +366,17 @@ public class XSum {
                 mantissa |= 1L << XSUM_MANTISSA_BITS;
             }
 
-            // Separate high part of exponent, used as index of chunk, and low
-            // part of exponent, giving position within chunk.
-
-            int lowExp = exp & XSUM_LOW_EXP_MASK;
-            int highExp = exp >> XSUM_LOW_EXP_BITS;
-
-            long chunk0 = chunk[highExp];
-            long chunk1 = chunk[highExp + 1];
+            // Use high part of exponent as index of chunk, and low part of
+            // exponent to give position within chunk. Fetch the two chunks
+            // that will be modified.
 
             // Separate mantissa into two parts, after shifting, and add to (or
             // subtract from) this chunk and the next higher chunk (which always
             // exists since there are three extra ones at the top).
 
-            // Note that low_mantissa will have at most XSUM_LOW_MANTISSA_BITS bits,
-            // while high_mantissa will have at most XSUM_MANTISSA_BITS bits, since
-            // even though high_mantissa includes the extra implicit 1 bit, it will
+            // Note that lowMantissa will have at most XSUM_LOW_MANTISSA_BITS bits,
+            // while highMantissa will have at most XSUM_MANTISSA_BITS bits, since
+            // even though highMantissa includes the extra implicit 1 bit, it will
             // also be shifted right by at least one bit.
 
             long lowMantissa = (mantissa << lowExp) & XSUM_LOW_MANTISSA_MASK;
@@ -388,11 +385,11 @@ public class XSum {
             // Add or subtract to or from the two affected chunks.
 
             if (ivalue < 0) {
-                chunk[highExp] = chunk0 - lowMantissa;
-                chunk[highExp + 1] = chunk1 - highMantissa;
+                chunk[highExp] -= lowMantissa;
+                chunk[highExp + 1] -= highMantissa;
             } else {
-                chunk[highExp] = chunk0 + lowMantissa;
-                chunk[highExp + 1] = chunk1 + highMantissa;
+                chunk[highExp] += lowMantissa;
+                chunk[highExp + 1] += highMantissa;
             }
         }
 
@@ -412,7 +409,7 @@ public class XSum {
                 } else if (inf != ivalue) { // previous Inf was opposite sign
                     inf = Double.doubleToRawLongBits(Double.NaN); // result will be a NaN
                 }
-            } else {
+            } else { // NaN
                 // Choose the NaN with the bigger payload and clear its sign.
                 // Using <= ensures that we will choose the first NaN over the previous zero.
                 if ((nan & XSUM_MANTISSA_MASK) <= mantissa) {
@@ -427,20 +424,18 @@ public class XSum {
          * propagation being done), but the value it represents should not change.
          */
         public double round() {
-            long uintv;
+            long intv;
 
-            // See if we have a NaN from one of the numbers being a NaN, in which
-            // case we return the NaN with largest payload.
+            // See if we have a NaN from one of the numbers being a NaN, in
+            // which case we return the NaN with largest payload, or an infinite
+            // result (+Inf, -Inf, or a NaN if both +Inf and -Inf occurred).
+            // Note that we do NOT return NaN if we have both an infinite number
+            // and a sum of other numbers that overflows with opposite sign,
+            // since there is no real ambiguity regarding the sign in such a case.
 
             if (nan != 0) {
                 return Double.longBitsToDouble(nan);
             }
-
-            // Otherwise, if any number was infinite, we return +Inf, -Inf, or a Nan
-            // (if both +Inf and -Inf occurred). Note that we do NOT return NaN if
-            // we have both an infinite number and a sum of other numbers that
-            // overflows with opposite sign, since there is no real ambiguity in
-            // such a case.
 
             if (inf != 0) {
                 return Double.longBitsToDouble(inf);
@@ -452,7 +447,7 @@ public class XSum {
             // determined from the uppermost non-zero chunk.
 
             // We also find the index, i, of this uppermost non-zero chunk, as
-            // the value returned by xsum_carry_propagate, and set ivalue to
+            // the value returned by carryPropagate, and set ivalue to
             // chunk[i]. Note that ivalue will not be 0 or -1, unless
             // i is 0 (the lowest chunk), in which case it will be handled by
             // the code for denormalized numbers.
@@ -473,28 +468,27 @@ public class XSum {
                 // the lowest chunk is non-zero. If the highest non-zero chunk is the
                 // next-to-lowest, we check the magnitude of the absolute value.
                 // Note that the real exponent is 1 (not 0), so we need to shift right
-                // by 1 here, which also means there will be no overflow from the left
-                // shift below (but must view absolute value as unsigned).
+                // by 1 here.
 
                 if (i == 0) {
-                    uintv = ivalue >= 0 ? ivalue : -ivalue;
-                    uintv >>= 1;
+                    intv = ivalue >= 0 ? ivalue : -ivalue;
+                    intv >>= 1;
                     if (ivalue < 0) {
-                        uintv |= XSUM_SIGN_MASK;
+                        intv |= XSUM_SIGN_MASK;
                     }
-                    return Double.longBitsToDouble(uintv);
+                    return Double.longBitsToDouble(intv);
                 } else {
                     // Note: Left shift of -ve number is undefined, so do a multiply instead,
                     // which is probably optimized to a shift.
-                    uintv = ivalue * (1L << (XSUM_LOW_MANTISSA_BITS - 1)) + (chunk[0] >> 1);
-                    if (uintv < 0) {
-                        if (uintv > -(1L << XSUM_MANTISSA_BITS)) {
-                            uintv = (-uintv) | XSUM_SIGN_MASK;
-                            return Double.longBitsToDouble(uintv);
+                    intv = ivalue * (1L << (XSUM_LOW_MANTISSA_BITS - 1)) + (chunk[0] >> 1);
+                    if (intv < 0) {
+                        if (intv > -(1L << XSUM_MANTISSA_BITS)) {
+                            intv = (-intv) | XSUM_SIGN_MASK;
+                            return Double.longBitsToDouble(intv);
                         }
                     } else {
-                        if (uintv < 1L << XSUM_MANTISSA_BITS) {
-                            return Double.longBitsToDouble(uintv);
+                        if (intv < 1L << XSUM_MANTISSA_BITS) {
+                            return Double.longBitsToDouble(intv);
                         }
                     }
                     // otherwise, it's not actually denormalized, so fall through to below
@@ -510,8 +504,8 @@ public class XSum {
             // that we need another bit because negating a negative value may carry out of the top
             // here, but not once more bits are shifted into the bottom later on.
 
-            uintv = Double.doubleToRawLongBits(ivalue);
-            int e = (int) ((uintv >> XSUM_MANTISSA_BITS) & XSUM_EXP_MASK);
+            intv = Double.doubleToRawLongBits(ivalue);
+            int e = (int) ((intv >> XSUM_MANTISSA_BITS) & XSUM_EXP_MASK); // e-bias is in 0..32
             int more = 2 + XSUM_MANTISSA_BITS + XSUM_EXP_BIAS - e;
 
             // Change 'ivalue' to put in 'more' bits from lower chunks into the bottom.
@@ -541,7 +535,7 @@ public class XSum {
             // subtract.
 
             // After setting 'ivalue' to the tentative unsigned mantissa
-            // (shifted left 2), and 'uintv' to have the correct sign, this
+            // (shifted left 2), and 'intv' to have the correct sign, this
             // code goes to done_rounding if it finds that just discarding lower
             // order bits is correct, and to round_away_from_zero if instead the
             // magnitude should be increased by one in the lowest mantissa bit. */
@@ -550,7 +544,7 @@ public class XSum {
                 round_away_from_zero: {
 
                     if (ivalue >= 0) { // number is positive, lower bits are added to magnitude
-                        uintv = 0; // positive sign
+                        intv = 0; // positive sign
 
                         if ((ivalue & 2) == 0) { // extra bits are 0x
                             break done_rounding;
@@ -597,7 +591,7 @@ public class XSum {
                             e -= 1;
                         }
 
-                        uintv = XSUM_SIGN_MASK; // negative sign
+                        intv = XSUM_SIGN_MASK; // negative sign
                         ivalue = -ivalue; // ivalue now contains the absolute value
 
                         if ((ivalue & 3) == 3) { // extra bits are 11
@@ -652,17 +646,17 @@ public class XSum {
             // If exponent has overflowed, change to plus or minus Inf and return.
 
             if (e >= XSUM_EXP_MASK) {
-                uintv |= XSUM_EXP_MASK << XSUM_MANTISSA_BITS;
-                return Double.longBitsToDouble(uintv);
+                intv |= XSUM_EXP_MASK << XSUM_MANTISSA_BITS;
+                return Double.longBitsToDouble(intv);
             }
 
-            // Put exponent and mantissa into u.intv, which already has the sign,
-            // then return u.fltv.
+            // Put exponent and mantissa into intv, which already has the sign,
+            // then return fltv.
 
-            uintv += ((long) e) << XSUM_MANTISSA_BITS;
-            uintv += ivalue & XSUM_MANTISSA_MASK; /* mask out the implicit 1 bit */
+            intv += ((long) e) << XSUM_MANTISSA_BITS;
+            intv += ivalue & XSUM_MANTISSA_MASK; /* mask out the implicit 1 bit */
 
-            return Double.longBitsToDouble(uintv);
+            return Double.longBitsToDouble(intv);
         }
 
     }
