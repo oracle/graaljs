@@ -142,6 +142,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.RelativeTimeFormat",
                     "Intl.Segmenter",
                     "Map",
+                    "Math.sumPrecise",
                     "Object.fromEntries",
                     "Object.hasOwn",
                     "Object.is",
@@ -280,7 +281,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
-                    "Math.sumPrecise",
                     "explicit-resource-management",
                     "tail-call-optimization",
     });
@@ -291,6 +291,7 @@ public class Test262Runnable extends TestRunnable {
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Float16Array",
                     "Intl.Locale-info",
+                    "Math.sumPrecise",
                     "RegExp.escape",
                     "ShadowRealm",
                     "decorators",

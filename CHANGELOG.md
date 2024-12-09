@@ -8,6 +8,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 ## Version 24.2.0
 * Updated Node.js to version 20.15.1.
 * Implemented the [`Error.isError`](https://github.com/tc39/proposal-is-error) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [`Math.sumPrecise`](https://github.com/tc39/proposal-math-sum) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Promise.try`](https://github.com/tc39/proposal-promise-try) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Atomics.pause`](https://github.com/tc39/proposal-atomics-microwait) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Uint8Array to/from base64 and hex](https://github.com/tc39/proposal-arraybuffer-base64) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).

@@ -99,7 +99,8 @@ public class MathBuiltins extends JSBuiltinsContainer.SwitchEnum<MathBuiltins.Ma
         atanh(1),
         fround(1),
 
-        f16round(1);
+        f16round(1),
+        sumPrecise(1);
 
         private final int length;
 
@@ -117,7 +118,7 @@ public class MathBuiltins extends JSBuiltinsContainer.SwitchEnum<MathBuiltins.Ma
             if (EnumSet.range(imul, fround).contains(this)) {
                 return 6;
             }
-            if (f16round == this) {
+            if (EnumSet.range(f16round, sumPrecise).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -199,6 +200,8 @@ public class MathBuiltins extends JSBuiltinsContainer.SwitchEnum<MathBuiltins.Ma
                 return FroundNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case f16round:
                 return F16roundNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case sumPrecise:
+                return SumPreciseNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             default:
                 return null;
         }
