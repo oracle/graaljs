@@ -2074,6 +2074,9 @@ public final class GraalJSAccess {
                 // process all found FunctionTemplates, recursively
                 FunctionTemplate functionTempl = (FunctionTemplate) processedValue;
                 processedValue = functionTemplateGetFunction(realm, functionTempl);
+                if (name instanceof TruffleString nameTS) {
+                    JSFunction.setFunctionName((JSDynamicObject) processedValue, nameTS);
+                }
             }
             if (processedValue instanceof Pair) {
                 Pair<?, ?> pair = (Pair<?, ?>) processedValue;
