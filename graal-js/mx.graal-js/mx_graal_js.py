@@ -166,6 +166,7 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
             vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
         vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
         vmArgs += ['--enable-native-access=org.graalvm.truffle']
+        vmArgs = mx_truffle.enable_sun_misc_unsafe(vmArgs)
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
@@ -265,6 +266,7 @@ def _append_default_js_vm_args(vm_args, min_heap='2g', max_heap='2g', stack_size
         vm_args += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
     vm_args += ['--enable-native-access=org.graalvm.truffle']
+    vm_args = mx_truffle.enable_sun_misc_unsafe(vm_args)
     return vm_args
 
 def _js_cmd_line(args, main_class, runtime_jvm_args=None, append_default_args=True):
