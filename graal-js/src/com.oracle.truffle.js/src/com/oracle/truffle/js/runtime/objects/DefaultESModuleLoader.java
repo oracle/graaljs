@@ -58,7 +58,6 @@ import java.util.Map;
 
 import org.graalvm.polyglot.io.ByteSequence;
 
-import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -308,7 +307,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         AbstractModuleRecord newModule = switch (mimeType) {
             case JavaScriptLanguage.JSON_MIME_TYPE -> realm.getContext().getEvaluator().parseJSONModule(realm, source);
             case JavaScriptLanguage.WASM_MIME_TYPE -> {
-                if (moduleRequest.phase() == ImportPhase.Source && realm.getContextOptions().isWebAssembly()) {
+                if (realm.getContextOptions().isWebAssembly()) {
                     yield realm.getContext().getEvaluator().parseWasmModuleSource(realm, source);
                 } else {
                     throw createErrorUnsupportedPhase(referrer, moduleRequest);

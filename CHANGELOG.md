@@ -13,6 +13,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implemented the [`Atomics.pause`](https://github.com/tc39/proposal-atomics-microwait) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Uint8Array to/from base64 and hex](https://github.com/tc39/proposal-arraybuffer-base64) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Source Phase Imports](https://github.com/tc39/proposal-source-phase-imports) proposal. It is available behind the experimental option (`--js.source-phase-imports`).
+* Implemented the [WebAssembly/ES Module Integration](https://github.com/WebAssembly/esm-integration) proposal, allowing `.wasm` modules to be loaded via `import` statements.
 * Implemented basic Worker API (resembling the API available in `d8`). It is available behind the experimental option `--js.worker`.
 * Added option `js.stack-trace-api` that enables/disables `Error.captureStackTrace`, `Error.prepareStackTrace` and `Error.stackTraceLimit`. These non-standard extensions are disabled by default (unless `js.v8-compat` or `js.nashorn-compat` is used).
 * Made option `js.webassembly` stable.

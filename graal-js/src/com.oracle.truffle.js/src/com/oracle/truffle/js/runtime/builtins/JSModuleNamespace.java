@@ -62,10 +62,10 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -90,8 +90,7 @@ public final class JSModuleNamespace extends JSNonProxy {
      *
      * The Module Record whose exports this namespace exposes.
      */
-    public static JSModuleRecord getModule(JSDynamicObject obj) {
-        assert isJSModuleNamespace(obj);
+    public static AbstractModuleRecord getModule(JSDynamicObject obj) {
         return ((JSModuleNamespaceObject) obj).getModule();
     }
 
@@ -103,11 +102,10 @@ public final class JSModuleNamespace extends JSNonProxy {
      * Array.prototype.sort using SortCompare as comparefn.
      */
     public static UnmodifiableEconomicMap<TruffleString, ExportResolution> getExports(JSDynamicObject obj) {
-        assert isJSModuleNamespace(obj);
         return ((JSModuleNamespaceObject) obj).getExports();
     }
 
-    public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, JSModuleRecord module, List<Map.Entry<TruffleString, ExportResolution>> sortedExports) {
+    public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, AbstractModuleRecord module, List<Map.Entry<TruffleString, ExportResolution>> sortedExports) {
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<TruffleString, ExportResolution> exportResolutionMap = EconomicMap.create(sortedExports.size());
         JSObjectFactory factory = context.getModuleNamespaceFactory();
@@ -153,7 +151,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     public static Object getBindingValue(ExportResolution binding) {
         TruffleString bindingName = binding.getBindingName();
-        JSModuleRecord targetModule = binding.getModule();
+        AbstractModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();
         if (targetEnv == null) {
             // Module has not been linked yet.
@@ -168,7 +166,9 @@ public final class JSModuleNamespace extends JSNonProxy {
             // If it is an uninitialized binding, throw a ReferenceError
             throw Errors.createReferenceErrorNotDefined(bindingName, null);
         }
-        return targetEnv.getValue(slot);
+        Object value = targetEnv.getValue(slot);
+        assert !(value instanceof ExportResolution) : value;
+        return value;
     }
 
     @TruffleBoundary

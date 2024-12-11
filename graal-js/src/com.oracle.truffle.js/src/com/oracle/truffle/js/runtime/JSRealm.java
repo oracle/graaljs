@@ -2591,7 +2591,7 @@ public class JSRealm {
     private JSConstructor createAbstractModuleSourcePrototype() {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSFunctionObject constructor = lookupFunction(ConstructorBuiltins.BUILTINS, ConstructorBuiltins.Constructor.AbstractModuleSource.getKey());
-        JSObjectUtil.putDataProperty(constructor, JSObject.PROTOTYPE, prototype, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorPrototypeProperty(constructor, prototype);
         JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putAccessorsFromContainer(this, prototype, AbstractModuleSourcePrototype.BUILTINS);
         return new JSConstructor(constructor, prototype);

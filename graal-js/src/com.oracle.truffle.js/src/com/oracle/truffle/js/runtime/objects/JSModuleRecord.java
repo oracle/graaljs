@@ -40,15 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-
-import org.graalvm.collections.EconomicMap;
 
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
@@ -56,16 +52,15 @@ import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -73,66 +68,22 @@ import com.oracle.truffle.js.runtime.util.Pair;
 /**
  * Source Text Module Record.
  */
-public class JSModuleRecord extends AbstractModuleRecord {
-
-    public enum Status {
-        New,
-        Unlinked,
-        Linking,
-        Linked,
-        Evaluating,
-        EvaluatingAsync,
-        Evaluated,
-    }
+public class JSModuleRecord extends CyclicModuleRecord {
 
     private final JSModuleData parsedModule;
     private final JSModuleLoader moduleLoader;
 
-    /** Module's linking/evaluation status. */
-    private Status status;
-
-    /** Exception that occurred during evaluation. */
-    private Throwable evaluationError;
-    /** Implementation-specific: The result of ModuleExecution if no exception occurred. */
-    private Object executionResult;
-
-    /** Lazily initialized Module Namespace object ({@code [[Namespace]]}). */
-    private JSModuleNamespaceObject namespace;
-    /** Lazily initialized frame ({@code [[Environment]]}). */
-    private MaterializedFrame environment;
     /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
     private JSDynamicObject importMeta;
 
-    // [HostDefined]
-    private Object hostDefined;
-
-    /**
-     * Auxiliary field used during Link and Evaluate only. If [[Status]] is "linking" or
-     * "evaluating", this non-negative number records the point at which the module was first
-     * visited during the ongoing depth-first traversal of the dependency graph.
-     */
-    private int dfsIndex = -1;
-    /**
-     * Auxiliary field used during Link and Evaluate only. If [[Status]] is "linking" or
-     * "evaluating", this is either the module's own [[DFSIndex]] or that of an "earlier" module in
-     * the same strongly connected component.
-     */
-    private int dfsAncestorIndex = -1;
-
-    private EconomicMap<ModuleRequest, AbstractModuleRecord> loadedModules = EconomicMap.create();
-
     public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader) {
-        super(parsedModule.getContext(), parsedModule.getSource());
-        this.parsedModule = parsedModule;
-        this.moduleLoader = moduleLoader;
-        this.hasTLA = parsedModule.isTopLevelAsync();
-        this.hostDefined = null;
-        this.status = Status.New;
+        this(parsedModule, moduleLoader, null);
     }
 
-    public JSModuleRecord(JSModuleData moduleData, JSModuleLoader moduleLoader, Object hostDefined) {
-        this(moduleData, moduleLoader);
-        this.hostDefined = hostDefined;
+    public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, Object hostDefined) {
+        super(parsedModule.getContext(), parsedModule.getSource(), hostDefined, parsedModule.isTopLevelAsync());
+        this.parsedModule = parsedModule;
+        this.moduleLoader = moduleLoader;
     }
 
     public com.oracle.js.parser.ir.Module getModule() {
@@ -147,87 +98,13 @@ public class JSModuleRecord extends AbstractModuleRecord {
         return parsedModule.getFunctionData();
     }
 
+    @Override
     public FrameDescriptor getFrameDescriptor() {
         return parsedModule.getFrameDescriptor();
     }
 
     public JSModuleData getModuleData() {
         return parsedModule;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public boolean hasBeenEvaluated() {
-        return getStatus() == Status.Evaluated || getStatus() == Status.EvaluatingAsync;
-    }
-
-    public Throwable getEvaluationError() {
-        assert hasBeenEvaluated();
-        return evaluationError;
-    }
-
-    public void setEvaluationError(Throwable evaluationError) {
-        assert hasBeenEvaluated();
-        this.evaluationError = evaluationError;
-    }
-
-    public MaterializedFrame getEnvironment() {
-        return environment;
-    }
-
-    public void setEnvironment(MaterializedFrame environment) {
-        assert this.environment == null;
-        assert this.getFrameDescriptor() == environment.getFrameDescriptor();
-        this.environment = environment;
-    }
-
-    public Object getHostDefined() {
-        return this.hostDefined;
-    }
-
-    public int getDFSIndex() {
-        assert dfsIndex >= 0;
-        return dfsIndex;
-    }
-
-    public void setDFSIndex(int dfsIndex) {
-        this.dfsIndex = dfsIndex;
-    }
-
-    public int getDFSAncestorIndex() {
-        assert dfsAncestorIndex >= 0;
-        return dfsAncestorIndex;
-    }
-
-    public void setDFSAncestorIndex(int dfsAncestorIndex) {
-        this.dfsAncestorIndex = dfsAncestorIndex;
-    }
-
-    public Object getExecutionResult() {
-        assert hasBeenEvaluated();
-        return executionResult;
-    }
-
-    public void setExecutionResult(Object executionResult) {
-        this.executionResult = executionResult;
-    }
-
-    public Object getExecutionResultOrThrow() {
-        assert hasBeenEvaluated();
-        Throwable error = getEvaluationError();
-        if (error != null) {
-            throw JSRuntime.rethrow(error);
-        } else {
-            Object result = getExecutionResult();
-            assert result != null;
-            return result;
-        }
     }
 
     public JSDynamicObject getImportMeta() {
@@ -252,120 +129,13 @@ public class JSModuleRecord extends AbstractModuleRecord {
         JSObject.set(metaObj, Strings.URL, Strings.fromJavaString(getSource().getURI().toString()));
     }
 
-    public void setUnlinked() {
-        setStatus(Status.Unlinked);
-        this.environment = null;
-        this.dfsIndex = -1;
-        this.dfsAncestorIndex = -1;
-    }
-
-    // ##### Top-level await
-
-    // [[CycleRoot]]
-    private JSModuleRecord cycleRoot = this;
-    // [[HasTLA]]
-    private final boolean hasTLA;
-    // [[AsyncEvaluation]]
-    private boolean asyncEvaluation;
-    // Order in which [[AsyncEvaluation]] was set (if > 0)
-    private long asyncEvaluationOrder;
-    // [[TopLevelCapability]]
-    private PromiseCapabilityRecord topLevelPromiseCapability = null;
-    // [[AsyncParentModules]]
-    private List<JSModuleRecord> asyncParentModules = null;
-    // [[PendingAsyncDependencies]]
-    private int pendingAsyncDependencies = 0;
-
-    public PromiseCapabilityRecord getTopLevelCapability() {
-        return topLevelPromiseCapability;
-    }
-
-    public void setTopLevelCapability(PromiseCapabilityRecord capability) {
-        this.topLevelPromiseCapability = capability;
-    }
-
-    public boolean isAsyncEvaluation() {
-        return asyncEvaluation;
-    }
-
-    public void setAsyncEvaluation(boolean asyncEvaluation) {
-        this.asyncEvaluation = asyncEvaluation;
-    }
-
-    public List<JSModuleRecord> getAsyncParentModules() {
-        return asyncParentModules;
-    }
-
-    public void setPendingAsyncDependencies(int value) {
-        pendingAsyncDependencies = value;
-    }
-
-    public void initAsyncParentModules() {
-        assert asyncParentModules == null;
-        asyncParentModules = new ArrayList<>();
-    }
-
-    public void incPendingAsyncDependencies() {
-        pendingAsyncDependencies++;
-    }
-
-    public void decPendingAsyncDependencies() {
-        pendingAsyncDependencies--;
-    }
-
-    public void appendAsyncParentModules(JSModuleRecord moduleRecord) {
-        asyncParentModules.add(moduleRecord);
-    }
-
-    public int getPendingAsyncDependencies() {
-        return pendingAsyncDependencies;
-    }
-
-    public void setAsyncEvaluatingOrder(long order) {
-        asyncEvaluationOrder = order;
-    }
-
-    public long getAsyncEvaluatingOrder() {
-        return asyncEvaluationOrder;
-    }
-
-    public boolean hasTLA() {
-        return hasTLA;
-    }
-
-    public void setCycleRoot(JSModuleRecord module) {
-        cycleRoot = module;
-    }
-
-    public JSModuleRecord getCycleRoot() {
-        return cycleRoot;
-    }
-
-    @TruffleBoundary
-    @Override
-    public AbstractModuleRecord getLoadedModule(JSRealm realm, ModuleRequest moduleRequest) {
-        return loadedModules.get(moduleRequest);
-    }
-
-    @TruffleBoundary
-    @Override
-    public AbstractModuleRecord addLoadedModule(JSRealm realm, ModuleRequest moduleRequest, AbstractModuleRecord module) {
-        return loadedModules.putIfAbsent(moduleRequest, module);
-    }
-
-    @TruffleBoundary
-    public AbstractModuleRecord getImportedModule(ModuleRequest moduleRequest) {
-        assert loadedModules.containsKey(moduleRequest) : moduleRequest;
-        return loadedModules.get(moduleRequest);
-    }
-
     @Override
     public Object getModuleSource() {
         /*
          * Source Text Module Record provides a GetModuleSource implementation that always returns
          * an abrupt completion indicating that a source phase import is not available.
          */
-        throw Errors.createReferenceError("Source phase import is not available for Source Text Module");
+        throw Errors.createSyntaxError("Source phase import is not available for Source Text Module");
     }
 
     @Override
@@ -386,7 +156,7 @@ public class JSModuleRecord extends AbstractModuleRecord {
             exportedNames.add(exportEntry.getExportName());
         }
         for (ExportEntry exportEntry : getModule().getStarExportEntries()) {
-            JSModuleRecord requestedModule = (JSModuleRecord) getImportedModule(exportEntry.getModuleRequest());
+            AbstractModuleRecord requestedModule = getImportedModule(exportEntry.getModuleRequest());
             Collection<TruffleString> starNames = requestedModule.getExportedNames(exportStarSet);
             for (TruffleString starName : starNames) {
                 if (!starName.equals(com.oracle.js.parser.ir.Module.DEFAULT_NAME)) {
@@ -430,7 +200,7 @@ public class JSModuleRecord extends AbstractModuleRecord {
         }
         for (ExportEntry exportEntry : getModule().getIndirectExportEntries()) {
             if (exportEntry.getExportName().equals(exportName)) {
-                JSModuleRecord importedModule = (JSModuleRecord) getImportedModule(exportEntry.getModuleRequest());
+                AbstractModuleRecord importedModule = getImportedModule(exportEntry.getModuleRequest());
                 if (exportEntry.getImportName().equals(Module.STAR_NAME)) {
                     // Assert: module does not provide the direct binding for this export.
                     return ExportResolution.resolved(importedModule, Module.NAMESPACE_EXPORT_BINDING_NAME);
@@ -447,7 +217,7 @@ public class JSModuleRecord extends AbstractModuleRecord {
         }
         ExportResolution starResolution = ExportResolution.notFound();
         for (ExportEntry exportEntry : getModule().getStarExportEntries()) {
-            JSModuleRecord importedModule = (JSModuleRecord) getImportedModule(exportEntry.getModuleRequest());
+            AbstractModuleRecord importedModule = getImportedModule(exportEntry.getModuleRequest());
             ExportResolution resolution = importedModule.resolveExport(exportName, resolveSet);
             if (resolution.isAmbiguous()) {
                 return resolution;
@@ -466,30 +236,9 @@ public class JSModuleRecord extends AbstractModuleRecord {
         return starResolution;
     }
 
-    public JSDynamicObject getModuleNamespaceOrNull() {
-        return namespace;
-    }
-
-    @TruffleBoundary
     @Override
-    public JSDynamicObject getModuleNamespace() {
-        if (namespace != null) {
-            return namespace;
-        }
-        Collection<TruffleString> exportedNames = getExportedNames();
-        List<Map.Entry<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
-        for (TruffleString exportedName : exportedNames) {
-            ExportResolution resolution = resolveExport(exportedName);
-            if (resolution.isNull()) {
-                throw Errors.createSyntaxError("Could not resolve export");
-            } else if (!resolution.isAmbiguous()) {
-                unambiguousNames.add(Map.entry(exportedName, resolution));
-            }
-        }
-        unambiguousNames.sort((a, b) -> a.getKey().compareCharsUTF16Uncached(b.getKey()));
-        JSModuleNamespaceObject ns = JSModuleNamespace.create(getContext(), JSRealm.get(null), this, unambiguousNames);
-        this.namespace = ns;
-        return ns;
+    public List<ModuleRequest> getRequestedModules() {
+        return getModule().getRequestedModules();
     }
 
     @Override
@@ -497,14 +246,36 @@ public class JSModuleRecord extends AbstractModuleRecord {
         return context.getEvaluator().loadRequestedModules(realm, this, hostDefinedArg);
     }
 
+    @TruffleBoundary
     @Override
-    public void link(JSRealm realm) {
-        context.getEvaluator().moduleLinking(realm, this);
+    public void initializeEnvironment(JSRealm realm) {
+        assert getStatus() == Status.Linking : getStatus();
+        Module module = this.getModule();
+        for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
+            ExportResolution resolution = this.resolveExport(exportEntry.getExportName());
+            if (resolution.isNull() || resolution.isAmbiguous()) {
+                throw Errors.createSyntaxError("Could not resolve indirect export entry");
+            }
+        }
+
+        // Initialize the environment by executing the module function.
+        // It will automatically yield when the module is linked.
+        var moduleFunction = JSFunction.create(realm, this.getFunctionData());
+        Object[] arguments = JSArguments.create(Undefined.instance, moduleFunction, this);
+        // The [[Construct]] target of a module is used to initialize the environment.
+        JSFunction.getConstructTarget(moduleFunction).call(arguments);
     }
 
     @Override
-    public Object evaluate(JSRealm realm) {
-        return context.getEvaluator().moduleEvaluation(realm, this);
+    public Object executeModule(JSRealm realm, PromiseCapabilityRecord capability) {
+        JSFunctionObject moduleFunction = JSFunction.create(realm, this.getFunctionData());
+        if (!this.hasTLA()) {
+            assert capability == null;
+            return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, this));
+        } else {
+            assert capability != null;
+            return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, this, capability));
+        }
     }
 
     @Override

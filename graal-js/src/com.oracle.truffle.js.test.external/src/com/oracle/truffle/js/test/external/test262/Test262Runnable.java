@@ -282,6 +282,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "explicit-resource-management",
+                    "import-defer",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{

@@ -44,12 +44,13 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public final class JSWebAssemblyInstanceObject extends JSNonProxyObject {
     private final Object wasmInstance;
-    private final Object exports;
+    private final JSObject exports;
 
-    protected JSWebAssemblyInstanceObject(Shape shape, JSDynamicObject proto, Object wasmInstance, Object exports) {
+    protected JSWebAssemblyInstanceObject(Shape shape, JSDynamicObject proto, Object wasmInstance, JSObject exports) {
         super(shape, proto);
         this.wasmInstance = wasmInstance;
         this.exports = exports;
@@ -59,7 +60,7 @@ public final class JSWebAssemblyInstanceObject extends JSNonProxyObject {
         return wasmInstance;
     }
 
-    public Object getExports() {
+    public JSObject getExports() {
         return exports;
     }
 

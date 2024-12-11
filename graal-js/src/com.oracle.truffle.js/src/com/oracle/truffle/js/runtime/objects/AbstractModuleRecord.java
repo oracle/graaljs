@@ -40,16 +40,24 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -59,22 +67,47 @@ import com.oracle.truffle.js.runtime.util.Pair;
  */
 public abstract class AbstractModuleRecord extends ScriptOrModule {
 
-    public AbstractModuleRecord(JSContext context, Source source) {
+    /** Lazily initialized Module Namespace object ({@code [[Namespace]]}). */
+    private JSModuleNamespaceObject namespace;
+    /** Lazily initialized frame ({@code [[Environment]]}). */
+    private MaterializedFrame environment;
+
+    // [HostDefined]
+    private Object hostDefined;
+
+    protected AbstractModuleRecord(JSContext context, Source source, Object hostDefined) {
         super(context, source);
+        this.hostDefined = hostDefined;
     }
 
-    public abstract JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefined);
+    /**
+     * Prepares the module for linking by recursively loading all its dependencies.
+     */
+    public abstract JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefinedArg);
 
-    public final void loadRequestedModulesSync(JSRealm realm, Object hostDefined) {
-        JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefined);
+    public final void loadRequestedModulesSync(JSRealm realm, Object hostDefinedArg) {
+        JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefinedArg);
         assert !JSPromise.isPending(loadPromise);
         if (JSPromise.isRejected(loadPromise)) {
             throw JSRuntime.getException(JSPromise.getPromiseResult(loadPromise));
         }
     }
 
+    /**
+     * Prepare the module for evaluation by transitively resolving all module dependencies and
+     * creating a Module Environment Record.
+     *
+     * LoadRequestedModules must have completed successfully prior to invoking this method.
+     */
     public abstract void link(JSRealm realm);
 
+    /**
+     * Returns a promise for the evaluation of this module and its dependencies, resolving on
+     * successful evaluation or if it has already been evaluated successfully, and rejecting for an
+     * evaluation error or if it has already been evaluated unsuccessfully.
+     *
+     * Link must have completed successfully prior to invoking this method.
+     */
     public abstract Object evaluate(JSRealm realm);
 
     @TruffleBoundary
@@ -91,10 +124,52 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
 
     public abstract ExportResolution resolveExport(TruffleString exportName, Set<Pair<? extends AbstractModuleRecord, TruffleString>> resolveSet);
 
-    public JSDynamicObject getModuleNamespace() {
-        return Undefined.instance;
+    public final JSModuleNamespaceObject getModuleNamespaceOrNull() {
+        return namespace;
+    }
+
+    @TruffleBoundary
+    public final JSModuleNamespaceObject getModuleNamespace() {
+        if (namespace != null) {
+            return namespace;
+        }
+        assert (!(this instanceof CyclicModuleRecord cyclicModule) || (cyclicModule.getStatus() != CyclicModuleRecord.Status.New)) : this;
+        Collection<TruffleString> exportedNames = getExportedNames();
+        List<Map.Entry<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
+        for (TruffleString exportedName : exportedNames) {
+            ExportResolution resolution = resolveExport(exportedName);
+            if (resolution.isNull()) {
+                throw Errors.createSyntaxError("Could not resolve export");
+            } else if (!resolution.isAmbiguous()) {
+                unambiguousNames.add(Map.entry(exportedName, resolution));
+            }
+        }
+        unambiguousNames.sort((a, b) -> a.getKey().compareCharsUTF16Uncached(b.getKey()));
+        JSModuleNamespaceObject ns = JSModuleNamespace.create(getContext(), JSRealm.get(null), this, unambiguousNames);
+        this.namespace = ns;
+        return ns;
     }
 
     public abstract Object getModuleSource();
 
+    public final MaterializedFrame getEnvironment() {
+        return environment;
+    }
+
+    public final void setEnvironment(MaterializedFrame environment) {
+        assert this.environment == null;
+        this.environment = environment;
+    }
+
+    protected final void clearEnvironment() {
+        this.environment = null;
+    }
+
+    public FrameDescriptor getFrameDescriptor() {
+        return environment.getFrameDescriptor();
+    }
+
+    public final Object getHostDefined() {
+        return this.hostDefined;
+    }
 }

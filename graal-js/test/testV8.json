@@ -1499,6 +1499,10 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1360736.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/pull/4325"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1381404.js",
     "status" : "FAIL",
     "comment" : "Uses d8.serializer.deserialize"
@@ -4547,6 +4551,10 @@
     "status" : "SKIP",
     "comment" : "Long running test"
   }, {
+    "filePath" : "mjsunit/typedarray-growablesharedarraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/pull/4325"
+  }, {
     "filePath" : "mjsunit/typedarray-resizablearraybuffer-array-methods.js",
     "status" : "SKIP",
     "comment" : "Long running test"
@@ -4554,6 +4562,10 @@
     "filePath" : "mjsunit/typedarray-resizablearraybuffer-atomics.js",
     "status" : "FAIL",
     "comment" : "Expects different error message and error type (off-spec, TypeError x RangeError)"
+  }, {
+    "filePath" : "mjsunit/typedarray-resizablearraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/pull/4325"
   }, {
     "filePath" : "mjsunit/tzoffset-seoul-noi18n.js",
     "status" : "FAIL",

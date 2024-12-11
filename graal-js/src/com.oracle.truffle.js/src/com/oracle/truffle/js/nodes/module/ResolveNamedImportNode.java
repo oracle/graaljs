@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
@@ -68,6 +69,7 @@ public class ResolveNamedImportNode extends StatementNode {
     private final TruffleString importName;
     @Child private JavaScriptNode moduleNode;
     @Child private JSWriteFrameSlotNode writeLocalNode;
+    private final ValueProfile moduleProfile = ValueProfile.createClassProfile();
     private final ValueProfile resolutionProfile = ValueProfile.createClassProfile();
 
     ResolveNamedImportNode(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, TruffleString importName, JSWriteFrameSlotNode writeLocalNode) {
@@ -86,7 +88,7 @@ public class ResolveNamedImportNode extends StatementNode {
     public Object execute(VirtualFrame frame) {
         JSModuleRecord referrer = (JSModuleRecord) moduleNode.execute(frame);
         // Let importedModule be GetImportedModule(module, in.[[ModuleRequest]]).
-        JSModuleRecord importedModule = (JSModuleRecord) referrer.getImportedModule(moduleRequest);
+        AbstractModuleRecord importedModule = moduleProfile.profile(referrer.getImportedModule(moduleRequest));
         // Let resolution be importedModule.ResolveExport(in.[[ImportName]]).
         ExportResolution resolution = resolutionProfile.profile(importedModule.resolveExport(importName));
         // If resolution is null or resolution is "ambiguous", throw SyntaxError.
