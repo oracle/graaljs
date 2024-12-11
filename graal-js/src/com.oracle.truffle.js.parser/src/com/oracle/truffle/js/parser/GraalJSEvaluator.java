@@ -543,7 +543,9 @@ public final class GraalJSEvaluator implements JSParser {
         if (--state.pendingModulesCount == 0) {
             state.isLoading = false;
             for (var loaded : state.visited) {
-                loaded.setUnlinked();
+                if (loaded.getStatus() == Status.New) {
+                    loaded.setUnlinked();
+                }
             }
             JSFunction.call(JSArguments.createOneArg(Undefined.instance, state.promiseCapability.getResolve(), Undefined.instance));
         }
