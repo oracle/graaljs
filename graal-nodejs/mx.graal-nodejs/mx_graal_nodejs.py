@@ -185,9 +185,6 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64']
-        elif _current_arch == 'aarch64':
-            # we do not use compiler recent enough to support neon
-            extra_flags = ['--with-arm-fpu=vfp']
         else:
             extra_flags = []
 
