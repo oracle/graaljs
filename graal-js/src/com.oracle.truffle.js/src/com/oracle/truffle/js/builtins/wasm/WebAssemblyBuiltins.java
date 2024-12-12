@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.js.builtins.wasm;
 
+import org.graalvm.polyglot.io.ByteSequence;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -51,10 +54,12 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltinsFactory.WebAssemblyCompileNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltinsFactory.WebAssemblyInstantiateNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltinsFactory.WebAssemblyValidateNodeGen;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -133,6 +138,24 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         return null;
     }
 
+    @TruffleBoundary
+    public static Source buildSource(ByteSequence byteSource) {
+        String moduleName = "js:module-" + Integer.toHexString(byteSource.hashCode());
+        return Source.newBuilder(JavaScriptLanguage.WASM_LANGUAGE_ID, byteSource, moduleName).mimeType(JavaScriptLanguage.WASM_MIME_TYPE).build();
+    }
+
+    /**
+     * Parse Wasm module source using Env.parsePublic, equivalent to module_decode Wasm JS API.
+     *
+     * @return WasmModule
+     */
+    @TruffleBoundary
+    public static Object moduleDecode(JSRealm realm, Source wasmSource) {
+        assert JavaScriptLanguage.WASM_LANGUAGE_ID.equals(wasmSource.getLanguage()) : wasmSource;
+        CallTarget result = realm.getEnv().parsePublic(wasmSource);
+        return result.call("module_decode");
+    }
+
     // Helper node for built-ins that produce promise whose resolution can be obtained
     // synchronously.
     protected abstract static class PromisifiedBuiltinNode extends JSBuiltinNode {
@@ -197,17 +220,11 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
         @Override
         protected Object process(Object argument) {
-            try {
-                Object byteSource = exportByteSourceNode.execute(argument);
-
-                JSRealm realm = getRealm();
-                Object decode = realm.getWASMModuleDecode();
-                Object wasmModule = decodeModuleLib.execute(decode, byteSource);
-
-                return JSWebAssemblyModule.create(getContext(), realm, wasmModule);
-            } catch (InteropException ex) {
-                throw Errors.shouldNotReachHere(ex);
-            }
+            ByteSequence byteSource = exportByteSourceNode.execute(argument);
+            JSRealm realm = getRealm();
+            Source wasmSource = buildSource(byteSource);
+            Object wasmModule = moduleDecode(realm, wasmSource);
+            return JSWebAssemblyModule.create(getContext(), realm, wasmModule);
         }
 
     }
@@ -268,12 +285,11 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                 return instantiateModule(getContext(), realm, wasmModule, importObject, instantiateModuleLib);
             }
 
-            Object wasmByteSource = exportByteSourceNode.execute(byteSourceOrModule);
-            Object decode = realm.getWASMModuleDecode();
-
+            ByteSequence wasmByteSource = exportByteSourceNode.execute(byteSourceOrModule);
             try {
                 try {
-                    Object wasmModule = decodeModuleLib.execute(decode, wasmByteSource);
+                    Source wasmSource = buildSource(wasmByteSource);
+                    Object wasmModule = moduleDecode(realm, wasmSource);
                     return new InstantiatedSourceInfo(wasmModule, importObject);
                 } catch (AbstractTruffleException ex) {
                     errorBranch.enter();
@@ -340,18 +356,19 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             this.validateModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
-        private Object validateImpl(Object byteSource) {
+        @TruffleBoundary
+        private static boolean validateImpl(JSRealm realm, ByteSequence byteSource) {
             try {
-                Object validate = getRealm().getWASMModuleValidate();
-                return validateModuleLib.execute(validate, byteSource);
-            } catch (InteropException ex) {
-                throw Errors.shouldNotReachHere(ex);
+                realm.getEnv().parsePublic(buildSource(byteSource));
+                return true;
+            } catch (AbstractTruffleException ex) {
+                return false;
             }
         }
 
         @Specialization
         protected Object validate(Object byteSource) {
-            return validateImpl(exportByteSourceNode.execute(byteSource));
+            return validateImpl(getRealm(), exportByteSourceNode.execute(byteSource));
         }
 
     }
