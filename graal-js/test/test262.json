@@ -3094,7 +3094,7 @@
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/numbering-system.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-12-04"
+    "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-not-overlapping-options.js",
     "status" : "FAIL",
@@ -3179,7 +3179,7 @@
   }, {
     "filePath" : "intl402/NumberFormat/currency-digits-nonstandard-notation.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-12-04"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/4349"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
     "status" : "PASS",
@@ -3187,10 +3187,6 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
-  }, {
-    "filePath" : "intl402/PluralRules/prototype/resolvedOptions/plural-categories-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-12-04"
   }, {
     "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-infinity-throws-rangeerror.js",
     "status" : "FAIL",

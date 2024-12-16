@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumber;
 import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumberRange;
@@ -144,6 +145,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     public static class InternalState extends JSNumberFormat.BasicInternalState {
+        private static final List<String> CATEGORIES = List.of("zero", "one", "two", "few", "many", "other");
         private LocalizedNumberFormatter numberFormatter;
         private LocalizedNumberRangeFormatter numberRangeFormatter;
 
@@ -163,8 +165,11 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         @TruffleBoundary
         public void initializePluralRules() {
             pluralRules = PluralRules.forLocale(getJavaLocale(), IntlUtil.ORDINAL.equals(type) ? PluralType.ORDINAL : PluralType.CARDINAL);
-            for (String keyword : pluralRules.getKeywords()) {
-                pluralCategories.add(Strings.fromJavaString(keyword));
+            Set<String> keywords = pluralRules.getKeywords();
+            for (String category : CATEGORIES) {
+                if (keywords.contains(category)) {
+                    pluralCategories.add(Strings.fromJavaString(category));
+                }
             }
         }
 
