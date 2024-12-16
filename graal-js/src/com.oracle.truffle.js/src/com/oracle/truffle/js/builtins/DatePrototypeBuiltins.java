@@ -84,11 +84,13 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocal
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToPrimitiveNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringIntlNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringNodeGen;
+import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTemporalInstantNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
@@ -97,6 +99,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -109,7 +112,9 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Contains builtins for {@linkplain JSDate}.prototype.
@@ -175,6 +180,9 @@ public final class DatePrototypeBuiltins {
             }
         },
 
+        // Temporal
+        toTemporalInstant(0),
+
         // Annex B
         getYear(0),
         setYear(1);
@@ -195,6 +203,11 @@ public final class DatePrototypeBuiltins {
         @Override
         public boolean isAnnexB() {
             return EnumSet.of(getYear, setYear).contains(this);
+        }
+
+        @Override
+        public boolean isOptional() {
+            return (this == toTemporalInstant);
         }
 
         @Override
@@ -289,6 +302,8 @@ public final class DatePrototypeBuiltins {
                     return JSDateToJSONNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 case _toPrimitive:
                     return JSDateToPrimitiveNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case toTemporalInstant:
+                    return JSDateToTemporalInstantNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 default:
                     return null;
             }
@@ -977,6 +992,23 @@ public final class DatePrototypeBuiltins {
                 throw Errors.createTypeError("invalid hint");
             }
         }
+    }
+
+    public abstract static class JSDateToTemporalInstantNode extends JSDateOperation {
+
+        public JSDateToTemporalInstantNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, NO_UTC);
+        }
+
+        @Specialization
+        protected final Object toTemporalInstant(Object thisObject,
+                        @Cached JSNumberToBigIntNode numberToBigInt) {
+            JSDateObject dateObject = asDate(thisObject);
+            double t = dateObject.getTimeMillis();
+            BigInt ns = numberToBigInt.executeBigInt(t).multiply(TemporalUtil.BI_NS_PER_MS);
+            return JSTemporalInstant.create(getContext(), getRealm(), ns);
+        }
+
     }
 
 }

@@ -93,6 +93,7 @@ import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
+import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltins;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.builtins.IteratorHelperPrototypeBuiltins;
@@ -2354,6 +2355,10 @@ public class JSRealm {
         JSObjectUtil.putToStringTag(nowObject, TemporalConstants.TEMPORAL_NOW_TO_STRING_TAG);
 
         putGlobalProperty(TemporalConstants.TEMPORAL, temporalObject);
+
+        // Date.prototype.toTemporalInstant
+        Object toTemporalInstantFn = lookupFunction(DatePrototypeBuiltins.BUILTINS, Strings.TO_TEMPORAL_INSTANT);
+        JSObjectUtil.putDataProperty(getDatePrototype(), Strings.TO_TEMPORAL_INSTANT, toTemporalInstantFn, JSAttributes.getDefaultNotEnumerable());
     }
 
     private JSDynamicObject createIntlObject() {
