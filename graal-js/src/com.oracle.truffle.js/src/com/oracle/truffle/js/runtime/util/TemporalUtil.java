@@ -537,7 +537,7 @@ public final class TemporalUtil {
             if (rec.getZ()) {
                 throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
             }
-            if (rec.getYear() == 0 && (Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0 || Strings.indexOf(string, TemporalConstants.UNICODE_MINUS_SIGN_000000) >= 0)) {
+            if (rec.getYear() == 0 && Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
 
@@ -582,7 +582,7 @@ public final class TemporalUtil {
             fraction = Strings.concat(fraction, TemporalConstants.ZEROS);
         }
 
-        if (rec.getYear() == 0 && (Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0 || Strings.indexOf(string, TemporalConstants.UNICODE_MINUS_SIGN_000000) >= 0)) {
+        if (rec.getYear() == 0 && Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0) {
             throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
         }
 
@@ -2825,7 +2825,7 @@ public final class TemporalUtil {
         }
 
         TruffleString signS = rec.getOffsetSign();
-        int sign = (Strings.SYMBOL_MINUS.equals(signS) || Strings.UNICODE_MINUS_SIGN.equals(signS)) ? -1 : 1;
+        int sign = Strings.SYMBOL_MINUS.equals(signS) ? -1 : 1;
 
         long hours = rec.getOffsetHour() == Long.MIN_VALUE ? 0 : rec.getOffsetHour();
         long minutes = rec.getOffsetMinute() == Long.MIN_VALUE ? 0 : rec.getOffsetMinute();
@@ -2919,7 +2919,7 @@ public final class TemporalUtil {
             if (rec.getZ()) {
                 throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
             }
-            if (rec.getYear() == 0 && (Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0 || Strings.indexOf(string, TemporalConstants.UNICODE_MINUS_SIGN_000000) >= 0)) {
+            if (rec.getYear() == 0 && Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
 

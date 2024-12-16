@@ -187,7 +187,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         TruffleString fSeconds = Strings.EMPTY_STRING;
 
         // P1Y1M1W1DT1H1M1.123456789S
-        Pattern regex = Pattern.compile("^([\\+\u2212-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.,]+[Hh])?([\\d.,]+[Mm])?([\\d.,]+[Ss])?)?$");
+        Pattern regex = Pattern.compile("^([\\+-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.,]+[Hh])?([\\d.,]+[Mm])?([\\d.,]+[Ss])?)?$");
         Matcher matcher = regex.matcher(Strings.toJavaString(string));
         if (matcher.matches()) {
             if (matcher.start(2) < 0 && matcher.start(3) < 0 && matcher.start(4) < 0 && matcher.start(5) < 0 && matcher.start(7) < 0 && matcher.start(8) < 0 && matcher.start(9) < 0) {
@@ -258,7 +258,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             microsecondsMV = millisecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000);
             nanosecondsMV = microsecondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000);
 
-            int factor = (sign.equals(Strings.SYMBOL_MINUS) || sign.equals(Strings.UNICODE_MINUS_SIGN)) ? -1 : 1;
+            int factor = sign.equals(Strings.SYMBOL_MINUS) ? -1 : 1;
 
             return JSTemporalDurationRecord.createWeeks(yearsMV * factor, monthsMV * factor, weeksMV * factor, daysMV * factor, hoursMV * factor,
                             minutesMV.longValue() * factor, secondsMV.longValue() * factor,

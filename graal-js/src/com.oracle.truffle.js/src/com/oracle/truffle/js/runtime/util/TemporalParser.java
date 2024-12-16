@@ -60,27 +60,27 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 // do not call reset();
 public final class TemporalParser {
 
-    private static final String patternDate = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
+    private static final String patternDate = "^([+\\-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTime = "^(\\d\\d)(:?(\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternCalendarName = "^(\\w*)$";
     // Hour 0[0-9]|1[0-9]|2[0-3]
     // MinuteSecond [0-5][0-9]
     // TimeSeparator :?
-    // TemporalSign [-+\u2212]
+    // TemporalSign [-+]
     // UTCOffsetMinutePrecision/TimeZoneUTCOffsetName
-    // [-+\u2212](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?
+    // [-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?
     // Alpha [A-Za-z]
     // TZLeadingChar [A-Za-z._]
     // TZChar [A-Za-z._0-9+-]
     // TimeZoneIANANameComponent [A-Za-z._][A-Za-z._0-9+-]*
     // TimeZoneIANAName [A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*
     // TimeZoneIdentifier
-    // (?:[-+\u2212](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)
+    // (?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)
     // TimeZoneAnnotation
-    // [!?(?:[-+\u2212](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)]
-    private static final String patternTimeZoneBracketedAnnotation = "(\\[!?((?:[-+\\u2212](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*))\\])";
-    private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
-    private static final String patternDateSpecYearMonth = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
+    // [!?(?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)]
+    private static final String patternTimeZoneBracketedAnnotation = "(\\[!?((?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*))\\])";
+    private static final String patternTimeZoneNumericUTCOffset = "^([+\\-])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
+    private static final String patternDateSpecYearMonth = "^([+\\-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternDateSpecMonthDay = "^(?:\\-\\-)?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTimeZoneIANANameComponent = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
     // LowercaseAlpha [a-z]
@@ -742,9 +742,6 @@ public final class TemporalParser {
         if (matcher.matches()) {
             year = group(rest, matcher, 1);
             month = group(rest, matcher, 2);
-            if (Strings.charAt(year, 0) == '\u2212') {
-                year = Strings.concat(Strings.DASH, Strings.lazySubstring(year, 1));
-            }
             move(matcher.end(2));
             return true;
         }
@@ -770,12 +767,9 @@ public final class TemporalParser {
             month = group(rest, matcher, 2);
             day = group(rest, matcher, 3);
             char yearCh0 = Strings.charAt(year, 0);
-            if ((yearCh0 == '-' || yearCh0 == '\u2212') && Strings.startsWith(year, SIX_ZEROS, 1)) {
+            if (yearCh0 == '-' && Strings.startsWith(year, SIX_ZEROS, 1)) {
                 // It is a Syntax Error if DateYear is "-000000"
                 return false;
-            }
-            if (yearCh0 == '\u2212') {
-                year = Strings.concat(Strings.DASH, Strings.lazySubstring(year, 1));
             }
             move(matcher.end(3));
             return true;
@@ -975,7 +969,7 @@ public final class TemporalParser {
     }
 
     private static boolean isSign(char c) {
-        return c == '+' || c == '-' || c == TemporalConstants.UNICODE_MINUS_SIGN;
+        return c == '+' || c == '-';
     }
 
     private static Matcher createMatch(String pattern, TruffleString input) {

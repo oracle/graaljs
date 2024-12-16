@@ -479,7 +479,6 @@ public final class Strings {
     public static final TruffleString UC_Z = constant("Z");
     public static final TruffleString Z = constant("z");
     public static final TruffleString UC_ETC = constant("Etc");
-    public static final TruffleString UNICODE_MINUS_SIGN = constant("\u2212");
 
     public static final TruffleString MUTABLE = constant("mutable");
     public static final TruffleString ELEMENT = constant("element");
