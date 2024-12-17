@@ -34,8 +34,8 @@ const {
   FunctionPrototypeBind,
   FunctionPrototypeCall,
   NumberMAX_SAFE_INTEGER,
-  ObjectDefineProperty,
   ObjectDefineProperties,
+  ObjectDefineProperty,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
   Promise,
@@ -46,33 +46,31 @@ const {
   String,
   StringPrototypeSplit,
   Symbol,
-  SymbolFor,
   SymbolAsyncIterator,
-  SymbolDispose,
+  SymbolFor,
 } = primordials;
 const kRejection = SymbolFor('nodejs.rejection');
 
-const { kEmptyObject } = require('internal/util');
+const { SymbolDispose, kEmptyObject, spliceOne } = require('internal/util');
 
 const {
   inspect,
   identicalSequenceRange,
 } = require('internal/util/inspect');
 
-let spliceOne;
 let FixedQueue;
 let kFirstEventParam;
 let kResistStopPropagation;
 
 const {
   AbortError,
-  kEnhanceStackBeforeInspector,
   codes: {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_THIS,
     ERR_UNHANDLED_ERROR,
   },
   genericNodeError,
+  kEnhanceStackBeforeInspector,
 } = require('internal/errors');
 
 const {
@@ -81,6 +79,7 @@ const {
   validateBoolean,
   validateFunction,
   validateNumber,
+  validateObject,
   validateString,
 } = require('internal/validators');
 const { addAbortListener } = require('internal/events/abort_listener');
@@ -717,8 +716,6 @@ EventEmitter.prototype.removeListener =
         if (position === 0)
           list.shift();
         else {
-          if (spliceOne === undefined)
-            spliceOne = require('internal/util').spliceOne;
           spliceOne(list, position);
         }
 
@@ -966,11 +963,12 @@ function getMaxListeners(emitterOrTarget) {
  * Creates a `Promise` that is fulfilled when the emitter
  * emits the given event.
  * @param {EventEmitter} emitter
- * @param {string} name
+ * @param {string | symbol} name
  * @param {{ signal: AbortSignal; }} [options]
  * @returns {Promise}
  */
 async function once(emitter, name, options = kEmptyObject) {
+  validateObject(options, 'options');
   const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
@@ -1058,6 +1056,7 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
  */
 function on(emitter, event, options = kEmptyObject) {
   // Parameters validation
+  validateObject(options, 'options');
   const signal = options.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)

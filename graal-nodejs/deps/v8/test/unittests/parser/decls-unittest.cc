@@ -31,7 +31,7 @@
 #include "include/v8-initialization.h"
 #include "include/v8-template.h"
 #include "src/init/v8.h"
-#include "test/unittests/test-utils.h"
+#include "test/unittests/heap/heap-utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace v8 {
@@ -145,8 +145,7 @@ void DeclarationContext::Check(const char* source, int get, int set, int query,
   InitializeIfNeeded();
   // A retry after a GC may pollute the counts, so perform gc now
   // to avoid that.
-  i_isolate()->heap()->CollectGarbage(i::NEW_SPACE,
-                                      i::GarbageCollectionReason::kTesting);
+  InvokeMinorGC(i_isolate());
   HandleScope scope(isolate_);
   TryCatch catcher(isolate_);
   catcher.SetVerbose(true);
@@ -175,8 +174,7 @@ void DeclarationContext::Check(const char* source, int get, int set, int query,
     }
   }
   // Clean slate for the next test.
-  i_isolate()->heap()->CollectAllAvailableGarbage(
-      i::GarbageCollectionReason::kTesting);
+  InvokeMemoryReducingMajorGCs(i_isolate());
 }
 
 void DeclarationContext::HandleGet(
@@ -1045,6 +1043,43 @@ TEST_F(DeclsTest, Regress3941_Reads) {
                   Undefined(isolate()));
 
     context.Check("'use strict'; f(); let x = 2; x", EXPECT_EXCEPTION);
+  }
+}
+
+TEST_F(DeclsTest, TestUsing) {
+  i::v8_flags.js_explicit_resource_management = true;
+  HandleScope scope(isolate());
+
+  {
+    SimpleContext context;
+    context.Check("using x = 42;", EXPECT_ERROR);
+    context.Check("{ using await x = 1;}", EXPECT_ERROR);
+    context.Check("{ using \n x = 1;}", EXPECT_EXCEPTION);
+    context.Check("{using {x} = {x:5};}", EXPECT_ERROR);
+    context.Check("{for(using x in [1, 2, 3]){\n console.log(x);}}",
+                  EXPECT_ERROR);
+    context.Check("{for(using {x} = {x:5}; x < 10 ; i++) {\n console.log(x);}}",
+                  EXPECT_ERROR);
+    context.Check("{ using x = 1;}", EXPECT_RESULT, Undefined(isolate()));
+    context.Check(
+        "let label = \"1\"; \n switch (label) { \n case 1: \n using x = 1; }",
+        EXPECT_RESULT, Undefined(isolate()));
+    context.Check("for(let i = 0; i < 3; i++){\n using x = 1 + i;}",
+                  EXPECT_RESULT, Undefined(isolate()));
+    context.Check("for(let i in [1, 2]){\n using x = 1 + i;}", EXPECT_RESULT,
+                  Undefined(isolate()));
+    context.Check("for(let i of [1, 2]){\n using x = 1 + i;}", EXPECT_RESULT,
+                  Undefined(isolate()));
+    context.Check("function testUsing(){\n using x = 1;}", EXPECT_RESULT,
+                  Undefined(isolate()));
+    context.Check("async function testUsing(){\n using x = 1;}", EXPECT_RESULT,
+                  Undefined(isolate()));
+    context.Check("function* gen(){\n using x = 1; \n yield x;}", EXPECT_RESULT,
+                  Undefined(isolate()));
+    context.Check("async function* gen(){\n using x = 1; \n yield await x;}",
+                  EXPECT_RESULT, Undefined(isolate()));
+    context.Check("class test {\n static { \n using x = 1;} \n }",
+                  EXPECT_RESULT, Undefined(isolate()));
   }
 }
 

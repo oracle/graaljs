@@ -48,14 +48,14 @@ const {
 } = primordials;
 
 const {
+  ErrnoException,
+  ExceptionWithHostPort,
   codes: {
     ERR_FALSY_VALUE_REJECTION,
     ERR_INVALID_ARG_TYPE,
     ERR_OUT_OF_RANGE,
   },
   isErrorStackTraceLimitWritable,
-  ErrnoException,
-  ExceptionWithHostPort,
 } = require('internal/errors');
 const {
   format,
@@ -65,13 +65,26 @@ const {
 } = require('internal/util/inspect');
 const { debuglog } = require('internal/util/debuglog');
 const {
+  validateBoolean,
   validateFunction,
   validateNumber,
   validateString,
   validateOneOf,
 } = require('internal/validators');
 const { isBuffer } = require('buffer').Buffer;
+const {
+  isReadableStream,
+  isWritableStream,
+  isNodeStream,
+} = require('internal/streams/utils');
 const types = require('internal/util/types');
+
+let utilColors;
+function lazyUtilColors() {
+  utilColors ??= require('internal/util/colors');
+  return utilColors;
+}
+
 const binding = internalBinding('util');
 
 const {
@@ -209,10 +222,25 @@ function escapeStyleCode(code) {
 /**
  * @param {string | string[]} format
  * @param {string} text
+ * @param {object} [options={}]
+ * @param {boolean} [options.validateStream=true] - Whether to validate the stream.
+ * @param {Stream} [options.stream=process.stdout] - The stream used for validation.
  * @returns {string}
  */
-function styleText(format, text) {
+function styleText(format, text, { validateStream = true, stream = process.stdout } = {}) {
   validateString(text, 'text');
+  validateBoolean(validateStream, 'options.validateStream');
+
+  if (validateStream) {
+    if (
+      !isReadableStream(stream) &&
+      !isWritableStream(stream) &&
+      !isNodeStream(stream)
+    ) {
+      throw new ERR_INVALID_ARG_TYPE('stream', ['ReadableStream', 'WritableStream', 'Stream'], stream);
+    }
+  }
+
   if (ArrayIsArray(format)) {
     let left = '';
     let right = '';
@@ -232,6 +260,18 @@ function styleText(format, text) {
   if (formatCodes == null) {
     validateOneOf(format, 'format', ObjectKeys(inspect.colors));
   }
+
+  // Check colorize only after validating arg type and value
+  if (
+    validateStream &&
+    (
+      !stream ||
+      !lazyUtilColors().shouldColorize(stream)
+    )
+  ) {
+    return text;
+  }
+
   return `${escapeStyleCode(formatCodes[0])}${text}${escapeStyleCode(formatCodes[1])}`;
 }
 
@@ -421,11 +461,24 @@ function parseEnv(content) {
   return binding.parseEnv(content);
 }
 
+/**
+ * Returns the callSite
+ * @param {number} frames
+ * @returns {object}
+ */
+function getCallSite(frames = 10) {
+  // Using kDefaultMaxCallStackSizeToCapture as reference
+  validateNumber(frames, 'frames', 1, 200);
+  return binding.getCallSite(frames);
+};
+
 // Keep the `exports =` so that various functions can still be monkeypatched
 module.exports = {
   _errnoException,
   _exceptionWithHostPort,
-  _extend,
+  _extend: deprecate(_extend,
+                     'The `util._extend` API is deprecated. Please use Object.assign() instead.',
+                     'DEP0060'),
   callbackify,
   debug: debuglog,
   debuglog,
@@ -433,13 +486,20 @@ module.exports = {
   format,
   styleText,
   formatWithOptions,
+  getCallSite,
   getSystemErrorMap,
   getSystemErrorName,
   inherits,
   inspect,
-  isArray: ArrayIsArray,
-  isBoolean,
-  isBuffer,
+  isArray: deprecate(ArrayIsArray,
+                     'The `util.isArray` API is deprecated. Please use `Array.isArray()` instead.',
+                     'DEP0044'),
+  isBoolean: deprecate(isBoolean,
+                       'The `util.isBoolean` API is deprecated.  Please use `typeof arg === "boolean"` instead.',
+                       'DEP0045'),
+  isBuffer: deprecate(isBuffer,
+                      'The `util.isBuffer` API is deprecated. Please use `Buffer.isBuffer()` instead.',
+                      'DEP0046'),
   isDeepStrictEqual(a, b) {
     if (internalDeepEqual === undefined) {
       internalDeepEqual = require('internal/util/comparisons')
@@ -447,19 +507,52 @@ module.exports = {
     }
     return internalDeepEqual(a, b);
   },
-  isNull,
-  isNullOrUndefined,
-  isNumber,
-  isString,
-  isSymbol,
-  isUndefined,
-  isRegExp: types.isRegExp,
-  isObject,
-  isDate: types.isDate,
-  isError,
-  isFunction,
-  isPrimitive,
-  log,
+  isNull: deprecate(isNull,
+                    'The `util.isNull` API is deprecated. Please use `arg === null` instead.',
+                    'DEP0050'),
+  isNullOrUndefined: deprecate(isNullOrUndefined,
+                               'The `util.isNullOrUndefined` API is deprecated. ' +
+                               'Please use `arg === null || arg === undefined` instead.',
+                               'DEP0051'),
+  isNumber: deprecate(isNumber,
+                      'The `util.isNumber` API is deprecated. Please use `typeof arg === "number"` instead.',
+                      'DEP0052'),
+  isString: deprecate(isString,
+                      'The `util.isString` API is deprecated.  Please use `typeof arg === "string"` instead.',
+                      'DEP0056'),
+  isSymbol: deprecate(isSymbol,
+                      'The `util.isSymbol` API is deprecated.  Please use `arg === "symbol"` instead.',
+                      'DEP0057'),
+  isUndefined: deprecate(isUndefined,
+                         'The `util.isUndefined` API is deprecated. Please use `arg === undefined` instead.',
+                         'DEP0058'),
+  isRegExp: deprecate(types.isRegExp,
+                      'The `util.isRegExp` API is deprecated. Please use `arg instanceof RegExp` instead.',
+                      'DEP0055'),
+  isObject: deprecate(isObject,
+                      'The `util.isObject` API is deprecated. ' +
+                      'Please use `arg !== null && typeof arg === "object"` instead.',
+                      'DEP0053'),
+  isDate: deprecate(types.isDate,
+                    'The `util.isDate` API is deprecated.  Please use `arg instanceof Date` instead.',
+                    'DEP0047'),
+  isError: deprecate(isError,
+                     'The `util.isError` API is deprecated. ' +
+                     'Please use `ObjectPrototypeToString(e) === "[object Error]" ' +
+                     '|| e instanceof Error` instead.',
+                     'DEP0048'),
+  isFunction: deprecate(isFunction,
+                        'The `util.isFunction` API is deprecated.  Please use `typeof arg === "function"` instead.',
+                        'DEP0049'),
+  isPrimitive: deprecate(isPrimitive,
+                         'The `util.isPrimitive` API is deprecated. ' +
+                         'Please use `arg === null || ' +
+                         '(typeof arg !== "object" && typeof arg !== "function")` instead.',
+                         'DEP0054'),
+  log: deprecate(log,
+                 'The `util.log API is deprecated. ' +
+                 'Please use console.log() with a custom formatter or a third-party logger instead.',
+                 'DEP0059'),
   promisify,
   stripVTControlCharacters,
   toUSVString(input) {

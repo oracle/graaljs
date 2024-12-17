@@ -42,9 +42,11 @@ void NODE_EXTERN_PRIVATE FWrite(FILE* file, const std::string& str);
 // from a provider type to a debug category.
 #define DEBUG_CATEGORY_NAMES(V)                                                \
   NODE_ASYNC_PROVIDER_TYPES(V)                                                 \
+  V(COMPILE_CACHE)                                                             \
   V(DIAGNOSTICS)                                                               \
   V(HUGEPAGES)                                                                 \
   V(INSPECTOR_SERVER)                                                          \
+  V(INSPECTOR_CLIENT)                                                          \
   V(INSPECTOR_PROFILER)                                                        \
   V(CODE_CACHE)                                                                \
   V(NGTCP2_DEBUG)                                                              \
@@ -52,7 +54,8 @@ void NODE_EXTERN_PRIVATE FWrite(FILE* file, const std::string& str);
   V(WASI)                                                                      \
   V(MKSNAPSHOT)                                                                \
   V(SNAPSHOT_SERDES)                                                           \
-  V(PERMISSION_MODEL)
+  V(PERMISSION_MODEL)                                                          \
+  V(QUIC)
 
 enum class DebugCategory : unsigned int {
 #define V(name) name,

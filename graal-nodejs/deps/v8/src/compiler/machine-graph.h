@@ -36,6 +36,8 @@ class V8_EXPORT_PRIVATE MachineGraph : public NON_EXPORTED_BASE(ZoneObject) {
   // Creates a new (unique) Int32Constant node.
   Node* UniqueInt32Constant(int32_t value);
 
+  Node* UniqueInt64Constant(int64_t value);
+
   // Creates a Int32Constant node, usually canonicalized.
   Node* Int32Constant(int32_t value);
   Node* Uint32Constant(uint32_t value) {
@@ -54,12 +56,14 @@ class V8_EXPORT_PRIVATE MachineGraph : public NON_EXPORTED_BASE(ZoneObject) {
   // constants is probably not serializable.
   Node* IntPtrConstant(intptr_t value);
   Node* UintPtrConstant(uintptr_t value);
+  Node* UniqueIntPtrConstant(intptr_t value);
 
   Node* TaggedIndexConstant(intptr_t value);
 
   Node* RelocatableInt32Constant(int32_t value, RelocInfo::Mode rmode);
   Node* RelocatableInt64Constant(int64_t value, RelocInfo::Mode rmode);
   Node* RelocatableIntPtrConstant(intptr_t value, RelocInfo::Mode rmode);
+  Node* RelocatableWasmBuiltinCallTarget(Builtin builtin);
 
   // Creates a Float32Constant node, usually canonicalized.
   Node* Float32Constant(float value);
@@ -71,7 +75,7 @@ class V8_EXPORT_PRIVATE MachineGraph : public NON_EXPORTED_BASE(ZoneObject) {
   Node* PointerConstant(intptr_t value);
   template <typename T>
   Node* PointerConstant(T* value) {
-    return PointerConstant(base::bit_cast<intptr_t>(value));
+    return PointerConstant(reinterpret_cast<intptr_t>(value));
   }
 
   // Creates an ExternalConstant node, usually canonicalized.

@@ -163,7 +163,7 @@ if (typeof WebAssembly !== 'undefined') {
 
         assert.strictEqual(Atomics.wait(new Int32Array(memory.buffer), 0, 0), 'ok');
       });
-      
+
       const wasmModuleBuilderCode = fs.readFileSync('../../../graal-nodejs/deps/v8/test/mjsunit/wasm/wasm-module-builder.js');
       const NUM_ITERATIONS = 50000;
 

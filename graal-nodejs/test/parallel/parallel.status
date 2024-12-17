@@ -4,9 +4,13 @@ prefix parallel
 # below, without ".js", followed by ": PASS,FLAKY". Example:
 # sample-test                        : PASS,FLAKY
 
+### graal-nodejs-specific ###
+
 [true] # This section applies to all platforms
 
-### graal-nodejs-specific ###
+# Missing detection of unsettled top-level-await
+test-aborted-util: FAIL
+test-worker-data-url: FAIL
 
 # Triggers stack-overflow that may not be handled well
 test-async-wrap-pop-id-during-load: SKIP
@@ -58,7 +62,7 @@ test-error-serdes: PASS, CRASH
 test-experimental-shared-value-conveyor: FAIL
 
 # Callback of FinalizationRegistry called too late (after exit event)
-test-finalization-registry-shutdown: FAIL
+test-finalization-registry-shutdown: SKIP
 
 # Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
 test-fs-write: FAIL
@@ -79,11 +83,16 @@ test-worker-heap-snapshot: SKIP
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
 
+# --experimental-network-inspection
+test-inspector-emit-protocol-event: FAIL
+test-inspector-network-domain: FAIL
+
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
 
 # missing support for script.sourceMapURL
 test-node-output-sourcemaps: FAIL
+test-source-map-cjs-require-cache: FAIL
 test-vm-source-map-url: FAIL
 
 # checks v8-specific asm-related warning
@@ -94,7 +103,6 @@ test-shadow-realm-allowed-builtin-modules: FAIL
 test-shadow-realm-gc: FAIL
 test-shadow-realm-gc-module: FAIL
 test-shadow-realm-import-value-resolve: FAIL
-test-shadow-realm-globals: FAIL
 test-shadow-realm-module: FAIL
 test-shadow-realm-prepare-stack-trace: FAIL
 test-shadow-realm-custom-loaders: FAIL
@@ -137,16 +145,39 @@ test-vm-proxy-failure-CP: FAIL
 test-vm-set-property-proxy: SKIP
 
 # WebAssembly is not enabled by default
+test-abortsignal-cloneable: FAIL
+test-blocklist-clone: FAIL
 test-blob: FAIL
+test-crypto-x509: FAIL
+test-debugger-invalid-json: FAIL
+test-diagnostics-channel-module-import: FAIL
+test-eventsource: FAIL
 test-fetch: FAIL
 test-fetch-disabled: FAIL
 test-fetch-mock: FAIL
+test-http-import-websocket: FAIL
 test-http-response-setheaders: FAIL
+test-messageevent-brandcheck: FAIL
+test-messaging-marktransfermode: FAIL
+test-perf-hooks-histogram: FAIL
+test-process-get-builtin: FAIL
+test-runner-cli: FAIL
+test-socketaddress: FAIL
+test-structuredClone-global: FAIL
 test-vm-codegen: FAIL
 test-websocket: FAIL
+test-webstreams-clone-unref: FAIL
+test-webstream-structured-clone-no-leftovers: FAIL
 test-whatwg-webstreams-transfer: FAIL
+test-worker-broadcastchannel-wpt: FAIL
+test-worker-broadcastchannel: FAIL
+test-worker-message-mark-as-uncloneable: FAIL
+test-worker-message-port: FAIL
+test-worker-message-port-transfer-self: FAIL
 test-worker-message-port-wasm-module: FAIL
 test-worker-message-port-wasm-threads: FAIL
+test-worker-messaging: FAIL
+test-worker-onmessage: SKIP
 
 # Custom MicrotaskQueue is not supported
 test-vm-timeout-escape-promise: FAIL
@@ -171,6 +202,9 @@ test-snapshot-gzip: FAIL
 test-snapshot-incompatible: FAIL
 test-snapshot-namespaced-builtin: FAIL
 test-snapshot-net: FAIL
+test-snapshot-reproducible: FAIL
+test-snapshot-stack-trace-limit: FAIL
+test-snapshot-stack-trace-limit-mutation: FAIL
 test-snapshot-typescript: FAIL
 test-snapshot-umd: FAIL
 test-snapshot-warning: FAIL
@@ -182,6 +216,7 @@ test-snapshot-worker: FAIL
 test-trace-exit: FAIL
 
 # Tracing is not supported
+test-module-print-timing: SKIP
 test-throw-error-with-getter-throw-traced: FAIL
 test-throw-undefined-or-null-traced: FAIL
 test-trace-atomics-wait: SKIP
@@ -198,6 +233,7 @@ test-trace-events-environment: SKIP
 test-trace-events-file-pattern: SKIP
 test-trace-events-fs-async: SKIP
 test-trace-events-fs-sync: SKIP
+test-trace-events-get-category-enabled-buffer: SKIP
 test-trace-events-http: SKIP
 test-trace-events-metadata: SKIP
 test-trace-events-net: SKIP
@@ -210,9 +246,13 @@ test-trace-events-v8: SKIP
 test-trace-events-vm: SKIP
 test-trace-events-worker-metadata: SKIP
 test-trace-events-worker-metadata-with-name: SKIP
+test-trace-exit-stack-limit: FAIL
+test-worker-node-options: FAIL
 
 # Unclassified
+test-async-context-frame: FAIL
 test-async-hooks-http-parser-destroy: SKIP
+test-common-must-not-call: FAIL
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
 test-domain-no-error-handler-abort-on-uncaught-0: FAIL
@@ -233,6 +273,8 @@ test-gc-tls-external-memory: SKIP
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
+test-process-env: FAIL
+test-process-finalization: FAIL
 test-repl: FAIL
 test-runner-output: FAIL
 test-runner-watch-mode: SKIP
@@ -245,6 +287,8 @@ test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP
 test-worker-cleanexit-with-moduleload: SKIP
 test-worker-error-stack-getter-throws: FAIL
+test-worker-messaging-errors-handler: SKIP
+test-worker-messaging-errors-timeout: SKIP
 test-worker-stack-overflow-stack-size: SKIP
 test-zlib-invalid-input-memory: FAIL
 test-zlib-unused-weak: FAIL
@@ -310,10 +354,32 @@ test-tls-passphrase: FAIL
 
 ### graal-nodejs-specific end ###
 
+[true] # This section applies to all platforms
+# https://github.com/nodejs/node/issues/52273
+test-net-write-fully-async-hex-string: PASS, FLAKY
+# https://github.com/nodejs/node/issues/52273
+test-shadow-realm-gc: SKIP
+test-shadow-realm-gc-module: SKIP
+# https://github.com/nodejs/node/issues/52274
+test-worker-arraybuffer-zerofill: PASS, FLAKY
+
 # https://github.com/nodejs/node/issues/51862
 test-fs-read-stream-concurrent-reads: PASS, FLAKY
 
+# Until V8 provides a better way to check for flag mismatch without
+# making the code cache/snapshot unreproducible, disable the test
+# for a preemptive check now. It should ideally fail more gracefully
+# with a better checking mechanism.
+# https://github.com/nodejs/build/issues/3043
+test-snapshot-incompatible: SKIP
+
 [$system==win32]
+# https://github.com/nodejs/node/issues/54807
+test-runner-watch-mode-complex: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54808
+test-async-context-frame: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54534
+test-runner-run-watch: PASS, FLAKY
 
 # Windows on x86
 [$system==win32 && $arch==ia32]
@@ -323,8 +389,18 @@ test-worker-nearheaplimit-deadlock: PASS, FLAKY
 [$system==win32 && $arch==arm64]
 
 [$system==linux]
-# https://github.com/nodejs/node/issues/43465
-test-http-server-request-timeouts-mixed: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54803
+test-performance-function: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54346
+test-esm-loader-hooks-inspect-wait: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54810
+test-sqlite-statement-sync: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54534
+test-runner-run-watch: PASS, FLAKY
+# https://github.com/nodejs/node/issues/37692
+test-fs-utimes: PASS, FLAKY
+# https://github.com/nodejs/node/issues/52274
+test-worker-arraybuffer-zerofill: PASS, FLAKY
 
 [$system==linux || $system==win32]
 # https://github.com/nodejs/node/issues/49605
@@ -336,11 +412,17 @@ test-http-server-headers-timeout-keepalive: PASS,FLAKY
 test-http-server-request-timeout-keepalive: PASS,FLAKY
 # https://github.com/nodejs/node/issues/50243
 test-inspector-async-stack-traces-set-interval: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54811
+test-macos-app-sandbox: PASS, FLAKY
 
 [$arch==arm || $arch==arm64]
 # https://github.com/nodejs/node/pull/31178
 test-crypto-dh-stateless: SKIP
 test-crypto-keygen: SKIP
+# https://github.com/nodejs/node/issues/52963
+test-pipe-file-to-http: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54801
+test-debugger-heap-profiler: PASS, FLAKY
 
 [$system==solaris] # Also applies to SmartOS
 # https://github.com/nodejs/node/issues/43457
@@ -356,6 +438,10 @@ test-domain-no-error-handler-abort-on-uncaught-8: PASS, FLAKY
 test-domain-no-error-handler-abort-on-uncaught-9: PASS, FLAKY
 test-domain-throw-error-then-throw-from-uncaught-exception-handler: PASS, FLAKY
 test-domain-with-abort-on-uncaught-exception: PASS, FLAKY
+# https://github.com/nodejs/node/issues/50050
+test-tick-processor-arguments: SKIP
+# https://github.com/nodejs/node/issues/54534
+test-runner-run-watch: PASS, FLAKY
 
 [$system==freebsd]
 
@@ -396,10 +482,6 @@ test-http-pipeline-flood: SKIP
 [$asan==on]
 # https://github.com/nodejs/node/issues/39655
 test-cluster-primary-error: PASS, FLAKY
-
-[$arch==s390x]
-# https://github.com/nodejs/node/issues/50222
-test-inspector-async-hook-setup-at-inspect-brk: PASS, FLAKY
 
 [$arch==loong64]
 # https://github.com/nodejs/node/issues/51662

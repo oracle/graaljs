@@ -4,16 +4,17 @@
 // in https://github.com/mysticatea/abort-controller (MIT license)
 
 const {
+  ArrayPrototypePush,
   ObjectAssign,
   ObjectDefineProperties,
-  ObjectSetPrototypeOf,
   ObjectDefineProperty,
+  ObjectSetPrototypeOf,
   PromiseResolve,
   SafeFinalizationRegistry,
   SafeSet,
+  SafeWeakRef,
   Symbol,
   SymbolToStringTag,
-  WeakRef,
 } = primordials;
 
 const {
@@ -40,6 +41,10 @@ const {
     ERR_INVALID_THIS,
   },
 } = require('internal/errors');
+const {
+  converters,
+  createSequenceConverter,
+} = require('internal/webidl');
 
 const {
   validateAbortSignal,
@@ -60,27 +65,23 @@ const {
 const assert = require('internal/assert');
 
 const {
-  messaging_deserialize_symbol: kDeserialize,
-  messaging_transfer_symbol: kTransfer,
-  messaging_transfer_list_symbol: kTransferList,
-} = internalBinding('symbols');
+  kDeserialize,
+  kTransfer,
+  kTransferList,
+  markTransferMode,
+} = require('internal/worker/js_transferable');
 
 let _MessageChannel;
-let makeTransferable;
 
-// Loading the MessageChannel and makeTransferable have to be done lazily
+const kDontThrowSymbol = Symbol('kDontThrowSymbol');
+
+// Loading the MessageChannel and markTransferable have to be done lazily
 // because otherwise we'll end up with a require cycle that ends up with
 // an incomplete initialization of abort_controller.
 
 function lazyMessageChannel() {
   _MessageChannel ??= require('internal/worker/io').MessageChannel;
   return new _MessageChannel();
-}
-
-function lazyMakeTransferable(obj) {
-  makeTransferable ??=
-    require('internal/worker/js_transferable').makeTransferable;
-  return makeTransferable(obj);
 }
 
 const clearTimeoutRegistry = new SafeFinalizationRegistry(clearTimeout);
@@ -136,8 +137,35 @@ function setWeakAbortSignalTimeout(weakRef, delay) {
 }
 
 class AbortSignal extends EventTarget {
-  constructor() {
-    throw new ERR_ILLEGAL_CONSTRUCTOR();
+
+  /**
+   * @param {symbol | undefined} dontThrowSymbol
+   * @param {{
+   *   aborted? : boolean,
+   *   reason? : any,
+   *   transferable? : boolean,
+   *   composite? : boolean,
+   * }} [init]
+   * @private
+   */
+  constructor(dontThrowSymbol = undefined, init = kEmptyObject) {
+    if (dontThrowSymbol !== kDontThrowSymbol) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
+    super();
+
+    const {
+      aborted = false,
+      reason = undefined,
+      transferable = false,
+      composite = false,
+    } = init;
+    this[kAborted] = aborted;
+    this[kReason] = reason;
+    this[kComposite] = composite;
+    if (transferable) {
+      markTransferMode(this, false, true);
+    }
   }
 
   /**
@@ -175,7 +203,7 @@ class AbortSignal extends EventTarget {
    */
   static abort(
     reason = new DOMException('This operation was aborted', 'AbortError')) {
-    return createAbortSignal({ aborted: true, reason });
+    return new AbortSignal(kDontThrowSymbol, { aborted: true, reason });
   }
 
   /**
@@ -184,11 +212,11 @@ class AbortSignal extends EventTarget {
    */
   static timeout(delay) {
     validateUint32(delay, 'delay', false);
-    const signal = createAbortSignal();
+    const signal = new AbortSignal(kDontThrowSymbol);
     signal[kTimeout] = true;
     clearTimeoutRegistry.register(
       signal,
-      setWeakAbortSignalTimeout(new WeakRef(signal), delay));
+      setWeakAbortSignalTimeout(new SafeWeakRef(signal), delay));
     return signal;
   }
 
@@ -197,22 +225,26 @@ class AbortSignal extends EventTarget {
    * @returns {AbortSignal}
    */
   static any(signals) {
-    validateAbortSignalArray(signals, 'signals');
-    const resultSignal = createAbortSignal({ composite: true });
-    if (!signals.length) {
+    const signalsArray = createSequenceConverter(
+      converters.any,
+    )(signals);
+
+    validateAbortSignalArray(signalsArray, 'signals');
+    const resultSignal = new AbortSignal(kDontThrowSymbol, { composite: true });
+    if (!signalsArray.length) {
       return resultSignal;
     }
-    const resultSignalWeakRef = new WeakRef(resultSignal);
+    const resultSignalWeakRef = new SafeWeakRef(resultSignal);
     resultSignal[kSourceSignals] = new SafeSet();
-    for (let i = 0; i < signals.length; i++) {
-      const signal = signals[i];
+    for (let i = 0; i < signalsArray.length; i++) {
+      const signal = signalsArray[i];
       if (signal.aborted) {
         abortSignal(resultSignal, signal.reason);
         return resultSignal;
       }
       signal[kDependantSignals] ??= new SafeSet();
       if (!signal[kComposite]) {
-        resultSignal[kSourceSignals].add(new WeakRef(signal));
+        resultSignal[kSourceSignals].add(new SafeWeakRef(signal));
         signal[kDependantSignals].add(resultSignalWeakRef);
       } else if (!signal[kSourceSignals]) {
         continue;
@@ -318,7 +350,7 @@ class AbortSignal extends EventTarget {
 }
 
 function ClonedAbortSignal() {
-  return createAbortSignal({ transferable: true });
+  return new AbortSignal(kDontThrowSymbol, { transferable: true });
 }
 ClonedAbortSignal.prototype[kDeserialize] = () => {};
 
@@ -336,42 +368,46 @@ ObjectDefineProperty(AbortSignal.prototype, SymbolToStringTag, {
 
 defineEventHandler(AbortSignal.prototype, 'abort');
 
-/**
- * @param {{
- *   aborted? : boolean,
- *   reason? : any,
- *   transferable? : boolean,
- *   composite? : boolean,
- * }} [init]
- * @returns {AbortSignal}
- */
-function createAbortSignal(init = kEmptyObject) {
-  const {
-    aborted = false,
-    reason = undefined,
-    transferable = false,
-    composite = false,
-  } = init;
-  const signal = new EventTarget();
-  ObjectSetPrototypeOf(signal, AbortSignal.prototype);
-  signal[kAborted] = aborted;
-  signal[kReason] = reason;
-  signal[kComposite] = composite;
-  return transferable ? lazyMakeTransferable(signal) : signal;
-}
-
+// https://dom.spec.whatwg.org/#dom-abortsignal-abort
 function abortSignal(signal, reason) {
+  // 1. If signal is aborted, then return.
   if (signal[kAborted]) return;
+
+  // 2. Set signal's abort reason to reason if it is given;
+  //    otherwise to a new "AbortError" DOMException.
   signal[kAborted] = true;
   signal[kReason] = reason;
+  // 3. Let dependentSignalsToAbort be a new list.
+  const dependentSignalsToAbort = ObjectSetPrototypeOf([], null);
+  // 4. For each dependentSignal of signal's dependent signals:
+  signal[kDependantSignals]?.forEach((s) => {
+    const dependentSignal = s.deref();
+    // 1. If dependentSignal is not aborted, then:
+    if (dependentSignal && !dependentSignal[kAborted]) {
+      // 1. Set dependentSignal's abort reason to signal's abort reason.
+      dependentSignal[kReason] = reason;
+      dependentSignal[kAborted] = true;
+      // 2. Append dependentSignal to dependentSignalsToAbort.
+      ArrayPrototypePush(dependentSignalsToAbort, dependentSignal);
+    }
+  });
+
+  // 5. Run the abort steps for signal
+  runAbort(signal);
+  // 6. For each dependentSignal of dependentSignalsToAbort,
+  //    run the abort steps for dependentSignal.
+  for (let i = 0; i < dependentSignalsToAbort.length; i++) {
+    const dependentSignal = dependentSignalsToAbort[i];
+    runAbort(dependentSignal);
+  }
+}
+
+// To run the abort steps for an AbortSignal signal
+function runAbort(signal) {
   const event = new Event('abort', {
     [kTrustEvent]: true,
   });
   signal.dispatchEvent(event);
-  signal[kDependantSignals]?.forEach((s) => {
-    const signalRef = s.deref();
-    if (signalRef) abortSignal(signalRef, reason);
-  });
 }
 
 class AbortController {
@@ -381,7 +417,7 @@ class AbortController {
    * @type {AbortSignal}
    */
   get signal() {
-    this.#signal ??= createAbortSignal();
+    this.#signal ??= new AbortSignal(kDontThrowSymbol);
     return this.#signal;
   }
 
@@ -389,7 +425,7 @@ class AbortController {
    * @param {any} [reason]
    */
   abort(reason = new DOMException('This operation was aborted', 'AbortError')) {
-    abortSignal(this.#signal ??= createAbortSignal(), reason);
+    abortSignal(this.#signal ??= new AbortSignal(kDontThrowSymbol), reason);
   }
 
   [customInspectSymbol](depth, options) {
@@ -400,7 +436,7 @@ class AbortController {
 
   static [kMakeTransferable]() {
     const controller = new AbortController();
-    controller.#signal = createAbortSignal({ transferable: true });
+    controller.#signal = new AbortSignal(kDontThrowSymbol, { transferable: true });
     return controller;
   }
 }
@@ -413,7 +449,8 @@ class AbortController {
 function transferableAbortSignal(signal) {
   if (signal?.[kAborted] === undefined)
     throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
-  return lazyMakeTransferable(signal);
+  markTransferMode(signal, false, true);
+  return signal;
 }
 
 /**

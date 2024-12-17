@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 
+#include "v8-source-location.h"  // NOLINT(build/include_directory)
 #include "v8config.h"  // NOLINT(build/include_directory)
 
 namespace v8 {
@@ -39,6 +40,7 @@ enum class TaskPriority : uint8_t {
    * possible.
    */
   kUserBlocking,
+  kMaxPriority = kUserBlocking
 };
 
 /**
@@ -74,8 +76,12 @@ class TaskRunner {
   /**
    * Schedules a task to be invoked by this TaskRunner. The TaskRunner
    * implementation takes ownership of |task|.
+   *
+   * Embedders should override PostTaskImpl instead of this.
    */
-  virtual void PostTask(std::unique_ptr<Task> task) = 0;
+  virtual void PostTask(std::unique_ptr<Task> task) {
+    PostTaskImpl(std::move(task), SourceLocation::Current());
+  }
 
   /**
    * Schedules a task to be invoked by this TaskRunner. The TaskRunner
@@ -91,16 +97,25 @@ class TaskRunner {
    * execution is not allowed to nest.
    *
    * Requires that |TaskRunner::NonNestableTasksEnabled()| is true.
+   *
+   * Embedders should override PostNonNestableTaskImpl instead of this.
    */
-  virtual void PostNonNestableTask(std::unique_ptr<Task> task) {}
+  virtual void PostNonNestableTask(std::unique_ptr<Task> task) {
+    PostNonNestableTaskImpl(std::move(task), SourceLocation::Current());
+  }
 
   /**
    * Schedules a task to be invoked by this TaskRunner. The task is scheduled
    * after the given number of seconds |delay_in_seconds|. The TaskRunner
    * implementation takes ownership of |task|.
+   *
+   * Embedders should override PostDelayedTaskImpl instead of this.
    */
   virtual void PostDelayedTask(std::unique_ptr<Task> task,
-                               double delay_in_seconds) = 0;
+                               double delay_in_seconds) {
+    PostDelayedTaskImpl(std::move(task), delay_in_seconds,
+                        SourceLocation::Current());
+  }
 
   /**
    * Schedules a task to be invoked by this TaskRunner. The task is scheduled
@@ -117,9 +132,14 @@ class TaskRunner {
    * execution is not allowed to nest.
    *
    * Requires that |TaskRunner::NonNestableDelayedTasksEnabled()| is true.
+   *
+   * Embedders should override PostNonNestableDelayedTaskImpl instead of this.
    */
   virtual void PostNonNestableDelayedTask(std::unique_ptr<Task> task,
-                                          double delay_in_seconds) {}
+                                          double delay_in_seconds) {
+    PostNonNestableDelayedTaskImpl(std::move(task), delay_in_seconds,
+                                   SourceLocation::Current());
+  }
 
   /**
    * Schedules an idle task to be invoked by this TaskRunner. The task is
@@ -128,8 +148,12 @@ class TaskRunner {
    * relative to other task types and may be starved for an arbitrarily long
    * time if no idle time is available. The TaskRunner implementation takes
    * ownership of |task|.
+   *
+   * Embedders should override PostIdleTaskImpl instead of this.
    */
-  virtual void PostIdleTask(std::unique_ptr<IdleTask> task) = 0;
+  virtual void PostIdleTask(std::unique_ptr<IdleTask> task) {
+    PostIdleTaskImpl(std::move(task), SourceLocation::Current());
+  }
 
   /**
    * Returns true if idle tasks are enabled for this TaskRunner.
@@ -151,6 +175,23 @@ class TaskRunner {
 
   TaskRunner(const TaskRunner&) = delete;
   TaskRunner& operator=(const TaskRunner&) = delete;
+
+ protected:
+  /**
+   * Implementation of above methods with an additional `location` argument.
+   */
+  virtual void PostTaskImpl(std::unique_ptr<Task> task,
+                            const SourceLocation& location) {}
+  virtual void PostNonNestableTaskImpl(std::unique_ptr<Task> task,
+                                       const SourceLocation& location) {}
+  virtual void PostDelayedTaskImpl(std::unique_ptr<Task> task,
+                                   double delay_in_seconds,
+                                   const SourceLocation& location) {}
+  virtual void PostNonNestableDelayedTaskImpl(std::unique_ptr<Task> task,
+                                              double delay_in_seconds,
+                                              const SourceLocation& location) {}
+  virtual void PostIdleTaskImpl(std::unique_ptr<IdleTask> task,
+                                const SourceLocation& location) {}
 };
 
 /**
@@ -261,8 +302,12 @@ class JobTask {
    * Controls the maximum number of threads calling Run() concurrently, given
    * the number of threads currently assigned to this job and executing Run().
    * Run() is only invoked if the number of threads previously running Run() was
-   * less than the value returned. Since GetMaxConcurrency() is a leaf function,
-   * it must not call back any JobHandle methods.
+   * less than the value returned. In general, this should return the latest
+   * number of incomplete work items (smallest unit of work) left to process,
+   * including items that are currently in progress. |worker_count| is the
+   * number of threads currently assigned to this job which some callers may
+   * need to determine their return value. Since GetMaxConcurrency() is a leaf
+   * function, it must not call back any JobHandle methods.
    */
   virtual size_t GetMaxConcurrency(size_t worker_count) const = 0;
 };
@@ -566,6 +611,42 @@ class PageAllocator {
   virtual bool CanAllocateSharedPages() { return false; }
 };
 
+/**
+ * An allocator that uses per-thread permissions to protect the memory.
+ *
+ * The implementation is platform/hardware specific, e.g. using pkeys on x64.
+ *
+ * INTERNAL ONLY: This interface has not been stabilised and may change
+ * without notice from one release to another without being deprecated first.
+ */
+class ThreadIsolatedAllocator {
+ public:
+  virtual ~ThreadIsolatedAllocator() = default;
+
+  virtual void* Allocate(size_t size) = 0;
+
+  virtual void Free(void* object) = 0;
+
+  enum class Type {
+    kPkey,
+  };
+
+  virtual Type Type() const = 0;
+
+  /**
+   * Return the pkey used to implement the thread isolation if Type == kPkey.
+   */
+  virtual int Pkey() const { return -1; }
+
+  /**
+   * Per-thread permissions can be reset on signal handler entry. Even reading
+   * ThreadIsolated memory will segfault in that case.
+   * Call this function on signal handler entry to ensure that read permissions
+   * are restored.
+   */
+  static void SetDefaultPermissionsForSignalHandler();
+};
+
 // Opaque type representing a handle to a shared memory region.
 using PlatformSharedMemoryHandle = intptr_t;
 static constexpr PlatformSharedMemoryHandle kInvalidSharedMemoryHandle = -1;
@@ -693,6 +774,15 @@ class VirtualAddressSpace {
    * \returns the maximum page permissions.
    */
   PagePermissions max_page_permissions() const { return max_page_permissions_; }
+
+  /**
+   * Whether the |address| is inside the address space managed by this instance.
+   *
+   * \returns true if it is inside the address space, false if not.
+   */
+  bool Contains(Address address) const {
+    return (address >= base()) && (address < base() + size());
+  }
 
   /**
    * Sets the random seed so that GetRandomPageAddress() will generate
@@ -970,6 +1060,16 @@ class Platform {
   virtual PageAllocator* GetPageAllocator() = 0;
 
   /**
+   * Allows the embedder to provide an allocator that uses per-thread memory
+   * permissions to protect allocations.
+   * Returning nullptr will cause V8 to disable protections that rely on this
+   * feature.
+   */
+  virtual ThreadIsolatedAllocator* GetThreadIsolatedAllocator() {
+    return nullptr;
+  }
+
+  /**
    * Allows the embedder to specify a custom allocator used for zones.
    */
   virtual ZoneBackingAllocator* GetZoneBackingAllocator() {
@@ -1000,40 +1100,79 @@ class Platform {
    * Returns a TaskRunner which can be used to post a task on the foreground.
    * The TaskRunner's NonNestableTasksEnabled() must be true. This function
    * should only be called from a foreground thread.
+   * TODO(chromium:1448758): Deprecate once |GetForegroundTaskRunner(Isolate*,
+   * TaskPriority)| is ready.
    */
   virtual std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(
-      Isolate* isolate) = 0;
+      Isolate* isolate) {
+    return GetForegroundTaskRunner(isolate, TaskPriority::kUserBlocking);
+  }
+
+  /**
+   * Returns a TaskRunner with a specific |priority| which can be used to post a
+   * task on the foreground thread. The TaskRunner's NonNestableTasksEnabled()
+   * must be true. This function should only be called from a foreground thread.
+   * TODO(chromium:1448758): Make pure virtual once embedders implement it.
+   */
+  virtual std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(
+      Isolate* isolate, TaskPriority priority) {
+    return nullptr;
+  }
 
   /**
    * Schedules a task to be invoked on a worker thread.
+   * Embedders should override PostTaskOnWorkerThreadImpl() instead of
+   * CallOnWorkerThread().
    */
-  virtual void CallOnWorkerThread(std::unique_ptr<Task> task) = 0;
+  void CallOnWorkerThread(
+      std::unique_ptr<Task> task,
+      const SourceLocation& location = SourceLocation::Current()) {
+    PostTaskOnWorkerThreadImpl(TaskPriority::kUserVisible, std::move(task),
+                               location);
+  }
 
   /**
    * Schedules a task that blocks the main thread to be invoked with
    * high-priority on a worker thread.
+   * Embedders should override PostTaskOnWorkerThreadImpl() instead of
+   * CallBlockingTaskOnWorkerThread().
    */
-  virtual void CallBlockingTaskOnWorkerThread(std::unique_ptr<Task> task) {
+  void CallBlockingTaskOnWorkerThread(
+      std::unique_ptr<Task> task,
+      const SourceLocation& location = SourceLocation::Current()) {
     // Embedders may optionally override this to process these tasks in a high
     // priority pool.
-    CallOnWorkerThread(std::move(task));
+    PostTaskOnWorkerThreadImpl(TaskPriority::kUserBlocking, std::move(task),
+                               location);
   }
 
   /**
    * Schedules a task to be invoked with low-priority on a worker thread.
+   * Embedders should override PostTaskOnWorkerThreadImpl() instead of
+   * CallLowPriorityTaskOnWorkerThread().
    */
-  virtual void CallLowPriorityTaskOnWorkerThread(std::unique_ptr<Task> task) {
+  void CallLowPriorityTaskOnWorkerThread(
+      std::unique_ptr<Task> task,
+      const SourceLocation& location = SourceLocation::Current()) {
     // Embedders may optionally override this to process these tasks in a low
     // priority pool.
-    CallOnWorkerThread(std::move(task));
+    PostTaskOnWorkerThreadImpl(TaskPriority::kBestEffort, std::move(task),
+                               location);
   }
 
   /**
    * Schedules a task to be invoked on a worker thread after |delay_in_seconds|
    * expires.
+   * Embedders should override PostDelayedTaskOnWorkerThreadImpl() instead of
+   * CallDelayedOnWorkerThread().
    */
-  virtual void CallDelayedOnWorkerThread(std::unique_ptr<Task> task,
-                                         double delay_in_seconds) = 0;
+  void CallDelayedOnWorkerThread(
+      std::unique_ptr<Task> task, double delay_in_seconds,
+      const SourceLocation& location = SourceLocation::Current()) {
+    PostDelayedTaskOnWorkerThreadImpl(TaskPriority::kUserVisible,
+                                      std::move(task), delay_in_seconds,
+                                      location);
+  }
 
   /**
    * Returns true if idle tasks are enabled for the given |isolate|.
@@ -1083,10 +1222,12 @@ class Platform {
    * thread (A=>B/B=>A deadlock) and [2] JobTask::Run or
    * JobTask::GetMaxConcurrency may be invoked synchronously from JobHandle
    * (B=>JobHandle::foo=>B deadlock).
+   * Embedders should override CreateJobImpl() instead of PostJob().
    */
-  virtual std::unique_ptr<JobHandle> PostJob(
-      TaskPriority priority, std::unique_ptr<JobTask> job_task) {
-    auto handle = CreateJob(priority, std::move(job_task));
+  std::unique_ptr<JobHandle> PostJob(
+      TaskPriority priority, std::unique_ptr<JobTask> job_task,
+      const SourceLocation& location = SourceLocation::Current()) {
+    auto handle = CreateJob(priority, std::move(job_task), location);
     handle->NotifyConcurrencyIncrease();
     return handle;
   }
@@ -1103,9 +1244,14 @@ class Platform {
    *    return v8::platform::NewDefaultJobHandle(
    *        this, priority, std::move(job_task), NumberOfWorkerThreads());
    * }
+   *
+   * Embedders should override CreateJobImpl() instead of CreateJob().
    */
-  virtual std::unique_ptr<JobHandle> CreateJob(
-      TaskPriority priority, std::unique_ptr<JobTask> job_task) = 0;
+  std::unique_ptr<JobHandle> CreateJob(
+      TaskPriority priority, std::unique_ptr<JobTask> job_task,
+      const SourceLocation& location = SourceLocation::Current()) {
+    return CreateJobImpl(priority, std::move(job_task), location);
+  }
 
   /**
    * Instantiates a ScopedBlockingCall to annotate a scope that may/will block.
@@ -1130,7 +1276,7 @@ class Platform {
    * required.
    */
   virtual int64_t CurrentClockTimeMilliseconds() {
-    return floor(CurrentClockTimeMillis());
+    return static_cast<int64_t>(floor(CurrentClockTimeMillis()));
   }
 
   /**
@@ -1183,6 +1329,28 @@ class Platform {
    * nothing special needed.
    */
   V8_EXPORT static double SystemClockTimeMillis();
+
+  /**
+   * Creates and returns a JobHandle associated with a Job.
+   */
+  virtual std::unique_ptr<JobHandle> CreateJobImpl(
+      TaskPriority priority, std::unique_ptr<JobTask> job_task,
+      const SourceLocation& location) = 0;
+
+  /**
+   * Schedules a task with |priority| to be invoked on a worker thread.
+   */
+  virtual void PostTaskOnWorkerThreadImpl(TaskPriority priority,
+                                          std::unique_ptr<Task> task,
+                                          const SourceLocation& location) = 0;
+
+  /**
+   * Schedules a task with |priority| to be invoked on a worker thread after
+   * |delay_in_seconds| expires.
+   */
+  virtual void PostDelayedTaskOnWorkerThreadImpl(
+      TaskPriority priority, std::unique_ptr<Task> task,
+      double delay_in_seconds, const SourceLocation& location) = 0;
 };
 
 }  // namespace v8

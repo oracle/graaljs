@@ -1,15 +1,21 @@
 #include "base_object.h"
 #include "env-inl.h"
+#include "node_messaging.h"
 #include "node_realm-inl.h"
 
 namespace node {
 
+using v8::Context;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::HandleScope;
+using v8::Just;
+using v8::JustVoid;
 using v8::Local;
+using v8::Maybe;
 using v8::Object;
 using v8::Value;
+using v8::ValueDeserializer;
 using v8::WeakCallbackInfo;
 using v8::WeakCallbackType;
 
@@ -26,7 +32,7 @@ BaseObject::~BaseObject() {
   realm()->modify_base_object_count(-1);
   realm()->RemoveCleanupHook(DeleteMe, static_cast<void*>(this));
 
-  if (UNLIKELY(has_pointer_data())) {
+  if (has_pointer_data()) [[unlikely]] {
     PointerData* metadata = pointer_data();
     CHECK_EQ(metadata->strong_ptr_count, 0);
     metadata->self = nullptr;
@@ -86,6 +92,28 @@ Local<FunctionTemplate> BaseObject::MakeLazilyInitializedJSTemplate(
       isolate_data->isolate(), LazilyInitializedJSTemplateConstructor);
   t->InstanceTemplate()->SetInternalFieldCount(BaseObject::kInternalFieldCount);
   return t;
+}
+
+BaseObject::TransferMode BaseObject::GetTransferMode() const {
+  return TransferMode::kDisallowCloneAndTransfer;
+}
+
+std::unique_ptr<worker::TransferData> BaseObject::TransferForMessaging() {
+  return {};
+}
+
+std::unique_ptr<worker::TransferData> BaseObject::CloneForMessaging() const {
+  return {};
+}
+
+Maybe<std::vector<BaseObjectPtr<BaseObject>>> BaseObject::NestedTransferables()
+    const {
+  return Just(std::vector<BaseObjectPtr<BaseObject>>{});
+}
+
+Maybe<void> BaseObject::FinalizeTransferRead(Local<Context> context,
+                                             ValueDeserializer* deserializer) {
+  return JustVoid();
 }
 
 BaseObject::PointerData* BaseObject::pointer_data() {

@@ -29,6 +29,7 @@ class CallSiteInfo : public TorqueGeneratedCallSiteInfo<CallSiteInfo, Struct> {
   inline bool IsWasm() const;
   inline bool IsAsmJsWasm() const;
   inline bool IsAsmJsAtNumberConversion() const;
+  inline bool IsBuiltin() const;
 #endif  // V8_ENABLE_WEBASSEMBLY
 
   inline bool IsStrict() const;
@@ -44,7 +45,8 @@ class CallSiteInfo : public TorqueGeneratedCallSiteInfo<CallSiteInfo, Struct> {
   bool IsPromiseAny() const;
   bool IsNative() const;
 
-  DECL_ACCESSORS(code_object, HeapObject)
+  inline Tagged<HeapObject> code_object(IsolateForSandbox isolate) const;
+  inline void set_code_object(Tagged<HeapObject> code, WriteBarrierMode mode);
 
   // Dispatched behavior.
   DECL_VERIFIER(CallSiteInfo)
@@ -63,10 +65,10 @@ class CallSiteInfo : public TorqueGeneratedCallSiteInfo<CallSiteInfo, Struct> {
   static MaybeHandle<Script> GetScript(Isolate* isolate,
                                        Handle<CallSiteInfo> info);
   int GetScriptId() const;
-  Object GetScriptName() const;
-  Object GetScriptNameOrSourceURL() const;
-  Object GetScriptSource() const;
-  Object GetScriptSourceMappingURL() const;
+  Tagged<Object> GetScriptName() const;
+  Tagged<Object> GetScriptNameOrSourceURL() const;
+  Tagged<Object> GetScriptSource() const;
+  Tagged<Object> GetScriptSourceMappingURL() const;
 
   static Handle<PrimitiveHeapObject> GetEvalOrigin(Handle<CallSiteInfo> info);
   V8_EXPORT_PRIVATE static Handle<PrimitiveHeapObject> GetFunctionName(
@@ -79,7 +81,7 @@ class CallSiteInfo : public TorqueGeneratedCallSiteInfo<CallSiteInfo, Struct> {
 #if V8_ENABLE_WEBASSEMBLY
   // These methods are only valid for Wasm and asm.js Wasm frames.
   uint32_t GetWasmFunctionIndex() const;
-  WasmInstanceObject GetWasmInstance() const;
+  Tagged<WasmInstanceObject> GetWasmInstance() const;
   static Handle<Object> GetWasmModuleName(Handle<CallSiteInfo> info);
 #endif  // V8_ENABLE_WEBASSEMBLY
 
@@ -94,13 +96,13 @@ class CallSiteInfo : public TorqueGeneratedCallSiteInfo<CallSiteInfo, Struct> {
   static bool ComputeLocation(Handle<CallSiteInfo> info,
                               MessageLocation* location);
 
-  using BodyDescriptor = StructBodyDescriptor;
+  class BodyDescriptor;
 
  private:
   static int ComputeSourcePosition(Handle<CallSiteInfo> info, int offset);
 
-  base::Optional<Script> GetScript() const;
-  SharedFunctionInfo GetSharedFunctionInfo() const;
+  base::Optional<Tagged<Script>> GetScript() const;
+  Tagged<SharedFunctionInfo> GetSharedFunctionInfo() const;
 
   TQ_OBJECT_CONSTRUCTORS(CallSiteInfo)
 };

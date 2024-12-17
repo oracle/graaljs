@@ -46,7 +46,16 @@ const {
   kEnumerableProperty,
   kEmptyObject,
   SideEffectFreeRegExpPrototypeSymbolReplace,
+  isWindows,
 } = require('internal/util');
+
+const {
+  platform,
+} = require('internal/process/per_thread');
+
+const {
+  markTransferMode,
+} = require('internal/worker/js_transferable');
 
 const {
   codes: {
@@ -80,9 +89,6 @@ const {
 } = require('internal/validators');
 
 const querystring = require('querystring');
-
-const { platform } = process;
-const isWindows = platform === 'win32';
 
 const bindingUrl = internalBinding('url');
 
@@ -328,6 +334,8 @@ class URLSearchParams {
   // Default parameter is necessary to keep URLSearchParams.length === 0 in
   // accordance with Web IDL spec.
   constructor(init = undefined) {
+    markTransferMode(this, false, false);
+
     if (init == null) {
       // Do nothing
     } else if (typeof init === 'object' || typeof init === 'function') {
@@ -343,7 +351,7 @@ class URLSearchParams {
           throw new ERR_ARG_NOT_ITERABLE('Query pairs');
         }
 
-        // The following implementationd differs from the URL specification:
+        // The following implementation differs from the URL specification:
         // Sequences must first be converted from ECMAScript objects before
         // and operations are done on them, and the operation of converting
         // the sequences would first exhaust the iterators. If the iterator
@@ -361,7 +369,7 @@ class URLSearchParams {
             if (pair.length !== 2) {
               throw new ERR_INVALID_TUPLE('Each query pair', '[name, value]');
             }
-            // Append (innerSequence[0], innerSequence[1]) to querys list.
+            // Append (innerSequence[0], innerSequence[1]) to query's list.
             ArrayPrototypePush(
               this.#searchParams,
               StringPrototypeToWellFormed(`${pair[0]}`),
@@ -764,6 +772,14 @@ function isURL(self) {
   return Boolean(self?.href && self.protocol && self.auth === undefined && self.path === undefined);
 }
 
+/**
+ * A unique symbol used as a private identifier to safely invoke the URL constructor
+ * with a special parsing behavior. When passed as the third argument to the URL
+ * constructor, it signals that the constructor should not throw an exception
+ * for invalid URL inputs.
+ */
+const kParseURLSymbol = Symbol('kParseURL');
+
 class URL {
   #context = new URLContext();
   #searchParams;
@@ -782,7 +798,9 @@ class URL {
     };
   }
 
-  constructor(input, base = undefined) {
+  constructor(input, base = undefined, parseSymbol = undefined) {
+    markTransferMode(this, false, false);
+
     if (arguments.length === 0) {
       throw new ERR_MISSING_ARGS('url');
     }
@@ -794,7 +812,19 @@ class URL {
       base = `${base}`;
     }
 
-    this.#updateContext(bindingUrl.parse(input, base));
+    const raiseException = parseSymbol !== kParseURLSymbol;
+    const href = bindingUrl.parse(input, base, raiseException);
+    if (href) {
+      this.#updateContext(href);
+    }
+  }
+
+  static parse(input, base = undefined) {
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('url');
+    }
+    const parsedURLObject = new URL(input, base, kParseURLSymbol);
+    return parsedURLObject.href ? parsedURLObject : null;
   }
 
   [inspect.custom](depth, opts) {
@@ -1134,6 +1164,12 @@ ObjectDefineProperties(URL.prototype, {
 
 ObjectDefineProperties(URL, {
   canParse: {
+    __proto__: null,
+    configurable: true,
+    writable: true,
+    enumerable: true,
+  },
+  parse: {
     __proto__: null,
     configurable: true,
     writable: true,
@@ -1504,7 +1540,12 @@ function pathToFileURL(filepath, options = kEmptyObject) {
   if ((windows ?? isWindows) && StringPrototypeStartsWith(filepath, '\\\\')) {
     const outURL = new URL('file://');
     // UNC path format: \\server\share\resource
-    const hostnameEndIndex = StringPrototypeIndexOf(filepath, '\\', 2);
+    // Handle extended UNC path and standard UNC path
+    // "\\?\UNC\" path prefix should be ignored.
+    // Ref: https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation
+    const isExtendedUNC = StringPrototypeStartsWith(filepath, '\\\\?\\UNC\\');
+    const prefixLength = isExtendedUNC ? 8 : 2;
+    const hostnameEndIndex = StringPrototypeIndexOf(filepath, '\\', prefixLength);
     if (hostnameEndIndex === -1) {
       throw new ERR_INVALID_ARG_VALUE(
         'path',
@@ -1519,7 +1560,7 @@ function pathToFileURL(filepath, options = kEmptyObject) {
         'Empty UNC servername',
       );
     }
-    const hostname = StringPrototypeSlice(filepath, 2, hostnameEndIndex);
+    const hostname = StringPrototypeSlice(filepath, prefixLength, hostnameEndIndex);
     outURL.hostname = domainToASCII(hostname);
     outURL.pathname = encodePathChars(
       RegExpPrototypeSymbolReplace(backslashRegEx, StringPrototypeSlice(filepath, hostnameEndIndex), '/'),
@@ -1573,6 +1614,7 @@ module.exports = {
   installObjectURLMethods,
   URL,
   URLSearchParams,
+  URLParse: URL.parse,
   domainToASCII,
   domainToUnicode,
   urlToHttpOptions,

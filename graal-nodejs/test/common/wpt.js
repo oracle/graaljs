@@ -210,6 +210,7 @@ class ResourceLoader {
     const data = await fsPromises.readFile(file);
     return {
       ok: true,
+      arrayBuffer() { return data.buffer; },
       json() { return JSON.parse(data.toString()); },
       text() { return data.toString(); },
     };
@@ -382,7 +383,7 @@ const kIntlRequirement = {
   // TODO(joyeecheung): we may need to deal with --with-intl=system-icu
 };
 
-class IntlRequirement {
+class BuildRequirement {
   constructor() {
     this.currentIntl = kIntlRequirement.none;
     if (process.config.variables.v8_enable_i18n_support === 0) {
@@ -395,6 +396,9 @@ class IntlRequirement {
     } else {
       this.currentIntl = kIntlRequirement.full;
     }
+    // Not using common.hasCrypto because of the global leak checks
+    this.hasCrypto = Boolean(process.versions.openssl) &&
+      !process.env.NODE_SKIP_CRYPTO;
   }
 
   /**
@@ -409,11 +413,14 @@ class IntlRequirement {
     if (requires.has('small-icu') && current < kIntlRequirement.small) {
       return 'small-icu';
     }
+    if (requires.has('crypto') && !this.hasCrypto) {
+      return 'crypto';
+    }
     return false;
   }
 }
 
-const intlRequirements = new IntlRequirement();
+const buildRequirements = new BuildRequirement();
 
 class StatusLoader {
   /**
@@ -440,7 +447,7 @@ class StatusLoader {
         const list = this.grep(filepath);
         result = result.concat(list);
       } else {
-        if (!(/\.\w+\.js$/.test(filepath)) || filepath.endsWith('.helper.js')) {
+        if (!(/\.\w+\.js$/.test(filepath))) {
           continue;
         }
         result.push(filepath);
@@ -451,8 +458,16 @@ class StatusLoader {
 
   load() {
     const dir = path.join(__dirname, '..', 'wpt');
-    const statusFile = path.join(dir, 'status', `${this.path}.json`);
-    const result = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
+    let statusFile = path.join(dir, 'status', `${this.path}.json`);
+    let result;
+
+    if (fs.existsSync(statusFile)) {
+      result = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
+    } else {
+      statusFile = path.join(dir, 'status', `${this.path}.cjs`);
+      result = require(statusFile);
+    }
+
     this.rules.addRules(result);
 
     const subDir = fixtures.path('wpt', this.path);
@@ -945,9 +960,9 @@ class WPTRunner {
         continue;
       }
 
-      const lackingIntl = intlRequirements.isLacking(spec.requires);
-      if (lackingIntl) {
-        this.skip(spec, [ `requires ${lackingIntl}` ]);
+      const lackingSupport = buildRequirements.isLacking(spec.requires);
+      if (lackingSupport) {
+        this.skip(spec, [ `requires ${lackingSupport}` ]);
         continue;
       }
 

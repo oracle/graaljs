@@ -66,7 +66,9 @@ invoked. Calling `immediate.unref()` multiple times will have no effect.
 ### `immediate[Symbol.dispose]()`
 
 <!-- YAML
-added: v20.5.0
+added:
+ - v20.5.0
+ - v18.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -170,7 +172,9 @@ thread. This allows enhanced compatibility with browser
 ### `timeout[Symbol.dispose]()`
 
 <!-- YAML
-added: v20.5.0
+added:
+ - v20.5.0
+ - v18.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -374,7 +378,7 @@ import {
   setTimeout,
   setImmediate,
   setInterval,
-} from 'timers/promises';
+} from 'node:timers/promises';
 ```
 
 ```cjs
@@ -404,7 +408,7 @@ added: v15.0.0
 ```mjs
 import {
   setTimeout,
-} from 'timers/promises';
+} from 'node:timers/promises';
 
 const res = await setTimeout(100, 'result');
 
@@ -438,7 +442,7 @@ added: v15.0.0
 ```mjs
 import {
   setImmediate,
-} from 'timers/promises';
+} from 'node:timers/promises';
 
 const res = await setImmediate('result');
 
@@ -479,7 +483,7 @@ or implicitly to keep the event loop alive.
 ```mjs
 import {
   setInterval,
-} from 'timers/promises';
+} from 'node:timers/promises';
 
 const interval = 100;
 for await (const startTime of setInterval(interval, Date.now())) {
@@ -521,6 +525,9 @@ added:
 * `delay` {number} The number of milliseconds to wait before resolving the
   promise.
 * `options` {Object}
+  * `ref` {boolean} Set to `false` to indicate that the scheduled `Timeout`
+    should not require the Node.js event loop to remain active.
+    **Default:** `true`.
   * `signal` {AbortSignal} An optional `AbortSignal` that can be used to
     cancel waiting.
 * Returns: {Promise}
@@ -528,9 +535,8 @@ added:
 An experimental API defined by the [Scheduling APIs][] draft specification
 being developed as a standard Web Platform API.
 
-Calling `timersPromises.scheduler.wait(delay, options)` is roughly equivalent
-to calling `timersPromises.setTimeout(delay, undefined, options)` except that
-the `ref` option is not supported.
+Calling `timersPromises.scheduler.wait(delay, options)` is equivalent
+to calling `timersPromises.setTimeout(delay, undefined, options)`.
 
 ```mjs
 import { scheduler } from 'node:timers/promises';

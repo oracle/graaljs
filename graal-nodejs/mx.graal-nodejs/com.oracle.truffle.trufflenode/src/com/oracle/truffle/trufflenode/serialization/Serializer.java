@@ -132,11 +132,13 @@ public class Serializer {
 
     private final Env env;
     private final GraalJSAccess access;
+    private final boolean hasCustomHostObject;
 
     public Serializer(Env env, GraalJSAccess access, long delegate) {
         this.delegate = delegate;
         this.env = env;
         this.access = access;
+        this.hasCustomHostObject = NativeAccess.hasCustomHostObject(delegate);
     }
 
     public void setTreatArrayBufferViewsAsHostObjects(boolean treatArrayBufferViewsAsHostObjects) {
@@ -288,10 +290,10 @@ public class Serializer {
             NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(object), COULD_NOT_BE_CLONED));
         } else if (JSDynamicObject.isJSDynamicObject(object)) {
             JSDynamicObject dynamicObject = (JSDynamicObject) object;
-            if (GraalJSAccess.internalFieldCount(dynamicObject) == 0) {
-                writeJSObject(dynamicObject);
-            } else {
+            if (hasCustomHostObject ? NativeAccess.isHostObject(delegate, object) : (GraalJSAccess.internalFieldCount(dynamicObject) != 0)) {
                 writeHostObject(dynamicObject);
+            } else {
+                writeJSObject(dynamicObject);
             }
         } else {
             writeHostObject(object);

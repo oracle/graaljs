@@ -12,7 +12,6 @@ const {
   ReflectApply,
   StringPrototypeSlice,
   Symbol,
-  SymbolDispose,
   Uint8Array,
 } = primordials;
 
@@ -56,7 +55,7 @@ const { TTY } = internalBinding('tty_wrap');
 const { UDP } = internalBinding('udp_wrap');
 const SocketList = require('internal/socket_list');
 const { owner_symbol } = require('internal/async_hooks').symbols;
-const { convertToValidSignal, deprecate } = require('internal/util');
+const { convertToValidSignal, deprecate, SymbolDispose } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 const spawn_sync = internalBinding('spawn_sync');
 const { kStateSymbol } = require('internal/dgram');
@@ -860,7 +859,7 @@ function setupChannel(target, channel, serializationMode) {
       if (handle) {
         if (!this._handleQueue)
           this._handleQueue = [];
-        if (obj && obj.postSend)
+        if (obj?.postSend)
           obj.postSend(message, handle, options, callback, target);
       }
 
@@ -876,7 +875,7 @@ function setupChannel(target, channel, serializationMode) {
       }
     } else {
       // Cleanup handle on error
-      if (obj && obj.postSend)
+      if (obj?.postSend)
         obj.postSend(message, handle, options, callback);
 
       if (!options.swallowErrors) {
@@ -1121,8 +1120,8 @@ function spawnSync(options) {
     }
   }
 
-  result.stdout = result.output && result.output[1];
-  result.stderr = result.output && result.output[2];
+  result.stdout = result.output?.[1];
+  result.stderr = result.output?.[2];
 
   if (result.error) {
     result.error = new ErrnoException(result.error, 'spawnSync ' + options.file);

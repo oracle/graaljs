@@ -1,37 +1,42 @@
 'use strict';
+
 const {
-  ArrayFrom,
   ArrayIsArray,
+  ArrayPrototypeEvery,
   ArrayPrototypeFilter,
+  ArrayPrototypeFind,
   ArrayPrototypeForEach,
   ArrayPrototypeIncludes,
+  ArrayPrototypeJoin,
   ArrayPrototypeMap,
   ArrayPrototypePush,
+  ArrayPrototypePushApply,
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
   ArrayPrototypeSome,
   ArrayPrototypeSort,
   ObjectAssign,
   PromisePrototypeThen,
+  PromiseResolve,
+  SafeMap,
   SafePromiseAll,
   SafePromiseAllReturnVoid,
   SafePromiseAllSettledReturnVoid,
-  PromiseResolve,
-  SafeMap,
   SafeSet,
   StringPrototypeIndexOf,
   StringPrototypeSlice,
   StringPrototypeStartsWith,
+  Symbol,
   TypedArrayPrototypeGetLength,
   TypedArrayPrototypeSubarray,
 } = primordials;
 
 const { spawn } = require('child_process');
-const { readdirSync, statSync } = require('fs');
 const { finished } = require('internal/streams/end-of-stream');
+const { resolve } = require('path');
 const { DefaultDeserializer, DefaultSerializer } = require('v8');
-// TODO(aduh95): switch to internal/readline/interface when backporting to Node.js 16.x is no longer a concern.
-const { createInterface } = require('readline');
+const { getOptionValue } = require('internal/options');
+const { Interface } = require('internal/readline/interface');
 const { deserializeError } = require('internal/error_serdes');
 const { Buffer } = require('buffer');
 const { FilesWatcher } = require('internal/watch_mode/files_watcher');
@@ -41,21 +46,31 @@ const {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_TEST_FAILURE,
-    ERR_OUT_OF_RANGE,
   },
 } = require('internal/errors');
+const esmLoader = require('internal/modules/esm/loader');
 const {
   validateArray,
   validateBoolean,
   validateFunction,
   validateObject,
+  validateOneOf,
   validateInteger,
+  validateStringArray,
 } = require('internal/validators');
 const { getInspectPort, isUsingInspector, isInspectorMessage } = require('internal/util/inspector');
 const { isRegExp } = require('internal/util/types');
-const { kEmptyObject } = require('internal/util');
+const { pathToFileURL } = require('internal/url');
+const {
+  createDeferredPromise,
+  getCWDURL,
+  kEmptyObject,
+} = require('internal/util');
 const { kEmitMessage } = require('internal/test_runner/tests_stream');
-const { createTestTree } = require('internal/test_runner/harness');
+const {
+  createTestTree,
+  startSubtestAfterBootstrap,
+} = require('internal/test_runner/harness');
 const {
   kAborted,
   kCancelledByParent,
@@ -68,17 +83,20 @@ const {
 const {
   convertStringToRegExp,
   countCompletedTest,
-  doesPathMatchFilter,
-  isSupportedFileType,
-  shouldColorizeTestFiles,
+  kDefaultPattern,
+  parseCommandLine,
 } = require('internal/test_runner/utils');
-const { basename, join, resolve } = require('path');
+const { Glob } = require('internal/fs/glob');
 const { once } = require('events');
 const {
   triggerUncaughtException,
   exitCodes: { kGenericUserError },
 } = internalBinding('errors');
+let debug = require('internal/util/debuglog').debuglog('test_runner', (fn) => {
+  debug = fn;
+});
 
+const kIsolatedProcessName = Symbol('kIsolatedProcessName');
 const kFilterArgs = ['--test', '--experimental-test-coverage', '--watch'];
 const kFilterArgValues = ['--test-reporter', '--test-reporter-destination'];
 const kDiagnosticsFilterArgs = ['tests', 'suites', 'pass', 'fail', 'cancelled', 'skipped', 'todo', 'duration_ms'];
@@ -88,66 +106,24 @@ const kCanceledTests = new SafeSet()
 
 let kResistStopPropagation;
 
-// TODO(cjihrig): Replace this with recursive readdir once it lands.
-function processPath(path, testFiles, options) {
-  const stats = statSync(path);
-
-  if (stats.isFile()) {
-    if (options.userSupplied ||
-        (options.underTestDir && isSupportedFileType(path)) ||
-        doesPathMatchFilter(path)) {
-      testFiles.add(path);
-    }
-  } else if (stats.isDirectory()) {
-    const name = basename(path);
-
-    if (!options.userSupplied && name === 'node_modules') {
-      return;
-    }
-
-    // 'test' directories get special treatment. Recursively add all .js,
-    // .cjs, and .mjs files in the 'test' directory.
-    const isTestDir = name === 'test';
-    const { underTestDir } = options;
-    const entries = readdirSync(path);
-
-    if (isTestDir) {
-      options.underTestDir = true;
-    }
-
-    options.userSupplied = false;
-
-    for (let i = 0; i < entries.length; i++) {
-      processPath(join(path, entries[i]), testFiles, options);
-    }
-
-    options.underTestDir = underTestDir;
+function createTestFileList(patterns, cwd) {
+  const hasUserSuppliedPattern = patterns != null;
+  if (!patterns || patterns.length === 0) {
+    patterns = [kDefaultPattern];
   }
-}
+  const glob = new Glob(patterns, {
+    __proto__: null,
+    cwd,
+    exclude: (name) => name === 'node_modules',
+  });
+  const results = glob.globSync();
 
-function createTestFileList() {
-  const cwd = process.cwd();
-  const hasUserSuppliedPaths = process.argv.length > 1;
-  const testPaths = hasUserSuppliedPaths ?
-    ArrayPrototypeSlice(process.argv, 1) : [cwd];
-  const testFiles = new SafeSet();
-
-  try {
-    for (let i = 0; i < testPaths.length; i++) {
-      const absolutePath = resolve(testPaths[i]);
-
-      processPath(absolutePath, testFiles, { __proto__: null, userSupplied: true });
-    }
-  } catch (err) {
-    if (err?.code === 'ENOENT') {
-      console.error(`Could not find '${err.path}'`);
-      process.exit(kGenericUserError);
-    }
-
-    throw err;
+  if (hasUserSuppliedPattern && results.length === 0 && ArrayPrototypeEvery(glob.matchers, (m) => !m.hasMagic())) {
+    console.error(`Could not find '${ArrayPrototypeJoin(patterns, ', ')}'`);
+    process.exit(kGenericUserError);
   }
 
-  return ArrayPrototypeSort(ArrayFrom(testFiles));
+  return ArrayPrototypeSort(results);
 }
 
 function filterExecArgv(arg, i, arr) {
@@ -155,7 +131,13 @@ function filterExecArgv(arg, i, arr) {
   !ArrayPrototypeSome(kFilterArgValues, (p) => arg === p || (i > 0 && arr[i - 1] === p) || StringPrototypeStartsWith(arg, `${p}=`));
 }
 
-function getRunArgs(path, { forceExit, inspectPort, testNamePatterns, only }) {
+function getRunArgs(path, { forceExit,
+                            inspectPort,
+                            testNamePatterns,
+                            testSkipPatterns,
+                            only,
+                            argv: suppliedArgs,
+                            execArgv }) {
   const argv = ArrayPrototypeFilter(process.execArgv, filterExecArgv);
   if (forceExit === true) {
     ArrayPrototypePush(argv, '--test-force-exit');
@@ -166,10 +148,23 @@ function getRunArgs(path, { forceExit, inspectPort, testNamePatterns, only }) {
   if (testNamePatterns != null) {
     ArrayPrototypeForEach(testNamePatterns, (pattern) => ArrayPrototypePush(argv, `--test-name-pattern=${pattern}`));
   }
+  if (testSkipPatterns != null) {
+    ArrayPrototypeForEach(testSkipPatterns, (pattern) => ArrayPrototypePush(argv, `--test-skip-pattern=${pattern}`));
+  }
   if (only === true) {
     ArrayPrototypePush(argv, '--test-only');
   }
-  ArrayPrototypePush(argv, path);
+
+  ArrayPrototypePushApply(argv, execArgv);
+
+  if (path === kIsolatedProcessName) {
+    ArrayPrototypePush(argv, '--test');
+    ArrayPrototypePushApply(argv, ArrayPrototypeSlice(process.argv, 1));
+  } else {
+    ArrayPrototypePush(argv, path);
+  }
+
+  ArrayPrototypePushApply(argv, suppliedArgs);
 
   return argv;
 }
@@ -292,7 +287,7 @@ class FileTest extends Test {
       ArrayPrototypePush(this.#rawBuffer, readData);
     }
     this.#rawBufferSize += dataLength;
-    this.#proccessRawBuffer();
+    this.#processRawBuffer();
 
     if (partialV8Header) {
       ArrayPrototypePush(this.#rawBuffer, TypedArrayPrototypeSubarray(v8Header, 0, 1));
@@ -301,10 +296,10 @@ class FileTest extends Test {
   }
   #drainRawBuffer() {
     while (this.#rawBuffer.length > 0) {
-      this.#proccessRawBuffer();
+      this.#processRawBuffer();
     }
   }
-  #proccessRawBuffer() {
+  #processRawBuffer() {
     // This method is called when it is known that there is at least one message
     let bufferHead = this.#rawBuffer[0];
     let headerIndex = bufferHead.indexOf(v8Header);
@@ -365,7 +360,9 @@ class FileTest extends Test {
 
 function runTestFile(path, filesWatcher, opts) {
   const watchMode = filesWatcher != null;
-  const subtest = opts.root.createSubtest(FileTest, path, { __proto__: null, signal: opts.signal }, async (t) => {
+  const testPath = path === kIsolatedProcessName ? '' : path;
+  const testOpts = { __proto__: null, signal: opts.signal };
+  const subtest = opts.root.createSubtest(FileTest, testPath, testOpts, async (t) => {
     const args = getRunArgs(path, opts);
     const stdio = ['pipe', 'pipe', 'pipe'];
     const env = { __proto__: null, ...process.env, NODE_TEST_CONTEXT: 'child-v8' };
@@ -377,14 +374,23 @@ function runTestFile(path, filesWatcher, opts) {
       env.FORCE_COLOR = '1';
     }
 
-    const child = spawn(process.execPath, args, { __proto__: null, signal: t.signal, encoding: 'utf8', env, stdio });
+    const child = spawn(
+      process.execPath, args,
+      {
+        __proto__: null,
+        signal: t.signal,
+        encoding: 'utf8',
+        env,
+        stdio,
+        cwd: opts.cwd,
+      },
+    );
     if (watchMode) {
       filesWatcher.runningProcesses.set(path, child);
       filesWatcher.watcher.watchChildProcessModules(child, path);
     }
 
     let err;
-
 
     child.on('error', (error) => {
       err = error;
@@ -394,7 +400,7 @@ function runTestFile(path, filesWatcher, opts) {
       subtest.parseMessage(data);
     });
 
-    const rl = createInterface({ __proto__: null, input: child.stderr });
+    const rl = new Interface({ __proto__: null, input: child.stderr });
     rl.on('line', (line) => {
       if (isInspectorMessage(line)) {
         process.stderr.write(line + '\n');
@@ -454,30 +460,64 @@ function runTestFile(path, filesWatcher, opts) {
 function watchFiles(testFiles, opts) {
   const runningProcesses = new SafeMap();
   const runningSubtests = new SafeMap();
-  const watcher = new FilesWatcher({ __proto__: null, debounce: 200, mode: 'filter', signal: opts.signal });
+  const watcherMode = opts.hasFiles ? 'filter' : 'all';
+  const watcher = new FilesWatcher({ __proto__: null, debounce: 200, mode: watcherMode, signal: opts.signal });
+  if (!opts.hasFiles) {
+    watcher.watchPath(opts.cwd);
+  }
   const filesWatcher = { __proto__: null, watcher, runningProcesses, runningSubtests };
   opts.root.harness.watching = true;
 
-  watcher.on('changed', ({ owners }) => {
-    watcher.unfilterFilesOwnedBy(owners);
-    PromisePrototypeThen(SafePromiseAllReturnVoid(testFiles, async (file) => {
-      if (!owners.has(file)) {
-        return;
+  async function restartTestFile(file) {
+    const runningProcess = runningProcesses.get(file);
+    if (runningProcess) {
+      runningProcess.kill();
+      await once(runningProcess, 'exit');
+    }
+    if (!runningSubtests.size) {
+      // Reset the topLevel counter
+      opts.root.harness.counters.topLevel = 0;
+    }
+    await runningSubtests.get(file);
+    runningSubtests.set(file, runTestFile(file, filesWatcher, opts));
+  }
+
+  // Watch for changes in current filtered files
+  watcher.on('changed', ({ owners, eventType }) => {
+    if (!opts.hasFiles && (eventType === 'rename' || eventType === 'change')) {
+      const updatedTestFiles = createTestFileList(opts.globPatterns, opts.cwd);
+      const newFileName = ArrayPrototypeFind(updatedTestFiles, (x) => !ArrayPrototypeIncludes(testFiles, x));
+      const previousFileName = ArrayPrototypeFind(testFiles, (x) => !ArrayPrototypeIncludes(updatedTestFiles, x));
+
+      testFiles = updatedTestFiles;
+
+      // When file renamed (created / deleted) we need to update the watcher
+      if (newFileName) {
+        owners = new SafeSet().add(newFileName);
+        watcher.filterFile(resolve(newFileName), owners);
       }
-      const runningProcess = runningProcesses.get(file);
-      if (runningProcess) {
-        runningProcess.kill();
-        await once(runningProcess, 'exit');
+
+      if (!newFileName && previousFileName) {
+        return; // Avoid rerunning files when file deleted
       }
-      if (!runningSubtests.size) {
-        // Reset the topLevel counter
-        opts.root.harness.counters.topLevel = 0;
-      }
-      await runningSubtests.get(file);
-      runningSubtests.set(file, runTestFile(file, filesWatcher, opts));
-    }, undefined, (error) => {
-      triggerUncaughtException(error, true /* fromPromise */);
-    }));
+    }
+
+    if (opts.isolation === 'none') {
+      PromisePrototypeThen(restartTestFile(kIsolatedProcessName), undefined, (error) => {
+        triggerUncaughtException(error, true /* fromPromise */);
+      });
+    } else {
+      watcher.unfilterFilesOwnedBy(owners);
+      PromisePrototypeThen(SafePromiseAllReturnVoid(testFiles, async (file) => {
+        if (!owners.has(file)) {
+          return;
+        }
+
+        await restartTestFile(file);
+      }, undefined, (error) => {
+        triggerUncaughtException(error, true /* fromPromise */);
+      }));
+    }
   });
   if (opts.signal) {
     kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
@@ -494,11 +534,16 @@ function watchFiles(testFiles, opts) {
   return filesWatcher;
 }
 
-function run(options) {
-  if (options === null || typeof options !== 'object') {
-    options = kEmptyObject;
-  }
-  let { testNamePatterns, shard } = options;
+function run(options = kEmptyObject) {
+  validateObject(options, 'options');
+
+  let {
+    testNamePatterns,
+    testSkipPatterns,
+    shard,
+    coverageExcludeGlobs,
+    coverageIncludeGlobs,
+  } = options;
   const {
     concurrency,
     timeout,
@@ -506,10 +551,17 @@ function run(options) {
     files,
     forceExit,
     inspectPort,
+    isolation = 'process',
     watch,
     setup,
     only,
-    plan,
+    globPatterns,
+    coverage = false,
+    lineCoverage = 0,
+    branchCoverage = 0,
+    functionCoverage = 0,
+    execArgv = [],
+    argv = [],
   } = options;
 
   if (files != null) {
@@ -530,17 +582,23 @@ function run(options) {
   if (only != null) {
     validateBoolean(only, 'options.only');
   }
+  if (globPatterns != null) {
+    validateArray(globPatterns, 'options.globPatterns');
+  }
+
+  if (globPatterns?.length > 0 && files?.length > 0) {
+    throw new ERR_INVALID_ARG_VALUE(
+      'options.globPatterns', globPatterns, 'is not supported when specifying \'options.files\'',
+    );
+  }
+
   if (shard != null) {
     validateObject(shard, 'options.shard');
     // Avoid re-evaluating the shard object in case it's a getter
     shard = { __proto__: null, index: shard.index, total: shard.total };
 
     validateInteger(shard.total, 'options.shard.total', 1);
-    validateInteger(shard.index, 'options.shard.index');
-
-    if (shard.index <= 0 || shard.total < shard.index) {
-      throw new ERR_OUT_OF_RANGE('options.shard.index', `>= 1 && <= ${shard.total} ("options.shard.total")`, shard.index);
-    }
+    validateInteger(shard.index, 'options.shard.index', 1, shard.total);
 
     if (watch) {
       throw new ERR_INVALID_ARG_VALUE('options.shard', watch, 'shards not supported with watch mode');
@@ -565,47 +623,183 @@ function run(options) {
       throw new ERR_INVALID_ARG_TYPE(name, ['string', 'RegExp'], value);
     });
   }
+  if (testSkipPatterns != null) {
+    if (!ArrayIsArray(testSkipPatterns)) {
+      testSkipPatterns = [testSkipPatterns];
+    }
 
-  const root = createTestTree({ __proto__: null, concurrency, timeout, signal, plan });
-  root.harness.shouldColorizeTestFiles ||= shouldColorizeTestFiles(root);
-
-  if (process.env.NODE_TEST_CONTEXT !== undefined) {
-    process.emitWarning('node:test run() is being called recursively within a test file. skipping running files.');
-    root.postRun();
-    return root.reporter;
+    testSkipPatterns = ArrayPrototypeMap(testSkipPatterns, (value, i) => {
+      if (isRegExp(value)) {
+        return value;
+      }
+      const name = `options.testSkipPatterns[${i}]`;
+      if (typeof value === 'string') {
+        return convertStringToRegExp(value, name);
+      }
+      throw new ERR_INVALID_ARG_TYPE(name, ['string', 'RegExp'], value);
+    });
   }
-  let testFiles = files ?? createTestFileList();
+  validateOneOf(isolation, 'options.isolation', ['process', 'none']);
+  validateBoolean(coverage, 'options.coverage');
+  if (coverageExcludeGlobs != null) {
+    if (!ArrayIsArray(coverageExcludeGlobs)) {
+      coverageExcludeGlobs = [coverageExcludeGlobs];
+    }
+    validateStringArray(coverageExcludeGlobs, 'options.coverageExcludeGlobs');
+  }
+  if (coverageIncludeGlobs != null) {
+    if (!ArrayIsArray(coverageIncludeGlobs)) {
+      coverageIncludeGlobs = [coverageIncludeGlobs];
+    }
+    validateStringArray(coverageIncludeGlobs, 'options.coverageIncludeGlobs');
+  }
+  validateInteger(lineCoverage, 'options.lineCoverage', 0, 100);
+  validateInteger(branchCoverage, 'options.branchCoverage', 0, 100);
+  validateInteger(functionCoverage, 'options.functionCoverage', 0, 100);
+
+  validateStringArray(argv, 'options.argv');
+  validateStringArray(execArgv, 'options.execArgv');
+
+  const rootTestOptions = { __proto__: null, concurrency, timeout, signal };
+  const globalOptions = {
+    __proto__: null,
+    // parseCommandLine() should not be used here. However, The existing run()
+    // behavior has relied on it, so removing it must be done in a semver major.
+    ...parseCommandLine(),
+    setup,  // This line can be removed when parseCommandLine() is removed here.
+    coverage,
+    coverageExcludeGlobs,
+    coverageIncludeGlobs,
+    lineCoverage: lineCoverage,
+    branchCoverage: branchCoverage,
+    functionCoverage: functionCoverage,
+  };
+  const root = createTestTree(rootTestOptions, globalOptions);
+
+  // This const should be replaced by a run option in the future.
+  const cwd = process.cwd();
+
+  let testFiles = files ?? createTestFileList(globPatterns, cwd);
 
   if (shard) {
     testFiles = ArrayPrototypeFilter(testFiles, (_, index) => index % shard.total === shard.index - 1);
   }
 
-  let postRun = () => root.postRun();
+  let teardown;
+  let postRun;
   let filesWatcher;
+  let runFiles;
   const opts = {
     __proto__: null,
     root,
     signal,
     inspectPort,
     testNamePatterns,
+    testSkipPatterns,
+    hasFiles: files != null,
+    globPatterns,
     only,
     forceExit,
-  };
-  if (watch) {
-    filesWatcher = watchFiles(testFiles, opts);
-    postRun = undefined;
-  }
-  const runFiles = () => {
-    root.harness.bootstrapComplete = true;
-    root.harness.allowTestsToRun = true;
-    return SafePromiseAllSettledReturnVoid(testFiles, (path) => {
-      const subtest = runTestFile(path, filesWatcher, opts);
-      filesWatcher?.runningSubtests.set(path, subtest);
-      return subtest;
-    });
+    cwd,
+    isolation,
+    argv,
+    execArgv,
   };
 
-  PromisePrototypeThen(PromisePrototypeThen(PromiseResolve(setup?.(root.reporter)), runFiles), postRun);
+  if (isolation === 'process') {
+    if (process.env.NODE_TEST_CONTEXT !== undefined) {
+      process.emitWarning('node:test run() is being called recursively within a test file. skipping running files.');
+      root.postRun();
+      return root.reporter;
+    }
+
+    if (watch) {
+      filesWatcher = watchFiles(testFiles, opts);
+    } else {
+      postRun = () => root.postRun();
+      teardown = () => root.harness.teardown();
+    }
+
+    runFiles = () => {
+      root.harness.bootstrapPromise = null;
+      root.harness.buildPromise = null;
+      return SafePromiseAllSettledReturnVoid(testFiles, (path) => {
+        const subtest = runTestFile(path, filesWatcher, opts);
+        filesWatcher?.runningSubtests.set(path, subtest);
+        return subtest;
+      });
+    };
+  } else if (isolation === 'none') {
+    if (watch) {
+      filesWatcher = watchFiles(testFiles, opts);
+      runFiles = async () => {
+        root.harness.bootstrapPromise = null;
+        root.harness.buildPromise = null;
+        const subtest = runTestFile(kIsolatedProcessName, filesWatcher, opts);
+        filesWatcher?.runningSubtests.set(kIsolatedProcessName, subtest);
+        return subtest;
+      };
+    } else {
+      runFiles = async () => {
+        const { promise, resolve: finishBootstrap } = createDeferredPromise();
+
+        await root.runInAsyncScope(async () => {
+          const parentURL = getCWDURL().href;
+          const cascadedLoader = esmLoader.getOrInitializeCascadedLoader();
+          let topLevelTestCount = 0;
+
+          root.harness.bootstrapPromise = promise;
+
+          const userImports = getOptionValue('--import');
+          for (let i = 0; i < userImports.length; i++) {
+            await cascadedLoader.import(userImports[i], parentURL, kEmptyObject);
+          }
+
+          for (let i = 0; i < testFiles.length; ++i) {
+            const testFile = testFiles[i];
+            const fileURL = pathToFileURL(testFile);
+            const parent = i === 0 ? undefined : parentURL;
+            let threw = false;
+            let importError;
+
+            root.entryFile = resolve(testFile);
+            debug('loading test file:', fileURL.href);
+            try {
+              await cascadedLoader.import(fileURL, parent, { __proto__: null });
+            } catch (err) {
+              threw = true;
+              importError = err;
+            }
+
+            debug(
+              'loaded "%s": top level test count before = %d and after = %d',
+              testFile,
+              topLevelTestCount,
+              root.subtests.length,
+            );
+            if (topLevelTestCount === root.subtests.length) {
+              // This file had no tests in it. Add the placeholder test.
+              const subtest = root.createSubtest(Test, testFile);
+              if (threw) {
+                subtest.fail(importError);
+              }
+              startSubtestAfterBootstrap(subtest);
+            }
+
+            topLevelTestCount = root.subtests.length;
+          }
+        });
+
+        debug('beginning test execution');
+        root.entryFile = null;
+        finishBootstrap();
+        root.processPendingSubtests();
+      };
+    }
+  }
+
+  const setupPromise = PromiseResolve(setup?.(root.reporter));
+  PromisePrototypeThen(PromisePrototypeThen(PromisePrototypeThen(setupPromise, runFiles), postRun), teardown);
 
   return root.reporter;
 }

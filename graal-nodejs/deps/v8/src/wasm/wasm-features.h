@@ -10,16 +10,20 @@
 #define V8_WASM_WASM_FEATURES_H_
 
 // The feature flags are declared in their own header.
-#include "src/base/enum-set.h"
-#include "src/base/macros.h"
+#include "src/common/globals.h"
 #include "src/wasm/wasm-feature-flags.h"
 
 // Features that are always enabled and do not have a flag.
-#define FOREACH_WASM_NON_FLAG_FEATURE(V)      \
-  V(eh, "exception handling opcodes", true)   \
-  V(reftypes, "reference type opcodes", true) \
-  V(simd, "SIMD opcodes", true)               \
-  V(threads, "thread opcodes", true)
+#define FOREACH_WASM_NON_FLAG_FEATURE(V)             \
+  V(reftypes, "reference type opcodes")              \
+  V(simd, "SIMD opcodes")                            \
+  V(threads, "thread opcodes")                       \
+  V(return_call, "return call opcodes")              \
+  V(extended_const, "extended constant expressions") \
+  V(relaxed_simd, "relaxed simd")                    \
+  V(gc, "garbage collection")                        \
+  V(typed_funcref, "typed function references")      \
+  V(js_inlining, "inline small wasm functions into JS")
 
 // All features, including features that do not have flags.
 #define FOREACH_WASM_FEATURE(V) \
@@ -28,11 +32,6 @@
 
 namespace v8 {
 namespace internal {
-
-class Context;
-template <typename T>
-class Handle;
-class Isolate;
 
 namespace wasm {
 
@@ -71,8 +70,8 @@ class WasmFeatures : public base::EnumSet<WasmFeature> {
   // not enabled by a flag and are always on.
   static WasmFeatures FromFlags();
   static V8_EXPORT_PRIVATE WasmFeatures FromIsolate(Isolate*);
-  static V8_EXPORT_PRIVATE WasmFeatures FromContext(Isolate*,
-                                                    Handle<Context> context);
+  static V8_EXPORT_PRIVATE WasmFeatures
+  FromContext(Isolate*, Handle<NativeContext> context);
 };
 
 // static
@@ -87,6 +86,18 @@ constexpr WasmFeatures WasmFeatures::None() { return {}; }
 
 // static
 constexpr WasmFeatures WasmFeatures::ForAsmjs() { return {}; }
+
+enum class CompileTimeImport {
+  kJsString,
+  kTextEncoder,
+  kTextDecoder,
+};
+
+inline std::ostream& operator<<(std::ostream& os, CompileTimeImport imp) {
+  return os << static_cast<int>(imp);
+}
+
+using CompileTimeImports = base::EnumSet<CompileTimeImport, int>;
 
 }  // namespace wasm
 }  // namespace internal

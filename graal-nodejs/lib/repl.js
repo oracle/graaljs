@@ -87,9 +87,9 @@ const {
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
+  StringPrototypeToLocaleLowerCase,
   StringPrototypeTrim,
   StringPrototypeTrimStart,
-  StringPrototypeToLocaleLowerCase,
   Symbol,
   SyntaxError,
   SyntaxErrorPrototype,
@@ -143,6 +143,7 @@ let debug = require('internal/util/debuglog').debuglog('repl', (fn) => {
   debug = fn;
 });
 const {
+  ErrorPrepareStackTrace,
   codes: {
     ERR_CANNOT_WATCH_SIGINT,
     ERR_INVALID_REPL_EVAL_CONFIG,
@@ -152,7 +153,6 @@ const {
   },
   isErrorStackTraceLimitWritable,
   overrideStackTrace,
-  ErrorPrepareStackTrace,
 } = require('internal/errors');
 const { sendInspectorCommand } = require('internal/util/inspector');
 const { getOptionValue } = require('internal/options');
@@ -912,8 +912,8 @@ function REPLServer(prompt,
           StringPrototypeCharAt(trimmedCmd, 1) !== '.' &&
           NumberIsNaN(NumberParseFloat(trimmedCmd))) {
         const matches = RegExpPrototypeExec(/^\.([^\s]+)\s*(.*)$/, trimmedCmd);
-        const keyword = matches && matches[1];
-        const rest = matches && matches[2];
+        const keyword = matches?.[1];
+        const rest = matches?.[2];
         if (ReflectApply(_parseREPLKeyword, self, [keyword, rest]) === true) {
           return;
         }
@@ -935,7 +935,9 @@ function REPLServer(prompt,
       ReflectApply(_memory, self, [cmd]);
 
       if (e && !self[kBufferedCommandSymbol] &&
-          StringPrototypeStartsWith(StringPrototypeTrim(cmd), 'npm ')) {
+          StringPrototypeStartsWith(StringPrototypeTrim(cmd), 'npm ') &&
+          !(e instanceof Recoverable)
+      ) {
         self.output.write('npm should be run outside of the ' +
                                 'Node.js REPL, in your normal shell.\n' +
                                 '(Press Ctrl+D to exit.)\n');
@@ -1255,7 +1257,7 @@ function filteredOwnPropertyNames(obj) {
   let isObjectPrototype = false;
   if (ObjectGetPrototypeOf(obj) === null) {
     const ctorDescriptor = ObjectGetOwnPropertyDescriptor(obj, 'constructor');
-    if (ctorDescriptor && ctorDescriptor.value) {
+    if (ctorDescriptor?.value) {
       const ctorProto = ObjectGetPrototypeOf(ctorDescriptor.value);
       isObjectPrototype = ctorProto && ObjectGetPrototypeOf(ctorProto) === obj;
     }
@@ -1530,7 +1532,7 @@ function complete(line, callback) {
         let p;
         if ((typeof obj === 'object' && obj !== null) ||
             typeof obj === 'function') {
-          memberGroups.push(filteredOwnPropertyNames(obj));
+          ArrayPrototypePush(memberGroups, filteredOwnPropertyNames(obj));
           p = ObjectGetPrototypeOf(obj);
         } else {
           p = obj.constructor ? obj.constructor.prototype : null;
@@ -1538,7 +1540,7 @@ function complete(line, callback) {
         // Circular refs possible? Let's guard against that.
         let sentinel = 5;
         while (p !== null && sentinel-- !== 0) {
-          memberGroups.push(filteredOwnPropertyNames(p));
+          ArrayPrototypePush(memberGroups, filteredOwnPropertyNames(p));
           p = ObjectGetPrototypeOf(p);
         }
       } catch {

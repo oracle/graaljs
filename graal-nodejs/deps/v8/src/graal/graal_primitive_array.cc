@@ -53,7 +53,8 @@ v8::Local<v8::PrimitiveArray> GraalPrimitiveArray::New(v8::Isolate* isolate, int
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_array = graal_isolate->GetJNIEnv()->NewObjectArray(length, graal_isolate->GetObjectClass(), NULL);
     GraalPrimitiveArray* graal_array = new GraalPrimitiveArray(graal_isolate, java_array);
-    return reinterpret_cast<v8::PrimitiveArray*> (graal_array);
+    v8::PrimitiveArray* v8_array = reinterpret_cast<v8::PrimitiveArray*> (graal_array);
+    return v8::Local<v8::PrimitiveArray>::New(isolate, v8_array);
 }
 
 int GraalPrimitiveArray::Length() const {
@@ -71,5 +72,6 @@ v8::Local<v8::Primitive> GraalPrimitiveArray::Get(v8::Isolate* isolate, int inde
     jobject java_array = GetJavaObject();
     jobject java_item = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, index);
     GraalValue* graal_item = GraalValue::FromJavaObject(graal_isolate, java_item);
-    return reinterpret_cast<v8::Primitive*> (graal_item);
+    v8::Primitive* v8_item = reinterpret_cast<v8::Primitive*> (graal_item);
+    return v8::Local<v8::Primitive>::New(isolate, v8_item);
 }

@@ -67,12 +67,14 @@ v8::Local<v8::Number> GraalNumber::New(v8::Isolate* isolate, double value) {
     if (intValue == value && !(value == 0 && std::signbit(value))) {
         GraalNumber* cached_number = graal_isolate->CachedNumber(intValue);
         if (cached_number != nullptr) {
-            return reinterpret_cast<v8::Number*> (cached_number);
+            v8::Number* v8_cached_number = reinterpret_cast<v8::Number*> (cached_number);
+            return v8::Local<v8::Number>::New(isolate, v8_cached_number);
         }
     }
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::number_new, Object, (jdouble) value);
     GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value, java_number);
-    return reinterpret_cast<v8::Number*> (graal_number);
+    v8::Number* v8_number = reinterpret_cast<v8::Number*> (graal_number);
+    return v8::Local<v8::Number>::New(isolate, v8_number);
 }
 
 v8::Local<v8::Integer> GraalNumber::New(v8::Isolate* isolate, int value) {
@@ -81,7 +83,8 @@ v8::Local<v8::Integer> GraalNumber::New(v8::Isolate* isolate, int value) {
     if (graal_number == nullptr) {
         graal_number = NewNotCached(graal_isolate, value);
     }
-    return reinterpret_cast<v8::Integer*> (graal_number);
+    v8::Integer* v8_number = reinterpret_cast<v8::Integer*> (graal_number);
+    return v8::Local<v8::Integer>::New(isolate, v8_number);
 }
 
 v8::Local<v8::Integer> GraalNumber::NewFromUnsigned(v8::Isolate* isolate, uint32_t value) {
@@ -89,12 +92,14 @@ v8::Local<v8::Integer> GraalNumber::NewFromUnsigned(v8::Isolate* isolate, uint32
     if (value <= GraalIsolate::number_cache_high_) {
         GraalNumber* cached_number = graal_isolate->CachedNumber(value);
         if (cached_number != nullptr) {
-            return reinterpret_cast<v8::Integer*> (cached_number);
+            v8::Integer* v8_cached_number = reinterpret_cast<v8::Integer*> (cached_number);
+            return v8::Local<v8::Integer>::New(isolate, v8_cached_number);
         }
     }
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::integer_new, Object, (jlong) value);
     GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value, java_number);
-    return reinterpret_cast<v8::Integer*> (graal_number);
+    v8::Integer* v8_number = reinterpret_cast<v8::Integer*> (graal_number);
+    return v8::Local<v8::Integer>::New(isolate, v8_number);
 }
 
 double GraalNumber::Value() const {

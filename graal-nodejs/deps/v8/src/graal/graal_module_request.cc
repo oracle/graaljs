@@ -55,12 +55,16 @@ v8::Local<v8::String> GraalModuleRequest::GetSpecifier() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_specifier, graal_isolate, GraalAccessMethod::module_request_get_specifier, Object, GetJavaObject());
     GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
-    return reinterpret_cast<v8::String*> (graal_specifier);
+    v8::String* v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_specifier);
 }
 
-v8::Local<v8::FixedArray> GraalModuleRequest::GetImportAssertions() const {
+v8::Local<v8::FixedArray> GraalModuleRequest::GetImportAttributes() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_assertions, graal_isolate, GraalAccessMethod::module_request_get_import_assertions, Object, GetJavaObject());
     GraalFixedArray* graal_assertions = GraalFixedArray::Allocate(graal_isolate, java_assertions);
-    return reinterpret_cast<v8::FixedArray*> (graal_assertions);
+    v8::FixedArray* v8_assertions = reinterpret_cast<v8::FixedArray*> (graal_assertions);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::FixedArray>::New(v8_isolate, v8_assertions);
 }

@@ -49,7 +49,7 @@ class GraalModuleRequest : public GraalHandleContent {
 public:
     inline static GraalModuleRequest* Allocate(GraalIsolate* isolate, jobject java_module_request);
     v8::Local<v8::String> GetSpecifier() const;
-    v8::Local<v8::FixedArray> GetImportAssertions() const;
+    v8::Local<v8::FixedArray> GetImportAttributes() const;
 protected:
     inline GraalModuleRequest(GraalIsolate* isolate, jobject java_module_request);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;

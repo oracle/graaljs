@@ -206,7 +206,8 @@ v8::Local<v8::String> GraalString::NewFromModifiedUtf8(v8::Isolate* isolate, con
     JNI_CALL(jobject, java_truffle_string, graal_isolate, GraalAccessMethod::string_new, Object, java_string);
 
     GraalString* graal_string = GraalString::Allocate(graal_isolate, java_truffle_string);
-    return reinterpret_cast<v8::String*> (graal_string);
+    v8::String* v8_string = reinterpret_cast<v8::String*> (graal_string);
+    return v8::Local<v8::String>::New(isolate, v8_string);
 }
 
 v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::NewStringType type, int length) {
@@ -236,7 +237,8 @@ v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const ui
     }
 
     GraalString* graal_string = GraalString::Allocate(graal_isolate, java_result);
-    return reinterpret_cast<v8::String*> (graal_string);
+    v8::String* v8_string = reinterpret_cast<v8::String*> (graal_string);
+    return v8::Local<v8::String>::New(isolate, v8_string);
 }
 
 bool GraalString::IsString() const {
@@ -420,5 +422,14 @@ v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String:
 
 bool GraalString::ContainsOnlyOneByte() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::string_contains_only_one_byte, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalString::StringEquals(v8::Local<v8::String> str) const {
+    GraalString* graal_str = reinterpret_cast<GraalString*> (*str);
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_this = GetJavaObject();
+    jobject java_str = graal_str->GetJavaObject();
+    JNI_CALL(jboolean, result, graal_isolate, GraalAccessMethod::string_equals, Boolean, java_this, java_str);
     return result;
 }

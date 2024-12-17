@@ -5,6 +5,8 @@
 #include "src/ic/binary-op-assembler.h"
 
 #include "src/common/globals.h"
+#include "src/execution/protectors.h"
+#include "src/objects/property-cell.h"
 
 namespace v8 {
 namespace internal {
@@ -182,12 +184,14 @@ TNode<Object> BinaryOpAssembler::Generate_AddWithFeedback(
 
       BIND(&lhs_is_string);
       {
+        Label lhs_is_string_rhs_is_not_string(this);
+
         TNode<Uint16T> rhs_instance_type = LoadInstanceType(rhs_heap_object);
 
-        // Exit unless {rhs} is a string. Since {lhs} is a string we no longer
-        // need an Oddball check.
+        // Fast path where both {lhs} and {rhs} are strings. Since {lhs} is a
+        // string we no longer need an Oddball check.
         GotoIfNot(IsStringInstanceType(rhs_instance_type),
-                  &call_with_any_feedback);
+                  &lhs_is_string_rhs_is_not_string);
 
         var_type_feedback = SmiConstant(BinaryOperationFeedback::kString);
         UpdateFeedback(var_type_feedback.value(), maybe_feedback_vector(),
@@ -196,9 +200,33 @@ TNode<Object> BinaryOpAssembler::Generate_AddWithFeedback(
             CallBuiltin(Builtin::kStringAdd_CheckNone, context(), lhs, rhs);
 
         Goto(&end);
+
+        BIND(&lhs_is_string_rhs_is_not_string);
+
+        GotoIfNot(IsStringWrapper(rhs_heap_object), &call_with_any_feedback);
+
+        // lhs is a string and rhs is a string wrapper.
+
+        TNode<PropertyCell> to_primitive_protector =
+            StringWrapperToPrimitiveProtectorConstant();
+        GotoIf(TaggedEqual(LoadObjectField(to_primitive_protector,
+                                           PropertyCell::kValueOffset),
+                           SmiConstant(Protectors::kProtectorInvalid)),
+               &call_with_any_feedback);
+
+        var_type_feedback =
+            SmiConstant(BinaryOperationFeedback::kStringOrStringWrapper);
+        UpdateFeedback(var_type_feedback.value(), maybe_feedback_vector(),
+                       slot_id, update_feedback_mode);
+        TNode<String> rhs_string =
+            CAST(LoadJSPrimitiveWrapperValue(CAST(rhs_heap_object)));
+        var_result = CallBuiltin(Builtin::kStringAdd_CheckNone, context(), lhs,
+                                 rhs_string);
+        Goto(&end);
       }
     }
   }
+  // TODO(v8:12199): Support "string wrapper + string" concatenation too.
 
   BIND(&check_rhsisoddball);
   {
@@ -794,16 +822,21 @@ TNode<Object> BinaryOpAssembler::Generate_BitwiseBinaryOpWithOptionalFeedback(
   Label if_left_bigint(this), if_left_bigint64(this);
   Label if_left_number_right_bigint(this, Label::kDeferred);
 
+  FeedbackValues feedback =
+      slot ? FeedbackValues{&var_left_feedback, maybe_feedback_vector, slot,
+                            update_feedback_mode}
+           : FeedbackValues();
+
   TaggedToWord32OrBigIntWithFeedback(
       context(), left, &if_left_number, &var_left_word32, &if_left_bigint,
       IsBigInt64OpSupported(this, bitwise_op) ? &if_left_bigint64 : nullptr,
-      &var_left_bigint, slot ? &var_left_feedback : nullptr);
+      &var_left_bigint, feedback);
 
   BIND(&if_left_number);
+  feedback.var_feedback = slot ? &var_right_feedback : nullptr;
   TaggedToWord32OrBigIntWithFeedback(
       context(), right, &do_number_op, &var_right_word32,
-      &if_left_number_right_bigint, nullptr, nullptr,
-      slot ? &var_right_feedback : nullptr);
+      &if_left_number_right_bigint, nullptr, nullptr, feedback);
 
   BIND(&if_left_number_right_bigint);
   {
@@ -1047,9 +1080,11 @@ BinaryOpAssembler::Generate_BitwiseBinaryOpWithSmiOperandAndOptionalFeedback(
   BIND(&if_lhsisnotsmi);
   {
     TNode<HeapObject> left_pointer = CAST(left);
+    FeedbackValues feedback_values{&var_left_feedback, maybe_feedback_vector,
+                                   slot, update_feedback_mode};
     TaggedPointerToWord32OrBigIntWithFeedback(
         context(), left_pointer, &do_number_op, &var_left_word32,
-        &if_bigint_mix, nullptr, &var_left_bigint, &var_left_feedback);
+        &if_bigint_mix, nullptr, &var_left_bigint, feedback_values);
     BIND(&do_number_op);
     {
       result =
@@ -1075,8 +1110,10 @@ BinaryOpAssembler::Generate_BitwiseBinaryOpWithSmiOperandAndOptionalFeedback(
   }
 
   BIND(&done);
-  UpdateFeedback(feedback.value(), (*maybe_feedback_vector)(), *slot,
-                 update_feedback_mode);
+  if (slot) {
+    UpdateFeedback(feedback.value(), (*maybe_feedback_vector)(), *slot,
+                   update_feedback_mode);
+  }
   return result.value();
 }
 

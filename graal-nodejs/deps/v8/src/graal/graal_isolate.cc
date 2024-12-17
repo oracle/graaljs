@@ -849,6 +849,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_measure_memory, "isolateMeasureMemory", "(Ljava/lang/Object;Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_set_task_runner, "isolateSetTaskRunner", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_execute_runnable, "isolateExecuteRunnable", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_get_default_locale, "isolateGetDefaultLocale", "()Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -985,6 +986,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::module_get_module_requests, "moduleGetModuleRequests", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_request_get_specifier, "moduleRequestGetSpecifier", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_request_get_import_assertions, "moduleRequestGetImportAssertions", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::module_is_graph_async, "moduleIsGraphAsync", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::module_is_source_text_module, "moduleIsSourceTextModule", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::script_or_module_get_resource_name, "scriptOrModuleGetResourceName", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::script_or_module_get_host_defined_options, "scriptOrModuleGetHostDefinedOptions", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_new, "valueSerializerNew", "(J)Ljava/lang/Object;")
@@ -1009,6 +1012,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::value_deserializer_get_wire_format_version, "valueDeserializerGetWireFormatVersion", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::map_new, "mapNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::map_set, "mapSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::map_get, "mapGet", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::map_delete, "mapDelete", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::set_new, "setNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::set_add, "setAdd", "(Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::big_int_int64_value, "bigIntInt64Value", "(Ljava/lang/Object;)J")
@@ -1415,6 +1420,27 @@ jobject GraalIsolate::CorrectReturnValue(GraalValue* value, jobject null_replace
     return result;
 }
 
+v8::Local<v8::Value> GraalIsolate::CorrectReturnValue(v8::internal::Address value) {
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (this);
+    GraalValue* graal_value = reinterpret_cast<GraalValue*> (value);
+    v8::Local<v8::Value> v8_value;
+    if (graal_value == nullptr) {
+        v8_value = Undefined(isolate);
+    } else {
+        jobject java_value = graal_value->GetJavaObject();
+        if (java_value == this->int32_placeholder_) {
+            v8_value = GraalNumber::New(isolate, (int32_t) this->return_value_);
+        } else if (java_value == this->uint32_placeholder_) {
+            v8_value = GraalNumber::NewFromUnsigned(isolate, (uint32_t) this->return_value_);
+        } else if (java_value == this->double_placeholder_) {
+            v8_value = GraalNumber::New(isolate, this->return_value_);
+        } else {
+            v8_value = v8::Local<v8::Value>::New(isolate, reinterpret_cast<v8::Value*> (graal_value));
+        }
+    }
+    return v8_value;
+}
+
 int GraalIsolate::argc = 0;
 char** GraalIsolate::argv = nullptr;
 int GraalIsolate::mode = GraalIsolate::kModeDefault;
@@ -1558,8 +1584,9 @@ void GraalIsolate::HandleEmptyCallResult() {
             jobject java_context = CurrentJavaContext();
             JNI_CALL(jobject, exception_object, this, GraalAccessMethod::try_catch_exception, Object, java_context, java_exception);
             GraalValue* graal_exception = GraalValue::FromJavaObject(this, exception_object);
-            v8::Value* exception = reinterpret_cast<v8::Value*> (graal_exception);
+            v8::Value* v8_exception = reinterpret_cast<v8::Value*> (graal_exception);
             v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (this);
+            v8::Local<v8::Value> exception = v8::Local<v8::Value>::New(v8_isolate, v8_exception);
             NotifyMessageListener(v8::Exception::CreateMessage(v8_isolate, exception), exception, java_exception);
             if (error_to_ignore_ != nullptr) {
                 env->DeleteGlobalRef(error_to_ignore_);
@@ -1649,4 +1676,12 @@ void GraalIsolate::SetTaskRunner(std::shared_ptr<v8::TaskRunner> task_runner) {
 
 void GraalIsolate::ExecuteRunnable(jobject runnable) {
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_execute_runnable, runnable);
+}
+
+std::string GraalIsolate::GetDefaultLocale() {
+    JNI_CALL(jobject, java_locale, this, GraalAccessMethod::isolate_get_default_locale, Object);
+    const char *chars = jni_env_->GetStringUTFChars((jstring) java_locale, nullptr);
+    std::string locale = std::string(chars);
+    jni_env_->ReleaseStringUTFChars((jstring) java_locale, chars);
+    return locale;
 }

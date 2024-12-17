@@ -678,14 +678,16 @@ void ArrayLiteralBoilerplateBuilder::BuildBoilerplateDescription(
 
       if (literal && literal->type() == Literal::kTheHole) {
         DCHECK(IsHoleyElementsKind(kind));
-        DCHECK(GetBoilerplateValue(element, isolate)->IsTheHole(isolate));
-        FixedDoubleArray::cast(*elements).set_the_hole(array_index);
+        DCHECK(IsTheHole(*GetBoilerplateValue(element, isolate), isolate));
+        FixedDoubleArray::cast(*elements)->set_the_hole(array_index);
         continue;
       } else if (literal && literal->IsNumber()) {
-        FixedDoubleArray::cast(*elements).set(array_index, literal->AsNumber());
+        FixedDoubleArray::cast(*elements)->set(array_index,
+                                               literal->AsNumber());
       } else {
-        DCHECK(GetBoilerplateValue(element, isolate)->IsUninitialized(isolate));
-        FixedDoubleArray::cast(*elements).set(array_index, 0);
+        DCHECK(
+            IsUninitialized(*GetBoilerplateValue(element, isolate), isolate));
+        FixedDoubleArray::cast(*elements)->set(array_index, 0);
       }
 
     } else {
@@ -697,24 +699,25 @@ void ArrayLiteralBoilerplateBuilder::BuildBoilerplateDescription(
       // New handle scope here, needs to be after BuildContants().
       typename IsolateT::HandleScopeType scope(isolate);
 
-      Object boilerplate_value = *GetBoilerplateValue(element, isolate);
+      Tagged<Object> boilerplate_value = *GetBoilerplateValue(element, isolate);
       // We shouldn't allocate after creating the boilerplate value.
       DisallowGarbageCollection no_gc;
 
-      if (boilerplate_value.IsTheHole(isolate)) {
+      if (IsTheHole(boilerplate_value, isolate)) {
         DCHECK(IsHoleyElementsKind(kind));
         continue;
       }
 
-      if (boilerplate_value.IsUninitialized(isolate)) {
+      if (IsUninitialized(boilerplate_value, isolate)) {
         boilerplate_value = Smi::zero();
       }
 
       DCHECK_EQ(kind, GetMoreGeneralElementsKind(
-                          kind, boilerplate_value.OptimalElementsKind(
+                          kind, Object::OptimalElementsKind(
+                                    boilerplate_value,
                                     GetPtrComprCageBase(*elements))));
 
-      FixedArray::cast(*elements).set(array_index, boilerplate_value);
+      FixedArray::cast(*elements)->set(array_index, boilerplate_value);
     }
   }  // namespace internal
 
@@ -801,9 +804,9 @@ Handle<TemplateObjectDescription> GetTemplateObject::GetOrBuildDescription(
   bool raw_and_cooked_match = true;
   {
     DisallowGarbageCollection no_gc;
-    FixedArray raw_strings = *raw_strings_handle;
+    Tagged<FixedArray> raw_strings = *raw_strings_handle;
 
-    for (int i = 0; i < raw_strings.length(); ++i) {
+    for (int i = 0; i < raw_strings->length(); ++i) {
       if (this->raw_strings()->at(i) != this->cooked_strings()->at(i)) {
         // If the AstRawStrings don't match, then neither should the allocated
         // Strings, since the AstValueFactory should have deduplicated them
@@ -814,7 +817,7 @@ Handle<TemplateObjectDescription> GetTemplateObject::GetOrBuildDescription(
 
         raw_and_cooked_match = false;
       }
-      raw_strings.set(i, *this->raw_strings()->at(i)->string());
+      raw_strings->set(i, *this->raw_strings()->at(i)->string());
     }
   }
   Handle<FixedArray> cooked_strings_handle = raw_strings_handle;
@@ -822,13 +825,13 @@ Handle<TemplateObjectDescription> GetTemplateObject::GetOrBuildDescription(
     cooked_strings_handle = isolate->factory()->NewFixedArray(
         this->cooked_strings()->length(), AllocationType::kOld);
     DisallowGarbageCollection no_gc;
-    FixedArray cooked_strings = *cooked_strings_handle;
+    Tagged<FixedArray> cooked_strings = *cooked_strings_handle;
     ReadOnlyRoots roots(isolate);
-    for (int i = 0; i < cooked_strings.length(); ++i) {
+    for (int i = 0; i < cooked_strings->length(); ++i) {
       if (this->cooked_strings()->at(i) != nullptr) {
-        cooked_strings.set(i, *this->cooked_strings()->at(i)->string());
+        cooked_strings->set(i, *this->cooked_strings()->at(i)->string());
       } else {
-        cooked_strings.set_undefined(roots, i);
+        cooked_strings->set(i, roots.undefined_value(), SKIP_WRITE_BARRIER);
       }
     }
   }
@@ -844,13 +847,13 @@ template EXPORT_TEMPLATE_DEFINE(V8_BASE_EXPORT)
 
 static bool IsCommutativeOperationWithSmiLiteral(Token::Value op) {
   // Add is not commutative due to potential for string addition.
-  return op == Token::MUL || op == Token::BIT_AND || op == Token::BIT_OR ||
-         op == Token::BIT_XOR;
+  return op == Token::kMul || op == Token::kBitAnd || op == Token::kBitOr ||
+         op == Token::kBitXor;
 }
 
 // Check for the pattern: x + 1.
 static bool MatchSmiLiteralOperation(Expression* left, Expression* right,
-                                     Expression** expr, Smi* literal) {
+                                     Expression** expr, Tagged<Smi>* literal) {
   if (right->IsSmiLiteral()) {
     *expr = left;
     *literal = right->AsLiteral()->AsSmiLiteral();
@@ -860,38 +863,15 @@ static bool MatchSmiLiteralOperation(Expression* left, Expression* right,
 }
 
 bool BinaryOperation::IsSmiLiteralOperation(Expression** subexpr,
-                                            Smi* literal) {
+                                            Tagged<Smi>* literal) {
   return MatchSmiLiteralOperation(left_, right_, subexpr, literal) ||
          (IsCommutativeOperationWithSmiLiteral(op()) &&
           MatchSmiLiteralOperation(right_, left_, subexpr, literal));
 }
 
-static bool IsTypeof(Expression* expr) {
-  UnaryOperation* maybe_unary = expr->AsUnaryOperation();
-  return maybe_unary != nullptr && maybe_unary->op() == Token::TYPEOF;
-}
-
-// Check for the pattern: typeof <expression> equals <string literal>.
-static bool MatchLiteralCompareTypeof(Expression* left, Token::Value op,
-                                      Expression* right, Expression** expr,
-                                      Literal** literal) {
-  if (IsTypeof(left) && right->IsStringLiteral() && Token::IsEqualityOp(op)) {
-    *expr = left->AsUnaryOperation()->expression();
-    *literal = right->AsLiteral();
-    return true;
-  }
-  return false;
-}
-
-bool CompareOperation::IsLiteralCompareTypeof(Expression** expr,
-                                              Literal** literal) {
-  return MatchLiteralCompareTypeof(left_, op(), right_, expr, literal) ||
-         MatchLiteralCompareTypeof(right_, op(), left_, expr, literal);
-}
-
 static bool IsVoidOfLiteral(Expression* expr) {
   UnaryOperation* maybe_unary = expr->AsUnaryOperation();
-  return maybe_unary != nullptr && maybe_unary->op() == Token::VOID &&
+  return maybe_unary != nullptr && maybe_unary->op() == Token::kVoid &&
          maybe_unary->expression()->IsLiteral();
 }
 
@@ -899,7 +879,7 @@ static bool MatchLiteralStrictCompareBoolean(Expression* left, Token::Value op,
                                              Expression* right,
                                              Expression** expr,
                                              Literal** literal) {
-  if (left->IsBooleanLiteral() && op == Token::EQ_STRICT) {
+  if (left->IsBooleanLiteral() && op == Token::kEqStrict) {
     *expr = right;
     *literal = left->AsLiteral();
     return true;
@@ -946,6 +926,26 @@ static bool MatchLiteralCompareNull(Expression* left, Token::Value op,
 bool CompareOperation::IsLiteralCompareNull(Expression** expr) {
   return MatchLiteralCompareNull(left_, op(), right_, expr) ||
          MatchLiteralCompareNull(right_, op(), left_, expr);
+}
+
+static bool MatchLiteralCompareEqualVariable(Expression* left, Token::Value op,
+                                             Expression* right,
+                                             Expression** expr,
+                                             Literal** literal) {
+  if (Token::IsEqualityOp(op) && left->AsVariableProxy() &&
+      right->IsStringLiteral()) {
+    *expr = left->AsVariableProxy();
+    *literal = right->AsLiteral();
+    return true;
+  }
+  return false;
+}
+
+bool CompareOperation::IsLiteralCompareEqualVariable(Expression** expr,
+                                                     Literal** literal) {
+  return (
+      MatchLiteralCompareEqualVariable(left_, op(), right_, expr, literal) ||
+      MatchLiteralCompareEqualVariable(right_, op(), left_, expr, literal));
 }
 
 void CallBase::ComputeSpreadPosition() {

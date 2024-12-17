@@ -30,7 +30,6 @@ const {
   Promise,
   PromiseReject,
   StringPrototypeSlice,
-  SymbolDispose,
 } = primordials;
 
 const {
@@ -51,6 +50,7 @@ const {
 const {
   kEmptyObject,
   promisify,
+  SymbolDispose,
 } = require('internal/util');
 const { validateAbortSignal } = require('internal/validators');
 
@@ -163,7 +163,7 @@ Interface.prototype.question[promisify.custom] = function question(query, option
     options = kEmptyObject;
   }
 
-  if (options.signal && options.signal.aborted) {
+  if (options.signal?.aborted) {
     return PromiseReject(
       new AbortError(undefined, { cause: options.signal.reason }));
   }

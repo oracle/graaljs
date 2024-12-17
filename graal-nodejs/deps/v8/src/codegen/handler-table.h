@@ -13,7 +13,7 @@ namespace v8 {
 namespace internal {
 
 class Assembler;
-class ByteArray;
+class TrustedByteArray;
 class BytecodeArray;
 class InstructionStream;
 class Code;
@@ -24,10 +24,10 @@ class WasmCode;
 
 // HandlerTable is a byte array containing entries for exception handlers in
 // the code object it is associated with. The tables come in two flavors:
-// 1) Based on ranges: Used for unoptimized code. Stored in a {ByteArray} that
-//    is attached to each {BytecodeArray}. Contains one entry per exception
-//    handler and a range representing the try-block covered by that handler.
-//    Layout looks as follows:
+// 1) Based on ranges: Used for unoptimized code. Stored in a
+//   {TrustedByteArray} that is attached to each {BytecodeArray}. Contains one
+//   entry per exception handler and a range representing the try-block covered
+//   by that handler. Layout looks as follows:
 //      [ range-start , range-end , handler-offset , handler-data ]
 // 2) Based on return addresses: Used for turbofanned code. Stored directly in
 //    the instruction stream of the {InstructionStream} object. Contains one
@@ -55,13 +55,13 @@ class V8_EXPORT_PRIVATE HandlerTable {
   enum EncodingMode { kRangeBasedEncoding, kReturnAddressBasedEncoding };
 
   // Constructors for the various encodings.
-  explicit HandlerTable(InstructionStream code);
-  explicit HandlerTable(Code code);
-  explicit HandlerTable(ByteArray byte_array);
+  explicit HandlerTable(Tagged<InstructionStream> code);
+  explicit HandlerTable(Tagged<Code> code);
+  explicit HandlerTable(Tagged<TrustedByteArray> byte_array);
 #if V8_ENABLE_WEBASSEMBLY
   explicit HandlerTable(const wasm::WasmCode* code);
 #endif  // V8_ENABLE_WEBASSEMBLY
-  explicit HandlerTable(BytecodeArray bytecode_array);
+  explicit HandlerTable(Tagged<BytecodeArray> bytecode_array);
   HandlerTable(Address handler_table, int handler_table_size,
                EncodingMode encoding_mode);
 
@@ -122,8 +122,9 @@ class V8_EXPORT_PRIVATE HandlerTable {
 #endif
 
   // Direct pointer into the encoded data. This pointer potentially points into
-  // objects on the GC heap (either {ByteArray} or {InstructionStream}) and
-  // could become stale during a collection. Hence we disallow any allocation.
+  // objects on the GC heap (either {TrustedByteArray} or {InstructionStream})
+  // and could become stale during a collection. Hence we disallow any
+  // allocation.
   const Address raw_encoded_data_;
   DISALLOW_GARBAGE_COLLECTION(no_gc_)
 

@@ -1301,18 +1301,20 @@ added: v16.7.0
 
 When using [`fs.cp()`][], `src` or `dest` pointed to an invalid path.
 
-<a id="ERR_FS_CP_FIFO_PIPE"></a>
+<a id="ERR_HTTP_BODY_NOT_ALLOWED"></a>
 
 ### `ERR_HTTP_BODY_NOT_ALLOWED`
 
 An error is thrown when writing to an HTTP response which does not allow
-contents. <a id="ERR_HTTP_BODY_NOT_ALLOWED"></a>
+contents.
+
+<a id="ERR_HTTP_CONTENT_LENGTH_MISMATCH"></a>
 
 ### `ERR_HTTP_CONTENT_LENGTH_MISMATCH`
 
 Response body size doesn't match with the specified content-length header value.
 
-<a id="ERR_HTTP_CONTENT_LENGTH_MISMATCH"></a>
+<a id="ERR_FS_CP_FIFO_PIPE"></a>
 
 ### `ERR_FS_CP_FIFO_PIPE`
 
@@ -1755,49 +1757,38 @@ is set for the `Http2Stream`.
 
 An attempt was made to construct an object using a non-public constructor.
 
-<a id="ERR_IMPORT_ASSERTION_TYPE_FAILED"></a>
+<a id="ERR_IMPORT_ATTRIBUTE_TYPE_INCOMPATIBLE"></a>
 
-### `ERR_IMPORT_ASSERTION_TYPE_FAILED`
+### `ERR_IMPORT_ATTRIBUTE_TYPE_INCOMPATIBLE`
 
 <!-- YAML
 added:
-  - v17.1.0
-  - v16.14.0
+  - v21.1.0
 -->
 
 An import `type` attribute was provided, but the specified module is of a
 different type.
 
-<a id="ERR_IMPORT_ASSERTION_TYPE_MISSING"></a>
+<a id="ERR_IMPORT_ATTRIBUTE_MISSING"></a>
 
-### `ERR_IMPORT_ASSERTION_TYPE_MISSING`
+### `ERR_IMPORT_ATTRIBUTE_MISSING`
 
 <!-- YAML
 added:
-  - v17.1.0
-  - v16.14.0
+  - v21.1.0
 -->
 
 An import attribute is missing, preventing the specified module to be imported.
-
-<a id="ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED"></a>
-
-### `ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED`
-
-<!-- YAML
-added:
-  - v17.1.0
-  - v16.14.0
--->
-
-An import attribute is not supported by this version of Node.js.
 
 <a id="ERR_IMPORT_ATTRIBUTE_UNSUPPORTED"></a>
 
 ### `ERR_IMPORT_ATTRIBUTE_UNSUPPORTED`
 
 <!-- YAML
-added: v20.10.0
+added:
+  - v21.0.0
+  - v20.10.0
+  - v18.19.0
 -->
 
 An import attribute is not supported by this version of Node.js.
@@ -1878,6 +1869,12 @@ the worker thread.
 
 There was a bug in Node.js or incorrect usage of Node.js internals.
 To fix the error, open an issue at <https://github.com/nodejs/node/issues>.
+
+<a id="ERR_INVALID_ADDRESS"></a>
+
+### `ERR_INVALID_ADDRESS`
+
+The provided address is not understood by the Node.js API.
 
 <a id="ERR_INVALID_ADDRESS_FAMILY"></a>
 
@@ -2019,13 +2016,6 @@ An invalid [`package.json`][] file failed parsing.
 The `package.json` [`"exports"`][] field contains an invalid target mapping
 value for the attempted module resolution.
 
-<a id="ERR_INVALID_PERFORMANCE_MARK"></a>
-
-### `ERR_INVALID_PERFORMANCE_MARK`
-
-While using the Performance Timing API (`perf_hooks`), a performance mark is
-invalid.
-
 <a id="ERR_INVALID_PROTOCOL"></a>
 
 ### `ERR_INVALID_PROTOCOL`
@@ -2101,12 +2091,6 @@ urlSearchParams.has.call(buf, 'foo');
 // Throws a TypeError with code 'ERR_INVALID_THIS'
 ```
 
-<a id="ERR_INVALID_TRANSFER_OBJECT"></a>
-
-### `ERR_INVALID_TRANSFER_OBJECT`
-
-An invalid transfer object was passed to `postMessage()`.
-
 <a id="ERR_INVALID_TUPLE"></a>
 
 ### `ERR_INVALID_TUPLE`
@@ -2115,6 +2099,18 @@ An element in the `iterable` provided to the [WHATWG][WHATWG URL API]
 [`URLSearchParams` constructor][`new URLSearchParams(iterable)`] did not
 represent a `[name, value]` tuple – that is, if an element is not iterable, or
 does not consist of exactly two elements.
+
+<a id="ERR_INVALID_TYPESCRIPT_SYNTAX"></a>
+
+### `ERR_INVALID_TYPESCRIPT_SYNTAX`
+
+<!-- YAML
+added: v22.10.0
+-->
+
+The provided TypeScript syntax is not valid or unsupported.
+This could happen when using TypeScript syntax that requires
+transformation with [type-stripping][].
 
 <a id="ERR_INVALID_URI"></a>
 
@@ -2183,68 +2179,6 @@ added:
 An ESM loader hook returned without calling `next()` and without explicitly
 signaling a short circuit.
 
-<a id="ERR_MANIFEST_ASSERT_INTEGRITY"></a>
-
-### `ERR_MANIFEST_ASSERT_INTEGRITY`
-
-An attempt was made to load a resource, but the resource did not match the
-integrity defined by the policy manifest. See the documentation for [policy][]
-manifests for more information.
-
-<a id="ERR_MANIFEST_DEPENDENCY_MISSING"></a>
-
-### `ERR_MANIFEST_DEPENDENCY_MISSING`
-
-An attempt was made to load a resource, but the resource was not listed as a
-dependency from the location that attempted to load it. See the documentation
-for [policy][] manifests for more information.
-
-<a id="ERR_MANIFEST_INTEGRITY_MISMATCH"></a>
-
-### `ERR_MANIFEST_INTEGRITY_MISMATCH`
-
-An attempt was made to load a policy manifest, but the manifest had multiple
-entries for a resource which did not match each other. Update the manifest
-entries to match in order to resolve this error. See the documentation for
-[policy][] manifests for more information.
-
-<a id="ERR_MANIFEST_INVALID_RESOURCE_FIELD"></a>
-
-### `ERR_MANIFEST_INVALID_RESOURCE_FIELD`
-
-A policy manifest resource had an invalid value for one of its fields. Update
-the manifest entry to match in order to resolve this error. See the
-documentation for [policy][] manifests for more information.
-
-<a id="ERR_MANIFEST_INVALID_SPECIFIER"></a>
-
-### `ERR_MANIFEST_INVALID_SPECIFIER`
-
-A policy manifest resource had an invalid value for one of its dependency
-mappings. Update the manifest entry to match to resolve this error. See the
-documentation for [policy][] manifests for more information.
-
-<a id="ERR_MANIFEST_PARSE_POLICY"></a>
-
-### `ERR_MANIFEST_PARSE_POLICY`
-
-An attempt was made to load a policy manifest, but the manifest was unable to
-be parsed. See the documentation for [policy][] manifests for more information.
-
-<a id="ERR_MANIFEST_TDZ"></a>
-
-### `ERR_MANIFEST_TDZ`
-
-An attempt was made to read from a policy manifest, but the manifest
-initialization has not yet taken place. This is likely a bug in Node.js.
-
-<a id="ERR_MANIFEST_UNKNOWN_ONERROR"></a>
-
-### `ERR_MANIFEST_UNKNOWN_ONERROR`
-
-A policy manifest was loaded, but had an unknown value for its "onerror"
-behavior. See the documentation for [policy][] manifests for more information.
-
 <a id="ERR_MEMORY_ALLOCATION_FAILED"></a>
 
 ### `ERR_MEMORY_ALLOCATION_FAILED`
@@ -2304,23 +2238,6 @@ The V8 platform used by this instance of Node.js does not support creating
 Workers. This is caused by lack of embedder support for Workers. In particular,
 this error will not occur with standard builds of Node.js.
 
-<a id="ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST"></a>
-
-### `ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST`
-
-<!-- YAML
-added: v15.0.0
--->
-
-An object that needs to be explicitly listed in the `transferList` argument
-is in the object passed to a [`postMessage()`][] call, but is not provided
-in the `transferList` for that call. Usually, this is a `MessagePort`.
-
-In Node.js versions prior to v15.0.0, the error code being used here was
-[`ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`][]. However, the set of
-transferable object types has been expanded to cover more types than
-`MessagePort`.
-
 <a id="ERR_MODULE_NOT_FOUND"></a>
 
 ### `ERR_MODULE_NOT_FOUND`
@@ -2379,21 +2296,6 @@ function.
 An error occurred while attempting to retrieve the JavaScript `undefined`
 value.
 
-<a id="ERR_NAPI_TSFN_START_IDLE_LOOP"></a>
-
-### `ERR_NAPI_TSFN_START_IDLE_LOOP`
-
-On the main thread, values are removed from the queue associated with the
-thread-safe function in an idle loop. This error indicates that an error
-has occurred when attempting to start the loop.
-
-<a id="ERR_NAPI_TSFN_STOP_IDLE_LOOP"></a>
-
-### `ERR_NAPI_TSFN_STOP_IDLE_LOOP`
-
-Once no more items are left in the queue, the idle loop must be suspended. This
-error indicates that the idle loop has failed to stop.
-
 <a id="ERR_NOT_BUILDING_SNAPSHOT"></a>
 
 ### `ERR_NOT_BUILDING_SNAPSHOT`
@@ -2406,7 +2308,9 @@ V8 startup snapshot even though Node.js isn't building one.
 ### `ERR_NOT_IN_SINGLE_EXECUTABLE_APPLICATION`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.7.0
+  - v20.12.0
 -->
 
 The operation cannot be performed when it's not in a single-executable
@@ -2438,6 +2342,17 @@ compiled with ICU support.
 ### `ERR_NON_CONTEXT_AWARE_DISABLED`
 
 A non-context-aware native addon was loaded in a process that disallows them.
+
+<a id="ERR_OPERATION_FAILED"></a>
+
+### `ERR_OPERATION_FAILED`
+
+<!-- YAML
+added: v15.0.0
+-->
+
+An operation failed. This is typically used to signal the general failure
+of an asynchronous operation.
 
 <a id="ERR_OUT_OF_RANGE"></a>
 
@@ -2521,6 +2436,70 @@ Accessing `Object.prototype.__proto__` has been forbidden using
 [`Object.setPrototypeOf`][] should be used to get and set the prototype of an
 object.
 
+<a id="ERR_QUIC_CONNECTION_FAILED"></a>
+
+### `ERR_QUIC_CONNECTION_FAILED`
+
+<!-- YAML
+added: v22.10.0
+-->
+
+> Stability: 1 - Experimental
+
+Establishing a QUIC connection failed.
+
+<a id="ERR_QUIC_ENDPOINT_CLOSED"></a>
+
+### `ERR_QUIC_ENDPOINT_CLOSED`
+
+<!-- YAML
+added: v22.10.0
+-->
+
+> Stability: 1 - Experimental
+
+A QUIC Endpoint closed with an error.
+
+<a id="ERR_QUIC_OPEN_STREAM_FAILED"></a>
+
+### `ERR_QUIC_OPEN_STREAM_FAILED`
+
+<!-- YAML
+added: v22.10.0
+-->
+
+> Stability: 1 - Experimental
+
+Opening a QUIC stream failed.
+
+<a id="ERR_REQUIRE_CYCLE_MODULE"></a>
+
+### `ERR_REQUIRE_CYCLE_MODULE`
+
+> Stability: 1 - Experimental
+
+When trying to `require()` a [ES Module][] under `--experimental-require-module`,
+a CommonJS to ESM or ESM to CommonJS edge participates in an immediate cycle.
+This is not allowed because ES Modules cannot be evaluated while they are
+already being evaluated.
+
+To avoid the cycle, the `require()` call involved in a cycle should not happen
+at the top-level of either an ES Module (via `createRequire()`) or a CommonJS
+module, and should be done lazily in an inner function.
+
+<a id="ERR_REQUIRE_ASYNC_MODULE"></a>
+
+### `ERR_REQUIRE_ASYNC_MODULE`
+
+> Stability: 1 - Experimental
+
+When trying to `require()` a [ES Module][] under `--experimental-require-module`,
+the module turns out to be asynchronous. That is, it contains top-level await.
+
+To see where the top-level await is, use
+`--experimental-print-required-tla` (this would execute the modules
+before looking for the top-level awaits).
+
 <a id="ERR_REQUIRE_ESM"></a>
 
 ### `ERR_REQUIRE_ESM`
@@ -2528,6 +2507,9 @@ object.
 > Stability: 1 - Experimental
 
 An attempt was made to `require()` an [ES Module][].
+
+To enable `require()` for synchronous module graphs (without
+top-level `await`), use `--experimental-require-module`.
 
 <a id="ERR_SCRIPT_EXECUTION_INTERRUPTED"></a>
 
@@ -2563,7 +2545,9 @@ and HTTP/2 `Server` instances.
 ### `ERR_SINGLE_EXECUTABLE_APPLICATION_ASSET_NOT_FOUND`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.7.0
+  - v20.12.0
 -->
 
 A key was passed to single executable application APIs to identify an asset,
@@ -2640,6 +2624,28 @@ disconnected socket.
 ### `ERR_SOCKET_DGRAM_NOT_RUNNING`
 
 A call was made and the UDP subsystem was not running.
+
+<a id="ERR_SOURCE_MAP_CORRUPT"></a>
+
+### `ERR_SOURCE_MAP_CORRUPT`
+
+The source map could not be parsed because it does not exist, or is corrupt.
+
+<a id="ERR_SOURCE_MAP_MISSING_SOURCE"></a>
+
+### `ERR_SOURCE_MAP_MISSING_SOURCE`
+
+A file imported from a source map was not found.
+
+<a id="ERR_SQLITE_ERROR"></a>
+
+### `ERR_SQLITE_ERROR`
+
+<!-- YAML
+added: v22.5.0
+-->
+
+An error was returned from [SQLite][].
 
 <a id="ERR_SRI_PARSE"></a>
 
@@ -3035,6 +3041,16 @@ try {
 }
 ```
 
+<a id="ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING"></a>
+
+### `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`
+
+<!-- YAML
+added: v22.6.0
+-->
+
+Type stripping is not supported for files descendent of a `node_modules` directory.
+
 <a id="ERR_USE_AFTER_CLOSE"></a>
 
 ### `ERR_USE_AFTER_CLOSE`
@@ -3166,6 +3182,54 @@ The `Worker` instance terminated because it reached its memory limit.
 The path for the main script of a worker is neither an absolute path
 nor a relative path starting with `./` or `../`.
 
+<a id="ERR_WORKER_MESSAGING_ERRORED"></a>
+
+### `ERR_WORKER_MESSAGING_ERRORED`
+
+<!-- YAML
+added: v22.5.0
+-->
+
+> Stability: 1.1 - Active development
+
+The destination thread threw an error while processing a message sent via [`postMessageToThread()`][].
+
+<a id="ERR_WORKER_MESSAGING_FAILED"></a>
+
+### `ERR_WORKER_MESSAGING_FAILED`
+
+<!-- YAML
+added: v22.5.0
+-->
+
+> Stability: 1.1 - Active development
+
+The thread requested in [`postMessageToThread()`][] is invalid or has no `workerMessage` listener.
+
+<a id="ERR_WORKER_MESSAGING_SAME_THREAD"></a>
+
+### `ERR_WORKER_MESSAGING_SAME_THREAD`
+
+<!-- YAML
+added: v22.5.0
+-->
+
+> Stability: 1.1 - Active development
+
+The thread id requested in [`postMessageToThread()`][] is the current thread id.
+
+<a id="ERR_WORKER_MESSAGING_TIMEOUT"></a>
+
+### `ERR_WORKER_MESSAGING_TIMEOUT`
+
+<!-- YAML
+added: v22.5.0
+-->
+
+> Stability: 1.1 - Active development
+
+Sending a message via [`postMessageToThread()`][] timed out.
+
 <a id="ERR_WORKER_UNSERIALIZABLE_ERROR"></a>
 
 ### `ERR_WORKER_UNSERIALIZABLE_ERROR`
@@ -3199,7 +3263,7 @@ changes:
 -->
 
 Too much HTTP header data was received. In order to protect against malicious or
-malconfigured clients, if more than 8 KiB of HTTP header data is received then
+malconfigured clients, if more than `maxHeaderSize` of HTTP header data is received then
 HTTP parsing will abort without a request or response object being created, and
 an `Error` with this code will be emitted.
 
@@ -3208,7 +3272,10 @@ an `Error` with this code will be emitted.
 ### `HPE_CHUNK_EXTENSIONS_OVERFLOW`
 
 <!-- YAML
-added: v20.11.1
+added:
+ - v21.6.2
+ - v20.11.1
+ - v18.19.1
 -->
 
 Too much data was received for a chunk extensions. In order to protect against
@@ -3375,6 +3442,165 @@ removed: v15.0.0
 
 An invalid or unknown file encoding was passed.
 
+<a id="ERR_INVALID_PERFORMANCE_MARK"></a>
+
+### `ERR_INVALID_PERFORMANCE_MARK`
+
+<!-- YAML
+added: v8.5.0
+removed: v16.7.0
+-->
+
+While using the Performance Timing API (`perf_hooks`), a performance mark is
+invalid.
+
+<a id="ERR_INVALID_TRANSFER_OBJECT"></a>
+
+### `ERR_INVALID_TRANSFER_OBJECT`
+
+<!-- YAML
+removed: v21.0.0
+changes:
+  - version: v21.0.0
+    pr-url: https://github.com/nodejs/node/pull/47839
+    description: A `DOMException` is thrown instead.
+-->
+
+An invalid transfer object was passed to `postMessage()`.
+
+<a id="ERR_IMPORT_ASSERTION_TYPE_FAILED"></a>
+
+### `ERR_IMPORT_ASSERTION_TYPE_FAILED`
+
+<!-- YAML
+added:
+  - v17.1.0
+  - v16.14.0
+removed: v21.1.0
+-->
+
+An import assertion has failed, preventing the specified module to be imported.
+
+<a id="ERR_IMPORT_ASSERTION_TYPE_MISSING"></a>
+
+### `ERR_IMPORT_ASSERTION_TYPE_MISSING`
+
+<!-- YAML
+added:
+  - v17.1.0
+  - v16.14.0
+removed: v21.1.0
+-->
+
+An import assertion is missing, preventing the specified module to be imported.
+
+<a id="ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED"></a>
+
+### `ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED`
+
+<!-- YAML
+added:
+  - v17.1.0
+  - v16.14.0
+removed: v21.1.0
+-->
+
+An import attribute is not supported by this version of Node.js.
+
+<a id="ERR_MANIFEST_ASSERT_INTEGRITY"></a>
+
+### `ERR_MANIFEST_ASSERT_INTEGRITY`
+
+<!-- YAML
+removed: v22.2.0
+-->
+
+An attempt was made to load a resource, but the resource did not match the
+integrity defined by the policy manifest. See the documentation for policy
+manifests for more information.
+
+<a id="ERR_MANIFEST_DEPENDENCY_MISSING"></a>
+
+### `ERR_MANIFEST_DEPENDENCY_MISSING`
+
+<!-- YAML
+removed: v22.2.0
+-->
+
+An attempt was made to load a resource, but the resource was not listed as a
+dependency from the location that attempted to load it. See the documentation
+for policy manifests for more information.
+
+<a id="ERR_MANIFEST_INTEGRITY_MISMATCH"></a>
+
+### `ERR_MANIFEST_INTEGRITY_MISMATCH`
+
+<!-- YAML
+removed: v22.2.0
+-->
+
+An attempt was made to load a policy manifest, but the manifest had multiple
+entries for a resource which did not match each other. Update the manifest
+entries to match in order to resolve this error. See the documentation for
+policy manifests for more information.
+
+<a id="ERR_MANIFEST_INVALID_RESOURCE_FIELD"></a>
+
+### `ERR_MANIFEST_INVALID_RESOURCE_FIELD`
+
+<!-- YAML
+removed: v22.2.0
+-->
+
+A policy manifest resource had an invalid value for one of its fields. Update
+the manifest entry to match in order to resolve this error. See the
+documentation for policy manifests for more information.
+
+<a id="ERR_MANIFEST_INVALID_SPECIFIER"></a>
+
+### `ERR_MANIFEST_INVALID_SPECIFIER`
+
+<!-- YAML
+removed: v22.2.0
+-->
+
+A policy manifest resource had an invalid value for one of its dependency
+mappings. Update the manifest entry to match to resolve this error. See the
+documentation for policy manifests for more information.
+
+<a id="ERR_MANIFEST_PARSE_POLICY"></a>
+
+### `ERR_MANIFEST_PARSE_POLICY`
+
+<!-- YAML
+removed: v22.2.0
+-->
+
+An attempt was made to load a policy manifest, but the manifest was unable to
+be parsed. See the documentation for policy manifests for more information.
+
+<a id="ERR_MANIFEST_TDZ"></a>
+
+### `ERR_MANIFEST_TDZ`
+
+<!-- YAML
+removed: v22.2.0
+-->
+
+An attempt was made to read from a policy manifest, but the manifest
+initialization has not yet taken place. This is likely a bug in Node.js.
+
+<a id="ERR_MANIFEST_UNKNOWN_ONERROR"></a>
+
+### `ERR_MANIFEST_UNKNOWN_ONERROR`
+
+<!-- YAML
+removed: v22.2.0
+-->
+
+A policy manifest was loaded, but had an unknown value for its "onerror"
+behavior. See the documentation for policy manifests for more information.
+
 <a id="ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST"></a>
 
 ### `ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`
@@ -3387,6 +3613,28 @@ This error code was replaced by [`ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST`][]
 in Node.js v15.0.0, because it is no longer accurate as other types of
 transferable objects also exist now.
 
+<a id="ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST"></a>
+
+### `ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST`
+
+<!-- YAML
+added: v15.0.0
+removed: v21.0.0
+changes:
+  - version: v21.0.0
+    pr-url: https://github.com/nodejs/node/pull/47839
+    description: A `DOMException` is thrown instead.
+-->
+
+An object that needs to be explicitly listed in the `transferList` argument
+is in the object passed to a [`postMessage()`][] call, but is not provided
+in the `transferList` for that call. Usually, this is a `MessagePort`.
+
+In Node.js versions prior to v15.0.0, the error code being used here was
+[`ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`][]. However, the set of
+transferable object types has been expanded to cover more types than
+`MessagePort`.
+
 <a id="ERR_NAPI_CONS_PROTOTYPE_OBJECT"></a>
 
 ### `ERR_NAPI_CONS_PROTOTYPE_OBJECT`
@@ -3398,22 +3646,38 @@ removed: v10.0.0
 
 Used by the `Node-API` when `Constructor.prototype` is not an object.
 
-<a id="ERR_NETWORK_IMPORT_BAD_RESPONSE"></a>
+<a id="ERR_NAPI_TSFN_START_IDLE_LOOP"></a>
 
-### `ERR_NETWORK_IMPORT_BAD_RESPONSE`
+### `ERR_NAPI_TSFN_START_IDLE_LOOP`
 
-> Stability: 1 - Experimental
+<!-- YAML
+added:
+  - v10.6.0
+  - v8.16.0
+removed:
+  - v14.2.0
+  - v12.17.0
+-->
 
-Response was received but was invalid when importing a module over the network.
+On the main thread, values are removed from the queue associated with the
+thread-safe function in an idle loop. This error indicates that an error
+has occurred when attempting to start the loop.
 
-<a id="ERR_NETWORK_IMPORT_DISALLOWED"></a>
+<a id="ERR_NAPI_TSFN_STOP_IDLE_LOOP"></a>
 
-### `ERR_NETWORK_IMPORT_DISALLOWED`
+### `ERR_NAPI_TSFN_STOP_IDLE_LOOP`
 
-> Stability: 1 - Experimental
+<!-- YAML
+added:
+  - v10.6.0
+  - v8.16.0
+removed:
+  - v14.2.0
+  - v12.17.0
+-->
 
-A network module attempted to load another module that it is not allowed to
-load. Likely this restriction is for security reasons.
+Once no more items are left in the queue, the idle loop must be suspended. This
+error indicates that the idle loop has failed to stop.
 
 <a id="ERR_NO_LONGER_SUPPORTED"></a>
 
@@ -3421,17 +3685,6 @@ load. Likely this restriction is for security reasons.
 
 A Node.js API was called in an unsupported manner, such as
 `Buffer.write(string, encoding, offset[, length])`.
-
-<a id="ERR_OPERATION_FAILED"></a>
-
-### `ERR_OPERATION_FAILED`
-
-<!-- YAML
-added: v15.0.0
--->
-
-An operation failed. This is typically used to signal the general failure
-of an asynchronous operation.
 
 <a id="ERR_OUTOFMEMORY"></a>
 
@@ -3854,6 +4107,7 @@ An error occurred trying to allocate memory. This should never happen.
 [Node.js error codes]: #nodejs-error-codes
 [Permission Model]: permissions.md#permission-model
 [RFC 7230 Section 3]: https://tools.ietf.org/html/rfc7230#section-3
+[SQLite]: sqlite.md
 [Subresource Integrity specification]: https://www.w3.org/TR/SRI/#the-integrity-attribute
 [V8's stack trace API]: https://v8.dev/docs/stack-trace-api
 [WHATWG Supported Encodings]: util.md#whatwg-supported-encodings
@@ -3906,6 +4160,7 @@ An error occurred trying to allocate memory. This should never happen.
 [`new URLSearchParams(iterable)`]: url.md#new-urlsearchparamsiterable
 [`package.json`]: packages.md#nodejs-packagejson-field-definitions
 [`postMessage()`]: worker_threads.md#portpostmessagevalue-transferlist
+[`postMessageToThread()`]: worker_threads.md#workerpostmessagetothreadthreadid-value-transferlist-timeout
 [`process.on('exit')`]: process.md#event-exit
 [`process.send()`]: process.md#processsendmessage-sendhandle-options-callback
 [`process.setUncaughtExceptionCaptureCallback()`]: process.md#processsetuncaughtexceptioncapturecallbackfn
@@ -3933,11 +4188,11 @@ An error occurred trying to allocate memory. This should never happen.
 [domains]: domain.md
 [event emitter-based]: events.md#class-eventemitter
 [file descriptors]: https://en.wikipedia.org/wiki/File_descriptor
-[policy]: permissions.md#policies
 [relative URL]: https://url.spec.whatwg.org/#relative-url-string
 [self-reference a package using its name]: packages.md#self-referencing-a-package-using-its-name
 [special scheme]: https://url.spec.whatwg.org/#special-scheme
 [stream-based]: stream.md
 [syscall]: https://man7.org/linux/man-pages/man2/syscalls.2.html
 [try-catch]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch
+[type-stripping]: typescript.md#type-stripping
 [vm]: vm.md

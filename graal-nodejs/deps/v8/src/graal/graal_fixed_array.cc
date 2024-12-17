@@ -66,5 +66,7 @@ v8::Local<v8::Data> GraalFixedArray::Get(v8::Local<v8::Context> context, int i) 
     } else {
         graal_element = GraalValue::FromJavaObject(graal_isolate, java_element, value_t, true);
     }
-    return reinterpret_cast<v8::Data*> (graal_element);
+    v8::Data* v8_element = reinterpret_cast<v8::Data*> (graal_element);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Data>::New(v8_isolate, v8_element);
 }

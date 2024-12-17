@@ -2,20 +2,22 @@
 
 const {
   ArrayPrototypeForEach,
-  ArrayPrototypeJoin,
+  ArrayPrototypeIncludes,
   ObjectDefineProperty,
+  ObjectFreeze,
   ObjectPrototypeHasOwnProperty,
   SafeMap,
   SafeSet,
   StringPrototypeCharCodeAt,
   StringPrototypeIncludes,
   StringPrototypeSlice,
+  StringPrototypeSplit,
   StringPrototypeStartsWith,
 } = primordials;
 const {
   ERR_INVALID_ARG_TYPE,
-  ERR_MANIFEST_DEPENDENCY_MISSING,
-  ERR_UNKNOWN_BUILTIN_MODULE,
+  ERR_INVALID_RETURN_PROPERTY_VALUE,
+  ERR_INVALID_TYPESCRIPT_SYNTAX,
 } = require('internal/errors').codes;
 const { BuiltinModule } = require('internal/bootstrap/realm');
 
@@ -26,16 +28,21 @@ const path = require('path');
 const { pathToFileURL, fileURLToPath } = require('internal/url');
 const assert = require('internal/assert');
 
+const { Buffer } = require('buffer');
 const { getOptionValue } = require('internal/options');
-const { setOwnProperty } = require('internal/util');
+const { setOwnProperty, getLazy } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 
-const {
-  privateSymbols: {
-    require_private_symbol,
-  },
-} = internalBinding('util');
+const lazyTmpdir = getLazy(() => require('os').tmpdir());
+const { join } = path;
+
 const { canParse: URLCanParse } = internalBinding('url');
+const {
+  enableCompileCache: _enableCompileCache,
+  getCompileCacheDir: _getCompileCacheDir,
+  compileCacheStatus: _compileCacheStatus,
+  flushCompileCache,
+} = internalBinding('modules');
 
 let debug = require('internal/util/debuglog').debuglog('module', (fn) => {
   debug = fn;
@@ -76,6 +83,9 @@ function initializeCjsConditions() {
     ...addonConditions,
     ...userConditions,
   ]);
+  if (getOptionValue('--experimental-require-module')) {
+    cjsConditions.add('module-sync');
+  }
 }
 
 /**
@@ -116,68 +126,19 @@ function lazyModule() {
 }
 
 /**
- * Invoke with `makeRequireFunction(module)` where `module` is the `Module` object to use as the context for the
- * `require()` function.
- * Use redirects to set up a mapping from a policy and restrict dependencies.
- */
-const urlToFileCache = new SafeMap();
-/**
  * Create the module-scoped `require` function to pass into CommonJS modules.
  * @param {Module} mod - The module to create the `require` function for.
- * @param {ReturnType<import('internal/policy/manifest.js').Manifest['getDependencyMapper']>} redirects
  * @typedef {(specifier: string) => unknown} RequireFunction
  */
-function makeRequireFunction(mod, redirects) {
+function makeRequireFunction(mod) {
   // lazy due to cycle
   const Module = lazyModule();
   if (mod instanceof Module !== true) {
     throw new ERR_INVALID_ARG_TYPE('mod', 'Module', mod);
   }
 
-  /** @type {RequireFunction} */
-  let require;
-  if (redirects) {
-    const id = mod.filename || mod.id;
-    const conditions = getCjsConditions();
-    const { resolve, reaction } = redirects;
-    require = function require(specifier) {
-      let missing = true;
-      const destination = resolve(specifier, conditions);
-      if (destination === true) {
-        missing = false;
-      } else if (destination) {
-        const { href, protocol } = destination;
-        if (protocol === 'node:') {
-          const specifier = destination.pathname;
-
-          if (BuiltinModule.canBeRequiredByUsers(specifier)) {
-            const mod = loadBuiltinModule(specifier, href);
-            return mod.exports;
-          }
-          throw new ERR_UNKNOWN_BUILTIN_MODULE(specifier);
-        } else if (protocol === 'file:') {
-          let filepath = urlToFileCache.get(href);
-          if (!filepath) {
-            filepath = fileURLToPath(destination);
-            urlToFileCache.set(href, filepath);
-          }
-          return mod[require_private_symbol](mod, filepath);
-        }
-      }
-      if (missing) {
-        reaction(new ERR_MANIFEST_DEPENDENCY_MISSING(
-          id,
-          specifier,
-          ArrayPrototypeJoin([...conditions], ', '),
-        ));
-      }
-      return mod[require_private_symbol](mod, specifier);
-    };
-  } else {
-    require = function require(path) {
-      // When no policy manifest, the original prototype.require is sustained
-      return mod.require(path);
-    };
+  function require(path) {
+    return mod.require(path);
   }
 
   /**
@@ -320,6 +281,16 @@ function normalizeReferrerURL(referrerName) {
 }
 
 
+/**
+ * @param {string|undefined} url URL to convert to filename
+ */
+function urlToFilename(url) {
+  if (url && StringPrototypeStartsWith(url, 'file://')) {
+    return fileURLToPath(url);
+  }
+  return url;
+}
+
 // Whether we have started executing any user-provided CJS code.
 // This is set right before we call the wrapped CJS code (not after,
 // in case we are half-way in the execution when internals check this).
@@ -332,13 +303,195 @@ let _hasStartedUserCJSExecution = false;
 // there is little value checking whether any user JS code is run anyway.
 let _hasStartedUserESMExecution = false;
 
+/**
+ * Load a public built-in module. ID may or may not be prefixed by `node:` and
+ * will be normalized.
+ * @param {string} id ID of the built-in to be loaded.
+ * @returns {object|undefined} exports of the built-in. Undefined if the built-in
+ * does not exist.
+ */
+function getBuiltinModule(id) {
+  validateString(id, 'id');
+  const normalizedId = BuiltinModule.normalizeRequirableId(id);
+  return normalizedId ? require(normalizedId) : undefined;
+}
+
+/**
+ * The TypeScript parsing mode, either 'strip-only' or 'transform'.
+ * @type {string}
+ */
+const getTypeScriptParsingMode = getLazy(() =>
+  (getOptionValue('--experimental-transform-types') ? 'transform' : 'strip-only'),
+);
+
+/**
+ * Load the TypeScript parser.
+ * and returns an object with a `code` property.
+ * @returns {Function} The TypeScript parser function.
+ */
+const loadTypeScriptParser = getLazy(() => {
+  const amaro = require('internal/deps/amaro/dist/index');
+  return amaro.transformSync;
+});
+
+/**
+ *
+ * @param {string} source the source code
+ * @param {object} options the options to pass to the parser
+ * @returns {TransformOutput} an object with a `code` property.
+ */
+function parseTypeScript(source, options) {
+  const parse = loadTypeScriptParser();
+  try {
+    return parse(source, options);
+  } catch (error) {
+    throw new ERR_INVALID_TYPESCRIPT_SYNTAX(error);
+  }
+}
+
+/**
+ * @typedef {object} TransformOutput
+ * @property {string} code The compiled code.
+ * @property {string} [map] The source maps (optional).
+ *
+ * Performs type-stripping to TypeScript source code.
+ * @param {string} source TypeScript code to parse.
+ * @param {string} filename The filename of the source code.
+ * @returns {TransformOutput} The stripped TypeScript code.
+ */
+function stripTypeScriptTypes(source, filename) {
+  assert(typeof source === 'string');
+  const options = {
+    __proto__: null,
+    mode: getTypeScriptParsingMode(),
+    sourceMap: getOptionValue('--enable-source-maps'),
+    filename,
+  };
+  const { code, map } = parseTypeScript(source, options);
+  if (map) {
+    // TODO(@marco-ippolito) When Buffer.transcode supports utf8 to
+    // base64 transformation, we should change this line.
+    const base64SourceMap = Buffer.from(map).toString('base64');
+    return `${code}\n\n//# sourceMappingURL=data:application/json;base64,${base64SourceMap}`;
+  }
+  // Source map is not necessary in strip-only mode. However, to map the source
+  // file in debuggers to the original TypeScript source, add a sourceURL magic
+  // comment to hint that it is a generated source.
+  return `${code}\n\n//# sourceURL=${filename}`;
+}
+
+function isUnderNodeModules(filename) {
+  const resolvedPath = path.resolve(filename);
+  const normalizedPath = path.normalize(resolvedPath);
+  const splitPath = StringPrototypeSplit(normalizedPath, path.sep);
+  return ArrayPrototypeIncludes(splitPath, 'node_modules');
+}
+
+/**
+ * Enable on-disk compiled cache for all user modules being complied in the current Node.js instance
+ * after this method is called.
+ * If cacheDir is undefined, defaults to the NODE_MODULE_CACHE environment variable.
+ * If NODE_MODULE_CACHE isn't set, default to path.join(os.tmpdir(), 'node-compile-cache').
+ * @param {string|undefined} cacheDir
+ * @returns {{status: number, message?: string, directory?: string}}
+ */
+function enableCompileCache(cacheDir) {
+  if (cacheDir === undefined) {
+    cacheDir = join(lazyTmpdir(), 'node-compile-cache');
+  }
+  const nativeResult = _enableCompileCache(cacheDir);
+  const result = { status: nativeResult[0] };
+  if (nativeResult[1]) {
+    result.message = nativeResult[1];
+  }
+  if (nativeResult[2]) {
+    result.directory = nativeResult[2];
+  }
+  return result;
+}
+
+const compileCacheStatus = { __proto__: null };
+for (let i = 0; i < _compileCacheStatus.length; ++i) {
+  compileCacheStatus[_compileCacheStatus[i]] = i;
+}
+ObjectFreeze(compileCacheStatus);
+const constants = { __proto__: null, compileCacheStatus };
+ObjectFreeze(constants);
+
+/**
+ * Get the compile cache directory if on-disk compile cache is enabled.
+ * @returns {string|undefined} Path to the module compile cache directory if it is enabled,
+ *                             or undefined otherwise.
+ */
+function getCompileCacheDir() {
+  return _getCompileCacheDir() || undefined;
+}
+
+/** @type {import('internal/util/types')} */
+let _TYPES = null;
+/**
+ * Lazily loads and returns the internal/util/types module.
+ */
+function lazyTypes() {
+  if (_TYPES !== null) { return _TYPES; }
+  return _TYPES = require('internal/util/types');
+}
+
+/**
+ * Asserts that the given body is a buffer source (either a string, array buffer, or typed array).
+ * Throws an error if the body is not a buffer source.
+ * @param {string | ArrayBufferView | ArrayBuffer} body - The body to check.
+ * @param {boolean} allowString - Whether or not to allow a string as a valid buffer source.
+ * @param {string} hookName - The name of the hook being called.
+ * @throws {ERR_INVALID_RETURN_PROPERTY_VALUE} If the body is not a buffer source.
+ */
+function assertBufferSource(body, allowString, hookName) {
+  if (allowString && typeof body === 'string') {
+    return;
+  }
+  const { isArrayBufferView, isAnyArrayBuffer } = lazyTypes();
+  if (isArrayBufferView(body) || isAnyArrayBuffer(body)) {
+    return;
+  }
+  throw new ERR_INVALID_RETURN_PROPERTY_VALUE(
+    `${allowString ? 'string, ' : ''}array buffer, or typed array`,
+    hookName,
+    'source',
+    body,
+  );
+}
+
+let DECODER = null;
+
+/**
+ * Converts a buffer or buffer-like object to a string.
+ * @param {string | ArrayBuffer | ArrayBufferView} body - The buffer or buffer-like object to convert to a string.
+ * @returns {string} The resulting string.
+ */
+function stringify(body) {
+  if (typeof body === 'string') { return body; }
+  assertBufferSource(body, false, 'load');
+  const { TextDecoder } = require('internal/encoding');
+  DECODER = DECODER === null ? new TextDecoder() : DECODER;
+  return DECODER.decode(body);
+}
+
 module.exports = {
   addBuiltinLibsToObject,
+  constants,
+  enableCompileCache,
+  assertBufferSource,
+  flushCompileCache,
+  getBuiltinModule,
   getCjsConditions,
+  getCompileCacheDir,
   initializeCjsConditions,
+  isUnderNodeModules,
   loadBuiltinModule,
   makeRequireFunction,
   normalizeReferrerURL,
+  stripTypeScriptTypes,
+  stringify,
   stripBOM,
   toRealPath,
   hasStartedUserCJSExecution() {
@@ -353,4 +506,5 @@ module.exports = {
   setHasStartedUserESMExecution() {
     _hasStartedUserESMExecution = true;
   },
+  urlToFilename,
 };

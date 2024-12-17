@@ -36,8 +36,6 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   Symbol,
-  SymbolAsyncDispose,
-  SymbolDispose,
 } = primordials;
 
 const EventEmitter = require('events');
@@ -62,6 +60,7 @@ const {
   UV_ECANCELED,
   UV_ETIMEDOUT,
 } = internalBinding('uv');
+const { convertIpv6StringToBuffer } = internalBinding('cares_wrap');
 
 const { Buffer } = require('buffer');
 const { ShutdownWrap } = internalBinding('stream_wrap');
@@ -93,29 +92,36 @@ const {
   kBufferGen,
 } = require('internal/stream_base_commons');
 const {
+  ErrnoException,
+  ExceptionWithHostPort,
+  NodeAggregateError,
+  UVExceptionWithHostPort,
   codes: {
     ERR_INVALID_ADDRESS_FAMILY,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_FD_TYPE,
-    ERR_INVALID_IP_ADDRESS,
     ERR_INVALID_HANDLE_TYPE,
+    ERR_INVALID_IP_ADDRESS,
+    ERR_MISSING_ARGS,
     ERR_SERVER_ALREADY_LISTEN,
     ERR_SERVER_NOT_RUNNING,
-    ERR_SOCKET_CONNECTION_TIMEOUT,
     ERR_SOCKET_CLOSED,
     ERR_SOCKET_CLOSED_BEFORE_CONNECTION,
-    ERR_MISSING_ARGS,
+    ERR_SOCKET_CONNECTION_TIMEOUT,
   },
-  ErrnoException,
-  ExceptionWithHostPort,
   genericNodeError,
-  NodeAggregateError,
-  UVExceptionWithHostPort,
 } = require('internal/errors');
 const { isUint8Array } = require('internal/util/types');
 const { queueMicrotask } = require('internal/process/task_queues');
-const { kEmptyObject, guessHandleType, promisify } = require('internal/util');
+const {
+  guessHandleType,
+  isWindows,
+  kEmptyObject,
+  promisify,
+  SymbolAsyncDispose,
+  SymbolDispose,
+} = require('internal/util');
 const {
   validateAbortSignal,
   validateBoolean,
@@ -142,8 +148,6 @@ const { kTimeout } = require('internal/timers');
 const DEFAULT_IPV4_ADDR = '0.0.0.0';
 const DEFAULT_IPV6_ADDR = '::';
 
-const isWindows = process.platform === 'win32';
-
 const noop = () => {};
 
 const kPerfHooksNetConnectContext = Symbol('kPerfHooksNetConnectContext');
@@ -151,6 +155,7 @@ const kPerfHooksNetConnectContext = Symbol('kPerfHooksNetConnectContext');
 const dc = require('diagnostics_channel');
 const netClientSocketChannel = dc.channel('net.client.socket');
 const netServerSocketChannel = dc.channel('net.server.socket');
+const netServerListen = dc.tracingChannel('net.server.listen');
 
 const {
   hasObserver,
@@ -515,7 +520,7 @@ Socket.prototype._unrefTimer = function _unrefTimer() {
 // sent out to the other side.
 Socket.prototype._final = function(cb) {
   // If still connecting - defer handling `_final` until 'connect' will happen
-  if (this.pending) {
+  if (this.connecting) {
     debug('_final: not yet connected');
     return this.once('connect', () => this._final(cb));
   }
@@ -742,8 +747,7 @@ Socket.prototype.resetAndDestroy = function() {
 };
 
 Socket.prototype.pause = function() {
-  if (this[kBuffer] && !this.connecting && this._handle &&
-      this._handle.reading) {
+  if (this[kBuffer] && !this.connecting && this._handle?.reading) {
     this._handle.reading = false;
     if (!this.destroyed) {
       const err = this._handle.readStop();
@@ -1213,7 +1217,7 @@ Socket.prototype.connect = function(...args) {
   }
 
   // If the parent is already connecting, do not attempt to connect again
-  if (this._parent && this._parent.connecting) {
+  if (this._parent?.connecting) {
     return this;
   }
 
@@ -1879,6 +1883,11 @@ function setupListenHandle(address, port, addressType, backlog, fd, flags) {
 
     if (typeof rval === 'number') {
       const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+
+      if (netServerListen.hasSubscribers) {
+        netServerListen.error.publish({ server: this, error });
+      }
+
       process.nextTick(emitErrorNT, this, error);
       return;
     }
@@ -1898,12 +1907,21 @@ function setupListenHandle(address, port, addressType, backlog, fd, flags) {
     const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
     this._handle.close();
     this._handle = null;
+
+    if (netServerListen.hasSubscribers) {
+      netServerListen.error.publish({ server: this, error: ex });
+    }
+
     defaultTriggerAsyncIdScope(this[async_id_symbol],
                                process.nextTick,
                                emitErrorNT,
                                this,
                                ex);
     return;
+  }
+
+  if (netServerListen.hasSubscribers) {
+    netServerListen.asyncEnd.publish({ server: this });
   }
 
   // Generate connection key, this should be unique to the connection
@@ -1991,6 +2009,10 @@ Server.prototype.listen = function(...args) {
 
   if (this._handle) {
     throw new ERR_SERVER_ALREADY_LISTEN();
+  }
+
+  if (netServerListen.hasSubscribers) {
+    netServerListen.asyncStart.publish({ server: this, options });
   }
 
   if (cb !== null) {
@@ -2101,19 +2123,51 @@ Server.prototype.listen = function(...args) {
   throw new ERR_INVALID_ARG_VALUE('options', options);
 };
 
+function isIpv6LinkLocal(ip) {
+  if (!isIPv6(ip)) { return false; }
+
+  const ipv6Buffer = convertIpv6StringToBuffer(ip);
+  const firstByte = ipv6Buffer[0];  // The first 8 bits
+  const secondByte = ipv6Buffer[1]; // The next 8 bits
+
+  // The link-local prefix is `1111111010`, which in hexadecimal is `fe80`
+  // First 8 bits (firstByte) should be `11111110` (0xfe)
+  // The next 2 bits of the second byte should be `10` (0x80)
+
+  const isFirstByteCorrect = (firstByte === 0xfe); // 0b11111110 == 0xfe
+  const isSecondByteCorrect = (secondByte & 0xc0) === 0x80; // 0b10xxxxxx == 0x80
+
+  return isFirstByteCorrect && isSecondByteCorrect;
+}
+
+function filterOnlyValidAddress(addresses) {
+  // Return the first non IPV6 link-local address if present
+  for (const address of addresses) {
+    if (!isIpv6LinkLocal(address.address)) {
+      return address;
+    }
+  }
+
+  // Otherwise return the first address
+  return addresses[0];
+}
+
 function lookupAndListen(self, port, address, backlog,
                          exclusive, flags) {
   if (dns === undefined) dns = require('dns');
   const listeningId = self._listeningId;
-  dns.lookup(address, function doListen(err, ip, addressType) {
+
+  dns.lookup(address, { all: true }, (err, addresses) => {
     if (listeningId !== self._listeningId) {
       return;
     }
     if (err) {
       self.emit('error', err);
     } else {
-      addressType = ip ? addressType : 4;
-      listenInCluster(self, ip, port, addressType,
+      const validAddress = filterOnlyValidAddress(addresses);
+      const family = validAddress?.family || 4;
+
+      listenInCluster(self, validAddress.address, port, family,
                       backlog, undefined, exclusive, flags);
     }
   });
@@ -2129,7 +2183,7 @@ ObjectDefineProperty(Server.prototype, 'listening', {
 });
 
 Server.prototype.address = function() {
-  if (this._handle && this._handle.getsockname) {
+  if (this._handle?.getsockname) {
     const out = {};
     const err = this._handle.getsockname(out);
     if (err) {
@@ -2153,7 +2207,7 @@ function onconnection(err, clientHandle) {
     return;
   }
 
-  if (self.maxConnections && self._connections >= self.maxConnections) {
+  if (self.maxConnections != null && self._connections >= self.maxConnections) {
     if (clientHandle.getsockname || clientHandle.getpeername) {
       const data = { __proto__: null };
       if (clientHandle.getsockname) {

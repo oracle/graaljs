@@ -55,8 +55,9 @@ v8::MaybeLocal<v8::Value> GraalDate::New(v8::Local<v8::Context> context, double 
     jobject java_context = graal_context->GetJavaObject();
     JNI_CALL(jobject, java_date, graal_isolate, GraalAccessMethod::date_new, Object, java_context, (jdouble) time);
     GraalDate* graal_date = new GraalDate(graal_isolate, time, java_date);
-    v8::Local<v8::Value> v8_date = reinterpret_cast<v8::Value*> (graal_date);
-    return v8_date;
+    v8::Value* v8_date = reinterpret_cast<v8::Value*> (graal_date);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_date);
 }
 
 double GraalDate::ValueOf() const {

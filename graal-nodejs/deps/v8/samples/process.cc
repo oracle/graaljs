@@ -140,13 +140,13 @@ class JsHttpRequestProcessor : public HttpRequestProcessor {
   static Local<ObjectTemplate> MakeMapTemplate(Isolate* isolate);
 
   // Callbacks that access the individual fields of request objects.
-  static void GetPath(Local<String> name,
+  static void GetPath(Local<Name> name,
                       const PropertyCallbackInfo<Value>& info);
-  static void GetReferrer(Local<String> name,
+  static void GetReferrer(Local<Name> name,
                           const PropertyCallbackInfo<Value>& info);
-  static void GetHost(Local<String> name,
+  static void GetHost(Local<Name> name,
                       const PropertyCallbackInfo<Value>& info);
-  static void GetUserAgent(Local<String> name,
+  static void GetUserAgent(Local<Name> name,
                            const PropertyCallbackInfo<Value>& info);
 
   // Callbacks that access maps
@@ -176,16 +176,14 @@ class JsHttpRequestProcessor : public HttpRequestProcessor {
 // --- P r o c e s s o r ---
 // -------------------------
 
-
-static void LogCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  if (args.Length() < 1) return;
-  Isolate* isolate = args.GetIsolate();
+static void LogCallback(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  if (info.Length() < 1) return;
+  Isolate* isolate = info.GetIsolate();
   HandleScope scope(isolate);
-  Local<Value> arg = args[0];
+  Local<Value> arg = info[0];
   String::Utf8Value value(isolate, arg);
   HttpRequestProcessor::Log(*value);
 }
-
 
 // Execute the script and fetch the Process method.
 bool JsHttpRequestProcessor::Initialize(map<string, string>* opts,
@@ -388,7 +386,7 @@ Local<Object> JsHttpRequestProcessor::WrapMap(map<string, string>* obj) {
 // Utility function that extracts the C++ map pointer from a wrapper
 // object.
 map<string, string>* JsHttpRequestProcessor::UnwrapMap(Local<Object> obj) {
-  Local<External> field = obj->GetInternalField(0).As<External>();
+  Local<External> field = obj->GetInternalField(0).As<Value>().As<External>();
   void* ptr = field->Value();
   return static_cast<map<string, string>*>(ptr);
 }
@@ -504,13 +502,12 @@ Local<Object> JsHttpRequestProcessor::WrapRequest(HttpRequest* request) {
  * wrapper object.
  */
 HttpRequest* JsHttpRequestProcessor::UnwrapRequest(Local<Object> obj) {
-  Local<External> field = obj->GetInternalField(0).As<External>();
+  Local<External> field = obj->GetInternalField(0).As<Value>().As<External>();
   void* ptr = field->Value();
   return static_cast<HttpRequest*>(ptr);
 }
 
-
-void JsHttpRequestProcessor::GetPath(Local<String> name,
+void JsHttpRequestProcessor::GetPath(Local<Name> name,
                                      const PropertyCallbackInfo<Value>& info) {
   // Extract the C++ request object from the JavaScript wrapper.
   HttpRequest* request = UnwrapRequest(info.Holder());
@@ -525,10 +522,8 @@ void JsHttpRequestProcessor::GetPath(Local<String> name,
                           static_cast<int>(path.length())).ToLocalChecked());
 }
 
-
 void JsHttpRequestProcessor::GetReferrer(
-    Local<String> name,
-    const PropertyCallbackInfo<Value>& info) {
+    Local<Name> name, const PropertyCallbackInfo<Value>& info) {
   HttpRequest* request = UnwrapRequest(info.Holder());
   const string& path = request->Referrer();
   info.GetReturnValue().Set(
@@ -537,8 +532,7 @@ void JsHttpRequestProcessor::GetReferrer(
                           static_cast<int>(path.length())).ToLocalChecked());
 }
 
-
-void JsHttpRequestProcessor::GetHost(Local<String> name,
+void JsHttpRequestProcessor::GetHost(Local<Name> name,
                                      const PropertyCallbackInfo<Value>& info) {
   HttpRequest* request = UnwrapRequest(info.Holder());
   const string& path = request->Host();
@@ -548,10 +542,8 @@ void JsHttpRequestProcessor::GetHost(Local<String> name,
                           static_cast<int>(path.length())).ToLocalChecked());
 }
 
-
 void JsHttpRequestProcessor::GetUserAgent(
-    Local<String> name,
-    const PropertyCallbackInfo<Value>& info) {
+    Local<Name> name, const PropertyCallbackInfo<Value>& info) {
   HttpRequest* request = UnwrapRequest(info.Holder());
   const string& path = request->UserAgent();
   info.GetReturnValue().Set(
@@ -559,7 +551,6 @@ void JsHttpRequestProcessor::GetUserAgent(
                           NewStringType::kNormal,
                           static_cast<int>(path.length())).ToLocalChecked());
 }
-
 
 Local<ObjectTemplate> JsHttpRequestProcessor::MakeRequestTemplate(
     Isolate* isolate) {
@@ -653,7 +644,7 @@ MaybeLocal<String> ReadFile(Isolate* isolate, const string& name) {
   size_t size = ftell(file);
   rewind(file);
 
-  std::unique_ptr<char> chars(new char[size + 1]);
+  std::unique_ptr<char[]> chars(new char[size + 1]);
   chars.get()[size] = '\0';
   for (size_t i = 0; i < size;) {
     i += fread(&chars.get()[i], 1, size - i, file);

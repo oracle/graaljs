@@ -257,6 +257,7 @@ Reduction SimplifiedOperatorReducer::Reduce(Node* node) {
                 node->ReplaceInput(0, n.left().node());
                 node->ReplaceInput(1, jsgraph()->Int32Constant(val));
                 RelaxEffectsAndControls(checked_int32_add);
+                checked_int32_add->Kill();
                 return Changed(node);
               }
             }
@@ -299,12 +300,12 @@ Reduction SimplifiedOperatorReducer::ReplaceInt32(int32_t value) {
 
 
 Reduction SimplifiedOperatorReducer::ReplaceNumber(double value) {
-  return Replace(jsgraph()->Constant(value));
+  return Replace(jsgraph()->ConstantNoHole(value));
 }
 
 
 Reduction SimplifiedOperatorReducer::ReplaceNumber(int32_t value) {
-  return Replace(jsgraph()->Constant(value));
+  return Replace(jsgraph()->ConstantNoHole(value));
 }
 
 Factory* SimplifiedOperatorReducer::factory() const {

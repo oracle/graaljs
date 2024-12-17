@@ -53,14 +53,14 @@ class ArrayBufferSweeper final {
   ~ArrayBufferSweeper();
 
   void RequestSweep(SweepingType sweeping_type,
-                    TreatAllYoungAsPromoted treat_young_as_promoted);
+                    TreatAllYoungAsPromoted treat_all_young_as_promoted);
   void EnsureFinished();
 
   // Track the given ArrayBufferExtension for the given JSArrayBuffer.
-  void Append(JSArrayBuffer object, ArrayBufferExtension* extension);
+  void Append(Tagged<JSArrayBuffer> object, ArrayBufferExtension* extension);
 
   // Detaches an ArrayBufferExtension from a JSArrayBuffer.
-  void Detach(JSArrayBuffer object, ArrayBufferExtension* extension);
+  void Detach(Tagged<JSArrayBuffer> object, ArrayBufferExtension* extension);
 
   const ArrayBufferList& young() const { return young_; }
   const ArrayBufferList& old() const { return old_; }
@@ -70,10 +70,9 @@ class ArrayBufferSweeper final {
   // Bytes accounted in the old generation. Rebuilt during sweeping.
   size_t OldBytes() const { return old().ApproximateBytes(); }
 
-  bool sweeping_in_progress() const {
-    DCHECK_IMPLIES(!job_, local_sweeper_.IsEmpty());
-    return job_.get();
-  }
+  bool sweeping_in_progress() const { return job_.get(); }
+
+  uint64_t GetTraceIdForFlowEvent(GCTracer::Scope::ScopeId scope_id) const;
 
  private:
   struct SweepingJob;
@@ -89,12 +88,13 @@ class ArrayBufferSweeper final {
   void DecrementExternalMemoryCounters(size_t bytes);
 
   void Prepare(SweepingType type,
-               TreatAllYoungAsPromoted treat_all_young_as_promoted);
+               TreatAllYoungAsPromoted treat_all_young_as_promoted,
+               uint64_t trace_id);
   void Finalize();
 
   void ReleaseAll(ArrayBufferList* extension);
 
-  void DoSweep();
+  void DoSweep(SweepingType type, ThreadKind thread_kind, uint64_t trace_id);
 
   Heap* const heap_;
   std::unique_ptr<SweepingJob> job_;

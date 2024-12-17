@@ -54,17 +54,21 @@ Promise.all(['gzip', 'deflate', 'deflate-raw'].map((i) => test(i))).then(common.
 
 assert.throws(
   () => Reflect.get(CompressionStream.prototype, 'readable', {}), {
-    code: 'ERR_INVALID_THIS',
+    name: 'TypeError',
+    message: /Cannot read private member/,
   });
 assert.throws(
   () => Reflect.get(CompressionStream.prototype, 'writable', {}), {
-    code: 'ERR_INVALID_THIS',
+    name: 'TypeError',
+    message: /Cannot read private member/,
   });
 assert.throws(
   () => Reflect.get(DecompressionStream.prototype, 'readable', {}), {
-    code: 'ERR_INVALID_THIS',
+    name: 'TypeError',
+    message: /Cannot read private member/,
   });
 assert.throws(
   () => Reflect.get(DecompressionStream.prototype, 'writable', {}), {
-    code: 'ERR_INVALID_THIS',
+    name: 'TypeError',
+    message: /Cannot read private member/,
   });

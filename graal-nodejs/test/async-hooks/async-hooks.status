@@ -13,10 +13,13 @@ test-async-local-storage-gcable: SKIP
 test-destroy-not-blocked: FAIL
 
 [$system==win32]
+
 # requires a "sleep" executable, which is not available in our CI
 test-graph.pipe: FAIL,PASS
 
 [$system==linux]
+# https://github.com/nodejs/node/issues/54809
+test-writewrap: PASS, FLAKY
 
 [$system==macos]
 

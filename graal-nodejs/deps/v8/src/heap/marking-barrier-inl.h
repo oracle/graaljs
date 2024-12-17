@@ -8,27 +8,32 @@
 #include "src/base/logging.h"
 #include "src/heap/incremental-marking-inl.h"
 #include "src/heap/incremental-marking.h"
+#include "src/heap/mark-compact-inl.h"
 #include "src/heap/marking-barrier.h"
 
 namespace v8 {
 namespace internal {
 
-void MarkingBarrier::MarkValue(HeapObject host, HeapObject value) {
-  if (value.InReadOnlySpace()) return;
+template <typename TSlot>
+void MarkingBarrier::Write(Tagged<HeapObject> host, TSlot slot,
+                           Tagged<HeapObject> value) {
+  DCHECK(IsCurrentMarkingBarrier(host));
+  DCHECK(is_activated_ || shared_heap_worklist_.has_value());
+  DCHECK(MemoryChunk::FromHeapObject(host)->IsMarking());
+
+  MarkValue(host, value);
+
+  if (slot.address() && IsCompacting(host)) {
+    MarkCompactCollector::RecordSlot(host, slot, value);
+  }
+}
+
+void MarkingBarrier::MarkValue(Tagged<HeapObject> host,
+                               Tagged<HeapObject> value) {
+  if (InReadOnlySpace(value)) return;
 
   DCHECK(IsCurrentMarkingBarrier(host));
   DCHECK(is_activated_ || shared_heap_worklist_.has_value());
-
-  DCHECK_IMPLIES(!value.InWritableSharedSpace() || is_shared_space_isolate_,
-                 !marking_state_.IsImpossible(value));
-
-  // Host may have an impossible markbit pattern if manual allocation folding
-  // is performed and host happens to be the last word of an allocated region.
-  // In that case host has only one markbit and the second markbit belongs to
-  // another object. We can detect that case by checking if value is a one word
-  // filler map.
-  DCHECK(!marking_state_.IsImpossible(host) ||
-         value == ReadOnlyRoots(heap_->isolate()).one_pointer_filler_map());
 
   // When shared heap isn't enabled all objects are local, we can just run the
   // local marking barrier. Also from the point-of-view of the shared space
@@ -39,26 +44,26 @@ void MarkingBarrier::MarkValue(HeapObject host, HeapObject value) {
       return;
     }
 
-    if (host.InWritableSharedSpace()) {
+    if (InWritableSharedSpace(host)) {
       // Invoking shared marking barrier when storing into shared objects.
       MarkValueShared(value);
       return;
-    } else if (value.InWritableSharedSpace()) {
+    } else if (InWritableSharedSpace(value)) {
       // No marking needed when storing shared objects in local objects.
       return;
     }
   }
 
-  DCHECK_IMPLIES(host.InWritableSharedSpace(), is_shared_space_isolate_);
-  DCHECK_IMPLIES(value.InWritableSharedSpace(), is_shared_space_isolate_);
+  DCHECK_IMPLIES(InWritableSharedSpace(host), is_shared_space_isolate_);
+  DCHECK_IMPLIES(InWritableSharedSpace(value), is_shared_space_isolate_);
 
   DCHECK(is_activated_);
   MarkValueLocal(value);
 }
 
-void MarkingBarrier::MarkValueShared(HeapObject value) {
+void MarkingBarrier::MarkValueShared(Tagged<HeapObject> value) {
   // Value is either in read-only space or shared heap.
-  DCHECK(value.InAnySharedSpace());
+  DCHECK(InAnySharedSpace(value));
 
   // We should only reach this on client isolates (= worker isolates).
   DCHECK(!is_shared_space_isolate_);
@@ -70,11 +75,14 @@ void MarkingBarrier::MarkValueShared(HeapObject value) {
   }
 }
 
-void MarkingBarrier::MarkValueLocal(HeapObject value) {
-  DCHECK(!value.InReadOnlySpace());
+void MarkingBarrier::MarkValueLocal(Tagged<HeapObject> value) {
+  DCHECK(!InReadOnlySpace(value));
   if (is_minor()) {
     // We do not need to insert into RememberedSet<OLD_TO_NEW> here because the
     // C++ marking barrier already does this for us.
+    // TODO(v8:13012): Consider updating C++ barriers to respect
+    // POINTERS_TO_HERE_ARE_INTERESTING and POINTERS_FROM_HERE_ARE_INTERESTING
+    // page flags and make the following branch a DCHECK.
     if (Heap::InYoungGeneration(value)) {
       WhiteToGreyAndPush(value);  // NEW->NEW
     }
@@ -88,14 +96,15 @@ void MarkingBarrier::MarkValueLocal(HeapObject value) {
 }
 
 template <typename TSlot>
-inline void MarkingBarrier::MarkRange(HeapObject host, TSlot start, TSlot end) {
+inline void MarkingBarrier::MarkRange(Tagged<HeapObject> host, TSlot start,
+                                      TSlot end) {
   auto* isolate = heap_->isolate();
   const bool record_slots =
       IsCompacting(host) &&
       !MemoryChunk::FromHeapObject(host)->ShouldSkipEvacuationSlotRecording();
   for (TSlot slot = start; slot < end; ++slot) {
     typename TSlot::TObject object = slot.Relaxed_Load();
-    HeapObject heap_object;
+    Tagged<HeapObject> heap_object;
     // Mark both, weak and strong edges.
     if (object.GetHeapObject(isolate, &heap_object)) {
       MarkValue(host, heap_object);
@@ -106,16 +115,16 @@ inline void MarkingBarrier::MarkRange(HeapObject host, TSlot start, TSlot end) {
   }
 }
 
-bool MarkingBarrier::IsCompacting(HeapObject object) const {
+bool MarkingBarrier::IsCompacting(Tagged<HeapObject> object) const {
   if (is_compacting_) {
     DCHECK(is_major());
     return true;
   }
 
-  return shared_heap_worklist_.has_value() && object.InWritableSharedSpace();
+  return shared_heap_worklist_.has_value() && InWritableSharedSpace(object);
 }
 
-bool MarkingBarrier::WhiteToGreyAndPush(HeapObject obj) {
+bool MarkingBarrier::WhiteToGreyAndPush(Tagged<HeapObject> obj) {
   if (marking_state_.TryMark(obj)) {
     current_worklist_->Push(obj);
     return true;

@@ -18,6 +18,7 @@
 
 namespace v8 {
 
+class CFunctionInfo;
 class JobHandle;
 
 namespace internal {
@@ -31,24 +32,22 @@ class WasmCode;
 class WasmEngine;
 class WasmError;
 
-enum RuntimeExceptionSupport : bool {
-  kRuntimeExceptionSupport = true,
-  kNoRuntimeExceptionSupport = false
-};
-
-enum BoundsCheckStrategy : int8_t {
-  // Emit protected instructions, use the trap handler for OOB detection.
-  kTrapHandler,
-  // Emit explicit bounds checks.
-  kExplicitBoundsChecks,
-  // Emit no bounds checks at all (for testing only).
-  kNoBoundsChecks
-};
-
 enum DynamicTiering : bool {
   kDynamicTiering = true,
   kNoDynamicTiering = false
 };
+
+// The Arm architecture does not specify the results in memory of
+// partially-in-bound writes, which does not align with the wasm spec. This
+// affects when trap handlers can be used for OOB detection; however, Mac
+// systems with Apple silicon currently do provide trapping beahviour for
+// partially-out-of-bound writes, so we assume we can rely on that on MacOS,
+// since doing so provides better performance for writes.
+#if V8_TARGET_ARCH_ARM64 && !V8_OS_MACOS
+constexpr bool kPartialOOBWritesAreNoops = false;
+#else
+constexpr bool kPartialOOBWritesAreNoops = true;
+#endif
 
 // The {CompilationEnv} encapsulates the module data that is used during
 // compilation. CompilationEnvs are shareable across multiple compilations.
@@ -56,29 +55,33 @@ struct CompilationEnv {
   // A pointer to the decoded module's static representation.
   const WasmModule* const module;
 
-  // The bounds checking strategy to use.
-  const BoundsCheckStrategy bounds_checks;
-
-  // If the runtime doesn't support exception propagation,
-  // we won't generate stack checks, and trap handling will also
-  // be generated differently.
-  const RuntimeExceptionSupport runtime_exception_support;
-
   // Features enabled for this compilation.
   const WasmFeatures enabled_features;
 
   const DynamicTiering dynamic_tiering;
 
+  const std::atomic<Address>* fast_api_targets;
+
+  std::atomic<bool>* fast_api_return_is_bool;
+
+  // Create a {CompilationEnv} object for compilation. The caller has to ensure
+  // that the {WasmModule} pointer stays valid while the {CompilationEnv} is
+  // being used.
+  static inline CompilationEnv ForModule(const NativeModule* native_module);
+
+  static constexpr CompilationEnv NoModuleAllFeatures();
+
+ private:
   constexpr CompilationEnv(const WasmModule* module,
-                           BoundsCheckStrategy bounds_checks,
-                           RuntimeExceptionSupport runtime_exception_support,
-                           const WasmFeatures& enabled_features,
-                           DynamicTiering dynamic_tiering)
+                           WasmFeatures enabled_features,
+                           DynamicTiering dynamic_tiering,
+                           std::atomic<Address>* fast_api_targets,
+                           std::atomic<bool>* fast_api_return_is_bool)
       : module(module),
-        bounds_checks(bounds_checks),
-        runtime_exception_support(runtime_exception_support),
         enabled_features(enabled_features),
-        dynamic_tiering(dynamic_tiering) {}
+        dynamic_tiering(dynamic_tiering),
+        fast_api_targets(fast_api_targets),
+        fast_api_return_is_bool(fast_api_return_is_bool) {}
 };
 
 // The wire bytes are either owned by the StreamingDecoder, or (after streaming)
@@ -167,6 +170,8 @@ class V8_EXPORT_PRIVATE CompilationState {
   void operator delete(void* ptr) { ::operator delete(ptr); }
 
   CompilationState() = delete;
+
+  size_t EstimateCurrentMemoryConsumption() const;
 
  private:
   // NativeModule is allowed to call the static {New} method.

@@ -4,14 +4,14 @@
 
 #include "src/api/api.h"
 #include "src/baseline/baseline.h"
+#include "src/builtins/builtins-inl.h"
 #include "src/builtins/builtins-utils-gen.h"
-#include "src/builtins/builtins.h"
-#include "src/codegen/code-stub-assembler.h"
+#include "src/codegen/code-stub-assembler-inl.h"
 #include "src/codegen/interface-descriptors-inl.h"
-#include "src/codegen/macro-assembler.h"
+#include "src/codegen/macro-assembler-inl.h"
 #include "src/common/globals.h"
 #include "src/execution/frame-constants.h"
-#include "src/heap/memory-chunk.h"
+#include "src/heap/mutable-page.h"
 #include "src/ic/accessor-assembler.h"
 #include "src/ic/keyed-store-generic.h"
 #include "src/logging/counters.h"
@@ -82,25 +82,20 @@ TF_BUILTIN(DebugBreakTrampoline, CodeStubAssembler) {
   auto function = Parameter<JSFunction>(Descriptor::kJSTarget);
 
   // Check break-at-entry flag on the debug info.
+  TNode<ExternalReference> f =
+      ExternalConstant(ExternalReference::debug_break_at_entry_function());
+  TNode<ExternalReference> isolate_ptr =
+      ExternalConstant(ExternalReference::isolate_address(isolate()));
   TNode<SharedFunctionInfo> shared =
       CAST(LoadObjectField(function, JSFunction::kSharedFunctionInfoOffset));
-  TNode<Object> maybe_heap_object_or_smi =
-      LoadObjectField(shared, SharedFunctionInfo::kScriptOrDebugInfoOffset);
-  TNode<HeapObject> maybe_debug_info =
-      TaggedToHeapObject(maybe_heap_object_or_smi, &tailcall_to_shared);
-  GotoIfNot(HasInstanceType(maybe_debug_info, InstanceType::DEBUG_INFO_TYPE),
-            &tailcall_to_shared);
+  TNode<IntPtrT> result = UncheckedCast<IntPtrT>(
+      CallCFunction(f, MachineType::UintPtr(),
+                    std::make_pair(MachineType::Pointer(), isolate_ptr),
+                    std::make_pair(MachineType::TaggedPointer(), shared)));
+  GotoIf(IntPtrEqual(result, IntPtrConstant(0)), &tailcall_to_shared);
 
-  {
-    TNode<DebugInfo> debug_info = CAST(maybe_debug_info);
-    TNode<Smi> flags =
-        CAST(LoadObjectField(debug_info, DebugInfo::kFlagsOffset));
-    GotoIfNot(SmiToInt32(SmiAnd(flags, SmiConstant(DebugInfo::kBreakAtEntry))),
-              &tailcall_to_shared);
-
-    CallRuntime(Runtime::kDebugBreakAtEntry, context, function);
-    Goto(&tailcall_to_shared);
-  }
+  CallRuntime(Runtime::kDebugBreakAtEntry, context, function);
+  Goto(&tailcall_to_shared);
 
   BIND(&tailcall_to_shared);
   // Tail call into code object on the SharedFunctionInfo.
@@ -142,10 +137,10 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
   }
 
   TNode<BoolT> IsPageFlagSet(TNode<IntPtrT> object, int mask) {
-    TNode<IntPtrT> page = PageFromAddress(object);
+    TNode<IntPtrT> header = MemoryChunkFromAddress(object);
     TNode<IntPtrT> flags = UncheckedCast<IntPtrT>(
-        Load(MachineType::Pointer(), page,
-             IntPtrConstant(BasicMemoryChunk::kFlagsOffset)));
+        Load(MachineType::Pointer(), header,
+             IntPtrConstant(MemoryChunkLayout::kFlagsOffset)));
     return WordNotEqual(WordAnd(flags, IntPtrConstant(mask)),
                         IntPtrConstant(0));
   }
@@ -154,32 +149,34 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
     TNode<IntPtrT> cell;
     TNode<IntPtrT> mask;
     GetMarkBit(object, &cell, &mask);
-    TNode<Int32T> mask32 = TruncateIntPtrToInt32(mask);
     // Marked only requires checking a single bit here.
-    return Word32Equal(Word32And(Load<Int32T>(cell), mask32), Int32Constant(0));
+    return WordEqual(WordAnd(Load<IntPtrT>(cell), mask), IntPtrConstant(0));
   }
 
   void GetMarkBit(TNode<IntPtrT> object, TNode<IntPtrT>* cell,
                   TNode<IntPtrT>* mask) {
-    TNode<IntPtrT> page = PageFromAddress(object);
-    TNode<IntPtrT> bitmap =
-        IntPtrAdd(page, IntPtrConstant(MemoryChunk::kMarkingBitmapOffset));
+    TNode<IntPtrT> page = PageMetadataFromAddress(object);
+    TNode<IntPtrT> bitmap = IntPtrAdd(
+        page, IntPtrConstant(MemoryChunkLayout::kMarkingBitmapOffset));
 
     {
       // Temp variable to calculate cell offset in bitmap.
       TNode<WordT> r0;
-      int shift = Bitmap::kBitsPerCellLog2 + kTaggedSizeLog2 -
-                  Bitmap::kBytesPerCellLog2;
+      int shift = MarkingBitmap::kBitsPerCellLog2 + kTaggedSizeLog2 -
+                  MarkingBitmap::kBytesPerCellLog2;
       r0 = WordShr(object, IntPtrConstant(shift));
-      r0 = WordAnd(r0, IntPtrConstant((kPageAlignmentMask >> shift) &
-                                      ~(Bitmap::kBytesPerCell - 1)));
+      r0 = WordAnd(r0,
+                   IntPtrConstant(
+                       (MemoryChunk::GetAlignmentMaskForAssembler() >> shift) &
+                       ~(MarkingBitmap::kBytesPerCell - 1)));
       *cell = IntPtrAdd(bitmap, Signed(r0));
     }
     {
       // Temp variable to calculate bit offset in cell.
       TNode<WordT> r1;
       r1 = WordShr(object, IntPtrConstant(kTaggedSizeLog2));
-      r1 = WordAnd(r1, IntPtrConstant((1 << Bitmap::kBitsPerCellLog2) - 1));
+      r1 = WordAnd(r1,
+                   IntPtrConstant((1 << MarkingBitmap::kBitsPerCellLog2) - 1));
       // It seems that LSB(e.g. cl) is automatically used, so no manual masking
       // is needed. Uncomment the following line otherwise.
       // WordAnd(r1, IntPtrConstant((1 << kBitsPerByte) - 1)));
@@ -190,11 +187,12 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
   void InsertIntoRememberedSet(TNode<IntPtrT> object, TNode<IntPtrT> slot,
                                SaveFPRegsMode fp_mode) {
     Label slow_path(this), next(this);
-    TNode<IntPtrT> page = PageFromAddress(object);
+    TNode<IntPtrT> chunk = MemoryChunkFromAddress(object);
+    TNode<IntPtrT> page = PageMetadataFromMemoryChunk(chunk);
 
     // Load address of SlotSet
     TNode<IntPtrT> slot_set = LoadSlotSet(page, &slow_path);
-    TNode<IntPtrT> slot_offset = IntPtrSub(slot, page);
+    TNode<IntPtrT> slot_offset = IntPtrSub(slot, chunk);
 
     // Load bucket
     TNode<IntPtrT> bucket = LoadBucket(slot_set, slot_offset, &slow_path);
@@ -210,7 +208,7 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
       CallCFunctionWithCallerSavedRegisters(
           function, MachineTypeOf<Int32T>::value, fp_mode,
           std::make_pair(MachineTypeOf<IntPtrT>::value, page),
-          std::make_pair(MachineTypeOf<IntPtrT>::value, slot));
+          std::make_pair(MachineTypeOf<IntPtrT>::value, slot_offset));
       Goto(&next);
     }
 
@@ -220,7 +218,7 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
   TNode<IntPtrT> LoadSlotSet(TNode<IntPtrT> page, Label* slow_path) {
     TNode<IntPtrT> slot_set = UncheckedCast<IntPtrT>(
         Load(MachineType::Pointer(), page,
-             IntPtrConstant(MemoryChunk::kOldToNewSlotSetOffset)));
+             IntPtrConstant(MutablePageMetadata::kOldToNewSlotSetOffset)));
     GotoIf(WordEqual(slot_set, IntPtrConstant(0)), slow_path);
     return slot_set;
   }
@@ -271,6 +269,40 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
 
     BIND(&marking_is_on);
     WriteBarrierDuringMarking(slot, &next, fp_mode);
+
+    BIND(&next);
+  }
+
+  void IndirectPointerWriteBarrier(SaveFPRegsMode fp_mode) {
+    // Currently, only objects living in (local) old space are referenced
+    // through a pointer table indirection and we have DCHECKs in the CPP write
+    // barrier code to check that. This simplifies the write barrier code for
+    // these cases.
+    Label marking_is_on(this), next(this);
+    Branch(IsMarking(), &marking_is_on, &next);
+
+    BIND(&marking_is_on);
+
+    // For this barrier, the slot contains an index into a pointer table and not
+    // directly a pointer to a HeapObject. Further, the slot address is tagged
+    // with the indirect pointer tag of the slot, so it cannot directly be
+    // dereferenced but needs to be decoded first.
+    TNode<IntPtrT> slot = UncheckedParameter<IntPtrT>(
+        IndirectPointerWriteBarrierDescriptor::kSlotAddress);
+    TNode<IntPtrT> object = BitcastTaggedToWord(UncheckedParameter<Object>(
+        IndirectPointerWriteBarrierDescriptor::kObject));
+    TNode<IntPtrT> tag = UncheckedParameter<IntPtrT>(
+        IndirectPointerWriteBarrierDescriptor::kIndirectPointerTag);
+
+    TNode<ExternalReference> function = ExternalConstant(
+        ExternalReference::
+            write_barrier_indirect_pointer_marking_from_code_function());
+    CallCFunctionWithCallerSavedRegisters(
+        function, MachineTypeOf<Int32T>::value, fp_mode,
+        std::make_pair(MachineTypeOf<IntPtrT>::value, object),
+        std::make_pair(MachineTypeOf<IntPtrT>::value, slot),
+        std::make_pair(MachineTypeOf<IntPtrT>::value, tag));
+    Goto(&next);
 
     BIND(&next);
   }
@@ -531,6 +563,22 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
     Return(TrueConstant());
   }
 
+  void GenerateIndirectPointerBarrier(SaveFPRegsMode fp_mode) {
+    if (V8_DISABLE_WRITE_BARRIERS_BOOL) {
+      Return(TrueConstant());
+      return;
+    }
+
+    if (!V8_ENABLE_SANDBOX_BOOL) {
+      Unreachable();
+      return;
+    }
+
+    IndirectPointerWriteBarrier(fp_mode);
+    IncrementCounter(isolate()->counters()->write_barriers(), 1);
+    Return(TrueConstant());
+  }
+
   void GenerateEphemeronKeyBarrier(SaveFPRegsMode fp_mode) {
     TNode<ExternalReference> function = ExternalConstant(
         ExternalReference::ephemeron_key_write_barrier_function());
@@ -562,6 +610,14 @@ TF_BUILTIN(RecordWriteSaveFP, WriteBarrierCodeStubAssembler) {
 
 TF_BUILTIN(RecordWriteIgnoreFP, WriteBarrierCodeStubAssembler) {
   GenerateRecordWrite(SaveFPRegsMode::kIgnore);
+}
+
+TF_BUILTIN(IndirectPointerBarrierSaveFP, WriteBarrierCodeStubAssembler) {
+  GenerateIndirectPointerBarrier(SaveFPRegsMode::kSave);
+}
+
+TF_BUILTIN(IndirectPointerBarrierIgnoreFP, WriteBarrierCodeStubAssembler) {
+  GenerateIndirectPointerBarrier(SaveFPRegsMode::kIgnore);
 }
 
 TF_BUILTIN(EphemeronKeyBarrierSaveFP, WriteBarrierCodeStubAssembler) {
@@ -761,7 +817,7 @@ class DeletePropertyBaseAssembler : public AccessorAssembler {
                                 TNode<IntPtrT> key_index,
                                 TNode<Context> context) {
     // Overwrite the entry itself (see NameDictionary::SetEntry).
-    TNode<Oddball> filler = TheHoleConstant();
+    TNode<Hole> filler = TheHoleConstant();
     DCHECK(RootsTable::IsImmortalImmovable(RootIndex::kTheHoleValue));
     StoreFixedArrayElement(properties, key_index, filler, SKIP_WRITE_BARRIER);
     StoreValueByKeyIndex<NameDictionary>(properties, key_index, filler,
@@ -1013,8 +1069,8 @@ class SetOrCopyDataPropertiesAssembler : public CodeStubAssembler {
       // Non-empty strings are the only non-JSReceivers that need to be
       // handled explicitly by Object.assign() and CopyDataProperties.
       GotoIfNot(IsStringInstanceType(source_instance_type), &if_done);
-      TNode<IntPtrT> source_length = LoadStringLengthAsWord(CAST(source));
-      Branch(IntPtrEqual(source_length, IntPtrConstant(0)), &if_done,
+      TNode<Uint32T> source_length = LoadStringLengthAsWord32(CAST(source));
+      Branch(Word32Equal(source_length, Uint32Constant(0)), &if_done,
              if_runtime);
     }
 
@@ -1228,18 +1284,18 @@ TF_BUILTIN(AdaptorWithBuiltinExitFrame, CodeStubAssembler) {
       Int32Constant(BuiltinExitFrameConstants::kNumExtraArgsWithoutReceiver));
 
   const bool builtin_exit_frame = true;
-  TNode<Code> code = HeapConstant(
-      CodeFactory::CEntry(isolate(), 1, ArgvMode::kStack, builtin_exit_frame));
+  const bool switch_to_central_stack = false;
+  Builtin centry = Builtins::CEntry(1, ArgvMode::kStack, builtin_exit_frame,
+                                    switch_to_central_stack);
 
   // Unconditionally push argc, target and new target as extra stack arguments.
   // They will be used by stack frame iterators when constructing stack trace.
-  TailCallStub(CEntry1ArgvOnStackDescriptor{},  // descriptor
-               code, context,       // standard arguments for TailCallStub
-               argc, c_function,    // register arguments
-               TheHoleConstant(),   // additional stack argument 1 (padding)
-               SmiFromInt32(argc),  // additional stack argument 2
-               target,              // additional stack argument 3
-               new_target);         // additional stack argument 4
+  TailCallBuiltin(centry, context,     // standard arguments for TailCallBuiltin
+                  argc, c_function,    // register arguments
+                  TheHoleConstant(),   // additional stack argument 1 (padding)
+                  SmiFromInt32(argc),  // additional stack argument 2
+                  target,              // additional stack argument 3
+                  new_target);         // additional stack argument 4
 }
 
 TF_BUILTIN(NewHeapNumber, CodeStubAssembler) {
@@ -1252,19 +1308,7 @@ TF_BUILTIN(AllocateInYoungGeneration, CodeStubAssembler) {
   CSA_CHECK(this, IsValidPositiveSmi(requested_size));
 
   TNode<Smi> allocation_flags =
-      SmiConstant(Smi::FromInt(AllocateDoubleAlignFlag::encode(false) |
-                               AllowLargeObjectAllocationFlag::encode(true)));
-  TailCallRuntime(Runtime::kAllocateInYoungGeneration, NoContextConstant(),
-                  SmiFromIntPtr(requested_size), allocation_flags);
-}
-
-TF_BUILTIN(AllocateRegularInYoungGeneration, CodeStubAssembler) {
-  auto requested_size = UncheckedParameter<IntPtrT>(Descriptor::kRequestedSize);
-  CSA_CHECK(this, IsValidPositiveSmi(requested_size));
-
-  TNode<Smi> allocation_flags =
-      SmiConstant(Smi::FromInt(AllocateDoubleAlignFlag::encode(false) |
-                               AllowLargeObjectAllocationFlag::encode(false)));
+      SmiConstant(Smi::FromInt(AllocateDoubleAlignFlag::encode(false)));
   TailCallRuntime(Runtime::kAllocateInYoungGeneration, NoContextConstant(),
                   SmiFromIntPtr(requested_size), allocation_flags);
 }
@@ -1274,22 +1318,32 @@ TF_BUILTIN(AllocateInOldGeneration, CodeStubAssembler) {
   CSA_CHECK(this, IsValidPositiveSmi(requested_size));
 
   TNode<Smi> runtime_flags =
-      SmiConstant(Smi::FromInt(AllocateDoubleAlignFlag::encode(false) |
-                               AllowLargeObjectAllocationFlag::encode(true)));
+      SmiConstant(Smi::FromInt(AllocateDoubleAlignFlag::encode(false)));
   TailCallRuntime(Runtime::kAllocateInOldGeneration, NoContextConstant(),
                   SmiFromIntPtr(requested_size), runtime_flags);
 }
 
-TF_BUILTIN(AllocateRegularInOldGeneration, CodeStubAssembler) {
+#if V8_ENABLE_WEBASSEMBLY
+TF_BUILTIN(WasmAllocateInYoungGeneration, CodeStubAssembler) {
+  auto requested_size = UncheckedParameter<IntPtrT>(Descriptor::kRequestedSize);
+  CSA_CHECK(this, IsValidPositiveSmi(requested_size));
+
+  TNode<Smi> allocation_flags =
+      SmiConstant(Smi::FromInt(AllocateDoubleAlignFlag::encode(false)));
+  TailCallRuntime(Runtime::kAllocateInYoungGeneration, NoContextConstant(),
+                  SmiFromIntPtr(requested_size), allocation_flags);
+}
+
+TF_BUILTIN(WasmAllocateInOldGeneration, CodeStubAssembler) {
   auto requested_size = UncheckedParameter<IntPtrT>(Descriptor::kRequestedSize);
   CSA_CHECK(this, IsValidPositiveSmi(requested_size));
 
   TNode<Smi> runtime_flags =
-      SmiConstant(Smi::FromInt(AllocateDoubleAlignFlag::encode(false) |
-                               AllowLargeObjectAllocationFlag::encode(false)));
+      SmiConstant(Smi::FromInt(AllocateDoubleAlignFlag::encode(false)));
   TailCallRuntime(Runtime::kAllocateInOldGeneration, NoContextConstant(),
                   SmiFromIntPtr(requested_size), runtime_flags);
 }
+#endif
 
 TF_BUILTIN(Abort, CodeStubAssembler) {
   auto message_id = Parameter<Smi>(Descriptor::kMessageOrMessageId);
@@ -1303,64 +1357,57 @@ TF_BUILTIN(AbortCSADcheck, CodeStubAssembler) {
 
 void Builtins::Generate_CEntry_Return1_ArgvOnStack_NoBuiltinExit(
     MacroAssembler* masm) {
-  Generate_CEntry(masm, 1, ArgvMode::kStack, false);
+  Generate_CEntry(masm, 1, ArgvMode::kStack, false, false);
 }
 
 void Builtins::Generate_CEntry_Return1_ArgvOnStack_BuiltinExit(
     MacroAssembler* masm) {
-  Generate_CEntry(masm, 1, ArgvMode::kStack, true);
+  Generate_CEntry(masm, 1, ArgvMode::kStack, true, false);
 }
 
 void Builtins::Generate_CEntry_Return1_ArgvInRegister_NoBuiltinExit(
     MacroAssembler* masm) {
-  Generate_CEntry(masm, 1, ArgvMode::kRegister, false);
+  Generate_CEntry(masm, 1, ArgvMode::kRegister, false, false);
 }
 
 void Builtins::Generate_CEntry_Return2_ArgvOnStack_NoBuiltinExit(
     MacroAssembler* masm) {
-  Generate_CEntry(masm, 2, ArgvMode::kStack, false);
+  Generate_CEntry(masm, 2, ArgvMode::kStack, false, false);
 }
 
 void Builtins::Generate_CEntry_Return2_ArgvOnStack_BuiltinExit(
     MacroAssembler* masm) {
-  Generate_CEntry(masm, 2, ArgvMode::kStack, true);
+  Generate_CEntry(masm, 2, ArgvMode::kStack, true, false);
 }
 
 void Builtins::Generate_CEntry_Return2_ArgvInRegister_NoBuiltinExit(
     MacroAssembler* masm) {
-  Generate_CEntry(masm, 2, ArgvMode::kRegister, false);
+  Generate_CEntry(masm, 2, ArgvMode::kRegister, false, false);
+}
+
+void Builtins::Generate_WasmCEntry(MacroAssembler* masm) {
+  Generate_CEntry(masm, 1, ArgvMode::kStack, false, true);
 }
 
 #if !defined(V8_TARGET_ARCH_ARM)
 void Builtins::Generate_MemCopyUint8Uint8(MacroAssembler* masm) {
-  masm->Call(BUILTIN_CODE(masm->isolate(), Illegal), RelocInfo::CODE_TARGET);
+  masm->CallBuiltin(Builtin::kIllegal);
 }
 #endif  // !defined(V8_TARGET_ARCH_ARM)
 
 #ifndef V8_TARGET_ARCH_IA32
 void Builtins::Generate_MemMove(MacroAssembler* masm) {
-  masm->Call(BUILTIN_CODE(masm->isolate(), Illegal), RelocInfo::CODE_TARGET);
+  masm->CallBuiltin(Builtin::kIllegal);
 }
 #endif  // V8_TARGET_ARCH_IA32
 
-// TODO(v8:11421): Remove #if once baseline compiler is ported to other
-// architectures.
-#if ENABLE_SPARKPLUG
 void Builtins::Generate_BaselineLeaveFrame(MacroAssembler* masm) {
+#ifdef V8_ENABLE_SPARKPLUG
   EmitReturnBaseline(masm);
-}
 #else
-// Stub out implementations of arch-specific baseline builtins.
-void Builtins::Generate_BaselineOutOfLinePrologue(MacroAssembler* masm) {
   masm->Trap();
+#endif  // V8_ENABLE_SPARKPLUG
 }
-void Builtins::Generate_BaselineLeaveFrame(MacroAssembler* masm) {
-  masm->Trap();
-}
-void Builtins::Generate_BaselineOnStackReplacement(MacroAssembler* masm) {
-  masm->Trap();
-}
-#endif
 
 // TODO(v8:11421): Remove #if once the Maglev compiler is ported to other
 // architectures.
@@ -1372,6 +1419,39 @@ void Builtins::Generate_MaglevOnStackReplacement(MacroAssembler* masm) {
   masm->Trap();
 }
 #endif  // V8_TARGET_ARCH_X64
+
+#ifdef V8_ENABLE_MAGLEV
+void Builtins::Generate_MaglevOptimizeCodeOrTailCallOptimizedCodeSlot(
+    MacroAssembler* masm) {
+  using D = MaglevOptimizeCodeOrTailCallOptimizedCodeSlotDescriptor;
+  Register flags = D::GetRegisterParameter(D::kFlags);
+  Register feedback_vector = D::GetRegisterParameter(D::kFeedbackVector);
+  Register temporary = D::GetRegisterParameter(D::kTemporary);
+  masm->AssertFeedbackVector(feedback_vector, temporary);
+  masm->OptimizeCodeOrTailCallOptimizedCodeSlot(flags, feedback_vector);
+  masm->Trap();
+}
+#else
+// static
+void Builtins::Generate_MaglevFunctionEntryStackCheck(MacroAssembler* masm,
+                                                      bool save_new_target) {
+  masm->Trap();
+}
+void Builtins::Generate_MaglevOptimizeCodeOrTailCallOptimizedCodeSlot(
+    MacroAssembler* masm) {
+  masm->Trap();
+}
+#endif  // V8_ENABLE_MAGLEV
+
+void Builtins::Generate_MaglevFunctionEntryStackCheck_WithoutNewTarget(
+    MacroAssembler* masm) {
+  Generate_MaglevFunctionEntryStackCheck(masm, false);
+}
+
+void Builtins::Generate_MaglevFunctionEntryStackCheck_WithNewTarget(
+    MacroAssembler* masm) {
+  Generate_MaglevFunctionEntryStackCheck(masm, true);
+}
 
 // ES6 [[Get]] operation.
 TF_BUILTIN(GetProperty, CodeStubAssembler) {
@@ -1389,9 +1469,12 @@ TF_BUILTIN(GetProperty, CodeStubAssembler) {
           TNode<Name> unique_name, Label* next_holder, Label* if_bailout) {
         TVARIABLE(Object, var_value);
         Label if_found(this);
+        // If we get here then it's guaranteed that |object| (and thus the
+        // |receiver|) is a JSReceiver.
         TryGetOwnProperty(context, receiver, CAST(holder), holder_map,
                           holder_instance_type, unique_name, &if_found,
-                          &var_value, next_holder, if_bailout);
+                          &var_value, next_holder, if_bailout,
+                          kExpectingJSReceiver);
         BIND(&if_found);
         Return(var_value.value());
       };
@@ -1446,7 +1529,8 @@ TF_BUILTIN(GetPropertyWithReceiver, CodeStubAssembler) {
         Label if_found(this);
         TryGetOwnProperty(context, receiver, CAST(holder), holder_map,
                           holder_instance_type, unique_name, &if_found,
-                          &var_value, next_holder, if_bailout);
+                          &var_value, next_holder, if_bailout,
+                          kExpectingAnyReceiver);
         BIND(&if_found);
         Return(var_value.value());
       };
@@ -1573,9 +1657,8 @@ TF_BUILTIN(FindNonDefaultConstructorOrConstruct, CodeStubAssembler) {
   Label found_default_base_ctor(this, &constructor),
       found_something_else(this, &constructor);
 
-  FindNonDefaultConstructorOrConstruct(context, this_function, constructor,
-                                       &found_default_base_ctor,
-                                       &found_something_else);
+  FindNonDefaultConstructor(this_function, constructor,
+                            &found_default_base_ctor, &found_something_else);
 
   BIND(&found_default_base_ctor);
   {

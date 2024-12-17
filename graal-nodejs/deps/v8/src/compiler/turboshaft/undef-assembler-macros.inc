@@ -14,27 +14,22 @@
 
 #undef __
 
+#undef Assert
+
 #undef BIND
+#undef BIND_LOOP
+#undef BREAK
+#undef CONTINUE
 #undef ELSE
-#undef ELSE_IF
-#undef ELSE_IF_LIKELY
-#undef ELSE_IF_UNLIKELY
-#undef ELSE_IF_WITH_HINT
-#undef END_IF
 #undef GOTO
 #undef GOTO_IF
-#undef GOTO_IF_LIKELY
 #undef GOTO_IF_NOT
-#undef GOTO_IF_NOT_LIKELY
-#undef GOTO_IF_NOT_UNLIKELY
-#undef GOTO_IF_UNLIKELY
 #undef IF
-#undef IF_LIKELY
-#undef IF_UNLIKELY
-#undef IF_WITH_HINT
 #undef IF_NOT
-#undef IF_NOT_LIKELY
-#undef IF_NOT_UNLIKELY
-#undef LOOP
+#undef LIKLEY
+#undef REDUCE
+#undef REDUCE_INPUT_GRAPH
+#undef UNLIKELY
+#undef WHILE
 
 #undef V8_COMPILER_TURBOSHAFT_ASSEMBLER_MACROS_DEFINED

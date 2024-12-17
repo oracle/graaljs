@@ -4,6 +4,7 @@ const {
   ArrayPrototypeForEach,
   ArrayPrototypeMap,
   ArrayPrototypePush,
+  AtomicsAdd,
   Float64Array,
   FunctionPrototypeBind,
   JSONStringify,
@@ -21,7 +22,7 @@ const {
   SymbolFor,
   TypedArrayPrototypeFill,
   Uint32Array,
-  globalThis: { Atomics, SharedArrayBuffer },
+  globalThis: { SharedArrayBuffer },
 } = primordials;
 
 const EventEmitter = require('events');
@@ -40,7 +41,6 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
 } = errorCodes;
-const { getOptionValue } = require('internal/options');
 
 const workerIo = require('internal/worker/io');
 const {
@@ -56,6 +56,7 @@ const {
   ReadableWorkerStdio,
   WritableWorkerStdio,
 } = workerIo;
+const { createMainThreadPort, destroyMainThreadPort } = require('internal/worker/messaging');
 const { deserializeError } = require('internal/error_serdes');
 const { fileURLToPath, isURL, pathToFileURL } = require('internal/url');
 const { kEmptyObject } = require('internal/util');
@@ -100,13 +101,12 @@ let cwdCounter;
 
 const environmentData = new SafeMap();
 
-// SharedArrayBuffers can be disabled with --no-harmony-sharedarraybuffer.
-// Atomics can be disabled with --no-harmony-atomics.
-if (isMainThread && SharedArrayBuffer !== undefined && Atomics !== undefined) {
+// SharedArrayBuffers can be disabled with --enable-sharedarraybuffer-per-context.
+if (isMainThread && SharedArrayBuffer !== undefined) {
   cwdCounter = new Uint32Array(new SharedArrayBuffer(4));
   const originalChdir = process.chdir;
   process.chdir = function(path) {
-    Atomics.add(cwdCounter, 0, 1);
+    AtomicsAdd(cwdCounter, 0, 1);
     originalChdir(path);
   };
 }
@@ -251,14 +251,18 @@ class Worker extends EventEmitter {
 
     this[kParentSideStdio] = { stdin, stdout, stderr };
 
-    const { port1, port2 } = new MessageChannel();
-    const transferList = [port2];
+    const mainThreadPortToWorker = createMainThreadPort(this.threadId);
+    const {
+      port1: publicPortToParent,
+      port2: publicPortToWorker,
+    } = new MessageChannel();
+    const transferList = [mainThreadPortToWorker, publicPortToWorker];
     // If transferList is provided.
     if (options.transferList)
       ArrayPrototypePush(transferList,
                          ...new SafeArrayIterator(options.transferList));
 
-    this[kPublicPort] = port1;
+    this[kPublicPort] = publicPortToParent;
     ArrayPrototypeForEach(['message', 'messageerror'], (event) => {
       this[kPublicPort].on(event, (message) => this.emit(event, message));
     });
@@ -272,14 +276,9 @@ class Worker extends EventEmitter {
       cwdCounter: cwdCounter || workerIo.sharedCwdCounter,
       workerData: options.workerData,
       environmentData,
-      publicPort: port2,
-      manifestURL: getOptionValue('--experimental-policy') ?
-        require('internal/process/policy').url :
-        null,
-      manifestSrc: getOptionValue('--experimental-policy') ?
-        require('internal/process/policy').src :
-        null,
       hasStdin: !!options.stdin,
+      publicPort: publicPortToWorker,
+      mainThreadPort: mainThreadPortToWorker,
     }, transferList);
     // Use this to cache the Worker's loopStart value once available.
     this[kLoopStartTime] = -1;
@@ -302,6 +301,7 @@ class Worker extends EventEmitter {
     debug(`[${threadId}] hears end event for Worker ${this.threadId}`);
     drainMessagePort(this[kPublicPort]);
     drainMessagePort(this[kPort]);
+    destroyMainThreadPort(this.threadId);
     this.removeAllListeners('message');
     this.removeAllListeners('messageerrors');
     this[kPublicPort].unref();

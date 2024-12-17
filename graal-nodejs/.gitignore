@@ -14,9 +14,6 @@
 !.clang-format
 !.cpplint
 !.editorconfig
-!.eslintignore
-!.eslintrc.js
-!.eslintrc.yaml
 !.gitattributes
 !.github
 !.gitignore
@@ -25,6 +22,7 @@
 !.mailmap
 !.nycrc
 !.yamllint.yaml
+!.configurations/
 
 # === Rules for root dir ===
 /core
@@ -127,9 +125,10 @@ tools/*/*.i.tmp
 # === Rules for `node_modules` ===
 !**/node_modules/**
 /node_modules
+/test/graal/node_modules
 /tools/doc/node_modules
 /tools/clang-format/node_modules
-/test/graal/node_modules
+/tools/eslint/node_modules
 
 # === Rules for test artifacts ===
 /*.tap

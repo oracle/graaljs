@@ -10,7 +10,8 @@ namespace v8 {
 namespace internal {
 namespace compiler {
 
-FrameElider::FrameElider(InstructionSequence* code) : code_(code) {}
+FrameElider::FrameElider(InstructionSequence* code, bool has_dummy_end_block)
+    : code_(code), has_dummy_end_block_(has_dummy_end_block) {}
 
 void FrameElider::Run() {
   MarkBlocks();
@@ -56,6 +57,16 @@ void FrameElider::MarkDeConstruction() {
       // Special case: The start block needs a frame.
       if (block->predecessors().empty()) {
         block->mark_must_construct_frame();
+        if (block->SuccessorCount() == 0) {
+          // We only have a single block, so the block also needs to be marked
+          // to deconstruct the frame.
+          const Instruction* last =
+              InstructionAt(block->last_instruction_index());
+          // The only cases when we need to deconstruct are ret and jump.
+          if (last->IsRet() || last->IsJump()) {
+            block->mark_must_deconstruct_frame();
+          }
+        }
       }
       // Find "frame -> no frame" transitions, inserting frame
       // deconstructions.
@@ -107,9 +118,13 @@ bool FrameElider::PropagateIntoBlock(InstructionBlock* block) {
   // Already marked, nothing to do...
   if (block->needs_frame()) return false;
 
-  // Never mark the dummy end node, otherwise we might incorrectly decide to
-  // put frame deconstruction code there later,
-  if (block->successors().empty()) return false;
+  // Turbofan does have an empty dummy end block, which we need to ignore here.
+  // However, Turboshaft does not have such a block.
+  if (has_dummy_end_block_) {
+    // Never mark the dummy end node, otherwise we might incorrectly decide to
+    // put frame deconstruction code there later,
+    if (block->successors().empty()) return false;
+  }
 
   // Propagate towards the end ("downwards") if there is a predecessor needing
   // a frame, but don't "bleed" from deferred code to non-deferred code.

@@ -33,6 +33,7 @@ markBootstrapComplete();
 // TODO(MoLow): Make kill signal configurable
 const kKillSignal = 'SIGTERM';
 const kShouldFilterModules = getOptionValue('--watch-path').length === 0;
+const kEnvFile = getOptionValue('--env-file');
 const kWatchedPaths = ArrayPrototypeMap(getOptionValue('--watch-path'), (path) => resolve(path));
 const kPreserveOutput = getOptionValue('--watch-preserve-output');
 const kCommand = ArrayPrototypeSlice(process.argv, 1);
@@ -73,6 +74,9 @@ function start() {
     },
   });
   watcher.watchChildProcessModules(child);
+  if (kEnvFile) {
+    watcher.filterFile(resolve(kEnvFile));
+  }
   child.once('exit', (code) => {
     exited = true;
     if (code === 0) {
@@ -109,7 +113,10 @@ function reportGracefulTermination() {
   return () => {
     clearTimeout(graceTimer);
     if (reported) {
-      process.stdout.write(`${clear}${green}Gracefully restarted ${kCommandStr}${white}\n`);
+      if (!kPreserveOutput) {
+        process.stdout.write(clear);
+      }
+      process.stdout.write(`${green}Gracefully restarted ${kCommandStr}${white}\n`);
     }
   };
 }

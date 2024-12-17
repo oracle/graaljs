@@ -16,6 +16,7 @@ static_assert(
 #include "src/base/flags.h"
 #include "src/base/macros.h"
 #include "src/base/optional.h"
+#include "src/base/utils/random-number-generator.h"
 #include "src/heap/cppgc-js/cross-heap-remembered-set.h"
 #include "src/heap/cppgc/heap-base.h"
 #include "src/heap/cppgc/marker.h"
@@ -30,6 +31,7 @@ class Isolate;
 namespace internal {
 
 class CppMarkingState;
+class EmbedderStackStateScope;
 class MinorGCHeapGrowing;
 
 // A C++ heap implementation used with V8 to implement unified heap.
@@ -135,18 +137,19 @@ class V8_EXPORT_PRIVATE CppHeap final
       std::unique_ptr<CustomSpaceStatisticsReceiver>);
 
   void FinishSweepingIfRunning();
+  void FinishAtomicSweepingIfRunning();
   void FinishSweepingIfOutOfWork();
 
-  void InitializeTracing(
+  void InitializeMarking(
       CollectionType,
       GarbageCollectionFlags = GarbageCollectionFlagValues::kNoFlags);
-  void StartTracing();
-  bool AdvanceTracing(double max_duration);
+  void StartMarking();
+  bool AdvanceTracing(v8::base::TimeDelta max_duration);
   bool IsTracingDone() const;
-  void TraceEpilogue();
+  void FinishMarkingAndStartSweeping();
   void EnterFinalPause(cppgc::EmbedderStackState stack_state);
   bool FinishConcurrentMarkingIfNeeded();
-  void WriteBarrier(JSObject);
+  void WriteBarrier(Tagged<JSObject>);
 
   bool ShouldFinalizeIncrementalMarking() const;
 
@@ -175,12 +178,20 @@ class V8_EXPORT_PRIVATE CppHeap final
 
   // cppgc::internal::GarbageCollector interface.
   void CollectGarbage(cppgc::internal::GCConfig) override;
-  const cppgc::EmbedderStackState* override_stack_state() const override;
+
+  std::optional<cppgc::EmbedderStackState> overridden_stack_state()
+      const override;
+  void set_override_stack_state(cppgc::EmbedderStackState state) override;
+  void clear_overridden_stack_state() override;
+
   void StartIncrementalGarbageCollection(cppgc::internal::GCConfig) override;
   size_t epoch() const override;
+#ifdef V8_ENABLE_ALLOCATION_TIMEOUT
+  v8::base::Optional<int> UpdateAllocationTimeout() final;
+#endif  // V8_ENABLE_ALLOCATION_TIMEOUT
 
   V8_INLINE void RememberCrossHeapReferenceIfNeeded(
-      v8::internal::JSObject host_obj, void* value);
+      v8::internal::Tagged<v8::internal::JSObject> host_obj, void* value);
   template <typename F>
   inline void VisitCrossHeapRememberedSetIfNeeded(F f);
   void ResetCrossHeapRememberedSet();
@@ -188,10 +199,10 @@ class V8_EXPORT_PRIVATE CppHeap final
   // Testing-only APIs.
   void EnableDetachedGarbageCollectionsForTesting();
   void CollectGarbageForTesting(CollectionType, StackState);
-  void ReduceGCCapabilitiesFromFlagsForTesting();
+  void UpdateGCCapabilitiesFromFlagsForTesting();
 
  private:
-  void ReduceGCCapabilitiesFromFlags();
+  void UpdateGCCapabilitiesFromFlags();
 
   void FinalizeIncrementalGarbageCollectionIfNeeded(
       cppgc::Heap::StackState) final {
@@ -209,6 +220,10 @@ class V8_EXPORT_PRIVATE CppHeap final
   SweepingType SelectSweepingType() const;
 
   bool TracingInitialized() const { return collection_type_.has_value(); }
+
+  bool IsGCForbidden() const override;
+  bool IsGCAllowed() const override;
+  bool IsDetachedGCAllowed() const;
 
   Heap* heap() const { return heap_; }
 
@@ -245,11 +260,19 @@ class V8_EXPORT_PRIVATE CppHeap final
   // on each increment.
   size_t allocated_size_limit_for_check_ = 0;
 
+  std::optional<cppgc::EmbedderStackState> detached_override_stack_state_;
+  std::unique_ptr<v8::internal::EmbedderStackStateScope>
+      override_stack_state_scope_;
+#ifdef V8_ENABLE_ALLOCATION_TIMEOUT
+  // Use standalone RNG to avoid initialization order dependency.
+  base::Optional<v8::base::RandomNumberGenerator> allocation_timeout_rng_;
+#endif  // V8_ENABLE_ALLOCATION_TIMEOUT
+
   friend class MetricRecorderAdapter;
 };
 
 void CppHeap::RememberCrossHeapReferenceIfNeeded(
-    v8::internal::JSObject host_obj, void* value) {
+    v8::internal::Tagged<v8::internal::JSObject> host_obj, void* value) {
   if (!generational_gc_supported()) return;
   DCHECK(isolate_);
   cross_heap_remembered_set_.RememberReferenceIfNeeded(*isolate_, host_obj,

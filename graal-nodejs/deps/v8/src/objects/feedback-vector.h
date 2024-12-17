@@ -12,6 +12,7 @@
 #include "src/base/macros.h"
 #include "src/common/globals.h"
 #include "src/objects/elements-kind.h"
+#include "src/objects/feedback-cell.h"
 #include "src/objects/map.h"
 #include "src/objects/maybe-object.h"
 #include "src/objects/name.h"
@@ -172,27 +173,47 @@ class FeedbackMetadata;
 
 #include "torque-generated/src/objects/feedback-vector-tq.inc"
 
-// ClosureFeedbackCellArray is a FixedArray that contains feedback cells used
-// when creating closures from a function. This is created once the function is
-// compiled and is either held by the feedback vector (if allocated) or by the
-// FeedbackCell of the closure.
-class ClosureFeedbackCellArray : public FixedArray {
+class ClosureFeedbackCellArrayShape final : public AllStatic {
+ public:
+  static constexpr int kElementSize = kTaggedSize;
+  using ElementT = FeedbackCell;
+  using CompressionScheme = V8HeapCompressionScheme;
+  static constexpr RootIndex kMapRootIndex =
+      RootIndex::kClosureFeedbackCellArrayMap;
+  static constexpr bool kLengthEqualsCapacity = true;
+
+#define FIELD_LIST(V)                                                   \
+  V(kCapacityOffset, kTaggedSize)                                       \
+  V(kUnalignedHeaderSize, OBJECT_POINTER_PADDING(kUnalignedHeaderSize)) \
+  V(kHeaderSize, 0)
+  DEFINE_FIELD_OFFSET_CONSTANTS(HeapObject::kHeaderSize, FIELD_LIST)
+#undef FIELD_LIST
+};
+
+// ClosureFeedbackCellArray contains feedback cells used when creating closures
+// from a function. This is created once the function is compiled and is either
+// held by the feedback vector (if allocated) or by the FeedbackCell of the
+// closure.
+class ClosureFeedbackCellArray
+    : public TaggedArrayBase<ClosureFeedbackCellArray,
+                             ClosureFeedbackCellArrayShape> {
+  using Super =
+      TaggedArrayBase<ClosureFeedbackCellArray, ClosureFeedbackCellArrayShape>;
+  OBJECT_CONSTRUCTORS(ClosureFeedbackCellArray, Super);
+
  public:
   NEVER_READ_ONLY_SPACE
-
-  DECL_CAST(ClosureFeedbackCellArray)
+  using Shape = ClosureFeedbackCellArrayShape;
 
   V8_EXPORT_PRIVATE static Handle<ClosureFeedbackCellArray> New(
-      Isolate* isolate, Handle<SharedFunctionInfo> shared);
-
-  inline Handle<FeedbackCell> GetFeedbackCell(int index);
-  inline FeedbackCell cell(int index);
+      Isolate* isolate, Handle<SharedFunctionInfo> shared,
+      AllocationType allocation = AllocationType::kYoung);
 
   DECL_VERIFIER(ClosureFeedbackCellArray)
   DECL_PRINTER(ClosureFeedbackCellArray)
+  DECL_CAST(ClosureFeedbackCellArray)
 
- private:
-  OBJECT_CONSTRUCTORS(ClosureFeedbackCellArray, FixedArray);
+  class BodyDescriptor;
 };
 
 class NexusConfig;
@@ -221,17 +242,17 @@ class FeedbackVector
 
   inline bool is_empty() const;
 
-  inline FeedbackMetadata metadata() const;
-  inline FeedbackMetadata metadata(AcquireLoadTag tag) const;
-
-  // Increment profiler ticks, saturating at the maximal value.
-  void SaturatingIncrementProfilerTicks();
+  DECL_GETTER(metadata, Tagged<FeedbackMetadata>)
+  DECL_ACQUIRE_GETTER(metadata, Tagged<FeedbackMetadata>)
 
   // Forward declare the non-atomic accessors.
   using TorqueGeneratedFeedbackVector::invocation_count;
   using TorqueGeneratedFeedbackVector::set_invocation_count;
   DECL_RELAXED_INT32_ACCESSORS(invocation_count)
   inline void clear_invocation_count(RelaxedStoreTag tag);
+  using TorqueGeneratedFeedbackVector::invocation_count_before_stable;
+  using TorqueGeneratedFeedbackVector::set_invocation_count_before_stable;
+  DECL_UINT8_ACCESSORS(invocation_count_before_stable)
 
   // The [osr_urgency] controls when OSR is attempted, and is incremented as
   // the function becomes hotter. When the current loop depth is less than the
@@ -244,17 +265,18 @@ class FeedbackVector
   inline void RequestOsrAtNextOpportunity();
 
   // Whether this vector may contain cached optimized osr code for *any* slot.
-  // Represented internally as a bit that can be efficiently checked by
-  // generated code. May diverge from the state of the world; the invariant is
-  // that if `maybe_has_optimized_osr_code` is false, no optimized osr code
+  // May diverge from the state of the world; the invariant is that if
+  // `maybe_has_(maglev|turbofan)_osr_code` is false, no optimized osr code
   // exists.
+  inline bool maybe_has_maglev_osr_code() const;
+  inline bool maybe_has_turbofan_osr_code() const;
   inline bool maybe_has_optimized_osr_code() const;
-  inline void set_maybe_has_optimized_osr_code(bool value);
+  inline void set_maybe_has_optimized_osr_code(bool value, CodeKind code_kind);
 
   // The `osr_state` contains the osr_urgency and maybe_has_optimized_osr_code.
   inline void reset_osr_state();
 
-  inline Code optimized_code() const;
+  inline Tagged<Code> optimized_code(IsolateForSandbox isolate) const;
   // Whether maybe_optimized_code contains a cached Code object.
   inline bool has_optimized_code() const;
 
@@ -268,17 +290,17 @@ class FeedbackVector
   inline bool maybe_has_turbofan_code() const;
   inline void set_maybe_has_turbofan_code(bool value);
 
-  void SetOptimizedCode(Code code);
-  void EvictOptimizedCodeMarkedForDeoptimization(Isolate* isolate,
-                                                 SharedFunctionInfo shared,
-                                                 const char* reason);
+  void SetOptimizedCode(IsolateForSandbox isolate, Tagged<Code> code);
+  void EvictOptimizedCodeMarkedForDeoptimization(
+      Isolate* isolate, Tagged<SharedFunctionInfo> shared, const char* reason);
   void ClearOptimizedCode();
 
   // Optimized OSR'd code is cached in JumpLoop feedback vector slots. The
   // slots either contain a Code object or the ClearedValue.
-  inline base::Optional<Code> GetOptimizedOsrCode(Isolate* isolate,
-                                                  FeedbackSlot slot);
-  void SetOptimizedOsrCode(FeedbackSlot slot, Code code);
+  inline base::Optional<Tagged<Code>> GetOptimizedOsrCode(Isolate* isolate,
+                                                          FeedbackSlot slot);
+  void SetOptimizedOsrCode(Isolate* isolate, FeedbackSlot slot,
+                           Tagged<Code> code);
 
   inline TieringState tiering_state() const;
   void set_tiering_state(TieringState state);
@@ -286,6 +308,9 @@ class FeedbackVector
 
   TieringState osr_tiering_state();
   void set_osr_tiering_state(TieringState marker);
+
+  inline bool interrupt_budget_reset_by_ic_change() const;
+  inline void set_interrupt_budget_reset_by_ic_change(bool value);
 
   void reset_flags();
 
@@ -295,19 +320,19 @@ class FeedbackVector
   // Conversion from an integer index to the underlying array to a slot.
   static inline FeedbackSlot ToSlot(intptr_t index);
 
-  inline MaybeObject SynchronizedGet(FeedbackSlot slot) const;
-  inline void SynchronizedSet(FeedbackSlot slot, MaybeObject value,
-                              WriteBarrierMode mode = UPDATE_WRITE_BARRIER);
-  inline void SynchronizedSet(FeedbackSlot slot, Object value,
+  inline Tagged<MaybeObject> SynchronizedGet(FeedbackSlot slot) const;
+  inline void SynchronizedSet(FeedbackSlot slot, Tagged<MaybeObject> value,
                               WriteBarrierMode mode = UPDATE_WRITE_BARRIER);
 
-  inline MaybeObject Get(FeedbackSlot slot) const;
-  inline MaybeObject Get(PtrComprCageBase cage_base, FeedbackSlot slot) const;
+  inline Tagged<MaybeObject> Get(FeedbackSlot slot) const;
+  inline Tagged<MaybeObject> Get(PtrComprCageBase cage_base,
+                                 FeedbackSlot slot) const;
 
   // Returns the feedback cell at |index| that is used to create the
   // closure.
-  inline Handle<FeedbackCell> GetClosureFeedbackCell(int index) const;
-  inline FeedbackCell closure_feedback_cell(int index) const;
+  inline Handle<FeedbackCell> GetClosureFeedbackCell(Isolate* isolate,
+                                                     int index) const;
+  inline Tagged<FeedbackCell> closure_feedback_cell(int index) const;
 
   // Gives access to raw memory which stores the array's data.
   inline MaybeObjectSlot slots_start();
@@ -358,6 +383,12 @@ class FeedbackVector
 
   void FeedbackSlotPrint(std::ostream& os, FeedbackSlot slot);
 
+#ifdef V8_TRACE_FEEDBACK_UPDATES
+  static void TraceFeedbackChange(Isolate* isolate,
+                                  Tagged<FeedbackVector> vector,
+                                  FeedbackSlot slot, const char* reason);
+#endif
+
   // Clears the vector slots. Return true if feedback has changed.
   bool ClearSlots(Isolate* isolate) {
     return ClearSlots(isolate, ClearBehavior::kDefault);
@@ -379,7 +410,7 @@ class FeedbackVector
 
   // A raw version of the uninitialized sentinel that's safe to read during
   // garbage collection (e.g., for patching the cache).
-  static inline Symbol RawUninitializedSentinel(Isolate* isolate);
+  static inline Tagged<Symbol> RawUninitializedSentinel(Isolate* isolate);
 
   static_assert(kHeaderSize % kObjectAlignment == 0,
                 "Header must be padded for alignment");
@@ -399,15 +430,13 @@ class FeedbackVector
                                             Handle<FeedbackVector> vector);
 
   // Private for initializing stores in FeedbackVector::New().
-  inline void Set(FeedbackSlot slot, MaybeObject value,
-                  WriteBarrierMode mode = UPDATE_WRITE_BARRIER);
-  inline void Set(FeedbackSlot slot, Object value,
+  inline void Set(FeedbackSlot slot, Tagged<MaybeObject> value,
                   WriteBarrierMode mode = UPDATE_WRITE_BARRIER);
 
 #ifdef DEBUG
   // Returns true if value is a non-HashTable FixedArray. We want to
   // make sure not to store such objects in the vector.
-  inline static bool IsOfLegacyType(MaybeObject value);
+  inline static bool IsOfLegacyType(Tagged<MaybeObject> value);
 #endif  // DEBUG
 
   // NexusConfig controls setting slots in the vector.
@@ -656,7 +685,7 @@ class FeedbackMetadataIterator {
         next_slot_(FeedbackSlot(0)),
         slot_kind_(FeedbackSlotKind::kInvalid) {}
 
-  explicit FeedbackMetadataIterator(FeedbackMetadata metadata)
+  explicit FeedbackMetadataIterator(Tagged<FeedbackMetadata> metadata)
       : metadata_(metadata),
         next_slot_(FeedbackSlot(0)),
         slot_kind_(FeedbackSlotKind::kInvalid) {}
@@ -675,7 +704,7 @@ class FeedbackMetadataIterator {
   inline int entry_size() const;
 
  private:
-  FeedbackMetadata metadata() const {
+  Tagged<FeedbackMetadata> metadata() const {
     return !metadata_handle_.is_null() ? *metadata_handle_ : metadata_;
   }
 
@@ -683,7 +712,7 @@ class FeedbackMetadataIterator {
   // to have a single iterator implementation for both "handlified" and raw
   // pointer use cases.
   Handle<FeedbackMetadata> metadata_handle_;
-  FeedbackMetadata metadata_;
+  Tagged<FeedbackMetadata> metadata_;
   FeedbackSlot cur_slot_;
   FeedbackSlot next_slot_;
   FeedbackSlotKind slot_kind_;
@@ -720,23 +749,23 @@ class V8_EXPORT_PRIVATE NexusConfig {
 
   Isolate* isolate() const { return isolate_; }
 
-  MaybeObjectHandle NewHandle(MaybeObject object) const;
+  MaybeObjectHandle NewHandle(Tagged<MaybeObject> object) const;
   template <typename T>
-  Handle<T> NewHandle(T object) const;
+  Handle<T> NewHandle(Tagged<T> object) const;
 
   bool can_write() const { return mode() == MainThread; }
 
-  inline MaybeObject GetFeedback(FeedbackVector vector,
-                                 FeedbackSlot slot) const;
-  inline void SetFeedback(FeedbackVector vector, FeedbackSlot slot,
-                          MaybeObject object,
+  inline Tagged<MaybeObject> GetFeedback(Tagged<FeedbackVector> vector,
+                                         FeedbackSlot slot) const;
+  inline void SetFeedback(Tagged<FeedbackVector> vector, FeedbackSlot slot,
+                          Tagged<MaybeObject> object,
                           WriteBarrierMode mode = UPDATE_WRITE_BARRIER) const;
 
-  std::pair<MaybeObject, MaybeObject> GetFeedbackPair(FeedbackVector vector,
-                                                      FeedbackSlot slot) const;
-  void SetFeedbackPair(FeedbackVector vector, FeedbackSlot start_slot,
-                       MaybeObject feedback, WriteBarrierMode mode,
-                       MaybeObject feedback_extra,
+  std::pair<Tagged<MaybeObject>, Tagged<MaybeObject>> GetFeedbackPair(
+      Tagged<FeedbackVector> vector, FeedbackSlot slot) const;
+  void SetFeedbackPair(Tagged<FeedbackVector> vector, FeedbackSlot start_slot,
+                       Tagged<MaybeObject> feedback, WriteBarrierMode mode,
+                       Tagged<MaybeObject> feedback_extra,
                        WriteBarrierMode mode_extra) const;
 
  private:
@@ -754,7 +783,7 @@ class V8_EXPORT_PRIVATE FeedbackNexus final {
  public:
   // For use on the main thread. A null {vector} is accepted as well.
   FeedbackNexus(Handle<FeedbackVector> vector, FeedbackSlot slot);
-  FeedbackNexus(FeedbackVector vector, FeedbackSlot slot);
+  FeedbackNexus(Tagged<FeedbackVector> vector, FeedbackSlot slot);
 
   // For use on the main or background thread as configured by {config}.
   // {vector} must be valid.
@@ -766,7 +795,7 @@ class V8_EXPORT_PRIVATE FeedbackNexus final {
     DCHECK(vector_.is_null());
     return vector_handle_;
   }
-  FeedbackVector vector() const {
+  Tagged<FeedbackVector> vector() const {
     return vector_handle_.is_null() ? vector_ : *vector_handle_;
   }
 
@@ -774,7 +803,7 @@ class V8_EXPORT_PRIVATE FeedbackNexus final {
   FeedbackSlotKind kind() const { return kind_; }
 
   inline LanguageMode GetLanguageMode() const {
-    return vector().GetLanguageMode(slot());
+    return vector()->GetLanguageMode(slot());
   }
 
   InlineCacheState ic_state() const;
@@ -789,7 +818,7 @@ class V8_EXPORT_PRIVATE FeedbackNexus final {
   void Print(std::ostream& os);
 
   // For map-based ICs (load, keyed-load, store, keyed-store).
-  Map GetFirstMap() const;
+  Tagged<Map> GetFirstMap() const;
   int ExtractMaps(MapHandles* maps) const;
   // Used to obtain maps and the associated handlers stored in the feedback
   // vector. This should be called when we expect only a handler to be stored in
@@ -819,9 +848,10 @@ class V8_EXPORT_PRIVATE FeedbackNexus final {
   bool ConfigureMegamorphic();
   bool ConfigureMegamorphic(IcCheckType property_type);
 
-  inline MaybeObject GetFeedback() const;
-  inline MaybeObject GetFeedbackExtra() const;
-  inline std::pair<MaybeObject, MaybeObject> GetFeedbackPair() const;
+  inline Tagged<MaybeObject> GetFeedback() const;
+  inline Tagged<MaybeObject> GetFeedbackExtra() const;
+  inline std::pair<Tagged<MaybeObject>, Tagged<MaybeObject>> GetFeedbackPair()
+      const;
 
   inline Isolate* GetIsolate() const;
 
@@ -846,7 +876,7 @@ class V8_EXPORT_PRIVATE FeedbackNexus final {
 
   // For KeyedLoad and KeyedStore ICs.
   IcCheckType GetKeyType() const;
-  Name GetName() const;
+  Tagged<Name> GetName() const;
 
   // For Call ICs.
   int GetCallCount();
@@ -874,7 +904,8 @@ class V8_EXPORT_PRIVATE FeedbackNexus final {
 
   // For CloneObject ICs
   static constexpr int kCloneObjectPolymorphicEntrySize = 2;
-  void ConfigureCloneObject(Handle<Map> source_map, Handle<Map> result_map);
+  void ConfigureCloneObject(Handle<Map> source_map,
+                            const MaybeObjectHandle& handler);
 
 // Bit positions in a smi that encodes lexical environment variable access.
 #define LEXICAL_MODE_BIT_FIELDS(V, _)  \
@@ -890,30 +921,30 @@ class V8_EXPORT_PRIVATE FeedbackNexus final {
 
  private:
   template <typename FeedbackType>
-  inline void SetFeedback(FeedbackType feedback,
+  inline void SetFeedback(Tagged<FeedbackType> feedback,
                           WriteBarrierMode mode = UPDATE_WRITE_BARRIER);
   template <typename FeedbackType, typename FeedbackExtraType>
-  inline void SetFeedback(FeedbackType feedback, WriteBarrierMode mode,
-                          FeedbackExtraType feedback_extra,
+  inline void SetFeedback(Tagged<FeedbackType> feedback, WriteBarrierMode mode,
+                          Tagged<FeedbackExtraType> feedback_extra,
                           WriteBarrierMode mode_extra = UPDATE_WRITE_BARRIER);
 
-  inline MaybeObject UninitializedSentinel() const;
-  inline MaybeObject MegamorphicSentinel() const;
-  inline MaybeObject MegaDOMSentinel() const;
+  inline Tagged<MaybeObject> UninitializedSentinel() const;
+  inline Tagged<MaybeObject> MegamorphicSentinel() const;
+  inline Tagged<MaybeObject> MegaDOMSentinel() const;
 
   // Create an array. The caller must install it in a feedback vector slot.
   Handle<WeakFixedArray> CreateArrayOfSize(int length);
 
   // Helpers to maintain feedback_cache_.
-  inline MaybeObject FromHandle(MaybeObjectHandle slot) const;
-  inline MaybeObjectHandle ToHandle(MaybeObject value) const;
+  inline Tagged<MaybeObject> FromHandle(MaybeObjectHandle slot) const;
+  inline MaybeObjectHandle ToHandle(Tagged<MaybeObject> value) const;
 
   // The reason for having a vector handle and a raw pointer is that we can and
   // should use handles during IC miss, but not during GC when we clear ICs. If
   // you have a handle to the vector that is better because more operations can
   // be done, like allocation.
   Handle<FeedbackVector> vector_handle_;
-  FeedbackVector vector_;
+  Tagged<FeedbackVector> vector_;
   FeedbackSlot slot_;
   FeedbackSlotKind kind_;
   // When using the background-thread configuration, a cache is used to
@@ -928,8 +959,8 @@ class V8_EXPORT_PRIVATE FeedbackIterator final {
   explicit FeedbackIterator(const FeedbackNexus* nexus);
   void Advance();
   bool done() { return done_; }
-  Map map() { return map_; }
-  MaybeObject handler() { return handler_; }
+  Tagged<Map> map() { return map_; }
+  Tagged<MaybeObject> handler() { return handler_; }
 
   static int SizeFor(int number_of_entries) {
     CHECK_GT(number_of_entries, 0);
@@ -954,8 +985,8 @@ class V8_EXPORT_PRIVATE FeedbackIterator final {
   enum State { kMonomorphic, kPolymorphic, kOther };
 
   Handle<WeakFixedArray> polymorphic_feedback_;
-  Map map_;
-  MaybeObject handler_;
+  Tagged<Map> map_;
+  Tagged<MaybeObject> handler_;
   bool done_;
   int index_;
   State state_;

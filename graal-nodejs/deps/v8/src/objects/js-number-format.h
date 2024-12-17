@@ -89,25 +89,33 @@ class JSNumberFormat
   static bool SignificantDigitsFromSkeleton(const icu::UnicodeString& skeleton,
                                             int32_t* minimum, int32_t* maximum);
 
+  static Handle<String> RoundingModeString(Isolate* isolate,
+                                           const icu::UnicodeString& skeleton);
+  static Handle<String> RoundingPriorityString(
+      Isolate* isolate, const icu::UnicodeString& skeleton);
+  static Handle<String> TrailingZeroDisplayString(
+      Isolate* isolate, const icu::UnicodeString& skeleton);
+  static Handle<Object> RoundingIncrement(Isolate* isolate,
+                                          const icu::UnicodeString& skeleton);
+
   enum class ShowTrailingZeros { kShow, kHide };
 
   static icu::number::UnlocalizedNumberFormatter SetDigitOptionsToFormatter(
       const icu::number::UnlocalizedNumberFormatter& settings,
-      const Intl::NumberFormatDigitOptions& digit_options,
-      int rounding_increment, ShowTrailingZeros show);
+      const Intl::NumberFormatDigitOptions& digit_options);
 
   static const icu::UnicodeString NumberingSystemFromSkeleton(
       const icu::UnicodeString& skeleton);
 
   V8_WARN_UNUSED_RESULT static Maybe<icu::number::LocalizedNumberRangeFormatter>
   GetRangeFormatter(
-      Isolate* isolate, String locale,
+      Isolate* isolate, Tagged<String> locale,
       const icu::number::LocalizedNumberFormatter& number_formatter);
 
   DECL_PRINTER(JSNumberFormat)
 
   DECL_ACCESSORS(icu_number_formatter,
-                 Managed<icu::number::LocalizedNumberFormatter>)
+                 Tagged<Managed<icu::number::LocalizedNumberFormatter>>)
 
   TQ_OBJECT_CONSTRUCTORS(JSNumberFormat)
 };

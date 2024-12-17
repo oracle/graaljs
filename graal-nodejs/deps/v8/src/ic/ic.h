@@ -61,10 +61,10 @@ class IC {
     return IsDefineNamedOwnIC() || IsDefineKeyedOwnIC();
   }
 
-  static inline bool IsHandler(MaybeObject object);
+  static inline bool IsHandler(Tagged<MaybeObject> object);
 
   // Nofity the IC system that a feedback has changed.
-  static void OnFeedbackChanged(Isolate* isolate, FeedbackVector vector,
+  static void OnFeedbackChanged(Isolate* isolate, Tagged<FeedbackVector> vector,
                                 FeedbackSlot slot, const char* reason);
 
   void OnFeedbackChanged(const char* reason);
@@ -110,7 +110,8 @@ class IC {
   StubCache* stub_cache();
 
   void CopyICToMegamorphicCache(Handle<Name> name);
-  bool IsTransitionOfMonomorphicTarget(Map source_map, Map target_map);
+  bool IsTransitionOfMonomorphicTarget(Tagged<Map> source_map,
+                                       Tagged<Map> target_map);
   void SetCache(Handle<Name> name, Handle<Object> handler);
   void SetCache(Handle<Name> name, const MaybeObjectHandle& handler);
   FeedbackSlotKind kind() const { return kind_; }
@@ -143,9 +144,9 @@ class IC {
     }
   }
 
-  Map FirstTargetMap() {
+  Tagged<Map> FirstTargetMap() {
     FindTargetMaps();
-    return !target_maps_.empty() ? *target_maps_[0] : Map();
+    return !target_maps_.empty() ? *target_maps_[0] : Tagged<Map>();
   }
 
   const FeedbackNexus* nexus() const { return &nexus_; }
@@ -229,27 +230,28 @@ class KeyedLoadIC : public LoadIC {
                                                  Handle<Object> key);
 
  protected:
-  V8_WARN_UNUSED_RESULT MaybeHandle<Object> RuntimeLoad(Handle<Object> object,
-                                                        Handle<Object> key);
+  V8_WARN_UNUSED_RESULT MaybeHandle<Object> RuntimeLoad(
+      Handle<Object> object, Handle<Object> key, bool* is_found = nullptr);
+
+  V8_WARN_UNUSED_RESULT MaybeHandle<Object> LoadName(Handle<Object> object,
+                                                     Handle<Object> key,
+                                                     Handle<Name> name);
 
   // receiver is HeapObject because it could be a String or a JSObject
   void UpdateLoadElement(Handle<HeapObject> receiver,
-                         KeyedAccessLoadMode load_mode);
+                         KeyedAccessLoadMode new_load_mode);
 
  private:
   friend class IC;
 
   Handle<Object> LoadElementHandler(Handle<Map> receiver_map,
-                                    KeyedAccessLoadMode load_mode);
+                                    KeyedAccessLoadMode new_load_mode);
 
   void LoadElementPolymorphicHandlers(MapHandles* receiver_maps,
                                       MaybeObjectHandles* handlers,
-                                      KeyedAccessLoadMode load_mode);
+                                      KeyedAccessLoadMode new_load_mode);
 
-  // Returns true if the receiver_map has a kElement or kIndexedString
-  // handler in the nexus currently but didn't yet allow out of bounds
-  // accesses.
-  bool CanChangeToAllowOutOfBounds(Handle<Map> receiver_map);
+  KeyedAccessLoadMode GetKeyedAccessLoadModeFor(Handle<Map> receiver_map) const;
 };
 
 class StoreIC : public IC {

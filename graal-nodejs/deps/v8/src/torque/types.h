@@ -97,7 +97,7 @@ using MaybeSpecializationKey = base::Optional<SpecializationKey<GenericType>>;
 struct TypeChecker {
   // The type of the object. This string is not guaranteed to correspond to a
   // C++ class, but just to a type checker function: for any type "Foo" here,
-  // the function Object::IsFoo must exist.
+  // the function IsFoo must exist.
   std::string type;
   // If {type} is "MaybeObject", then {weak_ref_to} indicates the corresponding
   // strong object type. Otherwise, {weak_ref_to} is empty.
@@ -116,8 +116,12 @@ class V8_EXPORT_PRIVATE Type : public TypeBase {
   // Used for naming generated code.
   virtual std::string SimpleName() const;
 
-  std::string UnhandlifiedCppTypeName() const;
-  std::string HandlifiedCppTypeName() const;
+  enum class HandleKind { kIndirect, kDirect };
+  std::string GetHandleTypeName(HandleKind kind,
+                                const std::string& type_name) const;
+
+  std::string TagglifiedCppTypeName() const;
+  std::string HandlifiedCppTypeName(HandleKind kind) const;
 
   const Type* parent() const { return parent_; }
   bool IsVoid() const { return IsAbstractName(VOID_TYPE_STRING); }
@@ -673,18 +677,21 @@ class ClassType final : public AggregateType {
   bool IsExtern() const { return flags_ & ClassFlag::kExtern; }
   bool ShouldGeneratePrint() const {
     if (flags_ & ClassFlag::kCppObjectDefinition) return false;
+    if (flags_ & ClassFlag::kCppObjectLayoutDefinition) return false;
     if (!IsExtern()) return true;
     if (!ShouldGenerateCppClassDefinitions()) return false;
     return !IsAbstract() && !HasUndefinedLayout();
   }
   bool ShouldGenerateVerify() const {
     if (flags_ & ClassFlag::kCppObjectDefinition) return false;
+    if (flags_ & ClassFlag::kCppObjectLayoutDefinition) return false;
     if (!IsExtern()) return true;
     if (!ShouldGenerateCppClassDefinitions()) return false;
     return !HasUndefinedLayout() && !IsShape();
   }
   bool ShouldGenerateBodyDescriptor() const {
     if (flags_ & ClassFlag::kCppObjectDefinition) return false;
+    if (flags_ & ClassFlag::kCppObjectLayoutDefinition) return false;
     if (flags_ & ClassFlag::kGenerateBodyDescriptor) return true;
     return !IsAbstract() && !IsExtern();
   }
@@ -693,15 +700,23 @@ class ClassType final : public AggregateType {
   }
   bool IsTransient() const override { return flags_ & ClassFlag::kTransient; }
   bool IsAbstract() const { return flags_ & ClassFlag::kAbstract; }
+  bool IsLayoutDefinedInCpp() const {
+    return flags_ & ClassFlag::kCppObjectLayoutDefinition;
+  }
   bool HasSameInstanceTypeAsParent() const {
     return flags_ & ClassFlag::kHasSameInstanceTypeAsParent;
   }
   bool ShouldGenerateCppClassDefinitions() const {
     if (flags_ & ClassFlag::kCppObjectDefinition) return false;
+    if (flags_ & ClassFlag::kCppObjectLayoutDefinition) return false;
     return (flags_ & ClassFlag::kGenerateCppClassDefinitions) || !IsExtern();
   }
   bool ShouldGenerateCppObjectDefinitionAsserts() const {
     return flags_ & ClassFlag::kCppObjectDefinition;
+  }
+  bool ShouldGenerateCppObjectLayoutDefinitionAsserts() const {
+    return flags_ & ClassFlag::kCppObjectLayoutDefinition &&
+           flags_ & ClassFlag::kGenerateCppClassDefinitions;
   }
   bool ShouldGenerateFullClassDefinition() const { return !IsExtern(); }
   bool ShouldGenerateUniqueMap() const {
@@ -742,7 +757,7 @@ class ClassType final : public AggregateType {
   // what kind of GC visiting the individual slots require.
   std::vector<ObjectSlotKind> ComputeHeaderSlotKinds() const;
   base::Optional<ObjectSlotKind> ComputeArraySlotKind() const;
-  bool HasNoPointerSlots() const;
+  bool HasNoPointerSlotsExceptMap() const;
   bool HasIndexedFieldsIncludingInParents() const;
   const Field* GetFieldPreceding(size_t field_index) const;
 

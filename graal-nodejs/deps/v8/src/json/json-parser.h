@@ -12,6 +12,7 @@
 #include "src/execution/isolate.h"
 #include "src/heap/factory.h"
 #include "src/objects/objects.h"
+#include "src/objects/string.h"
 #include "src/roots/roots.h"
 
 namespace v8 {
@@ -37,13 +38,12 @@ class JsonString final {
         has_escape_(false),
         is_index_(true) {}
 
-  JsonString(int start, int length, bool needs_conversion,
-             bool needs_internalization, bool has_escape)
+  JsonString(int start, int length, bool needs_conversion, bool internalize,
+             bool has_escape)
       : start_(start),
         length_(length),
         needs_conversion_(needs_conversion),
-        internalize_(needs_internalization ||
-                     length_ <= kMaxInternalizedStringValueLength),
+        internalize_(internalize),
         has_escape_(has_escape),
         is_index_(false) {}
 
@@ -80,8 +80,6 @@ class JsonString final {
   bool is_index() const { return is_index_; }
 
  private:
-  static const int kMaxInternalizedStringValueLength = 10;
-
   union {
     const int start_;
     const uint32_t index_;
@@ -172,7 +170,7 @@ class JsonParser final {
                                  Object);
       val_node = parser.parsed_val_node_;
     }
-    if (reviver->IsCallable()) {
+    if (IsCallable(*reviver)) {
       return JsonParseInternalizer::Internalize(isolate, result, reviver,
                                                 source, val_node);
     }
@@ -184,6 +182,8 @@ class JsonParser final {
       static_cast<base::uc32>(-1);
 
  private:
+  class NamedPropertyIterator;
+
   template <typename T>
   using SmallVector = base::SmallVector<T, 16>;
   struct JsonContinuation {
@@ -342,6 +342,10 @@ class JsonParser final {
   MessageTemplate LookUpErrorMessageForJsonToken(JsonToken token,
                                                  Handle<Object>& arg,
                                                  Handle<Object>& arg2, int pos);
+
+  // Calculate line and column based on the current cursor position.
+  // Both values start at 1.
+  void CalculateFileLocation(Handle<Object>& line, Handle<Object>& column);
   // Mark that a parsing error has happened at the current token.
   void ReportUnexpectedToken(
       JsonToken token,
@@ -354,8 +358,7 @@ class JsonParser final {
 
   static const int kInitialSpecialStringLength = 32;
 
-  static void UpdatePointersCallback(LocalIsolate*, GCType, GCCallbackFlags,
-                                     void* parser) {
+  static void UpdatePointersCallback(void* parser) {
     reinterpret_cast<JsonParser<Char>*>(parser)->UpdatePointers();
   }
 

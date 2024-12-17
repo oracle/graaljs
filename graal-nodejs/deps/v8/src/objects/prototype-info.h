@@ -24,16 +24,20 @@ class PrototypeInfo
  public:
   static const int UNREGISTERED = -1;
 
-  // [object_create_map]: A field caching the map for Object.create(prototype).
-  DECL_GETTER(object_create_map, MaybeObject)
-  DECL_RELEASE_ACQUIRE_WEAK_ACCESSORS(object_create_map)
+  // For caching derived maps for Object.create, Reflect.construct and proxies.
+  DECL_GETTER(derived_maps, Tagged<HeapObject>)
+  DECL_RELEASE_ACQUIRE_ACCESSORS(derived_maps, Tagged<HeapObject>)
 
   static inline void SetObjectCreateMap(Handle<PrototypeInfo> info,
-                                        Handle<Map> map);
-  inline Map ObjectCreateMap();
-  inline bool HasObjectCreateMap();
+                                        Handle<Map> map, Isolate* isolate);
+  inline Tagged<MaybeObject> ObjectCreateMap(AcquireLoadTag);
+  inline Tagged<MaybeObject> ObjectCreateMap();
 
-  static inline bool IsPrototypeInfoFast(Object object);
+  static inline void AddDerivedMap(Handle<PrototypeInfo> info, Handle<Map> to,
+                                   Isolate* isolate);
+  inline Tagged<MaybeObject> GetDerivedMap(Handle<Map> from);
+
+  static inline bool IsPrototypeInfoFast(Tagged<Object> object);
 
   DECL_BOOLEAN_ACCESSORS(should_be_fast_map)
 
@@ -57,19 +61,19 @@ class V8_EXPORT_PRIVATE PrototypeUsers : public WeakArrayList {
                                    Handle<WeakArrayList> array,
                                    Handle<Map> value, int* assigned_index);
 
-  static inline void MarkSlotEmpty(WeakArrayList array, int index);
+  static inline void MarkSlotEmpty(Tagged<WeakArrayList> array, int index);
 
   // The callback is called when a weak pointer to HeapObject "object" is moved
   // from index "from_index" to index "to_index" during compaction. The callback
   // must not cause GC.
-  using CompactionCallback = void (*)(HeapObject object, int from_index,
+  using CompactionCallback = void (*)(Tagged<HeapObject> object, int from_index,
                                       int to_index);
-  static WeakArrayList Compact(
+  static Tagged<WeakArrayList> Compact(
       Handle<WeakArrayList> array, Heap* heap, CompactionCallback callback,
       AllocationType allocation = AllocationType::kYoung);
 
 #ifdef VERIFY_HEAP
-  static void Verify(WeakArrayList array);
+  static void Verify(Tagged<WeakArrayList> array);
 #endif  // VERIFY_HEAP
 
   static const int kEmptySlotIndex = 0;
@@ -78,10 +82,11 @@ class V8_EXPORT_PRIVATE PrototypeUsers : public WeakArrayList {
   static const int kNoEmptySlotsMarker = 0;
 
  private:
-  static inline Smi empty_slot_index(WeakArrayList array);
-  static inline void set_empty_slot_index(WeakArrayList array, int index);
+  static inline Tagged<Smi> empty_slot_index(Tagged<WeakArrayList> array);
+  static inline void set_empty_slot_index(Tagged<WeakArrayList> array,
+                                          int index);
 
-  static void ScanForEmptySlots(WeakArrayList array);
+  static void ScanForEmptySlots(Tagged<WeakArrayList> array);
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(PrototypeUsers);
 };

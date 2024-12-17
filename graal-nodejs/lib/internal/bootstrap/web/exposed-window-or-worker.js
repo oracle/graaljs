@@ -2,15 +2,15 @@
 
 /**
  * This file exposes web interfaces that is defined with the WebIDL
- * Exposed=(Window,Worker) extended attribute or exposed in
+ * Exposed=Window + Exposed=(Window,Worker) extended attribute or exposed in
  * WindowOrWorkerGlobalScope mixin.
  * See more details at https://webidl.spec.whatwg.org/#Exposed and
  * https://html.spec.whatwg.org/multipage/webappapis.html#windoworworkerglobalscope.
  */
 
 const {
-  globalThis,
   ObjectDefineProperty,
+  globalThis,
 } = primordials;
 
 const {
@@ -39,7 +39,7 @@ defineLazyProperties(globalThis, 'buffer', ['atob', 'btoa']);
 // https://html.spec.whatwg.org/multipage/web-messaging.html#broadcasting-to-other-browsing-contexts
 exposeLazyInterfaces(globalThis, 'internal/worker/io', ['BroadcastChannel']);
 exposeLazyInterfaces(globalThis, 'internal/worker/io', [
-  'MessageChannel', 'MessagePort', 'MessageEvent',
+  'MessageChannel', 'MessagePort',
 ]);
 // https://www.w3.org/TR/FileAPI/#dfn-Blob
 exposeLazyInterfaces(globalThis, 'internal/blob', ['Blob']);
@@ -64,7 +64,7 @@ ObjectDefineProperty(globalThis, 'fetch', {
   configurable: true,
   enumerable: true,
   writable: true,
-  value: function value(input, init = undefined) {
+  value: function fetch(input, init = undefined) { // eslint-disable-line func-name-matching
     if (!fetchImpl) { // Implement lazy loading of undici module for fetch function
       const undiciModule = require('internal/deps/undici/undici');
       fetchImpl = undiciModule.fetch;
@@ -78,8 +78,12 @@ ObjectDefineProperty(globalThis, 'fetch', {
 // https://fetch.spec.whatwg.org/#request-class
 // https://fetch.spec.whatwg.org/#response-class
 exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', [
-  'FormData', 'Headers', 'Request', 'Response',
+  'FormData', 'Headers', 'Request', 'Response', 'MessageEvent',
 ]);
+
+// https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events.org/
+// https://websockets.spec.whatwg.org/
+exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', ['EventSource', 'WebSocket']);
 
 // The WebAssembly Web API which relies on Response.
 // https:// webassembly.github.io/spec/web-api/#streaming-modules

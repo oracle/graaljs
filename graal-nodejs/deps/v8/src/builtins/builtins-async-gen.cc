@@ -27,7 +27,7 @@ TNode<Object> AsyncBuiltinsAssembler::Await(
     TNode<Object> value, TNode<JSPromise> outer_promise,
     TNode<SharedFunctionInfo> on_resolve_sfi,
     TNode<SharedFunctionInfo> on_reject_sfi,
-    TNode<Oddball> is_predicted_as_caught) {
+    TNode<Boolean> is_predicted_as_caught) {
   const TNode<NativeContext> native_context = LoadNativeContext(context);
 
   // We do the `PromiseResolve(%Promise%,value)` avoiding to unnecessarily
@@ -178,14 +178,13 @@ void AsyncBuiltinsAssembler::InitializeNativeClosure(
   // contains a builtin index (as Smi), so there's no need to use
   // CodeStubAssembler::GetSharedFunctionInfoCode() helper here,
   // which almost doubles the size of `await` builtins (unnecessarily).
-  TNode<Smi> builtin_id = LoadObjectField<Smi>(
-      shared_info, SharedFunctionInfo::kFunctionDataOffset);
+  TNode<Smi> builtin_id = LoadSharedFunctionInfoBuiltinId(shared_info);
   TNode<Code> code = LoadBuiltin(builtin_id);
-  StoreObjectFieldNoWriteBarrier(function, JSFunction::kCodeOffset, code);
+  StoreCodePointerFieldNoWriteBarrier(function, JSFunction::kCodeOffset, code);
 }
 
 TNode<JSFunction> AsyncBuiltinsAssembler::CreateUnwrapClosure(
-    TNode<NativeContext> native_context, TNode<Oddball> done) {
+    TNode<NativeContext> native_context, TNode<Boolean> done) {
   const TNode<Map> map = CAST(LoadContextElement(
       native_context, Context::STRICT_FUNCTION_WITHOUT_PROTOTYPE_MAP_INDEX));
   const TNode<SharedFunctionInfo> on_fulfilled_shared =
@@ -197,7 +196,7 @@ TNode<JSFunction> AsyncBuiltinsAssembler::CreateUnwrapClosure(
 }
 
 TNode<Context> AsyncBuiltinsAssembler::AllocateAsyncIteratorValueUnwrapContext(
-    TNode<NativeContext> native_context, TNode<Oddball> done) {
+    TNode<NativeContext> native_context, TNode<Boolean> done) {
   CSA_DCHECK(this, IsBoolean(done));
 
   TNode<Context> context = AllocateSyntheticFunctionContext(

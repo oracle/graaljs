@@ -11,11 +11,7 @@ const {
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
-  ObjectGetOwnPropertyDescriptors,
-  ObjectSetPrototypeOf,
-  ObjectValues,
   ReflectApply,
-  SafeArrayIterator,
   SafeFinalizationRegistry,
   SafeMap,
   SafeWeakMap,
@@ -29,10 +25,10 @@ const {
 
 const {
   codes: {
-    ERR_INVALID_ARG_TYPE,
     ERR_EVENT_RECURSION,
-    ERR_MISSING_ARGS,
+    ERR_INVALID_ARG_TYPE,
     ERR_INVALID_THIS,
+    ERR_MISSING_ARGS,
   },
 } = require('internal/errors');
 const {
@@ -69,7 +65,7 @@ const kWeakHandler = Symbol('kWeak');
 const kResistStopPropagation = Symbol('kResistStopPropagation');
 
 const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
-const kRemoveWeakListenerHelper = Symbol('nodejs.internal.removeWeakListenerHelper');
+const kRemoveWeakListenerHelper = Symbol('kRemoveWeakListenerHelper');
 const kCreateEvent = Symbol('kCreateEvent');
 const kNewListener = Symbol('kNewListener');
 const kRemoveListener = Symbol('kRemoveListener');
@@ -115,14 +111,14 @@ class Event {
    *   composed?: boolean,
    * }} [options]
    */
-  constructor(type, options = kEmptyObject) {
+  constructor(type, options = undefined) {
     if (arguments.length === 0)
       throw new ERR_MISSING_ARGS('type');
-    validateObject(options, 'options');
-    const { bubbles, cancelable, composed } = options;
-    this.#cancelable = !!cancelable;
-    this.#bubbles = !!bubbles;
-    this.#composed = !!composed;
+    if (options != null)
+      validateObject(options, 'options');
+    this.#bubbles = !!options?.bubbles;
+    this.#cancelable = !!options?.cancelable;
+    this.#composed = !!options?.composed;
 
     this[kType] = `${type}`;
     if (options?.[kTrustEvent]) {
@@ -200,7 +196,7 @@ class Event {
   get currentTarget() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kTarget];
+    return this[kIsBeingDispatched] ? this[kTarget] : null;
   }
 
   /**
@@ -1154,30 +1150,9 @@ function defineEventHandler(emitter, name, event = name) {
   });
 }
 
-const EventEmitterMixin = (Superclass) => {
-  class MixedEventEmitter extends Superclass {
-    constructor(...args) {
-      args = new SafeArrayIterator(args);
-      super(...args);
-      FunctionPrototypeCall(EventEmitter, this);
-    }
-  }
-  const protoProps = ObjectGetOwnPropertyDescriptors(EventEmitter.prototype);
-  delete protoProps.constructor;
-  const propertiesValues = ObjectValues(protoProps);
-  for (let i = 0; i < propertiesValues.length; i++) {
-    // We want to use null-prototype objects to not rely on globally mutable
-    // %Object.prototype%.
-    ObjectSetPrototypeOf(propertiesValues[i], null);
-  }
-  ObjectDefineProperties(MixedEventEmitter.prototype, protoProps);
-  return MixedEventEmitter;
-};
-
 module.exports = {
   Event,
   CustomEvent,
-  EventEmitterMixin,
   EventTarget,
   NodeEventTarget,
   defineEventHandler,

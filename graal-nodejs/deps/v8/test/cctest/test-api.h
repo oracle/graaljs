@@ -11,26 +11,55 @@
 #include "test/cctest/cctest.h"
 
 template <typename T>
-static void CheckReturnValue(const T& t, i::Address callback) {
-  v8::ReturnValue<v8::Value> rv = t.GetReturnValue();
-  i::FullObjectSlot o(*reinterpret_cast<i::Address*>(&rv));
-  CHECK_EQ(CcTest::isolate(), t.GetIsolate());
-  i::Isolate* isolate = reinterpret_cast<i::Isolate*>(t.GetIsolate());
-  CHECK_EQ(t.GetIsolate(), rv.GetIsolate());
-  CHECK((*o).IsTheHole(isolate) || (*o).IsUndefined(isolate));
+static void CheckReturnValue(const T& info, i::Address callback) {
+  v8::ReturnValue<v8::Value> returnValue = info.GetReturnValue();
+  i::FullObjectSlot returnObjectSlot(
+      *reinterpret_cast<i::Address*>(&returnValue));
+  CHECK_EQ(CcTest::isolate(), info.GetIsolate());
+  i::Isolate* isolate = reinterpret_cast<i::Isolate*>(info.GetIsolate());
+  CHECK_EQ(info.GetIsolate(), returnValue.GetIsolate());
+
+  auto CheckValueMap = [](const v8::ReturnValue<v8::Value>& returnValue) {
+    i::Tagged<i::Object> obj = *v8::Utils::OpenHandle(*returnValue.Get());
+    i::Tagged<i::HeapObject> heap_obj;
+    if (obj.GetHeapObject(&heap_obj)) {
+      return i::IsMap(heap_obj->map());
+    }
+    return true;
+  };
+
+  CHECK(IsTheHole(*returnObjectSlot, isolate) ||
+        IsUndefined(*returnObjectSlot, isolate));
+  CHECK(CheckValueMap(returnValue));
   // Verify reset
-  bool is_runtime = (*o).IsTheHole(isolate);
+  bool is_runtime = IsTheHole(*returnObjectSlot, isolate);
   if (is_runtime) {
-    CHECK(rv.Get()->IsUndefined());
+    CHECK(returnValue.Get()->IsUndefined());
   } else {
-    i::Handle<i::Object> v = v8::Utils::OpenHandle(*rv.Get());
-    CHECK_EQ(*v, *o);
+    i::Handle<i::Object> v = v8::Utils::OpenHandle(*returnValue.Get());
+    CHECK_EQ(*v, *returnObjectSlot);
   }
-  rv.Set(true);
-  CHECK(!(*o).IsTheHole(isolate) && !(*o).IsUndefined(isolate));
-  rv.Set(v8::Local<v8::Object>());
-  CHECK((*o).IsTheHole(isolate) || (*o).IsUndefined(isolate));
-  CHECK_EQ(is_runtime, (*o).IsTheHole(isolate));
+  returnValue.Set(true);
+  CHECK_EQ(*returnObjectSlot, i::ReadOnlyRoots(isolate).true_value());
+  CHECK(CheckValueMap(returnValue));
+
+  returnValue.Set(42);
+  CHECK_EQ(*returnObjectSlot, i::Smi::FromInt(42));
+  CHECK(CheckValueMap(returnValue));
+
+  returnValue.SetNull();
+  CHECK_EQ(*returnObjectSlot, i::ReadOnlyRoots(isolate).null_value());
+  CHECK(CheckValueMap(returnValue));
+
+  returnValue.Set(-153);
+  CHECK_EQ(*returnObjectSlot, i::Smi::FromInt(-153));
+  CHECK(CheckValueMap(returnValue));
+
+  returnValue.Set(v8::Local<v8::Object>());
+  CHECK(IsTheHole(*returnObjectSlot, isolate) ||
+        IsUndefined(*returnObjectSlot, isolate));
+  CHECK(CheckValueMap(returnValue));
+
   // If CPU profiler is active check that when API callback is invoked
   // VMState is set to EXTERNAL.
   if (isolate->is_profiling()) {
@@ -44,9 +73,11 @@ template <typename T>
 static void CheckInternalFieldsAreZero(v8::Local<T> value) {
   CHECK_EQ(T::kInternalFieldCount, value->InternalFieldCount());
   for (int i = 0; i < value->InternalFieldCount(); i++) {
-    CHECK_EQ(0, value->GetInternalField(i)
-                    ->Int32Value(CcTest::isolate()->GetCurrentContext())
-                    .FromJust());
+    v8::Local<v8::Value> field =
+        value->GetInternalField(i).template As<v8::Value>();
+    CHECK_EQ(
+        0,
+        field->Int32Value(CcTest::isolate()->GetCurrentContext()).FromJust());
   }
 }
 

@@ -1,13 +1,12 @@
 'use strict';
 
 const {
-  FunctionPrototypeBind,
   FunctionPrototypeCall,
   ObjectDefineProperties,
+  ObjectSetPrototypeOf,
   PromisePrototypeThen,
-  ReflectConstruct,
-  SymbolToStringTag,
   Symbol,
+  SymbolToStringTag,
 } = primordials;
 
 const {
@@ -31,15 +30,21 @@ const {
 } = require('internal/util');
 
 const {
+  validateObject,
+  kValidateObjectAllowObjects,
+  kValidateObjectAllowObjectsAndNull,
+} = require('internal/validators');
+
+const {
   kDeserialize,
   kTransfer,
   kTransferList,
-  makeTransferable,
+  markTransferMode,
 } = require('internal/worker/js_transferable');
 
 const {
+  createPromiseCallback,
   customInspect,
-  ensureIsPromise,
   extractHighWaterMark,
   extractSizeAlgorithm,
   isBrandCheck,
@@ -50,7 +55,7 @@ const {
 } = require('internal/webstreams/util');
 
 const {
-  ReadableStream,
+  createReadableStream,
   readableStreamDefaultControllerCanCloseOrEnqueue,
   readableStreamDefaultControllerClose,
   readableStreamDefaultControllerEnqueue,
@@ -60,7 +65,7 @@ const {
 } = require('internal/webstreams/readablestream');
 
 const {
-  WritableStream,
+  createWritableStream,
   writableStreamDefaultControllerErrorIfNeeded,
 } = require('internal/webstreams/writablestream');
 
@@ -120,9 +125,13 @@ class TransformStream {
    * @param {QueuingStrategy} [readableStrategy]
    */
   constructor(
-    transformer = null,
+    transformer = kEmptyObject,
     writableStrategy = kEmptyObject,
     readableStrategy = kEmptyObject) {
+    markTransferMode(this, false, true);
+    validateObject(transformer, 'transformer', kValidateObjectAllowObjects);
+    validateObject(writableStrategy, 'writableStrategy', kValidateObjectAllowObjectsAndNull);
+    validateObject(readableStrategy, 'readableStrategy', kValidateObjectAllowObjectsAndNull);
     const readableType = transformer?.readableType;
     const writableType = transformer?.writableType;
     const start = transformer?.start;
@@ -173,9 +182,6 @@ class TransformStream {
     } else {
       startPromise.resolve();
     }
-
-    // eslint-disable-next-line no-constructor-return
-    return makeTransferable(this);
   }
 
   /**
@@ -249,24 +255,36 @@ ObjectDefineProperties(TransformStream.prototype, {
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(TransformStream.name),
 });
 
-function TransferredTransformStream() {
-  return makeTransferable(ReflectConstruct(
-    function() {
-      this[kType] = 'TransformStream';
-      this[kState] = {
-        readable: undefined,
-        writable: undefined,
-        backpressure: undefined,
-        backpressureChange: {
-          promise: undefined,
-          resolve: undefined,
-          reject: undefined,
-        },
-        controller: undefined,
-      };
+function InternalTransferredTransformStream() {
+  ObjectSetPrototypeOf(this, TransformStream.prototype);
+  markTransferMode(this, false, true);
+  this[kType] = 'TransformStream';
+  this[kState] = {
+    __proto__: null,
+    readable: undefined,
+    writable: undefined,
+    backpressure: undefined,
+    backpressureChange: {
+      __proto__: null,
+      promise: undefined,
+      resolve: undefined,
+      reject: undefined,
     },
-    [], TransformStream));
+    controller: undefined,
+  };
 }
+
+ObjectSetPrototypeOf(InternalTransferredTransformStream.prototype, TransformStream.prototype);
+ObjectSetPrototypeOf(InternalTransferredTransformStream, TransformStream);
+
+function TransferredTransformStream() {
+  const stream = new InternalTransferredTransformStream();
+
+  stream.constructor = TransformStream;
+
+  return stream;
+}
+
 TransferredTransformStream.prototype[kDeserialize] = () => {};
 
 class TransformStreamDefaultController {
@@ -353,43 +371,33 @@ function initializeTransformStream(
   readableHighWaterMark,
   readableSizeAlgorithm) {
 
-  const writable = new WritableStream({
-    __proto__: null,
-    start() { return startPromise.promise; },
-    write(chunk) {
-      return transformStreamDefaultSinkWriteAlgorithm(stream, chunk);
-    },
-    abort(reason) {
-      return transformStreamDefaultSinkAbortAlgorithm(stream, reason);
-    },
-    close() {
-      return transformStreamDefaultSinkCloseAlgorithm(stream);
-    },
-  }, {
-    highWaterMark: writableHighWaterMark,
-    size: writableSizeAlgorithm,
-  });
+  const startAlgorithm = () => startPromise.promise;
 
-  const readable = new ReadableStream({
-    __proto__: null,
-    start() { return startPromise.promise; },
-    pull() {
-      return transformStreamDefaultSourcePullAlgorithm(stream);
-    },
-    cancel(reason) {
-      return transformStreamDefaultSourceCancelAlgorithm(stream, reason);
-    },
-  }, {
-    highWaterMark: readableHighWaterMark,
-    size: readableSizeAlgorithm,
-  });
+  const writable = createWritableStream(
+    startAlgorithm,
+    (chunk) => transformStreamDefaultSinkWriteAlgorithm(stream, chunk),
+    () => transformStreamDefaultSinkCloseAlgorithm(stream),
+    (reason) => transformStreamDefaultSinkAbortAlgorithm(stream, reason),
+    writableHighWaterMark,
+    writableSizeAlgorithm,
+  );
+
+  const readable = createReadableStream(
+    startAlgorithm,
+    () => transformStreamDefaultSourcePullAlgorithm(stream),
+    (reason) => transformStreamDefaultSourceCancelAlgorithm(stream, reason),
+    readableHighWaterMark,
+    readableSizeAlgorithm,
+  );
 
   stream[kState] = {
+    __proto__: null,
     readable,
     writable,
     controller: undefined,
     backpressure: undefined,
     backpressureChange: {
+      __proto__: null,
       promise: undefined,
       resolve: undefined,
       reject: undefined,
@@ -444,6 +452,7 @@ function setupTransformStreamDefaultController(
   assert(isTransformStream(stream));
   assert(stream[kState].controller === undefined);
   controller[kState] = {
+    __proto__: null,
     stream,
     transformAlgorithm,
     flushAlgorithm,
@@ -456,15 +465,18 @@ function setupTransformStreamDefaultControllerFromTransformer(
   stream,
   transformer) {
   const controller = new TransformStreamDefaultController(kSkipThrow);
-  const transform = transformer?.transform || defaultTransformAlgorithm;
-  const flush = transformer?.flush || nonOpFlush;
-  const cancel = transformer?.cancel || nonOpCancel;
-  const transformAlgorithm =
-    FunctionPrototypeBind(transform, transformer);
-  const flushAlgorithm =
-    FunctionPrototypeBind(flush, transformer);
-  const cancelAlgorithm =
-    FunctionPrototypeBind(cancel, transformer);
+  const transform = transformer?.transform;
+  const flush = transformer?.flush;
+  const cancel = transformer?.cancel;
+  const transformAlgorithm = transform ?
+    createPromiseCallback('transformer.transform', transform, transformer) :
+    defaultTransformAlgorithm;
+  const flushAlgorithm = flush ?
+    createPromiseCallback('transformer.flush', flush, transformer) :
+    nonOpFlush;
+  const cancelAlgorithm = cancel ?
+    createPromiseCallback('transformer.cancel', cancel, transformer) :
+    nonOpCancel;
 
   setupTransformStreamDefaultController(
     stream,
@@ -512,11 +524,7 @@ function transformStreamDefaultControllerError(controller, error) {
 
 async function transformStreamDefaultControllerPerformTransform(controller, chunk) {
   try {
-    return await ensureIsPromise(
-      controller[kState].transformAlgorithm,
-      controller,
-      chunk,
-      controller);
+    return await controller[kState].transformAlgorithm(chunk, controller);
   } catch (error) {
     transformStreamError(controller[kState].stream, error);
     throw error;
@@ -577,10 +585,7 @@ async function transformStreamDefaultSinkAbortAlgorithm(stream, reason) {
 
   const { promise, resolve, reject } = createDeferredPromise();
   controller[kState].finishPromise = promise;
-  const cancelPromise = ensureIsPromise(
-    controller[kState].cancelAlgorithm,
-    controller,
-    reason);
+  const cancelPromise = controller[kState].cancelAlgorithm(reason);
   transformStreamDefaultControllerClearAlgorithms(controller);
 
   PromisePrototypeThen(
@@ -613,11 +618,7 @@ function transformStreamDefaultSinkCloseAlgorithm(stream) {
   }
   const { promise, resolve, reject } = createDeferredPromise();
   controller[kState].finishPromise = promise;
-  const flushPromise =
-    ensureIsPromise(
-      controller[kState].flushAlgorithm,
-      controller,
-      controller);
+  const flushPromise = controller[kState].flushAlgorithm(controller);
   transformStreamDefaultControllerClearAlgorithms(controller);
   PromisePrototypeThen(
     flushPromise,
@@ -655,31 +656,29 @@ function transformStreamDefaultSourceCancelAlgorithm(stream, reason) {
 
   const { promise, resolve, reject } = createDeferredPromise();
   controller[kState].finishPromise = promise;
-  const cancelPromise = ensureIsPromise(
-    controller[kState].cancelAlgorithm,
-    controller,
-    reason);
+  const cancelPromise = controller[kState].cancelAlgorithm(reason);
   transformStreamDefaultControllerClearAlgorithms(controller);
 
-  PromisePrototypeThen(cancelPromise,
-                       () => {
-                         if (writable[kState].state === 'errored')
-                           reject(writable[kState].storedError);
-                         else {
-                           writableStreamDefaultControllerErrorIfNeeded(
-                             writable[kState].controller,
-                             reason);
-                           transformStreamUnblockWrite(stream);
-                           resolve();
-                         }
-                       },
-                       (error) => {
-                         writableStreamDefaultControllerErrorIfNeeded(
-                           writable[kState].controller,
-                           error);
-                         transformStreamUnblockWrite(stream);
-                         reject(error);
-                       },
+  PromisePrototypeThen(
+    cancelPromise,
+    () => {
+      if (writable[kState].state === 'errored')
+        reject(writable[kState].storedError);
+      else {
+        writableStreamDefaultControllerErrorIfNeeded(
+          writable[kState].controller,
+          reason);
+        transformStreamUnblockWrite(stream);
+        resolve();
+      }
+    },
+    (error) => {
+      writableStreamDefaultControllerErrorIfNeeded(
+        writable[kState].controller,
+        error);
+      transformStreamUnblockWrite(stream);
+      reject(error);
+    },
   );
 
   return controller[kState].finishPromise;

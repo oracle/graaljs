@@ -14,7 +14,7 @@ namespace internal {
 BUILTIN(ShadowRealmConstructor) {
   HandleScope scope(isolate);
   // 1. If NewTarget is undefined, throw a TypeError exception.
-  if (args.new_target()->IsUndefined(isolate)) {  // [[Call]]
+  if (IsUndefined(*args.new_target(), isolate)) {  // [[Call]]
     THROW_NEW_ERROR_RETURN_FAILURE(
         isolate, NewTypeError(MessageTemplate::kConstructorNotFunction,
                               isolate->factory()->ShadowRealm_string()));
@@ -63,12 +63,12 @@ MaybeHandle<Object> GetWrappedValue(Isolate* isolate,
                                     Handle<NativeContext> creation_context,
                                     Handle<Object> value) {
   // 1. If Type(value) is Object, then
-  if (!value->IsJSReceiver()) {
+  if (!IsJSReceiver(*value)) {
     // 2. Return value.
     return value;
   }
   // 1a. If IsCallable(value) is false, throw a TypeError exception.
-  if (!value->IsCallable()) {
+  if (!IsCallable(*value)) {
     // The TypeError thrown is created with creation Realm's TypeError
     // constructor instead of the executing Realm's.
     THROW_NEW_ERROR_RETURN_VALUE(
@@ -96,14 +96,14 @@ BUILTIN(ShadowRealmPrototypeEvaluate) {
   Factory* factory = isolate->factory();
 
   // 2. Perform ? ValidateShadowRealmObject(O).
-  if (!receiver->IsJSShadowRealm()) {
+  if (!IsJSShadowRealm(*receiver)) {
     THROW_NEW_ERROR_RETURN_FAILURE(
         isolate, NewTypeError(MessageTemplate::kIncompatibleMethodReceiver));
   }
   Handle<JSShadowRealm> shadow_realm = Handle<JSShadowRealm>::cast(receiver);
 
   // 3. If Type(sourceText) is not String, throw a TypeError exception.
-  if (!source_text->IsString()) {
+  if (!IsString(*source_text)) {
     THROW_NEW_ERROR_RETURN_FAILURE(
         isolate,
         NewTypeError(MessageTemplate::kInvalidShadowRealmEvaluateSourceText));
@@ -189,12 +189,11 @@ BUILTIN(ShadowRealmPrototypeEvaluate) {
   }
 
   if (result.is_null()) {
-    DCHECK(isolate->has_pending_exception());
-    Handle<Object> pending_exception =
-        Handle<Object>(isolate->pending_exception(), isolate);
-    isolate->clear_pending_exception();
+    DCHECK(isolate->has_exception());
+    Handle<Object> exception = Handle<Object>(isolate->exception(), isolate);
+    isolate->clear_internal_exception();
     if (is_parse_failed) {
-      Handle<JSObject> error_object = Handle<JSObject>::cast(pending_exception);
+      Handle<JSObject> error_object = Handle<JSObject>::cast(exception);
       Handle<String> message = Handle<String>::cast(JSReceiver::GetDataProperty(
           isolate, error_object, factory->message_string()));
 
@@ -202,8 +201,7 @@ BUILTIN(ShadowRealmPrototypeEvaluate) {
           *factory->NewError(isolate->syntax_error_function(), message));
     }
     // 21. If result.[[Type]] is not normal, throw a TypeError exception.
-    Handle<String> string =
-        Object::NoSideEffectsToString(isolate, pending_exception);
+    Handle<String> string = Object::NoSideEffectsToString(isolate, exception);
     THROW_NEW_ERROR_RETURN_FAILURE(
         isolate,
         NewTypeError(MessageTemplate::kCallShadowRealmEvaluateThrew, string));

@@ -49,7 +49,7 @@ class Deserializer : public SerializerDeserializer {
 
  protected:
   // Create a deserializer from a snapshot byte source.
-  Deserializer(IsolateT* isolate, base::Vector<const byte> payload,
+  Deserializer(IsolateT* isolate, base::Vector<const uint8_t> payload,
                uint32_t magic_number, bool deserializing_user_code,
                bool can_rehash);
 
@@ -57,7 +57,7 @@ class Deserializer : public SerializerDeserializer {
 
   // Create Log events for newly deserialized objects.
   void LogNewObjectEvents();
-  void LogScriptEvents(Script script);
+  void LogScriptEvents(Tagged<Script> script);
   void LogNewMapEvents();
 
   // Descriptor arrays are deserialized as "strong", so that there is no risk of
@@ -90,8 +90,9 @@ class Deserializer : public SerializerDeserializer {
   const std::vector<Handle<AccessorInfo>>& accessor_infos() const {
     return accessor_infos_;
   }
-  const std::vector<Handle<CallHandlerInfo>>& call_handler_infos() const {
-    return call_handler_infos_;
+  const std::vector<Handle<FunctionTemplateInfo>>& function_template_infos()
+      const {
+    return function_template_infos_;
   }
   const std::vector<Handle<Script>>& new_scripts() const {
     return new_scripts_;
@@ -113,7 +114,6 @@ class Deserializer : public SerializerDeserializer {
   Handle<HeapObject> ReadObject();
 
  private:
-  friend class DeserializerRelocInfoVisitor;
   // A circular queue of hot objects. This is added to in the same order as in
   // Serializer::HotObjectsList, but this stores the objects as a vector of
   // existing handles. This allows us to add Handles to the queue without having
@@ -143,16 +143,29 @@ class Deserializer : public SerializerDeserializer {
     int index_ = 0;
   };
 
+  struct ReferenceDescriptor {
+    HeapObjectReferenceType type;
+    bool is_indirect_pointer;
+    bool is_protected_pointer;
+  };
+
   void VisitRootPointers(Root root, const char* description,
                          FullObjectSlot start, FullObjectSlot end) override;
 
   void Synchronize(VisitorSynchronization::SyncTag tag) override;
 
-  template <typename TSlot>
-  inline int WriteAddress(TSlot dest, Address value);
+  template <typename SlotAccessor>
+  int WriteHeapPointer(SlotAccessor slot_accessor,
+                       Tagged<HeapObject> heap_object,
+                       ReferenceDescriptor descr);
+  template <typename SlotAccessor>
+  int WriteHeapPointer(SlotAccessor slot_accessor,
+                       Handle<HeapObject> heap_object,
+                       ReferenceDescriptor descr);
 
-  inline int WriteExternalPointer(ExternalPointerSlot dest, Address value,
-                                  ExternalPointerTag tag);
+  inline int WriteExternalPointer(ExternalPointerSlot dest, Address value);
+  inline int WriteIndirectPointer(IndirectPointerSlot dest,
+                                  Tagged<HeapObject> value);
 
   // Fills in a heap object's data from start to end (exclusive). Start and end
   // are slot indices within the object.
@@ -167,56 +180,59 @@ class Deserializer : public SerializerDeserializer {
   // data into the given slot. May fill in zero or multiple slots, so it returns
   // the number of slots filled.
   template <typename SlotAccessor>
-  int ReadSingleBytecodeData(byte data, SlotAccessor slot_accessor);
+  int ReadSingleBytecodeData(uint8_t data, SlotAccessor slot_accessor);
 
   template <typename SlotAccessor>
-  int ReadNewObject(byte data, SlotAccessor slot_accessor);
+  int ReadNewObject(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadBackref(byte data, SlotAccessor slot_accessor);
+  int ReadBackref(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadReadOnlyHeapRef(byte data, SlotAccessor slot_accessor);
+  int ReadReadOnlyHeapRef(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadRootArray(byte data, SlotAccessor slot_accessor);
+  int ReadRootArray(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadStartupObjectCache(byte data, SlotAccessor slot_accessor);
+  int ReadStartupObjectCache(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadReadOnlyObjectCache(byte data, SlotAccessor slot_accessor);
+  int ReadSharedHeapObjectCache(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadSharedHeapObjectCache(byte data, SlotAccessor slot_accessor);
+  int ReadNewMetaMap(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadNewMetaMap(byte data, SlotAccessor slot_accessor);
+  int ReadExternalReference(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadExternalReference(byte data, SlotAccessor slot_accessor);
+  int ReadRawExternalReference(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadRawExternalReference(byte data, SlotAccessor slot_accessor);
+  int ReadAttachedReference(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadAttachedReference(byte data, SlotAccessor slot_accessor);
+  int ReadRegisterPendingForwardRef(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadRegisterPendingForwardRef(byte data, SlotAccessor slot_accessor);
+  int ReadResolvePendingForwardRef(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadResolvePendingForwardRef(byte data, SlotAccessor slot_accessor);
+  int ReadVariableRawData(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadVariableRawData(byte data, SlotAccessor slot_accessor);
+  int ReadVariableRepeat(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadCodeBody(byte data, SlotAccessor slot_accessor);
+  int ReadOffHeapBackingStore(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadVariableRepeat(byte data, SlotAccessor slot_accessor);
+  int ReadApiReference(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadOffHeapBackingStore(byte data, SlotAccessor slot_accessor);
+  int ReadClearedWeakReference(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadApiReference(byte data, SlotAccessor slot_accessor);
+  int ReadWeakPrefix(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadClearedWeakReference(byte data, SlotAccessor slot_accessor);
+  int ReadIndirectPointerPrefix(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadWeakPrefix(byte data, SlotAccessor slot_accessor);
+  int ReadInitializeSelfIndirectPointer(uint8_t data,
+                                        SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadRootArrayConstants(byte data, SlotAccessor slot_accessor);
+  int ReadProtectedPointerPrefix(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadHotObject(byte data, SlotAccessor slot_accessor);
+  int ReadRootArrayConstants(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadFixedRawData(byte data, SlotAccessor slot_accessor);
+  int ReadHotObject(uint8_t data, SlotAccessor slot_accessor);
   template <typename SlotAccessor>
-  int ReadFixedRepeat(byte data, SlotAccessor slot_accessor);
+  int ReadFixedRawData(uint8_t data, SlotAccessor slot_accessor);
+  template <typename SlotAccessor>
+  int ReadFixedRepeat(uint8_t data, SlotAccessor slot_accessor);
 
   // A helper function for ReadData for reading external references.
   inline Address ReadExternalReferenceCase();
@@ -224,10 +240,10 @@ class Deserializer : public SerializerDeserializer {
   // A helper function for reading external pointer tags.
   ExternalPointerTag ReadExternalPointerTag();
 
-  Handle<HeapObject> ReadObject(SnapshotSpace space_number);
-  Handle<HeapObject> ReadMetaMap();
+  Handle<HeapObject> ReadObject(SnapshotSpace space);
+  Handle<HeapObject> ReadMetaMap(SnapshotSpace space);
 
-  HeapObjectReferenceType GetAndResetNextReferenceType();
+  ReferenceDescriptor GetAndResetNextReferenceDescriptor();
 
   template <typename SlotGetter>
   int ReadRepeatedObject(SlotGetter slot_getter, int repeat_count);
@@ -235,12 +251,12 @@ class Deserializer : public SerializerDeserializer {
   // Special handling for serialized code like hooking up internalized strings.
   void PostProcessNewObject(Handle<Map> map, Handle<HeapObject> obj,
                             SnapshotSpace space);
-  void PostProcessNewJSReceiver(Map map, Handle<JSReceiver> obj,
+  void PostProcessNewJSReceiver(Tagged<Map> map, Handle<JSReceiver> obj,
                                 InstanceType instance_type,
                                 SnapshotSpace space);
 
-  HeapObject Allocate(AllocationType allocation, int size,
-                      AllocationAlignment alignment);
+  Tagged<HeapObject> Allocate(AllocationType allocation, int size,
+                              AllocationAlignment alignment);
 
   // Cached current isolate.
   IsolateT* isolate_;
@@ -256,7 +272,7 @@ class Deserializer : public SerializerDeserializer {
   std::vector<Handle<AllocationSite>> new_allocation_sites_;
   std::vector<Handle<InstructionStream>> new_code_objects_;
   std::vector<Handle<AccessorInfo>> accessor_infos_;
-  std::vector<Handle<CallHandlerInfo>> call_handler_infos_;
+  std::vector<Handle<FunctionTemplateInfo>> function_template_infos_;
   std::vector<Handle<Script>> new_scripts_;
   std::vector<std::shared_ptr<BackingStore>> backing_stores_;
 
@@ -275,12 +291,12 @@ class Deserializer : public SerializerDeserializer {
   // The vector is cleared when there are no more unresolved forward refs.
   struct UnresolvedForwardRef {
     UnresolvedForwardRef(Handle<HeapObject> object, int offset,
-                         HeapObjectReferenceType ref_type)
-        : object(object), offset(offset), ref_type(ref_type) {}
+                         ReferenceDescriptor descr)
+        : object(object), offset(offset), descr(descr) {}
 
     Handle<HeapObject> object;
     int offset;
-    HeapObjectReferenceType ref_type;
+    ReferenceDescriptor descr;
   };
   std::vector<UnresolvedForwardRef> unresolved_forward_refs_;
   int num_unresolved_forward_refs_ = 0;
@@ -288,6 +304,8 @@ class Deserializer : public SerializerDeserializer {
   const bool deserializing_user_code_;
 
   bool next_reference_is_weak_ = false;
+  bool next_reference_is_indirect_pointer_ = false;
+  bool next_reference_is_protected_pointer = false;
 
   // TODO(6593): generalize rehashing, and remove this flag.
   const bool should_rehash_;
@@ -333,7 +351,7 @@ class StringTableInsertionKey final : public StringTableKey {
       DeserializingUserCodeOption deserializing_user_code);
 
   template <typename IsolateT>
-  bool IsMatch(IsolateT* isolate, String string);
+  bool IsMatch(IsolateT* isolate, Tagged<String> string);
 
   void PrepareForInsertion(Isolate* isolate) {
     // When sharing the string table, all string table lookups during snapshot

@@ -2074,6 +2074,9 @@ public final class GraalJSAccess {
                 // process all found FunctionTemplates, recursively
                 FunctionTemplate functionTempl = (FunctionTemplate) processedValue;
                 processedValue = functionTemplateGetFunction(realm, functionTempl);
+                if (name instanceof TruffleString nameTS) {
+                    JSFunction.setFunctionName((JSDynamicObject) processedValue, nameTS);
+                }
             }
             if (processedValue instanceof Pair) {
                 Pair<?, ?> pair = (Pair<?, ?>) processedValue;
@@ -3216,6 +3219,10 @@ public final class GraalJSAccess {
         return DOUBLE_PLACEHOLDER;
     }
 
+    public String isolateGetDefaultLocale() {
+        return mainJSContext.getLocale().toLanguageTag();
+    }
+
     public void isolateDispose(boolean exit, int status) {
         agent.setTaskRunnerPointer(0);
         if (exit) {
@@ -3868,6 +3875,15 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
+    public boolean moduleIsGraphAsync(Object module) {
+        JSModuleRecord record = (JSModuleRecord) module;
+        return record.hasTLA() || record.isAsyncEvaluation();
+    }
+
+    public boolean moduleIsSourceTextModule(Object module) {
+        return !(module instanceof NativeBackedModuleRecord);
+    }
+
     public Object moduleCreateSyntheticModule(Object moduleName, Object[] exportNames, final long evaluationStepsCallback) {
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
         for (Object exportName : exportNames) {
@@ -4047,6 +4063,17 @@ public final class GraalJSAccess {
     public void mapSet(Object set, Object key, Object value) {
         JSDynamicObject object = (JSDynamicObject) set;
         JSMap.getInternalMap(object).put(JSSet.normalize(key), value);
+    }
+
+    public Object mapGet(Object set, Object key) {
+        JSDynamicObject object = (JSDynamicObject) set;
+        Object value = JSMap.getInternalMap(object).get(JSSet.normalize(key));
+        return JSRuntime.nullToUndefined(value);
+    }
+
+    public boolean mapDelete(Object set, Object key) {
+        JSDynamicObject object = (JSDynamicObject) set;
+        return JSMap.getInternalMap(object).remove(JSSet.normalize(key));
     }
 
     public Object setNew(Object context) {

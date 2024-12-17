@@ -63,6 +63,7 @@ const intrinsics = new Set([
   'SharedArrayBuffer',
   'Atomics',
   'WebAssembly',
+  'Iterator',
 ]);
 
 if (global.gc) {
@@ -71,6 +72,20 @@ if (global.gc) {
 
 // v8 exposes console in the global scope.
 intrinsics.add('console');
+
+// graal-node.js
+if (typeof Graal !== 'undefined') {
+    intrinsics.add('Polyglot');
+    intrinsics.add('Graal');
+    intrinsics.add('Java');
+    intrinsics.add('Packages');
+    intrinsics.add('java');
+    intrinsics.add('javafx');
+    intrinsics.add('javax');
+    intrinsics.add('com');
+    intrinsics.add('org');
+    intrinsics.add('edu');
+}
 
 const webIdlExposedWildcard = new Set([
   'DOMException',
@@ -124,6 +139,7 @@ const webIdlExposedWindow = new Set([
   'Request',
   'Response',
   'WebSocket',
+  'EventSource',
 ]);
 
 const nodeGlobals = new Set([

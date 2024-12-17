@@ -7,14 +7,14 @@ const {
   ArrayIsArray,
   Promise,
   SymbolAsyncIterator,
-  SymbolDispose,
 } = primordials;
 
 const eos = require('internal/streams/end-of-stream');
-const { once } = require('internal/util');
+const { SymbolDispose, once } = require('internal/util');
 const destroyImpl = require('internal/streams/destroy');
 const Duplex = require('internal/streams/duplex');
 const {
+  AbortError,
   aggregateTwoErrors,
   codes: {
     ERR_INVALID_ARG_TYPE,
@@ -23,7 +23,6 @@ const {
     ERR_STREAM_DESTROYED,
     ERR_STREAM_PREMATURE_CLOSE,
   },
-  AbortError,
 } = require('internal/errors');
 
 const {
@@ -224,6 +223,10 @@ function pipelineImpl(streams, callback, opts) {
     finishImpl(err, --finishCount === 0);
   }
 
+  function finishOnlyHandleError(err) {
+    finishImpl(err, false);
+  }
+
   function finishImpl(err, final) {
     if (err && (!error || error.code === 'ERR_STREAM_PREMATURE_CLOSE')) {
       error = err;
@@ -273,7 +276,7 @@ function pipelineImpl(streams, callback, opts) {
           err.name !== 'AbortError' &&
           err.code !== 'ERR_STREAM_PREMATURE_CLOSE'
         ) {
-          finish(err);
+          finishOnlyHandleError(err);
         }
       }
       stream.on('error', onError);
@@ -366,7 +369,7 @@ function pipelineImpl(streams, callback, opts) {
     } else if (isNodeStream(stream)) {
       if (isReadableNodeStream(ret)) {
         finishCount += 2;
-        const cleanup = pipe(ret, stream, finish, { end });
+        const cleanup = pipe(ret, stream, finish, finishOnlyHandleError, { end });
         if (isReadable(stream) && isLastStream) {
           lastStreamCleanup.push(cleanup);
         }
@@ -409,12 +412,12 @@ function pipelineImpl(streams, callback, opts) {
   return ret;
 }
 
-function pipe(src, dst, finish, { end }) {
+function pipe(src, dst, finish, finishOnlyHandleError, { end }) {
   let ended = false;
   dst.on('close', () => {
     if (!ended) {
       // Finish if the destination closes before the source has completed.
-      finish(new ERR_STREAM_PREMATURE_CLOSE());
+      finishOnlyHandleError(new ERR_STREAM_PREMATURE_CLOSE());
     }
   });
 
@@ -444,7 +447,7 @@ function pipe(src, dst, finish, { end }) {
     if (
       err &&
       err.code === 'ERR_STREAM_PREMATURE_CLOSE' &&
-      (rState && rState.ended && !rState.errored && !rState.errorEmitted)
+      (rState?.ended && !rState.errored && !rState.errorEmitted)
     ) {
       // Some readable streams will emit 'close' before 'end'. However, since
       // this is on the readable side 'end' should still be emitted if the

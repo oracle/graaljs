@@ -122,7 +122,7 @@ cluster._getServer = function(obj, options, cb) {
     cluster.worker.state = 'listening';
     const address = obj.address();
     message.act = 'listening';
-    message.port = (address && address.port) || options.port;
+    message.port = (address?.port) || options.port;
     send(message);
   });
 };
@@ -233,7 +233,7 @@ function onconnection(message, handle) {
 
   if (accepted && server[owner_symbol]) {
     const self = server[owner_symbol];
-    if (self.maxConnections && self._connections >= self.maxConnections) {
+    if (self.maxConnections != null && self._connections >= self.maxConnections) {
       accepted = false;
     }
   }

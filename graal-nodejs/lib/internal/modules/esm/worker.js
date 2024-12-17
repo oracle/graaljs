@@ -1,18 +1,14 @@
 'use strict';
 
 const {
+  AtomicsAdd,
+  AtomicsNotify,
   DataViewPrototypeGetBuffer,
   Int32Array,
   PromisePrototypeThen,
   ReflectApply,
   SafeSet,
   TypedArrayPrototypeGetBuffer,
-  globalThis: {
-    Atomics: {
-      add: AtomicsAdd,
-      notify: AtomicsNotify,
-    },
-  },
 } = primordials;
 const assert = require('internal/assert');
 const { clearImmediate, setImmediate } = require('timers');
@@ -30,7 +26,7 @@ const {
   WORKER_TO_MAIN_THREAD_NOTIFICATION,
 } = require('internal/modules/esm/shared_constants');
 const { initializeHooks } = require('internal/modules/esm/utils');
-
+const { isMarkedAsUntransferable } = require('internal/buffer');
 
 /**
  * Transfers an ArrayBuffer, TypedArray, or DataView to a worker thread.
@@ -39,9 +35,17 @@ const { initializeHooks } = require('internal/modules/esm/utils');
  */
 function transferArrayBuffer(hasError, source) {
   if (hasError || source == null) { return; }
-  if (isArrayBuffer(source)) { return [source]; }
-  if (isTypedArray(source)) { return [TypedArrayPrototypeGetBuffer(source)]; }
-  if (isDataView(source)) { return [DataViewPrototypeGetBuffer(source)]; }
+  let arrayBuffer;
+  if (isArrayBuffer(source)) {
+    arrayBuffer = source;
+  } else if (isTypedArray(source)) {
+    arrayBuffer = TypedArrayPrototypeGetBuffer(source);
+  } else if (isDataView(source)) {
+    arrayBuffer = DataViewPrototypeGetBuffer(source);
+  }
+  if (arrayBuffer && !isMarkedAsUntransferable(arrayBuffer)) {
+    return [arrayBuffer];
+  }
 }
 
 /**
@@ -84,7 +88,8 @@ function wrapMessage(status, body) {
  * @returns {Promise<void>} A promise that resolves when the worker thread has been initialized.
  */
 async function customizedModuleWorker(lock, syncCommPort, errorHandler) {
-  let hooks, preloadScripts, initializationError;
+  let hooks;
+  let initializationError;
   let hasInitializationError = false;
 
   {
@@ -101,9 +106,7 @@ async function customizedModuleWorker(lock, syncCommPort, errorHandler) {
 
 
   try {
-    const initResult = await initializeHooks();
-    hooks = initResult.hooks;
-    preloadScripts = initResult.preloadScripts;
+    hooks = await initializeHooks();
   } catch (exception) {
     // If there was an error while parsing and executing a user loader, for example if because a
     // loader contained a syntax error, then we need to send the error to the main thread so it can
@@ -117,7 +120,7 @@ async function customizedModuleWorker(lock, syncCommPort, errorHandler) {
   if (hasInitializationError) {
     syncCommPort.postMessage(wrapMessage('error', initializationError));
   } else {
-    syncCommPort.postMessage(wrapMessage('success', { preloadScripts }), preloadScripts.map(({ port }) => port));
+    syncCommPort.postMessage(wrapMessage('success'));
   }
 
   // We're ready, so unlock the main thread.

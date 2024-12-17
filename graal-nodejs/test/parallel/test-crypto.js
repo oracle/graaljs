@@ -25,12 +25,6 @@ const common = require('../common');
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
-common.expectWarning({
-  DeprecationWarning: [
-    ['crypto.createCipher is deprecated.', 'DEP0106'],
-  ]
-});
-
 const assert = require('assert');
 const crypto = require('crypto');
 const tls = require('tls');
@@ -184,24 +178,6 @@ const encodingError = {
            " Received 'hex'",
 };
 
-// Regression tests for https://github.com/nodejs/node-v0.x-archive/pull/5725:
-// hex input that's not a power of two should throw, not assert in C++ land.
-['createCipher', 'createDecipher'].forEach((funcName) => {
-  assert.throws(
-    () => crypto[funcName]('aes192', 'test').update('0', 'hex'),
-    (error) => {
-      assert.ok(!('opensslErrorStack' in error));
-      if (common.hasFipsCrypto) {
-        return error instanceof Error &&
-               error.name === 'Error' &&
-               /^Error: not supported in FIPS mode$/.test(error);
-      }
-      assert.throws(() => { throw error; }, encodingError);
-      return true;
-    }
-  );
-});
-
 assert.throws(
   () => crypto.createHash('sha1').update('0', 'hex'),
   (error) => {
@@ -298,6 +274,9 @@ function testEncoding(options, assertionHash) {
   let hashValue = '';
 
   hash.on('data', (data) => {
+    // The defaultEncoding has no effect on the hash value. It only affects data
+    // consumed by the Hash transform stream.
+    assert(Buffer.isBuffer(data));
     hashValue += data.toString('hex');
   });
 
@@ -307,6 +286,8 @@ function testEncoding(options, assertionHash) {
 
   hash.write('öäü');
   hash.end();
+
+  assert.strictEqual(hash._writableState.defaultEncoding, options?.defaultEncoding ?? 'utf8');
 }
 
 // Hash of "öäü" in utf8 format

@@ -269,6 +269,7 @@ process.on('exit', () => {
 
 ```cjs
 const assert = require('node:assert');
+const process = require('node:process');
 
 const tracker = new assert.CallTracker();
 
@@ -555,7 +556,7 @@ An alias of [`assert.ok()`][].
 <!-- YAML
 added: v0.1.21
 changes:
-  - version: v20.15.0
+  - version: v22.2.0
     pr-url: https://github.com/nodejs/node/pull/51805
     description: Error cause and errors properties are now compared as well.
   - version: v18.0.0
@@ -739,7 +740,7 @@ parameter is an instance of an [`Error`][] then it will be thrown instead of the
 <!-- YAML
 added: v1.2.0
 changes:
-  - version: v20.15.0
+  - version: v22.2.0
     pr-url: https://github.com/nodejs/node/pull/51805
     description: Error cause and errors properties are now compared as well.
   - version: v18.0.0

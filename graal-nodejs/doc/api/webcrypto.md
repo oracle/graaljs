@@ -2,7 +2,9 @@
 
 <!-- YAML
 changes:
-  - version: v20.0.0
+  - version:
+    - v20.0.0
+    - v18.17.0
     pr-url: https://github.com/nodejs/node/pull/46067
     description: Arguments are now coerced and validated as per their WebIDL
       definitions like in other Web Crypto API implementations.
@@ -565,13 +567,17 @@ The algorithms currently supported include:
 * `'RSA-OAEP'`
 * `'AES-CTR'`
 * `'AES-CBC'`
-* `'AES-GCM`'
+* `'AES-GCM'`
 
-### `subtle.deriveBits(algorithm, baseKey, length)`
+### `subtle.deriveBits(algorithm, baseKey[, length])`
 
 <!-- YAML
 added: v15.0.0
 changes:
+  - version: v22.5.0
+    pr-url: https://github.com/nodejs/node/pull/53601
+    description: The length parameter is now optional for `'ECDH'`, `'X25519'`,
+                 and `'X448'`.
   - version:
     - v18.4.0
     - v16.17.0
@@ -583,7 +589,7 @@ changes:
 
 * `algorithm`: {AlgorithmIdentifier|EcdhKeyDeriveParams|HkdfParams|Pbkdf2Params}
 * `baseKey`: {CryptoKey}
-* `length`: {number|null}
+* `length`: {number|null} **Default:** `null`
 * Returns: {Promise} Fulfills with an {ArrayBuffer}
 
 <!--lint enable maximum-line-length remark-lint-->
@@ -592,12 +598,12 @@ Using the method and parameters specified in `algorithm` and the keying
 material provided by `baseKey`, `subtle.deriveBits()` attempts to generate
 `length` bits.
 
-The Node.js implementation requires that when `length` is a
-number it must be multiple of `8`.
+The Node.js implementation requires that `length`, when a number, is a multiple
+of `8`.
 
-When `length` is `null` the maximum number of bits for a given algorithm is
-generated. This is allowed for the `'ECDH'`, `'X25519'`, and `'X448'`
-algorithms.
+When `length` is not provided or `null` the maximum number of bits for a given
+algorithm is generated. This is allowed for the `'ECDH'`, `'X25519'`, and `'X448'`
+algorithms, for other algorithms `length` is required to be a number.
 
 If successful, the returned promise will be resolved with an {ArrayBuffer}
 containing the generated data.
@@ -695,7 +701,7 @@ The algorithms currently supported include:
 * `'RSA-OAEP'`
 * `'AES-CTR'`
 * `'AES-CBC'`
-* `'AES-GCM`'
+* `'AES-GCM'`
 
 ### `subtle.exportKey(format, key)`
 

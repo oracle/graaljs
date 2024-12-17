@@ -1,23 +1,21 @@
 'use strict';
 
 const {
-  ArrayPrototypePush,
   ArrayPrototypePop,
+  ArrayPrototypePush,
   Error,
   ErrorCaptureStackTrace,
+  FunctionPrototypeBind,
   MathMax,
   MathMin,
-  NumberIsSafeInteger,
   Promise,
   PromisePrototypeThen,
-  PromiseResolve,
   PromiseReject,
+  PromiseResolve,
   SafeArrayIterator,
   SafePromisePrototypeFinally,
   Symbol,
-  SymbolAsyncDispose,
   Uint8Array,
-  FunctionPrototypeBind,
   uncurryThis,
 } = primordials;
 
@@ -36,6 +34,8 @@ const { isBuffer: BufferIsBuffer } = Buffer;
 const BufferToString = uncurryThis(Buffer.prototype.toString);
 
 const {
+  AbortError,
+  aggregateTwoErrors,
   codes: {
     ERR_ACCESS_DENIED,
     ERR_FS_FILE_TOO_LARGE,
@@ -43,8 +43,6 @@ const {
     ERR_INVALID_STATE,
     ERR_METHOD_NOT_IMPLEMENTED,
   },
-  AbortError,
-  aggregateTwoErrors,
 } = require('internal/errors');
 const { isArrayBufferView } = require('internal/util/types');
 
@@ -71,6 +69,7 @@ const {
   validateCpOptions,
   validateOffsetLengthRead,
   validateOffsetLengthWrite,
+  validatePosition,
   validateRmOptions,
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
@@ -92,12 +91,16 @@ const pathModule = require('path');
 const { isAbsolute } = pathModule;
 const { toPathIfFileURL } = require('internal/url');
 const {
+  emitExperimentalWarning,
+  getLazy,
   kEmptyObject,
   lazyDOMException,
   promisify,
-  getLazy,
+  isWindows,
+  isMacOS,
+  SymbolAsyncDispose,
 } = require('internal/util');
-const { EventEmitterMixin } = require('internal/event_target');
+const EventEmitter = require('events');
 const { StringDecoder } = require('string_decoder');
 const { kFSWatchStart, watch } = require('internal/fs/watchers');
 const nonNativeWatcher = require('internal/fs/recursive_watch');
@@ -119,14 +122,11 @@ const kLocked = Symbol('kLocked');
 const { kUsePromises } = binding;
 const { Interface } = require('internal/readline/interface');
 const {
-  JSTransferable, kDeserialize, kTransfer, kTransferList,
+  kDeserialize, kTransfer, kTransferList, markTransferMode,
 } = require('internal/worker/js_transferable');
 
 const getDirectoryEntriesPromise = promisify(getDirents);
 const validateRmOptionsPromise = promisify(validateRmOptions);
-
-const isWindows = process.platform === 'win32';
-const isOSX = process.platform === 'darwin';
 
 let cpPromises;
 function lazyLoadCpPromises() {
@@ -150,12 +150,13 @@ function handleErrorFromBinding(error) {
   return PromiseReject(error);
 }
 
-class FileHandle extends EventEmitterMixin(JSTransferable) {
+class FileHandle extends EventEmitter {
   /**
    * @param {InternalFSBinding.FileHandle | undefined} filehandle
    */
   constructor(filehandle) {
     super();
+    markTransferMode(this, false, true);
     this[kHandle] = filehandle;
     this[kFd] = filehandle ? filehandle.fd : -1;
 
@@ -601,10 +602,8 @@ async function readFileHandle(filehandle, options) {
 // All of the functions are defined as async in order to ensure that errors
 // thrown cause promise rejections rather than being thrown synchronously.
 async function access(path, mode = F_OK) {
-  path = getValidatedPath(path);
-
   return await PromisePrototypeThen(
-    binding.access(pathModule.toNamespacedPath(path), mode, kUsePromises),
+    binding.access(getValidatedPath(path), mode, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -612,19 +611,19 @@ async function access(path, mode = F_OK) {
 
 async function cp(src, dest, options) {
   options = validateCpOptions(options);
-  src = pathModule.toNamespacedPath(getValidatedPath(src, 'src'));
-  dest = pathModule.toNamespacedPath(getValidatedPath(dest, 'dest'));
+  src = getValidatedPath(src, 'src');
+  dest = getValidatedPath(dest, 'dest');
   return lazyLoadCpPromises()(src, dest, options);
 }
 
 async function copyFile(src, dest, mode) {
-  src = getValidatedPath(src, 'src');
-  dest = getValidatedPath(dest, 'dest');
   return await PromisePrototypeThen(
-    binding.copyFile(pathModule.toNamespacedPath(src),
-                     pathModule.toNamespacedPath(dest),
-                     mode,
-                     kUsePromises),
+    binding.copyFile(
+      getValidatedPath(src, 'src'),
+      getValidatedPath(dest, 'dest'),
+      mode,
+      kUsePromises,
+    ),
     undefined,
     handleErrorFromBinding,
   );
@@ -637,8 +636,7 @@ async function open(path, flags, mode) {
   const flagsNumber = stringToFlags(flags);
   mode = parseFileMode(mode, 'mode', 0o666);
   return new FileHandle(await PromisePrototypeThen(
-    binding.openFileHandle(pathModule.toNamespacedPath(path),
-                           flagsNumber, mode, kUsePromises),
+    binding.openFileHandle(path, flagsNumber, mode, kUsePromises),
     undefined,
     handleErrorFromBinding,
   ));
@@ -688,8 +686,11 @@ async function read(handle, bufferOrParams, offset, length, position) {
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
 
-  if (!NumberIsSafeInteger(position))
+  if (position == null) {
     position = -1;
+  } else {
+    validatePosition(position, 'position', length);
+  }
 
   const bytesRead = (await PromisePrototypeThen(
     binding.read(handle.fd, buffer, offset, length, position, kUsePromises),
@@ -780,9 +781,7 @@ async function rename(oldPath, newPath) {
   oldPath = getValidatedPath(oldPath, 'oldPath');
   newPath = getValidatedPath(newPath, 'newPath');
   return await PromisePrototypeThen(
-    binding.rename(pathModule.toNamespacedPath(oldPath),
-                   pathModule.toNamespacedPath(newPath),
-                   kUsePromises),
+    binding.rename(oldPath, newPath, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -804,13 +803,13 @@ async function ftruncate(handle, len = 0) {
 }
 
 async function rm(path, options) {
-  path = pathModule.toNamespacedPath(getValidatedPath(path));
+  path = getValidatedPath(path);
   options = await validateRmOptionsPromise(path, options, false);
   return lazyRimRaf()(path, options);
 }
 
 async function rmdir(path, options) {
-  path = pathModule.toNamespacedPath(getValidatedPath(path));
+  path = getValidatedPath(path);
   options = validateRmdirOptions(options);
 
   if (options.recursive) {
@@ -856,9 +855,12 @@ async function mkdir(path, options) {
   validateBoolean(recursive, 'options.recursive');
 
   return await PromisePrototypeThen(
-    binding.mkdir(pathModule.toNamespacedPath(path),
-                  parseFileMode(mode, 'mode', 0o777), recursive,
-                  kUsePromises),
+    binding.mkdir(
+      path,
+      parseFileMode(mode, 'mode', 0o777),
+      recursive,
+      kUsePromises,
+    ),
     undefined,
     handleErrorFromBinding,
   );
@@ -871,7 +873,7 @@ async function readdirRecursive(originalPath, options) {
       originalPath,
       await PromisePrototypeThen(
         binding.readdir(
-          pathModule.toNamespacedPath(originalPath),
+          originalPath,
           options.encoding,
           !!options.withFileTypes,
           kUsePromises,
@@ -912,7 +914,7 @@ async function readdirRecursive(originalPath, options) {
       const { 0: path, 1: readdir } = ArrayPrototypePop(queue);
       for (const ent of readdir) {
         const direntPath = pathModule.join(path, ent);
-        const stat = binding.internalModuleStat(direntPath);
+        const stat = binding.internalModuleStat(binding, direntPath);
         ArrayPrototypePush(
           result,
           pathModule.relative(originalPath, direntPath),
@@ -922,7 +924,7 @@ async function readdirRecursive(originalPath, options) {
             direntPath,
             await PromisePrototypeThen(
               binding.readdir(
-                pathModule.toNamespacedPath(direntPath),
+                direntPath,
                 options.encoding,
                 false,
                 kUsePromises,
@@ -947,7 +949,7 @@ async function readdir(path, options) {
   }
   const result = await PromisePrototypeThen(
     binding.readdir(
-      pathModule.toNamespacedPath(path),
+      path,
       options.encoding,
       !!options.withFileTypes,
       kUsePromises,
@@ -964,8 +966,7 @@ async function readlink(path, options) {
   options = getOptions(options);
   path = getValidatedPath(path, 'oldPath');
   return await PromisePrototypeThen(
-    binding.readlink(pathModule.toNamespacedPath(path),
-                     options.encoding, kUsePromises),
+    binding.readlink(path, options.encoding, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -998,10 +999,12 @@ async function symlink(target, path, type_) {
   target = getValidatedPath(target, 'target');
   path = getValidatedPath(path);
   return await PromisePrototypeThen(
-    binding.symlink(preprocessSymlinkDestination(target, type, path),
-                    pathModule.toNamespacedPath(path),
-                    stringToSymlinkType(type),
-                    kUsePromises),
+    binding.symlink(
+      preprocessSymlinkDestination(target, type, path),
+      path,
+      stringToSymlinkType(type),
+      kUsePromises,
+    ),
     undefined,
     handleErrorFromBinding,
   );
@@ -1017,10 +1020,8 @@ async function fstat(handle, options = { bigint: false }) {
 }
 
 async function lstat(path, options = { bigint: false }) {
-  path = getValidatedPath(path);
   const result = await PromisePrototypeThen(
-    binding.lstat(pathModule.toNamespacedPath(path),
-                  options.bigint, kUsePromises),
+    binding.lstat(getValidatedPath(path), options.bigint, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1028,10 +1029,8 @@ async function lstat(path, options = { bigint: false }) {
 }
 
 async function stat(path, options = { bigint: false }) {
-  path = getValidatedPath(path);
   const result = await PromisePrototypeThen(
-    binding.stat(pathModule.toNamespacedPath(path),
-                 options.bigint, kUsePromises),
+    binding.stat(getValidatedPath(path), options.bigint, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1039,10 +1038,8 @@ async function stat(path, options = { bigint: false }) {
 }
 
 async function statfs(path, options = { bigint: false }) {
-  path = getValidatedPath(path);
   const result = await PromisePrototypeThen(
-    binding.statfs(pathModule.toNamespacedPath(path),
-                   options.bigint, kUsePromises),
+    binding.statfs(path, options.bigint, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1053,18 +1050,15 @@ async function link(existingPath, newPath) {
   existingPath = getValidatedPath(existingPath, 'existingPath');
   newPath = getValidatedPath(newPath, 'newPath');
   return await PromisePrototypeThen(
-    binding.link(pathModule.toNamespacedPath(existingPath),
-                 pathModule.toNamespacedPath(newPath),
-                 kUsePromises),
+    binding.link(existingPath, newPath, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
 }
 
 async function unlink(path) {
-  path = getValidatedPath(path);
   return await PromisePrototypeThen(
-    binding.unlink(pathModule.toNamespacedPath(path), kUsePromises),
+    binding.unlink(getValidatedPath(path), kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1083,7 +1077,7 @@ async function chmod(path, mode) {
   path = getValidatedPath(path);
   mode = parseFileMode(mode, 'mode');
   return await PromisePrototypeThen(
-    binding.chmod(pathModule.toNamespacedPath(path), mode, kUsePromises),
+    binding.chmod(path, mode, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1102,7 +1096,7 @@ async function lchown(path, uid, gid) {
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
   return await PromisePrototypeThen(
-    binding.lchown(pathModule.toNamespacedPath(path), uid, gid, kUsePromises),
+    binding.lchown(path, uid, gid, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1123,7 +1117,7 @@ async function chown(path, uid, gid) {
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
   return await PromisePrototypeThen(
-    binding.chown(pathModule.toNamespacedPath(path), uid, gid, kUsePromises),
+    binding.chown(path, uid, gid, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1132,10 +1126,12 @@ async function chown(path, uid, gid) {
 async function utimes(path, atime, mtime) {
   path = getValidatedPath(path);
   return await PromisePrototypeThen(
-    binding.utimes(pathModule.toNamespacedPath(path),
-                   toUnixTimestamp(atime),
-                   toUnixTimestamp(mtime),
-                   kUsePromises),
+    binding.utimes(
+      path,
+      toUnixTimestamp(atime),
+      toUnixTimestamp(mtime),
+      kUsePromises,
+    ),
     undefined,
     handleErrorFromBinding,
   );
@@ -1152,12 +1148,13 @@ async function futimes(handle, atime, mtime) {
 }
 
 async function lutimes(path, atime, mtime) {
-  path = getValidatedPath(path);
   return await PromisePrototypeThen(
-    binding.lutimes(pathModule.toNamespacedPath(path),
-                    toUnixTimestamp(atime),
-                    toUnixTimestamp(mtime),
-                    kUsePromises),
+    binding.lutimes(
+      getValidatedPath(path),
+      toUnixTimestamp(atime),
+      toUnixTimestamp(mtime),
+      kUsePromises,
+    ),
     undefined,
     handleErrorFromBinding,
   );
@@ -1165,9 +1162,8 @@ async function lutimes(path, atime, mtime) {
 
 async function realpath(path, options) {
   options = getOptions(options);
-  path = getValidatedPath(path);
   return await PromisePrototypeThen(
-    binding.realpath(pathModule.toNamespacedPath(path), options.encoding, kUsePromises),
+    binding.realpath(getValidatedPath(path), options.encoding, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1179,15 +1175,8 @@ async function mkdtemp(prefix, options) {
   prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
 
-  let path;
-  if (typeof prefix === 'string') {
-    path = `${prefix}XXXXXX`;
-  } else {
-    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
-  }
-
   return await PromisePrototypeThen(
-    binding.mkdtemp(path, options.encoding, kUsePromises),
+    binding.mkdtemp(prefix, options.encoding, kUsePromises),
     undefined,
     handleErrorFromBinding,
   );
@@ -1259,7 +1248,7 @@ async function* _watch(filename, options = kEmptyObject) {
     // TODO(anonrig): Remove non-native watcher when/if libuv supports recursive.
     // As of November 2022, libuv does not support recursive file watch on all platforms,
     // e.g. Linux due to the limitations of inotify.
-    if (options.recursive && !isOSX && !isWindows) {
+    if (options.recursive && !isMacOS && !isWindows) {
       const watcher = new nonNativeWatcher.FSWatcher(options);
       watcher[kFSWatchStart](filename);
       yield* watcher;
@@ -1270,11 +1259,19 @@ async function* _watch(filename, options = kEmptyObject) {
   yield* watch(filename, options);
 }
 
+const lazyGlob = getLazy(() => require('internal/fs/glob').Glob);
+async function* glob(pattern, options) {
+  emitExperimentalWarning('glob');
+  const Glob = lazyGlob();
+  yield* new Glob(pattern, options).glob();
+}
+
 module.exports = {
   exports: {
     access,
     copyFile,
     cp,
+    glob,
     open,
     opendir: promisify(opendir),
     rename,
@@ -1301,7 +1298,7 @@ module.exports = {
     writeFile,
     appendFile,
     readFile,
-    watch: !isOSX && !isWindows ? _watch : watch,
+    watch: !isMacOS && !isWindows ? _watch : watch,
     constants,
   },
 

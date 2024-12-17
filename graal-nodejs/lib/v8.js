@@ -25,6 +25,7 @@ const {
   Int16Array,
   Int32Array,
   Int8Array,
+  JSONParse,
   ObjectPrototypeToString,
   Uint16Array,
   Uint32Array,
@@ -48,11 +49,9 @@ if (internalBinding('config').hasInspector) {
 }
 
 const assert = require('internal/assert');
-const { copy } = internalBinding('buffer');
 const { inspect } = require('internal/util/inspect');
 const { FastBuffer } = require('internal/buffer');
 const { getValidatedPath } = require('internal/fs/utils');
-const { toNamespacedPath } = require('path');
 const {
   createHeapSnapshotStream,
   triggerHeapSnapshot,
@@ -64,7 +63,6 @@ const {
 } = require('internal/heap_utils');
 const promiseHooks = require('internal/promise_hooks');
 const { getOptionValue } = require('internal/options');
-const { JSONParse } = primordials;
 /**
  * Generates a snapshot of the current V8 heap
  * and writes it to a JSON file.
@@ -78,7 +76,6 @@ const { JSONParse } = primordials;
 function writeHeapSnapshot(filename, options) {
   if (filename !== undefined) {
     filename = getValidatedPath(filename);
-    filename = toNamespacedPath(filename);
   }
   const optionArray = getHeapSnapshotOptions(options);
   return triggerHeapSnapshot(filename, optionArray);
@@ -248,7 +245,7 @@ function getHeapCodeStatistics() {
 
 let heapSnapshotNearHeapLimitCallbackAdded = false;
 function setHeapSnapshotNearHeapLimit(limit) {
-  validateUint32(limit, 'limit', 1);
+  validateUint32(limit, 'limit', true);
   if (heapSnapshotNearHeapLimitCallbackAdded ||
       getOptionValue('--heapsnapshot-near-heap-limit') > 0
   ) {
@@ -370,7 +367,7 @@ class DefaultDeserializer extends Deserializer {
     }
     // Copy to an aligned buffer first.
     const buffer_copy = Buffer.allocUnsafe(byteLength);
-    copy(this.buffer, buffer_copy, 0, byteOffset, byteOffset + byteLength);
+    buffer_copy.set(new Uint8Array(this.buffer.buffer, this.buffer.byteOffset + byteOffset, byteLength));
     return new ctor(buffer_copy.buffer,
                     buffer_copy.byteOffset,
                     byteLength / BYTES_PER_ELEMENT);

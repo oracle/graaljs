@@ -136,6 +136,14 @@ namespace v8 {
         class Isolate : public v8::Isolate {
         };
 
+        void SaveReturnValue(v8::Isolate* isolate, double value) {
+            reinterpret_cast<GraalIsolate*> (isolate)->SaveReturnValue(value);
+        }
+
+        template<> v8::Local<v8::Value> CorrectReturnValue<v8::Local<v8::Value>>(v8::Isolate* isolate, v8::internal::Address value) {
+            return reinterpret_cast<GraalIsolate*> (isolate)->CorrectReturnValue(value);
+        }
+
         namespace wasm {
 
             class NativeModule {
@@ -229,7 +237,8 @@ namespace v8 {
             MaybeLocal<ObjectTemplate> templ,
             MaybeLocal<Value> value,
             DeserializeInternalFieldsCallback internal_fields_deserializer,
-            MicrotaskQueue* microtask_queue) {
+            MicrotaskQueue* microtask_queue,
+            DeserializeContextDataCallback context_data_deserializer) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         jobject java_template;
         if (templ.IsEmpty()) {
@@ -244,8 +253,9 @@ namespace v8 {
             exit(1);
         }
         graal_isolate->FindDynamicObjectFields(java_context);
-        GraalContext* ctx = GraalContext::Allocate(graal_isolate, java_context);
-        return reinterpret_cast<Context*> (ctx);
+        GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
+        Context* v8_context = reinterpret_cast<Context*> (graal_context);
+        return Local<Context>::New(isolate, v8_context);
     }
 
     void Context::SetAlignedPointerInEmbedderData(int index, void* value) {
@@ -268,13 +278,6 @@ namespace v8 {
         return 64;
     }
 
-    EscapableHandleScope::EscapableHandleScope(Isolate* isolate) : HandleScope(isolate) {
-    }
-
-    internal::Address* EscapableHandleScope::Escape(internal::Address* obj) {
-        return obj;
-    }
-
 #define EXCEPTION_ERROR(error_type) \
     GraalString* graal_message = reinterpret_cast<GraalString*> (*message); \
     GraalIsolate* isolate = graal_message->Isolate(); \
@@ -282,25 +285,27 @@ namespace v8 {
     jobject java_message = graal_message->GetJavaObject(); \
     JNI_CALL(jobject, java_error, isolate, GraalAccessMethod::error_type, Object, java_context, java_message); \
     GraalObject* graal_object = GraalObject::Allocate(isolate, java_error); \
-    return reinterpret_cast<Value*> (graal_object);
+    Value* v8_object = reinterpret_cast<Value*> (graal_object); \
+    Isolate* v8_isolate = reinterpret_cast<Isolate*> (isolate); \
+    return Local<Value>::New(v8_isolate, v8_object);
 
-    Local<Value> Exception::Error(Local<String> message) {
+    Local<Value> Exception::Error(Local<String> message, Local<Value> options) {
         EXCEPTION_ERROR(exception_error)
     }
 
-    Local<Value> Exception::RangeError(Local<String> message) {
+    Local<Value> Exception::RangeError(Local<String> message, Local<Value> options) {
         EXCEPTION_ERROR(exception_range_error)
     }
 
-    Local<Value> Exception::TypeError(Local<String> message) {
+    Local<Value> Exception::TypeError(Local<String> message, Local<Value> options) {
         EXCEPTION_ERROR(exception_type_error)
     }
 
-    Local<Value> Exception::ReferenceError(Local<String> message) {
+    Local<Value> Exception::ReferenceError(Local<String> message, Local<Value> options) {
         EXCEPTION_ERROR(exception_reference_error)
     }
 
-    Local<Value> Exception::SyntaxError(Local<String> message) {
+    Local<Value> Exception::SyntaxError(Local<String> message, Local<Value> options) {
         EXCEPTION_ERROR(exception_syntax_error)
     }
 
@@ -389,8 +394,13 @@ namespace v8 {
 
     internal::Address* HandleScope::CreateHandle(internal::Isolate* isolate, internal::Address value) {
         GraalHandleContent* graal_original = reinterpret_cast<GraalHandleContent*> (value);
-        GraalHandleContent* graal_copy = graal_original->Copy(false);
-        return reinterpret_cast<internal::Address*> (graal_copy);
+        GraalHandleContent* graal_local;
+        if (graal_original->IsGlobal()) {
+            graal_local = graal_original->Copy(false);
+        } else {
+            graal_local = graal_original;
+        }
+        return reinterpret_cast<internal::Address*> (graal_local);
     }
 
     HandleScope::~HandleScope() {
@@ -400,6 +410,9 @@ namespace v8 {
     HandleScope::HandleScope(Isolate* isolate) {
         this->i_isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
         reinterpret_cast<GraalIsolate*> (isolate)->HandleScopeEnter();
+    }
+
+    EscapableHandleScopeBase::EscapableHandleScopeBase(Isolate* v8_isolate) : HandleScope(v8_isolate) {
     }
 
     void HeapProfiler::StartTrackingHeapObjects(bool) {
@@ -509,7 +522,7 @@ namespace v8 {
     }
 
     void HeapSnapshot::Serialize(OutputStream* stream, SerializationFormat format) const {
-        stream->WriteAsciiChunk("\"unsupported\"", 13);
+        stream->WriteAsciiChunk((char*) "\"unsupported\"", 13);
         stream->EndOfStream();
         TRACE
     }
@@ -567,7 +580,7 @@ namespace v8 {
         heap_statistics->total_physical_size_ = 0;
         heap_statistics->total_available_size_ = graal_isolate->ReadInt64FromSharedBuffer();
         heap_statistics->used_heap_size_ = graal_isolate->ReadInt64FromSharedBuffer();
-        heap_statistics->heap_size_limit_ = 0;
+        heap_statistics->heap_size_limit_ = 4294967296;
         heap_statistics->malloced_memory_ = 0;
         heap_statistics->external_memory_ = 4096; // dummy value
         heap_statistics->peak_malloced_memory_ = 0;
@@ -755,19 +768,11 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (const_cast<Object*> (this))->InternalFieldCount();
     }
 
-    void Object::SetInternalField(int index, Local<Value> value) {
+    void Object::SetInternalField(int index, Local<Data> value) {
         reinterpret_cast<GraalObject*> (this)->SetInternalField(index, value);
     }
 
-    void Object::SetInternalFieldForNodeCore(int index, Local<Module> value) {
-        reinterpret_cast<GraalObject*> (this)->SetInternalFieldForNodeCore(index, value);
-    }
-
-    void Object::SetInternalFieldForNodeCore(int index, Local<UnboundScript> value) {
-        reinterpret_cast<GraalObject*> (this)->SetInternalFieldForNodeCore(index, value);
-    }
-
-    Local<Value> Object::SlowGetInternalField(int index) {
+    Local<Data> Object::SlowGetInternalField(int index) {
         return reinterpret_cast<GraalObject*> (this)->SlowGetInternalField(index);
     }
 
@@ -814,6 +819,10 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (this)->SlowGetAlignedPointerFromInternalField(index);
     }
 
+    void* Object::SlowGetAlignedPointerFromInternalField(v8::Isolate* isolate, int index) {
+        return reinterpret_cast<GraalObject*> (this)->SlowGetAlignedPointerFromInternalField(index);
+    }
+
     MaybeLocal<Value> Object::CallAsFunction(Local<Context> context, Local<Value> recv, int argc, Local<Value> argv[]) {
         return reinterpret_cast<Function*> (this)->Call(context, recv, argc, argv);
     }
@@ -831,11 +840,10 @@ namespace v8 {
             AccessorGetterCallback getter,
             AccessorSetterCallback setter,
             Local<Value> data,
-            AccessControl settings,
             PropertyAttribute attribute,
             SideEffectType getter_side_effect_type,
             SideEffectType setter_side_effect_type) {
-        reinterpret_cast<GraalObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, settings, attribute);
+        reinterpret_cast<GraalObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, attribute);
     }
 
     void ObjectTemplate::SetAccessor(
@@ -843,11 +851,10 @@ namespace v8 {
             AccessorNameGetterCallback getter,
             AccessorNameSetterCallback setter,
             Local<Value> data,
-            AccessControl settings,
             PropertyAttribute attribute,
             SideEffectType getter_side_effect_type,
             SideEffectType setter_side_effect_type) {
-        SetAccessor(name.As<String>(), (AccessorGetterCallback) getter, (AccessorSetterCallback) setter, data, settings, attribute);
+        SetAccessor(name.As<String>(), (AccessorGetterCallback) getter, (AccessorSetterCallback) setter, data, attribute);
     };
 
     void ObjectTemplate::SetHandler(const NamedPropertyHandlerConfiguration& configuration) {
@@ -898,7 +905,8 @@ namespace v8 {
     }
 
     Local<Signature> Signature::New(Isolate* isolate, Local<FunctionTemplate> receiver) {
-        return reinterpret_cast<Signature*> (*receiver);
+        Signature* signature = reinterpret_cast<Signature*> (*receiver);
+        return Local<Signature>::New(isolate, signature);
     }
 
     Local<StackTrace> StackTrace::CurrentStackTrace(v8::Isolate* isolate, int frame_limit, StackTraceOptions options) {
@@ -913,7 +921,8 @@ namespace v8 {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         JNI_CALL(jobject, java_string, graal_isolate, GraalAccessMethod::string_concat, Object, java_left, java_right);
         GraalString* graal_concat = GraalString::Allocate(graal_isolate, java_string);
-        return reinterpret_cast<String*> (graal_concat);
+        v8::String* v8_concat = reinterpret_cast<String*> (graal_concat);
+        return Local<String>::New(isolate, v8_concat);
     }
 
     const String::ExternalOneByteStringResource* String::GetExternalOneByteStringResource() const {
@@ -1021,8 +1030,7 @@ namespace v8 {
             Local<Name> name,
             Local<FunctionTemplate> getter,
             Local<FunctionTemplate> setter,
-            PropertyAttribute attributes,
-            AccessControl settings) {
+            PropertyAttribute attributes) {
         reinterpret_cast<GraalTemplate*> (this)->SetAccessorProperty(name, getter, setter, attributes);
     }
 
@@ -1031,9 +1039,9 @@ namespace v8 {
         exception_ = nullptr;
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
         if (!graal_isolate->GetJNIEnv()->ExceptionCheck()) {
-            graal_isolate->ThrowException(Null(reinterpret_cast<v8::Isolate*> (i_isolate_)));
+            graal_isolate->ThrowException(Null(i_isolate_));
         }
-        return Undefined(reinterpret_cast<v8::Isolate*> (i_isolate_));
+        return Undefined(i_isolate_);
     }
 
     void TryCatch::SetVerbose(bool value) {
@@ -1079,7 +1087,9 @@ namespace v8 {
         GraalIsolate* graal_isolate = graal_array_buffer->Isolate(); \
         JNI_CALL(jobject, java_array_buffer_view, graal_isolate, GraalAccessMethod::graal_access_method, Object, java_array_buffer, (jint) byte_offset, (jint) length); \
         int view_type = graal_array_buffer->IsDirect() ? GraalArrayBufferView::direct_view_type : GraalArrayBufferView::interop_view_type; \
-        return reinterpret_cast<view_class*> (GraalArrayBufferView::Allocate(graal_isolate, java_array_buffer_view, view_type)); \
+        view_class* v8_view = reinterpret_cast<view_class*> (GraalArrayBufferView::Allocate(graal_isolate, java_array_buffer_view, view_type)); \
+        Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate); \
+        return Local<view_class>::New(v8_isolate, v8_view); \
     }
 
     ArrayBufferViewNew(Uint8Array, kDirectUint8Array, kInteropUint8Array, uint8_array_new)
@@ -1136,13 +1146,13 @@ namespace v8 {
         graal_handle->ReferenceRemoved();
     }
 
-    Value* api_internal::Eternalize(Isolate* isolate, Value* value) {
+    internal::Address* api_internal::Eternalize(Isolate* isolate, Value* value) {
         GraalHandleContent* graal_original = reinterpret_cast<GraalHandleContent*> (value);
         GraalHandleContent* graal_copy = graal_original->Copy(true);
         Value* value_copy = reinterpret_cast<Value*> (graal_copy);
         int index = -1;
         reinterpret_cast<GraalIsolate*> (isolate)->SetEternal(value_copy, &index);
-        return value_copy;
+        return reinterpret_cast<internal::Address*> (value_copy);
     }
 
     void api_internal::FromJustIsNothing() {
@@ -1153,7 +1163,7 @@ namespace v8 {
         return V8_VERSION_STRING;
     }
 
-    internal::Address* api_internal::GlobalizeReference(internal::Isolate* isolate, internal::Address* obj) {
+    internal::Address* api_internal::GlobalizeReference(internal::Isolate* isolate, internal::Address obj) {
         GraalHandleContent* graal_original = reinterpret_cast<GraalHandleContent*> (obj);
         GraalHandleContent* graal_copy = graal_original->Copy(true);
         return reinterpret_cast<internal::Address*> (graal_copy);
@@ -1397,11 +1407,11 @@ namespace v8 {
         return reinterpret_cast<const GraalValue*> (this)->IsBoolean();
     }
 
-    bool Value::IsTrue() const {
+    bool Value::FullIsTrue() const {
         return reinterpret_cast<const GraalValue*> (this)->IsTrue();
     }
 
-    bool Value::IsFalse() const {
+    bool Value::FullIsFalse() const {
         return reinterpret_cast<const GraalValue*> (this)->IsFalse();
     }
 
@@ -1661,7 +1671,8 @@ namespace v8 {
                 env->Throw(java_exception);
             }
             GraalValue* graal_exception = GraalValue::FromJavaObject(graal_isolate, exception_object);
-            return reinterpret_cast<Value*> (graal_exception);
+            Value* v8_exception = reinterpret_cast<Value*> (graal_exception);
+            return Local<Value>::New(i_isolate_, v8_exception);
         } else {
             return Local<Value>();
         }
@@ -1701,7 +1712,8 @@ namespace v8 {
             GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
             jobject java_exception = graal_isolate->GetJNIEnv()->ExceptionOccurred();
             GraalMessage* graal_message = GraalMessage::Allocate(graal_isolate, java_exception);
-            return reinterpret_cast<v8::Message*> (graal_message);
+            v8::Message* v8_message = reinterpret_cast<v8::Message*> (graal_message);
+            return Local<v8::Message>::New(i_isolate_, v8_message);
         } else {
             return Local<v8::Message>();
         }
@@ -1902,13 +1914,15 @@ namespace v8 {
     Local<Value> UnboundScript::GetSourceMappingURL() {
         TRACE
         GraalIsolate* graal_isolate = reinterpret_cast<GraalUnboundScript*> (this)->Isolate();
-        return reinterpret_cast<v8::Value*> (graal_isolate->GetUndefined());
+        Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate);
+        return Undefined(v8_isolate);
     }
 
     Local<Value> UnboundModuleScript::GetSourceMappingURL() {
         TRACE
         GraalIsolate* graal_isolate = reinterpret_cast<GraalUnboundScript*> (this)->Isolate();
-        return reinterpret_cast<v8::Value*> (graal_isolate->GetUndefined());
+        Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate);
+        return Undefined(v8_isolate);
     }
 
     bool Value::IsRegExp() const {
@@ -1961,7 +1975,9 @@ namespace v8 {
         jobject exception_object = graal_exception->GetJavaObject();
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         JNI_CALL(jobject, java_exception, graal_isolate, GraalAccessMethod::exception_create_message, Object, exception_object);
-        return reinterpret_cast<v8::Message*> (GraalMessage::Allocate(graal_isolate, java_exception));
+        GraalMessage* graal_message = GraalMessage::Allocate(graal_isolate, java_exception);
+        v8::Message* v8_message = reinterpret_cast<v8::Message*> (graal_message);
+        return Local<v8::Message>::New(isolate, v8_message);
     }
 
     Maybe<bool> Object::Has(Local<Context> context, Local<Value> key) {
@@ -2095,6 +2111,8 @@ namespace v8 {
             "large_object_space",
             "code_large_object_space",
             "shared_large_object_space",
+            "trusted_large_object_space",
+            "trusted_space",
         };
         space_statistics->space_name_ = names[index];
         space_statistics->space_size_ = 0;
@@ -2105,7 +2123,7 @@ namespace v8 {
     }
 
     size_t Isolate::NumberOfHeapSpaces() {
-        return 9;
+        return 11;
     }
 
     MaybeLocal<String> String::NewExternalOneByte(Isolate* isolate, ExternalOneByteStringResource* resource) {
@@ -2122,7 +2140,8 @@ namespace v8 {
         jboolean java_value = value;
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::boolean_object_new, Object, java_context, java_value);
         GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
-        return reinterpret_cast<BooleanObject*> (graal_object);
+        Value* v8_object = reinterpret_cast<Value*> (graal_object);
+        return Local<Value>::New(isolate, v8_object);
     }
 
     bool BooleanObject::ValueOf() const {
@@ -2140,7 +2159,8 @@ namespace v8 {
         jobject java_value = graal_value->GetJavaObject();
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::string_object_new, Object, java_context, java_value);
         GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
-        return reinterpret_cast<StringObject*> (graal_object);
+        Value* v8_object = reinterpret_cast<Value*> (graal_object);
+        return Local<Value>::New(isolate, v8_object);
     }
 
     Local<String> StringObject::ValueOf() const {
@@ -2149,7 +2169,9 @@ namespace v8 {
         jobject java_object = graal_object->GetJavaObject();
         JNI_CALL(jobject, value, graal_isolate, GraalAccessMethod::string_object_value_of, Object, java_object);
         GraalString* graal_string = GraalString::Allocate(graal_isolate, value);
-        return reinterpret_cast<v8::String*> (graal_string);
+        String* v8_string = reinterpret_cast<String*> (graal_string);
+        Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate);
+        return Local<String>::New(v8_isolate, v8_string);
     }
 
     Local<Value> NumberObject::New(Isolate* isolate, double value) {
@@ -2158,7 +2180,8 @@ namespace v8 {
         jdouble java_value = value;
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::number_object_new, Object, java_context, java_value);
         GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
-        return reinterpret_cast<NumberObject*> (graal_object);
+        Value* v8_object = reinterpret_cast<NumberObject*> (graal_object);
+        return Local<Value>::New(isolate, v8_object);
     }
 
     MaybeLocal<RegExp> RegExp::New(Local<Context> context, Local<String> pattern, Flags flags) {
@@ -2171,31 +2194,6 @@ namespace v8 {
 
     RegExp::Flags RegExp::GetFlags() const {
         return reinterpret_cast<const GraalRegExp*> (this)->GetFlags();
-    }
-
-    void Isolate::SaveReturnValue(double value) {
-        reinterpret_cast<GraalIsolate*> (this)->SaveReturnValue(value);
-    }
-
-    Local<Value> Isolate::CorrectReturnValue(internal::Address value) {
-        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (this);
-        GraalValue* graal_value = reinterpret_cast<GraalValue*> (value);
-        Local<Value> v8_value;
-        if (graal_value == nullptr) {
-            v8_value = Undefined(this);
-        } else {
-            jobject java_value = graal_value->GetJavaObject();
-            if (java_value == graal_isolate->int32_placeholder_) {
-                v8_value = GraalNumber::New(this, (int32_t) graal_isolate->return_value_);
-            } else if (java_value == graal_isolate->uint32_placeholder_) {
-                v8_value = GraalNumber::NewFromUnsigned(this, (uint32_t) graal_isolate->return_value_);
-            } else if (java_value == graal_isolate->double_placeholder_) {
-                v8_value = GraalNumber::New(this, graal_isolate->return_value_);
-            } else {
-                v8_value = reinterpret_cast<Value*> (graal_value);
-            }
-        }
-        return v8_value;
     }
 
     void Isolate::EnterPolyglotEngine(void* param1, void* param2, void* args, void* exec_args, void (*callback) (void* isolate, void* param1, void* param2, void* args, void* exec_args)) {
@@ -2212,7 +2210,9 @@ namespace v8 {
             return Local<Value>();
         } else {
             GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_value);
-            return Local<Value>(reinterpret_cast<Value*> (graal_value));
+            Value* v8_value = reinterpret_cast<Value*> (graal_value);
+            Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate);
+            return Local<Value>::New(v8_isolate, v8_value);
         }
     }
 
@@ -2227,7 +2227,9 @@ namespace v8 {
             return Local<String>();
         } else {
             GraalString* graal_string = GraalString::Allocate(graal_isolate, java_result);
-            return Local<String>(reinterpret_cast<String*> (graal_string));
+            String* v8_string = reinterpret_cast<String*> (graal_string);
+            Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate);
+            return Local<String>::New(v8_isolate, v8_string);
         }
     }
 
@@ -2390,7 +2392,7 @@ namespace v8 {
 
     Local<Module> Module::CreateSyntheticModule(
             Isolate* isolate, Local<String> module_name,
-            const std::vector<Local<String>>&export_names,
+            const MemorySpan<const Local<String>>& export_names,
             SyntheticModuleEvaluationSteps evaluation_steps) {
         return GraalModule::CreateSyntheticModule(isolate, module_name, export_names, evaluation_steps);
     }
@@ -2730,15 +2732,16 @@ namespace v8 {
     }
 
     MaybeLocal<Value> ValueDeserializer::ReadValue(Local<Context> context) {
-        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        Isolate* v8_isolate = private_->isolate;
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (v8_isolate);
         GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
         JNI_CALL(jobject, java_value, graal_isolate, GraalAccessMethod::value_deserializer_read_value, Object, graal_context->GetJavaObject(), private_->deserializer);
         if (graal_isolate->GetJNIEnv()->ExceptionCheck()) {
             return MaybeLocal<Value>();
         }
         GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_value);
-        Local<Value> v8_value = reinterpret_cast<Value*> (graal_value);
-        return v8_value;
+        Value* v8_value = reinterpret_cast<Value*> (graal_value);
+        return Local<Value>::New(v8_isolate, v8_value);
     }
 
     bool ValueDeserializer::ReadDouble(double* value) {
@@ -2994,7 +2997,6 @@ namespace v8 {
     }
 
     void Isolate::SetIdle(bool is_idle) {
-        TRACE
     }
 
     bool Value::SameValue(Local<Value> that) const {
@@ -3122,7 +3124,7 @@ namespace v8 {
     }
 
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCache(Local<UnboundModuleScript> unbound_module_script) {
-        return CreateCodeCache(reinterpret_cast<UnboundScript*> (*unbound_module_script));
+        return CreateCodeCache(unbound_module_script.As<UnboundScript>());
     }
 
     bool ArrayBuffer::IsDetachable() const {
@@ -3220,13 +3222,14 @@ namespace v8 {
         if (script_or_module_out != nullptr) {
             jobject java_script = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 1);
             GraalScriptOrModule* graal_script = GraalScriptOrModule::Allocate(graal_isolate, java_script);
-            *script_or_module_out = reinterpret_cast<ScriptOrModule*>(graal_script);
+            ScriptOrModule* v8_script = reinterpret_cast<ScriptOrModule*>(graal_script);
+            *script_or_module_out = Local<ScriptOrModule>::New(isolate, v8_script);
         }
 
         jobject java_function = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 0);
         GraalFunction* graal_function = GraalFunction::Allocate(graal_isolate, java_function);
-        Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
-        return v8_function;
+        Function* v8_function = reinterpret_cast<Function*> (graal_function);
+        return Local<Function>::New(isolate, v8_function);
     }
 
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {
@@ -3297,8 +3300,8 @@ namespace v8 {
     }
 
     internal::Address* api_internal::CopyGlobalReference(internal::Address* from) {
-        reinterpret_cast<GraalHandleContent*> (from)->ReferenceAdded();
-        return from;
+        GraalHandleContent* copy = reinterpret_cast<GraalHandleContent*> (from)->Copy(true);
+        return reinterpret_cast<internal::Address*> (copy);
     }
 
     double Date::ValueOf() const {
@@ -3342,7 +3345,8 @@ namespace v8 {
             DeserializeInternalFieldsCallback embedder_fields_deserializer,
             ExtensionConfiguration* extensions,
             MaybeLocal<Value> global_object,
-            MicrotaskQueue* microtask_queue) {
+            MicrotaskQueue* microtask_queue,
+            DeserializeContextDataCallback context_data_deserializer) {
         TRACE
         return Local<Context>();
     }
@@ -3495,17 +3499,17 @@ namespace v8 {
         return false;
     }
 
-    SnapshotCreator::SnapshotCreator(Isolate* isolate, const intptr_t* external_references, const StartupData* existing_blob) {
-        TRACE
+    SnapshotCreator::SnapshotCreator(const intptr_t* external_references, const StartupData* existing_blob) {
         fprintf(stderr, "Snapshot creation is not supported by graal-nodes.js!");
         exit(1);
     }
 
-    SnapshotCreator::SnapshotCreator(const intptr_t* external_references, const StartupData* existing_blob) : SnapshotCreator(nullptr, external_references, existing_blob) {
-        TRACE
+    SnapshotCreator::SnapshotCreator(v8::Isolate* isolate, const intptr_t* external_references, const StartupData* existing_blob, bool owns_isolate) {
+        fprintf(stderr, "Snapshot creation is not supported by graal-nodes.js!");
+        exit(1);
     }
 
-    void SnapshotCreator::SetDefaultContext(Local<Context> context, SerializeInternalFieldsCallback callback) {
+    void SnapshotCreator::SetDefaultContext(Local<Context> context, SerializeInternalFieldsCallback callback, SerializeContextDataCallback context_data_serializer) {
         TRACE
     }
 
@@ -3514,7 +3518,7 @@ namespace v8 {
         return { nullptr, 0 };
     }
 
-    size_t SnapshotCreator::AddContext(Local<Context> context, SerializeInternalFieldsCallback callback) {
+    size_t SnapshotCreator::AddContext(Local<Context> context, SerializeInternalFieldsCallback callback, SerializeContextDataCallback context_data_serializer) {
         TRACE
         return 0;
     }
@@ -3632,7 +3636,9 @@ namespace v8 {
         jobject java_store = reinterpret_cast<GraalBackingStore*> (backing_store.get())->GetJavaStore();
         void* data = backing_store->Data();
         JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_store, (jlong) data);
-        return reinterpret_cast<v8::SharedArrayBuffer*> (GraalObject::Allocate(graal_isolate, java_array_buffer));
+        GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_array_buffer);
+        SharedArrayBuffer* v8_object = reinterpret_cast<SharedArrayBuffer*> (graal_object);
+        return Local<SharedArrayBuffer>::New(isolate, v8_object);
     }
 
     std::shared_ptr<BackingStore> SharedArrayBuffer::GetBackingStore() {
@@ -3667,8 +3673,8 @@ namespace v8 {
         jobject java_compiled_module = compiled_module.native_module_->GetJavaModule();
         JNI_CALL(jobject, java_module, graal_isolate, GraalAccessMethod::wasm_module_object_from_compiled_module, Object, java_compiled_module);
         GraalValue* graal_module = GraalValue::FromJavaObject(graal_isolate, java_module);
-        Local<WasmModuleObject> v8_module = reinterpret_cast<WasmModuleObject*> (graal_module);
-        return v8_module;
+        WasmModuleObject* v8_module = reinterpret_cast<WasmModuleObject*> (graal_module);
+        return Local<WasmModuleObject>::New(isolate, v8_module);
     }
 
     static std::unique_ptr<const char[]> GetEnv(const char* key) {
@@ -3768,14 +3774,6 @@ namespace v8 {
         TRACE
     }
 
-    Isolate::SafeForTerminationScope::SafeForTerminationScope(v8::Isolate* isolate) {
-        TRACE
-    }
-
-    Isolate::SafeForTerminationScope::~SafeForTerminationScope() {
-        TRACE
-    }
-
     void Context::SetPromiseHooks(Local<Function> init_hook, Local<Function> before_hook, Local<Function> after_hook, Local<Function> resolve_hook) {
         reinterpret_cast<GraalContext*> (this)->SetPromiseHooks(init_hook, before_hook, after_hook, resolve_hook);
     }
@@ -3827,15 +3825,15 @@ namespace v8 {
         return reinterpret_cast<const GraalModuleRequest*> (this)->GetSpecifier();
     }
 
-    Local<FixedArray> ModuleRequest::GetImportAssertions() const {
-        return reinterpret_cast<const GraalModuleRequest*> (this)->GetImportAssertions();
+    Local<FixedArray> ModuleRequest::GetImportAttributes() const {
+        return reinterpret_cast<const GraalModuleRequest*> (this)->GetImportAttributes();
     }
 
     bool Object::IsConstructor() const {
         return reinterpret_cast<const GraalObject*> (this)->IsConstructor();
     }
 
-    CFunctionInfo::CFunctionInfo(const CTypeInfo& return_info, unsigned int arg_count, const CTypeInfo* arg_info) : return_info_(return_info), arg_count_(arg_count), arg_info_(arg_info) {
+    CFunctionInfo::CFunctionInfo(const CTypeInfo& return_info, unsigned int arg_count, const CTypeInfo* arg_info, Int64Representation repr) : return_info_(return_info), arg_count_(arg_count), arg_info_(arg_info), repr_(repr) {
     }
 
     const CTypeInfo& CFunctionInfo::ArgumentInfo(unsigned int index) const {
@@ -4006,11 +4004,84 @@ namespace v8 {
             AccessorNameSetterCallback setter,
             Local<Value> data,
             PropertyAttribute attribute,
-            AccessControl settings,
             SideEffectType getter_side_effect_type,
             SideEffectType setter_side_effect_type) {
         TRACE
-        reinterpret_cast<ObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, settings, attribute, getter_side_effect_type, setter_side_effect_type);
+        reinterpret_cast<ObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, attribute, getter_side_effect_type, setter_side_effect_type);
+    }
+
+    bool String::StringEquals(Local<String> str) const {
+        return reinterpret_cast<const GraalString*> (this)->StringEquals(str);
+    }
+
+    MaybeLocal<Value> Map::Get(Local<Context> context, Local<Value> key) {
+        return reinterpret_cast<GraalMap*> (this)->Get(context, key);
+    }
+
+    Maybe<bool> Map::Delete(Local<Context> context, Local<Value> key) {
+        return reinterpret_cast<GraalMap*> (this)->Delete(context, key);
+    }
+
+    Maybe<void> Array::Iterate(Local<Context> context, IterationCallback callback, void* callback_data) {
+        TryCatch try_catch(context->GetIsolate());
+        uint32_t length = Length();
+        for (uint32_t i = 0; i < length; i++) {
+            if (CallbackResult::kContinue != callback(i, Get(context, i).ToLocalChecked(), callback_data)) {
+                break;
+            }
+        }
+        return try_catch.HasCaught() ? Nothing<void>() : JustVoid();
+    }
+
+    bool Module::IsGraphAsync() const {
+        return reinterpret_cast<const GraalModule*> (this)->IsGraphAsync();
+    }
+
+    bool Module::IsSourceTextModule() const {
+        return reinterpret_cast<const GraalModule*> (this)->IsSourceTextModule();
+    }
+
+    std::pair<LocalVector<Module>, LocalVector<Message>> Module::GetStalledTopLevelAwaitMessages(Isolate* isolate) {
+        TRACE
+        LocalVector<Module> modules(isolate);
+        LocalVector<Message> messages(isolate);
+        return {modules, messages};
+    }
+
+    v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase(v8::Isolate* isolate) {
+        TRACE
+        heap_ = reinterpret_cast<v8::internal::Heap*> (isolate);
+    }
+
+    v8::internal::Address* v8::internal::StrongRootAllocatorBase::allocate_impl(size_t n) {
+        TRACE
+        return (v8::internal::Address*) malloc(n*sizeof(v8::internal::Address));
+    }
+
+    void v8::internal::StrongRootAllocatorBase::deallocate_impl(v8::internal::Address* p, size_t n) noexcept {
+        TRACE
+        free(p);
+    }
+
+    std::string Isolate::GetDefaultLocale() {
+        return reinterpret_cast<GraalIsolate*> (this)->GetDefaultLocale();
+    }
+
+    void Isolate::SetContinuationPreservedEmbedderData(Local<Value> data) {
+        TRACE
+    }
+
+    Local<Value> Isolate::GetContinuationPreservedEmbedderData() {
+        TRACE
+        return Local<Value>();
+    }
+
+    bool v8::ValueSerializer::Delegate::HasCustomHostObject(Isolate* isolate) {
+        return false;
+    }
+
+    Maybe<bool> v8::ValueSerializer::Delegate::IsHostObject(Isolate* isolate, Local<Object> object) {
+        return Just(false);
     }
 
     void Array::CheckCast(v8::Value* obj) {}
@@ -4069,7 +4140,7 @@ namespace v8 {
 }
 
 namespace cppgc {
-    void InitializeProcess(PageAllocator* page_allocator) {
+    void InitializeProcess(PageAllocator* page_allocator, size_t desired_heap_size) {
         TRACE
     }
 

@@ -22,12 +22,12 @@
 #ifndef SRC_NODE_VERSION_H_
 #define SRC_NODE_VERSION_H_
 
-#define NODE_MAJOR_VERSION 20
-#define NODE_MINOR_VERSION 15
-#define NODE_PATCH_VERSION 1
+#define NODE_MAJOR_VERSION 22
+#define NODE_MINOR_VERSION 11
+#define NODE_PATCH_VERSION 0
 
 #define NODE_VERSION_IS_LTS 1
-#define NODE_VERSION_LTS_CODENAME "Iron"
+#define NODE_VERSION_LTS_CODENAME "Jod"
 
 #define NODE_VERSION_IS_RELEASE 1
 
@@ -95,12 +95,13 @@
 #if defined(NODE_EMBEDDER_MODULE_VERSION)
 #define NODE_MODULE_VERSION NODE_EMBEDDER_MODULE_VERSION
 #else
-#define NODE_MODULE_VERSION 115
+#define NODE_MODULE_VERSION 127
 #endif
 
-// The NAPI_VERSION provided by this version of the runtime. This is the version
-// which the Node binary being built supports.
-#define NAPI_VERSION 9
+// The NAPI_VERSION supported by the runtime. This is the inclusive range of
+// versions which the Node.js binary being built supports.
+#define NODE_API_SUPPORTED_VERSION_MAX 9
+#define NODE_API_SUPPORTED_VERSION_MIN 1
 
 // Node API modules use NAPI_VERSION 8 by default if it is not explicitly
 // specified. It must be always 8.

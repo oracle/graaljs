@@ -33,18 +33,18 @@ class SourceTextModule
 
   // The shared function info in case {status} is not kEvaluating, kEvaluated or
   // kErrored.
-  SharedFunctionInfo GetSharedFunctionInfo() const;
+  Tagged<SharedFunctionInfo> GetSharedFunctionInfo() const;
 
-  Script GetScript() const;
+  Tagged<Script> GetScript() const;
 
   // Whether or not this module is an async module. Set during module creation
   // and does not change afterwards.
   DECL_BOOLEAN_ACCESSORS(async)
 
   // Get the SourceTextModuleInfo associated with the code.
-  inline SourceTextModuleInfo info() const;
+  inline Tagged<SourceTextModuleInfo> info() const;
 
-  Cell GetCell(int cell_index);
+  Tagged<Cell> GetCell(int cell_index);
   static Handle<Object> LoadVariable(Isolate* isolate,
                                      Handle<SourceTextModule> module,
                                      int cell_index);
@@ -86,7 +86,7 @@ class SourceTextModule
 
   V8_EXPORT_PRIVATE
   std::vector<std::tuple<Handle<SourceTextModule>, Handle<JSMessageObject>>>
-  GetStalledTopLevelAwaitMessage(Isolate* isolate);
+  GetStalledTopLevelAwaitMessages(Isolate* isolate);
 
  private:
   friend class Factory;
@@ -145,7 +145,7 @@ class SourceTextModule
 
   // The parent modules of a given async dependency, use async_parent_modules()
   // to retrieve the ArrayList representation.
-  DECL_ACCESSORS(async_parent_modules, ArrayList)
+  DECL_ACCESSORS(async_parent_modules, Tagged<ArrayList>)
 
   // Helpers for Instantiate and Evaluate.
   static void CreateExport(Isolate* isolate, Handle<SourceTextModule> module,
@@ -215,7 +215,8 @@ class SourceTextModule
       Handle<JSPromise> capability);
 
   static V8_WARN_UNUSED_RESULT MaybeHandle<Object> ExecuteModule(
-      Isolate* isolate, Handle<SourceTextModule> module);
+      Isolate* isolate, Handle<SourceTextModule> module,
+      MaybeHandle<Object>* exception_out);
 
   // Implementation of spec ExecuteAsyncModule. Return Nothing if the execution
   // is been terminated.
@@ -241,20 +242,20 @@ class SourceTextModuleInfo : public FixedArray {
   static Handle<SourceTextModuleInfo> New(IsolateT* isolate, Zone* zone,
                                           SourceTextModuleDescriptor* descr);
 
-  inline FixedArray module_requests() const;
-  inline FixedArray special_exports() const;
-  inline FixedArray regular_exports() const;
-  inline FixedArray regular_imports() const;
-  inline FixedArray namespace_imports() const;
+  inline Tagged<FixedArray> module_requests() const;
+  inline Tagged<FixedArray> special_exports() const;
+  inline Tagged<FixedArray> regular_exports() const;
+  inline Tagged<FixedArray> regular_imports() const;
+  inline Tagged<FixedArray> namespace_imports() const;
 
   // Accessors for [regular_exports].
   int RegularExportCount() const;
-  String RegularExportLocalName(int i) const;
+  Tagged<String> RegularExportLocalName(int i) const;
   int RegularExportCellIndex(int i) const;
-  FixedArray RegularExportExportNames(int i) const;
+  Tagged<FixedArray> RegularExportExportNames(int i) const;
 
 #ifdef DEBUG
-  inline bool Equals(SourceTextModuleInfo other) const;
+  inline bool Equals(Tagged<SourceTextModuleInfo> other) const;
 #endif
 
  private:
@@ -287,12 +288,12 @@ class ModuleRequest
 
   template <typename IsolateT>
   static Handle<ModuleRequest> New(IsolateT* isolate, Handle<String> specifier,
-                                   Handle<FixedArray> import_assertions,
+                                   Handle<FixedArray> import_attributes,
                                    int position);
 
-  // The number of entries in the import_assertions FixedArray that are used for
-  // a single assertion.
-  static const size_t kAssertionEntrySize = 3;
+  // The number of entries in the import_attributes FixedArray that are used for
+  // a single attribute.
+  static const size_t kAttributeEntrySize = 3;
 
   using BodyDescriptor = StructBodyDescriptor;
 

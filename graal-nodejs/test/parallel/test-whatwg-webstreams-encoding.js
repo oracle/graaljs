@@ -45,27 +45,15 @@ const kEuro = Buffer.from([0xe2, 0x82, 0xac]).toString();
   assert.strictEqual(tds.encoding, 'utf-8');
   assert.strictEqual(tds.fatal, false);
   assert.strictEqual(tds.ignoreBOM, false);
-
-  assert.throws(
-    () => Reflect.get(TextDecoderStream.prototype, 'encoding', {}), {
-      code: 'ERR_INVALID_THIS',
-    });
-  assert.throws(
-    () => Reflect.get(TextDecoderStream.prototype, 'fatal', {}), {
-      code: 'ERR_INVALID_THIS',
-    });
-  assert.throws(
-    () => Reflect.get(TextDecoderStream.prototype, 'ignoreBOM', {}), {
-      code: 'ERR_INVALID_THIS',
-    });
-  assert.throws(
-    () => Reflect.get(TextDecoderStream.prototype, 'readable', {}), {
-      code: 'ERR_INVALID_THIS',
-    });
-  assert.throws(
-    () => Reflect.get(TextDecoderStream.prototype, 'writable', {}), {
-      code: 'ERR_INVALID_THIS',
-    });
+  ['encoding', 'fatal', 'ignoreBOM', 'readable', 'writable'].forEach((getter) => {
+    assert.throws(
+      () => Reflect.get(TextDecoderStream.prototype, getter, {}), {
+        name: 'TypeError',
+        message: /Cannot read private member/,
+        stack: new RegExp(`at (Object\.)?get ${getter}`)
+      }
+    );
+  });
 }
 
 {
@@ -86,17 +74,13 @@ const kEuro = Buffer.from([0xe2, 0x82, 0xac]).toString();
   ]).then(common.mustCall());
 
   assert.strictEqual(tds.encoding, 'utf-8');
-
-  assert.throws(
-    () => Reflect.get(TextEncoderStream.prototype, 'encoding', {}), {
-      code: 'ERR_INVALID_THIS',
-    });
-  assert.throws(
-    () => Reflect.get(TextEncoderStream.prototype, 'readable', {}), {
-      code: 'ERR_INVALID_THIS',
-    });
-  assert.throws(
-    () => Reflect.get(TextEncoderStream.prototype, 'writable', {}), {
-      code: 'ERR_INVALID_THIS',
-    });
+  ['encoding', 'readable', 'writable'].forEach((getter) => {
+    assert.throws(
+      () => Reflect.get(TextDecoderStream.prototype, getter, {}), {
+        name: 'TypeError',
+        message: /Cannot read private member/,
+        stack: new RegExp(`at (Object\.)?get ${getter}`)
+      }
+    );
+  });
 }

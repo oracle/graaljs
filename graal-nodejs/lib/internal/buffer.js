@@ -23,13 +23,13 @@ const {
   hexSlice,
   ucs2Slice,
   utf8Slice,
-  asciiWrite,
+  asciiWriteStatic,
   base64Write,
   base64urlWrite,
-  latin1Write,
+  latin1WriteStatic,
   hexWrite,
   ucs2Write,
-  utf8Write,
+  utf8WriteStatic,
   getZeroFillToggle,
 } = internalBinding('buffer');
 
@@ -1036,13 +1036,37 @@ function addBufferPrototypeMethods(proto) {
   proto.hexSlice = hexSlice;
   proto.ucs2Slice = ucs2Slice;
   proto.utf8Slice = utf8Slice;
-  proto.asciiWrite = asciiWrite;
+  proto.asciiWrite = function(string, offset = 0, length = this.byteLength) {
+    if (offset < 0 || offset > this.byteLength) {
+      throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');
+    }
+    if (length < 0) {
+      throw new ERR_BUFFER_OUT_OF_BOUNDS('length');
+    }
+    return asciiWriteStatic(this, string, offset, length);
+  };
   proto.base64Write = base64Write;
   proto.base64urlWrite = base64urlWrite;
-  proto.latin1Write = latin1Write;
+  proto.latin1Write = function(string, offset = 0, length = this.byteLength) {
+    if (offset < 0 || offset > this.byteLength) {
+      throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');
+    }
+    if (length < 0) {
+      throw new ERR_BUFFER_OUT_OF_BOUNDS('length');
+    }
+    return latin1WriteStatic(this, string, offset, length);
+  };
   proto.hexWrite = hexWrite;
   proto.ucs2Write = ucs2Write;
-  proto.utf8Write = utf8Write;
+  proto.utf8Write = function(string, offset = 0, length = this.byteLength) {
+    if (offset < 0 || offset > this.byteLength) {
+      throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');
+    }
+    if (length < 0) {
+      throw new ERR_BUFFER_OUT_OF_BOUNDS('length');
+    }
+    return utf8WriteStatic(this, string, offset, length);
+  };
 }
 
 // This would better be placed in internal/worker/io.js, but that doesn't work
@@ -1051,6 +1075,15 @@ function markAsUntransferable(obj) {
   if ((typeof obj !== 'object' && typeof obj !== 'function') || obj === null)
     return;  // This object is a primitive and therefore already untransferable.
   obj[untransferable_object_private_symbol] = true;
+}
+
+// This simply checks if the object is marked as untransferable and doesn't
+// check whether we are able to transfer it.
+function isMarkedAsUntransferable(obj) {
+  if (obj == null)
+    return false;
+  // Private symbols are not inherited.
+  return obj[untransferable_object_private_symbol] !== undefined;
 }
 
 // A toggle used to access the zero fill setting of the array buffer allocator
@@ -1079,6 +1112,7 @@ module.exports = {
   FastBuffer,
   addBufferPrototypeMethods,
   markAsUntransferable,
+  isMarkedAsUntransferable,
   createUnsafeBuffer,
   readUInt16BE,
   readUInt32BE,

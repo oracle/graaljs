@@ -45,7 +45,7 @@ TEST_PAIR(TestWrongTypeInNormalField) {
   Handle<JSObject> o = Handle<JSObject>::cast(v8::Utils::OpenHandle(*v));
   Handle<Object> original_elements(
       TaggedField<Object>::load(*o, JSObject::kElementsOffset), i_isolate);
-  CHECK(original_elements->IsFixedArrayBase());
+  CHECK(IsFixedArrayBase(*original_elements));
 
   // There must be no GC (and therefore no verifiers running) until we can
   // restore the modified data.
@@ -76,7 +76,7 @@ TEST_PAIR(TestWrongStrongTypeInIndexedStructField) {
                DescriptorArray::kEntryKeyOffset;
   Handle<Object> original_key(TaggedField<Object>::load(*descriptors, offset),
                               i_isolate);
-  CHECK(original_key->IsString());
+  CHECK(IsString(*original_key));
 
   // There must be no GC (and therefore no verifiers running) until we can
   // restore the modified data.
@@ -117,7 +117,7 @@ TEST_PAIR(TestWrongWeakTypeInIndexedStructField) {
   // it can't be Weak<JSObject>.
   TaggedField<Object>::store(*descriptors, offset, *o);
   TorqueGeneratedClassVerifiers::DescriptorArrayVerify(*descriptors, i_isolate);
-  MaybeObject weak = MaybeObject::MakeWeak(MaybeObject::FromObject(*o));
+  Tagged<MaybeObject> weak = MakeWeak(*o);
   TaggedField<MaybeObject>::store(*descriptors, offset, weak);
   if (should_fail) {
     TorqueGeneratedClassVerifiers::DescriptorArrayVerify(*descriptors,

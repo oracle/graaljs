@@ -9,8 +9,8 @@ const {
   ArrayPrototypePop,
   ArrayPrototypePush,
   ArrayPrototypeReverse,
-  ArrayPrototypeSplice,
   ArrayPrototypeShift,
+  ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
   DateNow,
   FunctionPrototypeCall,
@@ -21,6 +21,7 @@ const {
   NumberIsFinite,
   ObjectSetPrototypeOf,
   RegExpPrototypeExec,
+  SafeStringIterator,
   StringPrototypeCodePointAt,
   StringPrototypeEndsWith,
   StringPrototypeRepeat,
@@ -28,17 +29,14 @@ const {
   StringPrototypeStartsWith,
   StringPrototypeTrim,
   Symbol,
-  SymbolDispose,
   SymbolAsyncIterator,
-  SafeStringIterator,
 } = primordials;
 
-const { codes } = require('internal/errors');
-
-const {
+const { codes: {
   ERR_INVALID_ARG_VALUE,
   ERR_USE_AFTER_CLOSE,
-} = codes;
+} } = require('internal/errors');
+
 const {
   validateAbortSignal,
   validateArray,
@@ -46,7 +44,7 @@ const {
   validateString,
   validateUint32,
 } = require('internal/validators');
-const { kEmptyObject } = require('internal/util');
+const { SymbolDispose, kEmptyObject } = require('internal/util');
 const {
   inspect,
   getStringWidth,
@@ -263,7 +261,7 @@ function InterfaceConstructor(input, output, completer, terminal) {
 
   function onkeypress(s, key) {
     self[kTtyWrite](s, key);
-    if (key && key.sequence) {
+    if (key?.sequence) {
       // If the key.sequence is half of a surrogate pair
       // (>= 0xd800 and <= 0xdfff), refresh the line so
       // the character is displayed appropriately.
@@ -347,7 +345,7 @@ class Interface extends InterfaceConstructor {
     super(input, output, completer, terminal);
   }
   get columns() {
-    if (this.output && this.output.columns) return this.output.columns;
+    if (this.output?.columns) return this.output.columns;
     return Infinity;
   }
 

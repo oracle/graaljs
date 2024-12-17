@@ -60,15 +60,21 @@ int GraalStackFrame::GetColumn() const {
 }
 
 v8::Local<v8::String> GraalStackFrame::GetScriptName() const {
-    JNI_CALL(jobject, script_name, Isolate(), GraalAccessMethod::stack_frame_get_script_name, Object, GetJavaObject());
-    GraalString* graal_script_name = GraalString::Allocate(Isolate(), script_name);
-    return reinterpret_cast<v8::String*> (graal_script_name);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, script_name, graal_isolate, GraalAccessMethod::stack_frame_get_script_name, Object, GetJavaObject());
+    GraalString* graal_script_name = GraalString::Allocate(graal_isolate, script_name);
+    v8::String* v8_script_name = reinterpret_cast<v8::String*> (graal_script_name);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_script_name);
 }
 
 v8::Local<v8::String> GraalStackFrame::GetFunctionName() const {
-    JNI_CALL(jobject, function_name, Isolate(), GraalAccessMethod::stack_frame_get_function_name, Object, GetJavaObject());
-    GraalString* graal_function_name = GraalString::Allocate(Isolate(), function_name);
-    return reinterpret_cast<v8::String*> (graal_function_name);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, function_name, graal_isolate, GraalAccessMethod::stack_frame_get_function_name, Object, GetJavaObject());
+    GraalString* graal_function_name = GraalString::Allocate(graal_isolate, function_name);
+    v8::String* v8_function_name = reinterpret_cast<v8::String*> (graal_function_name);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_function_name);
 }
 
 bool GraalStackFrame::IsEval() const {

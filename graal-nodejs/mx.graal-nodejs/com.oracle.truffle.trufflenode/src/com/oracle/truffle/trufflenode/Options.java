@@ -144,6 +144,7 @@ public final class Options {
         // elsewhere or can be ignored without almost any harm).
         private static final Set<String> IGNORED_OPTIONS = Set.of(new String[]{
                         "debug-code",
+                        "enable-sharedarraybuffer-per-context",
                         "es-staging",
                         "experimental-modules",
                         "expose-debug-as",
@@ -199,6 +200,8 @@ public final class Options {
         @Override
         protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
             // Node.js-specific defaults, may be overridden by command line arguments.
+            polyglotOptions.put("js.iterator-helpers", "true");
+            polyglotOptions.put("js.new-set-methods", "true");
             polyglotOptions.put("js.print", "false");
             polyglotOptions.put("js.string-length-limit", Integer.toString((1 << 29) - 24)); // v8::String::kMaxLength
 
@@ -250,6 +253,10 @@ public final class Options {
                     polyglotOptions.put("js.import-attributes", "true");
                     continue;
                 }
+                if ("no-harmony-import-assertions".equals(normalizedKey)) {
+                    polyglotOptions.put("js.import-assertions", "false");
+                    continue;
+                }
                 if ("harmony-import-assertions".equals(normalizedKey)) {
                     polyglotOptions.put("js.import-assertions", "true");
                     continue;
@@ -260,6 +267,10 @@ public final class Options {
                 }
                 if ("disallow-code-generation-from-strings".equals(normalizedKey)) {
                     polyglotOptions.put("js.disable-eval", "true");
+                    continue;
+                }
+                if ("allow-natives-syntax".equals(normalizedKey)) {
+                    polyglotOptions.put("js.v8-intrinsics", "true");
                     continue;
                 }
                 // Convert -h to --help

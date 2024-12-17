@@ -18,6 +18,7 @@
 #include "src/wasm/wasm-opcodes.h"
 #include "src/wasm/wasm-serialization.h"
 #include "test/cctest/cctest.h"
+#include "test/cctest/heap/heap-utils.h"
 #include "test/common/wasm/flag-utils.h"
 #include "test/common/wasm/test-signatures.h"
 #include "test/common/wasm/wasm-macro-gen.h"
@@ -43,8 +44,8 @@ class WasmSerializationTest {
     WasmFunctionBuilder* f;
     for (int i = 0; i < 3; ++i) {
       f = builder->AddFunction(sigs.i_i());
-      byte code[] = {WASM_LOCAL_GET(0), kExprI32Const, 1, kExprI32Add,
-                     kExprEnd};
+      uint8_t code[] = {WASM_LOCAL_GET(0), kExprI32Const, 1, kExprI32Add,
+                        kExprEnd};
       f->EmitCode(code, sizeof(code));
     }
     builder->AddExport(base::CStrVector(kFunctionName), f);
@@ -72,9 +73,9 @@ class WasmSerializationTest {
 
   MaybeHandle<WasmModuleObject> Deserialize(
       base::Vector<const char> source_url = {}) {
-    return DeserializeNativeModule(CcTest::i_isolate(),
-                                   base::VectorOf(serialized_bytes_),
-                                   base::VectorOf(wire_bytes_), source_url);
+    return DeserializeNativeModule(
+        CcTest::i_isolate(), base::VectorOf(serialized_bytes_),
+        base::VectorOf(wire_bytes_), compile_imports_, source_url);
   }
 
   void DeserializeAndRun() {
@@ -83,7 +84,7 @@ class WasmSerializationTest {
     CHECK(Deserialize().ToHandle(&module_object));
     {
       DisallowGarbageCollection assume_no_gc;
-      base::Vector<const byte> deserialized_module_wire_bytes =
+      base::Vector<const uint8_t> deserialized_module_wire_bytes =
           module_object->native_module()->wire_bytes();
       CHECK_EQ(deserialized_module_wire_bytes.size(), wire_bytes_.size());
       CHECK_EQ(memcmp(deserialized_module_wire_bytes.begin(),
@@ -106,10 +107,11 @@ class WasmSerializationTest {
   void CollectGarbage() {
     // Try hard to collect all garbage and will therefore also invoke all weak
     // callbacks of actually unreachable persistent handles.
-    CcTest::CollectAllAvailableGarbage();
+    heap::InvokeMemoryReducingMajorGCs(CcTest::heap());
   }
 
   v8::MemorySpan<const uint8_t> wire_bytes() const { return wire_bytes_; }
+  CompileTimeImports compile_imports() { return compile_imports_; }
 
  private:
   Zone* zone() { return &zone_; }
@@ -140,8 +142,8 @@ class WasmSerializationTest {
       auto enabled_features = WasmFeatures::FromIsolate(serialization_isolate);
       MaybeHandle<WasmModuleObject> maybe_module_object =
           GetWasmEngine()->SyncCompile(
-              serialization_isolate, enabled_features, &thrower,
-              ModuleWireBytes(buffer.begin(), buffer.end()));
+              serialization_isolate, enabled_features, compile_imports_,
+              &thrower, ModuleWireBytes(buffer.begin(), buffer.end()));
       Handle<WasmModuleObject> module_object =
           maybe_module_object.ToHandleChecked();
       weak_native_module = module_object->shared_native_module();
@@ -158,7 +160,8 @@ class WasmSerializationTest {
           v8_module_object->GetCompiledModule();
       v8::MemorySpan<const uint8_t> uncompiled_bytes =
           compiled_module.GetWireBytesRef();
-      uint8_t* bytes_copy = zone()->NewArray<uint8_t>(uncompiled_bytes.size());
+      uint8_t* bytes_copy =
+          zone()->AllocateArray<uint8_t>(uncompiled_bytes.size());
       memcpy(bytes_copy, uncompiled_bytes.data(), uncompiled_bytes.size());
       wire_bytes_ = {bytes_copy, uncompiled_bytes.size()};
 
@@ -197,9 +200,13 @@ class WasmSerializationTest {
 
   v8::internal::AccountingAllocator allocator_;
   Zone zone_;
+  // TODO(14179): Add tests for de/serializing modules with compile-time
+  // imports.
+  CompileTimeImports compile_imports_;
   v8::OwnedBuffer data_;
   v8::MemorySpan<const uint8_t> wire_bytes_ = {nullptr, 0};
   v8::MemorySpan<const uint8_t> serialized_bytes_ = {nullptr, 0};
+  FlagScope<int> tier_up_quickly_{&v8_flags.wasm_tiering_budget, 1000};
 };
 
 TEST(DeserializeValidModule) {
@@ -218,8 +225,8 @@ TEST(DeserializeWithSourceUrl) {
     const std::string url = "http://example.com/example.wasm";
     Handle<WasmModuleObject> module_object;
     CHECK(test.Deserialize(base::VectorOf(url)).ToHandle(&module_object));
-    String url_str = String::cast(module_object->script().name());
-    CHECK_EQ(url, url_str.ToCString().get());
+    Tagged<String> url_str = String::cast(module_object->script()->name());
+    CHECK_EQ(url, url_str->ToCString().get());
   }
   test.CollectGarbage();
 }
@@ -292,7 +299,7 @@ UNINITIALIZED_TEST(CompiledWasmModulesTransfer) {
     auto enabled_features = WasmFeatures::FromIsolate(from_i_isolate);
     MaybeHandle<WasmModuleObject> maybe_module_object =
         GetWasmEngine()->SyncCompile(
-            from_i_isolate, enabled_features, &thrower,
+            from_i_isolate, enabled_features, CompileTimeImports{}, &thrower,
             ModuleWireBytes(buffer.begin(), buffer.end()));
     Handle<WasmModuleObject> module_object =
         maybe_module_object.ToHandleChecked();
@@ -365,7 +372,7 @@ TEST(SerializeLiftoffModuleFails) {
   ErrorThrower thrower(isolate, "Test");
   MaybeHandle<WasmModuleObject> maybe_module_object =
       GetWasmEngine()->SyncCompile(
-          isolate, WasmFeatures::All(), &thrower,
+          isolate, WasmFeatures::All(), CompileTimeImports{}, &thrower,
           ModuleWireBytes(wire_bytes_buffer.begin(), wire_bytes_buffer.end()));
   Handle<WasmModuleObject> module_object =
       maybe_module_object.ToHandleChecked();
@@ -405,14 +412,18 @@ TEST(SerializeTieringBudget) {
     // the module gets deserialized and not just loaded from the module cache.
     native_module->tiering_budget_array()[0]++;
   }
+  // We need to invoke GC without stack, otherwise some objects may survive.
+  DisableConservativeStackScanningScopeForTesting no_stack_scanning(
+      isolate->heap());
   test.CollectGarbage();
   HandleScope scope(isolate);
   Handle<WasmModuleObject> module_object;
-  CHECK(DeserializeNativeModule(isolate,
-                                base::VectorOf(serialized_bytes.buffer.get(),
-                                               serialized_bytes.size),
-                                base::VectorOf(test.wire_bytes()), {})
-            .ToHandle(&module_object));
+  CHECK(
+      DeserializeNativeModule(
+          isolate,
+          base::VectorOf(serialized_bytes.buffer.get(), serialized_bytes.size),
+          base::VectorOf(test.wire_bytes()), test.compile_imports(), {})
+          .ToHandle(&module_object));
 
   auto* native_module = module_object->native_module();
   for (size_t i = 0; i < arraysize(mock_budget); ++i) {

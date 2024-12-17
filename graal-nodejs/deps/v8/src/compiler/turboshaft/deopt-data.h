@@ -77,6 +77,7 @@ struct FrameStateData {
     base::SmallVector<MachineType, 32> machine_types_;
     base::SmallVector<uint32_t, 16> int_operands_;
     base::SmallVector<OpIndex, 32> inputs_;
+
     bool inlined_ = false;
   };
 
@@ -86,7 +87,12 @@ struct FrameStateData {
     base::Vector<const uint32_t> int_operands;
     base::Vector<const OpIndex> inputs;
 
-    bool has_more() const { return !instructions.empty(); }
+    bool has_more() const {
+      DCHECK_IMPLIES(instructions.empty(), machine_types.empty());
+      DCHECK_IMPLIES(instructions.empty(), int_operands.empty());
+      DCHECK_IMPLIES(instructions.empty(), inputs.empty());
+      return !instructions.empty();
+    }
 
     Instr current_instr() { return instructions[0]; }
 

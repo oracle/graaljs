@@ -14,7 +14,9 @@
 #include "src/execution/isolate.h"
 #include "src/utils/ostreams.h"
 #include "src/wasm/baseline/liftoff-compiler.h"
+#include "src/wasm/compilation-environment-inl.h"
 #include "src/wasm/function-body-decoder-impl.h"
+#include "src/wasm/module-compiler.h"
 #include "src/wasm/module-decoder-impl.h"
 #include "src/wasm/module-instantiate.h"
 #include "src/wasm/wasm-engine.h"
@@ -29,7 +31,13 @@
 #include "test/common/wasm/wasm-module-runner.h"
 #include "test/fuzzer/fuzzer-support.h"
 
-namespace v8::internal::wasm::fuzzer {
+namespace v8::internal::wasm::fuzzing {
+
+constexpr CompileTimeImports CompileTimeImportsForFuzzing() {
+  return CompileTimeImports({CompileTimeImport::kJsString,
+                             CompileTimeImport::kTextEncoder,
+                             CompileTimeImport::kTextDecoder});
+}
 
 // Compile a baseline module. We pass a pointer to a max step counter and a
 // nondeterminsm flag that are updated during execution by Liftoff.
@@ -46,8 +54,11 @@ Handle<WasmModuleObject> CompileReferenceModule(
   CHECK(module_res.ok());
   std::shared_ptr<WasmModule> module = module_res.value();
   CHECK_NOT_NULL(module);
-  native_module =
-      GetWasmEngine()->NewNativeModule(isolate, enabled_features, module, 0);
+  WasmError imports_error = ValidateAndSetBuiltinImports(
+      module.get(), wire_bytes, CompileTimeImportsForFuzzing());
+  CHECK(!imports_error.has_error());  // The module was compiled before.
+  native_module = GetWasmEngine()->NewNativeModule(
+      isolate, enabled_features, CompileTimeImportsForFuzzing(), module, 0);
   native_module->SetWireBytes(base::OwnedVector<uint8_t>::Of(wire_bytes));
   // The module is known to be valid as this point (it was compiled by the
   // caller before).
@@ -55,15 +66,16 @@ Handle<WasmModuleObject> CompileReferenceModule(
 
   // Compile all functions with Liftoff.
   WasmCodeRefScope code_ref_scope;
-  auto env = native_module->CreateCompilationEnv();
+  CompilationEnv env = CompilationEnv::ForModule(native_module.get());
   ModuleWireBytes wire_bytes_accessor{wire_bytes};
   for (size_t i = module->num_imported_functions; i < module->functions.size();
        ++i) {
     auto& func = module->functions[i];
     base::Vector<const uint8_t> func_code =
         wire_bytes_accessor.GetFunctionBytes(&func);
+    constexpr bool kIsShared = false;
     FunctionBody func_body(func.sig, func.code.offset(), func_code.begin(),
-                           func_code.end());
+                           func_code.end(), kIsShared);
     auto result =
         ExecuteLiftoffCompilation(&env, func_body,
                                   LiftoffOptions{}
@@ -76,8 +88,7 @@ Handle<WasmModuleObject> CompileReferenceModule(
           "Liftoff compilation failed on a valid module. Run with "
           "--trace-wasm-decoder (in a debug build) to see why.");
     }
-    native_module->PublishCode(
-        native_module->AddCompiledCode(std::move(result)));
+    native_module->PublishCode(native_module->AddCompiledCode(result));
   }
 
   // Create the module object.
@@ -113,7 +124,7 @@ void ExecuteAgainstReference(Isolate* isolate,
              ->SyncInstantiate(isolate, &thrower, module_ref, {},
                                {})  // no imports & memory
              .ToHandle(&instance_ref)) {
-      isolate->clear_pending_exception();
+      isolate->clear_exception();
       thrower.Reset();  // Ignore errors.
       return;
     }
@@ -126,17 +137,60 @@ void ExecuteAgainstReference(Isolate* isolate,
     return;
   }
 
+  struct OomCallbackData {
+    Isolate* isolate;
+    bool heap_limit_reached{false};
+    size_t initial_limit{0};
+  };
+  OomCallbackData oom_callback_data{isolate};
+  auto heap_limit_callback = [](void* raw_data, size_t current_limit,
+                                size_t initial_limit) -> size_t {
+    OomCallbackData* data = reinterpret_cast<OomCallbackData*>(raw_data);
+    data->heap_limit_reached = true;
+    data->isolate->TerminateExecution();
+    data->initial_limit = initial_limit;
+    // Return a slightly raised limit, just to make it to the next
+    // interrupt check point, where execution will terminate.
+    return initial_limit * 1.25;
+  };
+  isolate->heap()->AddNearHeapLimitCallback(heap_limit_callback,
+                                            &oom_callback_data);
+
   base::OwnedVector<Handle<Object>> compiled_args =
       testing::MakeDefaultArguments(isolate, main_function->sig());
   std::unique_ptr<const char[]> exception_ref;
   int32_t result_ref = testing::CallWasmFunctionForTesting(
       isolate, instance_ref, "main", compiled_args.as_vector(), &exception_ref);
+  bool execute = true;
   // Reached max steps, do not try to execute the test module as it might
   // never terminate.
-  if (max_steps < 0) return;
+  if (max_steps < 0) execute = false;
   // If there is nondeterminism, we cannot guarantee the behavior of the test
   // module, and in particular it may not terminate.
-  if (nondeterminism != 0) return;
+  if (nondeterminism != 0) execute = false;
+  // Similar to max steps reached, also discard modules that need too much
+  // memory.
+  isolate->heap()->RemoveNearHeapLimitCallback(heap_limit_callback,
+                                               oom_callback_data.initial_limit);
+  if (oom_callback_data.heap_limit_reached) {
+    execute = false;
+    isolate->CancelTerminateExecution();
+  }
+
+  if (exception_ref) {
+    if (strcmp(exception_ref.get(),
+               "RangeError: Maximum call stack size exceeded") == 0) {
+      // There was a stack overflow, which may happen nondeterministically. We
+      // cannot guarantee the behavior of the test module, and in particular it
+      // may not terminate.
+      execute = false;
+    }
+  }
+  if (!execute) {
+    // Before discarding the module, see if Turbofan runs into any DCHECKs.
+    TierUpAllForTesting(isolate, instance_ref->trusted_data(isolate));
+    return;
+  }
 
   // Instantiate a fresh instance for the actual (non-ref) execution.
   Handle<WasmInstanceObject> instance;
@@ -248,6 +302,10 @@ std::string HeapTypeToConstantName(HeapType heap_type) {
       return "kWasmNullFuncRef";
     case HeapType::kNoExtern:
       return "kWasmNullExternRef";
+    case HeapType::kExn:
+      return "kWasmExnRef";
+    case HeapType::kNoExn:
+      return "kWasmNullExnRef";
     case HeapType::kBottom:
       UNREACHABLE();
     default:
@@ -322,6 +380,7 @@ class InitExprInterface {
  public:
   using ValidationTag = Decoder::FullValidationTag;
   static constexpr DecodingMode decoding_mode = kConstantExpression;
+  static constexpr bool kUsesPoppedArgs = false;
 
   struct Value : public ValueBase<ValidationTag> {
     template <typename... Args>
@@ -396,8 +455,16 @@ class InitExprInterface {
 
   void UnOp(FullDecoder* decoder, WasmOpcode opcode, const Value& value,
             Value* result) {
-    // TODO(12089): Implement.
-    UNIMPLEMENTED();
+    switch (opcode) {
+      case kExprAnyConvertExtern:
+        os_ << "kGCPrefix, kExprAnyConvertExtern, ";
+        break;
+      case kExprExternConvertAny:
+        os_ << "kGCPrefix, kExprExternConvertAny, ";
+        break;
+      default:
+        UNREACHABLE();
+    }
   }
 
   void RefNull(FullDecoder* decoder, ValueType type, Value* result) {
@@ -416,44 +483,44 @@ class InitExprInterface {
 
   // The following operations assume non-rtt versions of the instructions.
   void StructNew(FullDecoder* decoder, const StructIndexImmediate& imm,
-                 const Value& rtt, const Value args[], Value* result) {
+                 const Value args[], Value* result) {
     os_ << "kGCPrefix, kExprStructNew, " << index(imm.index);
   }
 
   void StructNewDefault(FullDecoder* decoder, const StructIndexImmediate& imm,
-                        const Value& rtt, Value* result) {
+                        Value* result) {
     os_ << "kGCPrefix, kExprStructNewDefault, " << index(imm.index);
   }
 
   void ArrayNew(FullDecoder* decoder, const ArrayIndexImmediate& imm,
                 const Value& length, const Value& initial_value,
-                const Value& rtt, Value* result) {
+                Value* result) {
     os_ << "kGCPrefix, kExprArrayNew, " << index(imm.index);
   }
 
   void ArrayNewDefault(FullDecoder* decoder, const ArrayIndexImmediate& imm,
-                       const Value& length, const Value& rtt, Value* result) {
+                       const Value& length, Value* result) {
     os_ << "kGCPrefix, kExprArrayNewDefault, " << index(imm.index);
   }
 
-  void ArrayNewFixed(FullDecoder* decoder, const ArrayIndexImmediate& imm,
-                     const base::Vector<Value>& elements, const Value& rtt,
+  void ArrayNewFixed(FullDecoder* decoder, const ArrayIndexImmediate& array_imm,
+                     const IndexImmediate& length_imm, const Value elements[],
                      Value* result) {
-    os_ << "kGCPrefix, kExprArrayNewFixed, " << index(imm.index)
-        << index(static_cast<uint32_t>(elements.size()));
+    os_ << "kGCPrefix, kExprArrayNewFixed, " << index(array_imm.index)
+        << index(length_imm.index);
   }
 
   void ArrayNewSegment(FullDecoder* decoder,
                        const ArrayIndexImmediate& array_imm,
                        const IndexImmediate& data_segment_imm,
                        const Value& offset_value, const Value& length_value,
-                       const Value& rtt, Value* result) {
-    // TODO(7748): Implement.
+                       Value* result) {
+    // TODO(14034): Implement when/if array.new_data/element becomes const.
     UNIMPLEMENTED();
   }
 
-  void I31New(FullDecoder* decoder, const Value& input, Value* result) {
-    os_ << "kGCPrefix, kExprI31New, ";
+  void RefI31(FullDecoder* decoder, const Value& input, Value* result) {
+    os_ << "kGCPrefix, kExprRefI31, ";
   }
 
   // Since we treat all instructions as rtt-less, we should not print rtts.
@@ -490,8 +557,9 @@ void DecodeAndAppendInitExpr(StdoutStream& os, Zone* zone,
     case ConstantExpression::kWireBytesRef: {
       WireBytesRef ref = init.wire_bytes_ref();
       auto sig = FixedSizeSignature<ValueType>::Returns(expected);
+      constexpr bool kIsShared = false;  // TODO(14616): Extend this.
       FunctionBody body(&sig, ref.offset(), module_bytes.start() + ref.offset(),
-                        module_bytes.start() + ref.end_offset());
+                        module_bytes.start() + ref.end_offset(), kIsShared);
       WasmFeatures detected;
       WasmFullDecoder<Decoder::FullValidationTag, InitExprInterface,
                       kConstantExpression>
@@ -507,9 +575,9 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
                       bool compiles) {
   constexpr bool kVerifyFunctions = false;
   auto enabled_features = WasmFeatures::FromIsolate(isolate);
-  ModuleResult module_res =
-      DecodeWasmModule(enabled_features, wire_bytes.module_bytes(),
-                       kVerifyFunctions, ModuleOrigin::kWasmOrigin);
+  ModuleResult module_res = DecodeWasmModule(
+      enabled_features, wire_bytes.module_bytes(), kVerifyFunctions,
+      ModuleOrigin::kWasmOrigin, kPopulateExplicitRecGroups);
   CHECK_WITH_MSG(module_res.ok(), module_res.error().message().c_str());
   WasmModule* module = module_res.value().get();
   CHECK_NOT_NULL(module);
@@ -535,14 +603,19 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
         "can be\n"
         "// found in the LICENSE file.\n"
         "\n"
-        "// Flags: --wasm-staging --experimental-wasm-gc\n"
-        "// Flags: --experimental-wasm-relaxed-simd\n"
+        "// Flags: --wasm-staging\n"
         "\n"
         "d8.file.execute('test/mjsunit/wasm/wasm-module-builder.js');\n"
         "\n"
         "const builder = new WasmModuleBuilder();\n";
 
+  int recursive_group_end = -1;
   for (int i = 0; i < static_cast<int>(module->types.size()); i++) {
+    auto rec_group = module->explicit_recursive_type_groups.find(i);
+    if (rec_group != module->explicit_recursive_type_groups.end()) {
+      os << "builder.startRecGroup();\n";
+      recursive_group_end = rec_group->first + rec_group->second - 1;
+    }
     if (module->has_struct(i)) {
       const StructType* struct_type = module->types[i].struct_type;
       os << "builder.addStruct([";
@@ -553,17 +626,33 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
            << ")";
         if (index + 1 < field_count) os << ", ";
       }
-      os << "]);\n";
+      os << "], ";
+      if (module->types[i].supertype != kNoSuperType) {
+        os << module->types[i].supertype;
+      } else {
+        os << "kNoSuperType";
+      }
+      os << ", " << (module->types[i].is_final ? "true" : "false") << ");\n";
     } else if (module->has_array(i)) {
       const ArrayType* array_type = module->types[i].array_type;
       os << "builder.addArray("
          << ValueTypeToConstantName(array_type->element_type()) << ", "
-         << (array_type->mutability() ? "true" : "false") << ");\n";
+         << (array_type->mutability() ? "true" : "false") << ", ";
+      if (module->types[i].supertype != kNoSuperType) {
+        os << module->types[i].supertype;
+      } else {
+        os << "kNoSuperType";
+      }
+      os << ", " << (module->types[i].is_final ? "true" : "false") << ");\n";
     } else {
       DCHECK(module->has_signature(i));
       const FunctionSig* sig = module->types[i].function_sig;
       os << "builder.addType(makeSig(" << PrintParameters(sig) << ", "
          << PrintReturns(sig) << "));\n";
+    }
+
+    if (i == recursive_group_end) {
+      os << "builder.endRecGroup();\n";
     }
   }
 
@@ -577,15 +666,14 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
        << sig_index << " /* sig */);\n";
   }
 
-  if (module->has_memory) {
-    os << "builder.addMemory(" << module->initial_pages;
-    if (module->has_maximum_pages) {
-      os << ", " << module->maximum_pages;
+  for (const WasmMemory& memory : module->memories) {
+    os << "builder.addMemory(" << memory.initial_pages;
+    if (memory.has_maximum_pages) {
+      os << ", " << memory.maximum_pages;
     } else {
       os << ", undefined";
     }
-    os << ", " << (module->mem_export ? "true" : "false");
-    if (module->has_shared_memory) {
+    if (memory.is_shared) {
       os << ", true";
     }
     os << ");\n";
@@ -597,7 +685,10 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
     if (segment.active) {
       // TODO(wasm): Add other expressions when needed.
       CHECK_EQ(ConstantExpression::kI32Const, segment.dest_addr.kind());
-      os << "builder.addDataSegment(" << segment.dest_addr.i32_value() << ", ";
+      os << "builder.addActiveDataSegment(0, ";
+      DecodeAndAppendInitExpr(os, &zone, module, wire_bytes, segment.dest_addr,
+                              kWasmI32);
+      os << ", ";
     } else {
       os << "builder.addPassiveDataSegment(";
     }
@@ -606,12 +697,14 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
       os << unsigned{data[0]};
       for (unsigned byte : data + 1) os << ", " << byte;
     }
-    os << "]);\n";
+    os << "]";
+    if (segment.shared) os << ", true";
+    os << ");\n";
   }
 
   for (WasmGlobal& global : module->globals) {
     os << "builder.addGlobal(" << ValueTypeToConstantName(global.type) << ", "
-       << global.mutability << ", ";
+       << global.mutability << ", " << global.shared << ", ";
     DecodeAndAppendInitExpr(os, &zone, module, wire_bytes, global.init,
                             global.type);
     os << ");\n";
@@ -619,13 +712,20 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
 
   Zone tmp_zone(isolate->allocator(), ZONE_NAME);
 
-  // TODO(9495): Add support for tables with explicit initializers.
   for (const WasmTable& table : module->tables) {
     os << "builder.addTable(" << ValueTypeToConstantName(table.type) << ", "
        << table.initial_size << ", "
        << (table.has_maximum_size ? std::to_string(table.maximum_size)
                                   : "undefined")
-       << ", undefined)\n";
+       << ", ";
+    if (table.initial_value.is_set()) {
+      DecodeAndAppendInitExpr(os, &zone, module, wire_bytes,
+                              table.initial_value, table.type);
+    } else {
+      os << "undefined";
+    }
+    if (table.shared) os << ", true";
+    os << ");\n";
   }
   for (const WasmElemSegment& elem_segment : module->elem_segments) {
     const char* status_str =
@@ -660,8 +760,9 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
     os << "], "
        << (elem_segment.element_type == WasmElemSegment::kExpressionElements
                ? ValueTypeToConstantName(elem_segment.type)
-               : "undefined")
-       << ");\n";
+               : "undefined");
+    if (elem_segment.shared) os << ", true";
+    os << ");\n";
   }
 
   for (const WasmTag& tag : module->tags) {
@@ -701,21 +802,39 @@ void GenerateTestCase(Isolate* isolate, ModuleWireBytes wire_bytes,
     // Add body.
     os << "  .addBodyWithEnd([\n";
 
+    constexpr bool kIsShared = false;  // TODO(14616): Extend this.
     FunctionBody func_body(func.sig, func.code.offset(), func_code.begin(),
-                           func_code.end());
+                           func_code.end(), kIsShared);
     PrintRawWasmCode(isolate->allocator(), func_body, module, kOmitLocals);
     os << "]);\n";
   }
 
   for (WasmExport& exp : module->export_table) {
-    if (exp.kind != kExternalFunction) continue;
-    os << "builder.addExport(" << PrintName(wire_bytes, exp.name) << ", "
-       << exp.index << ");\n";
+    switch (exp.kind) {
+      case kExternalFunction:
+        os << "builder.addExport(" << PrintName(wire_bytes, exp.name) << ", "
+           << exp.index << ");\n";
+        break;
+      case kExternalMemory:
+        os << "builder.exportMemoryAs(" << PrintName(wire_bytes, exp.name)
+           << ", " << exp.index << ");\n";
+        break;
+      default:
+        os << "// Unsupported export of '" << PrintName(wire_bytes, exp.name)
+           << "'.\n";
+        break;
+    }
   }
 
   if (compiles) {
-    os << "const instance = builder.instantiate();\n"
-          "print(instance.exports.main(1, 2, 3));\n";
+    os << "let kBuiltins = { builtins: ['js-string', 'text-decoder', "
+          "'text-encoder'] };\n"
+          "const instance = builder.instantiate({}, kBuiltins);\n"
+          "try {\n"
+          "  print(instance.exports.main(1, 2, 3));\n"
+          "} catch (e) {\n"
+          "  print('caught exception', e);\n"
+          "}\n";
   } else {
     os << "assertThrows(function() { builder.instantiate(); }, "
           "WebAssembly.CompileError);\n";
@@ -732,7 +851,9 @@ void EnableExperimentalWasmFeatures(v8::Isolate* isolate) {
 #undef ENABLE_STAGED_FEATURES
 
       // Enable non-staged experimental features that we also want to fuzz.
-      v8_flags.experimental_wasm_gc = true;
+      // <currently none>
+      // Note: If you add something here, you will also have to add the
+      // respective flag(s) to the mjsunit/wasm/generate-random-module test.
 
       // Enforce implications from enabling features.
       FlagList::EnforceFlagImplications();
@@ -759,10 +880,19 @@ void WasmExecutionFuzzer::FuzzWasmModule(base::Vector<const uint8_t> data,
 
   Isolate* i_isolate = reinterpret_cast<Isolate*>(isolate);
 
-  // Clear any pending exceptions from a prior run.
-  i_isolate->clear_pending_exception();
-
   v8::Isolate::Scope isolate_scope(isolate);
+
+  // Clear recursive groups: The fuzzer creates random types in every run. These
+  // are saved as recursive groups as part of the type canonicalizer, but types
+  // from previous runs just waste memory.
+  GetTypeCanonicalizer()->EmptyStorageForTesting();
+  i_isolate->heap()->ClearWasmCanonicalRttsForTesting();
+
+  // Clear any exceptions from a prior run.
+  if (i_isolate->has_exception()) {
+    i_isolate->clear_exception();
+  }
+
   v8::HandleScope handle_scope(isolate);
   v8::Context::Scope context_scope(support->GetContext());
 
@@ -789,17 +919,18 @@ void WasmExecutionFuzzer::FuzzWasmModule(base::Vector<const uint8_t> data,
   // 0: TurboFan
   // 1: Liftoff
   // 2: Liftoff for debugging
+  // 3: Turboshaft
   uint8_t tier_mask = 0;
   uint8_t debug_mask = 0;
-  for (int i = 0; i < 4; ++i, configuration_byte /= 3) {
-    int compiler_config = configuration_byte % 3;
+  uint8_t turboshaft_mask = 0;
+  for (int i = 0; i < 4; ++i, configuration_byte /= 4) {
+    int compiler_config = configuration_byte % 4;
     tier_mask |= (compiler_config == 0) << i;
     debug_mask |= (compiler_config == 2) << i;
+    turboshaft_mask |= (compiler_config == 3) << i;
   }
-  // Note: After dividing by 3 for 4 times, configuration_byte is within [0, 3].
-
-  FlagScope<bool> turbo_mid_tier_regalloc(
-      &v8_flags.turbo_force_mid_tier_regalloc, configuration_byte == 0);
+  // Enable tierup for all turboshaft functions.
+  tier_mask |= turboshaft_mask;
 
   if (!GenerateModule(i_isolate, &zone, data, &buffer)) {
     return;
@@ -810,35 +941,40 @@ void WasmExecutionFuzzer::FuzzWasmModule(base::Vector<const uint8_t> data,
   ModuleWireBytes wire_bytes(buffer.begin(), buffer.end());
 
   auto enabled_features = WasmFeatures::FromIsolate(i_isolate);
+  CompileTimeImports compile_imports = CompileTimeImportsForFuzzing();
 
-  bool valid =
-      GetWasmEngine()->SyncValidate(i_isolate, enabled_features, wire_bytes);
+  bool valid = GetWasmEngine()->SyncValidate(i_isolate, enabled_features,
+                                             compile_imports, wire_bytes);
 
   if (v8_flags.wasm_fuzzer_gen_test) {
     GenerateTestCase(i_isolate, wire_bytes, valid);
   }
 
-  MaybeHandle<WasmModuleObject> compiled_module;
-  {
-    // Explicitly enable Liftoff, disable tiering and set the tier_mask. This
-    // way, we deterministically test a combination of Liftoff and Turbofan.
-    FlagScope<bool> liftoff(&v8_flags.liftoff, true);
-    FlagScope<bool> no_tier_up(&v8_flags.wasm_tier_up, false);
-    FlagScope<int> tier_mask_scope(&v8_flags.wasm_tier_mask_for_testing,
-                                   tier_mask);
-    FlagScope<int> debug_mask_scope(&v8_flags.wasm_debug_mask_for_testing,
-                                    debug_mask);
-    ErrorThrower thrower(i_isolate, "WasmFuzzerSyncCompile");
-    compiled_module = GetWasmEngine()->SyncCompile(i_isolate, enabled_features,
-                                                   &thrower, wire_bytes);
-    CHECK_EQ(valid, !compiled_module.is_null());
-    CHECK_EQ(!valid, thrower.error());
-    if (require_valid && !valid) {
-      FATAL("Generated module should validate, but got: %s",
-            thrower.error_msg());
-    }
-    thrower.Reset();
+  FlagScope<bool> eager_compile(&v8_flags.wasm_lazy_compilation, false);
+  // We want to keep dynamic tiering enabled because that changes the code
+  // Liftoff generates as well as optimizing compilers' behavior (especially
+  // around inlining). We switch it to synchronous mode to avoid the
+  // nondeterminism of background jobs finishing at random times.
+  FlagScope<bool> sync_tier_up(&v8_flags.wasm_sync_tier_up, true);
+  // The purpose of setting the tier mask (which affects the initial
+  // compilation of each function) is to deterministically test a combination
+  // of Liftoff and Turbofan.
+  FlagScope<int> tier_mask_scope(&v8_flags.wasm_tier_mask_for_testing,
+                                 tier_mask);
+  FlagScope<int> debug_mask_scope(&v8_flags.wasm_debug_mask_for_testing,
+                                  debug_mask);
+  FlagScope<int> turboshaft_mask_scope(
+      &v8_flags.wasm_turboshaft_mask_for_testing, turboshaft_mask);
+
+  ErrorThrower thrower(i_isolate, "WasmFuzzerSyncCompile");
+  MaybeHandle<WasmModuleObject> compiled_module = GetWasmEngine()->SyncCompile(
+      i_isolate, enabled_features, compile_imports, &thrower, wire_bytes);
+  CHECK_EQ(valid, !compiled_module.is_null());
+  CHECK_EQ(!valid, thrower.error());
+  if (require_valid && !valid) {
+    FATAL("Generated module should validate, but got: %s", thrower.error_msg());
   }
+  thrower.Reset();
 
   if (valid) {
     ExecuteAgainstReference(i_isolate, compiled_module.ToHandleChecked(),
@@ -846,4 +982,4 @@ void WasmExecutionFuzzer::FuzzWasmModule(base::Vector<const uint8_t> data,
   }
 }
 
-}  // namespace v8::internal::wasm::fuzzer
+}  // namespace v8::internal::wasm::fuzzing

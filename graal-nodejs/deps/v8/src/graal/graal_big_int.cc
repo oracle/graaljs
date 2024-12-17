@@ -52,14 +52,16 @@ v8::Local<v8::BigInt> GraalBigInt::New(v8::Isolate* isolate, int64_t value) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new, Object, (jlong) value);
     GraalBigInt* graal_big_int = new GraalBigInt(graal_isolate, java_big_int);
-    return reinterpret_cast<v8::BigInt*> (graal_big_int);
+    v8::BigInt* v8_big_int = reinterpret_cast<v8::BigInt*> (graal_big_int);
+    return v8::Local<v8::BigInt>::New(isolate, v8_big_int);
 }
 
 v8::Local<v8::BigInt> GraalBigInt::NewFromUnsigned(v8::Isolate* isolate, uint64_t value) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new_from_unsigned, Object, (jlong) value);
     GraalBigInt* graal_big_int = new GraalBigInt(graal_isolate, java_big_int);
-    return reinterpret_cast<v8::BigInt*> (graal_big_int);
+    v8::BigInt* v8_big_int = reinterpret_cast<v8::BigInt*> (graal_big_int);
+    return v8::Local<v8::BigInt>::New(isolate, v8_big_int);
 }
 
 v8::MaybeLocal<v8::BigInt> GraalBigInt::NewFromWords(v8::Local<v8::Context> context, int sign_bit, int word_count, const uint64_t* words) {
@@ -76,8 +78,9 @@ v8::MaybeLocal<v8::BigInt> GraalBigInt::NewFromWords(v8::Local<v8::Context> cont
     JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new_from_words, Object, sign_bit, word_count, java_words);
     env->DeleteLocalRef(java_words);
     GraalBigInt* graal_big_int = new GraalBigInt(graal_isolate, java_big_int);
-    v8::Local<v8::BigInt> v8_big_int = reinterpret_cast<v8::BigInt*> (graal_big_int);
-    return v8_big_int;
+    v8::BigInt* v8_big_int = reinterpret_cast<v8::BigInt*> (graal_big_int);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::BigInt>::New(v8_isolate, v8_big_int);
 }
 
 bool GraalBigInt::IsBigInt() const {

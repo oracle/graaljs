@@ -228,6 +228,7 @@ enum GraalAccessMethod {
     isolate_measure_memory,
     isolate_set_task_runner,
     isolate_execute_runnable,
+    isolate_get_default_locale,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -364,6 +365,8 @@ enum GraalAccessMethod {
     module_get_module_requests,
     module_request_get_specifier,
     module_request_get_import_assertions,
+    module_is_graph_async,
+    module_is_source_text_module,
     script_or_module_get_resource_name,
     script_or_module_get_host_defined_options,
     value_serializer_new,
@@ -395,6 +398,8 @@ enum GraalAccessMethod {
     big_int_to_words_array,
     map_new,
     map_set,
+    map_get,
+    map_delete,
     set_new,
     set_add,
     shared_array_buffer_new,
@@ -571,7 +576,9 @@ public:
     }
 
     inline v8::Local<v8::Context> GetCurrentContext() {
-        return ContextEntered() ? contexts.back() : nullptr;
+        v8::Context* v8_context = ContextEntered() ? contexts.back() : nullptr;
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (this);
+        return v8::Local<v8::Context>::New(v8_isolate, v8_context);
     }
 
     inline bool ContextEntered() {
@@ -673,6 +680,7 @@ public:
     void SetFunctionTemplateData(unsigned id, GraalValue* data);
     void SetFunctionTemplateCallback(unsigned id, v8::FunctionCallback callback);
     void ReportAPIFailure(const char* location, const char* message);
+    std::string GetDefaultLocale();
 
     inline void SetFatalErrorHandler(v8::FatalErrorCallback callback) {
         fatal_error_handler_ = callback;
@@ -681,7 +689,8 @@ public:
     inline void SaveReturnValue(double value) {
         return_value_ = value;
     }
-
+    
+    v8::Local<v8::Value> CorrectReturnValue(v8::internal::Address value);
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
     void SchedulePauseOnNextStatement();

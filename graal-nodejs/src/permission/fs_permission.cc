@@ -180,7 +180,7 @@ FSPermission::RadixTree::~RadixTree() {
 bool FSPermission::RadixTree::Lookup(const std::string_view& s,
                                      bool when_empty_return) const {
   FSPermission::RadixTree::Node* current_node = root_node_;
-  if (current_node->children.size() == 0) {
+  if (current_node->children.empty()) {
     return when_empty_return;
   }
   size_t parent_node_prefix_len = current_node->prefix.length();
@@ -227,8 +227,8 @@ void FSPermission::RadixTree::Insert(const std::string& path) {
     }
   }
 
-  if (UNLIKELY(per_process::enabled_debug_list.enabled(
-          DebugCategory::PERMISSION_MODEL))) {
+  if (per_process::enabled_debug_list.enabled(DebugCategory::PERMISSION_MODEL))
+      [[unlikely]] {
     per_process::Debug(DebugCategory::PERMISSION_MODEL, "Inserting %s\n", path);
     PrintTree(root_node_);
   }

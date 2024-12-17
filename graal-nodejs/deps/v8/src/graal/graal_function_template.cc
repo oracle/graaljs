@@ -86,27 +86,37 @@ v8::Local<v8::FunctionTemplate> GraalFunctionTemplate::New(
     GraalFunctionTemplate* graal_function_template = new GraalFunctionTemplate(graal_isolate, java_object, id);
     graal_isolate->SetFunctionTemplateData(id, graal_data);
     graal_isolate->SetFunctionTemplateCallback(id, callback);
-    return reinterpret_cast<v8::FunctionTemplate*> (graal_function_template);
+    v8::FunctionTemplate* v8_function_template = reinterpret_cast<v8::FunctionTemplate*> (graal_function_template);
+    return v8::Local<v8::FunctionTemplate>::New(isolate, v8_function_template);
 }
 
 v8::Local<v8::ObjectTemplate> GraalFunctionTemplate::InstanceTemplate() {
-    JNI_CALL(jobject, java_instance_template, Isolate(), GraalAccessMethod::function_template_instance_template, Object, GetJavaObject());
-    GraalObjectTemplate* graal_object_template = GraalObjectTemplate::Allocate(Isolate(), java_instance_template);
-    return reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_instance_template, graal_isolate, GraalAccessMethod::function_template_instance_template, Object, GetJavaObject());
+    GraalObjectTemplate* graal_object_template = GraalObjectTemplate::Allocate(graal_isolate, java_instance_template);
+    v8::ObjectTemplate* v8_object_template = reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::ObjectTemplate>::New(v8_isolate, v8_object_template);
 }
 
 v8::Local<v8::ObjectTemplate> GraalFunctionTemplate::PrototypeTemplate() {
-    JNI_CALL(jobject, java_prototype_template, Isolate(), GraalAccessMethod::function_template_prototype_template, Object, GetJavaObject());
-    GraalObjectTemplate* graal_object_template = GraalObjectTemplate::Allocate(Isolate(), java_prototype_template);
-    return reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_prototype_template, graal_isolate, GraalAccessMethod::function_template_prototype_template, Object, GetJavaObject());
+    GraalObjectTemplate* graal_object_template = GraalObjectTemplate::Allocate(graal_isolate, java_prototype_template);
+    v8::ObjectTemplate* v8_object_template = reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::ObjectTemplate>::New(v8_isolate, v8_object_template);
 }
 
 v8::Local<v8::Function> GraalFunctionTemplate::GetFunction(v8::Local<v8::Context> context) {
+    GraalIsolate* graal_isolate = Isolate();
     GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
     jobject java_context = graal_context->GetJavaObject();
     JNI_CALL(jobject, java_function, Isolate(), GraalAccessMethod::function_template_get_function, Object, java_context, GetJavaObject());
-    GraalFunction* graal_function = GraalFunction::Allocate(Isolate(), java_function);
-    return reinterpret_cast<v8::Function*> (graal_function);
+    GraalFunction* graal_function = GraalFunction::Allocate(graal_isolate, java_function);
+    v8::Function* v8_function = reinterpret_cast<v8::Function*> (graal_function);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Function>::New(v8_isolate, v8_function);
 }
 
 bool GraalFunctionTemplate::HasInstance(v8::Local<v8::Value> object) {

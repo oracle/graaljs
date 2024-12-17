@@ -51,6 +51,8 @@ public:
     bool IsMap() const override;
     static v8::Local<v8::Map> New(v8::Isolate* isolate);
     v8::MaybeLocal<v8::Map> Set(v8::Local<v8::Context> context, v8::Local<v8::Value> key, v8::Local<v8::Value> value);
+    v8::MaybeLocal<v8::Value> Get(v8::Local<v8::Context> context, v8::Local<v8::Value> key);
+    v8::Maybe<bool> Delete(v8::Local<v8::Context> context, v8::Local<v8::Value> key);
 protected:
     inline GraalMap(GraalIsolate* isolate, jobject java_map);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;

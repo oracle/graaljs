@@ -31,6 +31,7 @@ const {
   ArrayPrototype,
   ArrayPrototypeForEach,
   ArrayPrototypePush,
+  Atomics,
   BigInt,
   BigInt64Array,
   BigInt64ArrayPrototype,
@@ -102,6 +103,8 @@ const {
   TypeErrorPrototype,
   TypedArray,
   TypedArrayPrototype,
+  URIError,
+  URIErrorPrototype,
   Uint16Array,
   Uint16ArrayPrototype,
   Uint32Array,
@@ -110,8 +113,6 @@ const {
   Uint8ArrayPrototype,
   Uint8ClampedArray,
   Uint8ClampedArrayPrototype,
-  URIError,
-  URIErrorPrototype,
   WeakMap,
   WeakMapPrototype,
   WeakRef,
@@ -128,7 +129,6 @@ const {
 } = primordials;
 
 const {
-  Atomics,
   Intl,
   SharedArrayBuffer,
   WebAssembly,

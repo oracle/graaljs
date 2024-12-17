@@ -24,17 +24,13 @@
 const {
   Array,
   ArrayIsArray,
-  ArrayPrototypeJoin,
   MathFloor,
-  NumberPrototypeToString,
   ObjectDefineProperty,
+  ObjectHasOwn,
   ObjectKeys,
-  ObjectValues,
-  ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
-  RegExpPrototypeExec,
+  ObjectValues,
   SafeSet,
-  StringPrototypeToLowerCase,
   Symbol,
 } = primordials;
 
@@ -56,21 +52,21 @@ const {
 } = require('internal/async_hooks');
 const {
   codes: {
+    ERR_HTTP_BODY_NOT_ALLOWED,
     ERR_HTTP_CONTENT_LENGTH_MISMATCH,
     ERR_HTTP_HEADERS_SENT,
     ERR_HTTP_INVALID_HEADER_VALUE,
     ERR_HTTP_TRAILER_INVALID,
-    ERR_HTTP_BODY_NOT_ALLOWED,
-    ERR_INVALID_HTTP_TOKEN,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_CHAR,
+    ERR_INVALID_HTTP_TOKEN,
     ERR_METHOD_NOT_IMPLEMENTED,
-    ERR_STREAM_CANNOT_PIPE,
     ERR_STREAM_ALREADY_FINISHED,
-    ERR_STREAM_WRITE_AFTER_END,
-    ERR_STREAM_NULL_VALUES,
+    ERR_STREAM_CANNOT_PIPE,
     ERR_STREAM_DESTROYED,
+    ERR_STREAM_NULL_VALUES,
+    ERR_STREAM_WRITE_AFTER_END,
   },
   hideStackFrames,
 } = require('internal/errors');
@@ -82,6 +78,9 @@ let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
 });
 
 const kCorked = Symbol('corked');
+const kSocket = Symbol('kSocket');
+const kChunkedBuffer = Symbol('kChunkedBuffer');
+const kChunkedLength = Symbol('kChunkedLength');
 const kUniqueHeaders = Symbol('kUniqueHeaders');
 const kBytesWritten = Symbol('kBytesWritten');
 const kErrored = Symbol('errored');
@@ -96,11 +95,11 @@ const RE_CONN_CLOSE = /(?:^|\W)close(?:$|\W)/i;
 // against the word "cookie." As of V8 6.6 this is faster than handrolling or
 // using a case-insensitive RegExp.
 function isCookieField(s) {
-  return s.length === 6 && StringPrototypeToLowerCase(s) === 'cookie';
+  return s.length === 6 && s.toLowerCase() === 'cookie';
 }
 
 function isContentDispositionField(s) {
-  return s.length === 19 && StringPrototypeToLowerCase(s) === 'content-disposition';
+  return s.length === 19 && s.toLowerCase() === 'content-disposition';
 }
 
 function OutgoingMessage(options) {
@@ -140,9 +139,11 @@ function OutgoingMessage(options) {
   this.finished = false;
   this._headerSent = false;
   this[kCorked] = 0;
+  this[kChunkedBuffer] = [];
+  this[kChunkedLength] = 0;
   this._closed = false;
 
-  this.socket = null;
+  this[kSocket] = null;
   this._header = null;
   this[kOutHeaders] = null;
 
@@ -177,7 +178,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'writableFinished', {
     return (
       this.finished &&
       this.outputSize === 0 &&
-      (!this.socket || this.socket.writableLength === 0)
+      (!this[kSocket] || this[kSocket].writableLength === 0)
     );
   },
 });
@@ -192,22 +193,21 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'writableObjectMode', {
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableLength', {
   __proto__: null,
   get() {
-    return this.outputSize + (this.socket ? this.socket.writableLength : 0);
+    return this.outputSize + this[kChunkedLength] + (this[kSocket] ? this[kSocket].writableLength : 0);
   },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableHighWaterMark', {
   __proto__: null,
   get() {
-    return this.socket ? this.socket.writableHighWaterMark : this[kHighWaterMark];
+    return this[kSocket] ? this[kSocket].writableHighWaterMark : this[kHighWaterMark];
   },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableCorked', {
   __proto__: null,
   get() {
-    const corked = this.socket ? this.socket.writableCorked : 0;
-    return corked + this[kCorked];
+    return this[kCorked];
   },
 });
 
@@ -226,7 +226,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
       // Refs: https://github.com/nodejs/node/pull/30958
       for (let i = 0; i < keys.length; ++i) {
         const name = keys[i];
-        headers[StringPrototypeToLowerCase(name)] = [name, val[name]];
+        headers[name.toLowerCase()] = [name, val[name]];
       }
     }
   }, 'OutgoingMessage.prototype._headers is deprecated', 'DEP0066'),
@@ -235,10 +235,24 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
 ObjectDefineProperty(OutgoingMessage.prototype, 'connection', {
   __proto__: null,
   get: function() {
-    return this.socket;
+    return this[kSocket];
   },
   set: function(val) {
     this.socket = val;
+  },
+});
+
+ObjectDefineProperty(OutgoingMessage.prototype, 'socket', {
+  __proto__: null,
+  get: function() {
+    return this[kSocket];
+  },
+  set: function(val) {
+    for (let n = 0; n < this[kCorked]; n++) {
+      val?.cork();
+      this[kSocket]?.uncork();
+    }
+    this[kSocket] = val;
   },
 });
 
@@ -299,19 +313,45 @@ OutgoingMessage.prototype._renderHeaders = function _renderHeaders() {
 };
 
 OutgoingMessage.prototype.cork = function() {
-  if (this.socket) {
-    this.socket.cork();
-  } else {
-    this[kCorked]++;
+  this[kCorked]++;
+  if (this[kSocket]) {
+    this[kSocket].cork();
   }
 };
 
 OutgoingMessage.prototype.uncork = function() {
-  if (this.socket) {
-    this.socket.uncork();
-  } else if (this[kCorked]) {
-    this[kCorked]--;
+  this[kCorked]--;
+  if (this[kSocket]) {
+    this[kSocket].uncork();
   }
+
+  if (this[kCorked] || this[kChunkedBuffer].length === 0) {
+    return;
+  }
+
+  const len = this[kChunkedLength];
+  const buf = this[kChunkedBuffer];
+
+  assert(this.chunkedEncoding);
+
+  let callbacks;
+  this._send(len.toString(16), 'latin1', null);
+  this._send(crlf_buf, null, null);
+  for (let n = 0; n < buf.length; n += 3) {
+    this._send(buf[n + 0], buf[n + 1], null);
+    if (buf[n + 2]) {
+      callbacks ??= [];
+      callbacks.push(buf[n + 2]);
+    }
+  }
+  this._send(crlf_buf, null, callbacks.length ? (err) => {
+    for (const callback of callbacks) {
+      callback(err);
+    }
+  } : null);
+
+  this[kChunkedBuffer].length = 0;
+  this[kChunkedLength] = 0;
 };
 
 OutgoingMessage.prototype.setTimeout = function setTimeout(msecs, callback) {
@@ -320,12 +360,12 @@ OutgoingMessage.prototype.setTimeout = function setTimeout(msecs, callback) {
     this.on('timeout', callback);
   }
 
-  if (!this.socket) {
+  if (!this[kSocket]) {
     this.once('socket', function socketSetTimeoutOnConnect(socket) {
       socket.setTimeout(msecs);
     });
   } else {
-    this.socket.setTimeout(msecs);
+    this[kSocket].setTimeout(msecs);
   }
   return this;
 };
@@ -342,8 +382,8 @@ OutgoingMessage.prototype.destroy = function destroy(error) {
 
   this[kErrored] = error;
 
-  if (this.socket) {
-    this.socket.destroy(error);
+  if (this[kSocket]) {
+    this[kSocket].destroy(error);
   } else {
     this.once('socket', function socketDestroyOnConnect(socket) {
       socket.destroy(error);
@@ -382,8 +422,8 @@ OutgoingMessage.prototype._send = function _send(data, encoding, callback, byteL
 
 OutgoingMessage.prototype._writeRaw = _writeRaw;
 function _writeRaw(data, encoding, callback, size) {
-  const conn = this.socket;
-  if (conn && conn.destroyed) {
+  const conn = this[kSocket];
+  if (conn?.destroyed) {
     // The socket was destroyed. If we're still trying to write to it,
     // then we haven't gotten the 'close' event yet.
     return false;
@@ -447,7 +487,7 @@ function _storeHeader(firstLine, headers) {
       }
     } else {
       for (const key in headers) {
-        if (ObjectPrototypeHasOwnProperty(headers, key)) {
+        if (ObjectHasOwn(headers, key)) {
           processHeader(this, state, key, headers[key], true);
         }
       }
@@ -569,7 +609,7 @@ function processHeader(self, state, key, value, validate) {
   if (ArrayIsArray(value)) {
     if (
       (value.length < 2 || !isCookieField(key)) &&
-      (!self[kUniqueHeaders] || !self[kUniqueHeaders].has(StringPrototypeToLowerCase(key)))
+      (!self[kUniqueHeaders] || !self[kUniqueHeaders].has(key.toLowerCase()))
     ) {
       // Retain for(;;) loop for performance reasons
       // Refs: https://github.com/nodejs/node/pull/30958
@@ -577,7 +617,7 @@ function processHeader(self, state, key, value, validate) {
         storeHeader(self, state, key, value[i], validate);
       return;
     }
-    value = ArrayPrototypeJoin(value, '; ');
+    value = value.join('; ');
   }
   storeHeader(self, state, key, value, validate);
 }
@@ -592,12 +632,12 @@ function storeHeader(self, state, key, value, validate) {
 function matchHeader(self, state, field, value) {
   if (field.length < 4 || field.length > 17)
     return;
-  field = StringPrototypeToLowerCase(field);
+  field = field.toLowerCase();
   switch (field) {
     case 'connection':
       state.connection = true;
       self._removedConnection = false;
-      if (RegExpPrototypeExec(RE_CONN_CLOSE, value) !== null)
+      if (RE_CONN_CLOSE.test(value))
         self._last = true;
       else
         self.shouldKeepAlive = true;
@@ -605,7 +645,7 @@ function matchHeader(self, state, field, value) {
     case 'transfer-encoding':
       state.te = true;
       self._removedTE = false;
-      if (RegExpPrototypeExec(RE_TE_CHUNKED, value) !== null)
+      if (RE_TE_CHUNKED.test(value))
         self.chunkedEncoding = true;
       break;
     case 'content-length':
@@ -648,7 +688,7 @@ function parseUniqueHeadersOption(headers) {
   const unique = new SafeSet();
   const l = headers.length;
   for (let i = 0; i < l; i++) {
-    unique.add(StringPrototypeToLowerCase(headers[i]));
+    unique.add(headers[i].toLowerCase());
   }
 
   return unique;
@@ -665,7 +705,7 @@ OutgoingMessage.prototype.setHeader = function setHeader(name, value) {
   if (headers === null)
     this[kOutHeaders] = headers = { __proto__: null };
 
-  headers[StringPrototypeToLowerCase(name)] = [name, value];
+  headers[name.toLowerCase()] = [name, value];
   return this;
 };
 
@@ -717,7 +757,7 @@ OutgoingMessage.prototype.appendHeader = function appendHeader(name, value) {
   validateHeaderName(name);
   validateHeaderValue(name, value);
 
-  const field = StringPrototypeToLowerCase(name);
+  const field = name.toLowerCase();
   const headers = this[kOutHeaders];
   if (headers === null || !headers[field]) {
     return this.setHeader(name, value);
@@ -748,8 +788,8 @@ OutgoingMessage.prototype.getHeader = function getHeader(name) {
   if (headers === null)
     return;
 
-  const entry = headers[StringPrototypeToLowerCase(name)];
-  return entry && entry[1];
+  const entry = headers[name.toLowerCase()];
+  return entry?.[1];
 };
 
 
@@ -797,7 +837,7 @@ OutgoingMessage.prototype.getHeaders = function getHeaders() {
 OutgoingMessage.prototype.hasHeader = function hasHeader(name) {
   validateString(name, 'name');
   return this[kOutHeaders] !== null &&
-    !!this[kOutHeaders][StringPrototypeToLowerCase(name)];
+    !!this[kOutHeaders][name.toLowerCase()];
 };
 
 
@@ -808,7 +848,7 @@ OutgoingMessage.prototype.removeHeader = function removeHeader(name) {
     throw new ERR_HTTP_HEADERS_SENT('remove');
   }
 
-  const key = StringPrototypeToLowerCase(name);
+  const key = name.toLowerCase();
 
   switch (key) {
     case 'connection':
@@ -964,10 +1004,16 @@ function write_(msg, chunk, encoding, callback, fromEnd) {
   let ret;
   if (msg.chunkedEncoding && chunk.length !== 0) {
     len ??= typeof chunk === 'string' ? Buffer.byteLength(chunk, encoding) : chunk.byteLength;
-    msg._send(NumberPrototypeToString(len, 16), 'latin1', null);
-    msg._send(crlf_buf, null, null);
-    msg._send(chunk, encoding, null, len);
-    ret = msg._send(crlf_buf, null, callback);
+    if (msg[kCorked] && msg._headerSent) {
+      msg[kChunkedBuffer].push(chunk, encoding, callback);
+      msg[kChunkedLength] += len;
+      ret = msg[kChunkedLength] < msg[kHighWaterMark];
+    } else {
+      msg._send(len.toString(16), 'latin1', null);
+      msg._send(crlf_buf, null, null);
+      msg._send(chunk, encoding, null, len);
+      ret = msg._send(crlf_buf, null, callback);
+    }
   } else {
     ret = msg._send(chunk, encoding, callback, len);
   }
@@ -1003,7 +1049,7 @@ OutgoingMessage.prototype.addTrailers = function addTrailers(headers) {
     const isArrayValue = ArrayIsArray(value);
     if (
       isArrayValue && value.length > 1 &&
-      (!this[kUniqueHeaders] || !this[kUniqueHeaders].has(StringPrototypeToLowerCase(field)))
+      (!this[kUniqueHeaders] || !this[kUniqueHeaders].has(field.toLowerCase()))
     ) {
       for (let j = 0, l = value.length; j < l; j++) {
         if (checkInvalidHeaderChar(value[j])) {
@@ -1014,7 +1060,7 @@ OutgoingMessage.prototype.addTrailers = function addTrailers(headers) {
       }
     } else {
       if (isArrayValue) {
-        value = ArrayPrototypeJoin(value, '; ');
+        value = value.join('; ');
       }
 
       if (checkInvalidHeaderChar(value)) {
@@ -1027,7 +1073,7 @@ OutgoingMessage.prototype.addTrailers = function addTrailers(headers) {
 };
 
 function onFinish(outmsg) {
-  if (outmsg && outmsg.socket && outmsg.socket._hadError) return;
+  if (outmsg?.socket?._hadError) return;
   outmsg.emit('finish');
 }
 
@@ -1049,8 +1095,8 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
       return this;
     }
 
-    if (this.socket) {
-      this.socket.cork();
+    if (this[kSocket]) {
+      this[kSocket].cork();
     }
 
     write_(this, chunk, encoding, null, true);
@@ -1064,8 +1110,8 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
     }
     return this;
   } else if (!this._header) {
-    if (this.socket) {
-      this.socket.cork();
+    if (this[kSocket]) {
+      this[kSocket].cork();
     }
 
     this._contentLength = 0;
@@ -1089,12 +1135,13 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
     process.nextTick(finish);
   }
 
-  if (this.socket) {
+  if (this[kSocket]) {
     // Fully uncork connection on end().
-    this.socket._writableState.corked = 1;
-    this.socket.uncork();
+    this[kSocket]._writableState.corked = 1;
+    this[kSocket].uncork();
   }
-  this[kCorked] = 0;
+  this[kCorked] = 1;
+  this.uncork();
 
   this.finished = true;
 
@@ -1102,8 +1149,8 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
   // everything to the socket.
   debug('outgoing message end.');
   if (this.outputData.length === 0 &&
-      this.socket &&
-      this.socket._httpMessage === this) {
+      this[kSocket] &&
+      this[kSocket]._httpMessage === this) {
     this._finish();
   }
 
@@ -1114,7 +1161,7 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
 // This function is called once all user data are flushed to the socket.
 // Note that it has a chance that the socket is not drained.
 OutgoingMessage.prototype._finish = function _finish() {
-  assert(this.socket);
+  assert(this[kSocket]);
   this.emit('prefinish');
 };
 
@@ -1139,9 +1186,9 @@ OutgoingMessage.prototype._finish = function _finish() {
 // This function, _flush(), is called by both the Server and Client
 // to attempt to flush any pending messages out to the socket.
 OutgoingMessage.prototype._flush = function _flush() {
-  const socket = this.socket;
+  const socket = this[kSocket];
 
-  if (socket && socket.writable) {
+  if (socket?.writable) {
     // There might be remaining data in this.output; write it out
     const ret = this._flushOutput(socket);
 
@@ -1156,11 +1203,6 @@ OutgoingMessage.prototype._flush = function _flush() {
 };
 
 OutgoingMessage.prototype._flushOutput = function _flushOutput(socket) {
-  while (this[kCorked]) {
-    this[kCorked]--;
-    socket.cork();
-  }
-
   const outputLength = this.outputData.length;
   if (outputLength <= 0)
     return undefined;

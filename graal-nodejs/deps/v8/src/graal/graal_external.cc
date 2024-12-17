@@ -62,5 +62,6 @@ v8::Local<v8::External> GraalExternal::New(v8::Isolate* isolate, void* value) {
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_external, isolate, GraalAccessMethod::external_new, Object, java_context, (jlong) value);
     GraalExternal* graal_external = new GraalExternal(graal_isolate, value, java_external);
-    return reinterpret_cast<v8::External*> (graal_external);
+    v8::External* v8_external = reinterpret_cast<v8::External*> (graal_external);
+    return v8::Local<v8::External>::New(isolate, v8_external);
 }

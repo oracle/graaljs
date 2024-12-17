@@ -36,7 +36,6 @@ v8::Local<v8::Value> CompileRun(Isolate* isolate, const char* source) {
 FunctionTester::FunctionTester(Isolate* isolate, const char* source,
                                uint32_t flags)
     : isolate(isolate),
-      canonical(isolate),
       function((v8_flags.allow_natives_syntax = true, NewFunction(source))),
       flags_(flags) {
   Compile(function);
@@ -46,7 +45,6 @@ FunctionTester::FunctionTester(Isolate* isolate, const char* source,
 
 FunctionTester::FunctionTester(Isolate* isolate, Graph* graph, int param_count)
     : isolate(isolate),
-      canonical(isolate),
       function(NewFunction(BuildFunction(param_count).c_str())),
       flags_(0) {
   CompileGraph(graph);
@@ -55,7 +53,6 @@ FunctionTester::FunctionTester(Isolate* isolate, Graph* graph, int param_count)
 FunctionTester::FunctionTester(Isolate* isolate, Handle<Code> code,
                                int param_count)
     : isolate(isolate),
-      canonical(isolate),
       function((v8_flags.allow_natives_syntax = true,
                 NewFunction(BuildFunction(param_count).c_str()))),
       flags_(0) {
@@ -67,29 +64,26 @@ FunctionTester::FunctionTester(Isolate* isolate, Handle<Code> code,
 void FunctionTester::CheckThrows(Handle<Object> a) {
   TryCatch try_catch(reinterpret_cast<v8::Isolate*>(isolate));
   MaybeHandle<Object> no_result = Call(a);
-  CHECK(isolate->has_pending_exception());
+  CHECK(isolate->has_exception());
   CHECK(try_catch.HasCaught());
   CHECK(no_result.is_null());
-  isolate->OptionalRescheduleException(true);
 }
 
 void FunctionTester::CheckThrows(Handle<Object> a, Handle<Object> b) {
   TryCatch try_catch(reinterpret_cast<v8::Isolate*>(isolate));
   MaybeHandle<Object> no_result = Call(a, b);
-  CHECK(isolate->has_pending_exception());
+  CHECK(isolate->has_exception());
   CHECK(try_catch.HasCaught());
   CHECK(no_result.is_null());
-  isolate->OptionalRescheduleException(true);
 }
 
 v8::Local<v8::Message> FunctionTester::CheckThrowsReturnMessage(
     Handle<Object> a, Handle<Object> b) {
   TryCatch try_catch(reinterpret_cast<v8::Isolate*>(isolate));
   MaybeHandle<Object> no_result = Call(a, b);
-  CHECK(isolate->has_pending_exception());
+  CHECK(isolate->has_exception());
   CHECK(try_catch.HasCaught());
   CHECK(no_result.is_null());
-  isolate->OptionalRescheduleException(true);
   CHECK(!try_catch.Message().IsEmpty());
   return try_catch.Message();
 }
@@ -98,7 +92,7 @@ void FunctionTester::CheckCall(Handle<Object> expected, Handle<Object> a,
                                Handle<Object> b, Handle<Object> c,
                                Handle<Object> d) {
   Handle<Object> result = Call(a, b, c, d).ToHandleChecked();
-  CHECK(expected->SameValue(*result));
+  CHECK(Object::SameValue(*expected, *result));
 }
 
 Handle<JSFunction> FunctionTester::NewFunction(const char* source) {
@@ -167,9 +161,8 @@ Handle<JSFunction> FunctionTester::CompileGraph(Graph* graph) {
   return function;
 }
 
-Handle<JSFunction> FunctionTester::Optimize(
-    Handle<JSFunction> function, Zone* zone, uint32_t flags,
-    std::unique_ptr<compiler::JSHeapBroker>* out_broker) {
+Handle<JSFunction> FunctionTester::Optimize(Handle<JSFunction> function,
+                                            Zone* zone, uint32_t flags) {
   Handle<SharedFunctionInfo> shared(function->shared(), isolate);
   IsCompiledScope is_compiled_scope(shared->is_compiled_scope(isolate));
   CHECK(is_compiled_scope.is_compiled() ||
@@ -189,9 +182,8 @@ Handle<JSFunction> FunctionTester::Optimize(
   CHECK(info.shared_info()->HasBytecodeArray());
   JSFunction::EnsureFeedbackVector(isolate, function, &is_compiled_scope);
 
-  Handle<Code> code =
-      compiler::Pipeline::GenerateCodeForTesting(&info, isolate, out_broker)
-          .ToHandleChecked();
+  Handle<Code> code = compiler::Pipeline::GenerateCodeForTesting(&info, isolate)
+                          .ToHandleChecked();
   function->set_code(*code, v8::kReleaseStore);
   return function;
 }

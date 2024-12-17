@@ -56,12 +56,16 @@ v8::Local<v8::Value> GraalScriptOrModule::GetResourceName() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_resource_name, graal_isolate, GraalAccessMethod::script_or_module_get_resource_name, Object, GetJavaObject());
     GraalValue* graal_resource_name = GraalValue::FromJavaObject(graal_isolate, java_resource_name);
-    return reinterpret_cast<v8::Value*> (graal_resource_name);
+    v8::Value* v8_resource_name = reinterpret_cast<v8::Value*> (graal_resource_name);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_resource_name);
 }
 
 v8::Local<v8::PrimitiveArray> GraalScriptOrModule::GetHostDefinedOptions() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_options, graal_isolate, GraalAccessMethod::script_or_module_get_host_defined_options, Object, GetJavaObject());
     GraalPrimitiveArray* graal_options = GraalPrimitiveArray::Allocate(graal_isolate, java_options);
-    return reinterpret_cast<v8::PrimitiveArray*> (graal_options);
+    v8::PrimitiveArray* v8_options = reinterpret_cast<v8::PrimitiveArray*> (graal_options);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::PrimitiveArray>::New(v8_isolate, v8_options);
 }

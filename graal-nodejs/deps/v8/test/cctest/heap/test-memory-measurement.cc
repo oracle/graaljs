@@ -90,6 +90,7 @@ TEST(NativeContextStatsArrayBuffers) {
                       *i_array_buffer, 10);
   CHECK_EQ(1010, stats.Get(native_context->ptr()));
 }
+
 namespace {
 
 class TestResource : public v8::String::ExternalStringResource {
@@ -186,10 +187,7 @@ class MockMeasureMemoryDelegate : public v8::MeasureMemoryDelegate {
  public:
   bool ShouldMeasure(v8::Local<v8::Context> context) override { return true; }
 
-  void MeasurementComplete(
-      const std::vector<std::pair<v8::Local<v8::Context>, size_t>>&
-          context_sizes_in_bytes,
-      size_t unattributed_size_in_bytes) override {
+  void MeasurementComplete(Result result) override {
     // Empty.
   }
 };

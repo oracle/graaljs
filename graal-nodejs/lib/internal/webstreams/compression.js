@@ -3,15 +3,7 @@
 const {
   ObjectDefineProperties,
   SymbolToStringTag,
-  Symbol,
 } = primordials;
-
-const {
-  codes: {
-    ERR_INVALID_ARG_VALUE,
-    ERR_INVALID_THIS,
-  },
-} = require('internal/errors');
 
 const {
   newReadableWritablePairFromDuplex,
@@ -24,51 +16,49 @@ const {
   kEnumerableProperty,
 } = require('internal/util');
 
+const { createEnumConverter } = require('internal/webidl');
+
 let zlib;
 function lazyZlib() {
   zlib ??= require('zlib');
   return zlib;
 }
 
-const kHandle = Symbol('kHandle');
-const kTransform = Symbol('kTransform');
-const kType = Symbol('kType');
+const formatConverter = createEnumConverter('CompressionFormat', [
+  'deflate',
+  'deflate-raw',
+  'gzip',
+]);
 
 /**
  * @typedef {import('./readablestream').ReadableStream} ReadableStream
  * @typedef {import('./writablestream').WritableStream} WritableStream
  */
 
-function isCompressionStream(value) {
-  return typeof value?.[kHandle] === 'object' &&
-         value?.[kType] === 'CompressionStream';
-}
-
-function isDecompressionStream(value) {
-  return typeof value?.[kHandle] === 'object' &&
-         value?.[kType] === 'DecompressionStream';
-}
-
 class CompressionStream {
+  #handle;
+  #transform;
+
   /**
    * @param {'deflate'|'deflate-raw'|'gzip'} format
    */
   constructor(format) {
-    this[kType] = 'CompressionStream';
+    format = formatConverter(format, {
+      prefix: "Failed to construct 'CompressionStream'",
+      context: '1st argument',
+    });
     switch (format) {
       case 'deflate':
-        this[kHandle] = lazyZlib().createDeflate();
+        this.#handle = lazyZlib().createDeflate();
         break;
       case 'deflate-raw':
-        this[kHandle] = lazyZlib().createDeflateRaw();
+        this.#handle = lazyZlib().createDeflateRaw();
         break;
       case 'gzip':
-        this[kHandle] = lazyZlib().createGzip();
+        this.#handle = lazyZlib().createGzip();
         break;
-      default:
-        throw new ERR_INVALID_ARG_VALUE('format', format);
     }
-    this[kTransform] = newReadableWritablePairFromDuplex(this[kHandle]);
+    this.#transform = newReadableWritablePairFromDuplex(this.#handle);
   }
 
   /**
@@ -76,9 +66,7 @@ class CompressionStream {
    * @type {ReadableStream}
    */
   get readable() {
-    if (!isCompressionStream(this))
-      throw new ERR_INVALID_THIS('CompressionStream');
-    return this[kTransform].readable;
+    return this.#transform.readable;
   }
 
   /**
@@ -86,41 +74,41 @@ class CompressionStream {
    * @type {WritableStream}
    */
   get writable() {
-    if (!isCompressionStream(this))
-      throw new ERR_INVALID_THIS('CompressionStream');
-    return this[kTransform].writable;
+    return this.#transform.writable;
   }
 
   [kInspect](depth, options) {
-    if (!isCompressionStream(this))
-      throw new ERR_INVALID_THIS('CompressionStream');
-    customInspect(depth, options, 'CompressionStream', {
-      readable: this[kTransform].readable,
-      writable: this[kTransform].writable,
+    return customInspect(depth, options, 'CompressionStream', {
+      readable: this.#transform.readable,
+      writable: this.#transform.writable,
     });
   }
 }
 
 class DecompressionStream {
+  #handle;
+  #transform;
+
   /**
    * @param {'deflate'|'deflate-raw'|'gzip'} format
    */
   constructor(format) {
-    this[kType] = 'DecompressionStream';
+    format = formatConverter(format, {
+      prefix: "Failed to construct 'DecompressionStream'",
+      context: '1st argument',
+    });
     switch (format) {
       case 'deflate':
-        this[kHandle] = lazyZlib().createInflate();
+        this.#handle = lazyZlib().createInflate();
         break;
       case 'deflate-raw':
-        this[kHandle] = lazyZlib().createInflateRaw();
+        this.#handle = lazyZlib().createInflateRaw();
         break;
       case 'gzip':
-        this[kHandle] = lazyZlib().createGunzip();
+        this.#handle = lazyZlib().createGunzip();
         break;
-      default:
-        throw new ERR_INVALID_ARG_VALUE('format', format);
     }
-    this[kTransform] = newReadableWritablePairFromDuplex(this[kHandle]);
+    this.#transform = newReadableWritablePairFromDuplex(this.#handle);
   }
 
   /**
@@ -128,9 +116,7 @@ class DecompressionStream {
    * @type {ReadableStream}
    */
   get readable() {
-    if (!isDecompressionStream(this))
-      throw new ERR_INVALID_THIS('DecompressionStream');
-    return this[kTransform].readable;
+    return this.#transform.readable;
   }
 
   /**
@@ -138,17 +124,13 @@ class DecompressionStream {
    * @type {WritableStream}
    */
   get writable() {
-    if (!isDecompressionStream(this))
-      throw new ERR_INVALID_THIS('DecompressionStream');
-    return this[kTransform].writable;
+    return this.#transform.writable;
   }
 
   [kInspect](depth, options) {
-    if (!isDecompressionStream(this))
-      throw new ERR_INVALID_THIS('DecompressionStream');
-    customInspect(depth, options, 'DecompressionStream', {
-      readable: this[kTransform].readable,
-      writable: this[kTransform].writable,
+    return customInspect(depth, options, 'DecompressionStream', {
+      readable: this.#transform.readable,
+      writable: this.#transform.writable,
     });
   }
 }
