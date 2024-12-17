@@ -97,6 +97,7 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['mx', 'gate', '--all-suites', '--no-warning-as-error', '--strict-mode', '--tags', 'build,${TAGS}'],
     ],
+    timelimit: '1:00:00',
   },
 
   local interopJmhBenchmarks = common.buildCompiler + {
@@ -164,7 +165,7 @@ local ci = import '../ci.jsonnet';
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]),
 
     // PGO profiles
-    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles', timelimit: '1:00:00'} +
+    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
       excludePlatforms([common.darwin_amd64]),   # Too slow
   ], defaultTarget=common.weekly),
