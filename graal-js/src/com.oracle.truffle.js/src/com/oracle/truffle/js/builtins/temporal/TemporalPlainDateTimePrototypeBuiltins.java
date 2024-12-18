@@ -913,7 +913,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                                 temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(), 0, 0, 0, 0, 0, 0,
                                 temporalDateTime.getCalendar(), this, errorBranch);
             }
-            JSTemporalPlainTimeObject plainTime = toTemporalTime.execute(plainTimeLike, null);
+            JSTemporalPlainTimeObject plainTime = toTemporalTime.execute(plainTimeLike, Undefined.instance);
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(), plainTime.getHour(), plainTime.getMinute(),
                             plainTime.getSecond(), plainTime.getMillisecond(), plainTime.getMicrosecond(), plainTime.getNanosecond(), temporalDateTime.getCalendar(), this, errorBranch);

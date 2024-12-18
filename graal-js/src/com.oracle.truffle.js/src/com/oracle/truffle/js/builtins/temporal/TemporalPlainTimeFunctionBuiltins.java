@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,21 +42,17 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 
 public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimeFunctionBuiltins.TemporalPlainTimeFunction> {
 
@@ -101,19 +97,8 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSTemporalPlainTimeObject from(Object item, Object options,
-                        @Cached ToTemporalTimeNode toTemporalTime,
-                        @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
-            JSDynamicObject normalizedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
-            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode);
-            if (isObject(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
-                JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
-                return JSTemporalPlainTime.create(getContext(), getRealm(),
-                                timeItem.getHour(), timeItem.getMinute(), timeItem.getSecond(), timeItem.getMillisecond(),
-                                timeItem.getMicrosecond(), timeItem.getNanosecond(), this, errorBranch);
-            }
-            return toTemporalTime.execute(item, overflow);
+                        @Cached ToTemporalTimeNode toTemporalTime) {
+            return toTemporalTime.execute(item, options);
         }
 
     }
@@ -127,8 +112,8 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached ToTemporalTimeNode toTemporalTime) {
-            JSTemporalPlainTimeObject time1 = toTemporalTime.execute(obj1, null);
-            JSTemporalPlainTimeObject time2 = toTemporalTime.execute(obj2, null);
+            JSTemporalPlainTimeObject time1 = toTemporalTime.execute(obj1, Undefined.instance);
+            JSTemporalPlainTimeObject time2 = toTemporalTime.execute(obj2, Undefined.instance);
             return TemporalUtil.compareTemporalTime(
                             time1.getHour(), time1.getMinute(), time1.getSecond(),
                             time1.getMillisecond(), time1.getMicrosecond(), time1.getNanosecond(),

@@ -554,7 +554,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 date.getYear(), date.getMonth(), date.getDay(),
                                 0, 0, 0, 0, 0, 0, date.getCalendar(), this, errorBranch);
             }
-            JSTemporalPlainTimeObject time = toTemporalTime.execute(temporalTimeObj, null);
+            JSTemporalPlainTimeObject time = toTemporalTime.execute(temporalTimeObj, Undefined.instance);
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
@@ -693,7 +693,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 0, 0, 0, 0, 0, 0, td.getCalendar(),
                                 this, errorBranch);
             } else {
-                JSTemporalPlainTimeObject tt = toTemporalTime.execute(temporalTime, null);
+                JSTemporalPlainTimeObject tt = toTemporalTime.execute(temporalTime, Undefined.instance);
                 temporalDateTime = JSTemporalPlainDateTime.create(getContext(), realm,
                                 td.getYear(), td.getMonth(), td.getDay(),
                                 tt.getHour(), tt.getMinute(), tt.getSecond(), tt.getMillisecond(), tt.getMicrosecond(), tt.getNanosecond(), td.getCalendar(),

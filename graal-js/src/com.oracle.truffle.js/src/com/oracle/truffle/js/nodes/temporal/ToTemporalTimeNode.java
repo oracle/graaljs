@@ -50,20 +50,17 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 
@@ -75,11 +72,13 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
     protected ToTemporalTimeNode() {
     }
 
-    public abstract JSTemporalPlainTimeObject execute(Object value, Overflow overflowParam);
+    public abstract JSTemporalPlainTimeObject execute(Object item, Object options);
 
     @Specialization
-    protected JSTemporalPlainTimeObject toTemporalTime(Object item, Overflow overflowParam,
+    protected JSTemporalPlainTimeObject toTemporalTime(Object item, Object options,
                     @Cached IsObjectNode isObjectNode,
+                    @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsObjectNode,
+                    @Cached TemporalGetOptionNode getOptionNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isPlainDateTimeProfile,
@@ -87,37 +86,45 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isPlainTimeProfile,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
-        Overflow overflow = overflowParam == null ? Overflow.CONSTRAIN : overflowParam;
-        assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
-        JSContext ctx = getLanguage().getJSContext();
+        assert options != null;
+        JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
-        JSTemporalDurationRecord result2 = null;
+        JSTemporalDurationRecord result2;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
-            JSDynamicObject itemObj = (JSDynamicObject) item;
-            if (isPlainTimeProfile.profile(this, JSTemporalPlainTime.isJSTemporalPlainTime(itemObj))) {
-                return (JSTemporalPlainTimeObject) itemObj;
-            } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(itemObj))) {
-                var zdt = (JSTemporalZonedDateTimeObject) itemObj;
-                var instant = JSTemporalInstant.create(ctx, realm, zdt.getNanoseconds());
-                var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(zdt.getTimeZone());
-                var plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, zdt.getCalendar());
+            if (isPlainTimeProfile.profile(this, JSTemporalPlainTime.isJSTemporalPlainTime(item))) {
+                Object resolvedOptions = getOptionsObjectNode.execute(options);
+                TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+                JSTemporalPlainTimeObject plainTime = (JSTemporalPlainTimeObject) item;
+                return JSTemporalPlainTime.create(ctx, realm,
+                                plainTime.getHour(), plainTime.getMinute(), plainTime.getSecond(),
+                                plainTime.getMillisecond(), plainTime.getMicrosecond(), plainTime.getNanosecond(),
+                                this, errorBranch);
+            } else if (isPlainDateTimeProfile.profile(this, JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item))) {
+                Object resolvedOptions = getOptionsObjectNode.execute(options);
+                TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+                JSTemporalPlainDateTimeObject plainDateTime = (JSTemporalPlainDateTimeObject) item;
                 return JSTemporalPlainTime.create(ctx, realm,
                                 plainDateTime.getHour(), plainDateTime.getMinute(), plainDateTime.getSecond(),
-                                plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond(), this, errorBranch);
-            } else if (isPlainDateTimeProfile.profile(this, JSTemporalPlainDateTime.isJSTemporalPlainDateTime(itemObj))) {
-                var dt = (JSTemporalPlainDateTimeObject) itemObj;
+                                plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond(),
+                                this, errorBranch);
+            } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(item))) {
+                JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) item;
+                JSTemporalDateTimeRecord isoDateTime = TemporalUtil.getISODateTimeFor((TruffleString) zonedDateTime.getTimeZone(), zonedDateTime.getNanoseconds());
+                Object resolvedOptions = getOptionsObjectNode.execute(options);
+                TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
                 return JSTemporalPlainTime.create(ctx, realm,
-                                dt.getHour(), dt.getMinute(), dt.getSecond(),
-                                dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), this, errorBranch);
+                                isoDateTime.getHour(), isoDateTime.getMinute(), isoDateTime.getSecond(),
+                                isoDateTime.getMillisecond(), isoDateTime.getMicrosecond(), isoDateTime.getNanosecond(),
+                                this, errorBranch);
             }
-            JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord(itemObj);
+            JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord(item);
+            Object resolvedOptions = getOptionsObjectNode.execute(options);
+            Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             result2 = TemporalUtil.regulateTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), overflow);
         } else if (item instanceof TruffleString string) {
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string);
-            assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
-            if (result.hasCalendar() && !toStringNode.executeString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
-                throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
-            }
+            Object resolvedOptions = getOptionsObjectNode.execute(options);
+            TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             result2 = JSTemporalDurationRecord.create(result);
         } else {
             errorBranch.enter(this);

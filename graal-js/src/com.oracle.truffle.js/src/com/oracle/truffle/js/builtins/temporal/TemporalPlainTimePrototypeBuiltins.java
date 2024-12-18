@@ -375,7 +375,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            JSTemporalPlainTimeObject other = toTemporalTime.execute(otherObj, null);
+            JSTemporalPlainTimeObject other = toTemporalTime.execute(otherObj, Undefined.instance);
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
 
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingTimeOrAuto, TemporalUtil.unitMappingTime, Unit.NANOSECOND, Unit.HOUR);
@@ -464,7 +464,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "!isJSTemporalPlainTime(other)")
         protected boolean equalsGeneric(JSTemporalPlainTimeObject thisTime, Object other,
                         @Cached ToTemporalTimeNode toTemporalTime) {
-            JSTemporalPlainTimeObject otherTime = toTemporalTime.execute(other, null);
+            JSTemporalPlainTimeObject otherTime = toTemporalTime.execute(other, Undefined.instance);
             return equalsIntl(thisTime, otherTime);
         }
 

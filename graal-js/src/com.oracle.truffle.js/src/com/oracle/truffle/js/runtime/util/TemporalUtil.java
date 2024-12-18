@@ -1336,6 +1336,12 @@ public final class TemporalUtil {
         return toOverflow(result);
     }
 
+    @InliningCutoff
+    public static Overflow getTemporalOverflowOption(Object options, TemporalGetOptionNode getOptionNode) {
+        TruffleString result = (TruffleString) getOptionNode.execute(options, OVERFLOW, OptionType.STRING, listConstrainReject, CONSTRAIN);
+        return toOverflow(result);
+    }
+
     @TruffleBoundary
     private static Overflow toOverflow(TruffleString result) {
         if (CONSTRAIN.equals(result)) {
@@ -1385,7 +1391,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSTemporalDateTimeRecord toTemporalTimeRecord(JSDynamicObject temporalTimeLike) {
+    public static JSTemporalDateTimeRecord toTemporalTimeRecord(Object temporalTimeLike) {
         boolean any = false;
 
         int hour = 0;
@@ -1396,7 +1402,7 @@ public final class TemporalUtil {
         int nanosecond = 0;
 
         for (TruffleString property : TIME_LIKE_PROPERTIES) {
-            Object val = JSObject.get(temporalTimeLike, property);
+            Object val = JSRuntime.get(temporalTimeLike, property);
 
             int iVal = 0;
             if (val == Undefined.instance) {
@@ -2596,6 +2602,14 @@ public final class TemporalUtil {
                         bt.hour(), bt.minute(), bt.second(), bt.millisecond(), bt.microsecond(), bt.nanosecond());
     }
 
+    public static JSTemporalDateTimeRecord getISODateTimeFor(TruffleString timeZone, BigInt epochNs) {
+        long offsetNanoseconds = getOffsetNanosecondsFor(timeZone, epochNs);
+        JSTemporalDateTimeRecord result = getISOPartsFromEpoch(epochNs);
+        return balanceISODateTime(result.getYear(), result.getMonth(), result.getDay(),
+                        result.getHour(), result.getMinute(), result.getSecond(),
+                        result.getMillisecond(), result.getMicrosecond(), result.getNanosecond() + offsetNanoseconds);
+    }
+
     @TruffleBoundary
     public static JSTemporalDateTimeRecord getISOPartsFromEpoch(BigInt epochNanoseconds) {
         long remainderNs;
@@ -2618,6 +2632,16 @@ public final class TemporalUtil {
         int microsecond = (int) ((remainderNs / 1000) % 1000);
         int nanosecond = (int) (remainderNs % 1000);
         return JSTemporalDateTimeRecord.create(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+    }
+
+    @TruffleBoundary
+    public static long getOffsetNanosecondsFor(TruffleString timeZone, BigInt epochNs) {
+        JSTemporalParserRecord rec = new TemporalParser(timeZone).parseTimeZoneIdentifier();
+        if (rec.getTimeZoneIANAName() == null) {
+            return parseTimeZoneOffsetNs(rec);
+        } else {
+            return getIANATimeZoneOffsetNanoseconds(epochNs, rec.getTimeZoneIANAName());
+        }
     }
 
     @TruffleBoundary
@@ -3252,13 +3276,13 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static double getIANATimeZoneOffsetNanoseconds(BigInt nanoseconds, TruffleString identifier) {
+    public static long getIANATimeZoneOffsetNanoseconds(BigInt nanoseconds, TruffleString identifier) {
         try {
             Instant instant = Instant.ofEpochSecond(0, nanoseconds.longValue()); // TODO wrong
             ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
             ZoneRules zoneRule = zoneId.getRules();
             ZoneOffset offset = zoneRule.getOffset(instant);
-            return offset.getTotalSeconds() * 1_000_000_000D;
+            return offset.getTotalSeconds() * 1_000_000_000L;
         } catch (Exception ex) {
             assert false;
             return Long.MIN_VALUE;

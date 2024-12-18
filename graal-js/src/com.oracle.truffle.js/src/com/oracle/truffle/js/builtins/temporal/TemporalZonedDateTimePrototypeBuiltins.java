@@ -681,7 +681,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             if (plainTimeLike == Undefined.instance) {
                 plainTime = JSTemporalPlainTime.create(getContext(), realm, 0, 0, 0, 0, 0, 0, this, errorBranch);
             } else {
-                plainTime = toTemporalTime.execute(plainTimeLike, null);
+                plainTime = toTemporalTime.execute(plainTimeLike, Undefined.instance);
             }
             Object timeZone = zonedDateTime.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
