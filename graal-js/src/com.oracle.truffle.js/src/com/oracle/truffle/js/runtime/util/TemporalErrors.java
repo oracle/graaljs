@@ -228,11 +228,6 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorTemporalTimeZoneExpected() {
-        return Errors.createTypeError("Temporal.TimeZone expected");
-    }
-
-    @TruffleBoundary
     public static JSException createTypeErrorPartialTemporalObjectExpected() {
         return Errors.createTypeError("Partial Temporal object expected");
     }

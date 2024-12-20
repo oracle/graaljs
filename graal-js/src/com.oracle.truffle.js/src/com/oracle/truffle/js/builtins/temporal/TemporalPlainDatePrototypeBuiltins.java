@@ -72,7 +72,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltin
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
-import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.RoundRelativeDurationNode;
@@ -90,7 +89,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -102,7 +101,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
@@ -665,24 +663,22 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached InlinedConditionProfile timeZoneIsUndefined,
                         @Cached InlinedConditionProfile timeIsUndefined,
                         @Cached ToTemporalTimeNode toTemporalTime,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
-                        @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord,
+                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifierNode,
                         @Cached InlinedBranchProfile errorBranch) {
-            Object timeZone;
+            TruffleString timeZone;
             Object temporalTime;
             JSTemporalPlainDateTimeObject temporalDateTime;
             if (isObject(item)) {
-                JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, this, errorBranch);
-                Object timeZoneLike = JSObject.get(itemObj, TIME_ZONE);
+                Object timeZoneLike = JSRuntime.get(item, TIME_ZONE);
                 if (timeZoneIsUndefined.profile(this, timeZoneLike == Undefined.instance)) {
-                    timeZone = toTimeZoneSlotValue.execute(item);
+                    timeZone = toTimeZoneIdentifierNode.execute(item);
                     temporalTime = Undefined.instance;
                 } else {
-                    timeZone = toTimeZoneSlotValue.execute(timeZoneLike);
-                    temporalTime = JSObject.get(itemObj, TemporalConstants.PLAIN_TIME);
+                    timeZone = toTimeZoneIdentifierNode.execute(timeZoneLike);
+                    temporalTime = JSRuntime.get(item, TemporalConstants.PLAIN_TIME);
                 }
             } else {
-                timeZone = toTimeZoneSlotValue.execute(item);
+                timeZone = toTimeZoneIdentifierNode.execute(item);
                 temporalTime = Undefined.instance;
             }
 
@@ -700,9 +696,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 this, errorBranch);
             }
 
-            var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
-            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZoneRec, temporalDateTime, Disambiguation.COMPATIBLE);
-            return JSTemporalZonedDateTime.create(getContext(), realm, instant.getNanoseconds(), timeZone, td.getCalendar());
+            BigInt epochNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
+            return JSTemporalZonedDateTime.create(getContext(), realm, epochNs, timeZone, td.getCalendar());
         }
 
         @SuppressWarnings("unused")

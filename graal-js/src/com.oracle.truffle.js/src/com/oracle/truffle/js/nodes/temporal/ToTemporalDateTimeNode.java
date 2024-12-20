@@ -91,8 +91,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarNode,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
-                    @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord result;
         Object calendar;
         JSContext ctx = getLanguage().getJSContext();
@@ -105,8 +104,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                 TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
                 var zdt = (JSTemporalZonedDateTimeObject) item;
                 var instant = JSTemporalInstant.create(ctx, realm, zdt.getNanoseconds());
-                var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(zdt.getTimeZone());
-                return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, zdt.getCalendar());
+                return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, zdt.getTimeZone(), instant, zdt.getCalendar());
             } else if (isPlainDateProfile.profile(this, item instanceof JSTemporalPlainDateObject)) {
                 TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
                 var date = (JSTemporalPlainDateObject) item;

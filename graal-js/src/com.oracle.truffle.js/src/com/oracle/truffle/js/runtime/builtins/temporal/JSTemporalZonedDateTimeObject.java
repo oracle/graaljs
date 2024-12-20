@@ -54,18 +54,16 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolder {
 
-    private final BigInt nanoseconds; // 6.4. A BigInt value
-    private final Object timeZone;
+    private final BigInt nanoseconds;
+    private final TruffleString timeZone;
 
-    protected JSTemporalZonedDateTimeObject(Shape shape, JSDynamicObject proto, BigInt nanoseconds, Object timeZone, Object calendar) {
+    protected JSTemporalZonedDateTimeObject(Shape shape, JSDynamicObject proto, BigInt nanoseconds, TruffleString timeZone, Object calendar) {
         super(shape, proto, calendar);
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         this.nanoseconds = nanoseconds;
@@ -76,7 +74,7 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
         return nanoseconds;
     }
 
-    public Object getTimeZone() {
+    public TruffleString getTimeZone() {
         return timeZone;
     }
 
@@ -106,13 +104,7 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
 
     @TruffleBoundary
     private ZoneId getZoneIdIntl() {
-        String id;
-        if (timeZone instanceof TruffleString string) {
-            id = string.toJavaStringUncached();
-        } else {
-            Object tzID = JSRuntime.get(timeZone, Strings.ID_PROPERTY_NAME);
-            id = JSRuntime.toJavaString(tzID);
-        }
+        String id = timeZone.toJavaStringUncached();
         ZoneId zoneId;
         try {
             zoneId = ZoneId.of(id);

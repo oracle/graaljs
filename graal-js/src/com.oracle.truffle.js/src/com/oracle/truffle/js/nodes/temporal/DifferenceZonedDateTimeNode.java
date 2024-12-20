@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -59,7 +60,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -77,12 +77,12 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
     }
 
     public abstract NormalizedDurationRecord execute(BigInt ns1, BigInt ns2,
-                    TimeZoneMethodsRecord timeZoneRec, CalendarMethodsRecord calendarRec,
+                    TruffleString timeZone, CalendarMethodsRecord calendarRec,
                     Unit largestUnit, JSDynamicObject options, JSTemporalPlainDateTimeObject startDateTime);
 
     @Specialization
     final NormalizedDurationRecord differenceZonedDateTime(BigInt ns1, BigInt ns2,
-                    TimeZoneMethodsRecord timeZoneRec, CalendarMethodsRecord calendarRec,
+                    TruffleString timeZone, CalendarMethodsRecord calendarRec,
                     Unit largestUnit, JSDynamicObject options, JSTemporalPlainDateTimeObject startDateTime,
                     @Cached TemporalDifferenceDateNode differenceDateNode,
                     @Cached("createKeys(getJSContext())") EnumerableOwnPropertyNamesNode namesNode) {
@@ -95,7 +95,7 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
         JSRealm realm = getRealm();
 
         JSTemporalInstantObject endInstant = JSTemporalInstant.create(ctx, realm, ns2);
-        JSTemporalPlainDateTimeObject endDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, endInstant, calendarRec.receiver());
+        JSTemporalPlainDateTimeObject endDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, endInstant, calendarRec.receiver());
         int maxDayCorrection = sign == 1 ? 2 : 1;
         int dayCorrection = 0;
 
@@ -118,8 +118,7 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
                             intermediateDate.year(), intermediateDate.month(), intermediateDate.day(),
                             startDateTime.getHour(), startDateTime.getMinute(), startDateTime.getSecond(),
                             startDateTime.getMillisecond(), startDateTime.getMicrosecond(), startDateTime.getNanosecond(), calendarRec.receiver());
-            var intermediateInstant = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZoneRec, intermediateDateTime, Disambiguation.COMPATIBLE);
-            BigInt intermediateNs = intermediateInstant.getNanoseconds();
+            BigInt intermediateNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, intermediateDateTime, Disambiguation.COMPATIBLE);
             norm = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(ns2, intermediateNs);
             int timeSign = TemporalUtil.normalizedTimeDurationSign(norm);
             if (sign != -timeSign) {

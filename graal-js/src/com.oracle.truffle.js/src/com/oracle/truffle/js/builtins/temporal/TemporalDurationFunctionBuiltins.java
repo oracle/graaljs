@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
@@ -63,7 +64,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -141,7 +141,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationObject one = toTemporalDurationNode.execute(oneParam);
             JSTemporalDurationObject two = toTemporalDurationNode.execute(twoParam);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSRealm realm = getRealm();
+            var relativeToRec = toRelativeTemporalObjectNode.execute(options);
 
             if (one.getYears() == two.getYears() && one.getMonths() == two.getMonths() && one.getWeeks() == two.getWeeks() && one.getDays() == two.getDays() && one.getHours() == two.getHours() &&
                             one.getMinutes() == two.getMinutes() && one.getSeconds() == two.getSeconds() && one.getMilliseconds() == two.getMilliseconds() &&
@@ -149,28 +149,28 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                 return 0;
             }
 
-            var relativeToRec = toRelativeTemporalObjectNode.execute(options);
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
-            TimeZoneMethodsRecord timeZoneRec = relativeToRec.timeZoneRec();
             CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(lookupDateAdd, null);
 
             boolean calendarUnitsPresent = one.getYears() != 0 || two.getYears() != 0 ||
                             one.getMonths() != 0 || two.getMonths() != 0 ||
                             one.getWeeks() != 0 || two.getWeeks() != 0;
 
+            JSRealm realm = getRealm();
             if (zonedRelativeTo != null && (calendarUnitsPresent || one.getDays() != 0 || two.getDays() != 0)) {
+                TruffleString timeZone = zonedRelativeTo.getTimeZone();
                 var instant = JSTemporalInstant.create(getContext(), realm, zonedRelativeTo.getNanoseconds());
-                JSTemporalPlainDateTimeObject precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZoneRec, instant, calendarRec.receiver());
+                JSTemporalPlainDateTimeObject precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendarRec.receiver());
 
                 BigInt norm1 = TemporalUtil.normalizeTimeDuration(one.getHours(), one.getMinutes(), one.getSeconds(), one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds());
                 BigInt norm2 = TemporalUtil.normalizeTimeDuration(two.getHours(), two.getMinutes(), two.getSeconds(), two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
                 var after1 = addZonedDateTimeNode.execute(
-                                zonedRelativeTo.getNanoseconds(), timeZoneRec, calendarRec,
+                                zonedRelativeTo.getNanoseconds(), timeZone, calendarRec,
                                 one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                                 norm1, precalculatedPlainDateTime);
                 var after2 = addZonedDateTimeNode.execute(
-                                zonedRelativeTo.getNanoseconds(), timeZoneRec, calendarRec,
+                                zonedRelativeTo.getNanoseconds(), timeZone, calendarRec,
                                 two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
                                 norm2, precalculatedPlainDateTime);
                 return after1.compareTo(after2);

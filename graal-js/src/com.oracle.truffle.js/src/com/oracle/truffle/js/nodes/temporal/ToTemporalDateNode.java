@@ -96,8 +96,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
                     @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
-                    @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSContext ctx = getLanguage().getJSContext();
         JSDynamicObject options = (optionsParam == Undefined.instance) ? optionsParam : snapshotOwnProperties.snapshot(optionsParam, Null.instance);
         JSRealm realm = getRealm();
@@ -109,8 +108,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                 TemporalUtil.toTemporalOverflow(options, getOptionNode);
                 var zdt = (JSTemporalZonedDateTimeObject) item;
                 var instant = JSTemporalInstant.create(ctx, realm, zdt.getNanoseconds());
-                var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(zdt.getTimeZone());
-                var plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, zdt.getCalendar());
+                var plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, zdt.getTimeZone(), instant, zdt.getCalendar());
                 return JSTemporalPlainDate.create(ctx, realm, plainDateTime.getYear(), plainDateTime.getMonth(), plainDateTime.getDay(), plainDateTime.getCalendar(), this, errorBranch);
             } else if (isPlainDateTimeProfile.profile(this, JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item))) {
                 TemporalUtil.toTemporalOverflow(options, getOptionNode);

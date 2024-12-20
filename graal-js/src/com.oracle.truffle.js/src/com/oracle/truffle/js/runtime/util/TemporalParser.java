@@ -509,7 +509,7 @@ public final class TemporalParser {
         // Etc/GMT
         if (Strings.startsWith(rest, ETC_GMT)) {
             move(Strings.length(ETC_GMT));
-            if (Strings.charAt(rest, 0) == '+' || Strings.charAt(rest, 0) == '-') {
+            if (!rest.isEmpty() && (Strings.charAt(rest, 0) == '+' || Strings.charAt(rest, 0) == '-')) {
                 move(1);
                 try {
                     int unpaddedHour = rest.parseIntUncached();

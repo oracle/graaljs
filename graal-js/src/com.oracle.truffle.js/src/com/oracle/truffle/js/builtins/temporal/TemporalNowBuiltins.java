@@ -47,27 +47,28 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowInstantNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowPlainDateISONodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowPlainDateTimeISONodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowPlainDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowPlainTimeISONodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowTimeZoneIdNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowZonedDateTimeISONodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltinsFactory.TemporalNowZonedDateTimeNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -85,11 +86,8 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
     public enum TemporalNow implements BuiltinEnum<TemporalNow> {
         timeZoneId(0),
         instant(0),
-        plainDateTime(1),
         plainDateTimeISO(0),
-        zonedDateTime(1),
         zonedDateTimeISO(0),
-        plainDate(1),
         plainDateISO(0),
         plainTimeISO(0);
 
@@ -112,16 +110,10 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
                 return TemporalNowTimeZoneIdNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
             case instant:
                 return TemporalNowInstantNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case plainDateTime:
-                return TemporalNowPlainDateTimeNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case plainDateTimeISO:
                 return TemporalNowPlainDateTimeISONodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case zonedDateTime:
-                return TemporalNowZonedDateTimeNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case zonedDateTimeISO:
                 return TemporalNowZonedDateTimeISONodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case plainDate:
-                return TemporalNowPlainDateNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case plainDateISO:
                 return TemporalNowPlainDateISONodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case plainTimeISO:
@@ -155,20 +147,6 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         }
     }
 
-    public abstract static class TemporalNowPlainDateTimeNode extends JSBuiltinNode {
-
-        protected TemporalNowPlainDateTimeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSTemporalPlainDateTimeObject plainDateTime(Object calendar, Object temporalTimeZoneLike,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
-            return TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext(), getRealm(), toCalendarSlotValue, toTemporalTimeZone);
-        }
-    }
-
     public abstract static class TemporalNowPlainDateTimeISONode extends JSBuiltinNode {
 
         protected TemporalNowPlainDateTimeISONode(JSContext context, JSBuiltin builtin) {
@@ -177,23 +155,15 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public JSTemporalPlainDateTimeObject plainDateTimeISO(Object temporalTimeZoneLike,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
-            return TemporalUtil.systemDateTime(temporalTimeZoneLike, TemporalConstants.ISO8601, getContext(), getRealm(), toCalendarSlotValue, toTemporalTimeZone);
-        }
-    }
-
-    public abstract static class TemporalNowZonedDateTimeNode extends JSBuiltinNode {
-
-        protected TemporalNowZonedDateTimeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSTemporalZonedDateTimeObject zonedDateTime(Object calendar, Object temporalTimeZoneLike,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
-            return TemporalUtil.systemZonedDateTime(temporalTimeZoneLike, calendar, getContext(), getRealm(), toCalendarSlotValue, toTemporalTimeZone);
+                        @Cached ToTemporalTimeZoneIdentifierNode toTemporalIdentifier,
+                        @Cached InlinedBranchProfile errorBranch) {
+            JSRealm realm = getRealm();
+            JSTemporalDateTimeRecord isoDateTime = TemporalUtil.systemDateTime(realm, temporalTimeZoneLike, toTemporalIdentifier);
+            return JSTemporalPlainDateTime.create(getContext(), realm,
+                            isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay(),
+                            isoDateTime.getHour(), isoDateTime.getMinute(), isoDateTime.getSecond(),
+                            isoDateTime.getMillisecond(), isoDateTime.getMicrosecond(), isoDateTime.getNanosecond(),
+                            TemporalConstants.ISO8601, this, errorBranch);
         }
     }
 
@@ -205,26 +175,16 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public JSTemporalZonedDateTimeObject zonedDateTimeISO(Object temporalTimeZoneLike,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
-            return TemporalUtil.systemZonedDateTime(temporalTimeZoneLike, TemporalConstants.ISO8601, getContext(), getRealm(), toCalendarSlotValue, toTemporalTimeZone);
-        }
-    }
-
-    public abstract static class TemporalNowPlainDateNode extends JSBuiltinNode {
-
-        protected TemporalNowPlainDateNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSTemporalPlainDateObject plainDate(Object calendar, Object temporalTimeZoneLike,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
-            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext(), getRealm(), toCalendarSlotValue, toTemporalTimeZone);
-            return JSTemporalPlainDate.create(getContext(), getRealm(),
-                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), this, errorBranch);
+                        @Cached ToTemporalTimeZoneIdentifierNode toTemporalIdentifier) {
+            JSRealm realm = getRealm();
+            TruffleString timeZone;
+            if (temporalTimeZoneLike == Undefined.instance) {
+                timeZone = TemporalUtil.systemTimeZoneIdentifier(realm);
+            } else {
+                timeZone = toTemporalIdentifier.execute(temporalTimeZoneLike);
+            }
+            BigInt ns = TemporalUtil.systemUTCEpochNanoseconds(realm);
+            return JSTemporalZonedDateTime.create(getContext(), realm, ns, timeZone, TemporalConstants.ISO8601);
         }
     }
 
@@ -236,13 +196,13 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public JSTemporalPlainDateObject plainDateISO(Object temporalTimeZoneLike,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
+                        @Cached ToTemporalTimeZoneIdentifierNode toTemporalIdentifier,
+                        @Cached InlinedBranchProfile errorBranch) {
             JSRealm realm = getRealm();
-            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, TemporalConstants.ISO8601, getContext(), realm, toCalendarSlotValue, toTemporalTimeZone);
+            JSTemporalDateTimeRecord isoDateTime = TemporalUtil.systemDateTime(realm, temporalTimeZoneLike, toTemporalIdentifier);
             return JSTemporalPlainDate.create(getContext(), realm,
-                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), this, errorBranch);
+                            isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay(),
+                            TemporalConstants.ISO8601, this, errorBranch);
         }
     }
 
@@ -254,13 +214,14 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public JSTemporalPlainTimeObject plainTimeISO(Object temporalTimeZoneLike,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
+                        @Cached ToTemporalTimeZoneIdentifierNode toTemporalIdentifier,
+                        @Cached InlinedBranchProfile errorBranch) {
             JSRealm realm = getRealm();
-            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, TemporalConstants.ISO8601, getContext(), realm, toCalendarSlotValue, toTemporalTimeZone);
+            JSTemporalDateTimeRecord isoDateTime = TemporalUtil.systemDateTime(realm, temporalTimeZoneLike, toTemporalIdentifier);
             return JSTemporalPlainTime.create(getContext(), realm,
-                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), this, errorBranch);
+                            isoDateTime.getHour(), isoDateTime.getMinute(), isoDateTime.getSecond(),
+                            isoDateTime.getMillisecond(), isoDateTime.getMicrosecond(), isoDateTime.getNanosecond(),
+                            this, errorBranch);
         }
     }
 }

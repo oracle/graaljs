@@ -190,7 +190,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
@@ -325,8 +324,6 @@ public class JSRealm {
     private final JSDynamicObject temporalPlainMonthDayPrototype;
     private final JSFunctionObject temporalInstantConstructor;
     private final JSDynamicObject temporalInstantPrototype;
-    private final JSFunctionObject temporalTimeZoneConstructor;
-    private final JSDynamicObject temporalTimeZonePrototype;
     private final JSFunctionObject temporalZonedDateTimeConstructor;
     private final JSDynamicObject temporalZonedDateTimePrototype;
 
@@ -350,9 +347,6 @@ public class JSRealm {
     private final Object temporalCalendarDaysInYearFunctionObject;
     private final Object temporalCalendarMonthsInYearFunctionObject;
     private final Object temporalCalendarInLeapYearFunctionObject;
-
-    private final Object temporalTimeZoneGetOffsetNanosecondsForFunctionObject;
-    private final Object temporalTimeZoneGetPossibleInstantsForFunctionObject;
 
     // ES6:
     private final JSFunctionObject symbolConstructor;
@@ -1066,10 +1060,6 @@ public class JSRealm {
             this.temporalInstantConstructor = ctor.getFunctionObject();
             this.temporalInstantPrototype = ctor.getPrototype();
 
-            ctor = JSTemporalTimeZone.createConstructor(this);
-            this.temporalTimeZoneConstructor = ctor.getFunctionObject();
-            this.temporalTimeZonePrototype = ctor.getPrototype();
-
             ctor = JSTemporalZonedDateTime.createConstructor(this);
             this.temporalZonedDateTimeConstructor = ctor.getFunctionObject();
             this.temporalZonedDateTimePrototype = ctor.getPrototype();
@@ -1094,9 +1084,6 @@ public class JSRealm {
             this.temporalCalendarDaysInYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_YEAR);
             this.temporalCalendarMonthsInYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.MONTHS_IN_YEAR);
             this.temporalCalendarInLeapYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.IN_LEAP_YEAR);
-
-            this.temporalTimeZoneGetOffsetNanosecondsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalConstants.GET_OFFSET_NANOSECONDS_FOR);
-            this.temporalTimeZoneGetPossibleInstantsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalConstants.GET_POSSIBLE_INSTANTS_FOR);
         } else {
             this.temporalPlainTimeConstructor = null;
             this.temporalPlainTimePrototype = null;
@@ -1114,8 +1101,6 @@ public class JSRealm {
             this.temporalPlainMonthDayPrototype = null;
             this.temporalInstantConstructor = null;
             this.temporalInstantPrototype = null;
-            this.temporalTimeZoneConstructor = null;
-            this.temporalTimeZonePrototype = null;
             this.temporalZonedDateTimeConstructor = null;
             this.temporalZonedDateTimePrototype = null;
 
@@ -1139,9 +1124,6 @@ public class JSRealm {
             this.temporalCalendarDaysInYearFunctionObject = null;
             this.temporalCalendarMonthsInYearFunctionObject = null;
             this.temporalCalendarInLeapYearFunctionObject = null;
-
-            this.temporalTimeZoneGetOffsetNanosecondsForFunctionObject = null;
-            this.temporalTimeZoneGetPossibleInstantsForFunctionObject = null;
         }
 
         if (context.getLanguageOptions().shadowRealm()) {
@@ -1709,14 +1691,6 @@ public class JSRealm {
         return temporalInstantPrototype;
     }
 
-    public JSFunctionObject getTemporalTimeZoneConstructor() {
-        return temporalTimeZoneConstructor;
-    }
-
-    public JSDynamicObject getTemporalTimeZonePrototype() {
-        return temporalTimeZonePrototype;
-    }
-
     public JSFunctionObject getTemporalZonedDateTimeConstructor() {
         return temporalZonedDateTimeConstructor;
     }
@@ -1803,14 +1777,6 @@ public class JSRealm {
 
     public Object getTemporalCalendarInLeapYearFunctionObject() {
         return temporalCalendarInLeapYearFunctionObject;
-    }
-
-    public Object getTemporalTimeZoneGetOffsetNanosecondsForFunctionObject() {
-        return temporalTimeZoneGetOffsetNanosecondsForFunctionObject;
-    }
-
-    public Object getTemporalTimeZoneGetPossibleInstantsForFunctionObject() {
-        return temporalTimeZoneGetPossibleInstantsForFunctionObject;
     }
 
     public final JSDynamicObject getForeignArrayPrototype() {
@@ -2345,7 +2311,6 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainYearMonth.CLASS_NAME, getTemporalPlainYearMonthConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainMonthDay.CLASS_NAME, getTemporalPlainMonthDayConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalInstant.CLASS_NAME, getTemporalInstantConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, JSTemporalTimeZone.CLASS_NAME, getTemporalTimeZoneConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalZonedDateTime.CLASS_NAME, getTemporalZonedDateTimeConstructor(), flags);
 
         JSObject nowObject = JSOrdinary.createInit(this);
