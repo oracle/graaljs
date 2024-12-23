@@ -422,7 +422,7 @@ public final class GraalJSEvaluator implements JSParser {
     public AbstractModuleRecord parseWasmModuleSource(JSRealm realm, Source source) {
         assert realm.getContextOptions().isWebAssembly();
         Object compiledModule = WebAssemblyBuiltins.moduleDecode(realm, source);
-        JSWebAssemblyModuleObject wasmModule = JSWebAssemblyModule.create(realm.getContext(), realm, compiledModule);
+        JSWebAssemblyModuleObject wasmModule = JSWebAssemblyModule.create(realm.getContext(), realm, compiledModule, source);
         return new WebAssemblyModuleRecord(realm.getContext(), source, wasmModule);
     }
 

@@ -224,7 +224,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             JSRealm realm = getRealm();
             Source wasmSource = buildSource(byteSource);
             Object wasmModule = moduleDecode(realm, wasmSource);
-            return JSWebAssemblyModule.create(getContext(), realm, wasmModule);
+            return JSWebAssemblyModule.create(getContext(), realm, wasmModule, wasmSource);
         }
 
     }
@@ -290,7 +290,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                 try {
                     Source wasmSource = buildSource(wasmByteSource);
                     Object wasmModule = moduleDecode(realm, wasmSource);
-                    return new InstantiatedSourceInfo(wasmModule, importObject);
+                    return new InstantiatedSourceInfo(wasmModule, importObject, wasmSource);
                 } catch (AbstractTruffleException ex) {
                     errorBranch.enter();
                     ExceptionType type = InteropLibrary.getUncached(ex).getExceptionType(ex);
@@ -329,14 +329,14 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                 @Override
                 public Object execute(VirtualFrame frame) {
                     InstantiatedSourceInfo info = (InstantiatedSourceInfo) JSArguments.getUserArgument(frame.getArguments(), 0);
-                    Object jsInstance = instantiateModule(context, getRealm(), info.getWasmModule(), info.getImportObject(), instantiateModuleLib);
-                    return toJSInstantiatedSource(info.getWasmModule(), jsInstance);
+                    Object jsInstance = instantiateModule(context, getRealm(), info.wasmModule(), info.importObject(), instantiateModuleLib);
+                    return toJSInstantiatedSource(info.wasmModule(), jsInstance, info.wasmSource());
                 }
 
-                Object toJSInstantiatedSource(Object wasmModule, Object jsInstance) {
+                Object toJSInstantiatedSource(Object wasmModule, Object jsInstance, Source wasmSource) {
                     JSRealm realm = getRealm();
                     JSObject instantiatedSource = JSOrdinary.create(context, realm);
-                    JSObject.set(instantiatedSource, Strings.MODULE, JSWebAssemblyModule.create(context, realm, wasmModule));
+                    JSObject.set(instantiatedSource, Strings.MODULE, JSWebAssemblyModule.create(context, realm, wasmModule, wasmSource));
                     JSObject.set(instantiatedSource, Strings.INSTANCE, jsInstance);
                     return instantiatedSource;
                 }
@@ -375,22 +375,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
     // Helper TruffleObject used to pass information through promise chain
     // during instantiation of a source.
-    static final class InstantiatedSourceInfo implements TruffleObject {
-        private final Object wasmModule;
-        private final Object importObject;
-
-        InstantiatedSourceInfo(Object wasmModule, Object importObject) {
-            this.wasmModule = wasmModule;
-            this.importObject = importObject;
-        }
-
-        Object getWasmModule() {
-            return wasmModule;
-        }
-
-        Object getImportObject() {
-            return importObject;
-        }
+    record InstantiatedSourceInfo(Object wasmModule, Object importObject, Source wasmSource) implements TruffleObject {
     }
 
 }

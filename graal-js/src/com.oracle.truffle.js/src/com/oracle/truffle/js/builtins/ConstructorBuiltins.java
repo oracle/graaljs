@@ -3137,9 +3137,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSObject constructModule(JSDynamicObject newTarget, Object bytes) {
             ByteSequence byteSource = exportByteSourceNode.execute(bytes);
             JSRealm realm = getRealm();
+            Source wasmSource = WebAssemblyBuiltins.buildSource(byteSource);
             Object wasmModule;
             try {
-                Source wasmSource = WebAssemblyBuiltins.buildSource(byteSource);
                 wasmModule = WebAssemblyBuiltins.moduleDecode(realm, wasmSource);
             } catch (AbstractTruffleException tex) {
                 try {
@@ -3153,7 +3153,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw tex;
             }
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSWebAssemblyModule.create(getContext(), realm, proto, wasmModule);
+            return JSWebAssemblyModule.create(getContext(), realm, proto, wasmModule, wasmSource);
         }
 
         @Override

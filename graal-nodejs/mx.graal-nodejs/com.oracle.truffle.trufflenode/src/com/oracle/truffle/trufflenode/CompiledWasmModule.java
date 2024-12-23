@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,35 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.wasm;
+package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSWebAssemblyModuleObject extends JSNonProxyObject {
-    // [[Module]] internal slot
-    private final Object wasmModule;
-    private final Source wasmSource;
+/**
+ * Encapsulates a compiled WebAssembly module and the Source it was compiled from.
+ */
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "module")
+public final class CompiledWasmModule implements TruffleObject {
+    final Object module;
+    final Source source;
 
-    protected JSWebAssemblyModuleObject(Shape shape, JSDynamicObject proto, Object wasmModule, Source wasmSource) {
-        super(shape, proto);
-        this.wasmModule = wasmModule;
-        this.wasmSource = wasmSource;
+    public CompiledWasmModule(Object module, Source source) {
+        this.module = module;
+        this.source = source;
     }
 
-    public Object getWASMModule() {
-        return wasmModule;
+    public Object module() {
+        return module;
     }
 
-    public Source getWASMSource() {
-        return wasmSource;
-    }
-
-    @Override
-    public TruffleString getClassName() {
-        return JSWebAssemblyModule.WEB_ASSEMBLY_MODULE;
+    public Source source() {
+        return source;
     }
 }
