@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -150,5 +150,8 @@ describe('vm', function () {
         // Symbols of the context object are not included.
         assert(!globalPropertySymbols.includes(Symbol.unscopables), globalPropertySymbols);
         assert.strictEqual(43, vm.runInContext('globalThis[Symbol.unscopables]', context));
+    });
+    it('should handle globalThis.hasOwnProperty(symbol)', function () {
+        assert.ok(!vm.runInNewContext("globalThis.hasOwnProperty(Symbol())"));
     });
 });
