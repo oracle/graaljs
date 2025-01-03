@@ -40,6 +40,7 @@
  */
 
 var assert = require('assert');
+var { spawnSync } = require('child_process');
 var vm = require('vm');
 
 describe('vm', function () {
@@ -153,5 +154,25 @@ describe('vm', function () {
     });
     it('should handle globalThis.hasOwnProperty(symbol)', function () {
         assert.ok(!vm.runInNewContext("globalThis.hasOwnProperty(Symbol())"));
+    });
+    it('should store module execution result', function () {
+        this.timeout(40000);
+        var code = `
+            var first = new vm.SourceTextModule('import mid from "mid"; mid;');
+            var mid = new vm.SourceTextModule('import last from "last"; export default last');
+            var last = new vm.SourceTextModule('if (false) await import(""); export default 42;');
+            first.link(function(name) { return (name === "mid") ? mid : last; })
+                .then(() => first.evaluate())
+                .then(() => mid.evaluate()) // checks the execution result of mid again
+                .then(() => console.log('OK'));`;
+        
+        var result = spawnSync(process.execPath, [
+            '--experimental-vm-modules',
+            '--no-warnings=ExperimentalWarning',
+            '-e', code],
+            { env: { ...process.env, NODE_JVM_OPTIONS: (process.env.NODE_JVM_OPTIONS || '') + ' -ea' }});
+        assert.strictEqual(result.stderr.toString(), '');
+        assert.strictEqual(result.stdout.toString().trim(), 'OK');
+        assert.strictEqual(result.status, 0);
     });
 });
