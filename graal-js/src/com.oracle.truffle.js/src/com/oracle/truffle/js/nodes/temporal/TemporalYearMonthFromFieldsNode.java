@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,13 +62,12 @@ public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode
         this.callYearMonthFromFieldsNode = JSFunctionCallNode.createCall();
     }
 
-    public abstract JSTemporalPlainYearMonthObject execute(CalendarMethodsRecord calendarRec, JSDynamicObject fields, JSDynamicObject options);
+    public abstract JSTemporalPlainYearMonthObject execute(CalendarMethodsRecord calendarRec, JSDynamicObject fields, Object options);
 
     @Specialization
-    protected JSTemporalPlainYearMonthObject yearMonthFromFields(CalendarMethodsRecord calendarRec, JSDynamicObject fields, JSDynamicObject options,
+    protected JSTemporalPlainYearMonthObject yearMonthFromFields(CalendarMethodsRecord calendarRec, JSDynamicObject fields, Object options,
                     @Cached ToTemporalCalendarObjectNode toCalendar,
                     @Cached InlinedBranchProfile errorBranch) {
-        assert options != null;
         Object calendar = toCalendar.execute(calendarRec.receiver());
         Object yearMonth = callYearMonthFromFieldsNode.executeCall(JSArguments.create(calendar, calendarRec.yearMonthFromFields(), fields, options));
         return requireTemporalYearMonth(yearMonth, errorBranch);
