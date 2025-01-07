@@ -124,6 +124,7 @@ import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
+import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
@@ -176,6 +177,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class TemporalUtil {
 
     private static final Function<Object, Object> toIntegerThrowOnInfinity = TemporalUtil::toIntegerThrowOnInfinity;
+    private static final Function<Object, Object> toMonthCode = TemporalUtil::toMonthCode;
     private static final Function<Object, Object> toPositiveInteger = TemporalUtil::toPositiveInteger;
     private static final Function<Object, Object> toString = JSRuntime::toString;
 
@@ -194,7 +196,7 @@ public final class TemporalUtil {
     private static final Map<TruffleString, Function<Object, Object>> temporalFieldConversion = Map.ofEntries(
                     Map.entry(YEAR, toIntegerThrowOnInfinity),
                     Map.entry(MONTH, toPositiveInteger),
-                    Map.entry(MONTH_CODE, toString),
+                    Map.entry(MONTH_CODE, toMonthCode),
                     Map.entry(DAY, toPositiveInteger),
                     Map.entry(HOUR, toIntegerThrowOnInfinity),
                     Map.entry(MINUTE, toIntegerThrowOnInfinity),
@@ -3496,5 +3498,25 @@ public final class TemporalUtil {
 
     public static double roundTowardsZero(double d) {
         return ExactMath.truncate(d);
+    }
+
+    public static TruffleString toMonthCode(Object argument) {
+        Object primitive = JSRuntime.toPrimitive(argument, JSToPrimitiveNode.Hint.String);
+        if (primitive instanceof TruffleString monthCode) {
+            int length = Strings.length(monthCode);
+            if (length == 3 || length == 4) {
+                char c0 = Strings.charAt(monthCode, 0);
+                char c1 = Strings.charAt(monthCode, 1);
+                char c2 = Strings.charAt(monthCode, 2);
+                if (c0 == 'M' && '0' <= c1 && c1 <= '9' && '0' <= c2 && c2 <= '9' //
+                                && (length == 4 || c1 != '0' || c2 != '0') //
+                                && (length == 3 || Strings.charAt(monthCode, 3) == 'L')) {
+                    return monthCode;
+                }
+            }
+            throw Errors.createRangeErrorFormat("Invalid month code: %s", null, monthCode);
+        } else {
+            throw Errors.createTypeErrorNotAString(primitive);
+        }
     }
 }
