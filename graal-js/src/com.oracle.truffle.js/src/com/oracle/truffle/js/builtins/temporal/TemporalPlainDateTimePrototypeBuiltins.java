@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -601,7 +601,6 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         final JSTemporalPlainDateTimeObject with(JSTemporalPlainDateTimeObject dateTime, Object temporalDateTimeLike, Object options,
                         @Bind Node node,
                         @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
                         @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                         @Cached("createMergeFields()") CalendarMethodsRecordLookupNode lookupMergeFields,
@@ -620,8 +619,6 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 errorBranch.enter(node);
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
-
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
 
             Object calendarSlotValue = dateTime.getCalendar();
             Object dateFromFieldsMethod = lookupDateFromFields.execute(calendarSlotValue);
@@ -645,7 +642,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             fields = TemporalUtil.calendarMergeFields(getContext(), getRealm(), calendarRec, fields,
                             partialDateTime, node, errorBranch);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
-            JSTemporalDateTimeRecord result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, resolvedOptions, getOptionNode, dateFromFieldsNode);
+            Object resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
+            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            JSTemporalDateTimeRecord result = TemporalUtil.interpretTemporalDateTimeFields(calendarSlotValue, fields, overflow, dateFromFieldsNode);
             assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
             assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),

@@ -1325,11 +1325,10 @@ public final class TemporalUtil {
         throw Errors.shouldNotReachHereUnexpectedValue(result);
     }
 
-    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(CalendarMethodsRecord calendarRec, JSDynamicObject fields, JSDynamicObject options, TemporalGetOptionNode getOptionNode,
+    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(Object calendar, Object fields, Overflow overflow,
                     TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
-        JSTemporalPlainDateObject date = dateFromFieldsNode.execute(calendarRec, fields, options);
-        Overflow overflow = toTemporalOverflow(options, getOptionNode);
+        JSTemporalPlainDateObject date = dateFromFieldsNode.execute(calendar, fields, overflow);
         JSTemporalDurationRecord timeResult2 = regulateTime(
                         timeResult.getHour(), timeResult.getMinute(), timeResult.getSecond(), timeResult.getMillisecond(), timeResult.getMicrosecond(), timeResult.getNanosecond(),
                         overflow);

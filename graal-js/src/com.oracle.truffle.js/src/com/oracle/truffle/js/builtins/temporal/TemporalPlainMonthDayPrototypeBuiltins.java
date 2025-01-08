@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -277,9 +275,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
                             inputFields, this, errorBranch);
             List<TruffleString> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
             mergedFields = TemporalUtil.prepareTemporalFields(getContext(), mergedFields, mergedFieldNames, TemporalUtil.listEmpty);
-            JSDynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
-            return dateFromFieldsNode.execute(calendarRec, mergedFields, options);
+            return dateFromFieldsNode.execute(calendarSlotValue, mergedFields, TemporalUtil.Overflow.CONSTRAIN);
         }
 
         @SuppressWarnings("unused")

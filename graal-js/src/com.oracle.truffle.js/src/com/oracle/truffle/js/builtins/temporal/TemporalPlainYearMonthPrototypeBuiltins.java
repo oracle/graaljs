@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,6 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -330,9 +328,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                             inputFields, this, errorBranch);
             List<TruffleString> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
             mergedFields = TemporalUtil.prepareTemporalFields(getContext(), mergedFields, mergedFieldNames, TemporalUtil.listEmpty);
-            JSDynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
-            return dateFromFieldsNode.execute(calendarRec, mergedFields, options);
+            return dateFromFieldsNode.execute(calendarSlotValue, mergedFields, TemporalUtil.Overflow.CONSTRAIN);
         }
 
         @SuppressWarnings("unused")
@@ -463,7 +459,6 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached TemporalAddDateNode addDateNode,
                         @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                         @Cached TemporalCalendarFieldsNode calendarFieldsNode,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached TemporalCalendarGetterNode calendarGetterNode,
                         @Cached JSToIntegerThrowOnInfinityNode toIntNode,
                         @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
@@ -499,13 +494,12 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 day = 1;
             }
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, day);
-            JSTemporalPlainDateObject intermediateDate = dateFromFieldsNode.execute(calendarRec, fields, Undefined.instance);
+            JSTemporalPlainDateObject intermediateDate = dateFromFieldsNode.execute(calendarSlotValue, fields, TemporalUtil.Overflow.CONSTRAIN);
             JSTemporalDurationObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), realm,
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), days, 0, 0, 0, 0, 0, 0, this, errorBranch);
-            JSObject optionsCopy = snapshotOwnProperties.snapshot(options, Null.instance);
             JSTemporalPlainDateObject addedDate = addDateNode.execute(calendarRec, intermediateDate, durationToAdd, options);
             JSObject addedDateFields = TemporalUtil.prepareTemporalFields(getContext(), addedDate, fieldNames, TemporalUtil.listEmpty);
-            return yearMonthFromFieldsNode.execute(calendarRec, addedDateFields, optionsCopy);
+            return yearMonthFromFieldsNode.execute(calendarRec, addedDateFields, options);
         }
 
         @SuppressWarnings("unused")
@@ -562,10 +556,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listMCY);
             JSDynamicObject otherFields = TemporalUtil.prepareTemporalFields(getContext(), other, fieldNames, TemporalUtil.listEmpty);
             TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
-            JSTemporalPlainDateObject otherDate = dateFromFieldsNode.execute(calendarRec, otherFields, Undefined.instance);
+            JSTemporalPlainDateObject otherDate = dateFromFieldsNode.execute(calendar, otherFields, TemporalUtil.Overflow.CONSTRAIN);
             JSObject thisFields = TemporalUtil.prepareTemporalFields(getContext(), thisYearMonth, fieldNames, TemporalUtil.listEmpty);
             TemporalUtil.createDataPropertyOrThrow(getContext(), thisFields, DAY, 1);
-            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.execute(calendarRec, thisFields, Undefined.instance);
+            JSTemporalPlainDateObject thisDate = dateFromFieldsNode.execute(calendar, thisFields, TemporalUtil.Overflow.CONSTRAIN);
             JSObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, resolvedOptions, settings.largestUnit());
             JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendarRec, thisDate, otherDate, untilOptions, toCalendarObject, callDateUntil);
             JSRealm realm = getRealm();
