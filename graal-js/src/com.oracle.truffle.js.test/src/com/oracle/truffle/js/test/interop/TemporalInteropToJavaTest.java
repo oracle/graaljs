@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -153,32 +152,9 @@ public class TemporalInteropToJavaTest extends JSTest {
     }
 
     @Test
-    public void testTimeZone() {
-        try (Context ctx = getJSContext()) {
-            Value val = ctx.eval(ID, "new Temporal.TimeZone('UTC');");
-            ZoneId zid = val.asTimeZone();
-            Assert.assertEquals("UTC", zid.getId());
-        }
-
-        try (Context ctx = getJSContext()) {
-            Value val = ctx.eval(ID, "new Temporal.TimeZone('Europe/Vienna');");
-            ZoneId zid = val.asTimeZone();
-            Assert.assertEquals("Europe/Vienna", zid.getId());
-        }
-
-        try (Context ctx = getJSContext()) {
-            Value val = ctx.eval(ID, "Temporal.TimeZone.from('+0645');");
-            ZoneId zid = val.asTimeZone();
-            Assert.assertTrue(zid instanceof ZoneOffset);
-            ZoneOffset zoff = (ZoneOffset) zid;
-            Assert.assertEquals(405 * 60, zoff.getTotalSeconds());
-        }
-    }
-
-    @Test
     public void testZonedDateTime() {
         try (Context ctx = getJSContext()) {
-            Value val = ctx.eval(ID, "new Temporal.ZonedDateTime(100_123_456_789n, Temporal.TimeZone.from('Europe/Vienna'));");
+            Value val = ctx.eval(ID, "new Temporal.ZonedDateTime(100_123_456_789n, 'Europe/Vienna');");
             Instant inst = val.asInstant();
             Assert.assertEquals(123_456_789L, inst.getNano());
             Assert.assertEquals(100, inst.getEpochSecond());
