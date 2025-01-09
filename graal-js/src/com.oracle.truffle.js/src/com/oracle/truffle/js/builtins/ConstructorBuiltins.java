@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,7 +118,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNod
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructShadowRealmNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalCalendarNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalDurationNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalInstantNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateNodeGen;
@@ -274,7 +273,6 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -400,7 +398,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         PlainDate(3),
         PlainDateTime(3),
         Duration(0),
-        Calendar(1),
         PlainYearMonth(2),
         PlainMonthDay(2),
         Instant(1),
@@ -443,7 +440,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 case AsyncFunction, SharedArrayBuffer -> JSConfig.ECMAScript2017;
                 case AsyncGeneratorFunction -> JSConfig.ECMAScript2018;
                 case WeakRef, FinalizationRegistry -> JSConfig.ECMAScript2021;
-                case PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, ZonedDateTime -> JSConfig.StagingECMAScriptVersion;
+                case PlainTime, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, ZonedDateTime -> JSConfig.StagingECMAScriptVersion;
                 case Iterator, AsyncIterator -> JSConfig.StagingECMAScriptVersion;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
@@ -675,13 +672,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case Duration:
                 if (construct) {
                     return ConstructTemporalDurationNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(10).createArgumentNodes(context));
-                } else {
-                    return createCallRequiresNew(context, builtin);
-                }
-            case Calendar:
-                if (construct) {
-                    return ConstructTemporalCalendarNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
-
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1153,7 +1143,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int y = toIntegerNode.executeIntOrThrow(isoYear);
             final int m = toIntegerNode.executeIntOrThrow(isoMonth);
             final int d = toIntegerNode.executeIntOrThrow(isoDay);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainDate.create(getContext(), realm, proto, y, m, d, calendar, this, errorBranch);
@@ -1218,7 +1208,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
             final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
             final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainDateTime.create(getContext(), realm, proto,
@@ -1265,35 +1255,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
-    public abstract static class ConstructTemporalCalendar extends ConstructWithNewTargetNode {
-
-        protected ConstructTemporalCalendar(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
-            super(context, builtin, isNewTargetCase);
-        }
-
-        @Specialization
-        protected JSDynamicObject constructTemporalCalendar(JSDynamicObject newTarget, Object arg,
-                        @Cached InlinedBranchProfile errorBranch) {
-            if (arg instanceof TruffleString id) {
-                JSRealm realm = getRealm();
-                JSDynamicObject proto = getPrototype(realm, newTarget);
-                if (!TemporalUtil.isBuiltinCalendar(id)) {
-                    errorBranch.enter(this);
-                    throw TemporalErrors.createRangeErrorCalendarNotSupported();
-                }
-                return JSTemporalCalendar.create(getContext(), realm, proto, id);
-            } else {
-                errorBranch.enter(this);
-                throw Errors.createTypeErrorNotAString(arg);
-            }
-        }
-
-        @Override
-        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getTemporalCalendarPrototype();
-        }
-    }
-
     public abstract static class ConstructTemporalPlainYearMonth extends ConstructWithNewTargetNode {
 
         protected ConstructTemporalPlainYearMonth(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
@@ -1313,7 +1274,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             int y = toInteger.executeIntOrThrow(isoYear);
             int m = toInteger.executeIntOrThrow(isoMonth);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             int ref = toInteger.executeIntOrThrow(referenceISODay);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
@@ -1344,7 +1305,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             int m = toInt.executeIntOrThrow(isoMonth);
             int d = toInt.executeIntOrThrow(isoDay);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             int ref = toInt.executeIntOrThrow(referenceISOYear); // non-spec
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
@@ -1400,7 +1361,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
             TruffleString timeZone = toTimeZoneIdentifier.execute(timeZoneLike);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
 
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);

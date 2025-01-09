@@ -53,7 +53,6 @@ import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -93,8 +92,6 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsObject,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
-                    @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
-                    @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSContext ctx = getLanguage().getJSContext();
@@ -119,11 +116,8 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                 var dt = (JSTemporalPlainDateTimeObject) item;
                 return JSTemporalPlainDate.create(ctx, realm, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar(), this, errorBranch);
             }
-            Object calendar = getCalendarSlotValueWithISODefault.execute(item);
-            Object dateFromFieldsMethod = lookupDateFromFields.execute(calendar);
-            Object fieldsMethod = lookupFields.execute(calendar);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFields(calendar, dateFromFieldsMethod, fieldsMethod);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listDMMCY);
+            TruffleString calendar = getCalendarSlotValueWithISODefault.execute(item);
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);

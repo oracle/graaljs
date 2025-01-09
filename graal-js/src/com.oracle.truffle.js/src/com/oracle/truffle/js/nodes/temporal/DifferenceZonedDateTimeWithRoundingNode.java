@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
@@ -68,13 +67,13 @@ public abstract class DifferenceZonedDateTimeWithRoundingNode extends JavaScript
     }
 
     public abstract TemporalDurationWithTotalRecord execute(BigInt ns1, BigInt ns2,
-                    CalendarMethodsRecord calendarRec, TruffleString timeZone,
+                    TruffleString calendar, TruffleString timeZone,
                     JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSObject resolvedOptions,
                     Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode);
 
     @Specialization
     static TemporalDurationWithTotalRecord differenceZonedDateTimeWithRounding(BigInt ns1, BigInt ns2,
-                    CalendarMethodsRecord calendarRec, TruffleString timeZone,
+                    TruffleString calendar, TruffleString timeZone,
                     JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSObject resolvedOptions,
                     Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode,
                     @Cached DifferenceZonedDateTimeNode differenceZonedDateTime,
@@ -88,7 +87,7 @@ public abstract class DifferenceZonedDateTimeWithRoundingNode extends JavaScript
             return new TemporalDurationWithTotalRecord(durationRecord, diffRecord.total());
         }
 
-        var difference = differenceZonedDateTime.execute(ns1, ns2, timeZone, calendarRec, largestUnit, resolvedOptions, precalculatedPlainDateTime);
+        var difference = differenceZonedDateTime.execute(ns1, ns2, timeZone, calendar, largestUnit, resolvedOptions, precalculatedPlainDateTime);
         boolean roundingGranularityIsNoop = smallestUnit == Unit.NANOSECOND && roundingIncrement == 1;
         if (roundingGranularityIsNoop) {
             TimeDurationRecord timeResult = TemporalUtil.balanceTimeDuration(difference.normalizedTimeTotalNanoseconds(), Unit.HOUR);
@@ -102,6 +101,6 @@ public abstract class DifferenceZonedDateTimeWithRoundingNode extends JavaScript
                         precalculatedPlainDateTime.getYear(), precalculatedPlainDateTime.getMonth(), precalculatedPlainDateTime.getDay(),
                         precalculatedPlainDateTime.getHour(), precalculatedPlainDateTime.getMinute(), precalculatedPlainDateTime.getSecond(),
                         precalculatedPlainDateTime.getMillisecond(), precalculatedPlainDateTime.getMicrosecond(), precalculatedPlainDateTime.getNanosecond());
-        return roundRelativeDuration.execute(difference, ns2, dateTime, calendarRec, timeZone, largestUnit, roundingIncrement, smallestUnit, roundingMode);
+        return roundRelativeDuration.execute(difference, ns2, dateTime, calendar, timeZone, largestUnit, roundingIncrement, smallestUnit, roundingMode);
     }
 }

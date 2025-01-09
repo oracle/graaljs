@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -100,16 +99,6 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             return zonedRelativeTo != null ? zonedRelativeTo : plainRelativeTo;
         }
 
-        public CalendarMethodsRecord createCalendarMethodsRecord(CalendarMethodsRecordLookupNode lookupDateAddNode, CalendarMethodsRecordLookupNode lookupDateUntilNode) {
-            JSTemporalCalendarHolder relativeTo = relativeTo();
-            if (relativeTo == null) {
-                return null;
-            }
-            Object calendar = relativeTo().getCalendar();
-            Object dateAdd = (lookupDateAddNode == null) ? null : lookupDateAddNode.execute(calendar);
-            Object dateUntil = (lookupDateUntilNode == null) ? null : lookupDateUntilNode.execute(calendar);
-            return CalendarMethodsRecord.forDateAddDateUntil(calendar, dateAdd, dateUntil);
-        }
     }
 
     public abstract Result execute(JSDynamicObject options);
@@ -128,8 +117,6 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarWithISODefaultNode,
-                    @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
-                    @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                     @Cached TemporalGetOptionNode getOptionNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(this, value == Undefined.instance)) {
@@ -137,7 +124,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         }
         JSTemporalDateTimeRecord result;
         TruffleString timeZone = null;
-        Object calendar;
+        TruffleString calendar;
         Object offsetString;
         TemporalUtil.OffsetBehaviour offsetBehaviour = TemporalUtil.OffsetBehaviour.OPTION;
         TemporalUtil.MatchBehaviour matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
@@ -157,11 +144,8 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
 
             calendar = getTemporalCalendarWithISODefaultNode.execute(value);
-            Object dateFromFieldsMethod = lookupDateFromFields.execute(calendar);
-            Object fieldsMethod = lookupFields.execute(calendar);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFields(calendar, dateFromFieldsMethod, fieldsMethod);
 
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
             addFieldNames(fieldNames);
 
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, value, fieldNames, TemporalUtil.listEmpty);

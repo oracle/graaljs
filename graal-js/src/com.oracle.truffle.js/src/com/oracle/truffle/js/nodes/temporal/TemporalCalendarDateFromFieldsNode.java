@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -60,10 +61,10 @@ public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseN
     protected TemporalCalendarDateFromFieldsNode() {
     }
 
-    public abstract JSTemporalPlainDateObject execute(Object calendar, Object fields, TemporalUtil.Overflow overflow);
+    public abstract JSTemporalPlainDateObject execute(TruffleString calendar, Object fields, TemporalUtil.Overflow overflow);
 
     @Specialization
-    public JSTemporalPlainDateObject calendarDateFromFields(Object calendar, Object fieldsParam, TemporalUtil.Overflow overflow,
+    public JSTemporalPlainDateObject calendarDateFromFields(TruffleString calendar, Object fieldsParam, TemporalUtil.Overflow overflow,
                     @Cached JSToIntegerOrInfinityNode toIntegerOrInfinity,
                     @Cached InlinedBranchProfile errorBranch) {
         JSContext context = getJSContext();

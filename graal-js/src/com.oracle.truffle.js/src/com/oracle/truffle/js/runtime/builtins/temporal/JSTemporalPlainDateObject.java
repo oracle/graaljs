@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ public final class JSTemporalPlainDateObject extends JSTemporalCalendarHolder {
     private final int month;
     private final int day;
 
-    public JSTemporalPlainDateObject(Shape shape, JSDynamicObject proto, int year, int month, int day, Object calendar) {
+    public JSTemporalPlainDateObject(Shape shape, JSDynamicObject proto, int year, int month, int day, TruffleString calendar) {
         super(shape, proto, calendar);
         this.year = year;
         this.month = month;

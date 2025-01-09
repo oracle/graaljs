@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,45 +42,23 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Implementation of the Temporal calendarFields() operation.
  */
 public abstract class TemporalCalendarFieldsNode extends JavaScriptBaseNode {
 
-    @Child private JSFunctionCallNode callFieldsNode;
-
     protected TemporalCalendarFieldsNode() {
     }
 
-    public abstract List<TruffleString> execute(CalendarMethodsRecord calendarRec, List<TruffleString> strings);
+    public abstract List<TruffleString> execute(TruffleString calendar, List<TruffleString> strings);
 
     @Specialization
-    protected List<TruffleString> calendarFields(CalendarMethodsRecord calendarRec, List<TruffleString> strings) {
-        if (calendarRec.receiver() instanceof TruffleString) {
-            return strings;
-        }
-        JSDynamicObject fieldsArray = JSArray.createConstant(getLanguage().getJSContext(), getRealm(), Boundaries.listToArray(strings));
-        fieldsArray = callFields(calendarRec.fields(), calendarRec.receiver(), new Object[]{fieldsArray});
-        return TemporalUtil.iterableToListOfTypeString(fieldsArray);
+    protected List<TruffleString> calendarFields(TruffleString calendar, List<TruffleString> strings) {
+        return strings;
     }
 
-    private JSDynamicObject callFields(Object fieldsFn, Object calendar, Object[] args) {
-        if (callFieldsNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callFieldsNode = insert(JSFunctionCallNode.createCall());
-        }
-        return TemporalUtil.toDynamicObject(callFieldsNode.executeCall(JSArguments.create(calendar, fieldsFn, args)));
-    }
 }

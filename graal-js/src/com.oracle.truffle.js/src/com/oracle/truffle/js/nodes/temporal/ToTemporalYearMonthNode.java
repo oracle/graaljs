@@ -51,12 +51,10 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -79,8 +77,6 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
-                    @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
-                    @Cached("createYearMonthFromFields()") CalendarMethodsRecordLookupNode lookupYearMonthFromFields,
                     @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
         Object options = optionsParam;
@@ -90,14 +86,12 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                 TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
                 return JSTemporalPlainYearMonth.create(getJSContext(), getRealm(), yearMonth.getYear(), yearMonth.getMonth(), yearMonth.getCalendar(), yearMonth.getDay(), this, errorBranch);
             }
-            Object calendar = getCalendarSlotValueWithISODefault.execute(item);
-            Object fieldsMethod = lookupFields.execute(calendar);
-            Object yearMonthFromFieldsMethod = lookupYearMonthFromFields.execute(calendar);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forFieldsAndYearMonthFromFields(calendar, fieldsMethod, yearMonthFromFieldsMethod);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listMMCY);
+            TruffleString calendar = getCalendarSlotValueWithISODefault.execute(item);
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getLanguage().getJSContext(), item, fieldNames, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
-            return yearMonthFromFieldsNode.execute(calendarRec, fields, resolvedOptions);
+            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            return yearMonthFromFieldsNode.execute(calendar, fields, overflow);
         } else if (item instanceof TruffleString string) {
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string);
             TruffleString calendar = result.getCalendar();
@@ -109,12 +103,10 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }
             Object resolvedOptions = getOptionsObject.execute(options);
-            TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             JSDynamicObject result2 = JSTemporalPlainYearMonth.create(getLanguage().getJSContext(), getRealm(),
                             result.getYear(), result.getMonth(), calendar, result.getDay(), this, errorBranch);
-            Object yearMonthFromFieldsMethod = lookupYearMonthFromFields.execute(calendar);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forYearMonthFromFields(calendar, yearMonthFromFieldsMethod);
-            return yearMonthFromFieldsNode.execute(calendarRec, result2, Undefined.instance);
+            return yearMonthFromFieldsNode.execute(calendar, result2, overflow);
         } else {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAString(item);

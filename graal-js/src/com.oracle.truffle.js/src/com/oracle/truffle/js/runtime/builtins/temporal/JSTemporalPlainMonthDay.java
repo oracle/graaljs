@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,13 +75,13 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainMonthDay");
 
-    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, int isoMonth, int isoDay, Object calendar, int referenceISOYear,
+    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, int isoMonth, int isoDay, TruffleString calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoMonth, isoDay, calendar, referenceISOYear, node, errorBranch);
     }
 
     @InliningCutoff
-    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoMonth, int isoDay, Object calendar, int referenceISOYear,
+    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoMonth, int isoDay, TruffleString calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidISODate(referenceISOYear, isoMonth, isoDay)) {
             errorBranch.enter(node);

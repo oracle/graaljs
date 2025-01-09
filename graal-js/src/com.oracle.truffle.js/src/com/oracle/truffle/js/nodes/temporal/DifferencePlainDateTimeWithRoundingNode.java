@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,9 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
@@ -70,13 +70,13 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
     public abstract TemporalDurationWithTotalRecord execute(
                     JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    CalendarMethodsRecord calendarRec, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSObject resolvedOptions);
+                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSObject resolvedOptions);
 
     @Specialization
     static TemporalDurationWithTotalRecord differencePlainDateTimeWithRounding(
                     JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    CalendarMethodsRecord calendarRec, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSObject resolvedOptions,
+                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSObject resolvedOptions,
                     @Cached DifferenceISODateTimeNode differenceISODateTime,
                     @Cached RoundRelativeDurationNode roundRelativeDuration) {
         int y1 = plainDate1.getYear();
@@ -91,7 +91,7 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
         NormalizedDurationRecord diff = differenceISODateTime.execute(
                         y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1,
                         y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2,
-                        calendarRec, largestUnit, resolvedOptions);
+                        calendar, largestUnit, resolvedOptions);
         if (smallestUnit == Unit.NANOSECOND && roundingIncrement == 1) {
             BigInt normWithDays = TemporalUtil.add24HourDaysToNormalizedTimeDuration(diff.normalizedTimeTotalNanoseconds(), diff.days());
             TimeDurationRecord timeResult = TemporalUtil.balanceTimeDuration(normWithDays, largestUnit);
@@ -104,6 +104,6 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
 
         ISODateTimeRecord dateTime = new ISODateTimeRecord(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1);
         BigInt destEpochNs = TemporalUtil.getUTCEpochNanoseconds(y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2);
-        return roundRelativeDuration.execute(diff, destEpochNs, dateTime, calendarRec, null, largestUnit, roundingIncrement, smallestUnit, roundingMode);
+        return roundRelativeDuration.execute(diff, destEpochNs, dateTime, calendar, null, largestUnit, roundingIncrement, smallestUnit, roundingMode);
     }
 }

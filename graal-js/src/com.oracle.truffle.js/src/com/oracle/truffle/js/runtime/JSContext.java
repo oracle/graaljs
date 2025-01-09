@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,7 +142,6 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -534,7 +533,6 @@ public class JSContext {
     private final JSObjectFactory temporalPlainDateFactory;
     private final JSObjectFactory temporalPlainDateTimeFactory;
     private final JSObjectFactory temporalDurationFactory;
-    private final JSObjectFactory temporalCalendarFactory;
     private final JSObjectFactory temporalPlainYearMonthFactory;
     private final JSObjectFactory temporalPlainMonthDayFactory;
     private final JSObjectFactory temporalInstantFactory;
@@ -741,7 +739,6 @@ public class JSContext {
         this.temporalPlainDateFactory = builder.create(JSTemporalPlainDate.INSTANCE);
         this.temporalPlainDateTimeFactory = builder.create(JSTemporalPlainDateTime.INSTANCE);
         this.temporalDurationFactory = builder.create(JSTemporalDuration.INSTANCE);
-        this.temporalCalendarFactory = builder.create(JSTemporalCalendar.INSTANCE);
         this.temporalPlainYearMonthFactory = builder.create(JSTemporalPlainYearMonth.INSTANCE);
         this.temporalPlainMonthDayFactory = builder.create(JSTemporalPlainMonthDay.INSTANCE);
         this.temporalInstantFactory = builder.create(JSTemporalInstant.INSTANCE);
@@ -1261,10 +1258,6 @@ public class JSContext {
 
     public final JSObjectFactory getTemporalDurationFactory() {
         return temporalDurationFactory;
-    }
-
-    public final JSObjectFactory getTemporalCalendarFactory() {
-        return temporalCalendarFactory;
     }
 
     public JSObjectFactory getTemporalPlainYearMonthFactory() {

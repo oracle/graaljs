@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
@@ -92,8 +91,6 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
-                    @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
@@ -103,7 +100,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
         TruffleString timeZone;
-        Object calendar;
+        TruffleString calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(options, Null.instance);
@@ -117,11 +114,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             }
 
             calendar = getCalendarSlotValueWithISODefault.execute(item);
-            Object dateFromFieldsMethod = lookupDateFromFields.execute(calendar);
-            Object fieldsMethod = lookupFields.execute(calendar);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFields(calendar, dateFromFieldsMethod, fieldsMethod);
 
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
             addFieldNames(fieldNames);
 
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listTimeZone);

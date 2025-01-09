@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,17 +43,16 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
@@ -66,26 +65,24 @@ public abstract class TemporalAddDateNode extends JavaScriptBaseNode {
     protected TemporalAddDateNode() {
     }
 
-    public abstract JSTemporalPlainDateObject execute(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration, JSDynamicObject optionsOpt);
+    public abstract JSTemporalPlainDateObject execute(TruffleString calendar, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration, Overflow overflow);
 
     @Specialization
-    protected JSTemporalPlainDateObject addDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration, JSDynamicObject options,
-                    @Cached ToTemporalCalendarObjectNode toCalendarObject,
+    protected JSTemporalPlainDateObject addDate(TruffleString calendar, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration, Overflow overflow,
                     @Cached("createCall()") JSFunctionCallNode callDateAddNode,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached TemporalGetOptionNode getOptionNode) {
+        JSContext ctx = getJSContext();
+        JSRealm realm = getRealm();
         if (duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0) {
-            return TemporalUtil.calendarDateAdd(calendarRec, plainDate, duration, options, toCalendarObject, callDateAddNode);
+            return TemporalUtil.calendarDateAdd(ctx, realm, calendar, plainDate, duration, overflow, this, errorBranch);
         } else {
-            JSContext ctx = getJSContext();
-            JSRealm realm = getRealm();
-            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
             BigInt norm = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             TimeDurationRecord balancedDuration = TemporalUtil.balanceTimeDuration(norm, Unit.DAY);
             double days = duration.getDays() + balancedDuration.days();
             var result = TemporalUtil.addISODate(plainDate.getYear(), plainDate.getMonth(), plainDate.getDay(), 0, 0, 0, days, overflow);
-            return JSTemporalPlainDate.create(ctx, realm, result.year(), result.month(), result.day(), calendarRec.receiver(), this, errorBranch);
+            return JSTemporalPlainDate.create(ctx, realm, result.year(), result.month(), result.day(), calendar, this, errorBranch);
         }
     }
 

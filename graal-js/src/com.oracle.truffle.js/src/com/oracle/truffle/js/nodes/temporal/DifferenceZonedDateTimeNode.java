@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
@@ -77,12 +76,12 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
     }
 
     public abstract NormalizedDurationRecord execute(BigInt ns1, BigInt ns2,
-                    TruffleString timeZone, CalendarMethodsRecord calendarRec,
+                    TruffleString timeZone, TruffleString calendar,
                     Unit largestUnit, JSDynamicObject options, JSTemporalPlainDateTimeObject startDateTime);
 
     @Specialization
     final NormalizedDurationRecord differenceZonedDateTime(BigInt ns1, BigInt ns2,
-                    TruffleString timeZone, CalendarMethodsRecord calendarRec,
+                    TruffleString timeZone, TruffleString calendar,
                     Unit largestUnit, JSDynamicObject options, JSTemporalPlainDateTimeObject startDateTime,
                     @Cached TemporalDifferenceDateNode differenceDateNode,
                     @Cached("createKeys(getJSContext())") EnumerableOwnPropertyNamesNode namesNode) {
@@ -95,7 +94,7 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
         JSRealm realm = getRealm();
 
         JSTemporalInstantObject endInstant = JSTemporalInstant.create(ctx, realm, ns2);
-        JSTemporalPlainDateTimeObject endDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, endInstant, calendarRec.receiver());
+        JSTemporalPlainDateTimeObject endDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, endInstant, calendar);
         int maxDayCorrection = sign == 1 ? 2 : 1;
         int dayCorrection = 0;
 
@@ -117,7 +116,7 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
             intermediateDateTime = JSTemporalPlainDateTime.create(ctx, realm,
                             intermediateDate.year(), intermediateDate.month(), intermediateDate.day(),
                             startDateTime.getHour(), startDateTime.getMinute(), startDateTime.getSecond(),
-                            startDateTime.getMillisecond(), startDateTime.getMicrosecond(), startDateTime.getNanosecond(), calendarRec.receiver());
+                            startDateTime.getMillisecond(), startDateTime.getMicrosecond(), startDateTime.getNanosecond(), calendar);
             BigInt intermediateNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, intermediateDateTime, Disambiguation.COMPATIBLE);
             norm = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(ns2, intermediateNs);
             int timeSign = TemporalUtil.normalizedTimeDurationSign(norm);
@@ -127,13 +126,13 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
             }
         }
         if (success) {
-            var date1 = JSTemporalPlainDate.create(ctx, realm, startDateTime.getYear(), startDateTime.getMonth(), startDateTime.getDay(), calendarRec.receiver(),
+            var date1 = JSTemporalPlainDate.create(ctx, realm, startDateTime.getYear(), startDateTime.getMonth(), startDateTime.getDay(), calendar,
                             null, InlinedBranchProfile.getUncached());
-            var date2 = JSTemporalPlainDate.create(ctx, realm, intermediateDateTime.getYear(), intermediateDateTime.getMonth(), intermediateDateTime.getDay(), calendarRec.receiver(),
+            var date2 = JSTemporalPlainDate.create(ctx, realm, intermediateDateTime.getYear(), intermediateDateTime.getMonth(), intermediateDateTime.getDay(), calendar,
                             null, InlinedBranchProfile.getUncached());
             Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(largestUnit, Unit.DAY);
             JSObject untilOptions = TemporalUtil.mergeLargestUnitOption(ctx, namesNode, options, dateLargestUnit);
-            JSTemporalDurationObject dateDifference = differenceDateNode.execute(calendarRec, date1, date2, dateLargestUnit, untilOptions);
+            JSTemporalDurationObject dateDifference = differenceDateNode.execute(calendar, date1, date2, dateLargestUnit, untilOptions);
             return TemporalUtil.createNormalizedDurationRecord(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), dateDifference.getDays(), norm);
         }
         throw Errors.createRangeError("custom calendar or time zone methods returned inconsistent values");
