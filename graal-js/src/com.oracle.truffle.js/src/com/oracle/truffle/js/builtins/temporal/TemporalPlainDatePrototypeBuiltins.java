@@ -74,7 +74,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.RoundRelativeDurationNode;
-import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
@@ -111,7 +110,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -413,7 +411,6 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Bind Node node,
                         @Cached TemporalDifferenceDateNode differenceDate,
                         @Cached ToTemporalDateNode toTemporalDate,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached RoundRelativeDurationNode roundRelativeDuration,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
@@ -425,7 +422,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
 
-            JSObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateOrAuto, TemporalUtil.unitMappingDate, Unit.DAY, Unit.DAY);
 
             TruffleString calendar = temporalDate.getCalendar();

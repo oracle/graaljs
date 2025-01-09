@@ -52,7 +52,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDurationWithTotalRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
@@ -70,13 +70,13 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
     public abstract TemporalDurationWithTotalRecord execute(
                     JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSObject resolvedOptions);
+                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSDynamicObject resolvedOptions);
 
     @Specialization
     static TemporalDurationWithTotalRecord differencePlainDateTimeWithRounding(
                     JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSObject resolvedOptions,
+                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSDynamicObject resolvedOptions,
                     @Cached DifferenceISODateTimeNode differenceISODateTime,
                     @Cached RoundRelativeDurationNode roundRelativeDuration) {
         int y1 = plainDate1.getYear();

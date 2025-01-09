@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
-import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
@@ -91,7 +90,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -254,13 +252,12 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalDurationObject differenceTemporalInstant(JSTemporalInstantObject instant, Object otherObj, Object options,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached ToTemporalInstantNode toTemporalInstantNode,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalInstantObject other = toTemporalInstantNode.execute(otherObj);
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
+            JSDynamicObject resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingTimeOrAuto, TemporalUtil.unitMappingTime, Unit.NANOSECOND, Unit.SECOND);
 
             var diffRecord = TemporalUtil.differenceInstant(instant.getNanoseconds(), other.getNanoseconds(),

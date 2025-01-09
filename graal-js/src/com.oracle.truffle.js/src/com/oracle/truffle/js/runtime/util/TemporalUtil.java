@@ -2796,14 +2796,14 @@ public final class TemporalUtil {
         return JSTemporalTimeZoneRecord.create(false, offsetString, name);
     }
 
-    public static Disambiguation toTemporalDisambiguation(JSDynamicObject options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
+    public static Disambiguation toTemporalDisambiguation(Object options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
         if (options == Undefined.instance) {
             return Disambiguation.COMPATIBLE;
         }
         return toDisambiguation((TruffleString) getOptionNode.execute(options, DISAMBIGUATION, OptionType.STRING, listDisambiguation, COMPATIBLE), equalNode);
     }
 
-    public static OffsetOption toTemporalOffset(JSDynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
+    public static OffsetOption toTemporalOffset(Object options, TruffleString fallback, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
         TruffleString result = fallback;
         if (options != Undefined.instance) {
             result = (TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffsets, fallback);

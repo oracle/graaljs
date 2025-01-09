@@ -90,7 +90,6 @@ import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
-import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddZonedDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
@@ -134,7 +133,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -564,7 +562,6 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         protected Object with(JSTemporalZonedDateTimeObject zonedDateTime, Object temporalZonedDateTimeLike, Object options,
                         @Bind Node node,
                         @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalCalendarFieldsNode calendarFieldsNode,
@@ -583,7 +580,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
 
             TruffleString calendar = zonedDateTime.getCalendar();
 
@@ -800,7 +797,6 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected Object differenceTemporalZonedDateTime(JSTemporalZonedDateTimeObject zonedDateTime, Object otherParam, Object options,
                         @Bind Node node,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
@@ -814,7 +810,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
-            JSObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateTimeOrAuto, TemporalUtil.unitMappingDateTime, Unit.NANOSECOND, Unit.HOUR);
             Unit largestUnit = settings.largestUnit();
             JSRealm realm = getRealm();

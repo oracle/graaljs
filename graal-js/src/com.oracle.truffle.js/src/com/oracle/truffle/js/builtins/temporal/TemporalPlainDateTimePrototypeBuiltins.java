@@ -86,7 +86,6 @@ import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
-import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
@@ -128,7 +127,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -434,7 +432,6 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected JSTemporalDurationObject differenceTemporalPlainDateTime(JSTemporalPlainDateTimeObject dateTime, Object otherObj, Object options,
                         @Bind Node node,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached ToTemporalDateTimeNode toTemporalDateTime,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached DifferencePlainDateTimeWithRoundingNode differencePlainDateTimeWithRounding,
@@ -450,7 +447,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
             JSContext ctx = getContext();
             JSRealm realm = getRealm();
-            JSObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateTimeOrAuto, TemporalUtil.unitMappingDateTime, Unit.NANOSECOND, Unit.DAY);
 
             boolean datePartsIdentical = dateTime.getYear() == other.getYear() && dateTime.getMonth() == other.getMonth() && dateTime.getDay() == other.getDay();

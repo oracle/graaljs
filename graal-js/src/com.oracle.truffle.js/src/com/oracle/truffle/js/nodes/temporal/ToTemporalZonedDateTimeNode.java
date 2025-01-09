@@ -54,6 +54,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -65,7 +66,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -89,8 +89,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
-                    @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached IsObjectNode isObjectNode,
+                    @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsObject,
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
@@ -103,7 +103,6 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         TruffleString calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
-        JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(options, Null.instance);
         OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
         MatchBehaviour matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
         TemporalUtil.Disambiguation disambiguation;
@@ -127,6 +126,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             } else {
                 offsetString = (TruffleString) offsetStringObj;
             }
+            Object resolvedOptions = getOptionsObject.execute(options);
             disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
             offsetOption = TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
@@ -155,6 +155,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
+            Object resolvedOptions = getOptionsObject.execute(options);
             disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
             offsetOption = TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
             TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);

@@ -73,7 +73,6 @@ import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.RoundRelativeDurationNode;
-import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
@@ -99,7 +98,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthO
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -494,7 +492,6 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         protected JSTemporalDurationObject differenceTemporalPlainYearMonth(JSTemporalPlainYearMonthObject thisYearMonth, Object otherParam, Object options,
                         @Bind Node node,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
                         @Cached RoundRelativeDurationNode roundRelativeDuration,
@@ -510,7 +507,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingYearMonthOrAuto, TemporalUtil.unitMappingYearMonth, Unit.MONTH, Unit.YEAR);
 
             JSRealm realm = getRealm();
