@@ -7,7 +7,7 @@ local cicommon = import '../ci/common.jsonnet';
     cd:: 'graal-nodejs',
     suite_prefix:: 'nodejs', # for build job names
     // increase default timelimit on windows and darwin-amd64
-    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:45:00' else '45:00',
+    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '2:00:00' else '1:00:00',
   },
 
   local ce = ci.ce,
