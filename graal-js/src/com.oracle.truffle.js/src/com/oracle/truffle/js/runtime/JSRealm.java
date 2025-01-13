@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -491,9 +491,7 @@ public class JSRealm {
     private final Object wasmGlobalAlloc;
     private final Object wasmGlobalRead;
     private final Object wasmGlobalWrite;
-    private final Object wasmModuleDecode;
     private final Object wasmModuleInstantiate;
-    private final Object wasmModuleValidate;
     private final Object wasmModuleExports;
     private final Object wasmModuleImports;
     private final Object wasmCustomSections;
@@ -956,9 +954,7 @@ public class JSRealm {
                 wasmGlobalAlloc = wasmInterop.readMember(wasmObject, "global_alloc");
                 wasmGlobalRead = wasmInterop.readMember(wasmObject, "global_read");
                 wasmGlobalWrite = wasmInterop.readMember(wasmObject, "global_write");
-                wasmModuleDecode = wasmInterop.readMember(wasmObject, "module_decode");
                 wasmModuleInstantiate = wasmInterop.readMember(wasmObject, "module_instantiate");
-                wasmModuleValidate = wasmInterop.readMember(wasmObject, "module_validate");
                 wasmModuleExports = wasmInterop.readMember(wasmObject, "module_exports");
                 wasmModuleImports = wasmInterop.readMember(wasmObject, "module_imports");
                 wasmCustomSections = wasmInterop.readMember(wasmObject, "custom_sections");
@@ -1006,9 +1002,7 @@ public class JSRealm {
             this.wasmGlobalAlloc = null;
             this.wasmGlobalRead = null;
             this.wasmGlobalWrite = null;
-            this.wasmModuleDecode = null;
             this.wasmModuleInstantiate = null;
-            this.wasmModuleValidate = null;
             this.wasmModuleExports = null;
             this.wasmModuleImports = null;
             this.wasmCustomSections = null;
@@ -3252,16 +3246,8 @@ public class JSRealm {
         return truffleLanguageEnv.isPolyglotBindingsAccessAllowed() && truffleLanguageEnv.getInternalLanguages().get("wasm") != null;
     }
 
-    public Object getWASMModuleDecode() {
-        return wasmModuleDecode;
-    }
-
     public Object getWASMModuleInstantiate() {
         return wasmModuleInstantiate;
-    }
-
-    public Object getWASMModuleValidate() {
-        return wasmModuleValidate;
     }
 
     public Object getWASMModuleExports() {
