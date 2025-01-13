@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.polyglot.io.ByteSequence;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -75,6 +77,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.AssumedValue;
@@ -141,6 +144,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFu
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
 import com.oracle.truffle.js.builtins.helper.CanBeHeldWeaklyNode;
 import com.oracle.truffle.js.builtins.json.JSONBuiltins;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -3131,14 +3135,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSObject constructModule(JSDynamicObject newTarget, Object bytes) {
-            Object byteSource = exportByteSourceNode.execute(bytes);
+            ByteSequence byteSource = exportByteSourceNode.execute(bytes);
             JSRealm realm = getRealm();
+            Source wasmSource = WebAssemblyBuiltins.buildSource(byteSource);
             Object wasmModule;
             try {
-                Object decode = realm.getWASMModuleDecode();
-                wasmModule = decodeModuleLib.execute(decode, byteSource);
-            } catch (InteropException ex) {
-                throw Errors.shouldNotReachHere(ex);
+                wasmModule = WebAssemblyBuiltins.moduleDecode(realm, wasmSource);
             } catch (AbstractTruffleException tex) {
                 try {
                     ExceptionType type = InteropLibrary.getUncached(tex).getExceptionType(tex);
@@ -3151,7 +3153,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw tex;
             }
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSWebAssemblyModule.create(getContext(), realm, proto, wasmModule);
+            return JSWebAssemblyModule.create(getContext(), realm, proto, wasmModule, wasmSource);
         }
 
         @Override

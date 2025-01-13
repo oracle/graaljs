@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltins;
@@ -101,14 +102,14 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
         return INSTANCE.createConstructorAndPrototype(realm, WebAssemblyModuleFunctionBuiltins.BUILTINS);
     }
 
-    public static JSWebAssemblyModuleObject create(JSContext context, JSRealm realm, Object wasmModule) {
-        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmModule);
+    public static JSWebAssemblyModuleObject create(JSContext context, JSRealm realm, Object wasmModule, Source wasmSource) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmModule, wasmSource);
     }
 
-    public static JSWebAssemblyModuleObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmModule) {
+    public static JSWebAssemblyModuleObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmModule, Source wasmSource) {
         JSObjectFactory factory = context.getWebAssemblyModuleFactory();
         var shape = factory.getShape(realm, proto);
-        var newObj = factory.initProto(new JSWebAssemblyModuleObject(shape, proto, wasmModule), realm, proto);
+        var newObj = factory.initProto(new JSWebAssemblyModuleObject(shape, proto, wasmModule, wasmSource), realm, proto);
         return factory.trackAllocation(newObj);
     }
 }

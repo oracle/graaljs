@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.JSON_MIME_TYPE;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.WASM_MIME_TYPE;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -56,7 +55,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
@@ -83,6 +81,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -113,12 +112,12 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Completion;
@@ -421,10 +420,9 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary
     @Override
     public AbstractModuleRecord parseWasmModuleSource(JSRealm realm, Source source) {
-        assert WASM_MIME_TYPE.equals(source.getMimeType()) : source;
-        JSFunctionObject webAssemblyModuleConstructor = Objects.requireNonNull(realm.getWebAssemblyModuleConstructor(), "WebAssembly.Module");
-        JSWebAssemblyModuleObject wasmModule = (JSWebAssemblyModuleObject) JSFunction.construct(webAssemblyModuleConstructor,
-                        new Object[]{JSArrayBuffer.createArrayBuffer(realm.getContext(), realm, source.getBytes().toByteArray())});
+        assert realm.getContextOptions().isWebAssembly();
+        Object compiledModule = WebAssemblyBuiltins.moduleDecode(realm, source);
+        JSWebAssemblyModuleObject wasmModule = JSWebAssemblyModule.create(realm.getContext(), realm, compiledModule, source);
         return new WebAssemblyModuleRecord(realm.getContext(), source, wasmModule);
     }
 
