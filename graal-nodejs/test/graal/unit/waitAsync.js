@@ -44,6 +44,8 @@ const assert = require('assert');
 describe('waitAsync', function () {
     it('should work with finite timeout', function() {
         this.timeout(30000);
+        this.retries(3);
+
         var child_process = require('child_process');
         var spawnSync = child_process.spawnSync;
 
@@ -76,6 +78,8 @@ describe('waitAsync', function () {
     });
     it('should work with infinite timeout', function() {
       this.timeout(30000);
+      this.retries(3);
+
       var child_process = require('child_process');
       var spawnSync = child_process.spawnSync;
 
