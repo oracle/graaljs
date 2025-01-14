@@ -104,7 +104,6 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                         join('parallel', 'test-messageevent-brandcheck.js'),
                         join('parallel', 'test-messaging-marktransfermode.js'),
                         join('parallel', 'test-perf-hooks-histogram.js'),
-                        join('parallel', 'test-process-get-builtin.mjs'),
                         join('parallel', 'test-runner-cli.js'),
                         join('parallel', 'test-socketaddress.js'),
                         join('parallel', 'test-structuredClone-global.js'),
@@ -120,8 +119,9 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                         join('parallel', 'test-worker-message-port-wasm-module.js'),
                         join('parallel', 'test-worker-message-port-wasm-threads.js'),
                         join('parallel', 'test-worker-onmessage.js'),
-                    ]
+                    ] + ([join('parallel', 'test-process-get-builtin.mjs')] if mx.suite('tools', fatalIfMissing=False) is None else [])
                     for test in wasm_tests:
+                        mx.log('Running \'{}\''.format(test))
                         node(commonArgs + [join(_suite.dir, 'test', test)])
 
                     # test that WebAssembly can be disabled using env. variables
