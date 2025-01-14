@@ -121,6 +121,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                         join('parallel', 'test-worker-onmessage.js'),
                     ] + ([join('parallel', 'test-process-get-builtin.mjs')] if mx.suite('tools', fatalIfMissing=False) is None else [])
                     for test in wasm_tests:
+                        mx.log('Running \'{}\''.format(test))
                         node(commonArgs + [join(_suite.dir, 'test', test)])
 
                     # test that WebAssembly can be disabled using env. variables
