@@ -438,8 +438,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalPlainDateTimeObject other = toTemporalDateTime.execute(otherObj, Undefined.instance);
-            TruffleString calendar = dateTime.getCalendar();
-            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toCalendarIdentifier)) {
+            if (!TemporalUtil.calendarEquals(dateTime.getCalendar(), other.getCalendar(), toCalendarIdentifier)) {
                 errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
@@ -449,21 +448,20 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateTimeOrAuto, TemporalUtil.unitMappingDateTime, Unit.NANOSECOND, Unit.DAY);
 
-            boolean datePartsIdentical = dateTime.getYear() == other.getYear() && dateTime.getMonth() == other.getMonth() && dateTime.getDay() == other.getDay();
-            if (datePartsIdentical && dateTime.getHour() == other.getHour() && dateTime.getMinute() == other.getMinute() && dateTime.getSecond() == other.getSecond() &&
-                            dateTime.getMillisecond() == other.getMillisecond() && dateTime.getMicrosecond() == other.getMicrosecond() && dateTime.getNanosecond() == other.getNanosecond()) {
+            if (dateTime.getYear() == other.getYear() && dateTime.getMonth() == other.getMonth() && dateTime.getDay() == other.getDay() && dateTime.getHour() == other.getHour() &&
+                            dateTime.getMinute() == other.getMinute() && dateTime.getSecond() == other.getSecond() && dateTime.getMillisecond() == other.getMillisecond() &&
+                            dateTime.getMicrosecond() == other.getMicrosecond() && dateTime.getNanosecond() == other.getNanosecond()) {
                 return JSTemporalDuration.createTemporalDuration(ctx, realm,
                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
             }
 
             JSTemporalPlainDateObject plainDate = JSTemporalPlainDate.create(ctx, realm,
-                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), calendar, node, errorBranch);
-
+                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), node, errorBranch);
             var resultRecord = differencePlainDateTimeWithRounding.execute(plainDate,
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                             other.getYear(), other.getMonth(), other.getDay(),
                             other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond(),
-                            calendar, settings.largestUnit(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode(), resolvedOptions);
+                            other.getCalendar(), settings.largestUnit(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
             JSTemporalDurationRecord result = resultRecord.duration();
 
             return JSTemporalDuration.createTemporalDuration(ctx, realm,

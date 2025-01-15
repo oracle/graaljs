@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
@@ -131,8 +130,7 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
             var date2 = JSTemporalPlainDate.create(ctx, realm, intermediateDateTime.getYear(), intermediateDateTime.getMonth(), intermediateDateTime.getDay(), calendar,
                             null, InlinedBranchProfile.getUncached());
             Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(largestUnit, Unit.DAY);
-            JSObject untilOptions = TemporalUtil.mergeLargestUnitOption(ctx, namesNode, options, dateLargestUnit);
-            JSTemporalDurationObject dateDifference = differenceDateNode.execute(calendar, date1, date2, dateLargestUnit, untilOptions);
+            JSTemporalDurationObject dateDifference = differenceDateNode.execute(calendar, date1, date2, dateLargestUnit);
             return TemporalUtil.createNormalizedDurationRecord(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), dateDifference.getDays(), norm);
         }
         throw Errors.createRangeError("custom calendar or time zone methods returned inconsistent values");

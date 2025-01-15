@@ -67,11 +67,11 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
 
     public abstract JSTemporalDurationObject execute(
                     TruffleString calendar, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
-                    Unit largestUnit, Object untilOptions);
+                    Unit largestUnit);
 
     @Specialization
     final JSTemporalDurationObject differenceDate(TruffleString calendar, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
-                    Unit largestUnit, Object untilOptions,
+                    Unit largestUnit,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached("createCall()") JSFunctionCallNode callDateUntilNode) {
         JSContext ctx = getJSContext();

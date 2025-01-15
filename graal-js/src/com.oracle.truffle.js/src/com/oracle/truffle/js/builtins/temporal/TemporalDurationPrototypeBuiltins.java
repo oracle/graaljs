@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
@@ -104,7 +103,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -414,9 +412,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
                 TemporalUtil.Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(TemporalUtil.Unit.DAY, largestUnit);
 
-                JSObject differenceOptions = JSOrdinary.createWithNullPrototype(ctx);
-                JSObjectUtil.putDataProperty(differenceOptions, LARGEST_UNIT, dateLargestUnit.toTruffleString());
-                JSTemporalDurationObject dateDifference = differenceDateNode.execute(calendar, plainRelativeTo, end, dateLargestUnit, differenceOptions);
+                JSTemporalDurationObject dateDifference = differenceDateNode.execute(calendar, plainRelativeTo, end, dateLargestUnit);
                 BigInt norm1WithDays = TemporalUtil.add24HourDaysToNormalizedTimeDuration(norm1, dateDifference.getDays());
                 BigInt normResult = TemporalUtil.addNormalizedTimeDuration(norm1WithDays, norm2);
                 TimeDurationRecord result = TemporalUtil.balanceTimeDuration(normResult, largestUnit);
@@ -596,7 +592,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 var roundRecord = differencePlainDateTimeWithRounding.execute(plainRelativeTo, 0, 0, 0, 0, 0, 0,
                                 targetDate.getYear(), targetDate.getMonth(), targetDate.getDay(),
                                 targetTime.hour(), targetTime.minute(), targetTime.second(), targetTime.millisecond(), targetTime.microsecond(), targetTime.nanosecond(),
-                                calendar, largestUnit, roundingIncrement, smallestUnit, roundingMode, emptyOptions);
+                                calendar, largestUnit, roundingIncrement, smallestUnit, roundingMode);
                 roundResult = roundRecord.duration();
             } else {
                 if (calendarUnitsPresent || largestUnit.isCalendarUnit() || smallestUnit.isCalendarUnit()) {
@@ -701,7 +697,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 var roundRecord = differencePlainDateTimeWithRounding.execute(plainRelativeTo, 0, 0, 0, 0, 0, 0,
                                 targetDate.getYear(), targetDate.getMonth(), targetDate.getDay(),
                                 targetTime.hour(), targetTime.minute(), targetTime.second(), targetTime.millisecond(), targetTime.microsecond(), targetTime.nanosecond(),
-                                calendar, unit, 1, unit, RoundingMode.TRUNC, emptyOptions);
+                                calendar, unit, 1, unit, RoundingMode.TRUNC);
                 total = roundRecord.total();
             } else {
                 if (duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0 || unit.isCalendarUnit()) {

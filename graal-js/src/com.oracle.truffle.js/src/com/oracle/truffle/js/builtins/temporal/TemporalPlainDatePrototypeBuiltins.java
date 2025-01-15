@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 
 import java.util.EnumSet;
@@ -424,8 +423,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateOrAuto, TemporalUtil.unitMappingDate, Unit.DAY, Unit.DAY);
 
             TruffleString calendar = temporalDate.getCalendar();
-            JSRuntime.createDataPropertyOrThrow(resolvedOptions, LARGEST_UNIT, settings.largestUnit().toTruffleString());
-            JSTemporalDurationObject result = differenceDate.execute(calendar, temporalDate, other, settings.largestUnit(), resolvedOptions);
+            JSTemporalDurationObject result = differenceDate.execute(calendar, temporalDate, other, settings.largestUnit());
             NormalizedDurationRecord duration = TemporalUtil.createNormalizedDurationRecord(
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), TemporalUtil.zeroTimeDuration());
 

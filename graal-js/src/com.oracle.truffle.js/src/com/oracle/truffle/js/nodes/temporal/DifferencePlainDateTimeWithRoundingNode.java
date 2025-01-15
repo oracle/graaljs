@@ -52,7 +52,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDurationWithTotalRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
@@ -70,13 +69,13 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
     public abstract TemporalDurationWithTotalRecord execute(
                     JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSDynamicObject resolvedOptions);
+                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode);
 
     @Specialization
     static TemporalDurationWithTotalRecord differencePlainDateTimeWithRounding(
                     JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode, JSDynamicObject resolvedOptions,
+                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode,
                     @Cached DifferenceISODateTimeNode differenceISODateTime,
                     @Cached RoundRelativeDurationNode roundRelativeDuration) {
         int y1 = plainDate1.getYear();
@@ -91,7 +90,7 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
         NormalizedDurationRecord diff = differenceISODateTime.execute(
                         y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1,
                         y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2,
-                        calendar, largestUnit, resolvedOptions);
+                        calendar, largestUnit);
         if (smallestUnit == Unit.NANOSECOND && roundingIncrement == 1) {
             BigInt normWithDays = TemporalUtil.add24HourDaysToNormalizedTimeDuration(diff.normalizedTimeTotalNanoseconds(), diff.days());
             TimeDurationRecord timeResult = TemporalUtil.balanceTimeDuration(normWithDays, largestUnit);

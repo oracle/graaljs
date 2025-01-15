@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
@@ -64,9 +63,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDurationWithTotalRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
@@ -157,9 +153,7 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
                                 isoResult1.year(), isoResult1.month(), isoResult1.day(), calendar, this, errorBranch);
                 JSTemporalPlainDateObject weeksEnd = JSTemporalPlainDate.create(ctx, realm,
                                 isoResult2.year(), isoResult2.month(), isoResult2.day(), calendar, this, errorBranch);
-                JSObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
-                JSObjectUtil.putDataProperty(untilOptions, TemporalConstants.LARGEST_UNIT, TemporalConstants.WEEK);
-                JSTemporalDurationObject untilResult = differenceDateNode.execute(calendar, weeksStart, weeksEnd, Unit.WEEK, untilOptions);
+                JSTemporalDurationObject untilResult = differenceDateNode.execute(calendar, weeksStart, weeksEnd, Unit.WEEK);
                 double weeks = TemporalUtil.roundNumberToIncrement(duration.weeks() + untilResult.getWeeks(), increment, RoundingMode.TRUNC);
                 r1 = weeks;
                 r2 = weeks + increment * sign;
