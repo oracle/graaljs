@@ -6,6 +6,7 @@ local cicommon = import '../ci/common.jsonnet';
   local graalNodeJs = ci.jobtemplate + cicommon.deps.graalnodejs + {
     cd:: 'graal-nodejs',
     suite_prefix:: 'nodejs', # for build job names
+    components+: ['nodejs'],
     // increase default timelimit on windows and darwin-amd64
     timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '2:00:00' else '1:00:00',
     defined_in: std.thisFile,
