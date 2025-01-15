@@ -86,7 +86,6 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsNode,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarNode,
-                    @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord result;
@@ -113,7 +112,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             }
             calendar = getTemporalCalendarNode.execute(item);
 
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
+            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
             addFieldNames(fieldNames);
 
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);

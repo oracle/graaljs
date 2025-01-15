@@ -77,8 +77,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
-                    @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                    @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
+                    @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode) {
         Object options = optionsParam;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             if (item instanceof JSTemporalPlainYearMonthObject yearMonth) {
@@ -87,7 +86,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                 return JSTemporalPlainYearMonth.create(getJSContext(), getRealm(), yearMonth.getYear(), yearMonth.getMonth(), yearMonth.getCalendar(), yearMonth.getDay(), this, errorBranch);
             }
             TruffleString calendar = getCalendarSlotValueWithISODefault.execute(item);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMMCY);
+            List<TruffleString> fieldNames = TemporalUtil.listMMCY;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getLanguage().getJSContext(), item, fieldNames, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);

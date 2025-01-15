@@ -113,7 +113,6 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile valueIsPlainDateTime,
                     @Cached InlinedConditionProfile timeZoneAvailable,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarWithISODefaultNode,
@@ -145,7 +144,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
 
             calendar = getTemporalCalendarWithISODefaultNode.execute(value);
 
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
+            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
             addFieldNames(fieldNames);
 
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, value, fieldNames, TemporalUtil.listEmpty);

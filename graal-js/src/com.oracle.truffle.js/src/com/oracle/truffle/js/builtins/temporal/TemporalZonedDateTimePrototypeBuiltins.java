@@ -92,7 +92,6 @@ import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddZonedDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalYearMonthFromFieldsNode;
@@ -564,7 +563,6 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached("create(getContext(), HOUR)") CreateDataPropertyNode createHourDataPropertyNode,
                         @Cached("create(getContext(), MINUTE)") CreateDataPropertyNode createMinuteDataPropertyNode,
                         @Cached("create(getContext(), SECOND)") CreateDataPropertyNode createSecondDataPropertyNode,
@@ -591,7 +589,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
             long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(timeZone, epochNs);
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, instant, calendar, offsetNanoseconds);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
+            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), dateTime, fieldNames, TemporalUtil.listEmpty);
 
             createHourDataPropertyNode.executeVoid(fields, dateTime.getHour());
@@ -1070,14 +1068,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected Object toPlainYearMonth(JSTemporalZonedDateTimeObject zdt,
-                        @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                        @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
+                        @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode) {
             TruffleString calendar = zdt.getCalendar();
             TruffleString timeZone = zdt.getTimeZone();
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zdt.getNanoseconds());
             JSTemporalPlainDateTimeObject temporalDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
+            List<TruffleString> fieldNames = TemporalUtil.listMCY;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDateTime, fieldNames, TemporalUtil.listEmpty);
             return yearMonthFromFieldsNode.execute(calendar, fields, Overflow.CONSTRAIN);
         }
@@ -1096,14 +1093,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected Object toPlainMonthDay(JSTemporalZonedDateTimeObject zonedDateTime,
-                        @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
-                        @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
+                        @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode) {
             TruffleString calendar = zonedDateTime.getCalendar();
             TruffleString timeZone = zonedDateTime.getTimeZone();
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
             JSTemporalPlainDateTimeObject temporalDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMC);
+            List<TruffleString> fieldNames = TemporalUtil.listDMC;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDateTime, fieldNames, TemporalUtil.listEmpty);
             return monthDayFromFieldsNode.execute(calendar, fields, Overflow.CONSTRAIN);
         }
