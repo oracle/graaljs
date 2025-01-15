@@ -264,7 +264,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected JSTemporalPlainTimeObject with(JSTemporalPlainTimeObject temporalTime, Object temporalTimeLike, Object optionsParam,
+        protected JSTemporalPlainTimeObject with(JSTemporalPlainTimeObject temporalTime, Object temporalTimeLike, Object options,
                         @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
                         @Cached JSToIntegerThrowOnInfinityNode toIntThrows,
                         @Cached JSToIntegerAsIntNode toInt,
@@ -276,8 +276,6 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
-            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
             JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(temporalTimeLike, toIntThrows, getContext());
             int hour;
             int minute;
@@ -321,6 +319,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             } else {
                 nanosecond = temporalTime.getNanosecond();
             }
+            JSDynamicObject resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
             JSTemporalDurationRecord result = TemporalUtil.regulateTime(hour, minute, second, millisecond, microsecond, nanosecond, overflow);
             return JSTemporalPlainTime.create(getContext(), getRealm(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
