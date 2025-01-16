@@ -79,10 +79,10 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
         return execute(value, Undefined.instance);
     }
 
-    public abstract JSTemporalPlainDateObject execute(Object value, JSDynamicObject options);
+    public abstract JSTemporalPlainDateObject execute(Object value, Object options);
 
     @Specialization
-    public JSTemporalPlainDateObject toTemporalDate(Object itemParam, JSDynamicObject optionsParam,
+    public JSTemporalPlainDateObject toTemporalDate(Object itemParam, Object options,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isPlainDateTimeProfile,
@@ -94,14 +94,15 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSContext ctx = getLanguage().getJSContext();
-        JSDynamicObject options = optionsParam;
         JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(itemParam))) {
             JSDynamicObject item = (JSDynamicObject) itemParam;
             if (isPlainDateProfile.profile(this, JSTemporalPlainDate.isJSTemporalPlainDate(item))) {
                 Object resolvedOptions = getOptionsObject.execute(options);
                 TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
-                return (JSTemporalPlainDateObject) item;
+                JSTemporalPlainDateObject pd = (JSTemporalPlainDateObject) item;
+                return JSTemporalPlainDate.create(ctx, realm,
+                                pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), this, errorBranch);
             } else if (isZonedDateTimeProfile.profile(this, JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item))) {
                 var zdt = (JSTemporalZonedDateTimeObject) item;
                 var instant = JSTemporalInstant.create(ctx, realm, zdt.getNanoseconds());
