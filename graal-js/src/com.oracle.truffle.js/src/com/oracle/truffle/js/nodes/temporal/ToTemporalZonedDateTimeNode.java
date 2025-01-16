@@ -82,10 +82,10 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
     protected ToTemporalZonedDateTimeNode() {
     }
 
-    public abstract JSTemporalZonedDateTimeObject execute(Object value, JSDynamicObject options);
+    public abstract JSTemporalZonedDateTimeObject execute(Object value, Object options);
 
     @Specialization
-    public JSTemporalZonedDateTimeObject toTemporalZonedDateTime(Object item, JSDynamicObject options,
+    public JSTemporalZonedDateTimeObject toTemporalZonedDateTime(Object item, Object options,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
@@ -108,7 +108,12 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         OffsetOption offsetOption;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(item))) {
-                return (JSTemporalZonedDateTimeObject) item;
+                Object resolvedOptions = getOptionsObject.execute(options);
+                TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
+                TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
+                TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
+                return JSTemporalZonedDateTime.create(ctx, realm, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
 
             calendar = getCalendarSlotValueWithISODefault.execute(item);
