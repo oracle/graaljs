@@ -56,7 +56,8 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       + self.cd_run
       + self.graalvmtests_run
       + (if std.length(self.cd_run) > 0 then [['mx', 'sversions']] else []),
-    timelimit: error "timelimit not set for '" + (if std.objectHasAll(self, 'name') then self.name else '') + "'",
+    timelimit: error "timelimit not set for '" + self.name + "'",
+    defined_in: error "defined_in not set for '" + self.name + "'",
     diskspace_required: '30GB',
     environment+: (if 'os' in self && self.os == 'darwin' then {'SYSTEM_VERSION_COMPAT': '0'} else {}), # ensure correct platform.mac_ver()
   },
@@ -151,6 +152,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     targets: ['ondemand'],
     timelimit: if 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then '1:30:00' else '1:00:00',
     notify_groups: ['javascript'],
+    defined_in: std.thisFile,
   },
 
   local use_js_graalvm_artifact(build) =

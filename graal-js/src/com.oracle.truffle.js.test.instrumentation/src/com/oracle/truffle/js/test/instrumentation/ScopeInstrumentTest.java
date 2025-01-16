@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -337,7 +337,7 @@ public class ScopeInstrumentTest {
         return list;
     }
 
-    private static class DefaultScopeTester implements ScopeTester {
+    private static final class DefaultScopeTester implements ScopeTester {
 
         @Override
         public void testScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {

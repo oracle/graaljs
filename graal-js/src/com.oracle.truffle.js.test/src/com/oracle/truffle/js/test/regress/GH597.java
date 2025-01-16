@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,7 +117,7 @@ public class GH597 {
                         build();
     }
 
-    private static class TestFileSystem implements FileSystem {
+    private static final class TestFileSystem implements FileSystem {
 
         private final Map<String, String> files;
 

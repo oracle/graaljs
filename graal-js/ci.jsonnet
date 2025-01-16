@@ -5,8 +5,10 @@ local ci = import '../ci.jsonnet';
   local graalJs = ci.jobtemplate + {
     cd:: 'graal-js',
     suite_prefix:: 'js', # for build job names
+    components+: ['js'],
     // increase default timelimit on windows and darwin-amd64
     timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:30:00' else '45:00',
+    defined_in: std.thisFile,
   },
 
   local compiler = {suiteimports+:: ['compiler']},

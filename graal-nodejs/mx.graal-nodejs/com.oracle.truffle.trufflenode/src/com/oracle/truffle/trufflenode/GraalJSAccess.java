@@ -3300,14 +3300,14 @@ public final class GraalJSAccess {
         }
     }
 
-    private static class IsolatePromiseHook implements PromiseHook {
+    private static final class IsolatePromiseHook implements PromiseHook {
         @Override
         public void promiseChanged(int changeType, JSDynamicObject promise, JSDynamicObject parentPromise) {
             NativeAccess.notifyPromiseHook(changeType, promise, parentPromise);
         }
     }
 
-    private static class NativePromiseRejectionTracker implements PromiseRejectionTracker {
+    private static final class NativePromiseRejectionTracker implements PromiseRejectionTracker {
         @Override
         public void promiseRejected(JSDynamicObject promise, Object value) {
             NativeAccess.notifyPromiseRejectionTracker(
@@ -3341,14 +3341,14 @@ public final class GraalJSAccess {
         }
     }
 
-    private static class NativeImportMetaInitializer implements ImportMetaInitializer {
+    private static final class NativeImportMetaInitializer implements ImportMetaInitializer {
         @Override
         public void initializeImportMeta(JSDynamicObject importMeta, JSModuleRecord module) {
             NativeAccess.notifyImportMetaInitializer(importMeta, module);
         }
     }
 
-    private static class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
+    private static final class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
         @Override
         public JSDynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
@@ -3366,7 +3366,7 @@ public final class GraalJSAccess {
         }
     }
 
-    private static class NativePrepareStackTraceCallback implements PrepareStackTraceCallback {
+    private static final class NativePrepareStackTraceCallback implements PrepareStackTraceCallback {
         @Override
         public Object prepareStackTrace(JSRealm realm, JSDynamicObject error, JSDynamicObject structuredStackTrace) {
             return NativeAccess.executePrepareStackTraceCallback(realm, error, structuredStackTrace);
