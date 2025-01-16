@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ import com.oracle.truffle.js.runtime.Strings;
  * &quot;<code>A</code>&quot; through &quot;<code>Z</code>&quot; and &quot;<code>0</code>&quot;
  * through &quot;<code>9</code>&quot; remain the same.
  * <li>The special characters in the {@code mark} set in the case of {@code encodeURIComponent}, and
- * additionally those in the {@code reserved} set plus &quot;{@code #}&quot in the case of
+ * additionally those in the {@code reserved} set plus &quot;{@code #}&quot; in the case of
  * {@code encodeURI}; remain the same.
  * <li>The space character &quot;<code>&nbsp;</code>&quot; is converted into a plus sign &quot;
  * <code>+</code>&quot;.
