@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,12 +101,12 @@ public class GR36103 {
         return builder.build();
     }
 
-    public static class TestFileSystem implements FileSystem {
+    private static final class TestFileSystem implements FileSystem {
 
         private final String moduleBody;
         private final String packageJson;
 
-        public TestFileSystem(String moduleBody, String packageJson) {
+        TestFileSystem(String moduleBody, String packageJson) {
             this.moduleBody = moduleBody;
             this.packageJson = packageJson;
         }

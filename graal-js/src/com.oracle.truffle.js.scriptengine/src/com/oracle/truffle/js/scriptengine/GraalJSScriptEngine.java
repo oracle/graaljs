@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -720,7 +720,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     }
 
-    private static class DelegatingOutputStream extends OutputStream implements Proxy {
+    private static final class DelegatingOutputStream extends OutputStream implements Proxy {
 
         private Writer writer;
         private CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
