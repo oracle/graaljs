@@ -79,10 +79,10 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     protected ToTemporalMonthDayNode() {
     }
 
-    public abstract JSTemporalPlainMonthDayObject execute(Object item, JSDynamicObject optParam);
+    public abstract JSTemporalPlainMonthDayObject execute(Object item, Object optParam);
 
     @Specialization
-    public JSTemporalPlainMonthDayObject toTemporalMonthDay(Object item, JSDynamicObject options,
+    public JSTemporalPlainMonthDayObject toTemporalMonthDay(Object item, Object options,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile returnPlainMonthDay,
@@ -99,7 +99,9 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
             if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(itemObj)) {
                 Object resolvedOptions = getOptionsObject.execute(options);
                 TemporalUtil.getTemporalOverflowOption(resolvedOptions, temporalGetOptionNode);
-                return (JSTemporalPlainMonthDayObject) itemObj;
+                JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) itemObj;
+                return JSTemporalPlainMonthDay.create(ctx, realm,
+                                pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear(), this, errorBranch);
             }
             TruffleString calendar;
             if (getCalendarPath.profile(this, JSTemporalPlainDate.isJSTemporalPlainDate(itemObj) ||
