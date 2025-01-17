@@ -74,10 +74,10 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
     protected ToTemporalDateTimeNode() {
     }
 
-    public abstract JSTemporalPlainDateTimeObject execute(Object value, JSDynamicObject options);
+    public abstract JSTemporalPlainDateTimeObject execute(Object value, Object options);
 
     @Specialization
-    public JSTemporalPlainDateTimeObject toTemporalDateTime(Object item, JSDynamicObject options,
+    public JSTemporalPlainDateTimeObject toTemporalDateTime(Object item, Object options,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isPlainDateTimeProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
@@ -96,7 +96,11 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             if (isPlainDateTimeProfile.profile(this, item instanceof JSTemporalPlainDateTimeObject)) {
                 Object resolvedOptions = getOptionsNode.execute(options);
                 TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
-                return (JSTemporalPlainDateTimeObject) item;
+                JSTemporalPlainDateTimeObject pdt = (JSTemporalPlainDateTimeObject) item;
+                return JSTemporalPlainDateTime.create(ctx, realm,
+                                pdt.getYear(), pdt.getMonth(), pdt.getDay(),
+                                pdt.getHour(), pdt.getMinute(), pdt.getSecond(), pdt.getMillisecond(),
+                                pdt.getMicrosecond(), pdt.getNanosecond(), pdt.getCalendar(), this, errorBranch);
             } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(item))) {
                 var zdt = (JSTemporalZonedDateTimeObject) item;
                 var instant = JSTemporalInstant.create(ctx, realm, zdt.getNanoseconds());
