@@ -15,11 +15,14 @@
     ]
   },
   {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUResourceBundle$2",
+    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUResourceBundle",
     "methods" : [
-        { "name" : "run",
-          "justification" : "The ICUResourceBundle#addBundleBaseNamesFromClassLoader loads resources using class loader, dynamic classloading is not supported by SVM.",
+        { "name" : "addBundleBaseNamesFromClassLoader",
+          "justification" : "Loads resources using class loader, dynamic classloading is not supported by SVM.",
           "parameterTypes" : [
+            "java.lang.String",
+            "java.lang.ClassLoader",
+            "java.util.Set"
         ]}
     ]
   },
