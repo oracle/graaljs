@@ -578,12 +578,9 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
-            JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
-
-            TruffleString calendar = zonedDateTime.getCalendar();
-
             BigInt epochNs = zonedDateTime.getNanoseconds();
             TruffleString timeZone = zonedDateTime.getTimeZone();
+            TruffleString calendar = zonedDateTime.getCalendar();
 
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
@@ -606,6 +603,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             fields = TemporalUtil.calendarMergeFields(getContext(), calendar, fields, partialZonedDateTime);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listOffset);
 
+            JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
             OffsetOption offset = TemporalUtil.toTemporalOffset(resolvedOptions, PREFER, getOptionNode, equalNode);
             Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
