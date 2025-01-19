@@ -1078,6 +1078,10 @@
     "status" : "FAIL",
     "comment" : "Uses d8.serializer.[de]serialize"
   }, {
+    "filePath" : "mjsunit/regress/regress-1385368.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
     "filePath" : "mjsunit/regress/regress-1394663.js",
     "status" : "FAIL",
     "comment" : "Uses console.profile(), console.profileEnd(), and d8.profiler.setOnProfileEndListener()"
@@ -4233,17 +4237,85 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-11-28"
   }, {
+    "filePath" : "mjsunit/temporal/calendar-date-add.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-date-from-fields.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-date-until.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-day-of-week.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-day-of-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-day.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-days-in-month.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-days-in-week.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-days-in-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
     "filePath" : "mjsunit/temporal/calendar-fields.js",
     "status" : "FAIL",
     "comment" : "Passes fields that are no longer valid to Calendar.prototype.fields()."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-from.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-in-leap-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-merge-fields.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-month-code.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
   }, {
     "filePath" : "mjsunit/temporal/calendar-month-day-from-fields.js",
     "status" : "FAIL",
     "comment" : "Obsolete/off-spec test."
   }, {
-    "filePath" : "mjsunit/temporal/date-totemporalinstant.js",
+    "filePath" : "mjsunit/temporal/calendar-month.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-months-in-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-year-month-from-fields.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
   }, {
     "filePath" : "mjsunit/temporal/duration-from.js",
     "status" : "FAIL",
@@ -4472,6 +4544,10 @@
     "filePath" : "mjsunit/temporal/plain-date-with.js",
     "status" : "FAIL",
     "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/time-zone-constructor.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
   }, {
     "filePath" : "mjsunit/test-builtins-setup.js",
     "status" : "FAIL",
