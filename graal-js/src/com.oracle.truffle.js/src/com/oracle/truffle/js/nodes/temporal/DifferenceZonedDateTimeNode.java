@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -59,7 +58,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
@@ -76,14 +74,13 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
 
     public abstract NormalizedDurationRecord execute(BigInt ns1, BigInt ns2,
                     TruffleString timeZone, TruffleString calendar,
-                    Unit largestUnit, JSDynamicObject options, JSTemporalPlainDateTimeObject startDateTime);
+                    Unit largestUnit, JSTemporalPlainDateTimeObject startDateTime);
 
     @Specialization
     final NormalizedDurationRecord differenceZonedDateTime(BigInt ns1, BigInt ns2,
                     TruffleString timeZone, TruffleString calendar,
-                    Unit largestUnit, JSDynamicObject options, JSTemporalPlainDateTimeObject startDateTime,
-                    @Cached TemporalDifferenceDateNode differenceDateNode,
-                    @Cached("createKeys(getJSContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                    Unit largestUnit, JSTemporalPlainDateTimeObject startDateTime,
+                    @Cached TemporalDifferenceDateNode differenceDateNode) {
         int sign = ns2.compareTo(ns1);
         if (sign == 0) { // ns1 == ns2
             return new NormalizedDurationRecord(0, 0, 0, 0, TemporalUtil.zeroTimeDuration());

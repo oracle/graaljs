@@ -389,7 +389,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
             JSRealm realm = getRealm();
             var roundedInstant = JSTemporalInstant.create(getContext(), realm, roundedNs);
-            return TemporalUtil.temporalInstantToString(getContext(), realm, roundedInstant, timeZone, precision.getPrecision());
+            return TemporalUtil.temporalInstantToString(roundedInstant, timeZone, precision.getPrecision());
         }
 
         @SuppressWarnings("unused")
@@ -408,7 +408,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @SuppressWarnings("unused")
         @Specialization
         protected TruffleString toLocaleString(JSTemporalInstantObject instant) {
-            return TemporalUtil.temporalInstantToString(getContext(), getRealm(), instant, Undefined.instance, AUTO);
+            return TemporalUtil.temporalInstantToString(instant, Undefined.instance, AUTO);
         }
 
         @Specialization(guards = "!isJSTemporalInstant(thisObj)")
@@ -425,8 +425,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalZonedDateTimeObject toZonedDateTimeISO(JSTemporalInstantObject instant, Object timeZoneParam,
-                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
-                        @Cached InlinedBranchProfile errorBranch) {
+                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier) {
             TruffleString timeZone = toTimeZoneIdentifier.execute(timeZoneParam);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, TemporalConstants.ISO8601);
         }

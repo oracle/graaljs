@@ -154,7 +154,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
             }
-            if (!TemporalUtil.isBuiltinCalendar((TruffleString) calendar)) {
+            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }

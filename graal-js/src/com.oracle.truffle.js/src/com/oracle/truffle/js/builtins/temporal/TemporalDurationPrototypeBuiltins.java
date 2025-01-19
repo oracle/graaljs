@@ -102,7 +102,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -442,9 +441,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                     0, 0, 0, 0, result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(), result.nanoseconds(),
                                     this, errorBranch);
                 } else {
-                    JSObject emptyOptions = JSOrdinary.createWithNullPrototype(ctx);
                     NormalizedDurationRecord diffResult = differenceZonedDateTimeNode.execute(
-                                    zonedRelativeTo.getNanoseconds(), endNs, timeZone, calendar, largestUnit, emptyOptions, startDateTime);
+                                    zonedRelativeTo.getNanoseconds(), endNs, timeZone, calendar, largestUnit, startDateTime);
                     TimeDurationRecord timeResult = TemporalUtil.balanceTimeDuration(diffResult.normalizedTimeTotalNanoseconds(), Unit.HOUR);
                     return JSTemporalDuration.createTemporalDuration(ctx, realm,
                                     diffResult.years(), diffResult.months(), diffResult.weeks(), diffResult.days(),
@@ -568,7 +566,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             BigInt norm = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            JSObject emptyOptions = JSOrdinary.createWithNullPrototype(ctx);
 
             JSTemporalDurationRecord roundResult;
             if (relativeToIsZonedDateTime.profile(node, zonedRelativeTo != null)) {
@@ -580,7 +577,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 norm, precalculatedPlainDateTime);
 
                 var roundRecord = differenceZonedDateTimeWithRounding.execute(relativeEpochNs, targetEpochNs, calendar, timeZone,
-                                precalculatedPlainDateTime, emptyOptions, largestUnit, roundingIncrement, smallestUnit, roundingMode);
+                                precalculatedPlainDateTime, largestUnit, roundingIncrement, smallestUnit, roundingMode);
                 roundResult = roundRecord.duration();
             } else if (relativeToIsZonedDateTime.profile(node, plainRelativeTo != null)) {
                 TruffleString calendar = plainRelativeTo.getCalendar();
@@ -672,7 +669,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             BigInt norm = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            JSObject emptyOptions = JSOrdinary.createWithNullPrototype(getContext());
 
             double total;
             if (zonedRelativeTo != null) {
@@ -684,7 +680,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 norm, precalculatedPlainDateTime);
 
                 var roundRecord = differenceZonedDateTimeWithRounding.execute(relativeEpochNs, targetEpochNs, calendar, timeZone,
-                                precalculatedPlainDateTime, emptyOptions, unit, 1, unit, RoundingMode.TRUNC);
+                                precalculatedPlainDateTime, unit, 1, unit, RoundingMode.TRUNC);
                 total = roundRecord.total();
             } else if (plainRelativeTo != null) {
                 TruffleString calendar = plainRelativeTo.getCalendar();

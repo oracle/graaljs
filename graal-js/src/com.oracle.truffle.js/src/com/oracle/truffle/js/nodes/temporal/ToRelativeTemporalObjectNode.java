@@ -115,8 +115,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
-                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarWithISODefaultNode,
-                    @Cached TemporalGetOptionNode getOptionNode) {
+                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarWithISODefaultNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(this, value == Undefined.instance)) {
             return none();
@@ -178,7 +177,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
             }
-            if (!TemporalUtil.isBuiltinCalendar((TruffleString) calendar)) {
+            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }

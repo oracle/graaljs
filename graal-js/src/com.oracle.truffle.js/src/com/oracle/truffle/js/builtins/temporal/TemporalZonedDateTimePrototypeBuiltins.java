@@ -403,10 +403,10 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zdt.getNanoseconds());
             TruffleString timeZone = zdt.getTimeZone();
-            return TemporalUtil.builtinTimeZoneGetOffsetStringFor(getContext(), realm, timeZone, instant);
+            return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZone, instant);
         }
 
-        private double getterOffsetNanoseconds(JSTemporalZonedDateTimeObject zdt) {
+        private static double getterOffsetNanoseconds(JSTemporalZonedDateTimeObject zdt) {
             return TemporalUtil.getOffsetNanosecondsFor(zdt.getTimeZone(), zdt.getNanoseconds());
         }
 
@@ -831,7 +831,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             var instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
             var precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
             var resultRecord = differenceZonedDateTimeWithRounding.execute(zonedDateTime.getNanoseconds(), other.getNanoseconds(), calendar, timeZone,
-                            precalculatedPlainDateTime, resolvedOptions, largestUnit, settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
+                            precalculatedPlainDateTime, largestUnit, settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
             JSTemporalDurationRecord result = resultRecord.duration();
 
             return JSTemporalDuration.createTemporalDuration(getContext(), realm,
@@ -1122,7 +1122,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             var calendar = zdt.getCalendar();
             TruffleString timeZone = zdt.getTimeZone();
             JSTemporalPlainDateTimeObject dt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
-            TruffleString offset = TemporalUtil.builtinTimeZoneGetOffsetStringFor(getContext(), realm, timeZone, instant);
+            TruffleString offset = TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZone, instant);
 
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, calendar);
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, TemporalConstants.ISO_DAY, dt.getDay());

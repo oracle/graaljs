@@ -51,7 +51,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDurationWithTotalRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
@@ -68,13 +67,13 @@ public abstract class DifferenceZonedDateTimeWithRoundingNode extends JavaScript
 
     public abstract TemporalDurationWithTotalRecord execute(BigInt ns1, BigInt ns2,
                     TruffleString calendar, TruffleString timeZone,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject resolvedOptions,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime,
                     Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode);
 
     @Specialization
     static TemporalDurationWithTotalRecord differenceZonedDateTimeWithRounding(BigInt ns1, BigInt ns2,
                     TruffleString calendar, TruffleString timeZone,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject resolvedOptions,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime,
                     Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode,
                     @Cached DifferenceZonedDateTimeNode differenceZonedDateTime,
                     @Cached RoundRelativeDurationNode roundRelativeDuration) {
@@ -87,7 +86,7 @@ public abstract class DifferenceZonedDateTimeWithRoundingNode extends JavaScript
             return new TemporalDurationWithTotalRecord(durationRecord, diffRecord.total());
         }
 
-        var difference = differenceZonedDateTime.execute(ns1, ns2, timeZone, calendar, largestUnit, resolvedOptions, precalculatedPlainDateTime);
+        var difference = differenceZonedDateTime.execute(ns1, ns2, timeZone, calendar, largestUnit, precalculatedPlainDateTime);
         boolean roundingGranularityIsNoop = smallestUnit == Unit.NANOSECOND && roundingIncrement == 1;
         if (roundingGranularityIsNoop) {
             TimeDurationRecord timeResult = TemporalUtil.balanceTimeDuration(difference.normalizedTimeTotalNanoseconds(), Unit.HOUR);

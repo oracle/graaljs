@@ -1422,8 +1422,8 @@ public final class TemporalUtil {
         return JSTemporalPlainDate.create(context, realm, result.year(), result.month(), result.day(), calendar, node, errorBranch);
     }
 
-    public static JSTemporalDurationObject calendarDateUntil(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two, Unit largestUnit,
-                    Node node, InlinedBranchProfile errorBranch) {
+    public static JSTemporalDurationObject calendarDateUntil(JSContext context, JSRealm realm, @SuppressWarnings("unused") TruffleString calendar, JSTemporalPlainDateObject one,
+                    JSTemporalPlainDateObject two, Unit largestUnit, Node node, InlinedBranchProfile errorBranch) {
         JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                         one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
                         largestUnit);
@@ -1649,7 +1649,7 @@ public final class TemporalUtil {
         return Boundaries.equals(toCalendarIdentifier.executeString(one), toCalendarIdentifier.executeString(two));
     }
 
-    public static JSDynamicObject calendarMergeFields(JSContext ctx, TruffleString calendar, JSDynamicObject fields, JSDynamicObject additionalFields) {
+    public static JSDynamicObject calendarMergeFields(JSContext ctx, @SuppressWarnings("unused") TruffleString calendar, JSDynamicObject fields, JSDynamicObject additionalFields) {
         return defaultMergeFields(ctx, fields, additionalFields);
     }
 
@@ -2667,7 +2667,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static TruffleString temporalInstantToString(JSContext ctx, JSRealm realm, JSTemporalInstantObject instant, Object timeZone, Object precision) {
+    public static TruffleString temporalInstantToString(JSTemporalInstantObject instant, Object timeZone, Object precision) {
         TruffleString outputTimeZone;
         if (timeZone == Undefined.instance) {
             outputTimeZone = UTC;
@@ -2690,7 +2690,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static TruffleString builtinTimeZoneGetOffsetStringFor(JSContext context, JSRealm realm, TruffleString timeZone, JSTemporalInstantObject instant) {
+    public static TruffleString builtinTimeZoneGetOffsetStringFor(TruffleString timeZone, JSTemporalInstantObject instant) {
         long offsetNanoseconds = getOffsetNanosecondsFor(timeZone, instant.getNanoseconds());
         return formatTimeZoneOffsetString(offsetNanoseconds);
     }
@@ -2952,7 +2952,7 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static BigInt builtinTimeZoneGetInstantFor(JSContext ctx, JSRealm realm, TruffleString timeZone, JSTemporalPlainDateTimeObject dateTime,
                     Disambiguation disambiguation) {
-        List<BigInt> possibleInstants = getPossibleEpochNanoseconds(ctx, realm, timeZone, dateTime);
+        List<BigInt> possibleInstants = getPossibleEpochNanoseconds(timeZone, dateTime);
         return disambiguatePossibleEpochNanoseconds(ctx, realm, possibleInstants, timeZone, dateTime, disambiguation);
     }
 
@@ -2996,7 +2996,7 @@ public final class TemporalUtil {
                             earlierDate.year(), earlierDate.month(), earlierDate.day(),
                             earlierTime.hour(), earlierTime.minute(), earlierTime.second(), earlierTime.millisecond(), earlierTime.microsecond(), earlierTime.nanosecond(),
                             ISO8601, null, InlinedBranchProfile.getUncached());
-            List<BigInt> possibleEpochNs2 = getPossibleEpochNanoseconds(ctx, realm, timeZone, earlierDateTime);
+            List<BigInt> possibleEpochNs2 = getPossibleEpochNanoseconds(timeZone, earlierDateTime);
             if (possibleEpochNs2.isEmpty()) {
                 throw Errors.createRangeError("nothing found");
             }
@@ -3014,7 +3014,7 @@ public final class TemporalUtil {
                         laterTime.hour(), laterTime.minute(), laterTime.second(), laterTime.millisecond(), laterTime.microsecond(), laterTime.nanosecond(),
                         ISO8601, null, InlinedBranchProfile.getUncached());
 
-        List<BigInt> possibleEpochNs2 = getPossibleEpochNanoseconds(ctx, realm, timeZone, laterDateTime);
+        List<BigInt> possibleEpochNs2 = getPossibleEpochNanoseconds(timeZone, laterDateTime);
         n = possibleEpochNs2.size();
         if (n == 0) {
             throw Errors.createRangeError("nothing found");
@@ -3037,7 +3037,7 @@ public final class TemporalUtil {
         }
         assert offsetBehaviour == OffsetBehaviour.OPTION;
         assert OffsetOption.PREFER == offsetOption || OffsetOption.REJECT == offsetOption;
-        List<BigInt> possibleEpochNanoseconds = getPossibleEpochNanoseconds(ctx, realm, timeZone, dateTime);
+        List<BigInt> possibleEpochNanoseconds = getPossibleEpochNanoseconds(timeZone, dateTime);
         for (BigInt candidate : possibleEpochNanoseconds) {
             long candidateNanoseconds = getOffsetNanosecondsFor(timeZone, candidate);
             if (candidateNanoseconds == offsetNs) {
@@ -3108,7 +3108,7 @@ public final class TemporalUtil {
         throw Errors.createRangeError("cannot consolidate calendars");
     }
 
-    private static List<BigInt> getPossibleEpochNanoseconds(JSContext context, JSRealm realm, TruffleString timeZone, JSTemporalPlainDateTimeObject dateTime) {
+    private static List<BigInt> getPossibleEpochNanoseconds(TruffleString timeZone, JSTemporalPlainDateTimeObject dateTime) {
         JSTemporalParserRecord rec = new TemporalParser(timeZone).parseTimeZoneIdentifier();
         if (rec.getTimeZoneIANAName() == null) {
             int offsetMinutes = (int) (parseTimeZoneOffsetNs(rec) / 60_000_000_000L);

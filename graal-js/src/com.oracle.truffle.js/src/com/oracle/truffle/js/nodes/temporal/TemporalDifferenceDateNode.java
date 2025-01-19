@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -72,8 +71,7 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
     @Specialization
     final JSTemporalDurationObject differenceDate(TruffleString calendar, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
                     Unit largestUnit,
-                    @Cached InlinedBranchProfile errorBranch,
-                    @Cached("createCall()") JSFunctionCallNode callDateUntilNode) {
+                    @Cached InlinedBranchProfile errorBranch) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
 

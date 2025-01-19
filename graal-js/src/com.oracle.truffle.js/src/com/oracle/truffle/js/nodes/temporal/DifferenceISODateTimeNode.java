@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -77,8 +76,7 @@ public abstract class DifferenceISODateTimeNode extends JavaScriptBaseNode {
                     int y1, int mon1, int d1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
                     TruffleString calendar, Unit largestUnit,
-                    @Cached TemporalDifferenceDateNode differenceDate,
-                    @Cached("createKeys(getJSContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                    @Cached TemporalDifferenceDateNode differenceDate) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
 

@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -69,9 +68,7 @@ public abstract class TemporalAddDateNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSTemporalPlainDateObject addDate(TruffleString calendar, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration, Overflow overflow,
-                    @Cached("createCall()") JSFunctionCallNode callDateAddNode,
-                    @Cached InlinedBranchProfile errorBranch,
-                    @Cached TemporalGetOptionNode getOptionNode) {
+                    @Cached InlinedBranchProfile errorBranch) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
         if (duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0) {

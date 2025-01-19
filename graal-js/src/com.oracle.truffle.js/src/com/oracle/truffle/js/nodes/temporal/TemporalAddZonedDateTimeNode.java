@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -88,7 +87,6 @@ public abstract class TemporalAddZonedDateTimeNode extends JavaScriptBaseNode {
                     TruffleString timeZone, TruffleString calendar,
                     double years, double months, double weeks, double days, BigInt norm,
                     JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject options,
-                    @Cached("createCall()") JSFunctionCallNode callDateAddNode,
                     @Cached InlinedBranchProfile errorBranch) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();

@@ -79,23 +79,6 @@ public class TemporalBuiltinsTest extends JSTest {
         assertEquals(nanosecond, nanosecondValue.asLong());
     }
 
-    private static void validatePlainTimeISOFields(Context ctx, long hour, long minute, long second, long millisecond, long microsecond,
-                    long nanosecond) {
-        final Value hourValue = ctx.eval(ID, "plainTimeIsoFields.isoHour");
-        final Value minuteValue = ctx.eval(ID, "plainTimeIsoFields.isoMinute");
-        final Value secondValue = ctx.eval(ID, "plainTimeIsoFields.isoSecond");
-        final Value millisecondValue = ctx.eval(ID, "plainTimeIsoFields.isoMillisecond");
-        final Value microsecondValue = ctx.eval(ID, "plainTimeIsoFields.isoMicrosecond");
-        final Value nanosecondValue = ctx.eval(ID, "plainTimeIsoFields.isoNanosecond");
-
-        assertEquals(hour, hourValue.asLong());
-        assertEquals(minute, minuteValue.asLong());
-        assertEquals(second, secondValue.asLong());
-        assertEquals(millisecond, millisecondValue.asLong());
-        assertEquals(microsecond, microsecondValue.asLong());
-        assertEquals(nanosecond, nanosecondValue.asLong());
-    }
-
     private static void validateDuration(Context ctx, long years, long months, long weeks, long days, long hours, long minutes,
                     long seconds, long milliseconds, long microseconds, long nanoseconds) {
         final Value yearsValue = ctx.eval(ID, "duration.years");
@@ -119,12 +102,6 @@ public class TemporalBuiltinsTest extends JSTest {
         assertEquals(milliseconds, millisecondsValue.asLong());
         assertEquals(microseconds, microsecondsValue.asLong());
         assertEquals(nanoseconds, nanosecondsValue.asLong());
-    }
-
-    private static void validateCalendar(Context ctx) {
-        final Value calendarIdValue = ctx.eval(ID, "calendar.id");
-
-        assertEquals("iso8601", calendarIdValue.asString());
     }
 
     private static void validatePlainDate(Context ctx, long year, long month, long day) {
