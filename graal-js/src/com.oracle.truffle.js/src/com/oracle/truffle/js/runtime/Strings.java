@@ -262,6 +262,7 @@ public final class Strings {
     public static final TruffleString TO_REVERSED = constant("toReversed");
     public static final TruffleString TO_SORTED = constant("toSorted");
     public static final TruffleString TO_SPLICED = constant("toSpliced");
+    public static final TruffleString TO_TEMPORAL_INSTANT = constant("toTemporalInstant");
 
     public static final TruffleString UC_ARRAY = constant("Array");
     public static final TruffleString UC_OBJECT = constant("Object");
@@ -478,7 +479,6 @@ public final class Strings {
     public static final TruffleString UC_Z = constant("Z");
     public static final TruffleString Z = constant("z");
     public static final TruffleString UC_ETC = constant("Etc");
-    public static final TruffleString UNICODE_MINUS_SIGN = constant("\u2212");
 
     public static final TruffleString MUTABLE = constant("mutable");
     public static final TruffleString ELEMENT = constant("element");

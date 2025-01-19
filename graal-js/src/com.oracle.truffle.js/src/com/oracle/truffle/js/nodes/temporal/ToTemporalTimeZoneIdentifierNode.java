@@ -42,54 +42,66 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.util.Pair;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Implementation of ToTemporalTimeZoneIdentifier() operation.
  */
 @GenerateUncached
-@ImportStatic(Strings.class)
 public abstract class ToTemporalTimeZoneIdentifierNode extends JavaScriptBaseNode {
 
     protected ToTemporalTimeZoneIdentifierNode() {
     }
 
-    @NeverDefault
-    public static ToTemporalTimeZoneIdentifierNode create() {
-        return ToTemporalTimeZoneIdentifierNodeGen.create();
-    }
+    public abstract TruffleString execute(Object temporalTimeZoneLike);
 
     @NeverDefault
     public static ToTemporalTimeZoneIdentifierNode getUncached() {
         return ToTemporalTimeZoneIdentifierNodeGen.getUncached();
     }
 
-    public abstract TruffleString executeString(Object timeZoneSlotValue);
-
     @Specialization
-    public TruffleString doString(TruffleString timeZoneSlotValue) {
-        return timeZoneSlotValue;
-    }
-
-    @Specialization(guards = "!isString(timeZoneSlotValue)")
-    public TruffleString doNonString(Object timeZoneSlotValue,
-                    @Cached(value = "create(ID_PROPERTY_NAME, getJSContext())", uncached = "getNullNode()") PropertyGetNode getIdNode,
-                    @Cached InlinedBranchProfile errorBranch) {
-        Object identifier = (getIdNode != null) ? getIdNode.getValue(timeZoneSlotValue) : JSRuntime.get(timeZoneSlotValue, Strings.ID_PROPERTY_NAME);
-        if (identifier instanceof TruffleString stringIdentifier) {
-            return stringIdentifier;
+    protected TruffleString toTemporalTimeZoneIdentifier(Object temporalTimeZoneLike,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedConditionProfile isTimeZoneProfile) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(temporalTimeZoneLike))) {
+            if (isTimeZoneProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(temporalTimeZoneLike))) {
+                return ((JSTemporalZonedDateTimeObject) temporalTimeZoneLike).getTimeZone();
+            } else {
+                errorBranch.enter(this);
+                throw TemporalErrors.createTypeErrorTemporalZonedDateTimeExpected();
+            }
+        }
+        if (temporalTimeZoneLike instanceof TruffleString identifier) {
+            JSTemporalTimeZoneRecord parseResult = TemporalUtil.parseTemporalTimeZoneString(identifier);
+            TruffleString offsetMinutes = parseResult.getOffsetString();
+            TruffleString name = parseResult.getName();
+            if (offsetMinutes != null && name == null) {
+                return TemporalUtil.formatTimeZoneOffsetString(TemporalUtil.parseTimeZoneOffsetString(offsetMinutes));
+            }
+            Pair<TruffleString, TruffleString> timeZoneIdentifierRecord = TemporalUtil.getAvailableNamedTimeZoneIdentifier(name);
+            if (timeZoneIdentifierRecord == null) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+            }
+            return timeZoneIdentifierRecord.getFirst();
         } else {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorNotAString(identifier);
+            throw Errors.createTypeErrorNotAString(temporalTimeZoneLike);
         }
     }
 

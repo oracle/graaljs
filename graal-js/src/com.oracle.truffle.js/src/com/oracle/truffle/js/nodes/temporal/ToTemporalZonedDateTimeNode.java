@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,19 +54,18 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -83,67 +82,66 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
     protected ToTemporalZonedDateTimeNode() {
     }
 
-    public abstract JSTemporalZonedDateTimeObject execute(Object value, JSDynamicObject options);
+    public abstract JSTemporalZonedDateTimeObject execute(Object value, Object options);
 
     @Specialization
-    public JSTemporalZonedDateTimeObject toTemporalZonedDateTime(Object item, JSDynamicObject options,
+    public JSTemporalZonedDateTimeObject toTemporalZonedDateTime(Object item, Object options,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
-                    @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
-                    @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
+                    @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsObject,
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
+                    @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
-                    @Cached TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
-                    @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
-        Object timeZone;
-        Object calendar;
+        TruffleString timeZone;
+        TruffleString calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
-        JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(options, Null.instance);
         OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
         MatchBehaviour matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
         TemporalUtil.Disambiguation disambiguation;
         OffsetOption offsetOption;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(item))) {
-                return (JSTemporalZonedDateTimeObject) item;
+                Object resolvedOptions = getOptionsObject.execute(options);
+                TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
+                TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
+                TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
+                return JSTemporalZonedDateTime.create(ctx, realm, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
 
             calendar = getCalendarSlotValueWithISODefault.execute(item);
-            Object dateFromFieldsMethod = lookupDateFromFields.execute(calendar);
-            Object fieldsMethod = lookupFields.execute(calendar);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFields(calendar, dateFromFieldsMethod, fieldsMethod);
 
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
+            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
             addFieldNames(fieldNames);
 
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listTimeZone);
             Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
-            timeZone = toTimeZoneSlotValue.execute(timeZoneObj);
+            timeZone = toTimeZoneIdentifier.execute(timeZoneObj);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
             if (offsetStringObj == Undefined.instance) {
                 offsetBehaviour = OffsetBehaviour.WALL;
             } else {
                 offsetString = (TruffleString) offsetStringObj;
             }
+            Object resolvedOptions = getOptionsObject.execute(options);
             disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
             offsetOption = TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, resolvedOptions, getOptionNode, dateFromFieldsNode);
+            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, overflow, dateFromFieldsNode);
         } else if (item instanceof TruffleString string) {
             ParseISODateTimeResult resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
             result = resultZDT;
             TruffleString timeZoneName = resultZDT.getTimeZoneResult().getName();
             assert timeZoneName != null;
             if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
-                timeZoneName = (TruffleString) toTimeZoneSlotValue.execute(timeZoneName);
+                timeZoneName = toTimeZoneIdentifier.execute(timeZoneName);
             }
             offsetString = resultZDT.getTimeZoneResult().getOffsetString();
             if (resultZDT.getTimeZoneResult().isZ()) {
@@ -151,16 +149,17 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             } else {
                 offsetBehaviour = OffsetBehaviour.WALL;
             }
-            timeZone = TemporalUtil.createTemporalTimeZone(ctx, realm, timeZoneName);
+            timeZone = timeZoneName;
             calendar = result.getCalendar();
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
             }
-            if (!TemporalUtil.isBuiltinCalendar((TruffleString) calendar)) {
+            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
+            Object resolvedOptions = getOptionsObject.execute(options);
             disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
             offsetOption = TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
             TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
@@ -172,9 +171,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         if (offsetBehaviour == OffsetBehaviour.OPTION) {
             offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
         }
-        var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
-                        result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZoneRec, disambiguation, offsetOption,
+                        result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offsetOption,
                         matchBehaviour);
         return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
     }

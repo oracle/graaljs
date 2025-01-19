@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -94,7 +95,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
-        JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm);
+        TruffleString calendar = TemporalConstants.ISO8601;
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSTemporalPlainTimeObject(shape, proto, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm, proto);

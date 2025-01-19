@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
@@ -63,15 +64,15 @@ public abstract class GetTemporalCalendarSlotValueWithISODefaultNode extends Jav
         return GetTemporalCalendarSlotValueWithISODefaultNodeGen.create();
     }
 
-    public abstract Object execute(Object item);
+    public abstract TruffleString execute(Object item);
 
     @Specialization
-    protected Object doJSTemporalCalendarHolder(JSTemporalCalendarHolder item) {
+    protected TruffleString doJSTemporalCalendarHolder(JSTemporalCalendarHolder item) {
         return item.getCalendar();
     }
 
     @Specialization(guards = "!isJSTemporalCalendarHolder(item)")
-    protected Object doOther(Object item,
+    protected TruffleString doOther(Object item,
                     @Cached("create(CALENDAR, getJSContext())") PropertyGetNode getCalendar,
                     @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue) {
         Object calendarLike = getCalendar.getValue(item);

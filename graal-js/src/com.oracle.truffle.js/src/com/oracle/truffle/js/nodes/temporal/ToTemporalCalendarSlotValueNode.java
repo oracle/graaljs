@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,12 +80,11 @@ public abstract class ToTemporalCalendarSlotValueNode extends JavaScriptBaseNode
         return ToTemporalCalendarSlotValueNodeGen.create(defaultValue);
     }
 
-    public abstract Object execute(Object temporalCalendarLike);
+    public abstract TruffleString execute(Object temporalCalendarLike);
 
     @Specialization
-    public Object toTemporalCalendarSlotValue(Object temporalCalendarLike,
+    public TruffleString toTemporalCalendarSlotValue(Object temporalCalendarLike,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached ObjectImplementsTemporalCalendarProtocolNode implementsCalendarProtocol,
                     @Cached TruffleString.FromJavaStringNode fromJavaString,
                     @Cached TruffleString.ToJavaStringNode toJavaString) {
         if (defaultValue != null && temporalCalendarLike == Undefined.instance) {
@@ -95,11 +94,7 @@ public abstract class ToTemporalCalendarSlotValueNode extends JavaScriptBaseNode
             if (temporalCalendarLike instanceof JSTemporalCalendarHolder calendarHolder) {
                 return calendarHolder.getCalendar();
             }
-            if (implementsCalendarProtocol.execute(temporalCalendarLike)) {
-                return temporalCalendarLike;
-            } else {
-                throw TemporalErrors.createTypeErrorTemporalCalendarExpected();
-            }
+            throw TemporalErrors.createTypeErrorTemporalCalendarExpected();
         }
         if (!(temporalCalendarLike instanceof TruffleString)) {
             throw Errors.createTypeErrorNotAString(temporalCalendarLike);

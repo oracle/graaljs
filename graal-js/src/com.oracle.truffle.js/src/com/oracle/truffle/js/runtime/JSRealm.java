@@ -93,6 +93,7 @@ import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
+import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltins;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.builtins.IteratorHelperPrototypeBuiltins;
@@ -181,7 +182,6 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -189,7 +189,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
@@ -316,42 +315,14 @@ public class JSRealm {
     private final JSDynamicObject temporalPlainDateTimePrototype;
     private final JSFunctionObject temporalDurationConstructor;
     private final JSDynamicObject temporalDurationPrototype;
-    private final JSFunctionObject temporalCalendarConstructor;
-    private final JSDynamicObject temporalCalendarPrototype;
     private final JSFunctionObject temporalPlainYearMonthConstructor;
     private final JSDynamicObject temporalPlainYearMonthPrototype;
     private final JSFunctionObject temporalPlainMonthDayConstructor;
     private final JSDynamicObject temporalPlainMonthDayPrototype;
     private final JSFunctionObject temporalInstantConstructor;
     private final JSDynamicObject temporalInstantPrototype;
-    private final JSFunctionObject temporalTimeZoneConstructor;
-    private final JSDynamicObject temporalTimeZonePrototype;
     private final JSFunctionObject temporalZonedDateTimeConstructor;
     private final JSDynamicObject temporalZonedDateTimePrototype;
-
-    private final Object temporalCalendarDateAddFunctionObject;
-    private final Object temporalCalendarDateFromFieldsFunctionObject;
-    private final Object temporalCalendarDateUntilFunctionObject;
-    private final Object temporalCalendarDayFunctionObject;
-    private final Object temporalCalendarFieldsFunctionObject;
-    private final Object temporalCalendarMergeFieldsFunctionObject;
-    private final Object temporalCalendarMonthDayFromFieldsFunctionObject;
-    private final Object temporalCalendarYearMonthFromFieldsFunctionObject;
-    private final Object temporalCalendarYearFunctionObject;
-    private final Object temporalCalendarMonthFunctionObject;
-    private final Object temporalCalendarMonthCodeFunctionObject;
-    private final Object temporalCalendarDayOfWeekFunctionObject;
-    private final Object temporalCalendarDayOfYearFunctionObject;
-    private final Object temporalCalendarWeekOfYearFunctionObject;
-    private final Object temporalCalendarYearOfWeekFunctionObject;
-    private final Object temporalCalendarDaysInWeekFunctionObject;
-    private final Object temporalCalendarDaysInMonthFunctionObject;
-    private final Object temporalCalendarDaysInYearFunctionObject;
-    private final Object temporalCalendarMonthsInYearFunctionObject;
-    private final Object temporalCalendarInLeapYearFunctionObject;
-
-    private final Object temporalTimeZoneGetOffsetNanosecondsForFunctionObject;
-    private final Object temporalTimeZoneGetPossibleInstantsForFunctionObject;
 
     // ES6:
     private final JSFunctionObject symbolConstructor;
@@ -1043,10 +1014,6 @@ public class JSRealm {
             this.temporalDurationConstructor = ctor.getFunctionObject();
             this.temporalDurationPrototype = ctor.getPrototype();
 
-            ctor = JSTemporalCalendar.createConstructor(this);
-            this.temporalCalendarConstructor = ctor.getFunctionObject();
-            this.temporalCalendarPrototype = ctor.getPrototype();
-
             ctor = JSTemporalPlainYearMonth.createConstructor(this);
             this.temporalPlainYearMonthConstructor = ctor.getFunctionObject();
             this.temporalPlainYearMonthPrototype = ctor.getPrototype();
@@ -1059,37 +1026,9 @@ public class JSRealm {
             this.temporalInstantConstructor = ctor.getFunctionObject();
             this.temporalInstantPrototype = ctor.getPrototype();
 
-            ctor = JSTemporalTimeZone.createConstructor(this);
-            this.temporalTimeZoneConstructor = ctor.getFunctionObject();
-            this.temporalTimeZonePrototype = ctor.getPrototype();
-
             ctor = JSTemporalZonedDateTime.createConstructor(this);
             this.temporalZonedDateTimeConstructor = ctor.getFunctionObject();
             this.temporalZonedDateTimePrototype = ctor.getPrototype();
-
-            this.temporalCalendarDateAddFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DATE_ADD);
-            this.temporalCalendarDateFromFieldsFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DATE_FROM_FIELDS);
-            this.temporalCalendarDateUntilFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DATE_UNTIL);
-            this.temporalCalendarDayFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAY);
-            this.temporalCalendarFieldsFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.FIELDS);
-            this.temporalCalendarMergeFieldsFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.MERGE_FIELDS);
-            this.temporalCalendarMonthDayFromFieldsFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.MONTH_DAY_FROM_FIELDS);
-            this.temporalCalendarYearMonthFromFieldsFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.YEAR_MONTH_FROM_FIELDS);
-            this.temporalCalendarYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.YEAR);
-            this.temporalCalendarMonthFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.MONTH);
-            this.temporalCalendarMonthCodeFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.MONTH_CODE);
-            this.temporalCalendarDayOfWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAY_OF_WEEK);
-            this.temporalCalendarDayOfYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAY_OF_YEAR);
-            this.temporalCalendarWeekOfYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.WEEK_OF_YEAR);
-            this.temporalCalendarYearOfWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.YEAR_OF_WEEK);
-            this.temporalCalendarDaysInWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_WEEK);
-            this.temporalCalendarDaysInMonthFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_MONTH);
-            this.temporalCalendarDaysInYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_YEAR);
-            this.temporalCalendarMonthsInYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.MONTHS_IN_YEAR);
-            this.temporalCalendarInLeapYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.IN_LEAP_YEAR);
-
-            this.temporalTimeZoneGetOffsetNanosecondsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalConstants.GET_OFFSET_NANOSECONDS_FOR);
-            this.temporalTimeZoneGetPossibleInstantsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalConstants.GET_POSSIBLE_INSTANTS_FOR);
         } else {
             this.temporalPlainTimeConstructor = null;
             this.temporalPlainTimePrototype = null;
@@ -1099,42 +1038,14 @@ public class JSRealm {
             this.temporalPlainDateTimePrototype = null;
             this.temporalDurationConstructor = null;
             this.temporalDurationPrototype = null;
-            this.temporalCalendarConstructor = null;
-            this.temporalCalendarPrototype = null;
             this.temporalPlainYearMonthConstructor = null;
             this.temporalPlainYearMonthPrototype = null;
             this.temporalPlainMonthDayConstructor = null;
             this.temporalPlainMonthDayPrototype = null;
             this.temporalInstantConstructor = null;
             this.temporalInstantPrototype = null;
-            this.temporalTimeZoneConstructor = null;
-            this.temporalTimeZonePrototype = null;
             this.temporalZonedDateTimeConstructor = null;
             this.temporalZonedDateTimePrototype = null;
-
-            this.temporalCalendarDateAddFunctionObject = null;
-            this.temporalCalendarDateFromFieldsFunctionObject = null;
-            this.temporalCalendarDateUntilFunctionObject = null;
-            this.temporalCalendarDayFunctionObject = null;
-            this.temporalCalendarFieldsFunctionObject = null;
-            this.temporalCalendarMergeFieldsFunctionObject = null;
-            this.temporalCalendarMonthDayFromFieldsFunctionObject = null;
-            this.temporalCalendarYearMonthFromFieldsFunctionObject = null;
-            this.temporalCalendarYearFunctionObject = null;
-            this.temporalCalendarMonthFunctionObject = null;
-            this.temporalCalendarMonthCodeFunctionObject = null;
-            this.temporalCalendarDayOfWeekFunctionObject = null;
-            this.temporalCalendarDayOfYearFunctionObject = null;
-            this.temporalCalendarWeekOfYearFunctionObject = null;
-            this.temporalCalendarYearOfWeekFunctionObject = null;
-            this.temporalCalendarDaysInWeekFunctionObject = null;
-            this.temporalCalendarDaysInMonthFunctionObject = null;
-            this.temporalCalendarDaysInYearFunctionObject = null;
-            this.temporalCalendarMonthsInYearFunctionObject = null;
-            this.temporalCalendarInLeapYearFunctionObject = null;
-
-            this.temporalTimeZoneGetOffsetNanosecondsForFunctionObject = null;
-            this.temporalTimeZoneGetPossibleInstantsForFunctionObject = null;
         }
 
         if (context.getLanguageOptions().shadowRealm()) {
@@ -1670,14 +1581,6 @@ public class JSRealm {
         return temporalDurationPrototype;
     }
 
-    public final JSFunctionObject getTemporalCalendarConstructor() {
-        return temporalCalendarConstructor;
-    }
-
-    public final JSDynamicObject getTemporalCalendarPrototype() {
-        return temporalCalendarPrototype;
-    }
-
     public final JSFunctionObject getTemporalPlainYearMonthConstructor() {
         return temporalPlainYearMonthConstructor;
     }
@@ -1702,108 +1605,12 @@ public class JSRealm {
         return temporalInstantPrototype;
     }
 
-    public JSFunctionObject getTemporalTimeZoneConstructor() {
-        return temporalTimeZoneConstructor;
-    }
-
-    public JSDynamicObject getTemporalTimeZonePrototype() {
-        return temporalTimeZonePrototype;
-    }
-
     public JSFunctionObject getTemporalZonedDateTimeConstructor() {
         return temporalZonedDateTimeConstructor;
     }
 
     public JSDynamicObject getTemporalZonedDateTimePrototype() {
         return temporalZonedDateTimePrototype;
-    }
-
-    public Object getTemporalCalendarDateAddFunctionObject() {
-        return temporalCalendarDateAddFunctionObject;
-    }
-
-    public Object getTemporalCalendarDateFromFieldsFunctionObject() {
-        return temporalCalendarDateFromFieldsFunctionObject;
-    }
-
-    public Object getTemporalCalendarDateUntilFunctionObject() {
-        return temporalCalendarDateUntilFunctionObject;
-    }
-
-    public Object getTemporalCalendarDayFunctionObject() {
-        return temporalCalendarDayFunctionObject;
-    }
-
-    public Object getTemporalCalendarFieldsFunctionObject() {
-        return temporalCalendarFieldsFunctionObject;
-    }
-
-    public Object getTemporalCalendarMergeFieldsFunctionObject() {
-        return temporalCalendarMergeFieldsFunctionObject;
-    }
-
-    public Object getTemporalCalendarMonthDayFromFieldsFunctionObject() {
-        return temporalCalendarMonthDayFromFieldsFunctionObject;
-    }
-
-    public Object getTemporalCalendarYearMonthFromFieldsFunctionObject() {
-        return temporalCalendarYearMonthFromFieldsFunctionObject;
-    }
-
-    public Object getTemporalCalendarYearFunctionObject() {
-        return temporalCalendarYearFunctionObject;
-    }
-
-    public Object getTemporalCalendarMonthFunctionObject() {
-        return temporalCalendarMonthFunctionObject;
-    }
-
-    public Object getTemporalCalendarMonthCodeFunctionObject() {
-        return temporalCalendarMonthCodeFunctionObject;
-    }
-
-    public Object getTemporalCalendarDayOfWeekFunctionObject() {
-        return temporalCalendarDayOfWeekFunctionObject;
-    }
-
-    public Object getTemporalCalendarDayOfYearFunctionObject() {
-        return temporalCalendarDayOfYearFunctionObject;
-    }
-
-    public Object getTemporalCalendarWeekOfYearFunctionObject() {
-        return temporalCalendarWeekOfYearFunctionObject;
-    }
-
-    public Object getTemporalCalendarYearOfWeekFunctionObject() {
-        return temporalCalendarYearOfWeekFunctionObject;
-    }
-
-    public Object getTemporalCalendarDaysInWeekFunctionObject() {
-        return temporalCalendarDaysInWeekFunctionObject;
-    }
-
-    public Object getTemporalCalendarDaysInMonthFunctionObject() {
-        return temporalCalendarDaysInMonthFunctionObject;
-    }
-
-    public Object getTemporalCalendarDaysInYearFunctionObject() {
-        return temporalCalendarDaysInYearFunctionObject;
-    }
-
-    public Object getTemporalCalendarMonthsInYearFunctionObject() {
-        return temporalCalendarMonthsInYearFunctionObject;
-    }
-
-    public Object getTemporalCalendarInLeapYearFunctionObject() {
-        return temporalCalendarInLeapYearFunctionObject;
-    }
-
-    public Object getTemporalTimeZoneGetOffsetNanosecondsForFunctionObject() {
-        return temporalTimeZoneGetOffsetNanosecondsForFunctionObject;
-    }
-
-    public Object getTemporalTimeZoneGetPossibleInstantsForFunctionObject() {
-        return temporalTimeZoneGetPossibleInstantsForFunctionObject;
     }
 
     public final JSDynamicObject getForeignArrayPrototype() {
@@ -2334,11 +2141,9 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainDate.CLASS_NAME, getTemporalPlainDateConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainDateTime.CLASS_NAME, getTemporalPlainDateTimeConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalDuration.CLASS_NAME, getTemporalDurationConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, JSTemporalCalendar.CLASS_NAME, getTemporalCalendarConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainYearMonth.CLASS_NAME, getTemporalPlainYearMonthConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainMonthDay.CLASS_NAME, getTemporalPlainMonthDayConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalInstant.CLASS_NAME, getTemporalInstantConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, JSTemporalTimeZone.CLASS_NAME, getTemporalTimeZoneConstructor(), flags);
         JSObjectUtil.putDataProperty(temporalObject, JSTemporalZonedDateTime.CLASS_NAME, getTemporalZonedDateTimeConstructor(), flags);
 
         JSObject nowObject = JSOrdinary.createInit(this);
@@ -2348,6 +2153,10 @@ public class JSRealm {
         JSObjectUtil.putToStringTag(nowObject, TemporalConstants.TEMPORAL_NOW_TO_STRING_TAG);
 
         putGlobalProperty(TemporalConstants.TEMPORAL, temporalObject);
+
+        // Date.prototype.toTemporalInstant
+        Object toTemporalInstantFn = lookupFunction(DatePrototypeBuiltins.BUILTINS, Strings.TO_TEMPORAL_INSTANT);
+        JSObjectUtil.putDataProperty(getDatePrototype(), Strings.TO_TEMPORAL_INSTANT, toTemporalInstantFn, JSAttributes.getDefaultNotEnumerable());
     }
 
     private JSDynamicObject createIntlObject() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 
 import java.util.EnumSet;
@@ -71,16 +70,11 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateWithNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
-import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.RoundRelativeDurationNode;
-import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDifferenceDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
@@ -90,19 +84,18 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
@@ -115,7 +108,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -268,35 +260,34 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected final Object dateGetter(JSTemporalPlainDateObject temporalDT,
-                        @Cached TemporalCalendarGetterNode calendarGetterNode) {
+        protected final Object dateGetter(JSTemporalPlainDateObject temporalDT) {
             switch (property) {
                 case year:
-                    return TemporalUtil.calendarYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return temporalDT.getYear();
                 case month:
-                    return TemporalUtil.calendarMonth(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return temporalDT.getMonth();
                 case day:
-                    return TemporalUtil.calendarDay(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return temporalDT.getDay();
                 case dayOfWeek:
-                    return TemporalUtil.calendarDayOfWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.toISODayOfWeek(temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay());
                 case dayOfYear:
-                    return TemporalUtil.calendarDayOfYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.toISODayOfYear(temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay());
                 case monthCode:
-                    return TemporalUtil.calendarMonthCode(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.buildISOMonthCode(temporalDT.getMonth());
                 case weekOfYear:
-                    return TemporalUtil.calendarWeekOfYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.weekOfToISOWeekOfYear(temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay());
                 case yearOfWeek:
-                    return TemporalUtil.calendarYearOfWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.yearOfToISOWeekOfYear(temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay());
                 case daysInWeek:
-                    return TemporalUtil.calendarDaysInWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return 7;
                 case daysInMonth:
-                    return TemporalUtil.calendarDaysInMonth(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.isoDaysInMonth(temporalDT.getYear(), temporalDT.getMonth());
                 case daysInYear:
-                    return TemporalUtil.calendarDaysInYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return TemporalUtil.isoDaysInYear(temporalDT.getYear());
                 case monthsInYear:
-                    return TemporalUtil.calendarMonthsInYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return 12;
                 case inLeapYear:
-                    return TemporalUtil.calendarInLeapYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                    return JSDate.isLeapYear(temporalDT.getYear());
             }
             throw Errors.shouldNotReachHere();
         }
@@ -318,25 +309,23 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected final JSTemporalPlainDateObject addDate(JSTemporalPlainDateObject date, Object temporalDurationLike, Object optParam,
+        protected final JSTemporalPlainDateObject addDate(JSTemporalPlainDateObject date, Object temporalDurationLike, Object options,
                         @Cached ToTemporalDurationNode toTemporalDurationNode,
-                        @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
+                        @Cached TemporalGetOptionNode getOptionNode,
                         @Cached TemporalAddDateNode addDateNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
+            TruffleString calendar = date.getCalendar();
             JSTemporalDurationObject duration = toTemporalDurationNode.execute(temporalDurationLike);
-            JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
             JSRealm realm = getRealm();
 
             if (sign < 0) {
                 duration = JSTemporalDuration.createNegatedTemporalDuration(getContext(), realm, duration);
             }
 
-            Object calendar = date.getCalendar();
-            Object dateAddMethod = lookupDateAdd.execute(calendar);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateAdd(calendar, dateAddMethod);
-
-            return addDateNode.execute(calendarRec, date, duration, options);
+            Object resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
+            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            return addDateNode.execute(calendar, date, duration, overflow);
         }
 
         @SuppressWarnings("unused")
@@ -355,11 +344,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected final JSTemporalPlainDateObject with(JSTemporalPlainDateObject temporalDate, Object temporalDateLike, Object options,
                         @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
-                        @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
-                        @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
-                        @Cached("createMergeFields()") CalendarMethodsRecordLookupNode lookupMergeFields,
-                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalGetOptionNode getOptionNode,
                         @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -368,21 +353,16 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
+            TruffleString calendar = temporalDate.getCalendar();
 
-            Object calendarSlotValue = temporalDate.getCalendar();
-            Object dateFromFieldsMethod = lookupDateFromFields.execute(calendarSlotValue);
-            Object fieldsMethod = lookupFields.execute(calendarSlotValue);
-            Object mergeFieldsMethod = lookupMergeFields.execute(calendarSlotValue);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFieldsAndMergeFields(calendarSlotValue, dateFromFieldsMethod, fieldsMethod, mergeFieldsMethod);
-
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listDMMCY);
+            List<TruffleString> fieldNames = TemporalUtil.listDMMCY;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
             JSDynamicObject partialDate = TemporalUtil.prepareTemporalFields(getContext(), temporalDateLike, fieldNames, null);
-            fields = TemporalUtil.calendarMergeFields(getContext(), getRealm(), calendarRec, fields,
-                            partialDate, this, errorBranch);
+            fields = TemporalUtil.calendarMergeFields(getContext(), calendar, fields, partialDate);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
-            return dateFromFieldsNode.execute(calendarRec, fields, resolvedOptions);
+            JSDynamicObject resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
+            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            return dateFromFieldsNode.execute(calendar, fields, overflow);
         }
 
         @SuppressWarnings("unused")
@@ -402,7 +382,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected final JSTemporalPlainDateObject withCalendar(JSTemporalPlainDateObject date, Object calendarParam,
                         @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached InlinedBranchProfile errorBranch) {
-            Object calendar = toCalendarSlotValue.execute(calendarParam);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarParam);
             return JSTemporalPlainDate.create(getContext(), getRealm(), date.getYear(), date.getMonth(), date.getDay(), calendar, this, errorBranch);
         }
 
@@ -426,11 +406,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected JSTemporalDurationObject differenceTemporalPlainDate(JSTemporalPlainDateObject temporalDate, Object otherObj, Object options,
                         @Bind Node node,
-                        @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
-                        @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
                         @Cached TemporalDifferenceDateNode differenceDate,
                         @Cached ToTemporalDateNode toTemporalDate,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached RoundRelativeDurationNode roundRelativeDuration,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
@@ -442,15 +419,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
 
-            JSObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateOrAuto, TemporalUtil.unitMappingDate, Unit.DAY, Unit.DAY);
 
-            Object dateAddMethod = lookupDateAdd.execute(temporalDate.getCalendar());
-            Object dateUntilMethod = lookupDateUntil.execute(temporalDate.getCalendar());
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateAddDateUntil(temporalDate.getCalendar(), dateAddMethod, dateUntilMethod);
-
-            JSRuntime.createDataPropertyOrThrow(resolvedOptions, LARGEST_UNIT, settings.largestUnit().toTruffleString());
-            JSTemporalDurationObject result = differenceDate.execute(calendarRec, temporalDate, other, settings.largestUnit(), resolvedOptions);
+            TruffleString calendar = temporalDate.getCalendar();
+            JSTemporalDurationObject result = differenceDate.execute(calendar, temporalDate, other, settings.largestUnit());
             NormalizedDurationRecord duration = TemporalUtil.createNormalizedDurationRecord(
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), TemporalUtil.zeroTimeDuration());
 
@@ -458,7 +431,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (!roundingGranularityIsNoop) {
                 BigInt destEpochNs = TemporalUtil.getUTCEpochNanoseconds(other.getYear(), other.getMonth(), other.getDay(), 0, 0, 0, 0, 0, 0);
                 var dateTime = new ISODateTimeRecord(temporalDate.getYear(), temporalDate.getMonth(), temporalDate.getDay(), 0, 0, 0, 0, 0, 0);
-                var roundedDuration = roundRelativeDuration.execute(duration, destEpochNs, dateTime, calendarRec, null,
+                var roundedDuration = roundRelativeDuration.execute(duration, destEpochNs, dateTime, calendar, null,
                                 settings.largestUnit(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode()).duration();
                 duration = new NormalizedDurationRecord(roundedDuration.getYears(), roundedDuration.getMonths(), roundedDuration.getWeeks(), roundedDuration.getDays(), BigInt.ZERO);
             }
@@ -554,7 +527,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 date.getYear(), date.getMonth(), date.getDay(),
                                 0, 0, 0, 0, 0, 0, date.getCalendar(), this, errorBranch);
             }
-            JSTemporalPlainTimeObject time = toTemporalTime.execute(temporalTimeObj, null);
+            JSTemporalPlainTimeObject time = toTemporalTime.execute(temporalTimeObj, Undefined.instance);
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
@@ -576,17 +549,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalPlainYearMonthObject toPlainYearMonth(JSTemporalPlainDateObject temporalDate,
-                        @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
-                        @Cached("createYearMonthFromFields()") CalendarMethodsRecordLookupNode lookupYearMonthFromFields,
-                        @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                        @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
-            Object calendarSlotValue = temporalDate.getCalendar();
-            Object fieldsMethod = lookupFields.execute(calendarSlotValue);
-            Object yearMonthFromFieldsMethod = lookupYearMonthFromFields.execute(calendarSlotValue);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forFieldsAndYearMonthFromFields(calendarSlotValue, fieldsMethod, yearMonthFromFieldsMethod);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listMCY);
+                        @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode) {
+            TruffleString calendar = temporalDate.getCalendar();
+            List<TruffleString> fieldNames = TemporalUtil.listMCY;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
-            return yearMonthFromFieldsNode.execute(calendarRec, fields, Undefined.instance);
+            return yearMonthFromFieldsNode.execute(calendar, fields, TemporalUtil.Overflow.CONSTRAIN);
         }
 
         @SuppressWarnings("unused")
@@ -604,17 +571,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalPlainMonthDayObject toPlainMonthDay(JSTemporalPlainDateObject temporalDate,
-                        @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
-                        @Cached("createMonthDayFromFields()") CalendarMethodsRecordLookupNode lookupMonthDayFromFields,
-                        @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
-                        @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
-            Object calendarSlotValue = temporalDate.getCalendar();
-            Object fieldsMethod = lookupFields.execute(calendarSlotValue);
-            Object monthDayFromFieldsMethod = lookupMonthDayFromFields.execute(calendarSlotValue);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forFieldsAndMonthDayFromFields(calendarSlotValue, fieldsMethod, monthDayFromFieldsMethod);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listDMC);
+                        @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode) {
+            TruffleString calendar = temporalDate.getCalendar();
+            List<TruffleString> fieldNames = TemporalUtil.listDMC;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
-            return monthDayFromFieldsNode.execute(calendarRec, fields, Undefined.instance);
+            return monthDayFromFieldsNode.execute(calendar, fields, TemporalUtil.Overflow.CONSTRAIN);
         }
 
         @SuppressWarnings("unused")
@@ -665,24 +626,22 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached InlinedConditionProfile timeZoneIsUndefined,
                         @Cached InlinedConditionProfile timeIsUndefined,
                         @Cached ToTemporalTimeNode toTemporalTime,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
-                        @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord,
+                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifierNode,
                         @Cached InlinedBranchProfile errorBranch) {
-            Object timeZone;
+            TruffleString timeZone;
             Object temporalTime;
             JSTemporalPlainDateTimeObject temporalDateTime;
             if (isObject(item)) {
-                JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, this, errorBranch);
-                Object timeZoneLike = JSObject.get(itemObj, TIME_ZONE);
+                Object timeZoneLike = JSRuntime.get(item, TIME_ZONE);
                 if (timeZoneIsUndefined.profile(this, timeZoneLike == Undefined.instance)) {
-                    timeZone = toTimeZoneSlotValue.execute(item);
+                    timeZone = toTimeZoneIdentifierNode.execute(item);
                     temporalTime = Undefined.instance;
                 } else {
-                    timeZone = toTimeZoneSlotValue.execute(timeZoneLike);
-                    temporalTime = JSObject.get(itemObj, TemporalConstants.PLAIN_TIME);
+                    timeZone = toTimeZoneIdentifierNode.execute(timeZoneLike);
+                    temporalTime = JSRuntime.get(item, TemporalConstants.PLAIN_TIME);
                 }
             } else {
-                timeZone = toTimeZoneSlotValue.execute(item);
+                timeZone = toTimeZoneIdentifierNode.execute(item);
                 temporalTime = Undefined.instance;
             }
 
@@ -693,16 +652,15 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 0, 0, 0, 0, 0, 0, td.getCalendar(),
                                 this, errorBranch);
             } else {
-                JSTemporalPlainTimeObject tt = toTemporalTime.execute(temporalTime, null);
+                JSTemporalPlainTimeObject tt = toTemporalTime.execute(temporalTime, Undefined.instance);
                 temporalDateTime = JSTemporalPlainDateTime.create(getContext(), realm,
                                 td.getYear(), td.getMonth(), td.getDay(),
                                 tt.getHour(), tt.getMinute(), tt.getSecond(), tt.getMillisecond(), tt.getMicrosecond(), tt.getNanosecond(), td.getCalendar(),
                                 this, errorBranch);
             }
 
-            var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
-            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZoneRec, temporalDateTime, Disambiguation.COMPATIBLE);
-            return JSTemporalZonedDateTime.create(getContext(), realm, instant.getNanoseconds(), timeZone, td.getCalendar());
+            BigInt epochNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
+            return JSTemporalZonedDateTime.create(getContext(), realm, epochNs, timeZone, td.getCalendar());
         }
 
         @SuppressWarnings("unused")

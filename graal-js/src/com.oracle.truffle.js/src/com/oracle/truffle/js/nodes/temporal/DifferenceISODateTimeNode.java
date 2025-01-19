@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,17 +44,15 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
@@ -71,15 +69,14 @@ public abstract class DifferenceISODateTimeNode extends JavaScriptBaseNode {
     public abstract NormalizedDurationRecord execute(
                     int y1, int mon1, int d1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    CalendarMethodsRecord calendarRec, Unit largestUnit, JSObject resolvedOptions);
+                    TruffleString calendar, Unit largestUnit);
 
     @Specialization
     final NormalizedDurationRecord differencePlainDateTimeWithRounding(
                     int y1, int mon1, int d1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    CalendarMethodsRecord calendarRec, Unit largestUnit, JSObject options,
-                    @Cached TemporalDifferenceDateNode differenceDate,
-                    @Cached("createKeys(getJSContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                    TruffleString calendar, Unit largestUnit,
+                    @Cached TemporalDifferenceDateNode differenceDate) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
 
@@ -93,14 +90,13 @@ public abstract class DifferenceISODateTimeNode extends JavaScriptBaseNode {
             timeDuration = TemporalUtil.add24HourDaysToNormalizedTimeDuration(timeDuration, -timeSign);
         }
 
-        var date1 = JSTemporalPlainDate.create(ctx, realm, adjustedDate.year(), adjustedDate.month(), adjustedDate.day(), calendarRec.receiver(), null,
+        var date1 = JSTemporalPlainDate.create(ctx, realm, adjustedDate.year(), adjustedDate.month(), adjustedDate.day(), calendar, null,
                         InlinedBranchProfile.getUncached());
-        var date2 = JSTemporalPlainDate.create(ctx, realm, y2, mon2, d2, calendarRec.receiver(), null, InlinedBranchProfile.getUncached());
+        var date2 = JSTemporalPlainDate.create(ctx, realm, y2, mon2, d2, calendar, null, InlinedBranchProfile.getUncached());
 
         Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.DAY, largestUnit);
-        JSObject untilOptions = TemporalUtil.mergeLargestUnitOption(ctx, namesNode, options, dateLargestUnit);
 
-        JSTemporalDurationObject dateDifference = differenceDate.execute(calendarRec, date1, date2, dateLargestUnit, untilOptions);
+        JSTemporalDurationObject dateDifference = differenceDate.execute(calendar, date1, date2, dateLargestUnit);
         double days = dateDifference.getDays();
         if (largestUnit != dateLargestUnit) {
             timeDuration = TemporalUtil.add24HourDaysToNormalizedTimeDuration(timeDuration, days);

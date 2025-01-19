@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,8 +54,6 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
@@ -68,17 +66,16 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
     protected TemporalGetOptionNode() {
     }
 
-    public abstract Object execute(JSDynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback);
+    public abstract Object execute(Object options, TruffleString property, OptionType types, List<?> values, Object fallback);
 
     @Specialization
-    protected Object getOption(JSDynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback,
+    protected Object getOption(Object options, TruffleString property, OptionType types, List<?> values, Object fallback,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isFallbackProfile,
                     @Cached(inline = true) JSToBooleanNode toBooleanNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached JSToNumberNode toNumberNode) {
-        assert JSRuntime.isObject(options);
-        Object value = JSObject.get(options, property);
+        Object value = JSRuntime.get(options, property);
         if (isFallbackProfile.profile(this, value == Undefined.instance)) {
             return fallback;
         }

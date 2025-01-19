@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,23 +42,17 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltinsFactory.JSTemporalZonedDateTimeCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltinsFactory.JSTemporalZonedDateTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalZonedDateTimeFunctionBuiltins.TemporalZonedDateTimeFunction> {
@@ -103,20 +97,8 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected JSTemporalZonedDateTimeObject from(Object item, Object optionsParam,
-                        @Cached ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
-                        @Cached TruffleString.EqualNode equalNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
-            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            if (JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item)) {
-                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode);
-                TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
-                TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT, getOptionNode, equalNode);
-                return JSTemporalZonedDateTime.create(getContext(), getRealm(), zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
-            }
+        protected JSTemporalZonedDateTimeObject from(Object item, Object options,
+                        @Cached ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
             return toTemporalZonedDateTime.execute(item, options);
         }
     }

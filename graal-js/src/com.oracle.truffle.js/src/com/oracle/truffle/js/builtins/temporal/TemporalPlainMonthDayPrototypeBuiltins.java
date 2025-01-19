@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -63,12 +61,8 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBui
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayWithNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
-import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
-import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
@@ -77,13 +71,11 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -187,13 +179,12 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected Object monthDayGetter(JSTemporalPlainMonthDayObject plainMD,
-                        @Cached TemporalCalendarGetterNode calendarGetterNode) {
+        protected Object monthDayGetter(JSTemporalPlainMonthDayObject plainMD) {
             switch (property) {
                 case day:
-                    return TemporalUtil.calendarDay(calendarGetterNode, plainMD.getCalendar(), plainMD);
+                    return plainMD.getDay();
                 case monthCode:
-                    return TemporalUtil.calendarMonthCode(calendarGetterNode, plainMD.getCalendar(), plainMD);
+                    return TemporalUtil.buildISOMonthCode(plainMD.getMonth());
             }
             throw Errors.shouldNotReachHere();
         }
@@ -254,32 +245,21 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected JSTemporalPlainDateObject toPlainDate(JSTemporalPlainMonthDayObject monthDay, Object item,
-                        @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
-                        @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
-                        @Cached("createMergeFields()") CalendarMethodsRecordLookupNode lookupMergeFields,
-                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                         @Cached InlinedBranchProfile errorBranch) {
             if (!isObject(item)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
             }
-            Object calendarSlotValue = monthDay.getCalendar();
-            Object dateFromFieldsMethod = lookupDateFromFields.execute(calendarSlotValue);
-            Object fieldsMethod = lookupFields.execute(calendarSlotValue);
-            Object mergeFieldsMethod = lookupMergeFields.execute(calendarSlotValue);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFieldsAndMergeFields(calendarSlotValue, dateFromFieldsMethod, fieldsMethod, mergeFieldsMethod);
-            List<TruffleString> receiverFieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listDMC);
+            TruffleString calendar = monthDay.getCalendar();
+            List<TruffleString> receiverFieldNames = TemporalUtil.listDMC;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), monthDay, receiverFieldNames, TemporalUtil.listEmpty);
-            List<TruffleString> inputFieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listY);
+            List<TruffleString> inputFieldNames = TemporalUtil.listY;
             JSDynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), TemporalUtil.toJSDynamicObject(item, this, errorBranch), inputFieldNames, TemporalUtil.listEmpty);
-            JSDynamicObject mergedFields = TemporalUtil.calendarMergeFields(getContext(), getRealm(), calendarRec, fields,
-                            inputFields, this, errorBranch);
+            JSDynamicObject mergedFields = TemporalUtil.calendarMergeFields(getContext(), calendar, fields, inputFields);
             List<TruffleString> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
             mergedFields = TemporalUtil.prepareTemporalFields(getContext(), mergedFields, mergedFieldNames, TemporalUtil.listEmpty);
-            JSDynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
-            return dateFromFieldsNode.execute(calendarRec, mergedFields, options);
+            return dateFromFieldsNode.execute(calendar, mergedFields, TemporalUtil.Overflow.CONSTRAIN);
         }
 
         @SuppressWarnings("unused")
@@ -320,12 +300,8 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected JSTemporalPlainMonthDayObject with(JSTemporalPlainMonthDayObject temporalDate, Object temporalMonthDayLike, Object options,
                         @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
-                        @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
-                        @Cached("createMergeFields()") CalendarMethodsRecordLookupNode lookupMergeFields,
-                        @Cached("createMonthDayFromFields()") CalendarMethodsRecordLookupNode lookupMonthDayFromFields,
                         @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
-                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (!isPartialTemporalObjectNode.execute(temporalMonthDayLike)) {
@@ -333,21 +309,16 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
+            TruffleString calendar = temporalDate.getCalendar();
 
-            Object calendarSlotValue = temporalDate.getCalendar();
-            Object fieldsMethod = lookupFields.execute(calendarSlotValue);
-            Object mergeFieldsMethod = lookupMergeFields.execute(calendarSlotValue);
-            Object monthDayFromFieldsMethod = lookupMonthDayFromFields.execute(calendarSlotValue);
-            CalendarMethodsRecord calendarRect = CalendarMethodsRecord.forFieldsAndMergeFieldsAndMonthDayFromFields(calendarSlotValue, fieldsMethod, mergeFieldsMethod, monthDayFromFieldsMethod);
-
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRect, TemporalUtil.listDMMCY);
+            List<TruffleString> fieldNames = TemporalUtil.listDMMCY;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
             JSDynamicObject partialDate = TemporalUtil.prepareTemporalFields(getContext(), temporalMonthDayLike, fieldNames, null);
-            fields = TemporalUtil.calendarMergeFields(getContext(), getRealm(), calendarRect, fields,
-                            partialDate, this, errorBranch);
+            fields = TemporalUtil.calendarMergeFields(getContext(), calendar, fields, partialDate);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
-            return monthDayFromFieldsNode.execute(calendarRect, fields, resolvedOptions);
+            Object resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
+            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            return monthDayFromFieldsNode.execute(calendar, fields, overflow);
         }
 
         @SuppressWarnings("unused")

@@ -298,10 +298,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             return null;
         }
         char sign = name.charAt(0);
-        if (sign == '\u2212') {
-            reformatNeeded = true;
-            sign = '-';
-        } else if (sign != '+' && sign != '-') {
+        if (sign != '+' && sign != '-') {
             return null;
         }
 
