@@ -1,4 +1,4 @@
-// Flags: --expose-internals --js-float16array
+// Flags: --expose-internals --ecmascript-version=staging
 
 'use strict';
 
