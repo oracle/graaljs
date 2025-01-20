@@ -27,6 +27,7 @@ test-single-executable-application-disable-experimental-sea-warning: PASS
 test-single-executable-application-empty: FAIL
 test-single-executable-application-snapshot: FAIL
 test-single-executable-application-snapshot-and-code-cache: FAIL
+test-single-executable-application-snapshot-worker: FAIL
 test-single-executable-application-use-code-cache: PASS
 
 # Custom MicrotaskQueue is not supported

@@ -8,6 +8,9 @@ prefix parallel
 
 [true] # This section applies to all platforms
 
+# gc({ execution: 'async' }) not supported
+test-abortsignal-drop-settled-signals: FAIL
+
 # Missing detection of unsettled top-level-await
 test-aborted-util: FAIL
 test-worker-data-url: FAIL
@@ -91,6 +94,7 @@ test-inspector-network-domain: FAIL
 test-source-map-api: FAIL
 
 # missing support for script.sourceMapURL
+test-module-strip-types: FAIL
 test-node-output-sourcemaps: FAIL
 test-source-map-cjs-require-cache: FAIL
 test-vm-source-map-url: FAIL
@@ -164,6 +168,7 @@ test-process-get-builtin: FAIL
 test-runner-cli: FAIL
 test-socketaddress: FAIL
 test-structuredClone-global: FAIL
+test-util-getcallsites: FAIL
 test-vm-codegen: FAIL
 test-websocket: FAIL
 test-webstreams-clone-unref: FAIL
@@ -270,6 +275,7 @@ test-fs-promises-file-handle-close: FAIL
 test-gc-http-client-connaborted: SKIP
 test-gc-net-timeout: SKIP
 test-gc-tls-external-memory: SKIP
+test-h2leak-destroy-session-on-socket-ended: FAIL
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
@@ -279,6 +285,7 @@ test-repl: FAIL
 test-runner-output: FAIL
 test-runner-watch-mode: SKIP
 test-tls-connect-memleak: FAIL
+test-trace-env-stack: FAIL
 test-ttywrap-stack: FAIL
 test-vm-global-setter: FAIL
 test-vm-low-stack-space: SKIP
