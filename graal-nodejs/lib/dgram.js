@@ -39,6 +39,7 @@ const {
     ERR_BUFFER_OUT_OF_BOUNDS,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_FD_TYPE,
+    ERR_IP_BLOCKED,
     ERR_MISSING_ARGS,
     ERR_SOCKET_ALREADY_BOUND,
     ERR_SOCKET_BAD_BUFFER_SIZE,
@@ -53,12 +54,14 @@ const {
   _createSocketHandle,
   newHandle,
 } = require('internal/dgram');
+const { isIP } = require('internal/net');
 const {
   isInt32,
   validateAbortSignal,
   validateString,
   validateNumber,
   validatePort,
+  validateUint32,
 } = require('internal/validators');
 const { Buffer } = require('buffer');
 const { deprecate, guessHandleType, promisify, SymbolAsyncDispose, SymbolDispose } = require('internal/util');
@@ -72,7 +75,7 @@ const {
 const { UV_UDP_REUSEADDR } = internalBinding('constants').os;
 
 const {
-  constants: { UV_UDP_IPV6ONLY },
+  constants: { UV_UDP_IPV6ONLY, UV_UDP_REUSEPORT },
   UDP,
   SendWrap,
 } = internalBinding('udp_wrap');
@@ -94,8 +97,11 @@ const SEND_BUFFER = false;
 // Lazily loaded
 let _cluster = null;
 function lazyLoadCluster() {
-  if (!_cluster) _cluster = require('cluster');
-  return _cluster;
+  return _cluster ??= require('cluster');
+}
+let _blockList = null;
+function lazyLoadBlockList() {
+  return _blockList ??= require('internal/blocklist').BlockList;
 }
 
 function Socket(type, listener) {
@@ -103,14 +109,34 @@ function Socket(type, listener) {
   let lookup;
   let recvBufferSize;
   let sendBufferSize;
+  let receiveBlockList;
+  let sendBlockList;
 
   let options;
   if (type !== null && typeof type === 'object') {
     options = type;
     type = options.type;
     lookup = options.lookup;
+    if (options.recvBufferSize) {
+      validateUint32(options.recvBufferSize, 'options.recvBufferSize');
+    }
+    if (options.sendBufferSize) {
+      validateUint32(options.sendBufferSize, 'options.sendBufferSize');
+    }
     recvBufferSize = options.recvBufferSize;
     sendBufferSize = options.sendBufferSize;
+    if (options.receiveBlockList) {
+      if (!lazyLoadBlockList().isBlockList(options.receiveBlockList)) {
+        throw new ERR_INVALID_ARG_TYPE('options.receiveBlockList', 'net.BlockList', options.receiveBlockList);
+      }
+      receiveBlockList = options.receiveBlockList;
+    }
+    if (options.sendBlockList) {
+      if (!lazyLoadBlockList().isBlockList(options.sendBlockList)) {
+        throw new ERR_INVALID_ARG_TYPE('options.sendBlockList', 'net.BlockList', options.sendBlockList);
+      }
+      sendBlockList = options.sendBlockList;
+    }
   }
 
   const handle = newHandle(type, lookup);
@@ -129,9 +155,12 @@ function Socket(type, listener) {
     connectState: CONNECT_STATE_DISCONNECTED,
     queue: undefined,
     reuseAddr: options?.reuseAddr, // Use UV_UDP_REUSEADDR if true.
+    reusePort: options?.reusePort,
     ipv6Only: options?.ipv6Only,
     recvBufferSize,
     sendBufferSize,
+    receiveBlockList,
+    sendBlockList,
   };
 
   if (options?.signal !== undefined) {
@@ -344,6 +373,10 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
       flags |= UV_UDP_REUSEADDR;
     if (state.ipv6Only)
       flags |= UV_UDP_IPV6ONLY;
+    if (state.reusePort) {
+      exclusive = true;
+      flags |= UV_UDP_REUSEPORT;
+    }
 
     if (cluster.isWorker && !exclusive) {
       bindServerHandle(this, {
@@ -426,7 +459,9 @@ function doConnect(ex, self, ip, address, port, callback) {
   const state = self[kStateSymbol];
   if (!state.handle)
     return;
-
+  if (!ex && state.sendBlockList?.check(ip, `ipv${isIP(ip)}`)) {
+    ex = new ERR_IP_BLOCKED(ip);
+  }
   if (!ex) {
     const err = state.handle.connect(ip, port);
     if (err) {
@@ -690,6 +725,13 @@ function doSend(ex, self, ip, list, address, port, callback) {
     return;
   }
 
+  if (ip && state.sendBlockList?.check(ip, `ipv${isIP(ip)}`)) {
+    if (callback) {
+      process.nextTick(callback, new ERR_IP_BLOCKED(ip));
+    }
+    return;
+  }
+
   const req = new SendWrap();
   req.list = list;  // Keep reference alive.
   req.address = address;
@@ -937,6 +979,10 @@ function onMessage(nread, handle, buf, rinfo) {
   const self = handle[owner_symbol];
   if (nread < 0) {
     return self.emit('error', new ErrnoException(nread, 'recvmsg'));
+  }
+  if (self[kStateSymbol]?.receiveBlockList?.check(rinfo.address,
+                                                  rinfo.family?.toLocaleLowerCase())) {
+    return;
   }
   rinfo.size = buf.length; // compatibility
   self.emit('message', buf, rinfo);

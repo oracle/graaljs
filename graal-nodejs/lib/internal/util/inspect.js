@@ -2,7 +2,10 @@
 
 const {
   Array,
+  ArrayBuffer,
+  ArrayBufferPrototype,
   ArrayIsArray,
+  ArrayPrototype,
   ArrayPrototypeFilter,
   ArrayPrototypeForEach,
   ArrayPrototypeIncludes,
@@ -22,10 +25,15 @@ const {
   DatePrototypeToISOString,
   DatePrototypeToString,
   ErrorPrototypeToString,
+  Function,
+  FunctionPrototype,
   FunctionPrototypeBind,
   FunctionPrototypeCall,
+  FunctionPrototypeSymbolHasInstance,
   FunctionPrototypeToString,
   JSONStringify,
+  Map,
+  MapPrototype,
   MapPrototypeEntries,
   MapPrototypeGetSize,
   MathFloor,
@@ -50,6 +58,7 @@ const {
   ObjectGetPrototypeOf,
   ObjectIs,
   ObjectKeys,
+  ObjectPrototype,
   ObjectPrototypeHasOwnProperty,
   ObjectPrototypePropertyIsEnumerable,
   ObjectSeal,
@@ -64,6 +73,8 @@ const {
   SafeMap,
   SafeSet,
   SafeStringIterator,
+  Set,
+  SetPrototype,
   SetPrototypeGetSize,
   SetPrototypeValues,
   String,
@@ -89,6 +100,8 @@ const {
   SymbolPrototypeValueOf,
   SymbolToPrimitive,
   SymbolToStringTag,
+  TypedArray,
+  TypedArrayPrototype,
   TypedArrayPrototypeGetLength,
   TypedArrayPrototypeGetSymbolToStringTag,
   Uint8Array,
@@ -164,6 +177,11 @@ let internalUrl;
 function pathToFileUrlHref(filepath) {
   internalUrl ??= require('internal/url');
   return internalUrl.pathToFileURL(filepath).href;
+}
+
+function isURL(value) {
+  internalUrl ??= require('internal/url');
+  return typeof value.href === 'string' && value instanceof internalUrl.URL;
 }
 
 const builtInObjects = new SafeSet(
@@ -588,10 +606,31 @@ function isInstanceof(object, proto) {
   }
 }
 
+// Special-case for some builtin prototypes in case their `constructor` property has been tampered.
+const wellKnownPrototypes = new SafeMap();
+wellKnownPrototypes.set(ArrayPrototype, { name: 'Array', constructor: Array });
+wellKnownPrototypes.set(ArrayBufferPrototype, { name: 'ArrayBuffer', constructor: ArrayBuffer });
+wellKnownPrototypes.set(FunctionPrototype, { name: 'Function', constructor: Function });
+wellKnownPrototypes.set(MapPrototype, { name: 'Map', constructor: Map });
+wellKnownPrototypes.set(ObjectPrototype, { name: 'Object', constructor: Object });
+wellKnownPrototypes.set(SetPrototype, { name: 'Set', constructor: Set });
+wellKnownPrototypes.set(TypedArrayPrototype, { name: 'TypedArray', constructor: TypedArray });
+
 function getConstructorName(obj, ctx, recurseTimes, protoProps) {
   let firstProto;
   const tmp = obj;
   while (obj || isUndetectableObject(obj)) {
+    const wellKnownPrototypeNameAndConstructor = wellKnownPrototypes.get(obj);
+    if (wellKnownPrototypeNameAndConstructor != null) {
+      const { name, constructor } = wellKnownPrototypeNameAndConstructor;
+      if (FunctionPrototypeSymbolHasInstance(constructor, tmp)) {
+        if (protoProps !== undefined && firstProto !== obj) {
+          addPrototypeProperties(
+            ctx, tmp, firstProto || tmp, recurseTimes, protoProps);
+        }
+        return name;
+      }
+    }
     const descriptor = ObjectGetOwnPropertyDescriptor(obj, 'constructor');
     if (descriptor !== undefined &&
         typeof descriptor.value === 'function' &&
@@ -800,12 +839,12 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
         // Filter out the util module, its inspect function is special.
         maybeCustom !== inspect &&
         // Also filter out any prototype objects using the circular check.
-        !(value.constructor && value.constructor.prototype === value)) {
+        ObjectGetOwnPropertyDescriptor(value, 'constructor')?.value?.prototype !== value) {
       // This makes sure the recurseTimes are reported as before while using
       // a counter internally.
       const depth = ctx.depth === null ? null : ctx.depth - recurseTimes;
       const isCrossContext =
-        proxy !== undefined || !(context instanceof Object);
+        proxy !== undefined || !FunctionPrototypeSymbolHasInstance(Object, context);
       const ret = FunctionPrototypeCall(
         maybeCustom,
         context,
@@ -949,7 +988,11 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
   if (noIterator) {
     keys = getKeys(value, ctx.showHidden);
     braces = ['{', '}'];
-    if (constructor === 'Object') {
+    if (typeof value === 'function') {
+      base = getFunctionBase(value, constructor, tag);
+      if (keys.length === 0 && protoProps === undefined)
+        return ctx.stylize(base, 'special');
+    } else if (constructor === 'Object') {
       if (isArgumentsObject(value)) {
         braces[0] = '[Arguments] {';
       } else if (tag !== '') {
@@ -958,10 +1001,6 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       if (keys.length === 0 && protoProps === undefined) {
         return `${braces[0]}}`;
       }
-    } else if (typeof value === 'function') {
-      base = getFunctionBase(value, constructor, tag);
-      if (keys.length === 0 && protoProps === undefined)
-        return ctx.stylize(base, 'special');
     } else if (isRegExp(value)) {
       // Make RegExps say that they are RegExps
       base = RegExpPrototypeToString(
@@ -1026,6 +1065,11 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       if (keys.length === 0 && protoProps === undefined) {
         return base;
       }
+    } else if (isURL(value) && !(recurseTimes > ctx.depth && ctx.depth !== null)) {
+      base = value.href;
+      if (keys.length === 0 && protoProps === undefined) {
+        return base;
+      }
     } else {
       if (keys.length === 0 && protoProps === undefined) {
         if (isExternal(value)) {
@@ -1062,6 +1106,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       ArrayPrototypePushApply(output, protoProps);
     }
   } catch (err) {
+    if (!isStackOverflowError(err)) throw err;
     const constructorName = StringPrototypeSlice(getCtxStyle(value, constructor, tag), 0, -1);
     return handleMaxCallStackSize(ctx, err, constructorName, indentationLvl);
   }
@@ -1180,7 +1225,7 @@ function getClassBase(value, constructor, tag) {
 
 function getFunctionBase(value, constructor, tag) {
   const stringified = FunctionPrototypeToString(value);
-  if (StringPrototypeStartsWith(stringified, 'class') && StringPrototypeEndsWith(stringified, '}')) {
+  if (StringPrototypeStartsWith(stringified, 'class') && stringified[stringified.length - 1] === '}') {
     const slice = StringPrototypeSlice(stringified, 5, -1);
     const bracketIndex = StringPrototypeIndexOf(slice, '{');
     if (bracketIndex !== -1 &&
@@ -1286,7 +1331,7 @@ function improveStack(stack, constructor, name, tag) {
       RegExpPrototypeExec(/^([a-z_A-Z0-9-]*Error)$/, stack);
       fallback = (start?.[1]) || '';
       len = fallback.length;
-      fallback = fallback || 'Error';
+      fallback ||= 'Error';
     }
     const prefix = StringPrototypeSlice(getPrefix(constructor, tag, fallback), 0, -1);
     if (name !== prefix) {
@@ -1547,23 +1592,20 @@ function groupArrayElements(ctx, output, value) {
 }
 
 function handleMaxCallStackSize(ctx, err, constructorName, indentationLvl) {
-  if (isStackOverflowError(err)) {
-    ctx.seen.pop();
-    ctx.indentationLvl = indentationLvl;
-    return ctx.stylize(
-      `[${constructorName}: Inspection interrupted ` +
-        'prematurely. Maximum call stack size exceeded.]',
-      'special',
-    );
-  }
-  /* c8 ignore next */
-  assert.fail(err.stack);
+  ctx.seen.pop();
+  ctx.indentationLvl = indentationLvl;
+  return ctx.stylize(
+    `[${constructorName}: Inspection interrupted ` +
+      'prematurely. Maximum call stack size exceeded.]',
+    'special',
+  );
 }
 
 function addNumericSeparator(integerString) {
   let result = '';
   let i = integerString.length;
-  const start = StringPrototypeStartsWith(integerString, '-') ? 1 : 0;
+  assert(i !== 0);
+  const start = integerString[0] === '-' ? 1 : 0;
   for (; i >= start + 4; i -= 3) {
     result = `_${StringPrototypeSlice(integerString, i - 3, i)}${result}`;
   }
@@ -1941,7 +1983,7 @@ function formatProperty(ctx, value, recurseTimes, key, type, desc,
                         original = value) {
   let name, str;
   let extra = ' ';
-  desc = desc || ObjectGetOwnPropertyDescriptor(value, key) ||
+  desc ||= ObjectGetOwnPropertyDescriptor(value, key) ||
     { value: value[key], enumerable: true };
   if (desc.value !== undefined) {
     const diff = (ctx.compact !== true || type !== kObjectType) ? 2 : 3;

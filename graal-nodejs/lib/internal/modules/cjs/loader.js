@@ -70,6 +70,7 @@ const {
     module_export_private_symbol,
     module_parent_private_symbol,
   },
+  isInsideNodeModules,
 } = internalBinding('util');
 
 const { kEvaluated, createRequiredModuleFacade } = internalBinding('module_wrap');
@@ -127,6 +128,7 @@ const {
   kEmptyObject,
   setOwnProperty,
   getLazy,
+  isUnderNodeModules,
   isWindows,
 } = require('internal/util');
 const {
@@ -146,19 +148,17 @@ const { safeGetenv } = internalBinding('credentials');
 const {
   getCjsConditions,
   initializeCjsConditions,
-  isUnderNodeModules,
   loadBuiltinModule,
   makeRequireFunction,
   setHasStartedUserCJSExecution,
   stripBOM,
   toRealPath,
-  stripTypeScriptTypes,
 } = require('internal/modules/helpers');
+const { stripTypeScriptModuleTypes } = require('internal/modules/typescript');
 const packageJsonReader = require('internal/modules/package_json_reader');
 const { getOptionValue, getEmbedderOptions } = require('internal/options');
 const shouldReportRequiredModules = getLazy(() => process.env.WATCH_REPORT_DEPENDENCIES);
 
-const permission = require('internal/process/permission');
 const {
   vm_dynamic_import_default_internal,
 } = internalBinding('symbols');
@@ -170,7 +170,6 @@ const {
     ERR_REQUIRE_CYCLE_MODULE,
     ERR_REQUIRE_ESM,
     ERR_UNKNOWN_BUILTIN_MODULE,
-    ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING,
   },
   setArrowMessage,
 } = require('internal/errors');
@@ -438,7 +437,6 @@ function initializeCJS() {
     Module._extensions['.ts'] = loadTS;
   }
   if (getOptionValue('--experimental-require-module')) {
-    emitExperimentalWarning('Support for loading ES Module in require()');
     Module._extensions['.mjs'] = loadESMFromCJS;
     if (tsEnabled) {
       Module._extensions['.mts'] = loadESMFromCJS;
@@ -736,11 +734,8 @@ Module._findPath = function(request, paths, isMain) {
   // For each path
   for (let i = 0; i < paths.length; i++) {
     // Don't search further if path doesn't exist
-    // or doesn't have permission to it
     const curPath = paths[i];
-    if (insidePath && curPath &&
-      ((permission.isEnabled() && !permission.has('fs.read', curPath)) || _stat(curPath) < 1)
-    ) {
+    if (insidePath && curPath && _stat(curPath) < 1) {
       continue;
     }
 
@@ -1343,15 +1338,7 @@ Module.prototype.require = function(id) {
   }
 };
 
-/**
- * Resolved path to `process.argv[1]` will be lazily placed here
- * (needed for setting breakpoint when called with `--inspect-brk`).
- * @type {string | undefined}
- */
-let resolvedArgv;
-let hasPausedEntry = false;
-/** @type {import('vm').Script} */
-
+let requireModuleWarningMode;
 /**
  * Resolve and evaluate it synchronously as ESM if it's ESM.
  * @param {Module} mod CJS module instance
@@ -1360,10 +1347,7 @@ let hasPausedEntry = false;
 function loadESMFromCJS(mod, filename) {
   let source = getMaybeCachedSource(mod, filename);
   if (getOptionValue('--experimental-strip-types') && path.extname(filename) === '.mts') {
-    if (isUnderNodeModules(filename)) {
-      throw new ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING(filename);
-    }
-    source = stripTypeScriptTypes(source, filename);
+    source = stripTypeScriptModuleTypes(source, filename);
   }
   const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
   const isMain = mod[kIsMainSymbol];
@@ -1375,10 +1359,56 @@ function loadESMFromCJS(mod, filename) {
     // ESM won't be accessible via process.mainModule.
     setOwnProperty(process, 'mainModule', undefined);
   } else {
+    const parent = mod[kModuleParent];
+
+    requireModuleWarningMode ??= getOptionValue('--trace-require-module');
+    if (requireModuleWarningMode) {
+      let shouldEmitWarning = false;
+      if (requireModuleWarningMode === 'no-node-modules') {
+        // Check if the require() comes from node_modules.
+        if (parent) {
+          shouldEmitWarning = !isUnderNodeModules(parent.filename);
+        } else if (mod[kIsCachedByESMLoader]) {
+          // It comes from the require() built for `import cjs` and doesn't have a parent recorded
+          // in the CJS module instance. Inspect the stack trace to see if the require()
+          // comes from node_modules and reduce the noise. If there are more than 100 frames,
+          // just give up and assume it is under node_modules.
+          shouldEmitWarning = !isInsideNodeModules(100, true);
+        }
+      } else {
+        shouldEmitWarning = true;
+      }
+      if (shouldEmitWarning) {
+        let messagePrefix;
+        if (parent) {
+          // In the case of the module calling `require()`, it's more useful to know its absolute path.
+          let from = parent.filename || parent.id;
+          // In the case of the module being require()d, it's more useful to know the id passed into require().
+          const to = mod.id || mod.filename;
+          if (from === 'internal/preload') {
+            from = '--require';
+          } else if (from === '<repl>') {
+            from = 'The REPL';
+          } else if (from === '.') {
+            from = 'The entry point';
+          } else {
+            from &&= `CommonJS module ${from}`;
+          }
+          if (from && to) {
+            messagePrefix = `${from} is loading ES Module ${to} using require().\n`;
+          }
+        }
+        emitExperimentalWarning('Support for loading ES Module in require()',
+                                messagePrefix,
+                                undefined,
+                                parent?.require);
+        requireModuleWarningMode = true;
+      }
+    }
     const {
       wrap,
       namespace,
-    } = cascadedLoader.importSyncForRequire(mod, filename, source, isMain, mod[kModuleParent]);
+    } = cascadedLoader.importSyncForRequire(mod, filename, source, isMain, parent);
     // Tooling in the ecosystem have been using the __esModule property to recognize
     // transpiled ESM in consuming code. For example, a 'log' package written in ESM:
     //
@@ -1416,10 +1446,13 @@ function loadESMFromCJS(mod, filename) {
     // createRequiredModuleFacade() to `wrap` which is a ModuleWrap wrapping
     // over the original module.
 
-    // We don't do this to modules that don't have default exports to avoid
-    // the unnecessary overhead. If __esModule is already defined, we will
-    // also skip the extension to allow users to override it.
-    if (!ObjectHasOwn(namespace, 'default') || ObjectHasOwn(namespace, '__esModule')) {
+    // We don't do this to modules that are marked as CJS ESM or that
+    // don't have default exports to avoid the unnecessary overhead.
+    // If __esModule is already defined, we will also skip the extension
+    // to allow users to override it.
+    if (ObjectHasOwn(namespace, 'module.exports')) {
+      mod.exports = namespace['module.exports'];
+    } else if (!ObjectHasOwn(namespace, 'default') || ObjectHasOwn(namespace, '__esModule')) {
       mod.exports = namespace;
     } else {
       mod.exports = createRequiredModuleFacade(wrap);
@@ -1435,7 +1468,7 @@ function loadESMFromCJS(mod, filename) {
  * @param {'commonjs'|undefined} format Intended format of the module.
  */
 function wrapSafe(filename, content, cjsModuleInstance, format) {
-  assert(format !== 'module');  // ESM should be handled in loadESMFromCJS().
+  assert(format !== 'module', 'ESM should be handled in loadESMFromCJS()');
   const hostDefinedOptionId = vm_dynamic_import_default_internal;
   const importModuleDynamically = vm_dynamic_import_default_internal;
   if (patched) {
@@ -1465,7 +1498,17 @@ function wrapSafe(filename, content, cjsModuleInstance, format) {
     };
   }
 
-  const shouldDetectModule = (format !== 'commonjs' && getOptionValue('--experimental-detect-module'));
+  let shouldDetectModule = false;
+  if (format !== 'commonjs') {
+    if (cjsModuleInstance?.[kIsMainSymbol]) {
+      // For entry points, format detection is used unless explicitly disabled.
+      shouldDetectModule = getOptionValue('--experimental-detect-module');
+    } else {
+      // For modules being loaded by `require()`, if require(esm) is disabled,
+      // don't try to reparse to detect format and just throw for ESM syntax.
+      shouldDetectModule = getOptionValue('--experimental-require-module');
+    }
+  }
   const result = compileFunctionForCJSLoader(content, filename, false /* is_sea_main */, shouldDetectModule);
 
   // Cache the source map for the module if present.
@@ -1495,8 +1538,6 @@ Module.prototype._compile = function(content, filename, format) {
     }
   }
 
-  // TODO(joyeecheung): when the module is the entry point, consider allowing TLA.
-  // Only modules being require()'d really need to avoid TLA.
   if (format === 'module') {
     // Pass the source into the .mjs extension handler indirectly through the cache.
     this[kModuleSource] = content;
@@ -1504,32 +1545,6 @@ Module.prototype._compile = function(content, filename, format) {
     return;
   }
 
-  // TODO(joyeecheung): the detection below is unnecessarily complex. Using the
-  // kIsMainSymbol, or a kBreakOnStartSymbol that gets passed from
-  // higher level instead of doing hacky detection here.
-  let inspectorWrapper = null;
-  if (getOptionValue('--inspect-brk') && process._eval == null) {
-    if (!resolvedArgv) {
-      // We enter the repl if we're not given a filename argument.
-      if (process.argv[1]) {
-        try {
-          resolvedArgv = Module._resolveFilename(process.argv[1], null, false);
-        } catch {
-          // We only expect this codepath to be reached in the case of a
-          // preloaded module (it will fail earlier with the main entry)
-          assert(ArrayIsArray(getOptionValue('--require')));
-        }
-      } else {
-        resolvedArgv = 'repl';
-      }
-    }
-
-    // Set breakpoint on module start
-    if (resolvedArgv && !hasPausedEntry && filename === resolvedArgv) {
-      hasPausedEntry = true;
-      inspectorWrapper = internalBinding('inspector').callAndPauseOnStart;
-    }
-  }
   const dirname = path.dirname(filename);
   const require = makeRequireFunction(this, redirects);
   let result;
@@ -1539,9 +1554,10 @@ Module.prototype._compile = function(content, filename, format) {
   if (requireDepth === 0) { statCache = new SafeMap(); }
   setHasStartedUserCJSExecution();
   this[kIsExecuting] = true;
-  if (inspectorWrapper) {
-    result = inspectorWrapper(compiledWrapper, thisValue, exports,
-                              require, module, filename, dirname);
+  if (this[kIsMainSymbol] && getOptionValue('--inspect-brk')) {
+    const { callAndPauseOnStart } = internalBinding('inspector');
+    result = callAndPauseOnStart(compiledWrapper, thisValue, exports,
+                                 require, module, filename, dirname);
   } else {
     result = ReflectApply(compiledWrapper, thisValue,
                           [exports, require, module, filename, dirname]);
@@ -1572,11 +1588,8 @@ function getMaybeCachedSource(mod, filename) {
 }
 
 function loadCTS(module, filename) {
-  if (isUnderNodeModules(filename)) {
-    throw new ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING(filename);
-  }
   const source = getMaybeCachedSource(module, filename);
-  const code = stripTypeScriptTypes(source, filename);
+  const code = stripTypeScriptModuleTypes(source, filename);
   module._compile(code, filename, 'commonjs');
 }
 
@@ -1586,12 +1599,9 @@ function loadCTS(module, filename) {
  * @param {string} filename The file path of the module
  */
 function loadTS(module, filename) {
-  if (isUnderNodeModules(filename)) {
-    throw new ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING(filename);
-  }
   // If already analyzed the source, then it will be cached.
   const source = getMaybeCachedSource(module, filename);
-  const content = stripTypeScriptTypes(source, filename);
+  const content = stripTypeScriptModuleTypes(source, filename);
   let format;
   const pkg = packageJsonReader.getNearestParentPackageJSON(filename);
   // Function require shouldn't be used in ES modules.
@@ -1611,7 +1621,7 @@ function loadTS(module, filename) {
     if (Module._cache[parentPath]) {
       let parentSource;
       try {
-        parentSource = stripTypeScriptTypes(fs.readFileSync(parentPath, 'utf8'), parentPath);
+        parentSource = stripTypeScriptModuleTypes(fs.readFileSync(parentPath, 'utf8'), parentPath);
       } catch {
         // Continue regardless of error.
       }

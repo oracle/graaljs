@@ -1922,11 +1922,17 @@ A boolean value that is `true` if the current Node.js build includes the inspect
 
 <!-- YAML
 added: v0.5.3
+deprecated: v22.13.0
 -->
+
+> Stability: 0 - Deprecated. This property is always true, and any checks based on it are
+> redundant.
 
 * {boolean}
 
 A boolean value that is `true` if the current Node.js build includes support for IPv6.
+
+Since all Node.js builds have IPv6 support, this value is always `true`.
 
 ## `process.features.require_module`
 
@@ -1953,31 +1959,49 @@ A boolean value that is `true` if the current Node.js build includes support for
 
 <!-- YAML
 added: v4.8.0
+deprecated: v22.13.0
 -->
+
+> Stability: 0 - Deprecated. Use `process.features.tls` instead.
 
 * {boolean}
 
 A boolean value that is `true` if the current Node.js build includes support for ALPN in TLS.
 
+In Node.js 11.0.0 and later versions, the OpenSSL dependencies feature unconditional ALPN support.
+This value is therefore identical to that of `process.features.tls`.
+
 ## `process.features.tls_ocsp`
 
 <!-- YAML
 added: v0.11.13
+deprecated: v22.13.0
 -->
+
+> Stability: 0 - Deprecated. Use `process.features.tls` instead.
 
 * {boolean}
 
 A boolean value that is `true` if the current Node.js build includes support for OCSP in TLS.
 
+In Node.js 11.0.0 and later versions, the OpenSSL dependencies feature unconditional OCSP support.
+This value is therefore identical to that of `process.features.tls`.
+
 ## `process.features.tls_sni`
 
 <!-- YAML
 added: v0.5.3
+deprecated: v22.13.0
 -->
+
+> Stability: 0 - Deprecated. Use `process.features.tls` instead.
 
 * {boolean}
 
 A boolean value that is `true` if the current Node.js build includes support for SNI in TLS.
+
+In Node.js 11.0.0 and later versions, the OpenSSL dependencies feature unconditional SNI support.
+This value is therefore identical to that of `process.features.tls`.
 
 ## `process.features.typescript`
 
@@ -1985,7 +2009,7 @@ A boolean value that is `true` if the current Node.js build includes support for
 added: v22.10.0
 -->
 
-> Stability: 1.0 - Early development
+> Stability: 1.1 - Active development
 
 * {boolean|string}
 
@@ -1996,12 +2020,17 @@ A value that is `"strip"` if Node.js is run with `--experimental-strip-types`,
 
 <!-- YAML
 added: v0.5.3
+deprecated: v22.13.0
 -->
+
+> Stability: 0 - Deprecated. This property is always true, and any checks based on it are
+> redundant.
 
 * {boolean}
 
 A boolean value that is `true` if the current Node.js build includes support for libuv.
-Since it's currently not possible to build Node.js without libuv, this value is always `true`.
+
+Since it's not possible to build Node.js without libuv, this value is always `true`.
 
 ## `process.finalization.register(ref, callback)`
 
@@ -2099,10 +2128,10 @@ class Test {
   constructor() {
     finalization.register(this, (ref) => ref.dispose());
 
-    // even something like this is highly discouraged
+    // Even something like this is highly discouraged
     // finalization.register(this, () => this.dispose());
-   }
-   dispose() {}
+  }
+  dispose() {}
 }
 ```
 
@@ -3062,7 +3091,7 @@ added: v20.0.0
 
 * {Object}
 
-This API is available through the [`--experimental-permission`][] flag.
+This API is available through the [`--permission`][] flag.
 
 `process.permission` is an object whose methods are used to manage permissions
 for the current process. Additional documentation is available in the
@@ -3477,6 +3506,16 @@ const { report } = require('node:process');
 
 console.log(`Report on exception: ${report.reportOnUncaughtException}`);
 ```
+
+### `process.report.excludeEnv`
+
+<!-- YAML
+added: v22.13.0
+-->
+
+* {boolean}
+
+If `true`, a diagnostic report is generated without the environment variables.
 
 ### `process.report.signal`
 
@@ -4389,8 +4428,8 @@ cases:
 [`'exit'`]: #event-exit
 [`'message'`]: child_process.md#event-message
 [`'uncaughtException'`]: #event-uncaughtexception
-[`--experimental-permission`]: cli.md#--experimental-permission
 [`--no-deprecation`]: cli.md#--no-deprecation
+[`--permission`]: cli.md#--permission
 [`--unhandled-rejections`]: cli.md#--unhandled-rejectionsmode
 [`Buffer`]: buffer.md
 [`ChildProcess.disconnect()`]: child_process.md#subprocessdisconnect

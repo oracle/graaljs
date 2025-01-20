@@ -14,6 +14,7 @@ const {
   NumberParseInt,
   NumberPrototypeToFixed,
   ObjectGetOwnPropertyDescriptor,
+  PromiseWithResolvers,
   RegExp,
   RegExpPrototypeExec,
   SafeMap,
@@ -29,7 +30,6 @@ const { AsyncResource } = require('async_hooks');
 const { relative, sep } = require('path');
 const { createWriteStream } = require('fs');
 const { pathToFileURL } = require('internal/url');
-const { createDeferredPromise } = require('internal/util');
 const { getOptionValue } = require('internal/options');
 const { green, yellow, red, white, shouldColorize } = require('internal/util/colors');
 
@@ -62,7 +62,7 @@ const kDefaultPattern = `**/{${ArrayPrototypeJoin(kPatterns, ',')}}.{${ArrayProt
 
 function createDeferredCallback() {
   let calledCount = 0;
-  const { promise, resolve, reject } = createDeferredPromise();
+  const { promise, resolve, reject } = PromiseWithResolvers();
   const cb = (err) => {
     calledCount++;
 
@@ -430,9 +430,7 @@ function buildFileTree(summary) {
     let current = tree;
 
     ArrayPrototypeForEach(parts, (part, index) => {
-      if (!current[part]) {
-        current[part] = { __proto__: null };
-      }
+      current[part] ||= { __proto__: null };
       current = current[part];
       // If this is the last part, add the file to the tree
       if (index === parts.length - 1) {

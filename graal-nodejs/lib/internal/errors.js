@@ -1555,6 +1555,9 @@ E('ERR_IPC_CHANNEL_CLOSED', 'Channel closed', Error);
 E('ERR_IPC_DISCONNECTED', 'IPC channel is already disconnected', Error);
 E('ERR_IPC_ONE_PIPE', 'Child process can have only one IPC pipe', Error);
 E('ERR_IPC_SYNC_FORK', 'IPC cannot be used with synchronous forks', Error);
+E('ERR_IP_BLOCKED', function(ip) {
+  return `IP(${ip}) is blocked by net.BlockList`;
+}, Error);
 E(
   'ERR_LOADER_CHAIN_INCOMPLETE',
   '"%s" did not call the next hook in its chain and did not' +
@@ -1605,6 +1608,8 @@ E('ERR_NO_CRYPTO',
   'Node.js is not compiled with OpenSSL crypto support', Error);
 E('ERR_NO_ICU',
   '%s is not supported on Node.js compiled without ICU', TypeError);
+E('ERR_NO_TYPESCRIPT',
+  'Node.js is not compiled with TypeScript support', Error);
 E('ERR_OPERATION_FAILED', 'Operation failed: %s', Error, TypeError);
 E('ERR_OUT_OF_RANGE',
   (str, range, input, replaceDefaultBoolean = false) => {
@@ -1649,9 +1654,15 @@ E('ERR_PARSE_ARGS_UNKNOWN_OPTION', (option, allowPositionals) => {
 E('ERR_PERFORMANCE_INVALID_TIMESTAMP',
   '%d is not a valid timestamp', TypeError);
 E('ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS', '%s', TypeError);
+E('ERR_QUIC_APPLICATION_ERROR', 'A QUIC application error occurred. %d [%s]', Error);
 E('ERR_QUIC_CONNECTION_FAILED', 'QUIC connection failed', Error);
 E('ERR_QUIC_ENDPOINT_CLOSED', 'QUIC endpoint closed: %s (%d)', Error);
 E('ERR_QUIC_OPEN_STREAM_FAILED', 'Failed to open QUIC stream', Error);
+E('ERR_QUIC_TRANSPORT_ERROR', 'A QUIC transport error occurred. %d [%s]', Error);
+E('ERR_QUIC_VERSION_NEGOTIATION_ERROR', 'The QUIC session requires version negotiation', Error);
+E('ERR_REQUIRE_ASYNC_MODULE', 'require() cannot be used on an ESM ' +
+  'graph with top-level await. Use import() instead. To see where the' +
+  ' top-level await comes from, use --experimental-print-required-tla.', Error);
 E('ERR_REQUIRE_CYCLE_MODULE', '%s', Error);
 E('ERR_REQUIRE_ESM',
   function(filename, hasEsmSyntax, parentPath = null, packageJsonPath = null) {

@@ -103,6 +103,7 @@ const {
     ERR_INVALID_FD_TYPE,
     ERR_INVALID_HANDLE_TYPE,
     ERR_INVALID_IP_ADDRESS,
+    ERR_IP_BLOCKED,
     ERR_MISSING_ARGS,
     ERR_SERVER_ALREADY_LISTEN,
     ERR_SERVER_NOT_RUNNING,
@@ -164,8 +165,15 @@ const {
 } = require('internal/perf/observe');
 const { getDefaultHighWaterMark } = require('internal/streams/state');
 
-function getFlags(ipv6Only) {
-  return ipv6Only === true ? TCPConstants.UV_TCP_IPV6ONLY : 0;
+function getFlags(options) {
+  let flags = 0;
+  if (options.ipv6Only === true) {
+    flags |= TCPConstants.UV_TCP_IPV6ONLY;
+  }
+  if (options.reusePort === true) {
+    flags |= TCPConstants.UV_TCP_REUSEPORT;
+  }
+  return flags;
 }
 
 function createHandle(fd, is_server) {
@@ -503,6 +511,12 @@ function Socket(options) {
   // Used after `.destroy()`
   this[kBytesRead] = 0;
   this[kBytesWritten] = 0;
+  if (options.blockList) {
+    if (!module.exports.BlockList.isBlockList(options.blockList)) {
+      throw new ERR_INVALID_ARG_TYPE('options.blockList', 'net.BlockList', options.blockList);
+    }
+    this.blockList = options.blockList;
+  }
 }
 ObjectSetPrototypeOf(Socket.prototype, stream.Duplex.prototype);
 ObjectSetPrototypeOf(Socket, stream.Duplex);
@@ -1045,10 +1059,10 @@ function internalConnect(
 
   if (localAddress || localPort) {
     if (addressType === 4) {
-      localAddress = localAddress || DEFAULT_IPV4_ADDR;
+      localAddress ||= DEFAULT_IPV4_ADDR;
       err = self._handle.bind(localAddress, localPort);
     } else { // addressType === 6
-      localAddress = localAddress || DEFAULT_IPV6_ADDR;
+      localAddress ||= DEFAULT_IPV6_ADDR;
       err = self._handle.bind6(localAddress, localPort, flags);
     }
     debug('connect: binding to localAddress: %s and localPort: %d (addressType: %d)',
@@ -1066,6 +1080,10 @@ function internalConnect(
   self.emit('connectionAttempt', address, port, addressType);
 
   if (addressType === 6 || addressType === 4) {
+    if (self.blockList?.check(address, `ipv${addressType}`)) {
+      self.destroy(new ERR_IP_BLOCKED(address));
+      return;
+    }
     const req = new TCPConnectWrap();
     req.oncomplete = afterConnect;
     req.address = address;
@@ -1153,6 +1171,14 @@ function internalConnectMultiple(context, canceled) {
       internalConnectMultiple(context);
       return;
     }
+  }
+
+  if (self.blockList?.check(address, `ipv${addressType}`)) {
+    const ex = new ERR_IP_BLOCKED(address);
+    ArrayPrototypePush(context.errors, ex);
+    self.emit('connectionAttemptFailed', address, port, addressType, ex);
+    internalConnectMultiple(context);
+    return;
   }
 
   debug('connect/multiple: attempting to connect to %s:%d (addressType: %d)', address, port, addressType);
@@ -1445,9 +1471,7 @@ function lookupAndConnectMultiple(
           return;
         }
         if (isIP(ip) && (addressType === 4 || addressType === 6)) {
-          if (!destinations) {
-            destinations = addressType === 6 ? { 6: 0, 4: 1 } : { 4: 0, 6: 1 };
-          }
+          destinations ||= addressType === 6 ? { 6: 0, 4: 1 } : { 4: 0, 6: 1 };
 
           const destination = destinations[addressType];
 
@@ -1786,6 +1810,12 @@ function Server(options, connectionListener) {
   this.keepAlive = Boolean(options.keepAlive);
   this.keepAliveInitialDelay = ~~(options.keepAliveInitialDelay / 1000);
   this.highWaterMark = options.highWaterMark ?? getDefaultHighWaterMark();
+  if (options.blockList) {
+    if (!module.exports.BlockList.isBlockList(options.blockList)) {
+      throw new ERR_INVALID_ARG_TYPE('options.blockList', 'net.BlockList', options.blockList);
+    }
+    this.blockList = options.blockList;
+  }
 }
 ObjectSetPrototypeOf(Server.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(Server, EventEmitter);
@@ -1835,12 +1865,12 @@ function createServerHandle(address, port, addressType, fd, flags) {
       if (err) {
         handle.close();
         // Fallback to ipv4
-        return createServerHandle(DEFAULT_IPV4_ADDR, port);
+        return createServerHandle(DEFAULT_IPV4_ADDR, port, undefined, undefined, flags);
       }
     } else if (addressType === 6) {
       err = handle.bind6(address, port, flags);
     } else {
-      err = handle.bind(address, port);
+      err = handle.bind(address, port, flags);
     }
   }
 
@@ -2024,7 +2054,7 @@ Server.prototype.listen = function(...args) {
     toNumber(args.length > 2 && args[2]);  // (port, host, backlog)
 
   options = options._handle || options.handle || options;
-  const flags = getFlags(options.ipv6Only);
+  const flags = getFlags(options);
   //  Refresh the id to make the previous call invalid
   this._listeningId++;
   // (handle[, backlog][, cb]) where handle is an object with a handle
@@ -2057,6 +2087,9 @@ Server.prototype.listen = function(...args) {
   if (typeof options.port === 'number' || typeof options.port === 'string') {
     validatePort(options.port, 'options.port');
     backlog = options.backlog || backlogFromArgs;
+    if (options.reusePort === true) {
+      options.exclusive = true;
+    }
     // start TCP server listening on host:port
     if (options.host) {
       lookupAndListen(this, options.port | 0, options.host, backlog,
@@ -2064,7 +2097,7 @@ Server.prototype.listen = function(...args) {
     } else { // Undefined host, listens on unspecified address
       // Default addressType 4 will be used to search for primary server
       listenInCluster(this, null, options.port | 0, 4,
-                      backlog, undefined, options.exclusive);
+                      backlog, undefined, options.exclusive, flags);
     }
     return this;
   }
@@ -2231,7 +2264,15 @@ function onconnection(err, clientHandle) {
     clientHandle.close();
     return;
   }
-
+  if (self.blockList && typeof clientHandle.getpeername === 'function') {
+    const remoteInfo = { __proto__: null };
+    clientHandle.getpeername(remoteInfo);
+    const addressType = isIP(remoteInfo.address);
+    if (addressType && self.blockList.check(remoteInfo.address, `ipv${addressType}`)) {
+      clientHandle.close();
+      return;
+    }
+  }
   const socket = new Socket({
     handle: clientHandle,
     allowHalfOpen: self.allowHalfOpen,

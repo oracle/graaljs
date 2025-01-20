@@ -37,6 +37,7 @@ const {
   ObjectAssign,
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
+  PromiseWithResolvers,
   RegExpPrototypeExec,
   SafeSet,
   StringPrototypeIncludes,
@@ -46,7 +47,6 @@ const {
 
 const {
   convertToValidSignal,
-  createDeferredPromise,
   getSystemErrorName,
   kEmptyObject,
   promisify,
@@ -138,7 +138,7 @@ function fork(modulePath, args = [], options) {
     validateObject(options, 'options');
   }
   options = { __proto__: null, ...options, shell: false };
-  options.execPath = options.execPath || process.execPath;
+  options.execPath ||= process.execPath;
   validateArgumentNullCheck(options.execPath, 'options.execPath');
 
   // Prepare arguments for fork:
@@ -237,7 +237,7 @@ function exec(command, options, callback) {
 
 const customPromiseExecFunction = (orig) => {
   return (...args) => {
-    const { promise, resolve, reject } = createDeferredPromise();
+    const { promise, resolve, reject } = PromiseWithResolvers();
 
     promise.child = orig(...args, (err, stdout, stderr) => {
       if (err !== null) {
@@ -272,9 +272,7 @@ function normalizeExecFileArgs(file, args, options, callback) {
     args = null;
   }
 
-  if (args == null) {
-    args = [];
-  }
+  args ??= [];
 
   if (typeof options === 'function') {
     callback = options;
@@ -282,9 +280,7 @@ function normalizeExecFileArgs(file, args, options, callback) {
     validateObject(options, 'options');
   }
 
-  if (options == null) {
-    options = kEmptyObject;
-  }
+  options ??= kEmptyObject;
 
   if (callback != null) {
     validateFunction(callback, 'callback');
@@ -415,13 +411,11 @@ function execFile(file, args, options, callback) {
     if (args?.length)
       cmd += ` ${ArrayPrototypeJoin(args, ' ')}`;
 
-    if (!ex) {
-      ex = genericNodeError(`Command failed: ${cmd}\n${stderr}`, {
-        code: code < 0 ? getSystemErrorName(code) : code,
-        killed: child.killed || killed,
-        signal: signal,
-      });
-    }
+    ex ||= genericNodeError(`Command failed: ${cmd}\n${stderr}`, {
+      code: code < 0 ? getSystemErrorName(code) : code,
+      killed: child.killed || killed,
+      signal: signal,
+    });
 
     ex.cmd = cmd;
     callback(ex, stdout, stderr);

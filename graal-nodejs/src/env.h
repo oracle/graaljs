@@ -333,7 +333,7 @@ class AsyncHooks : public MemoryRetainer {
                          v8::Local<v8::Function> resolve);
   // Used for testing since V8 doesn't provide API for retrieving configured
   // JS promise hooks.
-  v8::Local<v8::Array> GetPromiseHooks(v8::Isolate* isolate);
+  v8::Local<v8::Array> GetPromiseHooks(v8::Isolate* isolate) const;
   inline v8::Local<v8::String> provider_string(int idx);
 
   inline void no_force_checks();
@@ -852,7 +852,7 @@ class Environment final : public MemoryRetainer {
   void AtExit(void (*cb)(void* arg), void* arg);
   void RunAtExitCallbacks();
 
-  v8::Maybe<bool> CheckUnsettledTopLevelAwait();
+  v8::Maybe<bool> CheckUnsettledTopLevelAwait() const;
   void RunWeakRefCleanup();
 
   v8::MaybeLocal<v8::Value> RunSnapshotSerializeCallback() const;
@@ -1047,6 +1047,8 @@ class Environment final : public MemoryRetainer {
 
   inline void set_heap_snapshot_near_heap_limit(uint32_t limit);
   inline bool is_in_heapsnapshot_heap_limit_callback() const;
+
+  inline bool report_exclude_env() const;
 
   inline void AddHeapSnapshotNearHeapLimitCallback();
 

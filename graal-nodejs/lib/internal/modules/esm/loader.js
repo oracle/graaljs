@@ -23,6 +23,7 @@ const { imported_cjs_symbol } = internalBinding('symbols');
 
 const assert = require('internal/assert');
 const {
+  ERR_REQUIRE_ASYNC_MODULE,
   ERR_REQUIRE_CYCLE_MODULE,
   ERR_REQUIRE_ESM,
   ERR_NETWORK_IMPORT_DISALLOWED,
@@ -302,6 +303,9 @@ class ModuleLoader {
     //    evaluated at this point.
     if (job !== undefined) {
       mod[kRequiredModuleSymbol] = job.module;
+      if (job.module.async) {
+        throw new ERR_REQUIRE_ASYNC_MODULE();
+      }
       if (job.module.getStatus() !== kEvaluated) {
         const parentFilename = urlToFilename(parent?.filename);
         let message = `Cannot require() ES Module ${filename} in a cycle.`;
@@ -373,15 +377,15 @@ class ModuleLoader {
 
     defaultLoadSync ??= require('internal/modules/esm/load').defaultLoadSync;
     const loadResult = defaultLoadSync(url, { format, importAttributes });
-    const {
-      format: finalFormat,
-      source,
-    } = loadResult;
+
+    // Use the synchronous commonjs translator which can deal with cycles.
+    const finalFormat = loadResult.format === 'commonjs' ? 'commonjs-sync' : loadResult.format;
 
     if (finalFormat === 'wasm') {
       assert.fail('WASM is currently unsupported by require(esm)');
     }
 
+    const { source } = loadResult;
     const isMain = (parentURL === undefined);
     const wrap = this.#translate(url, finalFormat, source, isMain);
     assert(wrap instanceof ModuleWrap, `Translator used for require(${url}) should not be async`);

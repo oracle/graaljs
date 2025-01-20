@@ -2,7 +2,6 @@
 
 const {
   ArrayFrom,
-  ArrayIsArray,
   ArrayPrototypePush,
   ArrayPrototypeSlice,
   ArrayPrototypeSort,
@@ -34,9 +33,7 @@ const {
   SafeSet,
   SafeWeakMap,
   SafeWeakRef,
-  StringPrototypeIncludes,
   StringPrototypeReplace,
-  StringPrototypeStartsWith,
   StringPrototypeToLowerCase,
   StringPrototypeToUpperCase,
   Symbol,
@@ -48,6 +45,7 @@ const {
 const {
   codes: {
     ERR_NO_CRYPTO,
+    ERR_NO_TYPESCRIPT,
     ERR_UNKNOWN_SIGNAL,
   },
   isErrorStackTraceLimitWritable,
@@ -68,6 +66,7 @@ const { getOptionValue } = require('internal/options');
 const { encodings } = internalBinding('string_decoder');
 
 const noCrypto = !process.versions.openssl;
+const noTypeScript = !process.versions.amaro;
 
 const isWindows = process.platform === 'win32';
 const isMacOS = process.platform === 'darwin';
@@ -108,7 +107,9 @@ function getDeprecationWarningEmitter(
   return function() {
     if (!warned && shouldEmitWarning()) {
       warned = true;
-      if (code !== undefined) {
+      if (code === 'ExperimentalWarning') {
+        process.emitWarning(msg, code, deprecated);
+      } else if (code !== undefined) {
         if (!codesWarned.has(code)) {
           const emitWarning = useEmitSync ?
             require('internal/process/warning').emitWarningSync :
@@ -197,9 +198,17 @@ function assertCrypto() {
     throw new ERR_NO_CRYPTO();
 }
 
-// Return undefined if there is no match.
-// Move the "slow cases" to a separate function to make sure this function gets
-// inlined properly. That prioritizes the common case.
+function assertTypeScript() {
+  if (noTypeScript)
+    throw new ERR_NO_TYPESCRIPT();
+}
+
+/**
+ * Move the "slow cases" to a separate function to make sure this function gets
+ * inlined properly. That prioritizes the common case.
+ * @param {unknown} enc
+ * @returns {string | undefined} Returns undefined if there is no match.
+ */
 function normalizeEncoding(enc) {
   if (enc == null || enc === 'utf8' || enc === 'utf-8') return 'utf8';
   return slowCases(enc);
@@ -259,11 +268,20 @@ function slowCases(enc) {
   }
 }
 
-function emitExperimentalWarning(feature) {
+/**
+ * @param {string} feature Feature name used in the warning message
+ * @param {string} messagePrefix Prefix of the warning message
+ * @param {string} code See documentation of process.emitWarning
+ * @param {string} ctor See documentation of process.emitWarning
+ */
+function emitExperimentalWarning(feature, messagePrefix, code, ctor) {
   if (experimentalWarnings.has(feature)) return;
-  const msg = `${feature} is an experimental feature and might change at any time`;
   experimentalWarnings.add(feature);
-  process.emitWarning(msg, 'ExperimentalWarning');
+  let msg = `${feature} is an experimental feature and might change at any time`;
+  if (messagePrefix) {
+    msg = messagePrefix + msg;
+  }
+  process.emitWarning(msg, 'ExperimentalWarning', code, ctor);
 }
 
 function filterDuplicateStrings(items, low) {
@@ -379,6 +397,10 @@ function getCWDURL() {
   return cachedURL;
 }
 
+function getSystemErrorMessage(err) {
+  return lazyUv().getErrorMessage(err);
+}
+
 function getSystemErrorName(err) {
   const entry = uvErrmapGet(err);
   return entry ? entry[0] : `Unknown system error ${err}`;
@@ -481,6 +503,10 @@ function spliceOne(list, index) {
 
 const kNodeModulesRE = /^(?:.*)[\\/]node_modules[\\/]/;
 
+function isUnderNodeModules(filename) {
+  return filename && (RegExpPrototypeExec(kNodeModulesRE, filename) !== null);
+}
+
 let getStructuredStackImpl;
 
 function lazyGetStructuredStack() {
@@ -509,31 +535,6 @@ function getStructuredStack() {
   return getStructuredStackImpl();
 }
 
-function isInsideNodeModules() {
-  const stack = getStructuredStack();
-
-  // Iterate over all stack frames and look for the first one not coming
-  // from inside Node.js itself:
-  if (ArrayIsArray(stack)) {
-    for (const frame of stack) {
-      const filename = frame.getFileName();
-
-      if (
-        filename == null ||
-        StringPrototypeStartsWith(filename, 'node:') === true ||
-        (
-          filename[0] !== '/' &&
-          StringPrototypeIncludes(filename, '\\') === false
-        )
-      ) {
-        continue;
-      }
-      return RegExpPrototypeExec(kNodeModulesRE, filename) !== null;
-    }
-  }
-  return false;
-}
-
 function once(callback, { preserveReturnValue = false } = kEmptyObject) {
   let called = false;
   let returnValue;
@@ -555,17 +556,6 @@ function sleep(msec) {
 
   validateUint32(msec, 'msec');
   _sleep(msec);
-}
-
-function createDeferredPromise() {
-  let resolve;
-  let reject;
-  const promise = new Promise((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-
-  return { promise, resolve, reject };
 }
 
 // https://heycam.github.io/webidl/#define-the-operations
@@ -882,10 +872,10 @@ for (let i = 0; i < encodings.length; ++i)
 module.exports = {
   getLazy,
   assertCrypto,
+  assertTypeScript,
   cachedResult,
   convertToValidSignal,
   createClassWrapper,
-  createDeferredPromise,
   decorateErrorStack,
   defineOperation,
   defineLazyProperties,
@@ -905,9 +895,10 @@ module.exports = {
   getStructuredStack,
   getSystemErrorMap,
   getSystemErrorName,
+  getSystemErrorMessage,
   guessHandleType,
   isError,
-  isInsideNodeModules,
+  isUnderNodeModules,
   isMacOS,
   isWindows,
   join,
