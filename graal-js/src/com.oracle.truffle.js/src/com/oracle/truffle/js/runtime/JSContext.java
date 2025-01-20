@@ -352,6 +352,7 @@ public class JSContext {
         AsyncIteratorFindWithResult,
         AsyncGeneratorAwaitReturnFulfilled,
         AsyncGeneratorAwaitReturnRejected,
+        IteratorConcat,
         IteratorMap,
         IteratorFilter,
         IteratorTake,

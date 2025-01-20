@@ -298,6 +298,10 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "built-ins/Iterator/concat/next-method-returns-throwing-value-done.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test (see https://github.com/tc39/test262/issues/4380)"
+  }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
     "comment" : "Long running test"

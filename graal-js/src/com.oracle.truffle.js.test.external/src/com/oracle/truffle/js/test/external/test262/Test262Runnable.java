@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -207,6 +207,7 @@ public class Test262Runnable extends TestRunnable {
                     "async-functions",
                     "async-iteration",
                     "caller",
+                    "canonical-tz",
                     "change-array-by-copy",
                     "class",
                     "class-fields-private",
@@ -241,6 +242,7 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta",
                     "intl-normative-optional",
                     "iterator-helpers",
+                    "iterator-sequencing",
                     "json-modules",
                     "json-parse-with-source",
                     "json-superset",
@@ -296,6 +298,7 @@ public class Test262Runnable extends TestRunnable {
                     "RegExp.escape",
                     "ShadowRealm",
                     "decorators",
+                    "iterator-sequencing",
                     "json-parse-with-source",
                     "promise-try",
                     "uint8array-base64",
