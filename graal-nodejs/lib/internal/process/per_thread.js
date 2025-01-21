@@ -25,7 +25,6 @@ const {
   StringPrototypeEndsWith,
   StringPrototypeReplace,
   StringPrototypeSlice,
-  StringPrototypeStartsWith,
   Symbol,
   SymbolIterator,
 } = primordials;
@@ -212,7 +211,7 @@ function wrapProcessMethods(binding) {
       // it's monkey-patched by tests.
       err = process._kill(pid, sig);
     } else {
-      sig = sig || 'SIGTERM';
+      sig ||= 'SIGTERM';
       if (constants[sig]) {
         err = process._kill(pid, constants[sig]);
       } else {
@@ -300,7 +299,7 @@ function buildAllowedFlags() {
   }
 
   function isAccepted(to) {
-    if (!StringPrototypeStartsWith(to, '-') || to === '--') return true;
+    if (!to.length || to[0] !== '-' || to === '--') return true;
     const recursiveExpansion = aliases.get(to);
     if (recursiveExpansion) {
       if (recursiveExpansion[0] === to)
@@ -414,10 +413,7 @@ let traceEventsAsyncHook;
 // Dynamically enable/disable the traceEventsAsyncHook
 function toggleTraceCategoryState(asyncHooksEnabled) {
   if (asyncHooksEnabled) {
-    if (!traceEventsAsyncHook) {
-      traceEventsAsyncHook =
-        require('internal/trace_events_async_hooks').createHook();
-    }
+    traceEventsAsyncHook ||= require('internal/trace_events_async_hooks').createHook();
     traceEventsAsyncHook.enable();
   } else if (traceEventsAsyncHook) {
     traceEventsAsyncHook.disable();

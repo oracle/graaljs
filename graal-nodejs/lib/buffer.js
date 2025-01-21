@@ -35,6 +35,7 @@ const {
   NumberMIN_SAFE_INTEGER,
   ObjectDefineProperties,
   ObjectDefineProperty,
+  ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
   RegExpPrototypeSymbolReplace,
   StringPrototypeCharCodeAt,
@@ -80,10 +81,10 @@ const {
     ONLY_ENUMERABLE,
   },
   getOwnNonIndexProperties,
+  isInsideNodeModules,
 } = internalBinding('util');
 const {
   customInspectSymbol,
-  isInsideNodeModules,
   lazyDOMException,
   normalizeEncoding,
   kIsEncodingSymbol,
@@ -181,13 +182,15 @@ function showFlaggedDeprecation() {
   if (bufferWarningAlreadyEmitted ||
       ++nodeModulesCheckCounter > 10000 ||
       (!require('internal/options').getOptionValue('--pending-deprecation') &&
-       isInsideNodeModules())) {
+       isInsideNodeModules(100, true))) {
     // We don't emit a warning, because we either:
     // - Already did so, or
     // - Already checked too many times whether a call is coming
     //   from node_modules and want to stop slowing down things, or
     // - We aren't running with `--pending-deprecation` enabled,
     //   and the code is inside `node_modules`.
+    // - We found node_modules in up to the topmost 100 frames, or
+    //   there are more than 100 frames and we don't want to search anymore.
     return;
   }
 
@@ -505,9 +508,7 @@ function fromArrayBuffer(obj, byteOffset, length) {
   if (maxLength < 0)
     throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');
 
-  if (length === undefined) {
-    length = maxLength;
-  } else {
+  if (length !== undefined) {
     // Convert length to non-negative integer.
     length = +length;
     if (length > 0) {
@@ -913,7 +914,14 @@ Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
       }), 27, -2);
     }
   }
-  return `<${this.constructor.name} ${str}>`;
+  let constructorName = 'Buffer';
+  try {
+    const { constructor } = this;
+    if (typeof constructor === 'function' && ObjectPrototypeHasOwnProperty(constructor, 'name')) {
+      constructorName = constructor.name;
+    }
+  } catch { /* Ignore error and use default name */ }
+  return `<${constructorName} ${str}>`;
 };
 Buffer.prototype.inspect = Buffer.prototype[customInspectSymbol];
 

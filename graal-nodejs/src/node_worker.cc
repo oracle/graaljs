@@ -449,6 +449,9 @@ void Worker::JoinThread() {
 
   env()->remove_sub_worker_context(this);
 
+  // Join may happen after the worker exits and disposes the isolate
+  if (!env()->can_call_into_js()) return;
+
   {
     HandleScope handle_scope(env()->isolate());
     Context::Scope context_scope(env()->context());
@@ -490,11 +493,9 @@ Worker::~Worker() {
 
 void Worker::New(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
+  THROW_IF_INSUFFICIENT_PERMISSIONS(
+      env, permission::PermissionScope::kWorkerThreads, "");
   bool is_internal = args[5]->IsTrue();
-  if (!is_internal) {
-    THROW_IF_INSUFFICIENT_PERMISSIONS(
-        env, permission::PermissionScope::kWorkerThreads, "");
-  }
   Isolate* isolate = args.GetIsolate();
 
   CHECK(args.IsConstructCall());

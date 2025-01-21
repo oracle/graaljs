@@ -30,7 +30,7 @@ const net = require('net');
 // Do not require 'os' until needed so that test-os-checked-function can
 // monkey patch it. If 'os' is required here, that test will fail.
 const path = require('path');
-const { inspect, getCallSite } = require('util');
+const { inspect, getCallSites } = require('util');
 const { isMainThread } = require('worker_threads');
 const { isModuleNamespaceObject } = require('util/types');
 
@@ -551,7 +551,7 @@ function canCreateSymLink() {
 }
 
 function mustNotCall(msg) {
-  const callSite = getCallSite()[1];
+  const callSite = getCallSites()[1];
   return function mustNotCall(...args) {
     const argsInfo = args.length > 0 ?
       `\ncalled with arguments: ${args.map((arg) => inspect(arg)).join(', ')}` : '';
@@ -1050,14 +1050,6 @@ const common = {
 
   get hasOpenSSL3() {
     return hasOpenSSL(3);
-  },
-
-  get hasOpenSSL31() {
-    return hasOpenSSL(3, 1);
-  },
-
-  get hasOpenSSL32() {
-    return hasOpenSSL(3, 2);
   },
 
   get inFreeBSDJail() {

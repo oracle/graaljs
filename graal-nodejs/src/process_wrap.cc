@@ -200,8 +200,10 @@ class ProcessWrap : public HandleWrap {
     // batch files directly but is potentially insecure because arguments
     // are not escaped (and sometimes cannot be unambiguously escaped),
     // hence why they are rejected here.
+#ifdef _WIN32
     if (IsWindowsBatchFile(options.file))
       err = UV_EINVAL;
+#endif
 
     // options.args
     Local<Value> argv_v =
@@ -312,6 +314,12 @@ class ProcessWrap : public HandleWrap {
     ProcessWrap* wrap;
     ASSIGN_OR_RETURN_UNWRAP(&wrap, args.This());
     int signal = args[0]->Int32Value(env->context()).FromJust();
+#ifdef _WIN32
+    if (signal != SIGKILL && signal != SIGTERM && signal != SIGINT &&
+        signal != SIGQUIT) {
+      signal = SIGKILL;
+    }
+#endif
     int err = uv_process_kill(&wrap->process_, signal);
     args.GetReturnValue().Set(err);
   }

@@ -1031,6 +1031,8 @@ static void ExistsSync(const FunctionCallbackInfo<Value>& args) {
 // Used to speed up module loading.  Returns 0 if the path refers to
 // a file, 1 when it's a directory or < 0 on error (usually -ENOENT.)
 // The speedup comes from not creating thousands of Stat and Error objects.
+// Do not expose this function through public API as it doesn't hold
+// Permission Model checks.
 static void InternalModuleStat(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
@@ -1039,8 +1041,6 @@ static void InternalModuleStat(const FunctionCallbackInfo<Value>& args) {
   BufferValue path(env->isolate(), args[1]);
   CHECK_NOT_NULL(*path);
   ToNamespacedPath(env, &path);
-  THROW_IF_INSUFFICIENT_PERMISSIONS(
-      env, permission::PermissionScope::kFileSystemRead, path.ToStringView());
 
   uv_fs_t req;
   int rc = uv_fs_stat(env->event_loop(), &req, *path, nullptr);
@@ -1067,15 +1067,8 @@ static int32_t FastInternalModuleStat(
   }
 
   HandleScope scope(isolate);
-  Environment* env = Environment::GetCurrent(recv->GetCreationContextChecked());
 
   auto path = std::filesystem::path(input.data, input.data + input.length);
-  if (!env->permission()->is_granted(
-          env, permission::PermissionScope::kFileSystemRead, path.string()))
-      [[unlikely]] {
-    options.fallback = true;
-    return -1;
-  }
 
   switch (std::filesystem::status(path).type()) {
     case std::filesystem::file_type::directory:
@@ -1894,7 +1887,28 @@ static void ReadDir(const FunctionCallbackInfo<Value>& args) {
 
   BufferValue path(isolate, args[0]);
   CHECK_NOT_NULL(*path);
+#ifdef _WIN32
+  // On Windows, some API functions accept paths with trailing slashes,
+  // while others do not. This code checks if the input path ends with
+  // a slash (either '/' or '\\') and, if so, ensures that the processed
+  // path also ends with a trailing backslash ('\\').
+  bool slashCheck = false;
+  if (path.ToStringView().ends_with("/") ||
+      path.ToStringView().ends_with("\\")) {
+    slashCheck = true;
+  }
+#endif
+
   ToNamespacedPath(env, &path);
+
+#ifdef _WIN32
+  if (slashCheck) {
+    size_t new_length = path.length() + 1;
+    path.AllocateSufficientStorage(new_length + 1);
+    path.SetLengthAndZeroTerminate(new_length);
+    path.out()[new_length - 1] = '\\';
+  }
+#endif
 
   const enum encoding encoding = ParseEncoding(isolate, args[1], UTF8);
 

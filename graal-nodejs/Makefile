@@ -8,9 +8,7 @@ PREFIX ?= /usr/local
 FLAKY_TESTS ?= run
 TEST_CI_ARGS ?=
 STAGINGSERVER ?= node-www
-CLOUDFLARE_ENDPOINT ?= https://07be8d2fbc940503ca1be344714cb0d1.r2.cloudflarestorage.com
-CLOUDFLARE_BUCKET ?= dist-staging
-CLOUDFLARE_PROFILE ?= worker
+CLOUDFLARE_BUCKET ?= r2:dist-staging
 LOGLEVEL ?= silent
 OSTYPE := $(shell uname -s | tr '[:upper:]' '[:lower:]')
 ifeq ($(findstring os/390,$OSTYPE),os/390)
@@ -178,8 +176,7 @@ with-code-cache test-code-cache:
 	$(warning '$@' target is a noop)
 
 out/Makefile: config.gypi common.gypi common_node.gypi node.gyp \
-	deps/uv/uv.gyp deps/llhttp/llhttp.gyp deps/zlib/zlib.gyp \
-	deps/simdutf/simdutf.gyp deps/ada/ada.gyp deps/nbytes/nbytes.gyp \
+	deps/*/*.gyp \
 	tools/v8_gypfiles/toolchain.gypi \
 	tools/v8_gypfiles/features.gypi \
 	tools/v8_gypfiles/inspector.gypi tools/v8_gypfiles/v8.gyp
@@ -248,7 +245,7 @@ coverage-clean: ## Remove coverage artifacts.
 	$(RM) -r coverage/tmp
 	@if [ -d "out/Release/obj.target" ]; then \
 		$(FIND) out/$(BUILDTYPE)/obj.target \( -name "*.gcda" -o -name "*.gcno" \) \
-			-type f -exec $(RM) {};\
+			-type f | xargs $(RM); \
 	fi
 
 .PHONY: coverage
@@ -274,7 +271,7 @@ coverage-build-js: ## Build JavaScript coverage files.
 .PHONY: coverage-test
 coverage-test: coverage-build ## Run the tests and generate a coverage report.
 	@if [ -d "out/Release/obj.target" ]; then \
-		$(FIND) out/$(BUILDTYPE)/obj.target -name "*.gcda" -type f -exec $(RM) {}; \
+		$(FIND) out/$(BUILDTYPE)/obj.target -name "*.gcda" -type f | xargs $(RM); \
 	fi
 	-NODE_V8_COVERAGE=coverage/tmp \
 		TEST_CI_ARGS="$(TEST_CI_ARGS) --type=coverage" $(MAKE) $(COVTESTS)
@@ -302,6 +299,7 @@ coverage-report-js: ## Report JavaScript coverage results.
 cctest: all ## Run the C++ tests using the built `cctest` executable.
 	@out/$(BUILDTYPE)/$@ --gtest_filter=$(GTEST_FILTER)
 	$(NODE) ./test/embedding/test-embedding.js
+	$(NODE) ./test/sqlite/test-sqlite-extensions.mjs
 
 .PHONY: list-gtests
 list-gtests: ## List all available C++ gtests.
@@ -582,6 +580,7 @@ test-ci: | clear-stalled bench-addons-build build-addons build-js-native-api-tes
 		--mode=$(BUILDTYPE_LOWER) --flaky-tests=$(FLAKY_TESTS) \
 		$(TEST_CI_ARGS) $(CI_JS_SUITES) $(CI_NATIVE_SUITES) $(CI_DOC)
 	$(NODE) ./test/embedding/test-embedding.js
+	$(NODE) ./test/sqlite/test-sqlite-extensions.mjs
 	$(info Clean up any leftover processes, error if found.)
 	ps awwx | grep Release/node | grep -v grep | cat
 	@PS_OUT=`ps awwx | grep Release/node | grep -v grep | awk '{print $$1}'`; \
@@ -940,7 +939,11 @@ else
 ifeq ($(findstring riscv64,$(UNAME_M)),riscv64)
 DESTCPU ?= riscv64
 else
+ifeq ($(findstring loongarch64,$(UNAME_M)),loongarch64)
+DESTCPU ?= loong64
+else
 DESTCPU ?= x86
+endif
 endif
 endif
 endif
@@ -977,7 +980,11 @@ else
 ifeq ($(DESTCPU),riscv64)
 ARCH=riscv64
 else
+ifeq ($(DESTCPU),loong64)
+ARCH=loong64
+else
 ARCH=x86
+endif
 endif
 endif
 endif
@@ -1175,7 +1182,7 @@ pkg-upload: pkg
 	ssh $(STAGINGSERVER) "mkdir -p nodejs/$(DISTTYPEDIR)/$(FULLVERSION)"
 	chmod 664 $(TARNAME).pkg
 	scp -p $(TARNAME).pkg $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).pkg
-	ssh $(STAGINGSERVER) "aws s3 cp nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).pkg s3://$(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).pkg --endpoint=$(CLOUDFLARE_ENDPOINT) --profile=$(CLOUDFLARE_PROFILE)"
+	ssh $(STAGINGSERVER) "rclone copyto nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).pkg $(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).pkg"
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).pkg.done"
 
 $(TARBALL): release-only doc-only
@@ -1226,12 +1233,12 @@ tar-upload: tar
 	ssh $(STAGINGSERVER) "mkdir -p nodejs/$(DISTTYPEDIR)/$(FULLVERSION)"
 	chmod 664 $(TARNAME).tar.gz
 	scp -p $(TARNAME).tar.gz $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.gz
-	ssh $(STAGINGSERVER) "aws s3 cp nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.gz s3://$(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.gz --endpoint=$(CLOUDFLARE_ENDPOINT) --profile=$(CLOUDFLARE_PROFILE)"
+	ssh $(STAGINGSERVER) "rclone copyto nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.gz $(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.gz"
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.gz.done"
 ifeq ($(XZ), 1)
 	chmod 664 $(TARNAME).tar.xz
 	scp -p $(TARNAME).tar.xz $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.xz
-	ssh $(STAGINGSERVER) "aws s3 cp nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.xz s3://$(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.xz --endpoint=$(CLOUDFLARE_ENDPOINT) --profile=$(CLOUDFLARE_PROFILE)"
+	ssh $(STAGINGSERVER) "rclone copyto nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.xz $(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.xz"
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).tar.xz.done"
 endif
 
@@ -1241,7 +1248,7 @@ doc-upload: doc
 	ssh $(STAGINGSERVER) "mkdir -p nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/docs/"
 	chmod -R ug=rw-x+X,o=r+X out/doc/
 	scp -pr out/doc/* $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/docs/
-	ssh $(STAGINGSERVER) "aws s3 cp --recursive nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/docs s3://$(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/docs/ --endpoint=$(CLOUDFLARE_ENDPOINT) --profile=$(CLOUDFLARE_PROFILE)"
+	ssh $(STAGINGSERVER) "rclone copy nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/docs/ $(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/docs/"
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/docs.done"
 
 .PHONY: $(TARBALL)-headers
@@ -1270,12 +1277,12 @@ tar-headers-upload: tar-headers
 	ssh $(STAGINGSERVER) "mkdir -p nodejs/$(DISTTYPEDIR)/$(FULLVERSION)"
 	chmod 664 $(TARNAME)-headers.tar.gz
 	scp -p $(TARNAME)-headers.tar.gz $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.gz
-	ssh $(STAGINGSERVER) "aws s3 cp nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.gz s3://$(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.gz --endpoint=$(CLOUDFLARE_ENDPOINT) --profile=$(CLOUDFLARE_PROFILE)"
+	ssh $(STAGINGSERVER) "rclone copyto nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.gz $(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.gz"
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.gz.done"
 ifeq ($(XZ), 1)
 	chmod 664 $(TARNAME)-headers.tar.xz
 	scp -p $(TARNAME)-headers.tar.xz $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.xz
-	ssh $(STAGINGSERVER) "aws s3 cp nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.xz s3://$(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.xz --endpoint=$(CLOUDFLARE_ENDPOINT) --profile=$(CLOUDFLARE_PROFILE)"
+	ssh $(STAGINGSERVER) "rclone copyto nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.xz $(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.xz"
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-headers.tar.xz.done"
 endif
 
@@ -1317,12 +1324,12 @@ binary-upload: binary
 	ssh $(STAGINGSERVER) "mkdir -p nodejs/$(DISTTYPEDIR)/$(FULLVERSION)"
 	chmod 664 $(TARNAME)-$(OSTYPE)-$(ARCH).tar.gz
 	scp -p $(TARNAME)-$(OSTYPE)-$(ARCH).tar.gz $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.gz
-	ssh $(STAGINGSERVER) "aws s3 cp nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.gz s3://$(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.gz --endpoint=$(CLOUDFLARE_ENDPOINT) --profile=$(CLOUDFLARE_PROFILE)"
+	ssh $(STAGINGSERVER) "rclone copyto nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.gz $(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.gz"
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.gz.done"
 ifeq ($(XZ), 1)
 	chmod 664 $(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz
 	scp -p $(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz
-	ssh $(STAGINGSERVER) "aws s3 cp nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz s3://$(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz --endpoint=$(CLOUDFLARE_ENDPOINT) --profile=$(CLOUDFLARE_PROFILE)"
+	ssh $(STAGINGSERVER) "rclone copyto nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz $(CLOUDFLARE_BUCKET)/nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz"
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME)-$(OSTYPE)-$(ARCH).tar.xz.done"
 endif
 
@@ -1340,21 +1347,6 @@ bench-addons-clean:
 	$(RM) -r benchmark/napi/*/build
 	$(RM) benchmark/napi/.buildstamp
 
-.PHONY: lint-md-rollup
-lint-md-rollup:
-	$(RM) tools/.*mdlintstamp
-	cd tools/lint-md && npm ci && npm run build
-
-.PHONY: lint-md-clean
-.NOTPARALLEL: lint-md-clean
-lint-md-clean:
-	$(RM) -r tools/lint-md/node_modules
-	$(RM) tools/.*mdlintstamp
-
-.PHONY: lint-md-build
-lint-md-build:
-	$(warning Deprecated no-op target 'lint-md-build')
-
 ifeq ("$(wildcard tools/.mdlintstamp)","")
 LINT_MD_NEWER =
 else
@@ -1366,8 +1358,13 @@ LINT_MD_FILES = $(shell $(FIND) $(LINT_MD_TARGETS) -type f \
 	! -path '*node_modules*' ! -path 'test/fixtures/*' -name '*.md' \
 	$(LINT_MD_NEWER))
 run-lint-md = tools/lint-md/lint-md.mjs $(LINT_MD_FILES)
+
+# Check for a specific file, as (empty) directories are persisted in git.
+tools/lint-md/node_modules/remark-parse/package.json:
+	-cd tools/lint-md && $(call available-node,$(run-npm-ci))
+
 # Lint all changed markdown files maintained by us
-tools/.mdlintstamp: $(LINT_MD_FILES)
+tools/.mdlintstamp: tools/lint-md/node_modules/remark-parse/package.json $(LINT_MD_FILES)
 	$(info Running Markdown linter...)
 	@$(call available-node,$(run-lint-md))
 	@touch $@
@@ -1377,7 +1374,7 @@ lint-md: lint-js-doc | tools/.mdlintstamp ## Lint the markdown documents maintai
 
 run-format-md = tools/lint-md/lint-md.mjs --format $(LINT_MD_FILES)
 .PHONY: format-md
-format-md: ## Format the markdown documents maintained by us in the codebase.
+format-md: tools/lint-md/node_modules/remark-parse/package.json ## Format the markdown documents maintained by us in the codebase.
 	@$(call available-node,$(run-format-md))
 
 
@@ -1431,6 +1428,11 @@ LINT_CPP_EXCLUDE += $(LINT_CPP_ADDON_DOC_FILES)
 # These files were copied more or less verbatim from V8.
 LINT_CPP_EXCLUDE += src/tracing/trace_event.h src/tracing/trace_event_common.h
 
+# deps/ncrypto is included in this list, as it is maintained in
+# this repository, and should be linted. Eventually it should move
+# to its own repo, at which point we should remove it from this list.
+LINT_CPP_DEPS = deps/ncrypto/*.cc deps/ncrypto/*.h
+
 LINT_CPP_FILES = $(filter-out $(LINT_CPP_EXCLUDE), $(wildcard \
 	benchmark/napi/*/*.cc \
 	src/*.c \
@@ -1445,6 +1447,7 @@ LINT_CPP_FILES = $(filter-out $(LINT_CPP_EXCLUDE), $(wildcard \
 	test/cctest/*.h \
 	test/embedding/*.cc \
 	test/embedding/*.h \
+	test/sqlite/*.c \
 	test/fixtures/*.c \
 	test/js-native-api/*/*.cc \
 	test/node-api/*/*.cc \
@@ -1455,6 +1458,7 @@ LINT_CPP_FILES = $(filter-out $(LINT_CPP_EXCLUDE), $(wildcard \
 	tools/code_cache/*.h \
 	tools/snapshot/*.cc \
 	tools/snapshot/*.h \
+	$(LINT_CPP_DEPS) \
 	))
 
 FORMAT_CPP_FILES ?=
@@ -1606,6 +1610,7 @@ lint-clean: ## Remove linting artifacts.
 	$(RM) tools/.*lintstamp
 	$(RM) .eslintcache
 	$(RM) -r tools/eslint/node_modules
+	$(RM) -r tools/lint-md/node_modules
 	$(RM) tools/pip/site_packages
 
 HAS_DOCKER ?= $(shell command -v docker > /dev/null 2>&1; [ $$? -eq 0 ] && echo 1 || echo 0)

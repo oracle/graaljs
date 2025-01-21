@@ -57,12 +57,19 @@ class CoverageLine {
 }
 
 class TestCoverage {
-  constructor(coverageDirectory, originalCoverageDirectory, workingDirectory, excludeGlobs, includeGlobs, thresholds) {
+  constructor(coverageDirectory,
+              originalCoverageDirectory,
+              workingDirectory,
+              excludeGlobs,
+              includeGlobs,
+              sourceMaps,
+              thresholds) {
     this.coverageDirectory = coverageDirectory;
     this.originalCoverageDirectory = originalCoverageDirectory;
     this.workingDirectory = workingDirectory;
     this.excludeGlobs = excludeGlobs;
     this.includeGlobs = includeGlobs;
+    this.sourceMaps = sourceMaps;
     this.thresholds = thresholds;
   }
 
@@ -341,7 +348,7 @@ class TestCoverage {
   mapCoverageWithSourceMap(coverage) {
     const { result } = coverage;
     const sourceMapCache = coverage['source-map-cache'];
-    if (!sourceMapCache) {
+    if (!this.sourceMaps || !sourceMapCache) {
       return result;
     }
     const newResult = new SafeMap();
@@ -491,14 +498,12 @@ function setupCoverage(options) {
   let originalCoverageDirectory = process.env.NODE_V8_COVERAGE;
   const cwd = process.cwd();
 
-  if (originalCoverageDirectory) {
-    // NODE_V8_COVERAGE was already specified. Convert it to an absolute path
-    // and store it for later. The test runner will use a temporary directory
-    // so that no preexisting coverage files interfere with the results of the
-    // coverage report. Then, once the coverage is computed, move the coverage
-    // files back to the original NODE_V8_COVERAGE directory.
-    originalCoverageDirectory = resolve(cwd, originalCoverageDirectory);
-  }
+  // If NODE_V8_COVERAGE was already specified, convert it to an absolute path
+  // and store it for later. The test runner will use a temporary directory
+  // so that no preexisting coverage files interfere with the results of the
+  // coverage report. Then, once the coverage is computed, move the coverage
+  // files back to the original NODE_V8_COVERAGE directory.
+  originalCoverageDirectory &&= resolve(cwd, originalCoverageDirectory);
 
   const coverageDirectory = mkdtempSync(join(tmpdir(), 'node-coverage-'));
   const enabled = setupCoverageHooks(coverageDirectory);
@@ -517,6 +522,7 @@ function setupCoverage(options) {
     cwd,
     options.coverageExcludeGlobs,
     options.coverageIncludeGlobs,
+    options.sourceMaps,
     {
       __proto__: null,
       line: options.lineCoverage,

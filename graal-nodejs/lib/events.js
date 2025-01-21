@@ -287,6 +287,12 @@ ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
   },
 });
 
+function hasEventListener(self, type) {
+  if (type === undefined)
+    return self._events !== undefined;
+  return self._events !== undefined && self._events[type] !== undefined;
+};
+
 ObjectDefineProperties(EventEmitter, {
   kMaxEventTargetListeners: {
     __proto__: null,
@@ -349,7 +355,7 @@ EventEmitter.init = function(opts) {
     this[kShapeMode] = true;
   }
 
-  this._maxListeners = this._maxListeners || undefined;
+  this._maxListeners ||= undefined;
 
 
   if (opts?.captureRejections) {
@@ -469,7 +475,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
   if (events !== undefined) {
     if (doError && events[kErrorMonitor] !== undefined)
       this.emit(kErrorMonitor, ...args);
-    doError = (doError && events.error === undefined);
+    doError &&= events.error === undefined;
   } else if (!doError)
     return false;
 
@@ -680,13 +686,11 @@ EventEmitter.prototype.removeListener =
     function removeListener(type, listener) {
       checkListener(listener);
 
-      const events = this._events;
-      if (events === undefined)
+      if (!hasEventListener(this, type))
         return this;
 
+      const events = this._events;
       const list = events[type];
-      if (list === undefined)
-        return this;
 
       if (list === listener || list.listener === listener) {
         this._eventsCount -= 1;
@@ -740,9 +744,9 @@ EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
  */
 EventEmitter.prototype.removeAllListeners =
     function removeAllListeners(type) {
-      const events = this._events;
-      if (events === undefined)
+      if (!hasEventListener(this))
         return this;
+      const events = this._events;
 
       // Not listening for removeListener, no need to emit
       if (events.removeListener === undefined) {
@@ -787,14 +791,10 @@ EventEmitter.prototype.removeAllListeners =
     };
 
 function _listeners(target, type, unwrap) {
-  const events = target._events;
-
-  if (events === undefined)
+  if (!hasEventListener(target, type))
     return [];
 
-  const evlistener = events[type];
-  if (evlistener === undefined)
-    return [];
+  const evlistener = target._events[type];
 
   if (typeof evlistener === 'function')
     return unwrap ? [evlistener.listener || evlistener] : [evlistener];
@@ -969,10 +969,10 @@ function getMaxListeners(emitterOrTarget) {
  */
 async function once(emitter, name, options = kEmptyObject) {
   validateObject(options, 'options');
-  const signal = options?.signal;
+  const { signal } = options;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
-    throw new AbortError(undefined, { cause: signal?.reason });
+    throw new AbortError(undefined, { cause: signal.reason });
   return new Promise((resolve, reject) => {
     const errorListener = (err) => {
       emitter.removeListener(name, resolver);
@@ -1060,7 +1060,7 @@ function on(emitter, event, options = kEmptyObject) {
   const signal = options.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
-    throw new AbortError(undefined, { cause: signal?.reason });
+    throw new AbortError(undefined, { cause: signal.reason });
   // Support both highWaterMark and highWatermark for backward compatibility
   const highWatermark = options.highWaterMark ?? options.highWatermark ?? NumberMAX_SAFE_INTEGER;
   validateInteger(highWatermark, 'options.highWaterMark', 1);

@@ -100,6 +100,7 @@ test('execute a .cts file importing a .ts file export', async () => {
 test('execute a .cts file importing a .mts file export', async () => {
   const result = await spawnPromisified(process.execPath, [
     '--experimental-strip-types',
+    '--no-experimental-require-module',
     fixtures.path('typescript/cts/test-require-mts-module.cts'),
   ]);
 
@@ -115,7 +116,6 @@ test('execute a .cts file importing a .mts file export', async () => {
     fixtures.path('typescript/cts/test-require-mts-module.cts'),
   ]);
 
-  match(result.stderr, /Support for loading ES Module in require\(\) is an experimental feature and might change at any time/);
   match(result.stdout, /Hello, TypeScript!/);
   strictEqual(result.code, 0);
 });
@@ -158,6 +158,7 @@ test('expect failure of a .ts file in node_modules', async () => {
 test('expect failure of a .cts requiring esm without default type module', async () => {
   const result = await spawnPromisified(process.execPath, [
     '--experimental-strip-types',
+    '--no-experimental-require-module',
     fixtures.path('typescript/cts/test-mts-node_modules.cts'),
   ]);
 

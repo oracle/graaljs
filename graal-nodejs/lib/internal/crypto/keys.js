@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  ArrayFrom,
   ArrayPrototypeSlice,
   ObjectDefineProperties,
   ObjectDefineProperty,
@@ -242,8 +241,7 @@ const {
     }
 
     get asymmetricKeyType() {
-      return this[kAsymmetricKeyType] ||
-             (this[kAsymmetricKeyType] = this[kHandle].getAsymmetricKeyType());
+      return this[kAsymmetricKeyType] ||= this[kHandle].getAsymmetricKeyType();
     }
 
     get asymmetricKeyDetails() {
@@ -252,10 +250,9 @@ const {
         case 'rsa-pss':
         case 'dsa':
         case 'ec':
-          return this[kAsymmetricKeyDetails] ||
-             (this[kAsymmetricKeyDetails] = normalizeKeyDetails(
-               this[kHandle].keyDetail({}),
-             ));
+          return this[kAsymmetricKeyDetails] ||= normalizeKeyDetails(
+            this[kHandle].keyDetail({}),
+          );
         default:
           return {};
       }
@@ -783,7 +780,7 @@ class CryptoKey {
   get usages() {
     if (!(this instanceof CryptoKey))
       throw new ERR_INVALID_THIS('CryptoKey');
-    return ArrayFrom(this[kKeyUsages]);
+    return this[kKeyUsages];
   }
 }
 

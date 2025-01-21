@@ -10,6 +10,7 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   PromiseResolve,
+  PromiseWithResolvers,
   SafeFinalizationRegistry,
   SafeSet,
   SafeWeakRef,
@@ -27,8 +28,8 @@ const {
   kResistStopPropagation,
   kWeakHandler,
 } = require('internal/event_target');
+const { kMaxEventTargetListeners } = require('events');
 const {
-  createDeferredPromise,
   customInspectSymbol,
   kEmptyObject,
   kEnumerableProperty,
@@ -85,7 +86,31 @@ function lazyMessageChannel() {
 }
 
 const clearTimeoutRegistry = new SafeFinalizationRegistry(clearTimeout);
+const dependantSignalsCleanupRegistry = new SafeFinalizationRegistry((signalWeakRef) => {
+  const signal = signalWeakRef.deref();
+  if (signal === undefined) {
+    return;
+  }
+  signal[kDependantSignals].forEach((ref) => {
+    if (ref.deref() === undefined) {
+      signal[kDependantSignals].delete(ref);
+    }
+  });
+});
+
 const gcPersistentSignals = new SafeSet();
+
+const sourceSignalsCleanupRegistry = new SafeFinalizationRegistry(({ sourceSignalRef, composedSignalRef }) => {
+  const composedSignal = composedSignalRef.deref();
+  if (composedSignal !== undefined) {
+    composedSignal[kSourceSignals].delete(sourceSignalRef);
+
+    if (composedSignal[kSourceSignals].size === 0) {
+      // This signal will no longer abort. There's no need to keep it in the gcPersistentSignals set.
+      gcPersistentSignals.delete(composedSignal);
+    }
+  }
+});
 
 const kAborted = Symbol('kAborted');
 const kReason = Symbol('kReason');
@@ -154,6 +179,7 @@ class AbortSignal extends EventTarget {
     }
     super();
 
+    this[kMaxEventTargetListeners] = 0;
     const {
       aborted = false,
       reason = undefined,
@@ -244,24 +270,35 @@ class AbortSignal extends EventTarget {
       }
       signal[kDependantSignals] ??= new SafeSet();
       if (!signal[kComposite]) {
-        resultSignal[kSourceSignals].add(new SafeWeakRef(signal));
+        const signalWeakRef = new SafeWeakRef(signal);
+        resultSignal[kSourceSignals].add(signalWeakRef);
         signal[kDependantSignals].add(resultSignalWeakRef);
+        dependantSignalsCleanupRegistry.register(resultSignal, signalWeakRef);
+        sourceSignalsCleanupRegistry.register(signal, {
+          sourceSignalRef: signalWeakRef,
+          composedSignalRef: resultSignalWeakRef,
+        });
       } else if (!signal[kSourceSignals]) {
         continue;
       } else {
-        for (const sourceSignal of signal[kSourceSignals]) {
-          const sourceSignalRef = sourceSignal.deref();
-          if (!sourceSignalRef) {
+        for (const sourceSignalWeakRef of signal[kSourceSignals]) {
+          const sourceSignal = sourceSignalWeakRef.deref();
+          if (!sourceSignal) {
             continue;
           }
-          assert(!sourceSignalRef.aborted);
-          assert(!sourceSignalRef[kComposite]);
+          assert(!sourceSignal.aborted);
+          assert(!sourceSignal[kComposite]);
 
-          if (resultSignal[kSourceSignals].has(sourceSignal)) {
+          if (resultSignal[kSourceSignals].has(sourceSignalWeakRef)) {
             continue;
           }
-          resultSignal[kSourceSignals].add(sourceSignal);
-          sourceSignalRef[kDependantSignals].add(resultSignalWeakRef);
+          resultSignal[kSourceSignals].add(sourceSignalWeakRef);
+          sourceSignal[kDependantSignals].add(resultSignalWeakRef);
+          dependantSignalsCleanupRegistry.register(resultSignal, sourceSignalWeakRef);
+          sourceSignalsCleanupRegistry.register(signal, {
+            sourceSignalRef: sourceSignalWeakRef,
+            composedSignalRef: resultSignalWeakRef,
+          });
         }
       }
     }
@@ -418,6 +455,7 @@ class AbortController {
    */
   get signal() {
     this.#signal ??= new AbortSignal(kDontThrowSymbol);
+
     return this.#signal;
   }
 
@@ -473,7 +511,7 @@ async function aborted(signal, resource) {
   validateObject(resource, 'resource', kValidateObjectAllowObjects);
   if (signal.aborted)
     return PromiseResolve();
-  const abortPromise = createDeferredPromise();
+  const abortPromise = PromiseWithResolvers();
   const opts = { __proto__: null, [kWeakHandler]: resource, once: true, [kResistStopPropagation]: true };
   signal.addEventListener('abort', abortPromise.resolve, opts);
   return abortPromise.promise;

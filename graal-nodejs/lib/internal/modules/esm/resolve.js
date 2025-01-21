@@ -227,9 +227,15 @@ const encodedSepRegEx = /%2F|%5C/i;
  */
 function finalizeResolution(resolved, base, preserveSymlinks) {
   if (RegExpPrototypeExec(encodedSepRegEx, resolved.pathname) !== null) {
+    let basePath;
+    try {
+      basePath = fileURLToPath(base);
+    } catch {
+      basePath = base;
+    }
     throw new ERR_INVALID_MODULE_SPECIFIER(
       resolved.pathname, 'must not include encoded "/" or "\\" characters',
-      fileURLToPath(base));
+      basePath);
   }
 
   let path;
@@ -248,14 +254,26 @@ function finalizeResolution(resolved, base, preserveSymlinks) {
 
   // Check for stats.isDirectory()
   if (stats === 1) {
-    throw new ERR_UNSUPPORTED_DIR_IMPORT(path, fileURLToPath(base), String(resolved));
+    let basePath;
+    try {
+      basePath = fileURLToPath(base);
+    } catch {
+      basePath = base;
+    }
+    throw new ERR_UNSUPPORTED_DIR_IMPORT(path, basePath, String(resolved));
   } else if (stats !== 0) {
     // Check for !stats.isFile()
     if (process.env.WATCH_REPORT_DEPENDENCIES && process.send) {
       process.send({ 'watch:require': [path || resolved.pathname] });
     }
+    let basePath;
+    try {
+      basePath = fileURLToPath(base);
+    } catch {
+      basePath = base;
+    }
     throw new ERR_MODULE_NOT_FOUND(
-      path || resolved.pathname, base && fileURLToPath(base), resolved);
+      path || resolved.pathname, basePath, resolved);
   }
 
   if (!preserveSymlinks) {
@@ -373,8 +391,9 @@ function resolvePackageTargetString(
   }
 
   if (!StringPrototypeStartsWith(target, './')) {
-    if (internal && !StringPrototypeStartsWith(target, '../') &&
-        !StringPrototypeStartsWith(target, '/')) {
+    if (internal &&
+        target[0] !== '/' &&
+        !StringPrototypeStartsWith(target, '../')) {
       // No need to convert target to string, since it's already presumed to be
       if (!URLCanParse(target)) {
         const exportTarget = pattern ?

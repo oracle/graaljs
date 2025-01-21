@@ -470,7 +470,7 @@ async function fsCall(fn, handle, ...args) {
 
 function checkAborted(signal) {
   if (signal?.aborted)
-    throw new AbortError(undefined, { cause: signal?.reason });
+    throw new AbortError(undefined, { cause: signal.reason });
 }
 
 async function writeFileHandle(filehandle, data, signal, encoding) {
@@ -943,6 +943,10 @@ async function readdirRecursive(originalPath, options) {
 
 async function readdir(path, options) {
   options = getOptions(options);
+
+  // Make shallow copy to prevent mutating options from affecting results
+  options = copyObject(options);
+
   path = getValidatedPath(path);
   if (options.recursive) {
     return readdirRecursive(path, options);
@@ -1222,7 +1226,7 @@ function isCustomIterable(obj) {
 async function appendFile(path, data, options) {
   options = getOptions(options, { encoding: 'utf8', mode: 0o666, flag: 'a' });
   options = copyObject(options);
-  options.flag = options.flag || 'a';
+  options.flag ||= 'a';
   return writeFile(path, data, options);
 }
 

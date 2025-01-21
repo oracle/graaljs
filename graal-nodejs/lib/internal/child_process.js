@@ -857,8 +857,7 @@ function setupChannel(target, channel, serializationMode) {
 
     if (err === 0) {
       if (handle) {
-        if (!this._handleQueue)
-          this._handleQueue = [];
+        this._handleQueue ||= [];
         if (obj?.postSend)
           obj.postSend(message, handle, options, callback, target);
       }
@@ -1014,9 +1013,7 @@ function getValidStdio(stdio, sync) {
     }
 
     // Defaults
-    if (stdio == null) {
-      stdio = i < 3 ? 'pipe' : 'ignore';
-    }
+    stdio ??= i < 3 ? 'pipe' : 'ignore';
 
     if (stdio === 'ignore') {
       ArrayPrototypePush(acc, { type: 'ignore' });

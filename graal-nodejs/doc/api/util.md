@@ -364,31 +364,38 @@ util.formatWithOptions({ colors: true }, 'See object %O', { foo: 42 });
 // when printed to a terminal.
 ```
 
-## `util.getCallSite(frames)`
+## `util.getCallSites(frameCountOrOptions, [options])`
 
 > Stability: 1.1 - Active development
 
 <!-- YAML
 added: v22.9.0
+changes:
+  - version: v22.12.0
+    pr-url: https://github.com/nodejs/node/pull/55626
+    description: The API is renamed from `util.getCallSite` to `util.getCallSites()`.
 -->
 
-* `frames` {number} Number of frames returned in the stacktrace.
+* `frameCount` {number} Optional number of frames to capture as call site objects.
   **Default:** `10`. Allowable range is between 1 and 200.
-* Returns: {Object\[]} An array of stacktrace objects
-  * `functionName` {string} Returns the name of the function associated with this stack frame.
+* `options` {Object} Optional
+  * `sourceMap` {boolean} Reconstruct the original location in the stacktrace from the source-map.
+    Enabled by default with the flag `--enable-source-maps`.
+* Returns: {Object\[]} An array of call site objects
+  * `functionName` {string} Returns the name of the function associated with this call site.
   * `scriptName` {string} Returns the name of the resource that contains the script for the
-    function for this StackFrame.
+    function for this call site.
   * `lineNumber` {number} Returns the number, 1-based, of the line for the associate function call.
   * `column` {number} Returns the 1-based column offset on the line for the associated function call.
 
-Returns an array of stacktrace objects containing the stack of
+Returns an array of call site objects containing the stack of
 the caller function.
 
 ```js
 const util = require('node:util');
 
 function exampleFunction() {
-  const callSites = util.getCallSite();
+  const callSites = util.getCallSites();
 
   console.log('Call Sites:');
   callSites.forEach((callSite, index) => {
@@ -419,6 +426,33 @@ function anotherFunction() {
 }
 
 anotherFunction();
+```
+
+It is possible to reconstruct the original locations by setting the option `sourceMap` to `true`.
+If the source map is not available, the original location will be the same as the current location.
+When the `--enable-source-maps` flag is enabled, for example when using `--experimental-transform-types`,
+`sourceMap` will be true by default.
+
+```ts
+import util from 'node:util';
+
+interface Foo {
+  foo: string;
+}
+
+const callSites = util.getCallSites({ sourceMap: true });
+
+// With sourceMap:
+// Function Name: ''
+// Script Name: example.js
+// Line Number: 7
+// Column Number: 26
+
+// Without sourceMap:
+// Function Name: ''
+// Script Name: example.js
+// Line Number: 2
+// Column Number: 26
 ```
 
 ## `util.getSystemErrorName(err)`
@@ -460,6 +494,26 @@ fs.access('file/that/does/not/exist', (err) => {
   const errorMap = util.getSystemErrorMap();
   const name = errorMap.get(err.errno);
   console.error(name);  // ENOENT
+});
+```
+
+## `util.getSystemErrorMessage(err)`
+
+<!-- YAML
+added: v22.12.0
+-->
+
+* `err` {number}
+* Returns: {string}
+
+Returns the string message for a numeric error code that comes from a Node.js
+API.
+The mapping between error codes and string messages is platform-dependent.
+
+```js
+fs.access('file/that/does/not/exist', (err) => {
+  const name = util.getSystemErrorMessage(err.errno);
+  console.error(name);  // No such file or directory
 });
 ```
 
@@ -1859,14 +1913,19 @@ console.log(util.stripVTControlCharacters('\u001B[4mvalue\u001B[0m'));
 
 ## `util.styleText(format, text[, options])`
 
-> Stability: 1.1 - Active development
+> Stability: 2 - Stable.
 
 <!-- YAML
 added:
   - v21.7.0
   - v20.12.0
 changes:
-  - version: v22.8.0
+  - version: v22.13.0
+    pr-url: https://github.com/nodejs/node/pull/56265
+    description: styleText is now stable.
+  - version:
+    - v22.8.0
+    - v20.18.0
     pr-url: https://github.com/nodejs/node/pull/54389
     description: Respect isTTY and environment variables
       such as NO_COLORS, NODE_DISABLE_COLORS, and FORCE_COLOR.
@@ -1940,6 +1999,10 @@ The full list of formats can be found in [modifiers][].
 
 <!-- YAML
 added: v8.3.0
+changes:
+  - version: v11.0.0
+    pr-url: https://github.com/nodejs/node/pull/22281
+    description: The class is now available on the global object.
 -->
 
 An implementation of the [WHATWG Encoding Standard][] `TextDecoder` API.
@@ -2017,14 +2080,6 @@ The `'iso-8859-16'` encoding listed in the [WHATWG Encoding Standard][]
 is not supported.
 
 ### `new TextDecoder([encoding[, options]])`
-
-<!-- YAML
-added: v8.3.0
-changes:
-  - version: v11.0.0
-    pr-url: https://github.com/nodejs/node/pull/22281
-    description: The class is now available on the global object.
--->
 
 * `encoding` {string} Identifies the `encoding` that this `TextDecoder` instance
   supports. **Default:** `'utf-8'`.
@@ -2108,6 +2163,10 @@ encoded bytes.
 
 ### `textEncoder.encodeInto(src, dest)`
 
+<!-- YAML
+added: v12.11.0
+-->
+
 * `src` {string} The text to encode.
 * `dest` {Uint8Array} The array to hold the encode result.
 * Returns: {Object}
@@ -2186,39 +2245,55 @@ added:
 > Stability: 1 - Experimental
 
 * `signal` {AbortSignal}
-* `resource` {Object} Any non-null entity, reference to which is held weakly.
+* `resource` {Object} Any non-null object tied to the abortable operation and held weakly.
+  If `resource` is garbage collected before the `signal` aborts, the promise remains pending,
+  allowing Node.js to stop tracking it.
+  This helps prevent memory leaks in long-running or non-cancelable operations.
 * Returns: {Promise}
 
-Listens to abort event on the provided `signal` and
-returns a promise that is fulfilled when the `signal` is
-aborted. If the passed `resource` is garbage collected before the `signal` is
-aborted, the returned promise shall remain pending indefinitely.
+Listens to abort event on the provided `signal` and returns a promise that resolves when the `signal` is aborted.
+If `resource` is provided, it weakly references the operation's associated object,
+so if `resource` is garbage collected before the `signal` aborts,
+then returned promise shall remain pending.
+This prevents memory leaks in long-running or non-cancelable operations.
 
 ```cjs
 const { aborted } = require('node:util');
 
+// Obtain an object with an abortable signal, like a custom resource or operation.
 const dependent = obtainSomethingAbortable();
 
+// Pass `dependent` as the resource, indicating the promise should only resolve
+// if `dependent` is still in memory when the signal is aborted.
 aborted(dependent.signal, dependent).then(() => {
-  // Do something when dependent is aborted.
+
+  // This code runs when `dependent` is aborted.
+  console.log('Dependent resource was aborted.');
 });
 
+// Simulate an event that triggers the abort.
 dependent.on('event', () => {
-  dependent.abort();
+  dependent.abort(); // This will cause the `aborted` promise to resolve.
 });
 ```
 
 ```mjs
 import { aborted } from 'node:util';
 
+// Obtain an object with an abortable signal, like a custom resource or operation.
 const dependent = obtainSomethingAbortable();
 
+// Pass `dependent` as the resource, indicating the promise should only resolve
+// if `dependent` is still in memory when the signal is aborted.
 aborted(dependent.signal, dependent).then(() => {
-  // Do something when dependent is aborted.
+
+  // This code runs when `dependent` is aborted.
+  console.log('Dependent resource was aborted.');
 });
 
+// Simulate an event that triggers the abort.
 dependent.on('event', () => {
-  dependent.abort();
+  dependent.abort(); // This will cause the `aborted` promise to resolve.
 });
 ```
 
@@ -2353,6 +2428,24 @@ Returns `true` if the value is a `BigInt64Array` instance.
 ```js
 util.types.isBigInt64Array(new BigInt64Array());   // Returns true
 util.types.isBigInt64Array(new BigUint64Array());  // Returns false
+```
+
+### `util.types.isBigIntObject(value)`
+
+<!-- YAML
+added: v10.4.0
+-->
+
+* `value` {any}
+* Returns: {boolean}
+
+Returns `true` if the value is a BigInt object, e.g. created
+by `Object(BigInt(123))`.
+
+```js
+util.types.isBigIntObject(Object(BigInt(123)));   // Returns true
+util.types.isBigIntObject(BigInt(123));   // Returns false
+util.types.isBigIntObject(123);  // Returns false
 ```
 
 ### `util.types.isBigUint64Array(value)`

@@ -2,7 +2,6 @@
 
 const {
   ArrayPrototypeForEach,
-  ArrayPrototypeIncludes,
   ObjectDefineProperty,
   ObjectFreeze,
   ObjectPrototypeHasOwnProperty,
@@ -11,13 +10,11 @@ const {
   StringPrototypeCharCodeAt,
   StringPrototypeIncludes,
   StringPrototypeSlice,
-  StringPrototypeSplit,
   StringPrototypeStartsWith,
 } = primordials;
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_RETURN_PROPERTY_VALUE,
-  ERR_INVALID_TYPESCRIPT_SYNTAX,
 } = require('internal/errors').codes;
 const { BuiltinModule } = require('internal/bootstrap/realm');
 
@@ -28,7 +25,6 @@ const path = require('path');
 const { pathToFileURL, fileURLToPath } = require('internal/url');
 const assert = require('internal/assert');
 
-const { Buffer } = require('buffer');
 const { getOptionValue } = require('internal/options');
 const { setOwnProperty, getLazy } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
@@ -121,8 +117,7 @@ let $Module = null;
  * Import the Module class on first use.
  */
 function lazyModule() {
-  $Module = $Module || require('internal/modules/cjs/loader').Module;
-  return $Module;
+  return $Module ??= require('internal/modules/cjs/loader').Module;
 }
 
 /**
@@ -205,7 +200,7 @@ function addBuiltinLibsToObject(object, dummyModuleName) {
   ArrayPrototypeForEach(builtinModules, (name) => {
     // Neither add underscored modules, nor ones that contain slashes (e.g.,
     // 'fs/promises') or ones that are already defined.
-    if (StringPrototypeStartsWith(name, '_') ||
+    if (name[0] === '_' ||
         StringPrototypeIncludes(name, '/') ||
         ObjectPrototypeHasOwnProperty(object, name)) {
       return;
@@ -317,77 +312,6 @@ function getBuiltinModule(id) {
 }
 
 /**
- * The TypeScript parsing mode, either 'strip-only' or 'transform'.
- * @type {string}
- */
-const getTypeScriptParsingMode = getLazy(() =>
-  (getOptionValue('--experimental-transform-types') ? 'transform' : 'strip-only'),
-);
-
-/**
- * Load the TypeScript parser.
- * and returns an object with a `code` property.
- * @returns {Function} The TypeScript parser function.
- */
-const loadTypeScriptParser = getLazy(() => {
-  const amaro = require('internal/deps/amaro/dist/index');
-  return amaro.transformSync;
-});
-
-/**
- *
- * @param {string} source the source code
- * @param {object} options the options to pass to the parser
- * @returns {TransformOutput} an object with a `code` property.
- */
-function parseTypeScript(source, options) {
-  const parse = loadTypeScriptParser();
-  try {
-    return parse(source, options);
-  } catch (error) {
-    throw new ERR_INVALID_TYPESCRIPT_SYNTAX(error);
-  }
-}
-
-/**
- * @typedef {object} TransformOutput
- * @property {string} code The compiled code.
- * @property {string} [map] The source maps (optional).
- *
- * Performs type-stripping to TypeScript source code.
- * @param {string} source TypeScript code to parse.
- * @param {string} filename The filename of the source code.
- * @returns {TransformOutput} The stripped TypeScript code.
- */
-function stripTypeScriptTypes(source, filename) {
-  assert(typeof source === 'string');
-  const options = {
-    __proto__: null,
-    mode: getTypeScriptParsingMode(),
-    sourceMap: getOptionValue('--enable-source-maps'),
-    filename,
-  };
-  const { code, map } = parseTypeScript(source, options);
-  if (map) {
-    // TODO(@marco-ippolito) When Buffer.transcode supports utf8 to
-    // base64 transformation, we should change this line.
-    const base64SourceMap = Buffer.from(map).toString('base64');
-    return `${code}\n\n//# sourceMappingURL=data:application/json;base64,${base64SourceMap}`;
-  }
-  // Source map is not necessary in strip-only mode. However, to map the source
-  // file in debuggers to the original TypeScript source, add a sourceURL magic
-  // comment to hint that it is a generated source.
-  return `${code}\n\n//# sourceURL=${filename}`;
-}
-
-function isUnderNodeModules(filename) {
-  const resolvedPath = path.resolve(filename);
-  const normalizedPath = path.normalize(resolvedPath);
-  const splitPath = StringPrototypeSplit(normalizedPath, path.sep);
-  return ArrayPrototypeIncludes(splitPath, 'node_modules');
-}
-
-/**
  * Enable on-disk compiled cache for all user modules being complied in the current Node.js instance
  * after this method is called.
  * If cacheDir is undefined, defaults to the NODE_MODULE_CACHE environment variable.
@@ -486,11 +410,9 @@ module.exports = {
   getCjsConditions,
   getCompileCacheDir,
   initializeCjsConditions,
-  isUnderNodeModules,
   loadBuiltinModule,
   makeRequireFunction,
   normalizeReferrerURL,
-  stripTypeScriptTypes,
   stringify,
   stripBOM,
   toRealPath,

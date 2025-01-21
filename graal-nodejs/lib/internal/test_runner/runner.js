@@ -17,7 +17,7 @@ const {
   ArrayPrototypeSort,
   ObjectAssign,
   PromisePrototypeThen,
-  PromiseResolve,
+  PromiseWithResolvers,
   SafeMap,
   SafePromiseAll,
   SafePromiseAllReturnVoid,
@@ -62,7 +62,6 @@ const { getInspectPort, isUsingInspector, isInspectorMessage } = require('intern
 const { isRegExp } = require('internal/util/types');
 const { pathToFileURL } = require('internal/url');
 const {
-  createDeferredPromise,
   getCWDURL,
   kEmptyObject,
 } = require('internal/util');
@@ -741,7 +740,7 @@ function run(options = kEmptyObject) {
       };
     } else {
       runFiles = async () => {
-        const { promise, resolve: finishBootstrap } = createDeferredPromise();
+        const { promise, resolve: finishBootstrap } = PromiseWithResolvers();
 
         await root.runInAsyncScope(async () => {
           const parentURL = getCWDURL().href;
@@ -798,9 +797,17 @@ function run(options = kEmptyObject) {
     }
   }
 
-  const setupPromise = PromiseResolve(setup?.(root.reporter));
-  PromisePrototypeThen(PromisePrototypeThen(PromisePrototypeThen(setupPromise, runFiles), postRun), teardown);
+  const runChain = async () => {
+    if (typeof setup === 'function') {
+      await setup(root.reporter);
+    }
 
+    await runFiles();
+    postRun?.();
+    teardown?.();
+  };
+
+  runChain();
   return root.reporter;
 }
 
