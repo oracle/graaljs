@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,7 +84,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_NUMERIC, null);
         this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.KEY_CASE_FIRST, GetStringOptionNode.CASE_FIRST_OPTION_VALUES, null);
         this.getSensitivityOption = GetStringOptionNode.create(context, IntlUtil.KEY_SENSITIVITY, SENSITIVITY_OPTION_VALUES, null);
-        this.getIgnorePunctuationOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_IGNORE_PUNCTUATION, false);
+        this.getIgnorePunctuationOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_IGNORE_PUNCTUATION, null);
     }
 
     public abstract JSCollatorObject executeInit(JSCollatorObject collator, Object locales, Object options);
@@ -110,7 +110,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
             Boolean optkn = getNumericOption.executeValue(options);
             String optkf = getCaseFirstOption.executeValue(options);
             String sensitivity = getSensitivityOption.executeValue(options);
-            boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
+            Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
 
             JSCollator.initializeCollator(context, state, locales, usage, optLocaleMatcher, optco, optkn, optkf, sensitivity, ignorePunctuation);
 

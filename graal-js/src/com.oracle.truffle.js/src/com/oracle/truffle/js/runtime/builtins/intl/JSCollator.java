@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,7 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     // localeMatcher unused as our lookup matcher and best fit matcher are the same at the moment
     @TruffleBoundary
     public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, String optco, Boolean optkn,
-                    String optkf, String sensitivity, boolean ignorePunctuation) {
+                    String optkf, String sensitivity, Boolean ignorePunctuation) {
         state.initializedCollator = true;
         state.usage = usage;
         Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
@@ -160,7 +160,7 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         if (sensitivity != null) {
             state.sensitivity = sensitivity;
         }
-        state.ignorePunctuation = ignorePunctuation;
+
         Locale collatorLocale = builder.build();
         state.locale = collatorLocale.toLanguageTag();
 
@@ -189,9 +189,19 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                 state.collator.setStrength(Collator.TERTIARY);
                 break;
         }
-        if (state.collator instanceof RuleBasedCollator) {
-            ((RuleBasedCollator) state.collator).setAlternateHandlingShifted(state.ignorePunctuation);
+
+        boolean resolvedIgnorePunctuation;
+        if (state.collator instanceof RuleBasedCollator ruleBasedCollator) {
+            if (ignorePunctuation == null) {
+                resolvedIgnorePunctuation = ruleBasedCollator.isAlternateHandlingShifted();
+            } else {
+                ruleBasedCollator.setAlternateHandlingShifted(ignorePunctuation);
+                resolvedIgnorePunctuation = ignorePunctuation;
+            }
+        } else {
+            resolvedIgnorePunctuation = (ignorePunctuation == null) ? false : ignorePunctuation;
         }
+        state.ignorePunctuation = resolvedIgnorePunctuation;
     }
 
     @Override
