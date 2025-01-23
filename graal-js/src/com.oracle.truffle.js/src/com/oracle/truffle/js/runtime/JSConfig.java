@@ -130,8 +130,8 @@ public final class JSConfig {
     public static final boolean FastOwnKeys = true;
     /** AST-level inlining of trivial built-in functions (e.g. String.prototype.charAt). */
     public static final boolean InlineTrivialBuiltins = true;
-    /** [Construct] as part of the CallTarget names. Off by default (footprint). */
-    public static final boolean DetailedCallTargetNames = false;
+    /** [Construct] as part of the CallTarget names. */
+    public static final boolean DetailedCallTargetNames = Boolean.parseBoolean(System.getProperty("truffle.js.DetailedCallTargetNames", "true"));
     public static final int SpreadArgumentPlaceholderCount = 3;
     /** Always capture stack trace eagerly. */
     public static final boolean EagerStackTrace = false;
