@@ -76,15 +76,7 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
-    "filePath" : "intl/regress-1347690.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "intl/regress-1427932.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl/regress-14307.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
