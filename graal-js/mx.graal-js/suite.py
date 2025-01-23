@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 suite = {
   "mxversion" : "7.27.0",
 
@@ -6,12 +7,12 @@ suite = {
   "version" : "25.0.0",
   "release" : False,
   "groupId" : "org.graalvm.js",
-  "url" : "http://www.graalvm.org/",
+  "url" : "https://www.graalvm.org/javascript",
   "developer" : {
     "name" : "GraalVM Development",
     "email" : "graalvm-dev@oss.oracle.com",
     "organization" : "Oracle Corporation",
-    "organizationUrl" : "http://www.graalvm.org/",
+    "organizationUrl" : "https://www.graalvm.org/",
   },
   "scm" : {
     "url" : "https://github.com/graalvm/graaljs",
@@ -470,9 +471,9 @@ suite = {
       ],
       "exclude" : [
       ],
-      "description" : "Graal JavaScript implementation",
-      "maven" : {
-        "artifactId" : "js-language",
+      "description": "GraalJS, a high-performance embeddable JavaScript runtime for Java. This artifact includes the core language runtime without standard libraries. It is not recommended to depend on the artifact directly. Instead, use \'org.graalvm.polyglot:js\' or \'org.graalvm.polyglot:js-community\' to ensure all dependencies are pulled in correctly.",
+      "maven": {
+        "artifactId": "js-language",
         "tag": ["default", "public"],
       },
       "license": [
@@ -489,7 +490,8 @@ suite = {
         "GRAALJS",
         "truffle:TRUFFLE_RUNTIME",
       ],
-      "description": "Graal JavaScript engine.",
+      "description":     "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency pulls in GraalJS dependencies and Truffle Community Edition.",
+      "descriptionGFTC": "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency pulls in GraalJS dependencies and Truffle.",
       "maven": {
         "artifactId": "js-community",
         "tag": ["default", "public"],
@@ -517,7 +519,7 @@ suite = {
         "sdk:LAUNCHER_COMMON",
         "sdk:JLINE3",
       ],
-      "description" : "Graal JavaScript Launcher",
+      "description" : "GraalJS, a high-performance embeddable JavaScript runtime for Java. This artifact provides a command-line launcher for GraalJS.",
       "maven" : {
         "artifactId" : "js-launcher",
         "tag": ["default", "public"],
@@ -542,7 +544,7 @@ suite = {
       "distDependencies" : [
         "sdk:POLYGLOT"
       ],
-      "description" : "Graal JavaScript ScriptEngine",
+      "description" : "GraalJS, a high-performance embeddable JavaScript runtime for Java. This artifact provides an implementation of javax.script.ScriptEngine (JSR-223) based on GraalJS. Note that this is provided for legacy reasons to allow easier migration for implementations currently based on a ScriptEngine. We strongly encourage users to only use \'org.graalvm.polyglot:js\' or \'org.graalvm.polyglot:js-community\' via org.graalvm.polyglot.Context to control many of the settings directly and benefit from fine-grained security settings in GraalVM.",
       "maven" : {
         "artifactId" : "js-scriptengine",
         "tag": ["default", "public"],
@@ -644,7 +646,7 @@ suite = {
         "UPL",
       ],
       "maven" : False,
-      "description" : "Graal JavaScript Tests",
+      "description" : "GraalJS Tests.",
       "allowsJavadocWarnings": True,
       "useModulePath": True,
       "unittestConfig": "js",
@@ -680,7 +682,7 @@ suite = {
         "sdk:POLYGLOT_TCK",
         "GRAALJS",
       ],
-      "description" : "Truffle TCK provider for JavaScript language.",
+      "description" : "Truffle TCK provider for GraalJS.",
       "license": "UPL",
       "testDistribution": False,
       "maven": {
@@ -693,7 +695,7 @@ suite = {
     "GRAALJS_GRAALVM_SUPPORT" : {
       "native" : True,
       "platformDependent" : True,
-      "description" : "Graal.js support distribution for the GraalVM",
+      "description" : "GraalJS support distribution for GraalVM.",
       "layout" : {
         "native-image.properties": "file:mx.graal-js/native-image.properties",
         "./": [
@@ -708,7 +710,7 @@ suite = {
     "GRAALJS_GRAALVM_LICENSES" : {
       "fileListPurpose": 'native-image-resources',
       "native" : True,
-      "description" : "Graal.js license files for the GraalVM",
+      "description" : "GraalJS license files for GraalVM.",
       "layout" : {
         "LICENSE_GRAALJS.txt" : "file:LICENSE_GRAALJS",
         "THIRD_PARTY_LICENSE_GRAALJS.txt": "file:THIRD_PARTY_LICENSE_GRAALJS.txt",
@@ -717,7 +719,7 @@ suite = {
 
     "JS_INTEROP_MICRO_BENCHMARKS" : {
       "subDir" : "src",
-      "description" : "Graal.js JMH Interop Suite",
+      "description" : "GraalJS JMH Interop Suite.",
       "dependencies" : ["com.oracle.truffle.js.jmh"],
       "exclude" : [
         "mx:JUNIT"
