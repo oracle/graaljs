@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltins;
-import com.oracle.truffle.js.nodes.intl.InitializeLocaleNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -115,7 +114,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         String calendar;
         String caseFirst;
         String collation;
-        int firstDayOfWeek;
+        String firstDayOfWeek;
         String hourCycle;
         boolean numeric;
         String numberingSystem;
@@ -147,7 +146,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
             return collation;
         }
 
-        public int getFirstDayOfWeek() {
+        public String getFirstDayOfWeek() {
             return firstDayOfWeek;
         }
 
@@ -214,7 +213,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         state.calendar = locale.getUnicodeLocaleType("ca");
         state.caseFirst = locale.getUnicodeLocaleType("kf");
         state.collation = locale.getUnicodeLocaleType("co");
-        state.firstDayOfWeek = InitializeLocaleNode.weekDayToNumber(locale.getUnicodeLocaleType("fw"));
+        state.firstDayOfWeek = locale.getUnicodeLocaleType("fw");
         state.hourCycle = locale.getUnicodeLocaleType("hc");
         String kn = locale.getUnicodeLocaleType("kn");
         state.numeric = "true".equals(kn) || "".equals(kn);
