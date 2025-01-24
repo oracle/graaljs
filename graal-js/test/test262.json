@@ -2701,18 +2701,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Locale/constructor-options-firstDayOfWeek-valid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Locale/prototype/firstDayOfWeek/valid-id.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Locale/prototype/firstDayOfWeek/valid-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
     "filePath" : "intl402/NumberFormat/currency-digits-nonstandard-notation.js",
     "status" : "FAIL",
     "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/4349"
