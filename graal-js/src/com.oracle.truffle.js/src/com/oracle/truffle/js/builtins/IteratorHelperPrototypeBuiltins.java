@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -136,7 +137,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = {"thisObj.getGeneratorState() == SuspendedYield"})
         public Object suspendedYield(VirtualFrame frame, JSIteratorHelperObject thisObj,
                         @Cached("create(getContext())") @Shared IteratorCloseNode outerIteratorCloseNode,
-                        @Cached("create(getContext())") IteratorCloseNode innerIteratorCloseNode) {
+                        @Cached("create(getContext())") @Exclusive IteratorCloseNode innerIteratorCloseNode) {
             thisObj.setGeneratorState(JSFunction.GeneratorState.Executing);
 
             try {
