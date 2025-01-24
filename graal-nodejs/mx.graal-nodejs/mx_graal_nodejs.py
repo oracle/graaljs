@@ -77,23 +77,51 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                     # run selected Node.js tests related to WebAssembly
                     wasm_tests = [
                         join('es-module', 'test-esm-extensionless-esm-and-wasm.mjs'),
+                        join('es-module', 'test-esm-loader-entry-url.mjs'),
+                        join('es-module', 'test-esm-loader-http-imports.mjs'),
                         join('es-module', 'test-esm-type-flag-loose-files.mjs'),
                         join('es-module', 'test-esm-type-flag-package-scopes.mjs'),
                         join('es-module', 'test-esm-wasm.mjs'),
                         join('es-module', 'test-wasm-memory-out-of-bound.js'),
                         join('es-module', 'test-wasm-simple.js'),
                         join('es-module', 'test-wasm-web-api.js'),
+                        join('es-module', 'test-typescript.mjs'),
+                        join('es-module', 'test-typescript-eval.mjs'),
+                        join('es-module', 'test-typescript-commonjs.mjs'),
+                        join('es-module', 'test-typescript-module.mjs'),
+                        join('parallel', 'test-abortsignal-cloneable.js'),
+                        join('parallel', 'test-blocklist-clone.js'),
                         join('parallel', 'test-blob.js'),
+                        join('parallel', 'test-crypto-x509.js'),
+                        join('parallel', 'test-debugger-invalid-json.mjs'),
+                        join('parallel', 'test-diagnostics-channel-module-import.js'),
+                        join('parallel', 'test-eventsource.js'),
                         join('parallel', 'test-fetch.mjs'),
                         join('parallel', 'test-fetch-disabled.mjs'),
                         join('parallel', 'test-fetch-mock.js'),
+                        join('parallel', 'test-http-import-websocket.js'),
                         join('parallel', 'test-http-response-setheaders.js'),
+                        join('parallel', 'test-messageevent-brandcheck.js'),
+                        join('parallel', 'test-messaging-marktransfermode.js'),
+                        join('parallel', 'test-perf-hooks-histogram.js'),
+                        join('parallel', 'test-runner-cli.js'),
+                        join('parallel', 'test-socketaddress.js'),
+                        join('parallel', 'test-structuredClone-global.js'),
                         join('parallel', 'test-websocket.js'),
+                        join('parallel', 'test-webstreams-clone-unref.js'),
+                        join('parallel', 'test-webstream-structured-clone-no-leftovers.mjs'),
                         join('parallel', 'test-whatwg-webstreams-transfer.js'),
+                        join('parallel', 'test-worker-broadcastchannel.js'),
+                        join('parallel', 'test-worker-broadcastchannel-wpt.js'),
+                        join('parallel', 'test-worker-message-mark-as-uncloneable.js'),
+                        join('parallel', 'test-worker-message-port.js'),
+                        join('parallel', 'test-worker-message-port-transfer-self.js'),
                         join('parallel', 'test-worker-message-port-wasm-module.js'),
-                        join('parallel', 'test-worker-message-port-wasm-threads.js')
-                    ]
+                        join('parallel', 'test-worker-message-port-wasm-threads.js'),
+                        join('parallel', 'test-worker-onmessage.js'),
+                    ] + ([join('parallel', 'test-process-get-builtin.mjs')] if mx.suite('tools', fatalIfMissing=False) is None else [])
                     for test in wasm_tests:
+                        mx.log('Running \'{}\''.format(test))
                         node(commonArgs + [join(_suite.dir, 'test', test)])
 
                     # test that WebAssembly can be disabled using env. variables
@@ -185,9 +213,6 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64']
-        elif _current_arch == 'aarch64':
-            # we do not use compiler recent enough to support neon
-            extra_flags = ['--with-arm-fpu=vfp']
         else:
             extra_flags = []
 

@@ -27,7 +27,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <ngtcp2/ngtcp2.h>
 
@@ -76,10 +76,6 @@ void ngtcp2_pv_entry_init(ngtcp2_pv_entry *pvent, const uint8_t *data,
    fallback DCID.  If path validation succeeds, fallback DCID is
    retired if it does not equal to the current DCID. */
 #define NGTCP2_PV_FLAG_FALLBACK_ON_FAILURE 0x04u
-/* NGTCP2_PV_FLAG_MTU_PROBE indicates that a validation must probe
-   least MTU that QUIC requires, which is 1200 bytes.  If it fails, a
-   path is not viable. */
-#define NGTCP2_PV_FLAG_MTU_PROBE 0x08u
 /* NGTCP2_PV_FLAG_PREFERRED_ADDR indicates that client is migrating to
    server's preferred address.  This flag is only used by client. */
 #define NGTCP2_PV_FLAG_PREFERRED_ADDR 0x10u
@@ -87,7 +83,7 @@ void ngtcp2_pv_entry_init(ngtcp2_pv_entry *pvent, const uint8_t *data,
 typedef struct ngtcp2_pv ngtcp2_pv;
 
 ngtcp2_static_ringbuf_def(pv_ents, NGTCP2_PV_MAX_ENTRIES,
-                          sizeof(ngtcp2_pv_entry));
+                          sizeof(ngtcp2_pv_entry))
 /*
  * ngtcp2_pv is the context of a single path validation.
  */
@@ -195,4 +191,4 @@ ngtcp2_tstamp ngtcp2_pv_next_expiry(ngtcp2_pv *pv);
  */
 void ngtcp2_pv_cancel_expired_timer(ngtcp2_pv *pv, ngtcp2_tstamp ts);
 
-#endif /* NGTCP2_PV_H */
+#endif /* !defined(NGTCP2_PV_H) */

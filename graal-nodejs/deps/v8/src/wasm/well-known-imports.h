@@ -19,15 +19,91 @@
 namespace v8::internal::wasm {
 
 enum class WellKnownImport : uint8_t {
+  // Generic:
   kUninstantiated,
   kGeneric,
+  kLinkError,
+
+  ////////////////////////////////////////////////////////
+  // Compile-time "builtin" imports:
+  ////////////////////////////////////////////////////////
+  kFirstCompileTimeImport,
+
+  // JS String Builtins
+  // https://github.com/WebAssembly/js-string-builtins
+  // TODO(14179): Rename some of these to reflect the new import names.
+  kStringCast = kFirstCompileTimeImport,
+  kStringCharCodeAt,
+  kStringCodePointAt,
+  kStringCompare,
+  kStringConcat,
+  kStringEquals,
+  kStringFromCharCode,
+  kStringFromCodePoint,
+  kStringFromUtf8Array,
+  kStringFromWtf16Array,
+  kStringIntoUtf8Array,
+  kStringLength,
+  kStringMeasureUtf8,
+  kStringSubstring,
+  kStringTest,
+  kStringToUtf8Array,
+  kStringToWtf16Array,
+
+  kLastCompileTimeImport = kStringToWtf16Array,
+  ////////////////////////////////////////////////////////
+  // End of compile-time "builtin" imports.
+  ////////////////////////////////////////////////////////
+
+  // DataView methods:
+  kDataViewGetBigInt64,
+  kDataViewGetBigUint64,
+  kDataViewGetFloat32,
+  kDataViewGetFloat64,
+  kDataViewGetInt8,
+  kDataViewGetInt16,
+  kDataViewGetInt32,
+  kDataViewGetUint8,
+  kDataViewGetUint16,
+  kDataViewGetUint32,
+  kDataViewSetBigInt64,
+  kDataViewSetBigUint64,
+  kDataViewSetFloat32,
+  kDataViewSetFloat64,
+  kDataViewSetInt8,
+  kDataViewSetInt16,
+  kDataViewSetInt32,
+  kDataViewSetUint8,
+  kDataViewSetUint16,
+  kDataViewSetUint32,
+  kDataViewByteLength,
+
+  // String-related functions:
+  kDoubleToString,
+  kIntToString,
+  kParseFloat,
+
+  kStringIndexOf,
+  kStringIndexOfImported,
+  kStringToLocaleLowerCaseStringref,
   kStringToLowerCaseStringref,
+  kStringToLowerCaseImported,
+  // Fast API calls:
+  kFastAPICall,
 };
 
 class NativeModule;
 
 // For debugging/tracing.
 const char* WellKnownImportName(WellKnownImport wki);
+
+inline bool IsCompileTimeImport(WellKnownImport wki) {
+  using T = std::underlying_type_t<WellKnownImport>;
+  T num = static_cast<T>(wki);
+  constexpr T kFirst = static_cast<T>(WellKnownImport::kFirstCompileTimeImport);
+  constexpr T kLast = static_cast<T>(WellKnownImport::kLastCompileTimeImport);
+  return kFirst <= num && num <= kLast;
+}
 
 class WellKnownImportsList {
  public:

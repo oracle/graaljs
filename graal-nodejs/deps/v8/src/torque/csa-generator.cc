@@ -227,7 +227,7 @@ void CSAGenerator::EmitInstruction(const CallIntrinsicInstruction& instruction,
       }
     }
   } else if (instruction.intrinsic->ExternalName() == "%GetClassMapConstant") {
-    if (parameter_types.size() != 0) {
+    if (!parameter_types.empty()) {
       ReportError("%GetClassMapConstant must not take parameters");
     }
     if (instruction.specialization_types.size() != 1) {
@@ -544,6 +544,10 @@ void CSAGenerator::EmitInstruction(const CallBuiltinInstruction& instruction,
     std::string lhs_name;
     std::string lhs_type;
     switch (result_types.size()) {
+      case 0:
+        // If a builtin call is annotated to never return, it has 0 return
+        // types (defining true void builtins is not allowed).
+        break;
       case 1:
         lhs_name = result_names[0];
         lhs_type = result_types[0]->GetGeneratedTNodeTypeName();
@@ -567,14 +571,17 @@ void CSAGenerator::EmitInstruction(const CallBuiltinInstruction& instruction,
         PreCallableExceptionPreparation(instruction.catch_block);
     Stack<std::string> pre_call_stack = *stack;
 
-    std::string generated_type = result_types[0]->GetGeneratedTNodeTypeName();
     for (const std::string& name : result_names) {
       stack->Push(name);
     }
-    out() << "    " << lhs_name << " = ";
-    out() << "ca_.CallStub<" << lhs_type
-          << ">(Builtins::CallableFor(ca_.isolate(), Builtin::k"
-          << instruction.builtin->ExternalName() << ")";
+    if (result_types.empty()) {
+      out() << "ca_.CallBuiltinVoid(Builtin::k"
+            << instruction.builtin->ExternalName();
+    } else {
+      out() << "    " << lhs_name << " = ";
+      out() << "ca_.CallBuiltin<" << lhs_type << ">(Builtin::k"
+            << instruction.builtin->ExternalName();
+    }
     if (!instruction.builtin->signature().HasContextParameter()) {
       // Add dummy context parameter to satisfy the CallBuiltin signature.
       out() << ", TNode<Object>()";
@@ -593,7 +600,7 @@ void CSAGenerator::EmitInstruction(const CallBuiltinInstruction& instruction,
 
     PostCallableExceptionPreparation(
         catch_name,
-        result_types.size() == 0 ? TypeOracle::GetVoidType() : result_types[0],
+        result_types.empty() ? TypeOracle::GetVoidType() : result_types[0],
         instruction.catch_block, &pre_call_stack,
         instruction.GetExceptionObjectDefinition());
   }
@@ -620,11 +627,9 @@ void CSAGenerator::EmitInstruction(
   out() << stack->Top() << " = ";
   if (generated_type != "Object") out() << "TORQUE_CAST(";
   out() << "CodeStubAssembler(state_).CallBuiltinPointer(Builtins::"
-           "CallableFor(ca_."
-           "isolate(),"
+           "CallInterfaceDescriptorFor("
            "ExampleBuiltinForTorqueFunctionPointerType("
-        << instruction.type->function_pointer_type_id() << ")).descriptor(), "
-        << function;
+        << instruction.type->function_pointer_type_id() << ")), " << function;
   if (!instruction.type->HasContextParameter()) {
     // Add dummy context parameter to satisfy the CallBuiltinPointer signature.
     out() << ", TNode<Object>()";

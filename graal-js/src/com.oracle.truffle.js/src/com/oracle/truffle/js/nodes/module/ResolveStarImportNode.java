@@ -45,10 +45,12 @@ import java.util.Set;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
@@ -62,6 +64,7 @@ public class ResolveStarImportNode extends StatementNode {
     private final Module.ModuleRequest moduleRequest;
     @Child private JavaScriptNode moduleNode;
     @Child private JSWriteFrameSlotNode writeLocalNode;
+    private final ValueProfile moduleProfile = ValueProfile.createClassProfile();
 
     ResolveStarImportNode(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
         this.context = context;
@@ -78,7 +81,7 @@ public class ResolveStarImportNode extends StatementNode {
     public Object execute(VirtualFrame frame) {
         JSModuleRecord referrer = (JSModuleRecord) moduleNode.execute(frame);
         // Let importedModule be GetImportedModule(module, in.[[ModuleRequest]]).
-        JSModuleRecord importedModule = (JSModuleRecord) referrer.getImportedModule(moduleRequest);
+        AbstractModuleRecord importedModule = moduleProfile.profile(referrer.getImportedModule(moduleRequest));
         // If in.[[ImportName]] is namespace-object, then
         // Let namespace be GetModuleNamespace(importedModule)
         JSDynamicObject namespace = importedModule.getModuleNamespace();

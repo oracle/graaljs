@@ -6,7 +6,7 @@
 
 #include "src/base/utils/random-number-generator.h"
 #include "src/codegen/assembler-inl.h"
-#include "src/codegen/code-stub-assembler.h"
+#include "src/codegen/code-stub-assembler-inl.h"
 #include "src/codegen/machine-type.h"
 #include "src/codegen/macro-assembler-inl.h"
 #include "src/codegen/optimized-compilation-info.h"
@@ -104,7 +104,7 @@ Handle<Code> BuildSetupFunction(Isolate* isolate,
   params.push_back(__ Parameter<Object>(1));
   // The parameters of the teardown function are the results of the test
   // function.
-  params.push_back(__ HeapConstant(
+  params.push_back(__ HeapConstantNoHole(
       BuildTeardownFunction(isolate, teardown_call_descriptor, results)));
   // First allocate the FixedArray which will hold the final results. Here we
   // should take care of all allocations, meaning we allocate HeapNumbers and
@@ -149,6 +149,7 @@ Handle<Code> BuildSetupFunction(Isolate* isolate,
       case MachineRepresentation::kFloat64:
         element = __ LoadHeapNumberValue(__ CAST(element));
         break;
+#if V8_ENABLE_WEBASSEMBLY
       case MachineRepresentation::kSimd128: {
         Node* vector = tester.raw_assembler_for_testing()->AddNode(
             tester.raw_assembler_for_testing()->machine()->I32x4Splat(),
@@ -164,6 +165,7 @@ Handle<Code> BuildSetupFunction(Isolate* isolate,
         element = vector;
         break;
       }
+#endif  // V8_ENABLE_WEBASSEMBLY
       default:
         UNREACHABLE();
     }
@@ -237,13 +239,13 @@ Handle<Code> BuildTeardownFunction(
       case MachineRepresentation::kFloat32:
         param =
             tester.raw_assembler_for_testing()->ChangeFloat32ToFloat64(param);
-        V8_FALLTHROUGH;
+        [[fallthrough]];
       case MachineRepresentation::kFloat64: {
-        __ StoreObjectFieldNoWriteBarrier(
+        __ StoreHeapNumberValue(
             __ Cast(__ LoadFixedArrayElement(result_array, i)),
-            __ IntPtrConstant(HeapNumber::kValueOffset),
             __ UncheckedCast<Float64T>(param));
       } break;
+#if V8_ENABLE_WEBASSEMBLY
       case MachineRepresentation::kSimd128: {
         TNode<FixedArray> vector =
             __ Cast(__ LoadFixedArrayElement(result_array, i));
@@ -259,6 +261,7 @@ Handle<Code> BuildTeardownFunction(
         }
         break;
       }
+#endif  // V8_ENABLE_WEBASSEMBLY
       default:
         UNREACHABLE();
     }
@@ -273,21 +276,21 @@ void PrintStateValue(std::ostream& os, Isolate* isolate, Handle<Object> value,
                      AllocatedOperand operand) {
   switch (operand.representation()) {
     case MachineRepresentation::kTagged:
-      if (value->IsSmi()) {
+      if (IsSmi(*value)) {
         os << Smi::cast(*value).value();
       } else {
-        os << value->Number();
+        os << Object::Number(*value);
       }
       break;
     case MachineRepresentation::kFloat32:
     case MachineRepresentation::kFloat64:
-      os << value->Number();
+      os << Object::Number(*value);
       break;
     case MachineRepresentation::kSimd128: {
-      FixedArray vector = FixedArray::cast(*value);
+      Tagged<FixedArray> vector = FixedArray::cast(*value);
       os << "[";
       for (int lane = 0; lane < 4; lane++) {
-        os << Smi::cast(vector.get(lane)).value();
+        os << Smi::cast(vector->get(lane)).value();
         if (lane < 3) {
           os << ", ";
         }
@@ -615,6 +618,7 @@ class TestEnvironment : public HandleAndZoneScope {
     const int kTotalStackParameterCount = stack_slot_count_ + 1;
     return main_zone()->New<CallDescriptor>(
         CallDescriptor::kCallCodeObject,  // kind
+        kDefaultCodeEntrypointTag,        // tag
         MachineType::AnyTagged(),         // target MachineType
         LinkageLocation::ForAnyRegister(
             MachineType::AnyTagged()),  // target location
@@ -747,7 +751,8 @@ class TestEnvironment : public HandleAndZoneScope {
       FunctionTester ft(setup, 2);
       Handle<FixedArray> result = ft.CallChecked<FixedArray>(test, state_in);
       CHECK_EQ(result->length(), state_in->length());
-      result->CopyTo(0, *state_out, 0, result->length());
+      FixedArray::CopyElements(main_isolate(), *state_out, 0, *result, 0,
+                               result->length());
     }
     return state_out;
   }
@@ -774,7 +779,7 @@ class TestEnvironment : public HandleAndZoneScope {
     return static_cast<int>(std::distance(layout.cbegin(), it));
   }
 
-  Object GetMoveSource(Handle<FixedArray> state, MoveOperands* move) {
+  Tagged<Object> GetMoveSource(Handle<FixedArray> state, MoveOperands* move) {
     InstructionOperand from = move->source();
     if (from.IsConstant()) {
       Constant constant = instructions_.GetConstant(
@@ -783,13 +788,14 @@ class TestEnvironment : public HandleAndZoneScope {
       switch (constant.type()) {
         case Constant::kInt32:
           constant_value =
-              Handle<Smi>(Smi(static_cast<Address>(
+              Handle<Smi>(Tagged<Smi>(static_cast<Address>(
                               static_cast<intptr_t>(constant.ToInt32()))),
                           main_isolate());
           break;
         case Constant::kInt64:
-          constant_value = Handle<Smi>(
-              Smi(static_cast<Address>(constant.ToInt64())), main_isolate());
+          constant_value =
+              Handle<Smi>(Tagged<Smi>(static_cast<Address>(constant.ToInt64())),
+                          main_isolate());
           break;
         case Constant::kFloat32:
           constant_value = main_isolate()->factory()->NewHeapNumber(
@@ -818,12 +824,13 @@ class TestEnvironment : public HandleAndZoneScope {
         static_cast<int>(setup_layout_.size()));
     // We do not want to modify `state_in` in place so perform the moves on a
     // copy.
-    state_in->CopyTo(0, *state_out, 0, state_in->length());
+    FixedArray::CopyElements(main_isolate(), *state_out, 0, *state_in, 0,
+                             state_in->length());
     DCHECK_EQ(kPreserveLayout, layout_mode_);
     for (auto move : *moves) {
       int to_index = OperandToStatePosition(
           TeardownLayout(), AllocatedOperand::cast(move->destination()));
-      Object source = GetMoveSource(state_out, move);
+      Tagged<Object> source = GetMoveSource(state_out, move);
       state_out->set(to_index, source);
     }
     return state_out;
@@ -838,14 +845,14 @@ class TestEnvironment : public HandleAndZoneScope {
     for (auto move : *moves) {
       int to_index = OperandToStatePosition(
           TeardownLayout(), AllocatedOperand::cast(move->destination()));
-      Object source = GetMoveSource(state_in, move);
+      Tagged<Object> source = GetMoveSource(state_in, move);
       state_out->set(to_index, source);
     }
     // If we generated redundant moves, they were eliminated automatically and
     // don't appear in the parallel move. Simulate them now.
     for (auto& operand : teardown_layout_) {
       int to_index = OperandToStatePosition(TeardownLayout(), operand);
-      if (state_out->get(to_index).IsUndefined()) {
+      if (IsUndefined(state_out->get(to_index))) {
         int from_index = OperandToStatePosition(setup_layout_, operand);
         state_out->set(to_index, state_in->get(from_index));
       }
@@ -861,7 +868,8 @@ class TestEnvironment : public HandleAndZoneScope {
         static_cast<int>(setup_layout_.size()));
     // We do not want to modify `state_in` in place so perform the swaps on a
     // copy.
-    state_in->CopyTo(0, *state_out, 0, state_in->length());
+    FixedArray::CopyElements(main_isolate(), *state_out, 0, *state_in, 0,
+                             state_in->length());
     for (auto swap : *swaps) {
       int lhs_index = OperandToStatePosition(
           setup_layout_, AllocatedOperand::cast(swap->destination()));
@@ -900,13 +908,13 @@ class TestEnvironment : public HandleAndZoneScope {
       case MachineRepresentation::kTagged:
       case MachineRepresentation::kFloat32:
       case MachineRepresentation::kFloat64:
-        return actual->StrictEquals(*expected);
+        return Object::StrictEquals(*actual, *expected);
       case MachineRepresentation::kSimd128:
         for (int lane = 0; lane < 4; lane++) {
           int actual_lane =
-              Smi::cast(FixedArray::cast(*actual).get(lane)).value();
+              Smi::cast(FixedArray::cast(*actual)->get(lane)).value();
           int expected_lane =
-              Smi::cast(FixedArray::cast(*expected).get(lane)).value();
+              Smi::cast(FixedArray::cast(*expected)->get(lane)).value();
           if (actual_lane != expected_lane) {
             return false;
           }
@@ -1108,7 +1116,8 @@ class CodeGeneratorTester {
               CodeKind::FOR_TESTING),
         linkage_(environment->test_descriptor()),
         frame_(environment->test_descriptor()->CalculateFixedFrameSize(
-            CodeKind::FOR_TESTING)) {
+                   CodeKind::FOR_TESTING),
+               environment->main_zone()) {
     // Pick half of the stack parameters at random and move them into spill
     // slots, separated by `extra_stack_space` bytes.
     // When testing a move with stack slots using CheckAssembleMove or
@@ -1139,12 +1148,11 @@ class CodeGeneratorTester {
 
     constexpr size_t kMaxUnoptimizedFrameHeight = 0;
     constexpr size_t kMaxPushedArgumentCount = 0;
-    constexpr wasm::AssemblerBufferCache* kNoBufferCache = nullptr;
     generator_ = new CodeGenerator(
         environment->main_zone(), &frame_, &linkage_,
         environment->instructions(), &info_, environment->main_isolate(),
         base::Optional<OsrHelper>(), kNoSourcePosition, nullptr,
-        AssemblerOptions::Default(environment->main_isolate()), kNoBufferCache,
+        AssemblerOptions::Default(environment->main_isolate()),
         Builtin::kNoBuiltinId, kMaxUnoptimizedFrameHeight,
         kMaxPushedArgumentCount);
 
@@ -1294,6 +1302,9 @@ class CodeGeneratorTester {
         AllocatedOperand(LocationOperand::REGISTER,
                          MachineRepresentation::kTagged,
                          kReturnRegister0.code()),
+        ImmediateOperand(
+            ImmediateOperand::INLINE_INT32,
+            (kDefaultCodeEntrypointTag >> kCodeEntrypointTagShift)),
         ImmediateOperand(ImmediateOperand::INLINE_INT32, optional_padding_slot),
         ImmediateOperand(ImmediateOperand::INLINE_INT32,
                          first_unused_stack_slot)};
@@ -1371,7 +1382,7 @@ TEST(FuzzAssembleMove) {
 
     Handle<Code> test = c.FinalizeForExecuting();
     if (v8_flags.print_code) {
-      test->Print();
+      Print(*test);
     }
 
     Handle<FixedArray> actual = env.Run(test, state_in);
@@ -1395,7 +1406,7 @@ TEST(FuzzAssembleParallelMove) {
 
   Handle<Code> test = c.FinalizeForExecuting();
   if (v8_flags.print_code) {
-    test->Print();
+    Print(*test);
   }
 
   Handle<FixedArray> actual = env.Run(test, state_in);
@@ -1420,7 +1431,7 @@ TEST(FuzzAssembleSwap) {
 
     Handle<Code> test = c.FinalizeForExecuting();
     if (v8_flags.print_code) {
-      test->Print();
+      Print(*test);
     }
 
     Handle<FixedArray> actual = env.Run(test, state_in);
@@ -1439,7 +1450,8 @@ TEST(FuzzAssembleMoveAndSwap) {
   for (int extra_space : {0, kExtraSpace}) {
     CodeGeneratorTester c(&env, extra_space);
 
-    state_in->CopyTo(0, *expected, 0, state_in->length());
+    FixedArray::CopyElements(env.main_isolate(), *expected, 0, *state_in, 0,
+                             state_in->length());
 
     for (int i = 0; i < 1000; i++) {
       // Randomly alternate between swaps and moves.
@@ -1458,7 +1470,7 @@ TEST(FuzzAssembleMoveAndSwap) {
 
     Handle<Code> test = c.FinalizeForExecuting();
     if (v8_flags.print_code) {
-      test->Print();
+      Print(*test);
     }
 
     Handle<FixedArray> actual = env.Run(test, state_in);
@@ -1539,7 +1551,7 @@ TEST(AssembleTailCallGap) {
                                 CodeGeneratorTester::kRegisterPush);
     Handle<Code> code = c.Finalize();
     if (v8_flags.print_code) {
-      code->Print();
+      Print(*code);
     }
   }
 
@@ -1568,7 +1580,7 @@ TEST(AssembleTailCallGap) {
                                 CodeGeneratorTester::kStackSlotPush);
     Handle<Code> code = c.Finalize();
     if (v8_flags.print_code) {
-      code->Print();
+      Print(*code);
     }
   }
 
@@ -1597,7 +1609,7 @@ TEST(AssembleTailCallGap) {
                                 CodeGeneratorTester::kScalarPush);
     Handle<Code> code = c.Finalize();
     if (v8_flags.print_code) {
-      code->Print();
+      Print(*code);
     }
   }
 }
@@ -1613,7 +1625,8 @@ std::shared_ptr<wasm::NativeModule> AllocateNativeModule(Isolate* isolate,
   // WasmCallDescriptor assumes that code is on the native heap and not
   // within a code object.
   auto native_module = wasm::GetWasmEngine()->NewNativeModule(
-      isolate, wasm::WasmFeatures::All(), std::move(module), code_size);
+      isolate, wasm::WasmFeatures::All(), wasm::CompileTimeImports{},
+      std::move(module), code_size);
   native_module->SetWireBytes({});
   return native_module;
 }
@@ -1664,9 +1677,9 @@ TEST(Regress_1171759) {
           .ToHandleChecked();
 
   std::shared_ptr<wasm::NativeModule> module =
-      AllocateNativeModule(handles.main_isolate(), code->InstructionSize());
+      AllocateNativeModule(handles.main_isolate(), code->instruction_size());
   wasm::WasmCodeRefScope wasm_code_ref_scope;
-  byte* code_start = module->AddCodeForTesting(code)->instructions().begin();
+  uint8_t* code_start = module->AddCodeForTesting(code)->instructions().begin();
 
   // Generate a minimal calling function, to push stack arguments.
   RawMachineAssemblerTester<int32_t> mt;

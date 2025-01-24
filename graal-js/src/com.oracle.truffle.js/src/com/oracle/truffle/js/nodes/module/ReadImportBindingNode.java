@@ -61,9 +61,9 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 
 /**
  * Reads the value of a resolved import binding from a resolved binding record (module, binding
@@ -96,8 +96,8 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
                     @Cached("resolution.getBindingName()") @SuppressWarnings("unused") TruffleString bindingName,
                     @Cached("create(frameDescriptor, findImportedSlotIndex(bindingName, resolution.getModule()))") JSReadFrameSlotNode readFrameSlot,
                     @Cached @SuppressWarnings("unused") TruffleString.EqualNode equalNode) {
-        JSModuleRecord module = resolution.getModule();
-        assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
+        AbstractModuleRecord module = resolution.getModule();
+        assert !(module instanceof CyclicModuleRecord cyclicModule) || cyclicModule.isLinked() : module;
         MaterializedFrame environment = JSFrameUtil.castMaterializedFrame(module.getEnvironment());
         Object value = readFrameSlot.execute(environment);
         assert value != null;
@@ -107,8 +107,8 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     @TruffleBoundary
     @Specialization(guards = {"!resolution.isNamespace()"}, replaces = {"doCached"})
     final Object doUncached(ExportResolution.Resolved resolution) {
-        JSModuleRecord module = resolution.getModule();
-        assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
+        AbstractModuleRecord module = resolution.getModule();
+        assert !(module instanceof CyclicModuleRecord cyclicModule) || cyclicModule.isLinked() : module;
         TruffleString bindingName = resolution.getBindingName();
         FrameDescriptor moduleFrameDescriptor = module.getFrameDescriptor();
         int slotIndex = findImportedSlotIndex(bindingName, module);
@@ -123,15 +123,15 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
         return value;
     }
 
-    static int findImportedSlotIndex(TruffleString bindingName, JSModuleRecord module) {
+    static int findImportedSlotIndex(TruffleString bindingName, AbstractModuleRecord module) {
         return JSFrameUtil.findRequiredFrameSlotIndex(module.getFrameDescriptor(), bindingName);
     }
 
     @Specialization(guards = {"resolution.isNamespace()"})
     final Object doGetNamespace(ExportResolution.Resolved resolution,
                     @Cached InlinedBranchProfile slowPath) {
-        JSModuleRecord module = resolution.getModule();
-        assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
+        AbstractModuleRecord module = resolution.getModule();
+        assert !(module instanceof CyclicModuleRecord cyclicModule) || cyclicModule.isLinked() : module;
         var namespace = module.getModuleNamespaceOrNull();
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, namespace != null)) {
             return namespace;

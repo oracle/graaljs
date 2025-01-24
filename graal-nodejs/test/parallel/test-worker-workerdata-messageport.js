@@ -8,7 +8,7 @@ const {
 } = require('node:worker_threads');
 
 const channel = new MessageChannel();
-const workerData = { mesage: channel.port1 };
+const workerData = { message: channel.port1 };
 const transferList = [channel.port1];
 const meowScript = () => 'meow';
 
@@ -54,7 +54,9 @@ const meowScript = () => 'meow';
     workerData,
     transferList: []
   }), {
-    code: 'ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST',
+    constructor: DOMException,
+    name: 'DataCloneError',
+    code: 25,
     message: 'Object that needs transfer was found in message but not ' +
              'listed in transferList'
   });

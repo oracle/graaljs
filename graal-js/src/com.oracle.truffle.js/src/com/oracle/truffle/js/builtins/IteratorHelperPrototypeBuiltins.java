@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -108,14 +109,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     @ImportStatic({IteratorHelperPrototypeBuiltins.class, IteratorPrototypeBuiltins.class, JSFunction.GeneratorState.class})
     public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
-        @Child private IteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-
-            iteratorCloseNode = IteratorCloseNode.create(context);
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
+            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
         @Specialization(guards = {"thisObj.getGeneratorState() == Executing"})
@@ -124,34 +122,50 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = {"thisObj.getGeneratorState() == SuspendedStart"})
-        public Object suspendedStart(VirtualFrame frame, JSIteratorHelperObject thisObj) {
+        public Object suspendedStart(VirtualFrame frame, JSIteratorHelperObject thisObj,
+                        @Cached("create(getContext())") @Shared IteratorCloseNode outerIteratorCloseNode) {
             thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
             var args = thisObj.getIteratorArgs();
-            iteratorCloseNode.executeVoid(args.iterated.getIterator());
+            IteratorRecord outerIterator = args.iterated;
+            if (outerIterator != null) {
+                outerIteratorCloseNode.executeVoid(outerIterator.getIterator());
+            }
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
         @Specialization(guards = {"thisObj.getGeneratorState() == SuspendedYield"})
         public Object suspendedYield(VirtualFrame frame, JSIteratorHelperObject thisObj,
-                        @Cached InlinedBranchProfile aliveBranch) {
+                        @Cached("create(getContext())") @Shared IteratorCloseNode outerIteratorCloseNode,
+                        @Cached("create(getContext())") IteratorCloseNode innerIteratorCloseNode) {
             thisObj.setGeneratorState(JSFunction.GeneratorState.Executing);
 
             try {
                 var args = thisObj.getIteratorArgs();
-                IteratorRecord iterated = args.iterated;
+                IteratorRecord outerIterator = args.iterated;
+                IteratorRecord innerIterator = null;
 
-                if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs flatMapArgs) {
+                if (args instanceof IteratorFunctionBuiltins.ConcatArgs concatArgs) {
+                    assert concatArgs.innerAlive;
+                    innerIterator = concatArgs.innerIterator;
+                } else if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs flatMapArgs) {
                     assert flatMapArgs.innerAlive;
-                    aliveBranch.enter(this);
+                    innerIterator = flatMapArgs.innerIterator;
+                }
+
+                if (innerIterator != null) {
                     try {
-                        iteratorCloseNode.executeVoid(flatMapArgs.innerIterator.getIterator());
+                        innerIteratorCloseNode.executeVoid(innerIterator.getIterator());
                     } catch (AbstractTruffleException e) {
-                        iteratorCloseNode.executeAbrupt(iterated.getIterator());
+                        if (outerIterator != null) {
+                            outerIteratorCloseNode.executeAbrupt(outerIterator.getIterator());
+                        }
                         throw e;
                     }
                 }
 
-                iteratorCloseNode.executeVoid(iterated.getIterator());
+                if (outerIterator != null) {
+                    outerIteratorCloseNode.executeVoid(outerIterator.getIterator());
+                }
             } finally {
                 thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
             }

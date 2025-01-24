@@ -16,7 +16,6 @@ const {
   ObjectSetPrototypeOf,
   ReflectGetOwnPropertyDescriptor,
   ReflectOwnKeys,
-  RegExpPrototypeSymbolReplace,
   SafeMap,
   SafeSet,
   StringPrototypeCharAt,
@@ -46,7 +45,16 @@ const {
   kEnumerableProperty,
   kEmptyObject,
   SideEffectFreeRegExpPrototypeSymbolReplace,
+  isWindows,
 } = require('internal/util');
+
+const {
+  platform,
+} = require('internal/process/per_thread');
+
+const {
+  markTransferMode,
+} = require('internal/worker/js_transferable');
 
 const {
   codes: {
@@ -80,9 +88,6 @@ const {
 } = require('internal/validators');
 
 const querystring = require('querystring');
-
-const { platform } = process;
-const isWindows = platform === 'win32';
 
 const bindingUrl = internalBinding('url');
 
@@ -328,6 +333,8 @@ class URLSearchParams {
   // Default parameter is necessary to keep URLSearchParams.length === 0 in
   // accordance with Web IDL spec.
   constructor(init = undefined) {
+    markTransferMode(this, false, false);
+
     if (init == null) {
       // Do nothing
     } else if (typeof init === 'object' || typeof init === 'function') {
@@ -343,7 +350,7 @@ class URLSearchParams {
           throw new ERR_ARG_NOT_ITERABLE('Query pairs');
         }
 
-        // The following implementationd differs from the URL specification:
+        // The following implementation differs from the URL specification:
         // Sequences must first be converted from ECMAScript objects before
         // and operations are done on them, and the operation of converting
         // the sequences would first exhaust the iterators. If the iterator
@@ -361,7 +368,7 @@ class URLSearchParams {
             if (pair.length !== 2) {
               throw new ERR_INVALID_TUPLE('Each query pair', '[name, value]');
             }
-            // Append (innerSequence[0], innerSequence[1]) to querys list.
+            // Append (innerSequence[0], innerSequence[1]) to query's list.
             ArrayPrototypePush(
               this.#searchParams,
               StringPrototypeToWellFormed(`${pair[0]}`),
@@ -764,6 +771,16 @@ function isURL(self) {
   return Boolean(self?.href && self.protocol && self.auth === undefined && self.path === undefined);
 }
 
+/**
+ * A unique symbol used as a private identifier to safely invoke the URL constructor
+ * with a special parsing behavior. When passed as the third argument to the URL
+ * constructor, it signals that the constructor should not throw an exception
+ * for invalid URL inputs.
+ */
+const kParseURLSymbol = Symbol('kParseURL');
+const kCreateURLFromPosixPathSymbol = Symbol('kCreateURLFromPosixPath');
+const kCreateURLFromWindowsPathSymbol = Symbol('kCreateURLFromWindowsPath');
+
 class URL {
   #context = new URLContext();
   #searchParams;
@@ -782,7 +799,9 @@ class URL {
     };
   }
 
-  constructor(input, base = undefined) {
+  constructor(input, base = undefined, parseSymbol = undefined) {
+    markTransferMode(this, false, false);
+
     if (arguments.length === 0) {
       throw new ERR_MISSING_ARGS('url');
     }
@@ -794,7 +813,28 @@ class URL {
       base = `${base}`;
     }
 
-    this.#updateContext(bindingUrl.parse(input, base));
+    let href;
+    if (arguments.length < 3) {
+      href = bindingUrl.parse(input, base, true);
+    } else {
+      const raiseException = parseSymbol !== kParseURLSymbol;
+      const interpretAsWindowsPath = parseSymbol === kCreateURLFromWindowsPathSymbol;
+      const pathToFileURL = interpretAsWindowsPath || (parseSymbol === kCreateURLFromPosixPathSymbol);
+      href = pathToFileURL ?
+        bindingUrl.pathToFileURL(input, interpretAsWindowsPath, base) :
+        bindingUrl.parse(input, base, raiseException);
+    }
+    if (href) {
+      this.#updateContext(href);
+    }
+  }
+
+  static parse(input, base = undefined) {
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('url');
+    }
+    const parsedURLObject = new URL(input, base, kParseURLSymbol);
+    return parsedURLObject.href ? parsedURLObject : null;
   }
 
   [inspect.custom](depth, opts) {
@@ -1139,6 +1179,12 @@ ObjectDefineProperties(URL, {
     writable: true,
     enumerable: true,
   },
+  parse: {
+    __proto__: null,
+    configurable: true,
+    writable: true,
+    enumerable: true,
+  },
 });
 
 function installObjectURLMethods() {
@@ -1382,7 +1428,7 @@ function urlToHttpOptions(url) {
     __proto__: null,
     ...url, // In case the url object was extended by the user.
     protocol: url.protocol,
-    hostname: hostname && StringPrototypeStartsWith(hostname, '[') ?
+    hostname: hostname && hostname[0] === '[' ?
       StringPrototypeSlice(hostname, 1, -1) :
       hostname,
     hash: url.hash,
@@ -1464,47 +1510,16 @@ function fileURLToPath(path, options = kEmptyObject) {
   return (windows ?? isWindows) ? getPathFromURLWin32(path) : getPathFromURLPosix(path);
 }
 
-// The following characters are percent-encoded when converting from file path
-// to URL:
-// - %: The percent character is the only character not encoded by the
-//        `pathname` setter.
-// - \: Backslash is encoded on non-windows platforms since it's a valid
-//      character but the `pathname` setters replaces it by a forward slash.
-// - LF: The newline character is stripped out by the `pathname` setter.
-//       (See whatwg/url#419)
-// - CR: The carriage return character is also stripped out by the `pathname`
-//       setter.
-// - TAB: The tab character is also stripped out by the `pathname` setter.
-const percentRegEx = /%/g;
-const backslashRegEx = /\\/g;
-const newlineRegEx = /\n/g;
-const carriageReturnRegEx = /\r/g;
-const tabRegEx = /\t/g;
-const questionRegex = /\?/g;
-const hashRegex = /#/g;
-
-function encodePathChars(filepath, options = kEmptyObject) {
-  const windows = options?.windows;
-  if (StringPrototypeIndexOf(filepath, '%') !== -1)
-    filepath = RegExpPrototypeSymbolReplace(percentRegEx, filepath, '%25');
-  // In posix, backslash is a valid character in paths:
-  if (!(windows ?? isWindows) && StringPrototypeIndexOf(filepath, '\\') !== -1)
-    filepath = RegExpPrototypeSymbolReplace(backslashRegEx, filepath, '%5C');
-  if (StringPrototypeIndexOf(filepath, '\n') !== -1)
-    filepath = RegExpPrototypeSymbolReplace(newlineRegEx, filepath, '%0A');
-  if (StringPrototypeIndexOf(filepath, '\r') !== -1)
-    filepath = RegExpPrototypeSymbolReplace(carriageReturnRegEx, filepath, '%0D');
-  if (StringPrototypeIndexOf(filepath, '\t') !== -1)
-    filepath = RegExpPrototypeSymbolReplace(tabRegEx, filepath, '%09');
-  return filepath;
-}
-
 function pathToFileURL(filepath, options = kEmptyObject) {
-  const windows = options?.windows;
-  if ((windows ?? isWindows) && StringPrototypeStartsWith(filepath, '\\\\')) {
-    const outURL = new URL('file://');
+  const windows = options?.windows ?? isWindows;
+  if (windows && StringPrototypeStartsWith(filepath, '\\\\')) {
     // UNC path format: \\server\share\resource
-    const hostnameEndIndex = StringPrototypeIndexOf(filepath, '\\', 2);
+    // Handle extended UNC path and standard UNC path
+    // "\\?\UNC\" path prefix should be ignored.
+    // Ref: https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation
+    const isExtendedUNC = StringPrototypeStartsWith(filepath, '\\\\?\\UNC\\');
+    const prefixLength = isExtendedUNC ? 8 : 2;
+    const hostnameEndIndex = StringPrototypeIndexOf(filepath, '\\', prefixLength);
     if (hostnameEndIndex === -1) {
       throw new ERR_INVALID_ARG_VALUE(
         'path',
@@ -1519,15 +1534,10 @@ function pathToFileURL(filepath, options = kEmptyObject) {
         'Empty UNC servername',
       );
     }
-    const hostname = StringPrototypeSlice(filepath, 2, hostnameEndIndex);
-    outURL.hostname = domainToASCII(hostname);
-    outURL.pathname = encodePathChars(
-      RegExpPrototypeSymbolReplace(backslashRegEx, StringPrototypeSlice(filepath, hostnameEndIndex), '/'),
-      { windows },
-    );
-    return outURL;
+    const hostname = StringPrototypeSlice(filepath, prefixLength, hostnameEndIndex);
+    return new URL(StringPrototypeSlice(filepath, hostnameEndIndex), hostname, kCreateURLFromWindowsPathSymbol);
   }
-  let resolved = (windows ?? isWindows) ? path.win32.resolve(filepath) : path.posix.resolve(filepath);
+  let resolved = windows ? path.win32.resolve(filepath) : path.posix.resolve(filepath);
   // path.resolve strips trailing slashes so we must add them back
   const filePathLast = StringPrototypeCharCodeAt(filepath,
                                                  filepath.length - 1);
@@ -1536,18 +1546,7 @@ function pathToFileURL(filepath, options = kEmptyObject) {
       resolved[resolved.length - 1] !== path.sep)
     resolved += '/';
 
-  // Call encodePathChars first to avoid encoding % again for ? and #.
-  resolved = encodePathChars(resolved, { windows });
-
-  // Question and hash character should be included in pathname.
-  // Therefore, encoding is required to eliminate parsing them in different states.
-  // This is done as an optimization to not creating a URL instance and
-  // later triggering pathname setter, which impacts performance
-  if (StringPrototypeIndexOf(resolved, '?') !== -1)
-    resolved = RegExpPrototypeSymbolReplace(questionRegex, resolved, '%3F');
-  if (StringPrototypeIndexOf(resolved, '#') !== -1)
-    resolved = RegExpPrototypeSymbolReplace(hashRegex, resolved, '%23');
-  return new URL(`file://${resolved}`);
+  return new URL(resolved, undefined, windows ? kCreateURLFromWindowsPathSymbol : kCreateURLFromPosixPathSymbol);
 }
 
 function toPathIfFileURL(fileURLOrPath) {
@@ -1573,6 +1572,7 @@ module.exports = {
   installObjectURLMethods,
   URL,
   URLSearchParams,
+  URLParse: URL.parse,
   domainToASCII,
   domainToUnicode,
   urlToHttpOptions,

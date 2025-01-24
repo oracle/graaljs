@@ -1,6 +1,8 @@
 'use strict';
 
-const { ObjectDefineProperty } = primordials;
+const {
+  ObjectDefineProperty,
+} = primordials;
 
 delete process._debugProcess;
 delete process._debugEnd;
@@ -35,8 +37,7 @@ const {
 
 let workerStdio;
 function lazyWorkerStdio() {
-  if (!workerStdio) workerStdio = createWorkerStdio();
-  return workerStdio;
+  return workerStdio ??= createWorkerStdio();
 }
 
 function getStdout() { return lazyWorkerStdio().stdout; }

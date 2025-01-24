@@ -6,12 +6,14 @@ Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
 ## Version 24.2.0
-* Updated Node.js to version 20.15.1.
+* Updated Node.js to version 22.13.1.
 * Implemented the [`Error.isError`](https://github.com/tc39/proposal-is-error) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [`Math.sumPrecise`](https://github.com/tc39/proposal-math-sum) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Promise.try`](https://github.com/tc39/proposal-promise-try) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Atomics.pause`](https://github.com/tc39/proposal-atomics-microwait) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Uint8Array to/from base64 and hex](https://github.com/tc39/proposal-arraybuffer-base64) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Source Phase Imports](https://github.com/tc39/proposal-source-phase-imports) proposal. It is available behind the experimental option (`--js.source-phase-imports`).
+* Implemented the [WebAssembly/ES Module Integration](https://github.com/WebAssembly/esm-integration) proposal, allowing `.wasm` modules to be loaded via `import` statements.
 * Implemented basic Worker API (resembling the API available in `d8`). It is available behind the experimental option `--js.worker`.
 * Added option `js.stack-trace-api` that enables/disables `Error.captureStackTrace`, `Error.prepareStackTrace` and `Error.stackTraceLimit`. These non-standard extensions are disabled by default (unless `js.v8-compat` or `js.nashorn-compat` is used).
 * Made option `js.webassembly` stable.
@@ -19,6 +21,9 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Made option `js.locale` stable and allowed in `SandboxPolicy.UNTRUSTED`. Its value, if non-empty, must be a well-formed Unicode BCP 47 locale identifier and is now validated.
 * Added an experimental `java.util.concurrent.Executor` that can be used to post tasks into the event loop thread in `graal-nodejs`. It is available as `require('node:graal').eventLoopExecutor`.
 * Implemented the `TextDecoder` and `TextEncoder` APIs of the [WHATWG Encoding Standard](https://encoding.spec.whatwg.org/). They are available behind the experimental option (`--js.text-encoding`).
+* Implemented the [`RegExp.escape`](https://github.com/tc39/proposal-regex-escaping) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [Regular Expression Pattern Modifiers](https://github.com/tc39/proposal-regexp-modifiers) proposal.
+* Implemented the [Iterator Sequencing](https://github.com/tc39/proposal-iterator-sequencing) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
 ## Version 24.1.0
 * ECMAScript 2024 mode/features enabled by default.

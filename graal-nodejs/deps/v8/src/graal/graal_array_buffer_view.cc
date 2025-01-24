@@ -51,16 +51,19 @@ GraalHandleContent* GraalArrayBufferView::CopyImpl(jobject java_object_copy) {
 }
 
 v8::Local<v8::ArrayBuffer> GraalArrayBufferView::Buffer() {
+    GraalIsolate* graal_isolate = Isolate();
     jobject java_array_buffer;
     bool direct = IsDirect();
     if (direct && !IsDataView()) {
-        java_array_buffer = Isolate()->JNIGetObjectFieldOrCall(GetJavaObject(), GraalAccessField::array_buffer_view_buffer, GraalAccessMethod::array_buffer_view_buffer);
+        java_array_buffer = graal_isolate->JNIGetObjectFieldOrCall(GetJavaObject(), GraalAccessField::array_buffer_view_buffer, GraalAccessMethod::array_buffer_view_buffer);
     } else {
-        JNI_CALL(jobject, java_buffer, Isolate(), GraalAccessMethod::array_buffer_view_buffer, Object, GetJavaObject());
+        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::array_buffer_view_buffer, Object, GetJavaObject());
         java_array_buffer = java_buffer;
     }
-    GraalArrayBuffer* graal_array_buffer = GraalArrayBuffer::Allocate(Isolate(), java_array_buffer, direct);
-    return reinterpret_cast<v8::ArrayBuffer*> (graal_array_buffer);
+    GraalArrayBuffer* graal_array_buffer = GraalArrayBuffer::Allocate(graal_isolate, java_array_buffer, direct);
+    v8::ArrayBuffer* v8_array_buffer = reinterpret_cast<v8::ArrayBuffer*> (graal_array_buffer);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::ArrayBuffer>::New(v8_isolate, v8_array_buffer);
 }
 
 bool GraalArrayBufferView::IsArrayBufferView() const {

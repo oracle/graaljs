@@ -239,7 +239,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     @InliningCutoff
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected static boolean doOverloaded(Object a, Object b,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("createHintDefault(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
                     @Cached(inline = true) JSToBooleanNode toBooleanNode) {
         if (a == b) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -892,7 +892,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class ExactArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+    private static final class ExactArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
         private final JSClassProfile classProfile = JSClassProfile.create();
 
         @Override
@@ -1031,7 +1031,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        @Specialization
+        @Specialization(replaces = {"doWritableArrayInt", "doWritableArrayDouble"})
         protected Object doWritableArray(JSDynamicObject target, AbstractWritableArray writableArray, long index, Object receiver, Object defaultValue, JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds,
                         @Cached @Shared InlinedConditionProfile needGetProperty) {
@@ -1127,9 +1127,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected int doTypedIntArrayInt(JSDynamicObject target, TypedArray.TypedIntArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue, JSContext context)
-                        throws UnexpectedResultException {
-            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index)) {
+        protected int doTypedIntArrayInt(JSDynamicObject target, TypedArray.TypedIntArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue, JSContext context,
+                        @Cached @Shared InlinedConditionProfile inBounds) throws UnexpectedResultException {
+            if (inBounds.profile(this, !JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1139,8 +1139,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
         protected double doTypedIntArrayDouble(JSDynamicObject target, TypedArray.TypedIntArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
-                        JSContext context) throws UnexpectedResultException {
-            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index)) {
+                        JSContext context,
+                        @Cached @Shared InlinedConditionProfile inBounds) throws UnexpectedResultException {
+            if (inBounds.profile(this, !JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1148,9 +1149,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        @Specialization
-        protected Object doTypedIntArray(JSDynamicObject target, TypedArray.TypedIntArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue, JSContext context,
-                        @Cached InlinedConditionProfile inBounds) {
+        @SuppressWarnings("unused")
+        @Specialization(replaces = {"doTypedIntArrayInt", "doTypedIntArrayDouble"})
+        protected Object doTypedIntArray(JSDynamicObject target, TypedArray.TypedIntArray typedArray, long index, Object receiver, Object defaultValue, JSContext context,
+                        @Cached @Shared InlinedConditionProfile inBounds) {
             if (inBounds.profile(this, !JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop);
             } else {
@@ -1165,10 +1167,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             super(arrayType);
         }
 
+        @SuppressWarnings("unused")
         @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected int doTypedUint32Array(JSDynamicObject target, TypedArray.AbstractUint32Array typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
-                        JSContext context) throws UnexpectedResultException {
-            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index)) {
+        protected int doTypedUint32Array(JSDynamicObject target, TypedArray.AbstractUint32Array typedArray, long index, Object receiver, Object defaultValue, JSContext context,
+                        @Cached @Shared InlinedConditionProfile inBounds,
+                        @Cached @Shared InlinedConditionProfile notNegative) throws UnexpectedResultException {
+            if (inBounds.profile(this, !JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index))) {
                 int intValue = typedArray.getInt(target, (int) index, interop);
                 if (intValue >= 0) {
                     return intValue;
@@ -1182,10 +1186,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
+        @SuppressWarnings("unused")
         @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected double doTypedUint32ArrayDouble(JSDynamicObject target, TypedArray.AbstractUint32Array typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
-                        JSContext context) throws UnexpectedResultException {
-            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index)) {
+        protected double doTypedUint32ArrayDouble(JSDynamicObject target, TypedArray.AbstractUint32Array typedArray, long index, Object receiver, Object defaultValue, JSContext context,
+                        @Cached @Shared InlinedConditionProfile inBounds,
+                        @Cached @Shared InlinedConditionProfile notNegative) throws UnexpectedResultException {
+            if (inBounds.profile(this, !JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop) & 0xffff_ffffL;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1193,11 +1199,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        @Specialization
-        protected Object doTypedUint32ArrayGet(JSDynamicObject target, TypedArray.AbstractUint32Array typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
-                        JSContext context,
-                        @Cached InlinedConditionProfile inBounds,
-                        @Cached InlinedConditionProfile notNegative) {
+        @SuppressWarnings("unused")
+        @Specialization(replaces = {"doTypedUint32Array", "doTypedUint32ArrayDouble"})
+        protected Object doTypedUint32ArrayGet(JSDynamicObject target, TypedArray.AbstractUint32Array typedArray, long index, Object receiver, Object defaultValue, JSContext context,
+                        @Cached @Shared InlinedConditionProfile inBounds,
+                        @Cached @Shared InlinedConditionProfile notNegative) {
             if (inBounds.profile(this, !JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index))) {
                 int intValue = typedArray.getInt(target, (int) index, interop);
                 if (notNegative.profile(this, intValue >= 0)) {
@@ -1219,8 +1225,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
         protected double doTypedFloatArrayDouble(JSDynamicObject target, TypedArray.TypedFloatArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
-                        JSContext context) throws UnexpectedResultException {
-            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index)) {
+                        JSContext context,
+                        @Cached @Shared InlinedConditionProfile inBounds) throws UnexpectedResultException {
+            if (inBounds.profile(this, !JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getDouble(target, (int) index, interop);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1228,10 +1235,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        @Specialization
+        @Specialization(replaces = {"doTypedFloatArrayDouble"})
         protected Object doTypedFloatArray(JSDynamicObject target, TypedArray.TypedFloatArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
                         JSContext context,
-                        @Cached InlinedConditionProfile inBounds) {
+                        @Cached @Shared InlinedConditionProfile inBounds) {
             if (inBounds.profile(this, !JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getDouble(target, (int) index, interop);
             } else {

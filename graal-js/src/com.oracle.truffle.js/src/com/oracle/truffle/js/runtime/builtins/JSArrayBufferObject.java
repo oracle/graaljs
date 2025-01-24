@@ -601,7 +601,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         long getBufferSize(
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) {
             if (isDetached()) {
@@ -614,7 +614,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -626,7 +626,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         byte readBufferByte(long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -638,7 +638,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         short readBufferShort(ByteOrder order, long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -650,7 +650,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         int readBufferInt(ByteOrder order, long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -662,7 +662,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         long readBufferLong(ByteOrder order, long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -674,7 +674,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         float readBufferFloat(ByteOrder order, long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -686,7 +686,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         double readBufferDouble(ByteOrder order, long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -703,7 +703,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferByte(long byteOffset, byte value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -715,7 +715,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferShort(ByteOrder order, long byteOffset, short value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -727,7 +727,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferInt(ByteOrder order, long byteOffset, int value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -739,7 +739,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferLong(ByteOrder order, long byteOffset, long value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -751,7 +751,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferFloat(ByteOrder order, long byteOffset, float value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
@@ -763,7 +763,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferDouble(ByteOrder order, long byteOffset, double value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {

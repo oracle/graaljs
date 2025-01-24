@@ -135,7 +135,8 @@ extern class JSDataView extends JSDataViewOrRabGsabDataView {}
 extern class JSRabGsabDataView extends JSDataViewOrRabGsabDataView {}
 
 @abstract
-@doNotGenerateCast extern class TypedArrayConstructor extends JSFunction
+@doNotGenerateCast
+extern class TypedArrayConstructor extends JSFunction
     generates 'TNode<JSFunction>';
 @doNotGenerateCast
 extern class Uint8TypedArrayConstructor extends TypedArrayConstructor
@@ -154,6 +155,9 @@ extern class Uint32TypedArrayConstructor extends TypedArrayConstructor
     generates 'TNode<JSFunction>';
 @doNotGenerateCast
 extern class Int32TypedArrayConstructor extends TypedArrayConstructor
+    generates 'TNode<JSFunction>';
+@doNotGenerateCast
+extern class Float16TypedArrayConstructor extends TypedArrayConstructor
     generates 'TNode<JSFunction>';
 @doNotGenerateCast
 extern class Float32TypedArrayConstructor extends TypedArrayConstructor

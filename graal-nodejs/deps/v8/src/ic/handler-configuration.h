@@ -127,8 +127,8 @@ class LoadHandler final : public DataHandler {
   // Encoding when KindBits contains kElement and IsWasmArrayBits is 0.
   //
   using IsJsArrayBits = IsWasmArrayBits::Next<bool, 1>;
-  using ConvertHoleBits = IsJsArrayBits::Next<bool, 1>;
-  using ElementsKindBits = ConvertHoleBits::Next<ElementsKind, 8>;
+  using AllowHandlingHole = IsJsArrayBits::Next<bool, 1>;
+  using ElementsKindBits = AllowHandlingHole::Next<ElementsKind, 8>;
   // Make sure we don't overflow the smi.
   static_assert(ElementsKindBits::kLastUsedBit < kSmiValueSize);
 
@@ -148,7 +148,7 @@ class LoadHandler final : public DataHandler {
   static_assert(ExportsIndexBits::kLastUsedBit < kSmiValueSize);
 
   // Decodes kind from Smi-handler.
-  static inline Kind GetHandlerKind(Smi smi_handler);
+  static inline Kind GetHandlerKind(Tagged<Smi> smi_handler);
 
   // Creates a Smi-handler for loading a property from a slow object.
   static inline Handle<Smi> LoadNormal(Isolate* isolate);
@@ -206,7 +206,7 @@ class LoadHandler final : public DataHandler {
   // by given Smi-handler that encoded a load from the holder.
   static Handle<Object> LoadFromPrototype(
       Isolate* isolate, Handle<Map> receiver_map, Handle<JSReceiver> holder,
-      Handle<Smi> smi_handler,
+      Tagged<Smi> smi_handler,
       MaybeObjectHandle maybe_data1 = MaybeObjectHandle(),
       MaybeObjectHandle maybe_data2 = MaybeObjectHandle());
 
@@ -217,7 +217,6 @@ class LoadHandler final : public DataHandler {
   // Creates a Smi-handler for loading an element.
   static inline Handle<Smi> LoadElement(Isolate* isolate,
                                         ElementsKind elements_kind,
-                                        bool convert_hole_to_undefined,
                                         bool is_js_array,
                                         KeyedAccessLoadMode load_mode);
 
@@ -226,14 +225,15 @@ class LoadHandler final : public DataHandler {
                                               KeyedAccessLoadMode load_mode);
 
   // Decodes the KeyedAccessLoadMode from a {handler}.
-  static KeyedAccessLoadMode GetKeyedAccessLoadMode(MaybeObject handler);
+  static KeyedAccessLoadMode GetKeyedAccessLoadMode(
+      Tagged<MaybeObject> handler);
 
   // Returns true iff the handler can be used in the "holder != lookup start
   // object" case.
-  static bool CanHandleHolderNotLookupStart(Object handler);
+  static bool CanHandleHolderNotLookupStart(Tagged<Object> handler);
 
 #if defined(OBJECT_PRINT)
-  static void PrintHandler(Object handler, std::ostream& os);
+  static void PrintHandler(Tagged<Object> handler, std::ostream& os);
 #endif  // defined(OBJECT_PRINT)
 
   OBJECT_CONSTRUCTORS(LoadHandler, DataHandler);
@@ -332,7 +332,7 @@ class StoreHandler final : public DataHandler {
 
   static Handle<Object> StoreThroughPrototype(
       Isolate* isolate, Handle<Map> receiver_map, Handle<JSReceiver> holder,
-      Handle<Smi> smi_handler,
+      Tagged<Smi> smi_handler,
       MaybeObjectHandle maybe_data1 = MaybeObjectHandle(),
       MaybeObjectHandle maybe_data2 = MaybeObjectHandle());
 
@@ -367,17 +367,19 @@ class StoreHandler final : public DataHandler {
 
   // Creates a Smi-handler for storing a property.
   static inline Handle<Smi> StoreSlow(
-      Isolate* isolate, KeyedAccessStoreMode store_mode = STANDARD_STORE);
+      Isolate* isolate,
+      KeyedAccessStoreMode store_mode = KeyedAccessStoreMode::kInBounds);
 
   // Creates a Smi-handler for storing a property on a proxy.
   static inline Handle<Smi> StoreProxy(Isolate* isolate);
-  static inline Smi StoreProxy();
+  static inline Tagged<Smi> StoreProxy();
 
   // Decodes the KeyedAccessStoreMode from a {handler}.
-  static KeyedAccessStoreMode GetKeyedAccessStoreMode(MaybeObject handler);
+  static KeyedAccessStoreMode GetKeyedAccessStoreMode(
+      Tagged<MaybeObject> handler);
 
 #if defined(OBJECT_PRINT)
-  static void PrintHandler(Object handler, std::ostream& os);
+  static void PrintHandler(Tagged<Object> handler, std::ostream& os);
 #endif  // defined(OBJECT_PRINT)
 
  private:

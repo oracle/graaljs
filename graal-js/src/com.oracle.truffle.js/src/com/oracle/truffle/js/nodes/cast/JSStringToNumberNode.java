@@ -154,7 +154,7 @@ abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "startsWithI(input, readChar)")
     protected static double doInfinity(TruffleString input,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached InlinedConditionProfile endsWithInfinity,
                     @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode,
                     @Cached @Shared TruffleString.ReadCharUTF16Node readChar) {

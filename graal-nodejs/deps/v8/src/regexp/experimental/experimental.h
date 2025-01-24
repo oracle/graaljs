@@ -20,8 +20,8 @@ class ExperimentalRegExp final : public AllStatic {
   // TODO(mbid, v8:10765): This walks the RegExpTree, but it could also be
   // checked on the fly in the parser.  Not done currently because walking the
   // AST again is more flexible and less error prone (but less performant).
-  static bool CanBeHandled(RegExpTree* tree, RegExpFlags flags,
-                           int capture_count);
+  static bool CanBeHandled(RegExpTree* tree, Handle<String> pattern,
+                           RegExpFlags flags, int capture_count);
   static void Initialize(Isolate* isolate, Handle<JSRegExp> re,
                          Handle<String> pattern, RegExpFlags flags,
                          int capture_count);
@@ -41,7 +41,7 @@ class ExperimentalRegExp final : public AllStatic {
       int index, Handle<RegExpMatchInfo> last_match_info,
       RegExp::ExecQuirks exec_quirks = RegExp::ExecQuirks::kNone);
   static int32_t ExecRaw(Isolate* isolate, RegExp::CallOrigin call_origin,
-                         JSRegExp regexp, String subject,
+                         Tagged<JSRegExp> regexp, Tagged<String> subject,
                          int32_t* output_registers,
                          int32_t output_register_count, int32_t subject_index);
 

@@ -6,11 +6,12 @@ const {
   FunctionPrototypeBind,
   FunctionPrototypeCall,
   ObjectDefineProperties,
+  ObjectSetPrototypeOf,
   Promise,
   PromisePrototypeThen,
-  PromiseResolve,
   PromiseReject,
-  ReflectConstruct,
+  PromiseResolve,
+  PromiseWithResolvers,
   Symbol,
   SymbolToStringTag,
 } = primordials;
@@ -18,8 +19,8 @@ const {
 const {
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
-    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_STATE,
     ERR_INVALID_THIS,
   },
@@ -30,12 +31,17 @@ const {
 } = internalBinding('messaging');
 
 const {
-  createDeferredPromise,
   customInspectSymbol: kInspect,
   kEmptyObject,
   kEnumerableProperty,
   SideEffectFreeRegExpPrototypeSymbolReplace,
 } = require('internal/util');
+
+const {
+  validateObject,
+  kValidateObjectAllowObjects,
+  kValidateObjectAllowObjectsAndNull,
+} = require('internal/validators');
 
 const {
   MessageChannel,
@@ -45,13 +51,13 @@ const {
   kDeserialize,
   kTransfer,
   kTransferList,
-  makeTransferable,
+  markTransferMode,
 } = require('internal/worker/js_transferable');
 
 const {
+  createPromiseCallback,
   customInspect,
   dequeueValue,
-  ensureIsPromise,
   enqueueValueWithSize,
   extractHighWaterMark,
   extractSizeAlgorithm,
@@ -154,52 +160,17 @@ class WritableStream {
    * @param {UnderlyingSink} [sink]
    * @param {QueuingStrategy} [strategy]
    */
-  constructor(sink = null, strategy = kEmptyObject) {
+  constructor(sink = kEmptyObject, strategy = kEmptyObject) {
+    markTransferMode(this, false, true);
+    validateObject(sink, 'sink', kValidateObjectAllowObjects);
+    validateObject(strategy, 'strategy', kValidateObjectAllowObjectsAndNull);
     const type = sink?.type;
     if (type !== undefined)
       throw new ERR_INVALID_ARG_VALUE.RangeError('type', type);
 
-    this[kState] = {
-      close: createDeferredPromise(),
-      closeRequest: {
-        promise: undefined,
-        resolve: undefined,
-        reject: undefined,
-      },
-      inFlightWriteRequest: {
-        promise: undefined,
-        resolve: undefined,
-        reject: undefined,
-      },
-      inFlightCloseRequest: {
-        promise: undefined,
-        resolve: undefined,
-        reject: undefined,
-      },
-      pendingAbortRequest: {
-        abort: {
-          promise: undefined,
-          resolve: undefined,
-          reject: undefined,
-        },
-        reason: undefined,
-        wasAlreadyErroring: false,
-      },
-      backpressure: false,
-      controller: undefined,
-      state: 'writable',
-      storedError: undefined,
-      writeRequests: [],
-      writer: undefined,
-      transfer: {
-        readable: undefined,
-        port1: undefined,
-        port2: undefined,
-        promise: undefined,
-      },
-    };
+    this[kState] = createWritableStreamState();
 
-    this[kIsClosedPromise] = createDeferredPromise();
+    this[kIsClosedPromise] = PromiseWithResolvers();
     this[kControllerErrorFunction] = () => {};
 
     const size = extractSizeAlgorithm(strategy?.size);
@@ -210,9 +181,6 @@ class WritableStream {
       sink,
       highWaterMark,
       size);
-
-    // eslint-disable-next-line no-constructor-return
-    return makeTransferable(this);
   }
 
   /**
@@ -331,54 +299,26 @@ ObjectDefineProperties(WritableStream.prototype, {
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(WritableStream.name),
 });
 
-function TransferredWritableStream() {
-  return makeTransferable(ReflectConstruct(
-    function() {
-      this[kType] = 'WritableStream';
-      this[kState] = {
-        close: createDeferredPromise(),
-        closeRequest: {
-          promise: undefined,
-          resolve: undefined,
-          reject: undefined,
-        },
-        inFlightWriteRequest: {
-          promise: undefined,
-          resolve: undefined,
-          reject: undefined,
-        },
-        inFlightCloseRequest: {
-          promise: undefined,
-          resolve: undefined,
-          reject: undefined,
-        },
-        pendingAbortRequest: {
-          abort: {
-            promise: undefined,
-            resolve: undefined,
-            reject: undefined,
-          },
-          reason: undefined,
-          wasAlreadyErroring: false,
-        },
-        backpressure: false,
-        controller: undefined,
-        state: 'writable',
-        storedError: undefined,
-        writeRequests: [],
-        writer: undefined,
-        transfer: {
-          promise: undefined,
-          port1: undefined,
-          port2: undefined,
-          readable: undefined,
-        },
-      };
-      this[kIsClosedPromise] = createDeferredPromise();
-      this[kControllerErrorFunction] = () => {};
-    },
-    [], WritableStream));
+function InternalTransferredWritableStream() {
+  ObjectSetPrototypeOf(this, WritableStream.prototype);
+  markTransferMode(this, false, true);
+  this[kType] = 'WritableStream';
+  this[kState] = createWritableStreamState();
+
+  this[kIsClosedPromise] = PromiseWithResolvers();
 }
+
+ObjectSetPrototypeOf(InternalTransferredWritableStream.prototype, WritableStream.prototype);
+ObjectSetPrototypeOf(InternalTransferredWritableStream, WritableStream);
+
+function TransferredWritableStream() {
+  const stream = new InternalTransferredWritableStream();
+
+  stream.constructor = WritableStream;
+
+  return stream;
+}
+
 TransferredWritableStream.prototype[kDeserialize] = () => {};
 
 class WritableStreamDefaultWriter {
@@ -576,12 +516,92 @@ ObjectDefineProperties(WritableStreamDefaultController.prototype, {
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(WritableStreamDefaultController.name),
 });
 
+function InternalWritableStream(start, write, close, abort, highWaterMark, size) {
+  ObjectSetPrototypeOf(this, WritableStream.prototype);
+  markTransferMode(this, false, true);
+  this[kType] = 'WritableStream';
+  this[kState] = createWritableStreamState();
+  this[kIsClosedPromise] = PromiseWithResolvers();
+
+  const controller = new WritableStreamDefaultController(kSkipThrow);
+  setupWritableStreamDefaultController(
+    this,
+    controller,
+    start,
+    write,
+    close,
+    abort,
+    highWaterMark,
+    size,
+  );
+}
+
+ObjectSetPrototypeOf(InternalWritableStream.prototype, WritableStream.prototype);
+ObjectSetPrototypeOf(InternalWritableStream, WritableStream);
+
+function createWritableStream(start, write, close, abort, highWaterMark = 1, size = () => 1) {
+  const stream = new InternalWritableStream(start, write, close, abort, highWaterMark, size);
+
+  // For spec compliance the InternalWritableStream must be a WritableStream
+  stream.constructor = WritableStream;
+  return stream;
+}
+
 const isWritableStream =
   isBrandCheck('WritableStream');
 const isWritableStreamDefaultWriter =
   isBrandCheck('WritableStreamDefaultWriter');
 const isWritableStreamDefaultController =
   isBrandCheck('WritableStreamDefaultController');
+
+function createWritableStreamState() {
+  return {
+    __proto__: null,
+    close: PromiseWithResolvers(),
+    closeRequest: {
+      __proto__: null,
+      promise: undefined,
+      resolve: undefined,
+      reject: undefined,
+    },
+    inFlightWriteRequest: {
+      __proto__: null,
+      promise: undefined,
+      resolve: undefined,
+      reject: undefined,
+    },
+    inFlightCloseRequest: {
+      __proto__: null,
+      promise: undefined,
+      resolve: undefined,
+      reject: undefined,
+    },
+    pendingAbortRequest: {
+      __proto__: null,
+      abort: {
+        __proto__: null,
+        promise: undefined,
+        resolve: undefined,
+        reject: undefined,
+      },
+      reason: undefined,
+      wasAlreadyErroring: false,
+    },
+    backpressure: false,
+    controller: undefined,
+    state: 'writable',
+    storedError: undefined,
+    writeRequests: [],
+    writer: undefined,
+    transfer: {
+      __proto__: null,
+      readable: undefined,
+      port1: undefined,
+      port2: undefined,
+      promise: undefined,
+    },
+  };
+}
 
 function isWritableStreamLocked(stream) {
   return stream[kState].writer !== undefined;
@@ -596,7 +616,7 @@ function setupWritableStreamDefaultWriter(writer, stream) {
     case 'writable':
       if (!writableStreamCloseQueuedOrInFlight(stream) &&
           stream[kState].backpressure) {
-        writer[kState].ready = createDeferredPromise();
+        writer[kState].ready = PromiseWithResolvers();
       } else {
         writer[kState].ready = {
           promise: PromiseResolve(),
@@ -643,7 +663,7 @@ function setupWritableStreamDefaultWriter(writer, stream) {
   }
 
   function setClosedPromiseToNewPromise() {
-    writer[kState].close = createDeferredPromise();
+    writer[kState].close = PromiseWithResolvers();
   }
 }
 
@@ -668,7 +688,7 @@ function writableStreamAbort(stream, reason) {
     reason = undefined;
   }
 
-  const abort = createDeferredPromise();
+  const abort = PromiseWithResolvers();
 
   stream[kState].pendingAbortRequest = {
     abort,
@@ -695,7 +715,7 @@ function writableStreamClose(stream) {
   }
   assert(state === 'writable' || state === 'erroring');
   assert(!writableStreamCloseQueuedOrInFlight(stream));
-  stream[kState].closeRequest = createDeferredPromise();
+  stream[kState].closeRequest = PromiseWithResolvers();
   const { promise } = stream[kState].closeRequest;
   if (writer !== undefined && backpressure && state === 'writable')
     writer[kState].ready.resolve?.();
@@ -711,7 +731,7 @@ function writableStreamUpdateBackpressure(stream, backpressure) {
   } = stream[kState];
   if (writer !== undefined && stream[kState].backpressure !== backpressure) {
     if (backpressure) {
-      writer[kState].ready = createDeferredPromise();
+      writer[kState].ready = PromiseWithResolvers();
     } else {
       writer[kState].ready.resolve?.();
     }
@@ -750,15 +770,15 @@ function writableStreamRejectCloseAndClosedPromiseIfNeeded(stream) {
     };
   }
 
-  stream[kIsClosedPromise].reject(stream[kState]?.storedError);
   setPromiseHandled(stream[kIsClosedPromise].promise);
+  stream[kIsClosedPromise].reject(stream[kState]?.storedError);
 
   const {
     writer,
   } = stream[kState];
   if (writer !== undefined) {
-    writer[kState].close.reject?.(stream[kState].storedError);
     setPromiseHandled(writer[kState].close.promise);
+    writer[kState].close.reject?.(stream[kState].storedError);
   }
 }
 
@@ -902,10 +922,7 @@ function writableStreamFinishErroring(stream) {
     return;
   }
   PromisePrototypeThen(
-    ensureIsPromise(
-      stream[kState].controller[kAbort],
-      stream[kState].controller,
-      abortRequest.reason),
+    stream[kState].controller[kAbort](abortRequest.reason),
     () => {
       abortRequest.abort.resolve?.();
       writableStreamRejectCloseAndClosedPromiseIfNeeded(stream);
@@ -944,7 +961,7 @@ function writableStreamAddWriteRequest(stream) {
     promise,
     resolve,
     reject,
-  } = createDeferredPromise();
+  } = PromiseWithResolvers();
   ArrayPrototypePush(
     stream[kState].writeRequests,
     {
@@ -1109,7 +1126,7 @@ function writableStreamDefaultControllerProcessWrite(controller, chunk) {
   writableStreamMarkFirstWriteRequestInFlight(stream);
 
   PromisePrototypeThen(
-    ensureIsPromise(writeAlgorithm, controller, chunk, controller),
+    writeAlgorithm(chunk, controller),
     () => {
       writableStreamFinishInFlightWrite(stream);
       const {
@@ -1142,7 +1159,7 @@ function writableStreamDefaultControllerProcessClose(controller) {
   writableStreamMarkCloseRequestInFlight(stream);
   dequeueValue(controller);
   assert(!queue.length);
-  const sinkClosePromise = ensureIsPromise(closeAlgorithm, controller);
+  const sinkClosePromise = closeAlgorithm();
   writableStreamDefaultControllerClearAlgorithms(controller);
   PromisePrototypeThen(
     sinkClosePromise,
@@ -1241,12 +1258,14 @@ function setupWritableStreamDefaultControllerFromSink(
     FunctionPrototypeBind(start, sink, controller) :
     nonOpStart;
   const writeAlgorithm = write ?
-    FunctionPrototypeBind(write, sink) :
+    createPromiseCallback('sink.write', write, sink) :
     nonOpWrite;
   const closeAlgorithm = close ?
-    FunctionPrototypeBind(close, sink) : nonOpCancel;
+    createPromiseCallback('sink.close', close, sink) :
+    nonOpCancel;
   const abortAlgorithm = abort ?
-    FunctionPrototypeBind(abort, sink) : nonOpCancel;
+    createPromiseCallback('sink.abort', abort, sink) :
+    nonOpCancel;
   setupWritableStreamDefaultController(
     stream,
     controller,
@@ -1356,4 +1375,5 @@ module.exports = {
   writableStreamDefaultControllerAdvanceQueueIfNeeded,
   setupWritableStreamDefaultControllerFromSink,
   setupWritableStreamDefaultController,
+  createWritableStream,
 };

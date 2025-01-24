@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -106,11 +107,11 @@ public interface Evaluator {
 
     void hostLoadImportedModule(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest, Object hostDefined, Object payload);
 
-    JSPromiseObject loadRequestedModules(JSRealm realm, JSModuleRecord moduleRecord, Object hostDefined);
+    JSPromiseObject loadRequestedModules(JSRealm realm, CyclicModuleRecord moduleRecord, Object hostDefined);
 
-    void moduleLinking(JSRealm realm, JSModuleRecord moduleRecord);
+    void moduleLinking(JSRealm realm, CyclicModuleRecord moduleRecord);
 
-    Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
+    Object moduleEvaluation(JSRealm realm, CyclicModuleRecord moduleRecord);
 
     /**
      * Parses a script string. Returns an executable script object.

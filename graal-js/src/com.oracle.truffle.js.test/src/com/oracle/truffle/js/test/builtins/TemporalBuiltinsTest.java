@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.test.builtins;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
@@ -54,7 +53,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalParser;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -72,23 +70,6 @@ public class TemporalBuiltinsTest extends JSTest {
         final Value millisecondValue = ctx.eval(ID, "plainTime.millisecond");
         final Value microsecondValue = ctx.eval(ID, "plainTime.microsecond");
         final Value nanosecondValue = ctx.eval(ID, "plainTime.nanosecond");
-
-        assertEquals(hour, hourValue.asLong());
-        assertEquals(minute, minuteValue.asLong());
-        assertEquals(second, secondValue.asLong());
-        assertEquals(millisecond, millisecondValue.asLong());
-        assertEquals(microsecond, microsecondValue.asLong());
-        assertEquals(nanosecond, nanosecondValue.asLong());
-    }
-
-    private static void validatePlainTimeISOFields(Context ctx, long hour, long minute, long second, long millisecond, long microsecond,
-                    long nanosecond) {
-        final Value hourValue = ctx.eval(ID, "plainTimeIsoFields.isoHour");
-        final Value minuteValue = ctx.eval(ID, "plainTimeIsoFields.isoMinute");
-        final Value secondValue = ctx.eval(ID, "plainTimeIsoFields.isoSecond");
-        final Value millisecondValue = ctx.eval(ID, "plainTimeIsoFields.isoMillisecond");
-        final Value microsecondValue = ctx.eval(ID, "plainTimeIsoFields.isoMicrosecond");
-        final Value nanosecondValue = ctx.eval(ID, "plainTimeIsoFields.isoNanosecond");
 
         assertEquals(hour, hourValue.asLong());
         assertEquals(minute, minuteValue.asLong());
@@ -121,12 +102,6 @@ public class TemporalBuiltinsTest extends JSTest {
         assertEquals(milliseconds, millisecondsValue.asLong());
         assertEquals(microseconds, microsecondsValue.asLong());
         assertEquals(nanoseconds, nanosecondsValue.asLong());
-    }
-
-    private static void validateCalendar(Context ctx) {
-        final Value calendarIdValue = ctx.eval(ID, "calendar.id");
-
-        assertEquals("iso8601", calendarIdValue.asString());
     }
 
     private static void validatePlainDate(Context ctx, long year, long month, long day) {
@@ -340,15 +315,6 @@ public class TemporalBuiltinsTest extends JSTest {
             assertEquals(e.getMessage(), "TypeError: Not supported.");
         }
     }
-
-    @Test
-    public void testPlainTimeISOFields() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let plainTime = new Temporal.PlainTime(12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "let plainTimeIsoFields = plainTime.getISOFields();");
-            validatePlainTimeISOFields(ctx, 12, 45, 35, 520, 450, 860);
-        }
-    }
 // endregion
 
 // region Duration Tests
@@ -497,195 +463,6 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 // endregion
 
-// region Calendar Tests
-    @Test
-    public void testCalendarCreation() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = new Temporal.Calendar('iso8601');");
-            validateCalendar(ctx);
-        }
-    }
-
-    @Test
-    public void testCalendarFrom() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            validateCalendar(ctx);
-        }
-    }
-
-    @Test
-    public void testCalendarYear() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value yearValue = ctx.eval(ID, "calendar.year({ year: 2021, month: 4, day: 22 });");
-            assertEquals(2021, yearValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarMonth() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value monthValue = ctx.eval(ID, "calendar.month({ year: 2021, month: 4, day: 22 });");
-            assertEquals(4, monthValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarMonthCode() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value monthCodeValue = ctx.eval(ID, "calendar.monthCode({ year: 2021, month: 4, day: 22 });");
-            assertEquals("M04", monthCodeValue.asString());
-        }
-    }
-
-    @Test
-    public void testCalendarDay() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value dayValue = ctx.eval(ID, "calendar.day({ year: 2021, month: 4, day: 22 });");
-            assertEquals(22, dayValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarDayOfWeek() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value dayOfWeekValue = ctx.eval(ID, "calendar.dayOfWeek({ year: 2021, month: 4, day: 22 });");
-            assertEquals(4, dayOfWeekValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarDayOfYear() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value dayOfYearValue = ctx.eval(ID, "calendar.dayOfYear({ year: 2021, month: 4, day: 22 });");
-            assertEquals(112, dayOfYearValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarWeekOfYear() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value weekOfYearValue = ctx.eval(ID, "calendar.weekOfYear({ year: 2021, month: 4, day: 22 });");
-            assertEquals(16, weekOfYearValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarDaysInWeek() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value daysInWeekValue = ctx.eval(ID, "calendar.daysInWeek({ year: 2021, month: 4, day: 22 });");
-            assertEquals(7, daysInWeekValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarDaysInMonth() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value daysInMonthValue = ctx.eval(ID, "calendar.daysInMonth({ year: 2021, month: 4, day: 22 });");
-            assertEquals(30, daysInMonthValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarDaysInYear() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value daysInYearValue = ctx.eval(ID, "calendar.daysInYear({ year: 2021, month: 4, day: 22 });");
-            assertEquals(365, daysInYearValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarMonthsInYear() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value monthsInYearValue = ctx.eval(ID, "calendar.monthsInYear({ year: 2021, month: 4, day: 22 });");
-            assertEquals(12, monthsInYearValue.asInt());
-        }
-    }
-
-    @Test
-    public void testCalendarInLeapYear() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value inLeapYearValue = ctx.eval(ID, "calendar.inLeapYear({ year: 2021, month: 4, day: 22 });");
-            assertFalse(inLeapYearValue.asBoolean());
-        }
-    }
-
-    @Test
-    public void testCalendarDateFromFields() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            ctx.eval(ID, "let plainDate = calendar.dateFromFields({ year: 2021, month: 4, day: 22 });");
-            validatePlainDate(ctx, 2021, 4, 22);
-        }
-    }
-
-    @Test
-    public void testCalendarYearMonthFromFields() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            ctx.eval(ID, "let plainYearMonth = calendar.yearMonthFromFields({ year: 2021, month: 4 });");
-            validatePlainYearMonth(ctx, 2021, 4, "M04", 365, 30, 12, false);
-        }
-    }
-
-    @Test
-    public void testCalendarMonthDayFromFields() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            ctx.eval(ID, "let plainMonthDay = calendar.monthDayFromFields({ month: 4, monthCode: 'M04', day: 22 });");
-            validatePlainMonthDay(ctx, "M04", 22);
-        }
-    }
-
-    @Test
-    public void testCalendarDateAdd() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            ctx.eval(ID, "let plainDate = calendar.dateAdd({ year: 2021, month: 4, day: 22 }, { days: 1 });");
-            validatePlainDate(ctx, 2021, 4, 23);
-        }
-    }
-
-    @Test
-    public void testCalendarDateUntil() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            ctx.eval(ID, "let duration = calendar.dateUntil({ year: 2021, month: 4, day: 22 }, { year: 2021, month: 4, day: 23 });");
-            validateDuration(ctx, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0);
-        }
-    }
-
-    @Test
-    public void testCalendarToString() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value toStringValue = ctx.eval(ID, "calendar.toString();");
-            assertEquals("iso8601", toStringValue.asString());
-        }
-    }
-
-    @Test
-    public void testCalendarToJSON() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            Value toJSONValue = ctx.eval(ID, "calendar.toJSON();");
-            assertEquals("iso8601", toJSONValue.asString());
-        }
-    }
-// endregion
-
 // region PlainDate Tests
     @Test
     public void testPlainDateCreation() {
@@ -781,53 +558,6 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 
     @Test
-    public void testTimeZoneParsing() {
-        testTimeZoneFailFrom("2021-08-19T17:30");
-
-        testTimeZoneFailConstructor("+00:01.1");
-        // testTimeZoneFailConstructor("-01.1"); //TODO should fail, but passes
-
-        // testTimeZoneConstructor("-08", "-08:00"); //TODO not sure this is correct any longer
-        // testTimeZoneFrom("-08", "-08:00"); //TODO not sure this is correct any longer
-
-        testTimeZoneConstructor("-08:00", "-08:00");
-
-        testTimeZoneFrom("2021-08-19T17:30Z", "UTC");
-        testTimeZoneFrom("2021-08-19T17:30-07:00", "-07:00");
-        testTimeZoneFrom("2021-08-19T17:30[America/Vancouver]", "America/Vancouver");
-        testTimeZoneFrom("2021-08-19T17:30Z[America/Vancouver]", "America/Vancouver");
-        testTimeZoneFrom("2021-08-19T17:30-07:00[America/Vancouver]", "America/Vancouver");
-    }
-
-    private static void testTimeZoneFailFrom(String code) {
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, "try { Temporal.TimeZone.from('" + code + "'); false; } catch (ex) { true; }");
-            assertTrue(result.asBoolean());
-        }
-    }
-
-    private static void testTimeZoneFailConstructor(String code) {
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, "try { new Temporal.TimeZone('" + code + "'); false; } catch (ex) { true; }");
-            assertTrue(result.asBoolean());
-        }
-    }
-
-    private static void testTimeZoneFrom(String code, String expected) {
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, "Temporal.TimeZone.from('" + code + "').id;");
-            assertEquals(expected, result.asString());
-        }
-    }
-
-    private static void testTimeZoneConstructor(String code, String expected) {
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, "(new Temporal.TimeZone('" + code + "')).id;");
-            assertEquals(expected, result.asString());
-        }
-    }
-
-    @Test
     public void testInstant() {
         String code = "var inst = Temporal.Instant.from('1900-01-01T12:00Z').toString(); \n" +
                         "inst.toString() == '1900-01-01T12:00:00Z';";
@@ -888,19 +618,6 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 
     @Test
-    public void testTemporalParsingCalendar() {
-        testCalendarIntl("iso8601", "iso8601");
-        testCalendarIntl("1994-11-05T08:15:30-05:00", "iso8601");
-    }
-
-    private static void testCalendarIntl(String calendarInput, String expected) {
-        try (Context ctx = getJSContext()) {
-            Value result = ctx.eval(ID, "Temporal.Calendar.from('" + calendarInput + "').toString()");
-            assertEquals(expected, result.asString());
-        }
-    }
-
-    @Test
     public void testTemporalParsingDuration() {
         parseDurationIntl("-PT24.567890123H", "-PT24H34M4.4044428S");
         parseDurationIntl("-PT1.03125H", "-PT1H1M52.5S"); // #1754
@@ -938,24 +655,6 @@ public class TemporalBuiltinsTest extends JSTest {
         String code = "const md = Temporal.PlainMonthDay.from('--12-25');\n" +
                         "md.monthCode === 'M12' && md.day === 25;";
         testTrue(code);
-    }
-
-    @Test
-    public void testMinus000000Fails() {
-        minus000000Fails('-');
-        minus000000Fails(TemporalConstants.UNICODE_MINUS_SIGN); // #2069
-    }
-
-    private static void minus000000Fails(char minus) {
-        String code = "const arg = '" + minus + "000000-10-31';\n" +
-                        "const instance = new Temporal.Calendar(\"iso8601\");" +
-                        "instance.day(arg);";
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, code);
-            Assert.fail();
-        } catch (PolyglotException ex) {
-            Assert.assertTrue(ex.getMessage(), ex.getMessage().startsWith("RangeError:"));
-        }
     }
 
     @Test

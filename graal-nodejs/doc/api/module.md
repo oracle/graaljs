@@ -28,6 +28,8 @@ added:
 A list of the names of all modules provided by Node.js. Can be used to verify
 if a module is maintained by a third party or not.
 
+Note: the list doesn't contain [prefix-only modules][] like `node:test`.
+
 `module` in this context isn't the same object that's provided
 by the [module wrapper][]. To access it, require the `Module` module:
 
@@ -62,6 +64,159 @@ const require = createRequire(import.meta.url);
 const siblingModule = require('./sibling-module');
 ```
 
+### `module.constants.compileCacheStatus`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1.1 - Active Development
+
+The following constants are returned as the `status` field in the object returned by
+[`module.enableCompileCache()`][] to indicate the result of the attempt to enable the
+[module compile cache][].
+
+<table>
+  <tr>
+    <th>Constant</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>ENABLED</code></td>
+    <td>
+      Node.js has enabled the compile cache successfully. The directory used to store the
+      compile cache will be returned in the <code>directory</code> field in the
+      returned object.
+    </td>
+  </tr>
+  <tr>
+    <td><code>ALREADY_ENABLED</code></td>
+    <td>
+      The compile cache has already been enabled before, either by a previous call to
+      <code>module.enableCompileCache()</code>, or by the <code>NODE_COMPILE_CACHE=dir</code>
+      environment variable. The directory used to store the
+      compile cache will be returned in the <code>directory</code> field in the
+      returned object.
+    </td>
+  </tr>
+  <tr>
+    <td><code>FAILED</code></td>
+    <td>
+      Node.js fails to enable the compile cache. This can be caused by the lack of
+      permission to use the specified directory, or various kinds of file system errors.
+      The detail of the failure will be returned in the <code>message</code> field in the
+      returned object.
+    </td>
+  </tr>
+  <tr>
+    <td><code>DISABLED</code></td>
+    <td>
+      Node.js cannot enable the compile cache because the environment variable
+      <code>NODE_DISABLE_COMPILE_CACHE=1</code> has been set.
+    </td>
+  </tr>
+</table>
+
+### `module.enableCompileCache([cacheDir])`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1.1 - Active Development
+
+* `cacheDir` {string|undefined} Optional path to specify the directory where the compile cache
+  will be stored/retrieved.
+* Returns: {Object}
+  * `status` {integer} One of the [`module.constants.compileCacheStatus`][]
+  * `message` {string|undefined} If Node.js cannot enable the compile cache, this contains
+    the error message. Only set if `status` is `module.constants.compileCacheStatus.FAILED`.
+  * `directory` {string|undefined} If the compile cache is enabled, this contains the directory
+    where the compile cache is stored. Only set if  `status` is
+    `module.constants.compileCacheStatus.ENABLED` or
+    `module.constants.compileCacheStatus.ALREADY_ENABLED`.
+
+Enable [module compile cache][] in the current Node.js instance.
+
+If `cacheDir` is not specified, Node.js will either use the directory specified by the
+[`NODE_COMPILE_CACHE=dir`][] environment variable if it's set, or use
+`path.join(os.tmpdir(), 'node-compile-cache')` otherwise. For general use cases, it's
+recommended to call `module.enableCompileCache()` without specifying the `cacheDir`,
+so that the directory can be overriden by the `NODE_COMPILE_CACHE` environment
+variable when necessary.
+
+Since compile cache is supposed to be a quiet optimization that is not required for the
+application to be functional, this method is designed to not throw any exception when the
+compile cache cannot be enabled. Instead, it will return an object containing an error
+message in the `message` field to aid debugging.
+If compile cache is enabled successefully, the `directory` field in the returned object
+contains the path to the directory where the compile cache is stored. The `status`
+field in the returned object would be one of the `module.constants.compileCacheStatus`
+values to indicate the result of the attempt to enable the [module compile cache][].
+
+This method only affects the current Node.js instance. To enable it in child worker threads,
+either call this method in child worker threads too, or set the
+`process.env.NODE_COMPILE_CACHE` value to compile cache directory so the behavior can
+be inheritend into the child workers. The directory can be obtained either from the
+`directory` field returned by this method, or with [`module.getCompileCacheDir()`][].
+
+#### Module compile cache
+
+<!-- YAML
+added: v22.1.0
+changes:
+  - version: v22.8.0
+    pr-url: https://github.com/nodejs/node/pull/54501
+    description: add initial JavaScript APIs for runtime access.
+-->
+
+The module compile cache can be enabled either using the [`module.enableCompileCache()`][]
+method or the [`NODE_COMPILE_CACHE=dir`][] environment variable. After it is enabled,
+whenever Node.js compiles a CommonJS or a ECMAScript Module, it will use on-disk
+[V8 code cache][] persisted in the specified directory to speed up the compilation.
+This may slow down the first load of a module graph, but subsequent loads of the same module
+graph may get a significant speedup if the contents of the modules do not change.
+
+To clean up the generated compile cache on disk, simply remove the cache directory. The cache
+directory will be recreated the next time the same directory is used for for compile cache
+storage. To avoid filling up the disk with stale cache, it is recommended to use a directory
+under the [`os.tmpdir()`][]. If the compile cache is enabled by a call to
+[`module.enableCompileCache()`][] without specifying the directory, Node.js will use
+the [`NODE_COMPILE_CACHE=dir`][] environment variable if it's set, or defaults
+to `path.join(os.tmpdir(), 'node-compile-cache')` otherwise. To locate the compile cache
+directory used by a running Node.js instance, use [`module.getCompileCacheDir()`][].
+
+Currently when using the compile cache with [V8 JavaScript code coverage][], the
+coverage being collected by V8 may be less precise in functions that are
+deserialized from the code cache. It's recommended to turn this off when
+running tests to generate precise coverage.
+
+The enabled module compile cache can be disabled by the [`NODE_DISABLE_COMPILE_CACHE=1`][]
+environment variable. This can be useful when the compile cache leads to unexpected or
+undesired behaviors (e.g. less precise test coverage).
+
+Compilation cache generated by one version of Node.js can not be reused by a different
+version of Node.js. Cache generated by different versions of Node.js will be stored
+separately if the same base directory is used to persist the cache, so they can co-exist.
+
+At the moment, when the compile cache is enabled and a module is loaded afresh, the
+code cache is generated from the compiled code immediately, but will only be written
+to disk when the Node.js instance is about to exit. This is subject to change. The
+[`module.flushCompileCache()`][] method can be used to ensure the accumulated code cache
+is flushed to disk in case the application wants to spawn other Node.js instances
+and let them share the cache long before the parent exits.
+
+### `module.getCompileCacheDir()`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1.1 - Active Development
+
+* Returns: {string|undefined} Path to the [module compile cache][] directory if it is enabled,
+  or `undefined` otherwise.
+
 ### `module.isBuiltin(moduleName)`
 
 <!-- YAML
@@ -83,9 +238,13 @@ isBuiltin('wss'); // false
 ### `module.register(specifier[, parentURL][, options])`
 
 <!-- YAML
-added: v20.6.0
+added:
+  - v20.6.0
+  - v18.19.0
 changes:
-  - version: v20.8.0
+  - version:
+    - v20.8.0
+    - v18.19.0
     pr-url: https://github.com/nodejs/node/pull/49655
     description: Add support for WHATWG URL instances.
 -->
@@ -110,6 +269,105 @@ changes:
 
 Register a module that exports [hooks][] that customize Node.js module
 resolution and loading behavior. See [Customization hooks][].
+
+### `module.stripTypeScriptTypes(code[, options])`
+
+<!-- YAML
+added: v22.13.0
+-->
+
+> Stability: 1.1 - Active development
+
+* `code` {string} The code to strip type annotations from.
+* `options` {Object}
+  * `mode` {string} **Default:** `'strip'`. Possible values are:
+    * `'strip'` Only strip type annotations without performing the transformation of TypeScript features.
+    * `'transform'` Strip type annotations and transform TypeScript features to JavaScript.
+  * `sourceMap` {boolean} **Default:** `false`. Only when `mode` is `'transform'`, if `true`, a source map
+    will be generated for the transformed code.
+  * `sourceUrl` {string}  Specifies the source url used in the source map.
+* Returns: {string} The code with type annotations stripped.
+  `module.stripTypeScriptTypes()` removes type annotations from TypeScript code. It
+  can be used to strip type annotations from TypeScript code before running it
+  with `vm.runInContext()` or `vm.compileFunction()`.
+  By default, it will throw an error if the code contains TypeScript features
+  that require transformation such as `Enums`,
+  see [type-stripping][] for more information.
+  When mode is `'transform'`, it also transforms TypeScript features to JavaScript,
+  see [transform TypeScript features][] for more information.
+  When mode is `'strip'`, source maps are not generated, because locations are preserved.
+  If `sourceMap` is provided, when mode is `'strip'`, an error will be thrown.
+
+_WARNING_: The output of this function should not be considered stable across Node.js versions,
+due to changes in the TypeScript parser.
+
+```mjs
+import { stripTypeScriptTypes } from 'node:module';
+const code = 'const a: number = 1;';
+const strippedCode = stripTypeScriptTypes(code);
+console.log(strippedCode);
+// Prints: const a         = 1;
+```
+
+```cjs
+const { stripTypeScriptTypes } = require('node:module');
+const code = 'const a: number = 1;';
+const strippedCode = stripTypeScriptTypes(code);
+console.log(strippedCode);
+// Prints: const a         = 1;
+```
+
+If `sourceUrl` is provided, it will be used appended as a comment at the end of the output:
+
+```mjs
+import { stripTypeScriptTypes } from 'node:module';
+const code = 'const a: number = 1;';
+const strippedCode = stripTypeScriptTypes(code, { mode: 'strip', sourceUrl: 'source.ts' });
+console.log(strippedCode);
+// Prints: const a         = 1\n\n//# sourceURL=source.ts;
+```
+
+```cjs
+const { stripTypeScriptTypes } = require('node:module');
+const code = 'const a: number = 1;';
+const strippedCode = stripTypeScriptTypes(code, { mode: 'strip', sourceUrl: 'source.ts' });
+console.log(strippedCode);
+// Prints: const a         = 1\n\n//# sourceURL=source.ts;
+```
+
+When `mode` is `'transform'`, the code is transformed to JavaScript:
+
+```mjs
+import { stripTypeScriptTypes } from 'node:module';
+const code = `
+  namespace MathUtil {
+    export const add = (a: number, b: number) => a + b;
+  }`;
+const strippedCode = stripTypeScriptTypes(code, { mode: 'transform', sourceMap: true });
+console.log(strippedCode);
+// Prints:
+// var MathUtil;
+// (function(MathUtil) {
+//     MathUtil.add = (a, b)=>a + b;
+// })(MathUtil || (MathUtil = {}));
+// # sourceMappingURL=data:application/json;base64, ...
+```
+
+```cjs
+const { stripTypeScriptTypes } = require('node:module');
+const code = `
+  namespace MathUtil {
+    export const add = (a: number, b: number) => a + b;
+  }`;
+const strippedCode = stripTypeScriptTypes(code, { mode: 'transform', sourceMap: true });
+console.log(strippedCode);
+// Prints:
+// var MathUtil;
+// (function(MathUtil) {
+//     MathUtil.add = (a, b)=>a + b;
+// })(MathUtil || (MathUtil = {}));
+// # sourceMappingURL=data:application/json;base64, ...
+```
 
 ### `module.syncBuiltinESMExports()`
 
@@ -150,6 +408,175 @@ import('node:fs').then((esmFS) => {
 });
 ```
 
+## Module compile cache
+
+<!-- YAML
+added: v22.1.0
+changes:
+  - version: v22.8.0
+    pr-url: https://github.com/nodejs/node/pull/54501
+    description: add initial JavaScript APIs for runtime access.
+-->
+
+The module compile cache can be enabled either using the [`module.enableCompileCache()`][]
+method or the [`NODE_COMPILE_CACHE=dir`][] environment variable. After it is enabled,
+whenever Node.js compiles a CommonJS or a ECMAScript Module, it will use on-disk
+[V8 code cache][] persisted in the specified directory to speed up the compilation.
+This may slow down the first load of a module graph, but subsequent loads of the same module
+graph may get a significant speedup if the contents of the modules do not change.
+
+To clean up the generated compile cache on disk, simply remove the cache directory. The cache
+directory will be recreated the next time the same directory is used for for compile cache
+storage. To avoid filling up the disk with stale cache, it is recommended to use a directory
+under the [`os.tmpdir()`][]. If the compile cache is enabled by a call to
+[`module.enableCompileCache()`][] without specifying the directory, Node.js will use
+the [`NODE_COMPILE_CACHE=dir`][] environment variable if it's set, or defaults
+to `path.join(os.tmpdir(), 'node-compile-cache')` otherwise. To locate the compile cache
+directory used by a running Node.js instance, use [`module.getCompileCacheDir()`][].
+
+Currently when using the compile cache with [V8 JavaScript code coverage][], the
+coverage being collected by V8 may be less precise in functions that are
+deserialized from the code cache. It's recommended to turn this off when
+running tests to generate precise coverage.
+
+The enabled module compile cache can be disabled by the [`NODE_DISABLE_COMPILE_CACHE=1`][]
+environment variable. This can be useful when the compile cache leads to unexpected or
+undesired behaviors (e.g. less precise test coverage).
+
+Compilation cache generated by one version of Node.js can not be reused by a different
+version of Node.js. Cache generated by different versions of Node.js will be stored
+separately if the same base directory is used to persist the cache, so they can co-exist.
+
+At the moment, when the compile cache is enabled and a module is loaded afresh, the
+code cache is generated from the compiled code immediately, but will only be written
+to disk when the Node.js instance is about to exit. This is subject to change. The
+[`module.flushCompileCache()`][] method can be used to ensure the accumulated code cache
+is flushed to disk in case the application wants to spawn other Node.js instances
+and let them share the cache long before the parent exits.
+
+### `module.constants.compileCacheStatus`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1.1 - Active Development
+
+The following constants are returned as the `status` field in the object returned by
+[`module.enableCompileCache()`][] to indicate the result of the attempt to enable the
+[module compile cache][].
+
+<table>
+  <tr>
+    <th>Constant</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>ENABLED</code></td>
+    <td>
+      Node.js has enabled the compile cache successfully. The directory used to store the
+      compile cache will be returned in the <code>directory</code> field in the
+      returned object.
+    </td>
+  </tr>
+  <tr>
+    <td><code>ALREADY_ENABLED</code></td>
+    <td>
+      The compile cache has already been enabled before, either by a previous call to
+      <code>module.enableCompileCache()</code>, or by the <code>NODE_COMPILE_CACHE=dir</code>
+      environment variable. The directory used to store the
+      compile cache will be returned in the <code>directory</code> field in the
+      returned object.
+    </td>
+  </tr>
+  <tr>
+    <td><code>FAILED</code></td>
+    <td>
+      Node.js fails to enable the compile cache. This can be caused by the lack of
+      permission to use the specified directory, or various kinds of file system errors.
+      The detail of the failure will be returned in the <code>message</code> field in the
+      returned object.
+    </td>
+  </tr>
+  <tr>
+    <td><code>DISABLED</code></td>
+    <td>
+      Node.js cannot enable the compile cache because the environment variable
+      <code>NODE_DISABLE_COMPILE_CACHE=1</code> has been set.
+    </td>
+  </tr>
+</table>
+
+### `module.enableCompileCache([cacheDir])`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1.1 - Active Development
+
+* `cacheDir` {string|undefined} Optional path to specify the directory where the compile cache
+  will be stored/retrieved.
+* Returns: {Object}
+  * `status` {integer} One of the [`module.constants.compileCacheStatus`][]
+  * `message` {string|undefined} If Node.js cannot enable the compile cache, this contains
+    the error message. Only set if `status` is `module.constants.compileCacheStatus.FAILED`.
+  * `directory` {string|undefined} If the compile cache is enabled, this contains the directory
+    where the compile cache is stored. Only set if  `status` is
+    `module.constants.compileCacheStatus.ENABLED` or
+    `module.constants.compileCacheStatus.ALREADY_ENABLED`.
+
+Enable [module compile cache][] in the current Node.js instance.
+
+If `cacheDir` is not specified, Node.js will either use the directory specified by the
+[`NODE_COMPILE_CACHE=dir`][] environment variable if it's set, or use
+`path.join(os.tmpdir(), 'node-compile-cache')` otherwise. For general use cases, it's
+recommended to call `module.enableCompileCache()` without specifying the `cacheDir`,
+so that the directory can be overridden by the `NODE_COMPILE_CACHE` environment
+variable when necessary.
+
+Since compile cache is supposed to be a quiet optimization that is not required for the
+application to be functional, this method is designed to not throw any exception when the
+compile cache cannot be enabled. Instead, it will return an object containing an error
+message in the `message` field to aid debugging.
+If compile cache is enabled successfully, the `directory` field in the returned object
+contains the path to the directory where the compile cache is stored. The `status`
+field in the returned object would be one of the `module.constants.compileCacheStatus`
+values to indicate the result of the attempt to enable the [module compile cache][].
+
+This method only affects the current Node.js instance. To enable it in child worker threads,
+either call this method in child worker threads too, or set the
+`process.env.NODE_COMPILE_CACHE` value to compile cache directory so the behavior can
+be inherited into the child workers. The directory can be obtained either from the
+`directory` field returned by this method, or with [`module.getCompileCacheDir()`][].
+
+### `module.flushCompileCache()`
+
+<!-- YAML
+added:
+ - v23.0.0
+ - v22.10.0
+-->
+
+> Stability: 1.1 - Active Development
+
+Flush the [module compile cache][] accumulated from modules already loaded
+in the current Node.js instance to disk. This returns after all the flushing
+file system operations come to an end, no matter they succeed or not. If there
+are any errors, this will fail silently, since compile cache misses should not
+interfere with the actual operation of the application.
+
+### `module.getCompileCacheDir()`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1.1 - Active Development
+
+* Returns: {string|undefined} Path to the [module compile cache][] directory if it is enabled,
+  or `undefined` otherwise.
+
 <i id="module_customization_hooks"></i>
 
 ## Customization Hooks
@@ -157,7 +584,9 @@ import('node:fs').then((esmFS) => {
 <!-- YAML
 added: v8.8.0
 changes:
-  - version: v20.6.0
+  - version:
+    - v20.6.0
+    - v18.19.0
     pr-url: https://github.com/nodejs/node/pull/48842
     description: Added `initialize` hook to replace `globalPreload`.
   - version:
@@ -321,6 +750,7 @@ const { port1, port2 } = new MessageChannel();
 port1.on('message', (msg) => {
   console.log(msg);
 });
+port1.unref();
 
 register('./my-hooks.mjs', {
   parentURL: import.meta.url,
@@ -341,6 +771,7 @@ const { port1, port2 } = new MessageChannel();
 port1.on('message', (msg) => {
   console.log(msg);
 });
+port1.unref();
 
 register('./my-hooks.mjs', {
   parentURL: pathToFileURL(__filename),
@@ -390,7 +821,9 @@ asynchronous operations (like `console.log`) to complete.
 #### `initialize()`
 
 <!-- YAML
-added: v20.6.0
+added:
+  - v20.6.0
+  - v18.19.0
 -->
 
 > Stability: 1.2 - Release candidate
@@ -431,6 +864,7 @@ const { port1, port2 } = new MessageChannel();
 port1.on('message', (msg) => {
   assert.strictEqual(msg, 'increment: 2');
 });
+port1.unref();
 
 register('./path-to-my-hooks.js', {
   parentURL: import.meta.url,
@@ -453,6 +887,7 @@ const { port1, port2 } = new MessageChannel();
 port1.on('message', (msg) => {
   assert.strictEqual(msg, 'increment: 2');
 });
+port1.unref();
 
 register('./path-to-my-hooks.js', {
   parentURL: pathToFileURL(__filename),
@@ -465,7 +900,10 @@ register('./path-to-my-hooks.js', {
 
 <!-- YAML
 changes:
-  - version: v20.10.0
+  - version:
+    - v21.0.0
+    - v20.10.0
+    - v18.19.0
     pr-url: https://github.com/nodejs/node/pull/50140
     description: The property `context.importAssertions` is replaced with
                  `context.importAttributes`. Using the old name is still
@@ -590,17 +1028,17 @@ changes:
   * `importAttributes` {Object}
 * `nextLoad` {Function} The subsequent `load` hook in the chain, or the
   Node.js default `load` hook after the last user-supplied `load` hook
-  * `specifier` {string}
+  * `url` {string}
   * `context` {Object}
 * Returns: {Object}
   * `format` {string}
   * `shortCircuit` {undefined|boolean} A signal that this hook intends to
-    terminate the chain of `resolve` hooks. **Default:** `false`
+    terminate the chain of `load` hooks. **Default:** `false`
   * `source` {string|ArrayBuffer|TypedArray} The source for Node.js to evaluate
 
 The `load` hook provides a way to define a custom method of determining how a
 URL should be interpreted, retrieved, and parsed. It is also in charge of
-validating the import assertion.
+validating the import attributes.
 
 The final value of `format` must be one of the following:
 
@@ -691,79 +1129,6 @@ export async function load(url, context, nextLoad) {
 In a more advanced scenario, this can also be used to transform an unsupported
 source to a supported one (see [Examples](#examples) below).
 
-#### `globalPreload()`
-
-<!-- YAML
-changes:
-  - version:
-    - v18.6.0
-    - v16.17.0
-    pr-url: https://github.com/nodejs/node/pull/42623
-    description: Add support for chaining globalPreload hooks.
--->
-
-> Stability: 1.0 - Early development
-
-> **Warning:** This hook will be removed in a future version. Use
-> [`initialize`][] instead. When a hooks module has an `initialize` export,
-> `globalPreload` will be ignored.
-
-* `context` {Object} Information to assist the preload code
-  * `port` {MessagePort}
-* Returns: {string} Code to run before application startup
-
-Sometimes it might be necessary to run some code inside of the same global
-scope that the application runs in. This hook allows the return of a string
-that is run as a sloppy-mode script on startup.
-
-Similar to how CommonJS wrappers work, the code runs in an implicit function
-scope. The only argument is a `require`-like function that can be used to load
-builtins like "fs": `getBuiltin(request: string)`.
-
-If the code needs more advanced `require` features, it has to construct
-its own `require` using  `module.createRequire()`.
-
-```mjs
-export function globalPreload(context) {
-  return `\
-globalThis.someInjectedProperty = 42;
-console.log('I just set some globals!');
-
-const { createRequire } = getBuiltin('module');
-const { cwd } = getBuiltin('process');
-
-const require = createRequire(cwd() + '/<preload>');
-// [...]
-`;
-}
-```
-
-Another argument is provided to the preload code: `port`. This is available as a
-parameter to the hook and inside of the source text returned by the hook. This
-functionality has been moved to the `initialize` hook.
-
-Care must be taken in order to properly call [`port.ref()`][] and
-[`port.unref()`][] to prevent a process from being in a state where it won't
-close normally.
-
-```mjs
-/**
- * This example has the application context send a message to the hook
- * and sends the message back to the application context
- */
-export function globalPreload({ port }) {
-  port.onmessage = (evt) => {
-    port.postMessage(evt.data);
-  };
-  return `\
-    port.postMessage('console.log("I went to the hook and back");');
-    port.onmessage = (evt) => {
-      eval(evt.data);
-    };
-  `;
-}
-```
-
 ### Examples
 
 The various module customization hooks can be used together to accomplish
@@ -771,9 +1136,6 @@ wide-ranging customizations of the Node.js code loading and evaluation
 behaviors.
 
 #### Import from HTTPS
-
-In current Node.js, specifiers starting with `https://` are experimental (see
-[HTTPS and HTTP imports][]).
 
 The hook below registers hooks to enable rudimentary support for such
 specifiers. While this may seem like a significant improvement to Node.js core
@@ -1110,27 +1472,37 @@ returned object contains the following keys:
 [Conditional exports]: packages.md#conditional-exports
 [Customization hooks]: #customization-hooks
 [ES Modules]: esm.md
-[HTTPS and HTTP imports]: esm.md#https-and-http-imports
 [Source map v3 format]: https://sourcemaps.info/spec.html#h.mofvlxcwqzej
+[V8 JavaScript code coverage]: https://v8project.blogspot.com/2017/12/javascript-code-coverage.html
+[V8 code cache]: https://v8.dev/blog/code-caching-for-devs
 [`"exports"`]: packages.md#exports
 [`--enable-source-maps`]: cli.md#--enable-source-maps
 [`ArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
+[`NODE_COMPILE_CACHE=dir`]: cli.md#node_compile_cachedir
+[`NODE_DISABLE_COMPILE_CACHE=1`]: cli.md#node_disable_compile_cache1
 [`NODE_V8_COVERAGE=dir`]: cli.md#node_v8_coveragedir
 [`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 [`SourceMap`]: #class-modulesourcemap
 [`TypedArray`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
 [`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
 [`initialize`]: #initialize
-[`module`]: modules.md#the-module-object
-[`port.ref()`]: worker_threads.md#portref
-[`port.unref()`]: worker_threads.md#portunref
+[`module.constants.compileCacheStatus`]: #moduleconstantscompilecachestatus
+[`module.enableCompileCache()`]: #moduleenablecompilecachecachedir
+[`module.flushCompileCache()`]: #moduleflushcompilecache
+[`module.getCompileCacheDir()`]: #modulegetcompilecachedir
+[`module`]: #the-module-object
+[`os.tmpdir()`]: os.md#ostmpdir
 [`register`]: #moduleregisterspecifier-parenturl-options
 [`string`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String
 [`util.TextDecoder`]: util.md#class-utiltextdecoder
 [chain]: #chaining
 [hooks]: #customization-hooks
 [load hook]: #loadurl-context-nextload
+[module compile cache]: #module-compile-cache
 [module wrapper]: modules.md#the-module-wrapper
+[prefix-only modules]: modules.md#built-in-modules-with-mandatory-node-prefix
 [realm]: https://tc39.es/ecma262/#realm
 [source map include directives]: https://sourcemaps.info/spec.html#h.lmz475t4mvbx
 [transferrable objects]: worker_threads.md#portpostmessagevalue-transferlist
+[transform TypeScript features]: typescript.md#typescript-features
+[type-stripping]: typescript.md#type-stripping

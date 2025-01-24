@@ -57,7 +57,9 @@ v8::Local<v8::Array> GraalArray::New(v8::Isolate* isolate, int length) {
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_object, isolate, GraalAccessMethod::array_new, Object, java_context, length);
     GraalArray* graal_array = GraalArray::Allocate(graal_isolate, java_object);
-    return reinterpret_cast<v8::Array*> (graal_array);
+    v8::Array* v8_array = reinterpret_cast<v8::Array*> (graal_array);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Array>::New(v8_isolate, v8_array);
 }
 
 v8::Local<v8::Array> GraalArray::New(v8::Isolate* isolate, v8::Local<v8::Value>* elements, size_t length) {
@@ -73,7 +75,8 @@ v8::Local<v8::Array> GraalArray::New(v8::Isolate* isolate, v8::Local<v8::Value>*
     JNI_CALL(jobject, java_array, isolate, GraalAccessMethod::array_new_from_elements, Object, java_context, java_elements);
     env->DeleteLocalRef(java_elements);
     GraalArray* graal_array = GraalArray::Allocate(graal_isolate, java_array);
-    return reinterpret_cast<v8::Array*> (graal_array);
+    v8::Array* v8_array = reinterpret_cast<v8::Array*> (graal_array);
+    return v8::Local<v8::Array>::New(isolate, v8_array);
 }
 
 uint32_t GraalArray::Length() const {

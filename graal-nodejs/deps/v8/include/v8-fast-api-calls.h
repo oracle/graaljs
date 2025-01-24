@@ -254,8 +254,8 @@ class CTypeInfo {
                  // migrated from v8::ApiObject to v8::Local<v8::Value>.
     kAny,        // This is added to enable untyped representation of fast
                  // call arguments for test purposes. It can represent any of
-                 // the other types stored in the same memory as a union (see
-                 // the AnyCType struct declared below). This allows for
+                 // the other types stored in the same memory as a union
+                 // (see AnyCType declared below). This allows for
                  // uniform passing of arguments w.r.t. their location
                  // (in a register or on the stack), independent of their
                  // actual type. It's currently used by the arm64 simulator
@@ -344,7 +344,8 @@ struct FastApiTypedArray : public FastApiTypedArrayBase {
     ValidateIndex(index);
 #endif  // DEBUG
     T tmp;
-    memcpy(&tmp, reinterpret_cast<T*>(data_) + index, sizeof(T));
+    memcpy(&tmp, static_cast<void*>(reinterpret_cast<T*>(data_) + index),
+           sizeof(T));
     return tmp;
   }
 
@@ -388,13 +389,19 @@ struct FastOneByteString {
 
 class V8_EXPORT CFunctionInfo {
  public:
+  enum class Int64Representation : uint8_t {
+    kNumber = 0,  // Use numbers to represent 64 bit integers.
+    kBigInt = 1,  // Use BigInts to represent 64 bit integers.
+  };
+
   // Construct a struct to hold a CFunction's type information.
   // |return_info| describes the function's return type.
   // |arg_info| is an array of |arg_count| CTypeInfos describing the
   //   arguments. Only the last argument may be of the special type
   //   CTypeInfo::kCallbackOptionsType.
   CFunctionInfo(const CTypeInfo& return_info, unsigned int arg_count,
-                const CTypeInfo* arg_info);
+                const CTypeInfo* arg_info,
+                Int64Representation repr = Int64Representation::kNumber);
 
   const CTypeInfo& ReturnInfo() const { return return_info_; }
 
@@ -403,6 +410,8 @@ class V8_EXPORT CFunctionInfo {
   unsigned int ArgumentCount() const {
     return HasOptions() ? arg_count_ - 1 : arg_count_;
   }
+
+  Int64Representation GetInt64Representation() const { return repr_; }
 
   // |index| must be less than ArgumentCount().
   //  Note: if the last argument passed on construction of CFunctionInfo
@@ -418,6 +427,7 @@ class V8_EXPORT CFunctionInfo {
 
  private:
   const CTypeInfo return_info_;
+  const Int64Representation repr_;
   const unsigned int arg_count_;
   const CTypeInfo* arg_info_;
 };
@@ -425,35 +435,43 @@ class V8_EXPORT CFunctionInfo {
 struct FastApiCallbackOptions;
 
 // Provided for testing.
-struct AnyCType {
+union V8_TRIVIAL_ABI AnyCType {
   AnyCType() : int64_value(0) {}
 
-  union {
-    bool bool_value;
-    int32_t int32_value;
-    uint32_t uint32_value;
-    int64_t int64_value;
-    uint64_t uint64_value;
-    float float_value;
-    double double_value;
-    void* pointer_value;
-    Local<Object> object_value;
-    Local<Array> sequence_value;
-    const FastApiTypedArray<uint8_t>* uint8_ta_value;
-    const FastApiTypedArray<int32_t>* int32_ta_value;
-    const FastApiTypedArray<uint32_t>* uint32_ta_value;
-    const FastApiTypedArray<int64_t>* int64_ta_value;
-    const FastApiTypedArray<uint64_t>* uint64_ta_value;
-    const FastApiTypedArray<float>* float_ta_value;
-    const FastApiTypedArray<double>* double_ta_value;
-    const FastOneByteString* string_value;
-    FastApiCallbackOptions* options_value;
-  };
+#if defined(V8_ENABLE_LOCAL_OFF_STACK_CHECK) && V8_HAS_ATTRIBUTE_TRIVIAL_ABI
+  // In this case, Local<T> is not trivially copyable and the implicit
+  // copy constructor and copy assignment for the union are deleted.
+  AnyCType(const AnyCType& other) : int64_value(other.int64_value) {}
+  AnyCType& operator=(const AnyCType& other) {
+    int64_value = other.int64_value;
+    return *this;
+  }
+#endif
+
+  bool bool_value;
+  int32_t int32_value;
+  uint32_t uint32_value;
+  int64_t int64_value;
+  uint64_t uint64_value;
+  float float_value;
+  double double_value;
+  void* pointer_value;
+  Local<Object> object_value;
+  Local<Array> sequence_value;
+  const FastApiTypedArray<uint8_t>* uint8_ta_value;
+  const FastApiTypedArray<int32_t>* int32_ta_value;
+  const FastApiTypedArray<uint32_t>* uint32_ta_value;
+  const FastApiTypedArray<int64_t>* int64_ta_value;
+  const FastApiTypedArray<uint64_t>* uint64_ta_value;
+  const FastApiTypedArray<float>* float_ta_value;
+  const FastApiTypedArray<double>* double_ta_value;
+  const FastOneByteString* string_value;
+  FastApiCallbackOptions* options_value;
 };
 
 static_assert(
     sizeof(AnyCType) == 8,
-    "The AnyCType struct should have size == 64 bits, as this is assumed "
+    "The union AnyCType should have size == 64 bits, as this is assumed "
     "by EffectControlLinearizer.");
 
 class V8_EXPORT CFunction {
@@ -469,6 +487,9 @@ class V8_EXPORT CFunction {
   unsigned int ArgumentCount() const { return type_info_->ArgumentCount(); }
 
   const void* GetAddress() const { return address_; }
+  CFunctionInfo::Int64Representation GetInt64Representation() const {
+    return type_info_->GetInt64Representation();
+  }
   const CFunctionInfo* GetTypeInfo() const { return type_info_; }
 
   enum class OverloadResolution { kImpossible, kAtRuntime, kAtCompileTime };
@@ -598,7 +619,8 @@ struct count<T, T, Args...>
 template <typename T, typename U, typename... Args>
 struct count<T, U, Args...> : count<T, Args...> {};
 
-template <typename RetBuilder, typename... ArgBuilders>
+template <CFunctionInfo::Int64Representation Representation,
+          typename RetBuilder, typename... ArgBuilders>
 class CFunctionInfoImpl : public CFunctionInfo {
   static constexpr int kOptionsArgCount =
       count<FastApiCallbackOptions&, ArgBuilders...>();
@@ -613,18 +635,20 @@ class CFunctionInfoImpl : public CFunctionInfo {
  public:
   constexpr CFunctionInfoImpl()
       : CFunctionInfo(RetBuilder::Build(), sizeof...(ArgBuilders),
-                      arg_info_storage_),
+                      arg_info_storage_, Representation),
         arg_info_storage_{ArgBuilders::Build()...} {
     constexpr CTypeInfo::Type kReturnType = RetBuilder::Build().GetType();
     static_assert(kReturnType == CTypeInfo::Type::kVoid ||
                       kReturnType == CTypeInfo::Type::kBool ||
                       kReturnType == CTypeInfo::Type::kInt32 ||
                       kReturnType == CTypeInfo::Type::kUint32 ||
+                      kReturnType == CTypeInfo::Type::kInt64 ||
+                      kReturnType == CTypeInfo::Type::kUint64 ||
                       kReturnType == CTypeInfo::Type::kFloat32 ||
                       kReturnType == CTypeInfo::Type::kFloat64 ||
                       kReturnType == CTypeInfo::Type::kPointer ||
                       kReturnType == CTypeInfo::Type::kAny,
-                  "64-bit int, string and api object values are not currently "
+                  "String and api object values are not currently "
                   "supported return types.");
   }
 
@@ -845,8 +869,11 @@ class CFunctionBuilderWithFunction {
     return *this;
   }
 
+  template <CFunctionInfo::Int64Representation Representation =
+                CFunctionInfo::Int64Representation::kNumber>
   auto Build() {
-    static CFunctionInfoImpl<RetBuilder, ArgBuilders...> instance;
+    static CFunctionInfoImpl<Representation, RetBuilder, ArgBuilders...>
+        instance;
     return CFunction(fn_, &instance);
   }
 

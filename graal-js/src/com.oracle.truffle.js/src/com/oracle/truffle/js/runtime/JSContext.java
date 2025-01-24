@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,7 +142,6 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -150,7 +149,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
@@ -354,6 +352,7 @@ public class JSContext {
         AsyncIteratorFindWithResult,
         AsyncGeneratorAwaitReturnFulfilled,
         AsyncGeneratorAwaitReturnRejected,
+        IteratorConcat,
         IteratorMap,
         IteratorFilter,
         IteratorTake,
@@ -535,11 +534,9 @@ public class JSContext {
     private final JSObjectFactory temporalPlainDateFactory;
     private final JSObjectFactory temporalPlainDateTimeFactory;
     private final JSObjectFactory temporalDurationFactory;
-    private final JSObjectFactory temporalCalendarFactory;
     private final JSObjectFactory temporalPlainYearMonthFactory;
     private final JSObjectFactory temporalPlainMonthDayFactory;
     private final JSObjectFactory temporalInstantFactory;
-    private final JSObjectFactory temporalTimeZoneFactory;
     private final JSObjectFactory temporalZonedDateTimeFactory;
 
     private final JSObjectFactory globalObjectFactory;
@@ -743,11 +740,9 @@ public class JSContext {
         this.temporalPlainDateFactory = builder.create(JSTemporalPlainDate.INSTANCE);
         this.temporalPlainDateTimeFactory = builder.create(JSTemporalPlainDateTime.INSTANCE);
         this.temporalDurationFactory = builder.create(JSTemporalDuration.INSTANCE);
-        this.temporalCalendarFactory = builder.create(JSTemporalCalendar.INSTANCE);
         this.temporalPlainYearMonthFactory = builder.create(JSTemporalPlainYearMonth.INSTANCE);
         this.temporalPlainMonthDayFactory = builder.create(JSTemporalPlainMonthDay.INSTANCE);
         this.temporalInstantFactory = builder.create(JSTemporalInstant.INSTANCE);
-        this.temporalTimeZoneFactory = builder.create(JSTemporalTimeZone.INSTANCE);
         this.temporalZonedDateTimeFactory = builder.create(JSTemporalZonedDateTime.INSTANCE);
 
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
@@ -1266,10 +1261,6 @@ public class JSContext {
         return temporalDurationFactory;
     }
 
-    public final JSObjectFactory getTemporalCalendarFactory() {
-        return temporalCalendarFactory;
-    }
-
     public JSObjectFactory getTemporalPlainYearMonthFactory() {
         return temporalPlainYearMonthFactory;
     }
@@ -1284,10 +1275,6 @@ public class JSContext {
 
     public JSObjectFactory getTemporalZonedDateTimeFactory() {
         return temporalZonedDateTimeFactory;
-    }
-
-    public JSObjectFactory getTemporalTimeZoneFactory() {
-        return temporalTimeZoneFactory;
     }
 
     public JSObjectFactory getDictionaryObjectFactory() {
@@ -1733,7 +1720,7 @@ public class JSContext {
 
     /**
      * Invokes the HostImportModuleDynamically (and FinishDynamicImport) callback. Returns a promise
-     * of dynamic import completion or {@null} if no callback is installed or the callback failed.
+     * of dynamic import completion or null if no callback is installed or the callback failed.
      *
      * @return the callback result (a promise or {@code null}).
      */

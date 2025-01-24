@@ -111,7 +111,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isForeignObject(object)"}, limit = "InteropLibraryLimit")
     protected final Object doForeign(Object object,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Shared @Cached InlinedConditionProfile toStringIsFunction,
                     @Shared @Cached InlinedConditionProfile valueOfIsFunction) {

@@ -19,6 +19,7 @@
 #include "src/builtins/builtins.h"
 #include "src/codegen/atomic-memory-order.h"
 #include "src/codegen/callable.h"
+#include "src/codegen/handler-table.h"
 #include "src/codegen/machine-type.h"
 #include "src/codegen/source-position.h"
 #include "src/codegen/tnode.h"
@@ -63,6 +64,7 @@ class JSFinalizationRegistry;
 class JSWeakMap;
 class JSWeakRef;
 class JSWeakSet;
+class OSROptimizedCodeCache;
 class ProfileDataFromFile;
 class PromiseCapability;
 class PromiseFulfillReactionJobTask;
@@ -120,7 +122,6 @@ class WasmExceptionPackage;
 class WasmExceptionTag;
 class WasmExportedFunctionData;
 class WasmGlobalObject;
-class WasmIndirectFunctionTable;
 class WasmJSFunctionData;
 class WasmMemoryObject;
 class WasmModuleObject;
@@ -144,6 +145,11 @@ struct ObjectTypeOf {};
   struct ObjectTypeOf<Name<Args...>> {                   \
     static const ObjectType value = ObjectType::k##Name; \
   };
+#define OBJECT_TYPE_ODDBALL_CASE(Name)                    \
+  template <>                                             \
+  struct ObjectTypeOf<Name> {                             \
+    static const ObjectType value = ObjectType::kOddball; \
+  };
 OBJECT_TYPE_CASE(Object)
 OBJECT_TYPE_CASE(Smi)
 OBJECT_TYPE_CASE(TaggedIndex)
@@ -151,8 +157,13 @@ OBJECT_TYPE_CASE(HeapObject)
 OBJECT_TYPE_CASE(HeapObjectReference)
 OBJECT_TYPE_LIST(OBJECT_TYPE_CASE)
 HEAP_OBJECT_ORDINARY_TYPE_LIST(OBJECT_TYPE_CASE)
+HEAP_OBJECT_TRUSTED_TYPE_LIST(OBJECT_TYPE_CASE)
 STRUCT_LIST(OBJECT_TYPE_STRUCT_CASE)
 HEAP_OBJECT_TEMPLATE_TYPE_LIST(OBJECT_TYPE_TEMPLATE_CASE)
+OBJECT_TYPE_ODDBALL_CASE(Null)
+OBJECT_TYPE_ODDBALL_CASE(Undefined)
+OBJECT_TYPE_ODDBALL_CASE(True)
+OBJECT_TYPE_ODDBALL_CASE(False)
 #undef OBJECT_TYPE_CASE
 #undef OBJECT_TYPE_STRUCT_CASE
 #undef OBJECT_TYPE_TEMPLATE_CASE
@@ -222,6 +233,11 @@ class CodeAssemblerParameterizedLabel;
   V(Uint32LessThanOrEqual, BoolT, Word32T, Word32T)       \
   V(Uint32GreaterThan, BoolT, Word32T, Word32T)           \
   V(Uint32GreaterThanOrEqual, BoolT, Word32T, Word32T)    \
+  /* Use Word64Equal if you need Uint64Equal */           \
+  V(Uint64LessThan, BoolT, Word64T, Word64T)              \
+  V(Uint64LessThanOrEqual, BoolT, Word64T, Word64T)       \
+  V(Uint64GreaterThan, BoolT, Word64T, Word64T)           \
+  V(Uint64GreaterThanOrEqual, BoolT, Word64T, Word64T)    \
   /* Use WordEqual if you need UintPtrEqual */            \
   V(UintPtrLessThan, BoolT, WordT, WordT)                 \
   V(UintPtrLessThanOrEqual, BoolT, WordT, WordT)          \
@@ -230,6 +246,9 @@ class CodeAssemblerParameterizedLabel;
 
 #define CODE_ASSEMBLER_BINARY_OP_LIST(V)                                \
   CODE_ASSEMBLER_COMPARE_BINARY_OP_LIST(V)                              \
+  V(Float32Sub, Float32T, Float32T, Float32T)                           \
+  V(Float32Add, Float32T, Float32T, Float32T)                           \
+  V(Float32Mul, Float32T, Float32T, Float32T)                           \
   V(Float64Add, Float64T, Float64T, Float64T)                           \
   V(Float64Sub, Float64T, Float64T, Float64T)                           \
   V(Float64Mul, Float64T, Float64T, Float64T)                           \
@@ -296,6 +315,7 @@ class CodeAssemblerParameterizedLabel;
 TNode<Float64T> Float64Add(TNode<Float64T> a, TNode<Float64T> b);
 
 #define CODE_ASSEMBLER_UNARY_OP_LIST(V)                        \
+  V(Float32Abs, Float32T, Float32T)                            \
   V(Float64Abs, Float64T, Float64T)                            \
   V(Float64Acos, Float64T, Float64T)                           \
   V(Float64Acosh, Float64T, Float64T)                          \
@@ -337,6 +357,8 @@ TNode<Float64T> Float64Add(TNode<Float64T> a, TNode<Float64T> b);
   V(ChangeUint32ToUint64, Uint64T, Word32T)                    \
   V(BitcastInt32ToFloat32, Float32T, Word32T)                  \
   V(BitcastFloat32ToInt32, Uint32T, Float32T)                  \
+  V(BitcastFloat64ToInt64, Int64T, Float64T)                   \
+  V(BitcastInt64ToFloat64, Float64T, Int64T)                   \
   V(RoundFloat64ToInt32, Int32T, Float64T)                     \
   V(RoundInt32ToFloat32, Float32T, Int32T)                     \
   V(Float64SilenceNaN, Float64T, Float64T)                     \
@@ -429,9 +451,9 @@ class V8_EXPORT_PRIVATE CodeAssembler {
 
     template <class A>
     operator TNode<A>() {
-      static_assert(
-          !std::is_same<A, MaybeObject>::value,
-          "Can't cast to MaybeObject, use explicit conversion functions. ");
+      static_assert(!std::is_same<A, Tagged<MaybeObject>>::value,
+                    "Can't cast to Tagged<MaybeObject>, use explicit "
+                    "conversion functions. ");
 
       static_assert(types_have_common_values<A, PreviousType>::value,
                     "Incompatible types: this cast can never succeed.");
@@ -512,13 +534,28 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   // Constants.
   TNode<Int32T> UniqueInt32Constant(int32_t value);
   TNode<Int32T> Int32Constant(int32_t value);
+  TNode<Int64T> UniqueInt64Constant(int64_t value);
   TNode<Int64T> Int64Constant(int64_t value);
   TNode<Uint64T> Uint64Constant(uint64_t value) {
     return Unsigned(Int64Constant(base::bit_cast<int64_t>(value)));
   }
   TNode<IntPtrT> IntPtrConstant(intptr_t value);
+  TNode<IntPtrT> UniqueIntPtrConstant(intptr_t value);
+  TNode<Uint32T> UniqueUint32Constant(int32_t value) {
+    return Unsigned(UniqueInt32Constant(base::bit_cast<int32_t>(value)));
+  }
   TNode<Uint32T> Uint32Constant(uint32_t value) {
     return Unsigned(Int32Constant(base::bit_cast<int32_t>(value)));
+  }
+  TNode<Uint32T> Uint64HighWordConstant(uint64_t value) {
+    return Uint32Constant(value >> 32);
+  }
+  TNode<Uint32T> Uint64HighWordConstantNoLowWord(uint64_t value) {
+    DCHECK_EQ(0, value & ~uint32_t{0});
+    return Uint64HighWordConstant(value);
+  }
+  TNode<Uint32T> Uint64LowWordConstant(uint64_t value) {
+    return Uint32Constant(static_cast<uint32_t>(value));
   }
   TNode<UintPtrT> UintPtrConstant(uintptr_t value) {
     return Unsigned(IntPtrConstant(base::bit_cast<intptr_t>(value)));
@@ -526,10 +563,10 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   TNode<TaggedIndex> TaggedIndexConstant(intptr_t value);
   TNode<RawPtrT> PointerConstant(void* value) {
     return ReinterpretCast<RawPtrT>(
-        IntPtrConstant(base::bit_cast<intptr_t>(value)));
+        IntPtrConstant(reinterpret_cast<intptr_t>(value)));
   }
   TNode<Number> NumberConstant(double value);
-  TNode<Smi> SmiConstant(Smi value);
+  TNode<Smi> SmiConstant(Tagged<Smi> value);
   TNode<Smi> SmiConstant(int value);
   template <typename E,
             typename = typename std::enable_if<std::is_enum<E>::value>::type>
@@ -537,13 +574,23 @@ class V8_EXPORT_PRIVATE CodeAssembler {
     static_assert(sizeof(E) <= sizeof(int));
     return SmiConstant(static_cast<int>(value));
   }
-  TNode<HeapObject> UntypedHeapConstant(Handle<HeapObject> object);
+  TNode<HeapObject> UntypedHeapConstantNoHole(Handle<HeapObject> object);
+  TNode<HeapObject> UntypedHeapConstantMaybeHole(Handle<HeapObject> object);
+  TNode<HeapObject> UntypedHeapConstantHole(Handle<HeapObject> object);
   template <class Type>
-  TNode<Type> HeapConstant(Handle<Type> object) {
-    return UncheckedCast<Type>(UntypedHeapConstant(object));
+  TNode<Type> HeapConstantNoHole(Handle<Type> object) {
+    return UncheckedCast<Type>(UntypedHeapConstantNoHole(object));
+  }
+  template <class Type>
+  TNode<Type> HeapConstantMaybeHole(Handle<Type> object) {
+    return UncheckedCast<Type>(UntypedHeapConstantMaybeHole(object));
+  }
+  template <class Type>
+  TNode<Type> HeapConstantHole(Handle<Type> object) {
+    return UncheckedCast<Type>(UntypedHeapConstantHole(object));
   }
   TNode<String> StringConstant(const char* str);
-  TNode<Oddball> BooleanConstant(bool value);
+  TNode<Boolean> BooleanConstant(bool value);
   TNode<ExternalReference> ExternalConstant(ExternalReference address);
   TNode<Float32T> Float32Constant(double value);
   TNode<Float64T> Float64Constant(double value);
@@ -566,8 +613,8 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   bool TryToInt64Constant(TNode<IntegralT> node, int64_t* out_value);
   bool TryToIntPtrConstant(TNode<IntegralT> node, intptr_t* out_value);
   bool TryToIntPtrConstant(TNode<Smi> tnode, intptr_t* out_value);
-  bool TryToSmiConstant(TNode<IntegralT> node, Smi* out_value);
-  bool TryToSmiConstant(TNode<Smi> node, Smi* out_value);
+  bool TryToSmiConstant(TNode<IntegralT> node, Tagged<Smi>* out_value);
+  bool TryToSmiConstant(TNode<Smi> node, Tagged<Smi>* out_value);
 
   bool IsUndefinedConstant(TNode<Object> node);
   bool IsNullConstant(TNode<Object> node);
@@ -600,7 +647,7 @@ class V8_EXPORT_PRIVATE CodeAssembler {
       message << " at " << loc.FileName() << ":" << loc.Line();
     }
     size_t buf_size = message.str().size() + 1;
-    char* message_dup = zone()->NewArray<char>(buf_size);
+    char* message_dup = zone()->AllocateArray<char>(buf_size);
     snprintf(message_dup, buf_size, "%s", message.str().c_str());
 
     return Cast(UntypedParameter(value), message_dup);
@@ -625,23 +672,35 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   void Return(TNode<WordT> value1, TNode<WordT> value2);
   void Return(TNode<WordT> value1, TNode<Object> value2);
   void PopAndReturn(Node* pop, Node* value);
+  void PopAndReturn(Node* pop, Node* value1, Node* value2, Node* value3,
+                    Node* value4);
 
   void ReturnIf(TNode<BoolT> condition, TNode<Object> value);
 
   void AbortCSADcheck(Node* message);
   void DebugBreak();
   void Unreachable();
-  void Comment(const char* msg) {
-    if (!v8_flags.code_comments) return;
-    Comment(std::string(msg));
-  }
-  void Comment(std::string msg);
+
+  // Hack for supporting SourceLocation alongside template packs.
+  struct MessageWithSourceLocation {
+    const char* message;
+    SourceLocation loc;
+
+    // Allow implicit construction, necessary for the hack.
+    // NOLINTNEXTLINE
+    MessageWithSourceLocation(const char* message,
+                              SourceLocation loc = SourceLocation::Current())
+        : message(message), loc(loc) {}
+  };
   template <class... Args>
-  void Comment(Args&&... args) {
+  void Comment(MessageWithSourceLocation message, Args&&... args) {
     if (!v8_flags.code_comments) return;
     std::ostringstream s;
-    USE((s << std::forward<Args>(args))...);
-    Comment(s.str());
+    USE(s << message.message, (s << std::forward<Args>(args))...);
+    if (message.loc.FileName()) {
+      s << " - " << message.loc.ToString();
+    }
+    EmitComment(std::move(s).str());
   }
 
   void StaticAssert(TNode<BoolT> value,
@@ -719,9 +778,19 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   void Switch(Node* index, Label* default_label, const int32_t* case_values,
               Label** case_labels, size_t case_count);
 
-  // Access to the frame pointer
+  // Access to the frame pointer.
   TNode<RawPtrT> LoadFramePointer();
   TNode<RawPtrT> LoadParentFramePointer();
+  TNode<RawPtrT> StackSlotPtr(int size, int alignment);
+
+#if V8_ENABLE_WEBASSEMBLY
+  // Access to the stack pointer.
+  TNode<RawPtrT> LoadStackPointer();
+  void SetStackPointer(TNode<RawPtrT> ptr, wasm::FPRelativeScope fp_scope);
+#endif  // V8_ENABLE_WEBASSEMBLY
+
+  TNode<RawPtrT> LoadPointerFromRootRegister(TNode<IntPtrT> offset);
+  TNode<Uint8T> LoadUint8FromRootRegister(TNode<IntPtrT> offset);
 
   // Load raw memory location.
   Node* Load(MachineType type, Node* base);
@@ -756,6 +825,8 @@ class V8_EXPORT_PRIVATE CodeAssembler {
 
   Node* LoadFromObject(MachineType type, TNode<Object> object,
                        TNode<IntPtrT> offset);
+  Node* LoadProtectedPointerFromObject(TNode<Object> object,
+                                       TNode<IntPtrT> offset);
 
 #ifdef V8_MAP_PACKING
   Node* PackMapWord(Node* value);
@@ -795,13 +866,17 @@ class V8_EXPORT_PRIVATE CodeAssembler {
 
   // Optimized memory operations that map to Turbofan simplified nodes.
   TNode<HeapObject> OptimizedAllocate(TNode<IntPtrT> size,
-                                      AllocationType allocation,
-                                      AllowLargeObjects allow_large_objects);
+                                      AllocationType allocation);
   void StoreToObject(MachineRepresentation rep, TNode<Object> object,
                      TNode<IntPtrT> offset, Node* value,
                      StoreToObjectWriteBarrier write_barrier);
   void OptimizedStoreField(MachineRepresentation rep, TNode<HeapObject> object,
                            int offset, Node* value);
+  void OptimizedStoreIndirectPointerField(TNode<HeapObject> object, int offset,
+                                          IndirectPointerTag tag, Node* value);
+  void OptimizedStoreIndirectPointerFieldNoWriteBarrier(
+      TNode<HeapObject> object, int offset, IndirectPointerTag tag,
+      Node* value);
   void OptimizedStoreFieldAssertNoWriteBarrier(MachineRepresentation rep,
                                                TNode<HeapObject> object,
                                                int offset, Node* value);
@@ -879,6 +954,16 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   TNode<ResType> name(TNode<Arg1Type> a, TNode<Arg2Type> b);
   CODE_ASSEMBLER_BINARY_OP_LIST(DECLARE_CODE_ASSEMBLER_BINARY_OP)
 #undef DECLARE_CODE_ASSEMBLER_BINARY_OP
+
+  // Pairwise operations for 32bit.
+  TNode<PairT<Word32T, Word32T>> Int32PairAdd(TNode<Word32T> lhs_lo_word,
+                                              TNode<Word32T> lhs_hi_word,
+                                              TNode<Word32T> rhs_lo_word,
+                                              TNode<Word32T> rhs_hi_word);
+  TNode<PairT<Word32T, Word32T>> Int32PairSub(TNode<Word32T> lhs_lo_word,
+                                              TNode<Word32T> lhs_hi_word,
+                                              TNode<Word32T> rhs_lo_word,
+                                              TNode<Word32T> rhs_hi_word);
 
   TNode<UintPtrT> WordShr(TNode<UintPtrT> left, TNode<IntegralT> right) {
     return Unsigned(WordShr(static_cast<TNode<WordT>>(left), right));
@@ -1139,6 +1224,7 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   // int_min instead of int_max on arm platforms by using parameter
   // kSetOverflowToMin.
   TNode<Int32T> TruncateFloat32ToInt32(TNode<Float32T> value);
+  TNode<Int64T> TruncateFloat64ToInt64(TNode<Float64T> value);
 
   // Projections
   template <int index, class T1, class T2>
@@ -1174,15 +1260,35 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   }
 
   //
-  // If context passed to CallStub is nullptr, it won't be passed to the stub.
+  // If context passed to CallBuiltin is nullptr, it won't be passed to the
+  // builtin.
   //
 
-  template <class T = Object, class... TArgs>
-  TNode<T> CallStub(Callable const& callable, TNode<Object> context,
-                    TArgs... args) {
-    TNode<Code> target = HeapConstant(callable.code());
+  template <typename T = Object, class... TArgs>
+  TNode<T> CallBuiltin(Builtin id, TNode<Object> context, TArgs... args) {
+    Callable callable = Builtins::CallableFor(isolate(), id);
+    TNode<Code> target = HeapConstantNoHole(callable.code());
     return CallStub<T>(callable.descriptor(), target, context, args...);
   }
+
+  template <class... TArgs>
+  void CallBuiltinVoid(Builtin id, TNode<Object> context, TArgs... args) {
+    Callable callable = Builtins::CallableFor(isolate(), id);
+    TNode<Code> target = HeapConstantNoHole(callable.code());
+    CallStubR(StubCallMode::kCallCodeObject, callable.descriptor(), target,
+              context, args...);
+  }
+
+  template <class... TArgs>
+  void TailCallBuiltin(Builtin id, TNode<Object> context, TArgs... args) {
+    Callable callable = Builtins::CallableFor(isolate(), id);
+    TNode<Code> target = HeapConstantNoHole(callable.code());
+    TailCallStub(callable.descriptor(), target, context, args...);
+  }
+
+  //
+  // If context passed to CallStub is nullptr, it won't be passed to the stub.
+  //
 
   template <class T = Object, class... TArgs>
   TNode<T> CallStub(const CallInterfaceDescriptor& descriptor,
@@ -1200,13 +1306,6 @@ class V8_EXPORT_PRIVATE CodeAssembler {
   }
 
   template <class... TArgs>
-  void TailCallStub(Callable const& callable, TNode<Object> context,
-                    TArgs... args) {
-    TNode<Code> target = HeapConstant(callable.code());
-    TailCallStub(callable.descriptor(), target, context, args...);
-  }
-
-  template <class... TArgs>
   void TailCallStub(const CallInterfaceDescriptor& descriptor,
                     TNode<Code> target, TNode<Object> context, TArgs... args) {
     TailCallStubImpl(descriptor, target, context, {args...});
@@ -1217,10 +1316,11 @@ class V8_EXPORT_PRIVATE CodeAssembler {
                                 TNode<RawPtrT> target, TArgs... args);
 
   template <class... TArgs>
-  void TailCallStubThenBytecodeDispatch(
-      const CallInterfaceDescriptor& descriptor, Node* target, Node* context,
-      TArgs... args) {
-    TailCallStubThenBytecodeDispatchImpl(descriptor, target, context,
+  void TailCallBuiltinThenBytecodeDispatch(Builtin builtin, Node* context,
+                                           TArgs... args) {
+    Callable callable = Builtins::CallableFor(isolate(), builtin);
+    TNode<Code> target = HeapConstantNoHole(callable.code());
+    TailCallStubThenBytecodeDispatchImpl(callable.descriptor(), target, context,
                                          {args...});
   }
 
@@ -1236,31 +1336,41 @@ class V8_EXPORT_PRIVATE CodeAssembler {
                       TNode<Int32T> arg_count);
 
   template <class... TArgs>
-  TNode<Object> CallJS(Callable const& callable, Node* context, Node* function,
-                       Node* receiver, TArgs... args) {
+  TNode<Object> CallJS(Builtin builtin, TNode<Context> context,
+                       TNode<Object> function,
+                       base::Optional<TNode<Object>> new_target,
+                       TNode<Object> receiver, TArgs... args) {
+    Callable callable = Builtins::CallableFor(isolate(), builtin);
+    // CallTrampolineDescriptor doesn't have |new_target| parameter.
+    DCHECK_IMPLIES(callable.descriptor() == CallTrampolineDescriptor{},
+                   !new_target.has_value());
     int argc = JSParameterCount(static_cast<int>(sizeof...(args)));
     TNode<Int32T> arity = Int32Constant(argc);
-    TNode<Code> target = HeapConstant(callable.code());
-    return CAST(CallJSStubImpl(callable.descriptor(), target, CAST(context),
-                               CAST(function), {}, arity, {receiver, args...}));
+    TNode<Code> target = HeapConstantNoHole(callable.code());
+    return CAST(CallJSStubImpl(callable.descriptor(), target, context, function,
+                               new_target, arity, {receiver, args...}));
   }
 
   template <class... TArgs>
-  Node* ConstructJSWithTarget(Callable const& callable, Node* context,
-                              Node* function, Node* new_target, TArgs... args) {
+  TNode<Object> ConstructJSWithTarget(Builtin builtin, TNode<Context> context,
+                                      TNode<Object> function,
+                                      TNode<Object> new_target, TArgs... args) {
+    Callable callable = Builtins::CallableFor(isolate(), builtin);
+    // Only descriptors with |new_target| parameter are allowed here.
+    DCHECK_EQ(callable.descriptor(), JSTrampolineDescriptor{});
     int argc = JSParameterCount(static_cast<int>(sizeof...(args)));
     TNode<Int32T> arity = Int32Constant(argc);
     TNode<Object> receiver = LoadRoot(RootIndex::kUndefinedValue);
-    TNode<Code> target = HeapConstant(callable.code());
-    return CallJSStubImpl(callable.descriptor(), target, CAST(context),
-                          CAST(function), CAST(new_target), arity,
-                          {receiver, args...});
+    TNode<Code> target = HeapConstantNoHole(callable.code());
+    return CAST(CallJSStubImpl(callable.descriptor(), target, context, function,
+                               new_target, arity, {receiver, args...}));
   }
+
   template <class... TArgs>
-  Node* ConstructJS(Callable const& callable, Node* context, Node* new_target,
-                    TArgs... args) {
-    return ConstructJSWithTarget(callable, context, new_target, new_target,
-                                 args...);
+  TNode<Object> ConstructJS(Builtin builtin, TNode<Context> context,
+                            TNode<Object> target, TArgs... args) {
+    return CallOrConstructJSWithTarget(builtin, context, target, target,
+                                       args...);
   }
 
   Node* CallCFunctionN(Signature<MachineType>* signature, int input_count,
@@ -1384,6 +1494,8 @@ class V8_EXPORT_PRIVATE CodeAssembler {
 
   Node* UnalignedLoad(MachineType type, TNode<RawPtrT> base,
                       TNode<WordT> offset);
+
+  void EmitComment(std::string msg);
 
   // These two don't have definitions and are here only for catching use cases
   // where the cast is not necessary.

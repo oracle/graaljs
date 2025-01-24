@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,15 +44,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
@@ -67,15 +65,13 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
     }
 
     public abstract JSTemporalDurationObject execute(
-                    CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
-                    Unit largestUnit, JSObject untilOptions);
+                    TruffleString calendar, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
+                    Unit largestUnit);
 
     @Specialization
-    final JSTemporalDurationObject differenceDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
-                    Unit largestUnit, JSObject untilOptions,
-                    @Cached InlinedBranchProfile errorBranch,
-                    @Cached ToTemporalCalendarObjectNode toCalendarObject,
-                    @Cached("createCall()") JSFunctionCallNode callDateUntilNode) {
+    final JSTemporalDurationObject differenceDate(TruffleString calendar, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
+                    Unit largestUnit,
+                    @Cached InlinedBranchProfile errorBranch) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
 
@@ -85,7 +81,7 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
             double days = TemporalUtil.daysUntil(one, two);
             return JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
         } else {
-            return TemporalUtil.calendarDateUntil(calendarRec, one, two, untilOptions, toCalendarObject, callDateUntilNode);
+            return TemporalUtil.calendarDateUntil(ctx, realm, calendar, one, two, largestUnit, this, errorBranch);
         }
     }
 }

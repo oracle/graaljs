@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,34 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorArgs;
+import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorFromGeneratorNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
+import com.oracle.truffle.js.nodes.access.IteratorNextNode;
+import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
+import com.oracle.truffle.js.runtime.builtins.JSIteratorHelperObject;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains builtins for {@linkplain JSIterator} function (constructor).
@@ -65,7 +81,9 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
     }
 
     public enum IteratorFunction implements BuiltinEnum<IteratorFunction> {
-        from(1);
+        from(1),
+
+        concat(0);
 
         private final int length;
 
@@ -77,13 +95,23 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == concat) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorFunction builtinEnum) {
         switch (builtinEnum) {
             case from:
-                return JSIteratorFromNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case concat:
+                return IteratorFunctionBuiltinsFactory.IteratorConcatNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
         }
 
         return null;
@@ -94,7 +122,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
 
-        public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
+        protected JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(false, false, context);
             this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
@@ -113,5 +141,102 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             return JSWrapForValidIterator.create(getContext(), realm, iteratorRecord);
         }
 
+    }
+
+    private record Iterable(Object openMethod, Object iterable) {
+    }
+
+    static final class ConcatArgs extends IteratorArgs {
+
+        private final Iterable[] iterables;
+        private int iterableIndex;
+        boolean innerAlive;
+        IteratorRecord innerIterator;
+
+        ConcatArgs(Iterable[] iterables) {
+            super(null);
+            this.iterables = iterables;
+        }
+    }
+
+    @ImportStatic({Symbol.class})
+    public abstract static class IteratorConcatNode extends IteratorFromGeneratorNode<ConcatArgs> {
+
+        protected IteratorConcatNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, JSContext.BuiltinFunctionKey.IteratorConcat,
+                            c -> createIteratorFromGeneratorFunctionImpl(c, IteratorConcatNextNode.create(c)));
+        }
+
+        @Specialization
+        protected final Object iteratorConcat(Object[] items,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached(parameters = {"getContext()", "SYMBOL_ITERATOR"}) GetMethodNode getIteratorMethodNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            Iterable[] iterables = new Iterable[items.length];
+            for (int i = 0; i < items.length; i++) {
+                Object item = items[i];
+                if (!isObjectNode.executeBoolean(item)) {
+                    errorBranch.enter(this);
+                    throw Errors.createTypeErrorNotAnObject(item);
+                }
+                Object method = getIteratorMethodNode.executeWithTarget(item);
+                if (method == Undefined.instance) {
+                    errorBranch.enter(this);
+                    throw Errors.createTypeErrorNotIterable(item, this);
+                }
+                iterables[i] = new Iterable(method, item);
+            }
+            return createIteratorHelperObject(new ConcatArgs(iterables));
+        }
+    }
+
+    protected abstract static class IteratorConcatNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<ConcatArgs> {
+
+        protected IteratorConcatNextNode(JSContext context) {
+            super(context);
+        }
+
+        @Specialization
+        protected final Object next(VirtualFrame frame, JSIteratorHelperObject thisObj,
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
+                        @Cached IteratorNextNode iteratorNextNode,
+                        @Cached IteratorCompleteNode iteratorCompleteNode,
+                        @Cached IteratorValueNode iteratorValueNode) {
+            ConcatArgs args = getArgs(thisObj);
+            var iterables = args.iterables;
+            int iterableIndex = args.iterableIndex;
+
+            while (iterableIndex < iterables.length) {
+                IteratorRecord iterator = args.innerIterator;
+                if (!args.innerAlive) {
+                    var iterable = iterables[iterableIndex];
+                    args.innerIterator = iterator = getIteratorFromMethodNode.execute(this, iterable.iterable, iterable.openMethod);
+                    args.innerAlive = true;
+                }
+
+                assert args.innerAlive && iterator != null;
+                Object result = iteratorNextNode.execute(iterator);
+                boolean done = iteratorCompleteNode.execute(result);
+                if (done) {
+                    iteratorValueNode.execute(result);
+                    args.innerAlive = false;
+                    args.innerIterator = null;
+                    args.iterableIndex = ++iterableIndex;
+                } else {
+                    return generatorYield(thisObj, result);
+                    // Note: Abrupt completion is handled by IteratorHelperReturnNode.
+                }
+            }
+            return createResultDone(frame, thisObj);
+        }
+
+        @Override
+        public IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<ConcatArgs> copyUninitialized() {
+            return create(context);
+        }
+
+        static IteratorConcatNextNode create(JSContext context) {
+            return IteratorFunctionBuiltinsFactory.IteratorConcatNextNodeGen.create(context);
+        }
     }
 }

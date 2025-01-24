@@ -4,9 +4,14 @@ import argparse
 import ast
 import errno
 import os
+import platform
 import shutil
 import sys
 import re
+
+current_system = platform.system()
+
+SYSTEM_AIX = "AIX"
 
 def abspath(*args):
   path = os.path.join(*args)
@@ -44,6 +49,7 @@ def try_rmdir_r(options, path):
     except OSError as e:
       if e.errno == errno.ENOTEMPTY: return
       if e.errno == errno.ENOENT: return
+      if e.errno == errno.EEXIST and current_system == SYSTEM_AIX: return
       raise
     path = abspath(path, '..')
 
@@ -264,6 +270,7 @@ def headers(options, action):
       'include/v8-forward.h',
       'include/v8-function-callback.h',
       'include/v8-function.h',
+      'include/v8-handle-base.h',
       'include/v8-initialization.h',
       'include/v8-internal.h',
       'include/v8-isolate.h',
@@ -286,6 +293,7 @@ def headers(options, action):
       'include/v8-regexp.h',
       'include/v8-script.h',
       'include/v8-snapshot.h',
+      'include/v8-source-location.h',
       'include/v8-statistics.h',
       'include/v8-template.h',
       'include/v8-traced-handle.h',

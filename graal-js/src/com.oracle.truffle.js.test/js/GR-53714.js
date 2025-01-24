@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -31,10 +31,6 @@ assertSame(JSON.stringify(o, null, 20), JSON.stringify(o, null, long20));
 assertSame(JSON.stringify(o, [42]), JSON.stringify(o, [long42]));
 
 assertThrows(() => (0 instanceof long0), TypeError);
-
-var fooTimeZone = { getOffsetNanosecondsFor() { return long42; }, getPossibleInstantsFor() {}, id: 'foo' };
-var zonedDateTime = new Temporal.ZonedDateTime(0n, fooTimeZone);
-assertSame(42, zonedDateTime.offsetNanoseconds);
 
 var f = function() {};
 Object.defineProperty(f, 'length', { value: long42 });

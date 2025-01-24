@@ -70,7 +70,7 @@ describe('Buffer.utf8Write', function() {
     it('should fail with negative offset', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write('abc', -5, 1)
-        }, RangeErrorOutOfRange);
+        }, RangeErrorBufferOutOfBounds);
     });
     it('should use string length as default argument', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('abc'), 3);
@@ -81,7 +81,7 @@ describe('Buffer.utf8Write', function() {
     it('should fail if string len is negative', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write('abc', 0, -1)
-        }, RangeErrorOutOfRange);
+        }, expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS", '"length" is outside of buffer bounds'));
     });
     it('should fail with out of bounds offset', function() {
         assert.throws(() => {
@@ -126,7 +126,7 @@ describe('Buffer.utf8Write', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('a', 1, 0xffffffff), 1);
     });
     it('length is zero', function() {
-        assert.strictEqual(Buffer.alloc(0).utf8Write.length, 0);
+        assert.strictEqual(Buffer.alloc(0).utf8Write.length, 1);
     });
     if (module.hasJavaInterop()) {
         it('should accept interop buffer', function() {

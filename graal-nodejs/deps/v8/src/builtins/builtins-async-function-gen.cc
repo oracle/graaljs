@@ -5,7 +5,7 @@
 #include "src/builtins/builtins-async-gen.h"
 #include "src/builtins/builtins-utils-gen.h"
 #include "src/builtins/builtins.h"
-#include "src/codegen/code-stub-assembler.h"
+#include "src/codegen/code-stub-assembler-inl.h"
 #include "src/objects/js-generator.h"
 #include "src/objects/js-promise.h"
 #include "src/objects/objects-inl.h"
@@ -67,8 +67,8 @@ void AsyncFunctionBuiltinsAssembler::AsyncFunctionAwaitResumeClosure(
                                  SmiConstant(resume_mode));
 
   // Resume the {receiver} using our trampoline.
-  Callable callable = CodeFactory::ResumeGenerator(isolate());
-  CallStub(callable, context, sent_value, async_function_object);
+  CallBuiltin(Builtin::kResumeGeneratorTrampoline, context, sent_value,
+              async_function_object);
 
   // The resulting Promise is a throwaway, so it doesn't matter what it
   // resolves to. What is important is that we don't end up keeping the
@@ -96,8 +96,7 @@ TF_BUILTIN(AsyncFunctionEnter, AsyncFunctionBuiltinsAssembler) {
 
   // Allocate and initialize the register file.
   TNode<FixedArrayBase> parameters_and_registers =
-      AllocateFixedArray(HOLEY_ELEMENTS, parameters_and_register_length,
-                         AllocationFlag::kAllowLargeObjectAllocation);
+      AllocateFixedArray(HOLEY_ELEMENTS, parameters_and_register_length);
   FillFixedArrayWithValue(HOLEY_ELEMENTS, parameters_and_registers,
                           IntPtrConstant(0), parameters_and_register_length,
                           RootIndex::kUndefinedValue);

@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { once } from 'node:events';
 import assert from 'node:assert';
 
-describe('AbortSignal.any()', { concurrency: true }, () => {
+describe('AbortSignal.any()', { concurrency: !process.env.TEST_PARALLEL }, () => {
   it('should throw when not receiving an array', () => {
     const expectedError = { code: 'ERR_INVALID_ARG_TYPE' };
     assert.throws(() => AbortSignal.any(), expectedError);
@@ -100,5 +100,22 @@ describe('AbortSignal.any()', { concurrency: true }, () => {
     signals.forEach((signal, i) => signal.addEventListener('abort', () => result += i));
     controller.abort();
     assert.strictEqual(result, '01234');
+  });
+
+  it('must accept WebIDL sequence', () => {
+    const controller = new AbortController();
+    const iterable = {
+      *[Symbol.iterator]() {
+        yield controller.signal;
+        yield new AbortController().signal;
+        yield new AbortController().signal;
+        yield new AbortController().signal;
+      },
+    };
+    const signal = AbortSignal.any(iterable);
+    let result = 0;
+    signal.addEventListener('abort', () => result += 1);
+    controller.abort();
+    assert.strictEqual(result, 1);
   });
 });

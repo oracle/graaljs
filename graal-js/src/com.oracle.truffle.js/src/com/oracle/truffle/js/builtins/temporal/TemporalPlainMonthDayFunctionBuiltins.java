@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,19 +42,14 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltinsFactory.JSTemporalPlainMonthDayFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalMonthDayNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainMonthDayFunctionBuiltins.TemporalPlainMonthDayFunction> {
 
@@ -96,18 +91,8 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected JSTemporalPlainMonthDayObject from(Object item, Object optParam,
-                        @Cached ToTemporalMonthDayNode toTemporalMonthDayNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
-            JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
-            if (isObject(item) && JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
-                JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode);
-                return JSTemporalPlainMonthDay.create(getContext(), getRealm(),
-                                pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear(), this, errorBranch);
-            }
+        protected JSTemporalPlainMonthDayObject from(Object item, Object options,
+                        @Cached ToTemporalMonthDayNode toTemporalMonthDayNode) {
             return toTemporalMonthDayNode.execute(item, options);
         }
 

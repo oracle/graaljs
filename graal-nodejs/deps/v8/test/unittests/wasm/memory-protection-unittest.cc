@@ -42,7 +42,7 @@ class MemoryProtectionTest : public TestWithNativeContext {
   void Initialize(MemoryProtectionMode mode) {
     v8_flags.wasm_lazy_compilation = false;
     mode_ = mode;
-    v8_flags.wasm_memory_protection_keys = (mode == kPku);
+    v8_flags.memory_protection_keys = (mode == kPku);
     // The key is initially write-protected.
     CHECK_IMPLIES(WasmCodeManager::HasMemoryProtectionKeySupport(),
                   !WasmCodeManager::MemoryProtectionKeyWritable());
@@ -88,7 +88,7 @@ class MemoryProtectionTest : public TestWithNativeContext {
  private:
   std::shared_ptr<NativeModule> CompileNativeModule() {
     // Define the bytes for a module with a single empty function.
-    static const byte module_bytes[] = {
+    static const uint8_t module_bytes[] = {
         WASM_MODULE_HEADER, SECTION(Type, ENTRY_COUNT(1), SIG_ENTRY_v_v),
         SECTION(Function, ENTRY_COUNT(1), SIG_INDEX(0)),
         SECTION(Code, ENTRY_COUNT(1), ADD_COUNT(0 /* locals */, kExprEnd))};
@@ -102,7 +102,8 @@ class MemoryProtectionTest : public TestWithNativeContext {
     constexpr int kNoCompilationId = 0;
     constexpr ProfileInformation* kNoProfileInformation = nullptr;
     std::shared_ptr<NativeModule> native_module = CompileToNativeModule(
-        isolate(), WasmFeatures::All(), &thrower, std::move(result).value(),
+        isolate(), WasmFeatures::All(), CompileTimeImports{}, &thrower,
+        std::move(result).value(),
         ModuleWireBytes{base::ArrayVector(module_bytes)}, kNoCompilationId,
         v8::metrics::Recorder::ContextId::Empty(), kNoProfileInformation);
     CHECK(!thrower.error());
@@ -140,14 +141,14 @@ TEST_P(ParameterizedMemoryProtectionTest, CodeNotWritableAfterCompilation) {
 
 TEST_P(ParameterizedMemoryProtectionTest, CodeWritableWithinScope) {
   CompileModule();
-  CodeSpaceWriteScope write_scope(native_module());
+  CodeSpaceWriteScope write_scope;
   WriteToCode();
 }
 
 TEST_P(ParameterizedMemoryProtectionTest, CodeNotWritableAfterScope) {
   CompileModule();
   {
-    CodeSpaceWriteScope write_scope(native_module());
+    CodeSpaceWriteScope write_scope;
     WriteToCode();
   }
   AssertCodeEventuallyProtected();
@@ -244,7 +245,7 @@ TEST_P(ParameterizedMemoryProtectionTestWithSignalHandling, TestSignalHandler) {
   // death test. Otherwise we would not really test the signal handling setup
   // that we use in the wild.
   // (see https://google.github.io/googletest/reference/assertions.html)
-  CHECK_EQ("threadsafe", ::testing::GTEST_FLAG(death_test_style));
+  CHECK_EQ("threadsafe", GTEST_FLAG_GET(death_test_style));
 
   const bool write_in_signal_handler = std::get<1>(GetParam());
   const bool open_write_scope = std::get<2>(GetParam());
@@ -274,7 +275,7 @@ TEST_P(ParameterizedMemoryProtectionTestWithSignalHandling, TestSignalHandler) {
     ASSERT_DEATH(
         {
           base::Optional<CodeSpaceWriteScope> write_scope;
-          if (open_write_scope) write_scope.emplace(native_module());
+          if (open_write_scope) write_scope.emplace();
           pthread_kill(pthread_self(), SIGPROF);
           base::OS::Sleep(base::TimeDelta::FromMilliseconds(10));
         },
@@ -294,7 +295,7 @@ TEST_P(ParameterizedMemoryProtectionTestWithSignalHandling, TestSignalHandler) {
 #endif  // GTEST_HAS_DEATH_TEST
   } else {
     base::Optional<CodeSpaceWriteScope> write_scope;
-    if (open_write_scope) write_scope.emplace(native_module());
+    if (open_write_scope) write_scope.emplace();
     // The signal handler does not write or code is not protected, hence this
     // should succeed.
     pthread_kill(pthread_self(), SIGPROF);

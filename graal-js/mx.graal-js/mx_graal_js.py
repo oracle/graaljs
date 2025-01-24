@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ _suite = mx.suite('graal-js')
 TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
-TEST262_REV = "0add42b556ee5bb4ec64aa82d2e234375f39fd2f"
+TEST262_REV = "d0bda4d26f16558698b3f11deba74f7cc4f8afda"
 
 # Git repository of V8
 TESTV8_REPO = "https://" + "github.com/v8/v8.git"
@@ -166,6 +166,7 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
             vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
         vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
         vmArgs += ['--enable-native-access=org.graalvm.truffle']
+        vmArgs = mx_truffle.enable_sun_misc_unsafe(vmArgs)
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
@@ -265,6 +266,7 @@ def _append_default_js_vm_args(vm_args, min_heap='2g', max_heap='2g', stack_size
         vm_args += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
     vm_args += ['--enable-native-access=org.graalvm.truffle']
+    vm_args = mx_truffle.enable_sun_misc_unsafe(vm_args)
     return vm_args
 
 def _js_cmd_line(args, main_class, runtime_jvm_args=None, append_default_args=True):

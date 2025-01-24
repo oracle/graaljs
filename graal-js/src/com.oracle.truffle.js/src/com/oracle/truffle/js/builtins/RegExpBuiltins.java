@@ -249,7 +249,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization(guards = "!getContext().isOptionNashornCompatibilityMode()", assumptions = "getContext().getRegExpStaticResultUnusedAssumption()")
         boolean getMultilineLazy(
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached(inline = true) @Shared @SuppressWarnings("unused") TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
                         @Cached @Shared TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getMultilineFlag) {
             Object compiledRegex = getRealm().getStaticRegexResultCompiledRegex();
@@ -263,7 +263,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!getContext().isOptionNashornCompatibilityMode()")
         boolean getMultilineEager(
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached GetStaticRegExpResultNode getResultNode,
                         @Cached(inline = true) @Shared TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
                         @Cached @Shared TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getMultilineFlag) {

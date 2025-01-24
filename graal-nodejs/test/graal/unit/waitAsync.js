@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,11 @@
 
 const assert = require('assert');
 
-describe.skipOnNode('waitAsync', function () {
+describe('waitAsync', function () {
     it('should work with finite timeout', function() {
         this.timeout(30000);
+        this.retries(3);
+
         var child_process = require('child_process');
         var spawnSync = child_process.spawnSync;
 
@@ -70,12 +72,14 @@ describe.skipOnNode('waitAsync', function () {
             assert.strictEqual(count, 1);
           });`;
 
-        const result = spawnSync(process.execPath, ['--js.ecmascript-version=staging', '-e', code]);
+        const result = spawnSync(process.execPath, ['-e', code]);
         assert.strictEqual(result.status, 0, result.stderr.toString());
         assert.strictEqual(result.stderr.toString(), '');
     });
     it('should work with infinite timeout', function() {
       this.timeout(30000);
+      this.retries(3);
+
       var child_process = require('child_process');
       var spawnSync = child_process.spawnSync;
 
@@ -102,7 +106,7 @@ describe.skipOnNode('waitAsync', function () {
           assert.strictEqual(count, 1);
         });`;
 
-      const result = spawnSync(process.execPath, ['--js.ecmascript-version=staging', '-e', code]);
+      const result = spawnSync(process.execPath, ['-e', code]);
       assert.strictEqual(result.status, 0, result.stderr.toString());
       assert.strictEqual(result.stderr.toString(), '');
   });

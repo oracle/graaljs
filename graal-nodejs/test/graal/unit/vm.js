@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 
 var assert = require('assert');
+var { spawnSync } = require('child_process');
 var vm = require('vm');
 
 describe('vm', function () {
@@ -137,23 +138,41 @@ describe('vm', function () {
             assert(globalBuiltins.includes('Object'), globalBuiltins);
 
             var globalPropertyNames = vm.runInContext('globalThis[0] = "zero"; globalThis[2] = "two"; ' + query, context);
-            assert(globalPropertyNames.includes('Object'), globalPropertyNames);
+            ['1', '3', 'extra', 'Object'].forEach(propertyKey => {
+                assert(globalPropertyNames.includes(propertyKey), propertyKey);
+            });
 
-            // Make sure properties are in the correct order, too.
-            assert.strictEqual(globalPropertyNames[0], '0');
-            assert.strictEqual(globalPropertyNames[1], '1');
-            assert.strictEqual(globalPropertyNames[2], '2');
-            assert.strictEqual(globalPropertyNames[3], '3');
-            assert.strictEqual(globalPropertyNames[4], 'extra');
-            assert.strictEqual(globalPropertyNames[5], globalBuiltins[0]);
-
-            // Symbols of the context object are not included.
-            assert(!globalPropertyNames.includes(Symbol.unscopables), globalPropertyNames);
+            if (query.includes('getOwnPropertyNames')) {
+                assert(!globalPropertyNames.includes(Symbol.unscopables), globalPropertyNames);
+            }
         }
 
         var globalPropertySymbols = vm.runInContext('Object.getOwnPropertySymbols(globalThis)', emptyContext);
         // Symbols of the context object are not included.
         assert(!globalPropertySymbols.includes(Symbol.unscopables), globalPropertySymbols);
         assert.strictEqual(43, vm.runInContext('globalThis[Symbol.unscopables]', context));
+    });
+    it('should handle globalThis.hasOwnProperty(symbol)', function () {
+        assert.ok(!vm.runInNewContext("globalThis.hasOwnProperty(Symbol())"));
+    });
+    it('should store module execution result', function () {
+        this.timeout(40000);
+        var code = `
+            var first = new vm.SourceTextModule('import mid from "mid"; mid;');
+            var mid = new vm.SourceTextModule('import last from "last"; export default last');
+            var last = new vm.SourceTextModule('if (false) await import(""); export default 42;');
+            first.link(function(name) { return (name === "mid") ? mid : last; })
+                .then(() => first.evaluate())
+                .then(() => mid.evaluate()) // checks the execution result of mid again
+                .then(() => console.log('OK'));`;
+        
+        var result = spawnSync(process.execPath, [
+            '--experimental-vm-modules',
+            '--no-warnings=ExperimentalWarning',
+            '-e', code],
+            { env: { ...process.env, NODE_JVM_OPTIONS: (process.env.NODE_JVM_OPTIONS || '') + ' -ea' }});
+        assert.strictEqual(result.stderr.toString(), '');
+        assert.strictEqual(result.stdout.toString().trim(), 'OK');
+        assert.strictEqual(result.status, 0);
     });
 });

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2074,6 +2074,9 @@ public final class GraalJSAccess {
                 // process all found FunctionTemplates, recursively
                 FunctionTemplate functionTempl = (FunctionTemplate) processedValue;
                 processedValue = functionTemplateGetFunction(realm, functionTempl);
+                if (name instanceof TruffleString nameTS) {
+                    JSFunction.setFunctionName((JSDynamicObject) processedValue, nameTS);
+                }
             }
             if (processedValue instanceof Pair) {
                 Pair<?, ?> pair = (Pair<?, ?>) processedValue;
@@ -3216,6 +3219,10 @@ public final class GraalJSAccess {
         return DOUBLE_PLACEHOLDER;
     }
 
+    public String isolateGetDefaultLocale() {
+        return mainJSContext.getLocale().toLanguageTag();
+    }
+
     public void isolateDispose(boolean exit, int status) {
         agent.setTaskRunnerPointer(0);
         if (exit) {
@@ -3293,14 +3300,14 @@ public final class GraalJSAccess {
         }
     }
 
-    private static class IsolatePromiseHook implements PromiseHook {
+    private static final class IsolatePromiseHook implements PromiseHook {
         @Override
         public void promiseChanged(int changeType, JSDynamicObject promise, JSDynamicObject parentPromise) {
             NativeAccess.notifyPromiseHook(changeType, promise, parentPromise);
         }
     }
 
-    private static class NativePromiseRejectionTracker implements PromiseRejectionTracker {
+    private static final class NativePromiseRejectionTracker implements PromiseRejectionTracker {
         @Override
         public void promiseRejected(JSDynamicObject promise, Object value) {
             NativeAccess.notifyPromiseRejectionTracker(
@@ -3334,14 +3341,14 @@ public final class GraalJSAccess {
         }
     }
 
-    private static class NativeImportMetaInitializer implements ImportMetaInitializer {
+    private static final class NativeImportMetaInitializer implements ImportMetaInitializer {
         @Override
         public void initializeImportMeta(JSDynamicObject importMeta, JSModuleRecord module) {
             NativeAccess.notifyImportMetaInitializer(importMeta, module);
         }
     }
 
-    private static class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
+    private static final class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
         @Override
         public JSDynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
@@ -3359,7 +3366,7 @@ public final class GraalJSAccess {
         }
     }
 
-    private static class NativePrepareStackTraceCallback implements PrepareStackTraceCallback {
+    private static final class NativePrepareStackTraceCallback implements PrepareStackTraceCallback {
         @Override
         public Object prepareStackTrace(JSRealm realm, JSDynamicObject error, JSDynamicObject structuredStackTrace) {
             return NativeAccess.executePrepareStackTraceCallback(realm, error, structuredStackTrace);
@@ -3868,6 +3875,15 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
+    public boolean moduleIsGraphAsync(Object module) {
+        JSModuleRecord record = (JSModuleRecord) module;
+        return record.hasTLA() || record.isAsyncEvaluation();
+    }
+
+    public boolean moduleIsSourceTextModule(Object module) {
+        return !(module instanceof NativeBackedModuleRecord);
+    }
+
     public Object moduleCreateSyntheticModule(Object moduleName, Object[] exportNames, final long evaluationStepsCallback) {
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
         for (Object exportName : exportNames) {
@@ -4049,6 +4065,17 @@ public final class GraalJSAccess {
         JSMap.getInternalMap(object).put(JSSet.normalize(key), value);
     }
 
+    public Object mapGet(Object set, Object key) {
+        JSDynamicObject object = (JSDynamicObject) set;
+        Object value = JSMap.getInternalMap(object).get(JSSet.normalize(key));
+        return JSRuntime.nullToUndefined(value);
+    }
+
+    public boolean mapDelete(Object set, Object key) {
+        JSDynamicObject object = (JSDynamicObject) set;
+        return JSMap.getInternalMap(object).remove(JSSet.normalize(key));
+    }
+
     public Object setNew(Object context) {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
@@ -4144,11 +4171,15 @@ public final class GraalJSAccess {
     }
 
     public Object wasmModuleObjectGetCompiledModule(Object wasmModule) {
-        return ((JSWebAssemblyModuleObject) wasmModule).getWASMModule();
+        return new CompiledWasmModule(
+                        ((JSWebAssemblyModuleObject) wasmModule).getWASMModule(),
+                        ((JSWebAssemblyModuleObject) wasmModule).getWASMSource());
     }
 
     public Object wasmModuleObjectFromCompiledModule(Object compiledModule) {
-        return JSWebAssemblyModule.create(mainJSContext, mainJSRealm, compiledModule);
+        return JSWebAssemblyModule.create(mainJSContext, mainJSRealm,
+                        ((CompiledWasmModule) compiledModule).module(),
+                        ((CompiledWasmModule) compiledModule).source());
     }
 
     private static Object createWasmStreamingCallback(JSRealm realm) {

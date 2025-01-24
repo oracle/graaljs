@@ -168,7 +168,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isNumeric()", "isAddition()"})
     protected Object doToOperandAddition(Object left, Object right,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("create(getHint())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint())") JSToOperandNode toOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") @Shared DispatchBinaryOperatorNode dispatchBinaryOperatorNode,

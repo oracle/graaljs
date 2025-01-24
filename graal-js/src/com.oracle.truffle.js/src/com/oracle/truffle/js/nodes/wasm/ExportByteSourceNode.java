@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,26 +40,28 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import org.graalvm.polyglot.io.ByteSequence;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.array.GetViewByteLengthNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.array.TypedArray;
-import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
-import com.oracle.truffle.js.runtime.interop.InteropBufferView;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 
 /**
  * Exports byte source such that it can be read by WASM.
@@ -68,6 +70,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     private final JSContext context;
     private final String nonByteSourceMessage;
     private final String emptyByteSourceMessage;
+    @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
     protected ExportByteSourceNode(JSContext context, String nonByteSourceMessage, String emptyByteSourceMessage) {
         this.context = context;
@@ -75,14 +78,14 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         this.emptyByteSourceMessage = emptyByteSourceMessage;
     }
 
-    public abstract Object execute(Object byteSource);
+    public abstract ByteSequence execute(Object byteSource);
 
     public static ExportByteSourceNode create(JSContext context, String nonByteSourceMessage, String emptyByteSourceMessage) {
         return ExportByteSourceNodeGen.create(context, nonByteSourceMessage, emptyByteSourceMessage);
     }
 
     @Specialization
-    protected Object exportBuffer(JSArrayBufferObject arrayBuffer,
+    protected ByteSequence exportBuffer(JSArrayBufferObject arrayBuffer,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
         int length;
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
@@ -94,7 +97,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object exportTypedArray(JSTypedArrayObject typedArray,
+    protected ByteSequence exportTypedArray(JSTypedArrayObject typedArray,
                     @Cached ArrayBufferViewGetByteLengthNode getByteLengthNode,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
         int offset = JSArrayBufferView.getByteOffset(typedArray, context);
@@ -103,7 +106,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object exportDataView(JSDataViewObject dataView,
+    protected ByteSequence exportDataView(JSDataViewObject dataView,
                     @Cached GetViewByteLengthNode getByteLengthNode,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
         int offset = JSDataView.dataViewGetByteOffset(dataView);
@@ -112,11 +115,11 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     }
 
     @Fallback
-    protected Object exportOther(@SuppressWarnings("unused") Object other) {
+    protected ByteSequence exportOther(@SuppressWarnings("unused") Object other) {
         throw Errors.createTypeError(nonByteSourceMessage, this);
     }
 
-    private Object exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length,
+    private ByteSequence exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length,
                     InlinedBranchProfile errorBranch) {
         JSArrayBufferObject buffer = arrayBuffer;
         if (emptyByteSourceMessage != null && length == 0) {
@@ -127,20 +130,10 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             buffer = JSArrayBuffer.createArrayBuffer(context, realm, 0);
         }
-        // Wrap ArrayBuffer into Uint8Array - to allow reading its bytes on WASM side
-        byte bufferType;
-        if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
-            bufferType = TypedArray.BUFFER_TYPE_INTEROP;
-        } else if (JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer)) {
-            bufferType = TypedArray.BUFFER_TYPE_ARRAY;
-        } else if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
-            bufferType = TypedArray.BUFFER_TYPE_DIRECT;
-        } else {
-            bufferType = TypedArray.BUFFER_TYPE_SHARED;
-        }
-        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(bufferType, (offset != 0), true);
-        JSTypedArrayObject array = JSArrayBufferView.createArrayBufferView(context, realm, buffer, TypedArrayFactory.Uint8Array, arrayType, offset, length);
-        return new InteropBufferView(buffer, offset, length, array);
+        byte[] bytes = new byte[length];
+        JSInteropUtil.copyFromBuffer(buffer, offset, bytes, 0, length, interop);
+        reportLoopCount(this, length);
+        return ByteSequence.create(bytes);
     }
 
 }

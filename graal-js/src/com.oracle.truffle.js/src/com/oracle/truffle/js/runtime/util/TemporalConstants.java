@@ -162,8 +162,6 @@ public final class TemporalConstants {
     public static final TruffleString TEMPORAL_NOW_TO_STRING_TAG = Strings.constant("Temporal.Now");
 
     public static final TruffleString MINUS_000000 = Strings.constant("-000000");
-    public static final char UNICODE_MINUS_SIGN = '\u2212';
-    public static final TruffleString UNICODE_MINUS_SIGN_000000 = Strings.constant(UNICODE_MINUS_SIGN + "000000");
     public static final TruffleString ZEROS = Strings.constant("000000000");
     public static final TruffleString OFFSET_ZERO = Strings.constant("+00:00");
     public static final TruffleString U_CA_EQUALS = Strings.constant("u-ca=");

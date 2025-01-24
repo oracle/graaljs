@@ -103,7 +103,7 @@ JSIntrinsicLowering::ReduceCopyDataPropertiesWithExcludedPropertiesOnStack(
       graph()->zone(), callable.descriptor(), input_count - 1, flags,
       node->op()->properties());
   node->InsertInput(graph()->zone(), 0,
-                    jsgraph()->HeapConstant(callable.code()));
+                    jsgraph()->HeapConstantNoHole(callable.code()));
   node->InsertInput(graph()->zone(), 2,
                     jsgraph()->SmiConstant(input_count - 1));
   NodeProperties::ChangeOp(node, common()->Call(call_descriptor));
@@ -124,12 +124,10 @@ Reduction JSIntrinsicLowering::ReduceDeoptimizeNow(Node* node) {
   Node* const effect = NodeProperties::GetEffectInput(node);
   Node* const control = NodeProperties::GetControlInput(node);
 
-  // TODO(bmeurer): Move MergeControlToEnd() to the AdvancedReducer.
   Node* deoptimize = graph()->NewNode(
       common()->Deoptimize(DeoptimizeReason::kDeoptimizeNow, FeedbackSource()),
       frame_state, effect, control);
-  NodeProperties::MergeControlToEnd(graph(), common(), deoptimize);
-  Revisit(graph()->end());
+  MergeControlToEnd(graph(), common(), deoptimize);
 
   node->TrimInputCount(0);
   NodeProperties::ChangeOp(node, common()->Dead());
@@ -153,7 +151,8 @@ Reduction JSIntrinsicLowering::ReduceGeneratorClose(Node* node) {
   Node* const generator = NodeProperties::GetValueInput(node, 0);
   Node* const effect = NodeProperties::GetEffectInput(node);
   Node* const control = NodeProperties::GetControlInput(node);
-  Node* const closed = jsgraph()->Constant(JSGeneratorObject::kGeneratorClosed);
+  Node* const closed =
+      jsgraph()->ConstantNoHole(JSGeneratorObject::kGeneratorClosed);
   Node* const undefined = jsgraph()->UndefinedConstant();
   Operator const* const op = simplified()->StoreField(
       AccessBuilder::ForJSGeneratorObjectContinuation());
@@ -263,7 +262,7 @@ Reduction JSIntrinsicLowering::ReduceIsInstanceType(
       if_false);
   Node* vfalse =
       graph()->NewNode(simplified()->NumberEqual(), map_instance_type,
-                       jsgraph()->Constant(instance_type));
+                       jsgraph()->ConstantNoHole(instance_type));
 
   Node* merge = graph()->NewNode(common()->Merge(2), if_true, if_false);
 
@@ -295,7 +294,11 @@ Reduction JSIntrinsicLowering::ReduceTurbofanStaticAssert(Node* node) {
 }
 
 Reduction JSIntrinsicLowering::ReduceVerifyType(Node* node) {
-  return Change(node, simplified()->VerifyType());
+  Node* value = NodeProperties::GetValueInput(node, 0);
+  Node* effect = NodeProperties::GetEffectInput(node);
+  effect = graph()->NewNode(simplified()->VerifyType(), value, effect);
+  ReplaceWithValue(node, value, effect);
+  return Changed(effect);
 }
 
 Reduction JSIntrinsicLowering::ReduceCheckTurboshaftTypeOf(Node* node) {
@@ -420,7 +423,7 @@ Reduction JSIntrinsicLowering::Change(Node* node, Callable const& callable,
       graph()->zone(), callable.descriptor(), stack_parameter_count, flags,
       node->op()->properties());
   node->InsertInput(graph()->zone(), 0,
-                    jsgraph()->HeapConstant(callable.code()));
+                    jsgraph()->HeapConstantNoHole(callable.code()));
   NodeProperties::ChangeOp(node, common()->Call(call_descriptor));
   return Changed(node);
 }

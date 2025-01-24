@@ -133,10 +133,14 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
             setNumberFormatUnitOptions(state, options);
 
+            String style = state.getStyle();
+
+            String notation = getNotationOption.executeValue(options);
+            state.setNotation(notation);
+
             int mnfdDefault;
             int mxfdDefault;
-            String style = state.getStyle();
-            if (IntlUtil.CURRENCY.equals(style)) {
+            if (IntlUtil.CURRENCY.equals(style) && IntlUtil.STANDARD.equals(notation)) {
                 int cDigits = JSNumberFormat.currencyDigits(context, state.getCurrency());
                 mnfdDefault = cDigits;
                 mxfdDefault = cDigits;
@@ -144,9 +148,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
                 mnfdDefault = 0;
                 mxfdDefault = IntlUtil.PERCENT.equals(style) ? 0 : 3;
             }
-
-            String notation = getNotationOption.executeValue(options);
-            state.setNotation(notation);
 
             boolean compactNotation = IntlUtil.COMPACT.equals(notation);
             setNumberFormatDigitOptions.execute(state, options, mnfdDefault, mxfdDefault, compactNotation);

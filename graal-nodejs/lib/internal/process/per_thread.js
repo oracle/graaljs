@@ -14,8 +14,8 @@ const {
   BigUint64Array,
   Float64Array,
   NumberMAX_SAFE_INTEGER,
-  ObjectFreeze,
   ObjectDefineProperty,
+  ObjectFreeze,
   ReflectApply,
   RegExpPrototypeExec,
   SafeArrayIterator,
@@ -25,7 +25,6 @@ const {
   StringPrototypeEndsWith,
   StringPrototypeReplace,
   StringPrototypeSlice,
-  StringPrototypeStartsWith,
   Symbol,
   SymbolIterator,
 } = primordials;
@@ -46,9 +45,10 @@ const {
   validateNumber,
   validateObject,
 } = require('internal/validators');
-const { getValidatedPath } = require('internal/fs/utils');
-const { toNamespacedPath } = require('path');
+
 const constants = internalBinding('constants').os.signals;
+
+let getValidatedPath; // We need to lazy load it because of the circular dependency.
 
 const kInternal = Symbol('internal properties');
 
@@ -173,9 +173,6 @@ function wrapProcessMethods(binding) {
   memoryUsage.rss = rss;
 
   function exit(code) {
-    const { handleProcessExit } = require('internal/modules/run_main');
-    process.off('exit', handleProcessExit);
-
     if (arguments.length !== 0) {
       process.exitCode = code;
     }
@@ -214,7 +211,7 @@ function wrapProcessMethods(binding) {
       // it's monkey-patched by tests.
       err = process._kill(pid, sig);
     } else {
-      sig = sig || 'SIGTERM';
+      sig ||= 'SIGTERM';
       if (constants[sig]) {
         err = process._kill(pid, constants[sig]);
       } else {
@@ -257,13 +254,13 @@ function wrapProcessMethods(binding) {
    */
   function loadEnvFile(path = undefined) { // Provide optional value so that `loadEnvFile.length` returns 0
     if (path != null) {
+      getValidatedPath ??= require('internal/fs/utils').getValidatedPath;
       path = getValidatedPath(path);
-      _loadEnvFile(toNamespacedPath(path));
+      _loadEnvFile(path);
     } else {
       _loadEnvFile();
     }
   }
-
 
   return {
     _rawDebug,
@@ -287,7 +284,8 @@ function buildAllowedFlags() {
     envSettings: { kAllowedInEnvvar },
     types: { kBoolean },
   } = internalBinding('options');
-  const { options, aliases } = require('internal/options');
+  const { getCLIOptionsInfo } = require('internal/options');
+  const { options, aliases } = getCLIOptionsInfo();
 
   const allowedNodeEnvironmentFlags = [];
   for (const { 0: name, 1: info } of options) {
@@ -301,7 +299,7 @@ function buildAllowedFlags() {
   }
 
   function isAccepted(to) {
-    if (!StringPrototypeStartsWith(to, '-') || to === '--') return true;
+    if (!to.length || to[0] !== '-' || to === '--') return true;
     const recursiveExpansion = aliases.get(to);
     if (recursiveExpansion) {
       if (recursiveExpansion[0] === to)
@@ -415,15 +413,14 @@ let traceEventsAsyncHook;
 // Dynamically enable/disable the traceEventsAsyncHook
 function toggleTraceCategoryState(asyncHooksEnabled) {
   if (asyncHooksEnabled) {
-    if (!traceEventsAsyncHook) {
-      traceEventsAsyncHook =
-        require('internal/trace_events_async_hooks').createHook();
-    }
+    traceEventsAsyncHook ||= require('internal/trace_events_async_hooks').createHook();
     traceEventsAsyncHook.enable();
   } else if (traceEventsAsyncHook) {
     traceEventsAsyncHook.disable();
   }
 }
+
+const { arch, platform, version } = process;
 
 module.exports = {
   toggleTraceCategoryState,
@@ -432,4 +429,7 @@ module.exports = {
   wrapProcessMethods,
   hrtime,
   hrtimeBigInt,
+  arch,
+  platform,
+  version,
 };

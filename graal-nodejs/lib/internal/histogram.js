@@ -24,8 +24,8 @@ const { inspect } = require('util');
 const {
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
-    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_THIS,
     ERR_OUT_OF_RANGE,
   },
@@ -45,7 +45,7 @@ const kRecordable = Symbol('kRecordable');
 const {
   kClone,
   kDeserialize,
-  makeTransferable,
+  markTransferMode,
 } = require('internal/worker/js_transferable');
 
 function isHistogram(object) {
@@ -327,11 +327,12 @@ class RecordableHistogram extends Histogram {
 }
 
 function ClonedHistogram(handle) {
-  return makeTransferable(ReflectConstruct(
+  return ReflectConstruct(
     function() {
+      markTransferMode(this, true, false);
       this[kHandle] = handle;
       this[kMap] = new SafeMap();
-    }, [], Histogram));
+    }, [], Histogram);
 }
 
 ClonedHistogram.prototype[kDeserialize] = () => { };
@@ -339,12 +340,13 @@ ClonedHistogram.prototype[kDeserialize] = () => { };
 function ClonedRecordableHistogram(handle) {
   const histogram = new RecordableHistogram(kSkipThrow);
 
+  markTransferMode(histogram, true, false);
   histogram[kRecordable] = true;
   histogram[kMap] = new SafeMap();
   histogram[kHandle] = handle;
   histogram.constructor = RecordableHistogram;
 
-  return makeTransferable(histogram);
+  return histogram;
 }
 
 ClonedRecordableHistogram.prototype[kDeserialize] = () => { };

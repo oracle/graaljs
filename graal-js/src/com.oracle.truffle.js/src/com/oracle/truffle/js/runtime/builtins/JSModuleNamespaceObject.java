@@ -49,9 +49,9 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -61,7 +61,7 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
      *
      * The Module Record whose exports this namespace exposes.
      */
-    private final JSModuleRecord module;
+    private final AbstractModuleRecord module;
 
     /**
      * [[Exports]]. List of String.
@@ -72,13 +72,13 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
      */
     private final UnmodifiableEconomicMap<TruffleString, ExportResolution> exports;
 
-    protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
+    protected JSModuleNamespaceObject(Shape shape, AbstractModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
         super(shape, Null.instance);
         this.module = module;
         this.exports = exports;
     }
 
-    public JSModuleRecord getModule() {
+    public AbstractModuleRecord getModule() {
         return module;
     }
 
@@ -86,7 +86,7 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
         return exports;
     }
 
-    public static JSModuleNamespaceObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
+    public static JSModuleNamespaceObject create(JSRealm realm, JSObjectFactory factory, AbstractModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
         return factory.initProto(new JSModuleNamespaceObject(factory.getShape(realm), module, exports), realm);
     }
 

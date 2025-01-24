@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,14 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -59,15 +61,17 @@ public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseN
     protected TemporalCalendarDateFromFieldsNode() {
     }
 
-    public abstract JSTemporalPlainDateObject execute(CalendarMethodsRecord calendarRec, JSDynamicObject fields, Object options);
+    public abstract JSTemporalPlainDateObject execute(TruffleString calendar, Object fields, TemporalUtil.Overflow overflow);
 
     @Specialization
-    public JSTemporalPlainDateObject toTemporalDate(CalendarMethodsRecord calendarRec, JSDynamicObject fields, Object options,
-                    @Cached ToTemporalCalendarObjectNode toCalendar,
-                    @Cached("createCall()") JSFunctionCallNode callNode,
+    public JSTemporalPlainDateObject calendarDateFromFields(TruffleString calendar, Object fieldsParam, TemporalUtil.Overflow overflow,
+                    @Cached JSToIntegerOrInfinityNode toIntegerOrInfinity,
                     @Cached InlinedBranchProfile errorBranch) {
-        Object calendarObject = toCalendar.execute(calendarRec.receiver());
-        Object date = callNode.executeCall(JSArguments.create(calendarObject, calendarRec.dateFromFields(), fields, options));
-        return TemporalUtil.requireTemporalDate(date, this, errorBranch);
+        JSContext context = getJSContext();
+        JSObject fields = TemporalUtil.prepareTemporalFields(context, fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listYD);
+        TemporalUtil.isoResolveMonth(context, fields, toIntegerOrInfinity);
+        ISODateRecord result = TemporalUtil.isoDateFromFields(fields, overflow);
+
+        return JSTemporalPlainDate.create(context, getRealm(), result.year(), result.month(), result.day(), calendar, this, errorBranch);
     }
 }

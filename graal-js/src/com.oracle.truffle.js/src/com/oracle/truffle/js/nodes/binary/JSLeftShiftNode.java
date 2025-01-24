@@ -134,7 +134,7 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntegerDouble", "doDouble", "doBigInt"})
     protected static Object doGeneric(Object a, Object b,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached @Shared JSLeftShiftNode leftShift,
                     @Cached JSToNumericNode leftToNumeric,
                     @Cached JSToNumericNode rightToNumeric,

@@ -4,16 +4,18 @@
 // in https://github.com/mysticatea/abort-controller (MIT license)
 
 const {
+  ArrayPrototypePush,
   ObjectAssign,
   ObjectDefineProperties,
-  ObjectSetPrototypeOf,
   ObjectDefineProperty,
+  ObjectSetPrototypeOf,
   PromiseResolve,
+  PromiseWithResolvers,
   SafeFinalizationRegistry,
   SafeSet,
+  SafeWeakRef,
   Symbol,
   SymbolToStringTag,
-  WeakRef,
 } = primordials;
 
 const {
@@ -26,8 +28,8 @@ const {
   kResistStopPropagation,
   kWeakHandler,
 } = require('internal/event_target');
+const { kMaxEventTargetListeners } = require('events');
 const {
-  createDeferredPromise,
   customInspectSymbol,
   kEmptyObject,
   kEnumerableProperty,
@@ -40,6 +42,10 @@ const {
     ERR_INVALID_THIS,
   },
 } = require('internal/errors');
+const {
+  converters,
+  createSequenceConverter,
+} = require('internal/webidl');
 
 const {
   validateAbortSignal,
@@ -60,15 +66,17 @@ const {
 const assert = require('internal/assert');
 
 const {
-  messaging_deserialize_symbol: kDeserialize,
-  messaging_transfer_symbol: kTransfer,
-  messaging_transfer_list_symbol: kTransferList,
-} = internalBinding('symbols');
+  kDeserialize,
+  kTransfer,
+  kTransferList,
+  markTransferMode,
+} = require('internal/worker/js_transferable');
 
 let _MessageChannel;
-let makeTransferable;
 
-// Loading the MessageChannel and makeTransferable have to be done lazily
+const kDontThrowSymbol = Symbol('kDontThrowSymbol');
+
+// Loading the MessageChannel and markTransferable have to be done lazily
 // because otherwise we'll end up with a require cycle that ends up with
 // an incomplete initialization of abort_controller.
 
@@ -77,14 +85,32 @@ function lazyMessageChannel() {
   return new _MessageChannel();
 }
 
-function lazyMakeTransferable(obj) {
-  makeTransferable ??=
-    require('internal/worker/js_transferable').makeTransferable;
-  return makeTransferable(obj);
-}
-
 const clearTimeoutRegistry = new SafeFinalizationRegistry(clearTimeout);
+const dependantSignalsCleanupRegistry = new SafeFinalizationRegistry((signalWeakRef) => {
+  const signal = signalWeakRef.deref();
+  if (signal === undefined) {
+    return;
+  }
+  signal[kDependantSignals].forEach((ref) => {
+    if (ref.deref() === undefined) {
+      signal[kDependantSignals].delete(ref);
+    }
+  });
+});
+
 const gcPersistentSignals = new SafeSet();
+
+const sourceSignalsCleanupRegistry = new SafeFinalizationRegistry(({ sourceSignalRef, composedSignalRef }) => {
+  const composedSignal = composedSignalRef.deref();
+  if (composedSignal !== undefined) {
+    composedSignal[kSourceSignals].delete(sourceSignalRef);
+
+    if (composedSignal[kSourceSignals].size === 0) {
+      // This signal will no longer abort. There's no need to keep it in the gcPersistentSignals set.
+      gcPersistentSignals.delete(composedSignal);
+    }
+  }
+});
 
 const kAborted = Symbol('kAborted');
 const kReason = Symbol('kReason');
@@ -136,8 +162,36 @@ function setWeakAbortSignalTimeout(weakRef, delay) {
 }
 
 class AbortSignal extends EventTarget {
-  constructor() {
-    throw new ERR_ILLEGAL_CONSTRUCTOR();
+
+  /**
+   * @param {symbol | undefined} dontThrowSymbol
+   * @param {{
+   *   aborted? : boolean,
+   *   reason? : any,
+   *   transferable? : boolean,
+   *   composite? : boolean,
+   * }} [init]
+   * @private
+   */
+  constructor(dontThrowSymbol = undefined, init = kEmptyObject) {
+    if (dontThrowSymbol !== kDontThrowSymbol) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
+    super();
+
+    this[kMaxEventTargetListeners] = 0;
+    const {
+      aborted = false,
+      reason = undefined,
+      transferable = false,
+      composite = false,
+    } = init;
+    this[kAborted] = aborted;
+    this[kReason] = reason;
+    this[kComposite] = composite;
+    if (transferable) {
+      markTransferMode(this, false, true);
+    }
   }
 
   /**
@@ -175,7 +229,7 @@ class AbortSignal extends EventTarget {
    */
   static abort(
     reason = new DOMException('This operation was aborted', 'AbortError')) {
-    return createAbortSignal({ aborted: true, reason });
+    return new AbortSignal(kDontThrowSymbol, { aborted: true, reason });
   }
 
   /**
@@ -184,11 +238,11 @@ class AbortSignal extends EventTarget {
    */
   static timeout(delay) {
     validateUint32(delay, 'delay', false);
-    const signal = createAbortSignal();
+    const signal = new AbortSignal(kDontThrowSymbol);
     signal[kTimeout] = true;
     clearTimeoutRegistry.register(
       signal,
-      setWeakAbortSignalTimeout(new WeakRef(signal), delay));
+      setWeakAbortSignalTimeout(new SafeWeakRef(signal), delay));
     return signal;
   }
 
@@ -197,39 +251,54 @@ class AbortSignal extends EventTarget {
    * @returns {AbortSignal}
    */
   static any(signals) {
-    validateAbortSignalArray(signals, 'signals');
-    const resultSignal = createAbortSignal({ composite: true });
-    if (!signals.length) {
+    const signalsArray = createSequenceConverter(
+      converters.any,
+    )(signals);
+
+    validateAbortSignalArray(signalsArray, 'signals');
+    const resultSignal = new AbortSignal(kDontThrowSymbol, { composite: true });
+    if (!signalsArray.length) {
       return resultSignal;
     }
-    const resultSignalWeakRef = new WeakRef(resultSignal);
+    const resultSignalWeakRef = new SafeWeakRef(resultSignal);
     resultSignal[kSourceSignals] = new SafeSet();
-    for (let i = 0; i < signals.length; i++) {
-      const signal = signals[i];
+    for (let i = 0; i < signalsArray.length; i++) {
+      const signal = signalsArray[i];
       if (signal.aborted) {
         abortSignal(resultSignal, signal.reason);
         return resultSignal;
       }
       signal[kDependantSignals] ??= new SafeSet();
       if (!signal[kComposite]) {
-        resultSignal[kSourceSignals].add(new WeakRef(signal));
+        const signalWeakRef = new SafeWeakRef(signal);
+        resultSignal[kSourceSignals].add(signalWeakRef);
         signal[kDependantSignals].add(resultSignalWeakRef);
+        dependantSignalsCleanupRegistry.register(resultSignal, signalWeakRef);
+        sourceSignalsCleanupRegistry.register(signal, {
+          sourceSignalRef: signalWeakRef,
+          composedSignalRef: resultSignalWeakRef,
+        });
       } else if (!signal[kSourceSignals]) {
         continue;
       } else {
-        for (const sourceSignal of signal[kSourceSignals]) {
-          const sourceSignalRef = sourceSignal.deref();
-          if (!sourceSignalRef) {
+        for (const sourceSignalWeakRef of signal[kSourceSignals]) {
+          const sourceSignal = sourceSignalWeakRef.deref();
+          if (!sourceSignal) {
             continue;
           }
-          assert(!sourceSignalRef.aborted);
-          assert(!sourceSignalRef[kComposite]);
+          assert(!sourceSignal.aborted);
+          assert(!sourceSignal[kComposite]);
 
-          if (resultSignal[kSourceSignals].has(sourceSignal)) {
+          if (resultSignal[kSourceSignals].has(sourceSignalWeakRef)) {
             continue;
           }
-          resultSignal[kSourceSignals].add(sourceSignal);
-          sourceSignalRef[kDependantSignals].add(resultSignalWeakRef);
+          resultSignal[kSourceSignals].add(sourceSignalWeakRef);
+          sourceSignal[kDependantSignals].add(resultSignalWeakRef);
+          dependantSignalsCleanupRegistry.register(resultSignal, sourceSignalWeakRef);
+          sourceSignalsCleanupRegistry.register(signal, {
+            sourceSignalRef: sourceSignalWeakRef,
+            composedSignalRef: resultSignalWeakRef,
+          });
         }
       }
     }
@@ -318,7 +387,7 @@ class AbortSignal extends EventTarget {
 }
 
 function ClonedAbortSignal() {
-  return createAbortSignal({ transferable: true });
+  return new AbortSignal(kDontThrowSymbol, { transferable: true });
 }
 ClonedAbortSignal.prototype[kDeserialize] = () => {};
 
@@ -336,42 +405,46 @@ ObjectDefineProperty(AbortSignal.prototype, SymbolToStringTag, {
 
 defineEventHandler(AbortSignal.prototype, 'abort');
 
-/**
- * @param {{
- *   aborted? : boolean,
- *   reason? : any,
- *   transferable? : boolean,
- *   composite? : boolean,
- * }} [init]
- * @returns {AbortSignal}
- */
-function createAbortSignal(init = kEmptyObject) {
-  const {
-    aborted = false,
-    reason = undefined,
-    transferable = false,
-    composite = false,
-  } = init;
-  const signal = new EventTarget();
-  ObjectSetPrototypeOf(signal, AbortSignal.prototype);
-  signal[kAborted] = aborted;
-  signal[kReason] = reason;
-  signal[kComposite] = composite;
-  return transferable ? lazyMakeTransferable(signal) : signal;
-}
-
+// https://dom.spec.whatwg.org/#dom-abortsignal-abort
 function abortSignal(signal, reason) {
+  // 1. If signal is aborted, then return.
   if (signal[kAborted]) return;
+
+  // 2. Set signal's abort reason to reason if it is given;
+  //    otherwise to a new "AbortError" DOMException.
   signal[kAborted] = true;
   signal[kReason] = reason;
+  // 3. Let dependentSignalsToAbort be a new list.
+  const dependentSignalsToAbort = ObjectSetPrototypeOf([], null);
+  // 4. For each dependentSignal of signal's dependent signals:
+  signal[kDependantSignals]?.forEach((s) => {
+    const dependentSignal = s.deref();
+    // 1. If dependentSignal is not aborted, then:
+    if (dependentSignal && !dependentSignal[kAborted]) {
+      // 1. Set dependentSignal's abort reason to signal's abort reason.
+      dependentSignal[kReason] = reason;
+      dependentSignal[kAborted] = true;
+      // 2. Append dependentSignal to dependentSignalsToAbort.
+      ArrayPrototypePush(dependentSignalsToAbort, dependentSignal);
+    }
+  });
+
+  // 5. Run the abort steps for signal
+  runAbort(signal);
+  // 6. For each dependentSignal of dependentSignalsToAbort,
+  //    run the abort steps for dependentSignal.
+  for (let i = 0; i < dependentSignalsToAbort.length; i++) {
+    const dependentSignal = dependentSignalsToAbort[i];
+    runAbort(dependentSignal);
+  }
+}
+
+// To run the abort steps for an AbortSignal signal
+function runAbort(signal) {
   const event = new Event('abort', {
     [kTrustEvent]: true,
   });
   signal.dispatchEvent(event);
-  signal[kDependantSignals]?.forEach((s) => {
-    const signalRef = s.deref();
-    if (signalRef) abortSignal(signalRef, reason);
-  });
 }
 
 class AbortController {
@@ -381,7 +454,8 @@ class AbortController {
    * @type {AbortSignal}
    */
   get signal() {
-    this.#signal ??= createAbortSignal();
+    this.#signal ??= new AbortSignal(kDontThrowSymbol);
+
     return this.#signal;
   }
 
@@ -389,7 +463,7 @@ class AbortController {
    * @param {any} [reason]
    */
   abort(reason = new DOMException('This operation was aborted', 'AbortError')) {
-    abortSignal(this.#signal ??= createAbortSignal(), reason);
+    abortSignal(this.#signal ??= new AbortSignal(kDontThrowSymbol), reason);
   }
 
   [customInspectSymbol](depth, options) {
@@ -400,7 +474,7 @@ class AbortController {
 
   static [kMakeTransferable]() {
     const controller = new AbortController();
-    controller.#signal = createAbortSignal({ transferable: true });
+    controller.#signal = new AbortSignal(kDontThrowSymbol, { transferable: true });
     return controller;
   }
 }
@@ -413,7 +487,8 @@ class AbortController {
 function transferableAbortSignal(signal) {
   if (signal?.[kAborted] === undefined)
     throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
-  return lazyMakeTransferable(signal);
+  markTransferMode(signal, false, true);
+  return signal;
 }
 
 /**
@@ -436,7 +511,7 @@ async function aborted(signal, resource) {
   validateObject(resource, 'resource', kValidateObjectAllowObjects);
   if (signal.aborted)
     return PromiseResolve();
-  const abortPromise = createDeferredPromise();
+  const abortPromise = PromiseWithResolvers();
   const opts = { __proto__: null, [kWeakHandler]: resource, once: true, [kResistStopPropagation]: true };
   signal.addEventListener('abort', abortPromise.resolve, opts);
   return abortPromise.promise;

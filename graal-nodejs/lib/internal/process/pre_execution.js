@@ -13,12 +13,8 @@ const {
   ObjectDefineProperty,
   ObjectFreeze,
   ObjectGetOwnPropertyDescriptor,
-  SafeMap,
   String,
-  StringPrototypeStartsWith,
   Symbol,
-  SymbolAsyncDispose,
-  SymbolDispose,
   globalThis,
 } = primordials;
 
@@ -33,11 +29,14 @@ const {
   exposeLazyInterfaces,
   defineReplaceableLazyAttribute,
   setupCoverageHooks,
+  emitExperimentalWarning,
+  SymbolAsyncDispose,
+  SymbolDispose,
+  deprecate,
 } = require('internal/util');
 
 const {
   ERR_INVALID_THIS,
-  ERR_MANIFEST_ASSERT_INTEGRITY,
   ERR_NO_CRYPTO,
   ERR_MISSING_OPTION,
   ERR_ACCESS_DENIED,
@@ -48,6 +47,7 @@ const {
     addSerializeCallback,
     isBuildingSnapshot,
   },
+  runDeserializeCallbacks,
 } = require('internal/v8/startup_snapshot');
 
 function prepareMainThreadExecution(expandArgv1 = false, initializeModules = true) {
@@ -61,7 +61,7 @@ function prepareMainThreadExecution(expandArgv1 = false, initializeModules = tru
 function prepareWorkerThreadExecution() {
   prepareExecution({
     expandArgv1: false,
-    initializeModules: false,  // Will need to initialize it after policy setup
+    initializeModules: false,
     isMainThread: false,
   });
 }
@@ -104,10 +104,15 @@ function prepareExecution(options) {
   const mainEntry = patchProcessObject(expandArgv1);
   setupTraceCategoryState();
   setupInspectorHooks();
+  setupNetworkInspection();
+  setupNavigator();
   setupWarningHandler();
   setupUndici();
   setupWebCrypto();
+  setupSQLite();
+  setupWebStorage();
   setupCustomEvent();
+  setupEventsource();
   setupCodeCoverage();
   setupDebugEnv();
   // Process initial diagnostic reporting configuration, if present.
@@ -126,11 +131,6 @@ function prepareExecution(options) {
   if (isMainThread) {
     assert(internalBinding('worker').isMainThread);
     // Worker threads will get the manifest in the message handler.
-    const policy = readPolicyFromDisk();
-    if (policy) {
-      require('internal/process/policy')
-        .setup(policy.manifestSrc, policy.manifestURL);
-    }
 
     // Print stack trace on `SIGINT` if option `--trace-sigint` presents.
     setupStacktracePrinterOnSigint();
@@ -148,7 +148,7 @@ function prepareExecution(options) {
     initializeClusterIPC();
 
     // TODO(joyeecheung): do this for worker threads as well.
-    require('internal/v8/startup_snapshot').runDeserializeCallbacks();
+    runDeserializeCallbacks();
   } else {
     assert(!internalBinding('worker').isMainThread);
     // The setup should be called in LOAD_SCRIPT message handler.
@@ -241,8 +241,7 @@ function patchProcessObject(expandArgv1) {
   let mainEntry;
   // If requested, update process.argv[1] to replace whatever the user provided with the resolved absolute file path of
   // the entry point.
-  if (expandArgv1 && process.argv[1] &&
-      !StringPrototypeStartsWith(process.argv[1], '-')) {
+  if (expandArgv1 && process.argv[1] && process.argv[1][0] !== '-') {
     // Expand process.argv[1] into a full path.
     const path = require('path');
     try {
@@ -331,10 +330,29 @@ function setupUndici() {
     require('internal/graal/wasm');
   }
 
-  if (!getEmbedderOptions().noBrowserGlobals && getOptionValue('--experimental-websocket')) {
-    exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', ['WebSocket']);
+  if (getOptionValue('--no-experimental-websocket')) {
+    delete globalThis.WebSocket;
+  }
+}
+
+// https://html.spec.whatwg.org/multipage/server-sent-events.html
+function setupEventsource() {
+  if (!getOptionValue('--experimental-eventsource')) {
+    delete globalThis.EventSource;
+  }
+}
+
+// TODO(aduh95): move this to internal/bootstrap/web/* when the CLI flag is
+//               removed.
+function setupNavigator() {
+  if (getEmbedderOptions().noBrowserGlobals ||
+      getOptionValue('--no-experimental-global-navigator')) {
+    return;
   }
 
+  // https://html.spec.whatwg.org/multipage/system-state.html#the-navigator-object
+  exposeLazyInterfaces(globalThis, 'internal/navigator', ['Navigator']);
+  defineReplaceableLazyAttribute(globalThis, 'internal/navigator', ['navigator'], false);
 }
 
 // TODO(aduh95): move this to internal/bootstrap/web/* when the CLI flag is
@@ -370,6 +388,28 @@ function setupWebCrypto() {
                          }, 'crypto') });
 
   }
+}
+
+function setupSQLite() {
+  if (getOptionValue('--no-experimental-sqlite')) {
+    return;
+  }
+
+  const { BuiltinModule } = require('internal/bootstrap/realm');
+  BuiltinModule.allowRequireByUsers('sqlite');
+}
+
+function setupWebStorage() {
+  if (getEmbedderOptions().noBrowserGlobals ||
+      !getOptionValue('--experimental-webstorage')) {
+    return;
+  }
+
+  // https://html.spec.whatwg.org/multipage/webstorage.html#webstorage
+  exposeLazyInterfaces(globalThis, 'internal/webstorage', ['Storage']);
+  defineReplaceableLazyAttribute(globalThis, 'internal/webstorage', [
+    'localStorage', 'sessionStorage',
+  ]);
 }
 
 function setupCodeCoverage() {
@@ -479,11 +519,20 @@ function setupInspectorHooks() {
   }
 }
 
+function setupNetworkInspection() {
+  if (internalBinding('config').hasInspector && getOptionValue('--experimental-network-inspection')) {
+    const {
+      enable,
+      disable,
+    } = require('internal/inspector_network_tracking');
+    internalBinding('inspector').setupNetworkTracking(enable, disable);
+  }
+}
+
 // In general deprecations are initialized wherever the APIs are implemented,
 // this is used to deprecate APIs implemented in C++ where the deprecation
 // utilities are not easily accessible.
 function initializeDeprecations() {
-  const { deprecate } = require('internal/util');
   const pendingDeprecation = getOptionValue('--pending-deprecation');
 
   // DEP0103: access to `process.binding('util').isX` type checkers
@@ -545,8 +594,6 @@ function initializeDeprecations() {
 
 function setupChildProcessIpcChannel() {
   if (process.env.NODE_CHANNEL_FD) {
-    const assert = require('internal/assert');
-
     const fd = NumberParseInt(process.env.NODE_CHANNEL_FD, 10);
     assert(fd >= 0);
 
@@ -572,19 +619,18 @@ function initializeClusterIPC() {
 }
 
 function initializePermission() {
-  const experimentalPermission = getOptionValue('--experimental-permission');
-  if (experimentalPermission) {
+  const permission = getOptionValue('--permission');
+  if (permission) {
     process.binding = function binding(_module) {
       throw new ERR_ACCESS_DENIED('process.binding');
     };
     // Guarantee path module isn't monkey-patched to bypass permission model
     ObjectFreeze(require('path'));
-    process.emitWarning('Permission is an experimental feature',
-                        'ExperimentalWarning');
-    const { has, deny } = require('internal/process/permission');
+    const { has } = require('internal/process/permission');
     const warnFlags = [
       '--allow-addons',
       '--allow-child-process',
+      '--allow-wasi',
       '--allow-worker',
     ];
     for (const flag of warnFlags) {
@@ -617,7 +663,6 @@ function initializePermission() {
       configurable: false,
       value: {
         has,
-        deny,
       },
     });
   } else {
@@ -626,64 +671,15 @@ function initializePermission() {
       '--allow-fs-write',
       '--allow-addons',
       '--allow-child-process',
+      '--allow-wasi',
       '--allow-worker',
     ];
     ArrayPrototypeForEach(availablePermissionFlags, (flag) => {
       const value = getOptionValue(flag);
       if (value.length) {
-        throw new ERR_MISSING_OPTION('--experimental-permission');
+        throw new ERR_MISSING_OPTION('--permission');
       }
     });
-  }
-}
-
-function readPolicyFromDisk() {
-  const experimentalPolicy = getOptionValue('--experimental-policy');
-  if (experimentalPolicy) {
-    process.emitWarning('Policies are experimental.',
-                        'ExperimentalWarning');
-    const { pathToFileURL, URL } = require('internal/url');
-    // URL here as it is slightly different parsing
-    // no bare specifiers for now
-    let manifestURL;
-    if (require('path').isAbsolute(experimentalPolicy)) {
-      manifestURL = pathToFileURL(experimentalPolicy);
-    } else {
-      const cwdURL = pathToFileURL(process.cwd());
-      cwdURL.pathname += '/';
-      manifestURL = new URL(experimentalPolicy, cwdURL);
-    }
-    const fs = require('fs');
-    const src = fs.readFileSync(manifestURL, 'utf8');
-    const experimentalPolicyIntegrity = getOptionValue('--policy-integrity');
-    if (experimentalPolicyIntegrity) {
-      const SRI = require('internal/policy/sri');
-      const { createHash, timingSafeEqual } = require('crypto');
-      const realIntegrities = new SafeMap();
-      const integrityEntries = SRI.parse(experimentalPolicyIntegrity);
-      let foundMatch = false;
-      for (let i = 0; i < integrityEntries.length; i++) {
-        const {
-          algorithm,
-          value: expected,
-        } = integrityEntries[i];
-        const hash = createHash(algorithm);
-        hash.update(src);
-        const digest = hash.digest();
-        if (digest.length === expected.length &&
-          timingSafeEqual(digest, expected)) {
-          foundMatch = true;
-          break;
-        }
-        realIntegrities.set(algorithm, digest.toString('base64'));
-      }
-      if (!foundMatch) {
-        throw new ERR_MANIFEST_ASSERT_INTEGRITY(manifestURL, realIntegrities);
-      }
-    }
-    return {
-      manifestSrc: src, manifestURL: manifestURL.href,
-    };
   }
 }
 
@@ -718,8 +714,7 @@ function initializeSourceMapsHandlers() {
 
 function initializeFrozenIntrinsics() {
   if (getOptionValue('--frozen-intrinsics')) {
-    process.emitWarning('The --frozen-intrinsics flag is experimental',
-                        'ExperimentalWarning');
+    emitExperimentalWarning('Frozen intristics');
     require('internal/freeze_intrinsics')();
   }
 }

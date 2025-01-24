@@ -88,7 +88,9 @@ inline v8::Local<v8::Value> GraalObject::HandleCallResult(jobject java_object) {
         graal_isolate->ResetSharedBuffer();
         int32_t value_t = graal_isolate->ReadInt32FromSharedBuffer();
         GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object, value_t, true);
-        return reinterpret_cast<v8::Value*> (graal_value);
+        v8::Value* v8_value = reinterpret_cast<v8::Value*> (graal_value);
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+        return v8::Local<v8::Value>::New(v8_isolate, v8_value);
     }
 }
 

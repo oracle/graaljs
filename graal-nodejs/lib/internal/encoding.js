@@ -29,6 +29,7 @@ const kDecoder = Symbol('decoder');
 const kEncoder = Symbol('encoder');
 const kFatal = Symbol('kFatal');
 const kUTF8FastPath = Symbol('kUTF8FastPath');
+const kLatin1FastPath = Symbol('kLatin1FastPath');
 const kIgnoreBOM = Symbol('kIgnoreBOM');
 
 const {
@@ -47,9 +48,7 @@ const {
 const {
   validateString,
   validateObject,
-  kValidateObjectAllowNullable,
-  kValidateObjectAllowArray,
-  kValidateObjectAllowFunction,
+  kValidateObjectAllowObjectsAndNull,
 } = require('internal/validators');
 const binding = internalBinding('encoding_binding');
 const {
@@ -57,6 +56,7 @@ const {
   encodeIntoResults,
   encodeUtf8String,
   decodeUTF8,
+  decodeLatin1,
 } = binding;
 
 const { Buffer } = require('buffer');
@@ -393,10 +393,6 @@ const TextDecoder =
     makeTextDecoderICU() :
     makeTextDecoderJS();
 
-const kValidateObjectAllowObjectsAndNull = kValidateObjectAllowNullable |
-  kValidateObjectAllowArray |
-  kValidateObjectAllowFunction;
-
 function makeTextDecoderICU() {
   const {
     decode: _decode,
@@ -425,9 +421,10 @@ function makeTextDecoderICU() {
       this[kFatal] = Boolean(options?.fatal);
       // Only support fast path for UTF-8.
       this[kUTF8FastPath] = enc === 'utf-8';
+      this[kLatin1FastPath] = enc === 'windows-1252';
       this[kHandle] = undefined;
 
-      if (!this[kUTF8FastPath]) {
+      if (!this[kUTF8FastPath] && !this[kLatin1FastPath]) {
         this.#prepareConverter();
       }
     }
@@ -444,9 +441,14 @@ function makeTextDecoderICU() {
       validateDecoder(this);
 
       this[kUTF8FastPath] &&= !(options?.stream);
+      this[kLatin1FastPath] &&= !(options?.stream);
 
       if (this[kUTF8FastPath]) {
         return decodeUTF8(input, this[kIgnoreBOM], this[kFatal]);
+      }
+
+      if (this[kLatin1FastPath]) {
+        return decodeLatin1(input, this[kIgnoreBOM], this[kFatal]);
       }
 
       this.#prepareConverter();

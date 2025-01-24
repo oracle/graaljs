@@ -5,8 +5,10 @@ local ci = import '../ci.jsonnet';
   local graalJs = ci.jobtemplate + {
     cd:: 'graal-js',
     suite_prefix:: 'js', # for build job names
+    components+: ['js'],
     // increase default timelimit on windows and darwin-amd64
     timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:30:00' else '45:00',
+    defined_in: std.thisFile,
   },
 
   local compiler = {suiteimports+:: ['compiler']},
@@ -97,6 +99,7 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['mx', 'gate', '--all-suites', '--no-warning-as-error', '--strict-mode', '--tags', 'build,${TAGS}'],
     ],
+    timelimit: '1:00:00',
   },
 
   local interopJmhBenchmarks = common.buildCompiler + {
@@ -153,7 +156,8 @@ local ci = import '../ci.jsonnet';
 
     // downstream graal gate
     graalJs + downstreamGraal                                                                             + {name: 'downstream-graal'} +
-      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64]),
+      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64]) +
+      excludePlatforms([common.jdklatest]),     # GR-60309: fails on JDK 24
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'downstream-substratevm-enterprise'} + gateOnMain +
       excludePlatforms([common.darwin_amd64]) + # Too slow
       excludePlatforms([common.linux_aarch64]), # Fails on Linux AArch64 with "Creation of the VM failed."
@@ -163,7 +167,7 @@ local ci = import '../ci.jsonnet';
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]),
 
     // PGO profiles
-    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles', timelimit: '1:00:00'} +
+    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
       excludePlatforms([common.darwin_amd64]),   # Too slow
   ], defaultTarget=common.weekly),

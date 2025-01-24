@@ -68,8 +68,9 @@ v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8
         return v8::Local<v8::Module>();
     } else {
         GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
-        v8::Local<v8::Module> v8_module = reinterpret_cast<v8::Module*> (graal_module);
-        return v8_module;
+        v8::Module* v8_module = reinterpret_cast<v8::Module*> (graal_module);
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+        return v8::Local<v8::Module>::New(v8_isolate, v8_module);
     }
 }
 
@@ -91,8 +92,9 @@ v8::MaybeLocal<v8::Value> GraalModule::Evaluate(v8::Local<v8::Context> context) 
         return v8::Local<v8::Value>();
     } else {
         GraalValue* graal_result = GraalValue::FromJavaObject(graal_isolate, java_result);
-        v8::Local<v8::Value> v8_result = reinterpret_cast<v8::Value*> (graal_result);
-        return v8_result;
+        v8::Value* v8_result = reinterpret_cast<v8::Value*> (graal_result);
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+        return v8::Local<v8::Value>::New(v8_isolate, v8_result);
     }
 }
 
@@ -105,7 +107,9 @@ v8::Local<v8::Value> GraalModule::GetModuleNamespace() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_namespace, graal_isolate, GraalAccessMethod::module_get_namespace, Object, GetJavaObject());
     GraalValue* graal_namespace = GraalValue::FromJavaObject(graal_isolate, java_namespace);
-    return reinterpret_cast<v8::Value*> (graal_namespace);
+    v8::Value* v8_namespace = reinterpret_cast<v8::Value*> (graal_namespace);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_namespace);
 }
 
 int GraalModule::GetIdentityHash() const {
@@ -117,12 +121,14 @@ v8::Local<v8::Value> GraalModule::GetException() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_error, graal_isolate, GraalAccessMethod::module_get_exception, Object, GetJavaObject());
     GraalValue* graal_error = GraalValue::FromJavaObject(graal_isolate, java_error);
-    return reinterpret_cast<v8::Value*> (graal_error);
+    v8::Value* v8_error = reinterpret_cast<v8::Value*> (graal_error);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_error);
 }
 
 v8::Local<v8::Module> GraalModule::CreateSyntheticModule(
         v8::Isolate* isolate, v8::Local<v8::String> module_name,
-        const std::vector<v8::Local<v8::String>>&export_names,
+        const v8::MemorySpan<const v8::Local<v8::String>>& export_names,
         v8::Module::SyntheticModuleEvaluationSteps evaluation_steps) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     JNIEnv* env = graal_isolate->GetJNIEnv();
@@ -137,7 +143,8 @@ v8::Local<v8::Module> GraalModule::CreateSyntheticModule(
     jlong java_callback = (jlong) evaluation_steps;
     JNI_CALL(jobject, java_module, graal_isolate, GraalAccessMethod::module_create_synthetic_module, Object, java_module_name, java_export_names, java_callback);
     GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
-    return reinterpret_cast<v8::Module*> (graal_module);
+    v8::Module* v8_module = reinterpret_cast<v8::Module*> (graal_module);
+    return v8::Local<v8::Module>::New(isolate, v8_module);
 }
 
 v8::Maybe<bool> GraalModule::SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value) {
@@ -154,12 +161,26 @@ v8::Local<v8::UnboundModuleScript> GraalModule::GetUnboundModuleScript() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_script, graal_isolate, GraalAccessMethod::module_get_unbound_module_script, Object, GetJavaObject());
     GraalUnboundScript* graal_script = GraalUnboundScript::Allocate(graal_isolate, java_script);
-    return reinterpret_cast<v8::UnboundModuleScript*> (graal_script);
+    v8::UnboundModuleScript* v8_script = reinterpret_cast<v8::UnboundModuleScript*> (graal_script);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::UnboundModuleScript>::New(v8_isolate, v8_script);
 }
 
 v8::Local<v8::FixedArray> GraalModule::GetModuleRequests() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_requests, graal_isolate, GraalAccessMethod::module_get_module_requests, Object, GetJavaObject());
     GraalFixedArray* graal_requests = GraalFixedArray::Allocate(graal_isolate, java_requests);
-    return reinterpret_cast<v8::FixedArray*> (graal_requests);
+    v8::FixedArray* v8_requests = reinterpret_cast<v8::FixedArray*> (graal_requests);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::FixedArray>::New(v8_isolate, v8_requests);
+}
+
+bool GraalModule::IsGraphAsync() const {
+    JNI_CALL(jboolean, java_is_graph_async, Isolate(), GraalAccessMethod::module_is_graph_async, Boolean, GetJavaObject());
+    return (bool) java_is_graph_async;
+}
+
+bool GraalModule::IsSourceTextModule() const {
+    JNI_CALL(jboolean, java_is_source_text, Isolate(), GraalAccessMethod::module_is_source_text_module, Boolean, GetJavaObject());
+    return (bool) java_is_source_text;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,11 +50,11 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -75,54 +74,55 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
     protected ToTemporalDateTimeNode() {
     }
 
-    public abstract JSTemporalPlainDateTimeObject execute(Object value, JSDynamicObject options);
+    public abstract JSTemporalPlainDateTimeObject execute(Object value, Object options);
 
     @Specialization
-    public JSTemporalPlainDateTimeObject toTemporalDateTime(Object item, JSDynamicObject options,
+    public JSTemporalPlainDateTimeObject toTemporalDateTime(Object item, Object options,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isPlainDateTimeProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached InlinedConditionProfile isPlainDateProfile,
                     @Cached InlinedBranchProfile errorBranch,
-                    @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
-                    @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
+                    @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsNode,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarNode,
-                    @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
-                    @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord result;
-        Object calendar;
+        TruffleString calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
-        JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(options, Null.instance);
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             if (isPlainDateTimeProfile.profile(this, item instanceof JSTemporalPlainDateTimeObject)) {
-                return (JSTemporalPlainDateTimeObject) item;
+                Object resolvedOptions = getOptionsNode.execute(options);
+                TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+                JSTemporalPlainDateTimeObject pdt = (JSTemporalPlainDateTimeObject) item;
+                return JSTemporalPlainDateTime.create(ctx, realm,
+                                pdt.getYear(), pdt.getMonth(), pdt.getDay(),
+                                pdt.getHour(), pdt.getMinute(), pdt.getSecond(), pdt.getMillisecond(),
+                                pdt.getMicrosecond(), pdt.getNanosecond(), pdt.getCalendar(), this, errorBranch);
             } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(item))) {
-                TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
                 var zdt = (JSTemporalZonedDateTimeObject) item;
                 var instant = JSTemporalInstant.create(ctx, realm, zdt.getNanoseconds());
-                var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(zdt.getTimeZone());
-                return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, zdt.getCalendar());
+                JSTemporalPlainDateTimeObject isoDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, zdt.getTimeZone(), instant, zdt.getCalendar());
+                Object resolvedOptions = getOptionsNode.execute(options);
+                TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+                return isoDateTime;
             } else if (isPlainDateProfile.profile(this, item instanceof JSTemporalPlainDateObject)) {
-                TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
+                Object resolvedOptions = getOptionsNode.execute(options);
+                TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
                 var date = (JSTemporalPlainDateObject) item;
                 return JSTemporalPlainDateTime.create(ctx, realm, date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar(), this, errorBranch);
             }
             calendar = getTemporalCalendarNode.execute(item);
-            Object dateFromFieldsMethod = lookupDateFromFields.execute(calendar);
 
-            Object fieldsMethod = lookupFields.execute(calendar);
-            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFields(calendar, dateFromFieldsMethod, fieldsMethod);
-
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
+            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
             addFieldNames(fieldNames);
 
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, resolvedOptions, getOptionNode, dateFromFieldsNode);
+            Object resolvedOptions = getOptionsNode.execute(options);
+            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, overflow, dateFromFieldsNode);
         } else if (item instanceof TruffleString string) {
             result = TemporalUtil.parseTemporalDateTimeString(string);
             assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
@@ -131,10 +131,11 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
             }
-            if (!TemporalUtil.isBuiltinCalendar((TruffleString) calendar)) {
+            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }
+            Object resolvedOptions = getOptionsNode.execute(options);
             TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
         } else {
             errorBranch.enter(this);

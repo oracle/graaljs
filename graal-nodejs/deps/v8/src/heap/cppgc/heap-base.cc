@@ -13,6 +13,7 @@
 #include "src/base/sanitizer/lsan-page-allocator.h"
 #include "src/heap/base/stack.h"
 #include "src/heap/cppgc/globals.h"
+#include "src/heap/cppgc/heap-config.h"
 #include "src/heap/cppgc/heap-object-header.h"
 #include "src/heap/cppgc/heap-page.h"
 #include "src/heap/cppgc/heap-statistics-collector.h"
@@ -108,7 +109,7 @@ HeapBase::HeapBase(
       lsan_page_allocator_(std::make_unique<v8::base::LsanPageAllocator>(
           platform_->GetPageAllocator())),
 #endif  // LEAK_SANITIZER
-      page_backend_(InitializePageBackend(*page_allocator(), *oom_handler_)),
+      page_backend_(InitializePageBackend(*page_allocator())),
       stats_collector_(std::make_unique<StatsCollector>(platform_.get())),
       stack_(std::make_unique<heap::base::Stack>(
           v8::base::Stack::GetStackStart())),
@@ -118,10 +119,10 @@ HeapBase::HeapBase(
                         *prefinalizer_handler_, *oom_handler_,
                         garbage_collector),
       sweeper_(*this),
-      strong_persistent_region_(*oom_handler_.get()),
-      weak_persistent_region_(*oom_handler_.get()),
-      strong_cross_thread_persistent_region_(*oom_handler_.get()),
-      weak_cross_thread_persistent_region_(*oom_handler_.get()),
+      strong_persistent_region_(*oom_handler_),
+      weak_persistent_region_(*oom_handler_),
+      strong_cross_thread_persistent_region_(*oom_handler_),
+      weak_cross_thread_persistent_region_(*oom_handler_),
 #if defined(CPPGC_YOUNG_GENERATION)
       remembered_set_(*this),
 #endif  // defined(CPPGC_YOUNG_GENERATION)
@@ -148,13 +149,13 @@ size_t HeapBase::ObjectPayloadSize() const {
 
 // static
 std::unique_ptr<PageBackend> HeapBase::InitializePageBackend(
-    PageAllocator& allocator, FatalOutOfMemoryHandler& oom_handler) {
+    PageAllocator& allocator) {
 #if defined(CPPGC_CAGED_HEAP)
   auto& caged_heap = CagedHeap::Instance();
-  return std::make_unique<PageBackend>(
-      caged_heap.page_allocator(), caged_heap.page_allocator(), oom_handler);
+  return std::make_unique<PageBackend>(caged_heap.page_allocator(),
+                                       caged_heap.page_allocator());
 #else   // !CPPGC_CAGED_HEAP
-  return std::make_unique<PageBackend>(allocator, allocator, oom_handler);
+  return std::make_unique<PageBackend>(allocator, allocator);
 #endif  // !CPPGC_CAGED_HEAP
 }
 
@@ -174,6 +175,10 @@ size_t HeapBase::ExecutePreFinalizers() {
 void HeapBase::EnableGenerationalGC() {
   DCHECK(in_atomic_pause());
   if (HeapHandle::is_young_generation_enabled_) return;
+#if defined(CPPGC_CAGED_HEAP)
+  // Commit storage for the age table.
+  CagedHeap::CommitAgeTable(*(page_allocator()));
+#endif  // defined(CPPGC_CAGED_HEAP)
   // Notify the global flag that the write barrier must always be enabled.
   YoungGenerationEnabler::Enable();
   // Enable young generation for the current heap.
@@ -218,8 +223,11 @@ void HeapBase::ResetRememberedSet() {
 #endif  // defined(CPPGC_YOUNG_GENERATION)
 
 void HeapBase::Terminate() {
-  DCHECK(!IsMarking());
-  CHECK(!in_disallow_gc_scope());
+  CHECK(!IsMarking());
+  CHECK(!IsGCForbidden());
+  // Cannot use IsGCAllowed() as `Terminate()` will be invoked after detaching
+  // which implies GC is prohibited at this point.
+  CHECK(!sweeper().IsSweepingOnMutatorThread());
 
   sweeper().FinishIfRunning();
 
@@ -234,10 +242,7 @@ void HeapBase::Terminate() {
   constexpr size_t kMaxTerminationGCs = 20;
   size_t gc_count = 0;
   bool more_termination_gcs_needed = false;
-
   do {
-    CHECK_LT(gc_count++, kMaxTerminationGCs);
-
     // Clear root sets.
     strong_persistent_region_.ClearAllUsedNodes();
     weak_persistent_region_.ClearAllUsedNodes();
@@ -268,8 +273,7 @@ void HeapBase::Terminate() {
     sweeper().Start({SweepingConfig::SweepingType::kAtomic,
                      SweepingConfig::CompactableSpaceHandling::kSweep});
     in_atomic_pause_ = false;
-
-    sweeper().NotifyDoneIfNeeded();
+    sweeper().FinishIfRunning();
     more_termination_gcs_needed =
         strong_persistent_region_.NodesInUse() ||
         weak_persistent_region_.NodesInUse() || [this]() {
@@ -277,15 +281,20 @@ void HeapBase::Terminate() {
           return strong_cross_thread_persistent_region_.NodesInUse() ||
                  weak_cross_thread_persistent_region_.NodesInUse();
         }();
-  } while (more_termination_gcs_needed);
-
-  object_allocator().ResetLinearAllocationBuffers();
-  disallow_gc_scope_++;
+    gc_count++;
+  } while (more_termination_gcs_needed && (gc_count < kMaxTerminationGCs));
 
   CHECK_EQ(0u, strong_persistent_region_.NodesInUse());
   CHECK_EQ(0u, weak_persistent_region_.NodesInUse());
-  CHECK_EQ(0u, strong_cross_thread_persistent_region_.NodesInUse());
-  CHECK_EQ(0u, weak_cross_thread_persistent_region_.NodesInUse());
+  {
+    PersistentRegionLock guard;
+    CHECK_EQ(0u, strong_cross_thread_persistent_region_.NodesInUse());
+    CHECK_EQ(0u, weak_cross_thread_persistent_region_.NodesInUse());
+  }
+  CHECK_LE(gc_count, kMaxTerminationGCs);
+
+  object_allocator().ResetLinearAllocationBuffers();
+  disallow_gc_scope_++;
 }
 
 HeapStatistics HeapBase::CollectStatistics(
@@ -302,6 +311,35 @@ HeapStatistics HeapBase::CollectStatistics(
   sweeper_.FinishIfRunning();
   object_allocator_.ResetLinearAllocationBuffers();
   return HeapStatisticsCollector().CollectDetailedStatistics(this);
+}
+
+void HeapBase::CallMoveListeners(Address from, Address to,
+                                 size_t size_including_header) {
+  for (const auto& listener : move_listeners_) {
+    listener->OnMove(from, to, size_including_header);
+  }
+}
+
+void HeapBase::RegisterMoveListener(MoveListener* listener) {
+  // Registering the same listener multiple times would work, but probably
+  // indicates a mistake in the component requesting the registration.
+  DCHECK_EQ(std::find(move_listeners_.begin(), move_listeners_.end(), listener),
+            move_listeners_.end());
+  move_listeners_.push_back(listener);
+}
+
+void HeapBase::UnregisterMoveListener(MoveListener* listener) {
+  auto it =
+      std::remove(move_listeners_.begin(), move_listeners_.end(), listener);
+  move_listeners_.erase(it, move_listeners_.end());
+}
+
+bool HeapBase::IsGCForbidden() const { return disallow_gc_scope_ > 0; }
+
+bool HeapBase::IsGCAllowed() const {
+  // GC is prohibited in a GC forbidden scope, or when currently sweeping an
+  // object.
+  return !sweeper().IsSweepingOnMutatorThread() && !in_no_gc_scope();
 }
 
 ClassNameAsHeapObjectNameScope::ClassNameAsHeapObjectNameScope(HeapBase& heap)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,20 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -85,15 +97,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.graalvm.collections.EconomicSet;
 
 public class SerializedData {
     private final List<Object> data = new ArrayList<>();
@@ -357,6 +360,7 @@ public class SerializedData {
     private void serializeWebAssemblyModule(JSWebAssemblyModuleObject moduleObject) {
         data.add(Type.WebAssemblyModule);
         data.add(moduleObject.getWASMModule());
+        data.add(moduleObject.getWASMSource());
     }
 
     private void serializeProperties(JSObject object) {
@@ -530,7 +534,8 @@ public class SerializedData {
 
     private static Object deserializeWebAssemblyModule(JSRealm realm, Iterator<Object> iter) {
         Object wasmModule = iter.next();
-        return JSWebAssemblyModule.create(realm.getContext(), realm, wasmModule);
+        Source wasmSource = (Source) iter.next();
+        return JSWebAssemblyModule.create(realm.getContext(), realm, wasmModule, wasmSource);
     }
 
     private enum Type {

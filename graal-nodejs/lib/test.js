@@ -1,5 +1,10 @@
 'use strict';
-const { ObjectAssign, ObjectDefineProperty } = primordials;
+
+const {
+  ObjectAssign,
+  ObjectDefineProperty,
+} = primordials;
+
 const { test, suite, before, after, beforeEach, afterEach } = require('internal/test_runner/harness');
 const { run } = require('internal/test_runner/runner');
 
@@ -30,5 +35,29 @@ ObjectDefineProperty(module.exports, 'mock', {
     }
 
     return lazyMock;
+  },
+});
+
+let lazySnapshot;
+
+ObjectDefineProperty(module.exports, 'snapshot', {
+  __proto__: null,
+  configurable: true,
+  enumerable: true,
+  get() {
+    if (lazySnapshot === undefined) {
+      const {
+        setDefaultSnapshotSerializers,
+        setResolveSnapshotPath,
+      } = require('internal/test_runner/snapshot');
+
+      lazySnapshot = {
+        __proto__: null,
+        setDefaultSnapshotSerializers,
+        setResolveSnapshotPath,
+      };
+    }
+
+    return lazySnapshot;
   },
 });

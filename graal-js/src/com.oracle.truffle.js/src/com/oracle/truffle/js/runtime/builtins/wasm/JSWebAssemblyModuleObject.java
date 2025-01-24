@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -48,14 +49,20 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 public final class JSWebAssemblyModuleObject extends JSNonProxyObject {
     // [[Module]] internal slot
     private final Object wasmModule;
+    private final Source wasmSource;
 
-    protected JSWebAssemblyModuleObject(Shape shape, JSDynamicObject proto, Object wasmModule) {
+    protected JSWebAssemblyModuleObject(Shape shape, JSDynamicObject proto, Object wasmModule, Source wasmSource) {
         super(shape, proto);
         this.wasmModule = wasmModule;
+        this.wasmSource = wasmSource;
     }
 
     public Object getWASMModule() {
         return wasmModule;
+    }
+
+    public Source getWASMSource() {
+        return wasmSource;
     }
 
     @Override

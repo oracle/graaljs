@@ -16,7 +16,7 @@
 namespace v8 {
 namespace internal {
 
-class WasmInstanceObject;
+class WasmTrustedInstanceData;
 class JSArrayBuffer;
 
 namespace wasm {
@@ -32,6 +32,7 @@ class V8_EXPORT_PRIVATE ConstantExpressionInterface {
  public:
   using ValidationTag = Decoder::FullValidationTag;
   static constexpr DecodingMode decoding_mode = kConstantExpression;
+  static constexpr bool kUsesPoppedArgs = true;
 
   struct Value : public ValueBase<ValidationTag> {
     WasmValue runtime_value;
@@ -46,12 +47,13 @@ class V8_EXPORT_PRIVATE ConstantExpressionInterface {
       WasmFullDecoder<ValidationTag, ConstantExpressionInterface,
                       decoding_mode>;
 
-  ConstantExpressionInterface(const WasmModule* module, Isolate* isolate,
-                              Handle<WasmInstanceObject> instance)
+  ConstantExpressionInterface(
+      const WasmModule* module, Isolate* isolate,
+      Handle<WasmTrustedInstanceData> trusted_instance_data)
       : module_(module),
         outer_module_(nullptr),
         isolate_(isolate),
-        instance_(instance) {
+        trusted_instance_data_(trusted_instance_data) {
     DCHECK_NOT_NULL(isolate);
   }
 
@@ -95,7 +97,7 @@ class V8_EXPORT_PRIVATE ConstantExpressionInterface {
   const WasmModule* module_;
   WasmModule* outer_module_;
   Isolate* isolate_;
-  Handle<WasmInstanceObject> instance_;
+  Handle<WasmTrustedInstanceData> trusted_instance_data_;
 };
 
 }  // namespace wasm

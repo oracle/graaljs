@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,7 @@ public abstract class ExportResolution {
     }
 
     @TruffleBoundary
-    public JSModuleRecord getModule() {
+    public AbstractModuleRecord getModule() {
         throw new UnsupportedOperationException();
     }
 
@@ -81,7 +81,7 @@ public abstract class ExportResolution {
         throw new UnsupportedOperationException();
     }
 
-    public static ExportResolution resolved(JSModuleRecord module, TruffleString bindingName) {
+    public static ExportResolution resolved(AbstractModuleRecord module, TruffleString bindingName) {
         return new Resolved(module, bindingName);
     }
 
@@ -97,17 +97,17 @@ public abstract class ExportResolution {
     }
 
     public static final class Resolved extends ExportResolution {
-        private final JSModuleRecord module;
+        private final AbstractModuleRecord module;
         private final TruffleString bindingName;
 
-        Resolved(JSModuleRecord module, TruffleString bindingName) {
+        Resolved(AbstractModuleRecord module, TruffleString bindingName) {
             this.module = module;
             this.bindingName = bindingName;
             assert bindingName == Module.NAMESPACE_EXPORT_BINDING_NAME || !bindingName.equals(Module.NAMESPACE_EXPORT_BINDING_NAME);
         }
 
         @Override
-        public JSModuleRecord getModule() {
+        public AbstractModuleRecord getModule() {
             return module;
         }
 

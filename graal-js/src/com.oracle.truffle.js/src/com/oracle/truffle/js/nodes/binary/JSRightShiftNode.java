@@ -122,7 +122,7 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
     protected static Object doGeneric(Object a, Object b,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached @Shared JSRightShiftNode rightShift,
                     @Cached JSToNumericNode leftToNumeric,
                     @Cached JSToNumericNode rightToNumeric,

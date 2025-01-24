@@ -880,6 +880,9 @@ The [`require.extensions`][] property is deprecated.
 
 <!-- YAML
 changes:
+  - version: v21.0.0
+    pr-url: https://github.com/nodejs/node/pull/47202
+    description: Runtime deprecation.
   - version: v16.6.0
     pr-url: https://github.com/nodejs/node/pull/38444
     description: Added support for `--pending-deprecation`.
@@ -888,7 +891,7 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only (supports [`--pending-deprecation`][])
+Type: Runtime
 
 The [`punycode`][] module is deprecated. Please use a userland alternative
 instead.
@@ -969,6 +972,9 @@ The [`tls.SecurePair`][] class is deprecated. Please use
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -981,7 +987,7 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
 The [`util.isArray()`][] API is deprecated. Please use `Array.isArray()`
 instead.
@@ -990,6 +996,9 @@ instead.
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1002,14 +1011,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isBoolean()`][] API is deprecated.
+The [`util.isBoolean()`][] API is deprecated. Please use
+`typeof arg === 'boolean'` instead.
 
 ### DEP0046: `util.isBuffer()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1022,7 +1035,7 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
 The [`util.isBuffer()`][] API is deprecated. Please use
 [`Buffer.isBuffer()`][] instead.
@@ -1031,6 +1044,9 @@ The [`util.isBuffer()`][] API is deprecated. Please use
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1043,14 +1059,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isDate()`][] API is deprecated.
+The [`util.isDate()`][] API is deprecated. Please use
+`arg instanceof Date` instead.
 
 ### DEP0048: `util.isError()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1063,14 +1083,19 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isError()`][] API is deprecated.
+The [`util.isError()`][] API is deprecated. Please use
+`Object.prototype.toString(arg) === '[object Error]' || arg instanceof Error`
+instead.
 
 ### DEP0049: `util.isFunction()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1083,14 +1108,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isFunction()`][] API is deprecated.
+The [`util.isFunction()`][] API is deprecated. Please use
+`typeof arg === 'function'` instead.
 
 ### DEP0050: `util.isNull()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1103,14 +1132,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isNull()`][] API is deprecated.
+The [`util.isNull()`][] API is deprecated. Please use
+`arg === null` instead.
 
 ### DEP0051: `util.isNullOrUndefined()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1123,14 +1156,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isNullOrUndefined()`][] API is deprecated.
+The [`util.isNullOrUndefined()`][] API is deprecated. Please use
+`arg === null || arg === undefined` instead.
 
 ### DEP0052: `util.isNumber()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1143,14 +1180,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isNumber()`][] API is deprecated.
+The [`util.isNumber()`][] API is deprecated. Please use
+`typeof arg === 'number'` instead.
 
 ### DEP0053: `util.isObject()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1163,14 +1204,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isObject()`][] API is deprecated.
+The [`util.isObject()`][] API is deprecated. Please use
+`arg && typeof arg === 'object'` instead.
 
 ### DEP0054: `util.isPrimitive()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1183,14 +1228,19 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isPrimitive()`][] API is deprecated.
+The [`util.isPrimitive()`][] API is deprecated. Please use
+`arg === null || (typeof arg !=='object' && typeof arg !== 'function')`
+instead.
 
 ### DEP0055: `util.isRegExp()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1203,14 +1253,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isRegExp()`][] API is deprecated.
+The [`util.isRegExp()`][] API is deprecated. Please use
+`arg instanceof RegExp` instead.
 
 ### DEP0056: `util.isString()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1223,14 +1277,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isString()`][] API is deprecated.
+The [`util.isString()`][] API is deprecated. Please use
+`typeof arg === 'string'` instead.
 
 ### DEP0057: `util.isSymbol()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1243,14 +1301,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isSymbol()`][] API is deprecated.
+The [`util.isSymbol()`][] API is deprecated. Please use
+`typeof arg === 'symbol'` instead.
 
 ### DEP0058: `util.isUndefined()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version:
     - v6.12.0
     - v4.8.6
@@ -1263,14 +1325,18 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.isUndefined()`][] API is deprecated.
+The [`util.isUndefined()`][] API is deprecated. Please use
+`arg === undefined` instead.
 
 ### DEP0059: `util.log()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version: v6.12.0
     pr-url: https://github.com/nodejs/node/pull/10116
     description: A deprecation code has been assigned.
@@ -1279,14 +1345,27 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util.log()`][] API is deprecated.
+The [`util.log()`][] API has been deprecated because it's an unmaintained
+legacy API that was exposed to user land by accident. Instead,
+consider the following alternatives based on your specific needs:
+
+* **Third-Party Logging Libraries**
+
+* **Use `console.log(new Date().toLocaleString(), message)`**
+
+By adopting one of these alternatives, you can transition away from `util.log()`
+and choose a logging strategy that aligns with the specific
+requirements and complexity of your application.
 
 ### DEP0060: `util._extend()`
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50488
+    description: Runtime deprecation.
   - version: v6.12.0
     pr-url: https://github.com/nodejs/node/pull/10116
     description: A deprecation code has been assigned.
@@ -1295,9 +1374,11 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`util._extend()`][] API is deprecated.
+The [`util._extend()`][] API is deprecated because it's an unmaintained
+legacy API that was exposed to user land by accident.
+Please use `target = Object.assign(target, source)` instead.
 
 ### DEP0061: `fs.SyncWriteStream`
 
@@ -2116,6 +2197,9 @@ Type: End-of-Life
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/50973
+    description: End-of-Life.
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/22089
     description: Runtime deprecation.
@@ -2124,11 +2208,12 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-Using [`crypto.createCipher()`][] and [`crypto.createDecipher()`][] must be
-avoided as they use a weak key derivation function (MD5 with no salt) and static
-initialization vectors. It is recommended to derive a key using
+`crypto.createCipher()` and `crypto.createDecipher()` have been removed
+as they use a weak key derivation function (MD5 with no salt) and static
+initialization vectors.
+It is recommended to derive a key using
 [`crypto.pbkdf2()`][] or [`crypto.scrypt()`][] with random salts and to use
 [`crypto.createCipheriv()`][] and [`crypto.createDecipheriv()`][] to obtain the
 [`Cipher`][] and [`Decipher`][] objects respectively.
@@ -2221,7 +2306,7 @@ Type: Documentation-only (supports [`--pending-deprecation`][])
 `process.binding()` is for use by Node.js internal code only.
 
 While `process.binding()` has not reached End-of-Life status in general, it is
-unavailable when [policies][] or the [permission model][] are enabled.
+unavailable when the [permission model][] is enabled.
 
 ### DEP0112: `dgram` private APIs
 
@@ -3228,6 +3313,9 @@ Values other than `undefined`, `null`, integer numbers, and integer strings
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/51179
+    description: Runtime deprecation.
   - version:
     - v18.8.0
     - v16.18.0
@@ -3235,9 +3323,11 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-The [`--trace-atomics-wait`][] flag is deprecated.
+The [`--trace-atomics-wait`][] flag is deprecated because
+it uses the V8 hook `SetAtomicsWaitCallback`,
+that will be removed in a future V8 release.
 
 ### DEP0166: Double slashes in imports and exports targets
 
@@ -3303,7 +3393,9 @@ Node-API callbacks.
 
 <!-- YAML
 changes:
-  - version: v19.9.0
+  - version:
+      - v19.9.0
+      - v18.17.0
     pr-url: https://github.com/nodejs/node/pull/47203
     description: Added support for `--pending-deprecation`.
   - version:
@@ -3390,12 +3482,15 @@ Consider using alternatives such as the [`mock`][] helper function.
 
 <!-- YAML
 changes:
+  - version: v21.0.0
+    pr-url: https://github.com/nodejs/node/pull/49609
+    description: Runtime deprecation.
   - version: v20.8.0
     pr-url: https://github.com/nodejs/node/pull/49647
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
 Calling [`util.promisify`][] on a function that returns a <Promise> will ignore
 the result of said promise, which can lead to unhandled promise rejections.
@@ -3432,10 +3527,13 @@ deprecated. Get them from `fs.constants` or `fs.promises.constants` instead.
 
 <!-- YAML
 changes:
-  - version: v20.12.0
+  - version:
+    - v21.7.0
+    - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51442
     description: End-of-Life.
   - version:
+    - v21.3.0
     - v20.11.0
     pr-url: https://github.com/nodejs/node/pull/50486
     description: A deprecation code has been assigned.
@@ -3453,7 +3551,10 @@ Please use `value instanceof WebAssembly.Module` instead.
 
 <!-- YAML
 changes:
-  - version: v20.12.0
+  - version:
+    - v21.5.0
+    - v20.12.0
+    - v18.20.0
     pr-url: https://github.com/nodejs/node/pull/51020
     description: Documentation-only deprecation.
 -->
@@ -3467,12 +3568,17 @@ release lines. Please use [`dirent.parentPath`][] instead.
 
 <!-- YAML
 changes:
-  - version: v20.12.0
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/51880
+    description: Runtime deprecation.
+  - version:
+    - v21.5.0
+    - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51077
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
 Calling `Hash` class directly with `Hash()` or `new Hash()` is
 deprecated due to being internals, not intended for public use.
@@ -3482,12 +3588,15 @@ Please use the [`crypto.createHash()`][] method to create Hash instances.
 
 <!-- YAML
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/52067
+    description: Runtime deprecation.
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/51879
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
 Calling `fs.Stats` class directly with `Stats()` or `new Stats()` is
 deprecated due to being internals, not intended for public use.
@@ -3496,12 +3605,15 @@ deprecated due to being internals, not intended for public use.
 
 <!-- YAML
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/52071
+    description: Runtime deprecation.
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/51881
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
 Calling `Hmac` class directly with `Hmac()` or `new Hmac()` is
 deprecated due to being internals, not intended for public use.
@@ -3511,7 +3623,7 @@ Please use the [`crypto.createHmac()`][] method to create Hmac instances.
 
 <!-- YAML
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/52345
     description: Documentation-only deprecation.
 -->
@@ -3525,6 +3637,96 @@ default authentication tag length should set the `authTagLength` option of the
 For ciphers in GCM mode, the [`decipher.setAuthTag()`][] function accepts
 authentication tags of any valid length (see [DEP0090](#DEP0090)). This behavior
 is deprecated to better align with recommendations per [NIST SP 800-38D][].
+
+### DEP0183: OpenSSL engine-based APIs
+
+<!-- YAML
+changes:
+  - version: v22.4.0
+    pr-url: https://github.com/nodejs/node/pull/53329
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+OpenSSL 3 has deprecated support for custom engines with a recommendation to
+switch to its new provider model. The `clientCertEngine` option for
+`https.request()`, [`tls.createSecureContext()`][], and [`tls.createServer()`][];
+the `privateKeyEngine` and `privateKeyIdentifier` for [`tls.createSecureContext()`][];
+and [`crypto.setEngine()`][] all depend on this functionality from OpenSSL.
+
+### DEP0184: Instantiating `node:zlib` classes without `new`
+
+<!-- YAML
+changes:
+  - version: v22.9.0
+    pr-url: https://github.com/nodejs/node/pull/54708
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Instantiating classes without the `new` qualifier exported by the `node:zlib` module is deprecated.
+It is recommended to use the `new` qualifier instead. This applies to all Zlib classes, such as `Deflate`,
+`DeflateRaw`, `Gunzip`, `Inflate`, `InflateRaw`, `Unzip`, and `Zlib`.
+
+### DEP0185: Instantiating `node:repl` classes without `new`
+
+<!-- YAML
+changes:
+  - version: v22.9.0
+    pr-url: https://github.com/nodejs/node/pull/54842
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Instantiating classes without the `new` qualifier exported by the `node:repl` module is deprecated.
+It is recommended to use the `new` qualifier instead. This applies to all REPL classes, including
+`REPLServer` and `Recoverable`.
+
+<!-- md-lint skip-deprecation DEP0186 -->
+
+### DEP0187: Passing invalid argument types to `fs.existsSync`
+
+<!-- YAML
+changes:
+  - version: v22.13.0
+    pr-url: https://github.com/nodejs/node/pull/55892
+    description: Documentation-only.
+-->
+
+Type: Documentation-only
+
+Passing non-supported argument types is deprecated and, instead of returning `false`,
+will throw an error in a future version.
+
+### DEP0188: `process.features.ipv6` and `process.features.uv`
+
+<!-- YAML
+changes:
+  - version: v22.13.0
+    pr-url: https://github.com/nodejs/node/pull/55545
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+These properties are unconditionally `true`. Any checks based on these properties are redundant.
+
+### DEP0189: `process.features.tls_*`
+
+<!-- YAML
+changes:
+  - version: v22.13.0
+    pr-url: https://github.com/nodejs/node/pull/55545
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+`process.features.tls_alpn`, `process.features.tls_ocsp`, and `process.features.tls_sni` are
+deprecated, as their values are guaranteed to be identical to that of `process.features.tls`.
 
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [RFC 6066]: https://tools.ietf.org/html/rfc6066#section-3
@@ -3560,9 +3762,7 @@ is deprecated to better align with recommendations per [NIST SP 800-38D][].
 [`console.error()`]: console.md#consoleerrordata-args
 [`console.log()`]: console.md#consolelogdata-args
 [`crypto.Certificate()` constructor]: crypto.md#legacy-api
-[`crypto.createCipher()`]: crypto.md#cryptocreatecipheralgorithm-password-options
 [`crypto.createCipheriv()`]: crypto.md#cryptocreatecipherivalgorithm-key-iv-options
-[`crypto.createDecipher()`]: crypto.md#cryptocreatedecipheralgorithm-password-options
 [`crypto.createDecipheriv()`]: crypto.md#cryptocreatedecipherivalgorithm-key-iv-options
 [`crypto.createHash()`]: crypto.md#cryptocreatehashalgorithm-options
 [`crypto.createHmac()`]: crypto.md#cryptocreatehmacalgorithm-key-options
@@ -3570,6 +3770,7 @@ is deprecated to better align with recommendations per [NIST SP 800-38D][].
 [`crypto.pbkdf2()`]: crypto.md#cryptopbkdf2password-salt-iterations-keylen-digest-callback
 [`crypto.randomBytes()`]: crypto.md#cryptorandombytessize-callback
 [`crypto.scrypt()`]: crypto.md#cryptoscryptpassword-salt-keylen-options-callback
+[`crypto.setEngine()`]: crypto.md#cryptosetengineengine-flags
 [`decipher.final()`]: crypto.md#decipherfinaloutputencoding
 [`decipher.setAuthTag()`]: crypto.md#deciphersetauthtagbuffer-encoding
 [`diagnostics_channel.subscribe(name, onMessage)`]: diagnostics_channel.md#diagnostics_channelsubscribename-onmessage
@@ -3648,6 +3849,7 @@ is deprecated to better align with recommendations per [NIST SP 800-38D][].
 [`tls.TLSSocket`]: tls.md#class-tlstlssocket
 [`tls.checkServerIdentity()`]: tls.md#tlscheckserveridentityhostname-cert
 [`tls.createSecureContext()`]: tls.md#tlscreatesecurecontextoptions
+[`tls.createServer()`]: tls.md#tlscreateserveroptions-secureconnectionlistener
 [`url.format()`]: url.md#urlformaturlobject
 [`url.parse()`]: url.md#urlparseurlstring-parsequerystring-slashesdenotehost
 [`url.resolve()`]: url.md#urlresolvefrom-to
@@ -3686,7 +3888,6 @@ is deprecated to better align with recommendations per [NIST SP 800-38D][].
 [legacy URL API]: url.md#legacy-url-api
 [legacy `urlObject`]: url.md#legacy-urlobject
 [permission model]: permissions.md#permission-model
-[policies]: permissions.md#policies
 [static methods of `crypto.Certificate()`]: crypto.md#class-certificate
 [subpath exports]: packages.md#subpath-exports
 [subpath imports]: packages.md#subpath-imports

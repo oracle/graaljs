@@ -27,7 +27,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <ngtcp2/ngtcp2.h>
 
@@ -38,8 +38,10 @@
  */
 void ngtcp2_addr_copy(ngtcp2_addr *dest, const ngtcp2_addr *src);
 
-/*
- * ngtcp2_addr_eq returns nonzero if |a| equals |b|.
+/**
+ * @function
+ *
+ * `ngtcp2_addr_eq` returns nonzero if |a| equals |b|.
  */
 int ngtcp2_addr_eq(const ngtcp2_addr *a, const ngtcp2_addr *b);
 
@@ -66,4 +68,4 @@ uint32_t ngtcp2_addr_compare(const ngtcp2_addr *a, const ngtcp2_addr *b);
  */
 int ngtcp2_addr_empty(const ngtcp2_addr *addr);
 
-#endif /* NGTCP2_ADDR_H */
+#endif /* !defined(NGTCP2_ADDR_H) */

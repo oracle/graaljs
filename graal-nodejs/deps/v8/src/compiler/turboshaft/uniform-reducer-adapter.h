@@ -22,10 +22,6 @@ namespace v8::internal::compiler::turboshaft {
 //   TURBOSHAFT_REDUCER_BOILERPLATE()
 //   using Adapter = UniformReducerAdapter<MyReducer, Next>;
 //
-//   template <typename... Args>
-//   explicit MyReducer(const std::tuple<Args...>& args)
-//       : Adapter(args) { /* ... */ }
-//
 //   OpIndex ReduceInputGraphConstant(OpIndex ig_index, const ConstantOp& op) {
 //     /* Handle ConstantOps separately */
 //     /* ... */
@@ -66,7 +62,7 @@ namespace v8::internal::compiler::turboshaft {
 //   /* ... */
 // };
 //
-// NOTICE: Inside the ReduceOperation and ReduceInputGraphOperation callbacks,
+// NOTICE: Inside the ReduceXyz and ReduceInputGraphXyz callbacks of MyReducer,
 // you need to make a choice:
 //
 //   A) Call Next::ReduceXyz (or Next::ReduceInputGraphXyz) to forward to the
@@ -78,7 +74,7 @@ namespace v8::internal::compiler::turboshaft {
 //      OperationXyz is also processed by those (in addition to the special
 //      handling in ReduceXyz and ReduceInputGraphXyz).
 //
-// For the above MyReducer, consider this OptimizationPhase<R1, MyReducer, R2>.
+// For the above MyReducer, consider this CopyingPhase<R1, MyReducer, R2>.
 // Then the ReduceInputGraph (RIG) and Reduce (R) implementations are visited as
 // follows for Operations OpA and OpB (and all other operations that are not
 // ConstantOp), when all reducers just forward to Next. For ConstantOp, the
@@ -113,10 +109,6 @@ namespace v8::internal::compiler::turboshaft {
 template <template <typename> typename Reducer, typename Next>
 class UniformReducerAdapter : public Next {
  public:
-  template <typename... Args>
-  explicit UniformReducerAdapter(const std::tuple<Args...>& args)
-      : Next(args) {}
-
   template <Opcode opcode, typename Continuation, typename... Args>
   OpIndex ReduceOperation(Args... args) {
     return Continuation{this}.Reduce(args...);
@@ -130,6 +122,7 @@ class UniformReducerAdapter : public Next {
 #define REDUCE(op)                                                           \
   struct Reduce##op##Continuation final {                                    \
     explicit Reduce##op##Continuation(Next* _this) : this_(_this) {}         \
+    using Op = op##Op;                                                       \
     OpIndex ReduceInputGraph(OpIndex ig_index, const op##Op& operation) {    \
       return this_->ReduceInputGraph##op(ig_index, operation);               \
     }                                                                        \

@@ -201,6 +201,14 @@ class TypeOracle : public base::ContextualClass<TypeOracle> {
     return Get().GetBuiltinType(EXTERNALPTR_TYPE_STRING);
   }
 
+  static const Type* GetIndirectPointerType() {
+    return Get().GetBuiltinType(INDIRECTPTR_TYPE_STRING);
+  }
+
+  static const Type* GetProtectedPointerType() {
+    return Get().GetBuiltinType(PROTECTEDPTR_TYPE_STRING);
+  }
+
   static const Type* GetMapType() {
     return Get().GetBuiltinType(MAP_TYPE_STRING);
   }

@@ -61,7 +61,9 @@ v8::Local<v8::UnboundScript> GraalUnboundScript::Compile(v8::Local<v8::String> s
         return v8::Local<v8::UnboundScript>();
     } else {
         GraalUnboundScript* graal_script = new GraalUnboundScript(graal_isolate, java_script);
-        return reinterpret_cast<v8::UnboundScript*> (graal_script);
+        v8::UnboundScript* v8_script = reinterpret_cast<v8::UnboundScript*> (graal_script);
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+        return v8::Local<v8::UnboundScript>::New(v8_isolate, v8_script);
     }
 }
 
@@ -70,16 +72,19 @@ GraalHandleContent* GraalUnboundScript::CopyImpl(jobject java_object_copy) {
 }
 
 v8::Local<v8::Script> GraalUnboundScript::BindToCurrentContext() {
-    jobject java_context = Isolate()->CurrentJavaContext();
-    JNI_CALL(jobject, java_bound, Isolate(), GraalAccessMethod::unbound_script_bind_to_context, Object, java_context, GetJavaObject());
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_context = graal_isolate->CurrentJavaContext();
+    JNI_CALL(jobject, java_bound, graal_isolate, GraalAccessMethod::unbound_script_bind_to_context, Object, java_context, GetJavaObject());
     if (java_bound == NULL) {
         // should not happen
         fprintf(stderr, "UnboundScript::BindToCurrentContext() failed!\n");
-        Isolate()->GetJNIEnv()->ExceptionDescribe();
+        graal_isolate->GetJNIEnv()->ExceptionDescribe();
         abort();
     } else {
-        GraalScript* graal_script = GraalScript::Allocate(Isolate(), java_bound);
-        return reinterpret_cast<v8::Script*> (graal_script);
+        GraalScript* graal_script = GraalScript::Allocate(graal_isolate, java_bound);
+        v8::Script* v8_script = reinterpret_cast<v8::Script*> (graal_script);
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+        return v8::Local<v8::Script>::New(v8_isolate, v8_script);
     }
 }
 
@@ -92,5 +97,7 @@ v8::Local<v8::String> GraalUnboundScript::GetContent() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_content, graal_isolate, GraalAccessMethod::unbound_script_get_content, Object, GetJavaObject());
     GraalString* graal_content = GraalString::Allocate(graal_isolate, java_content);
-    return reinterpret_cast<v8::String*> (graal_content);
+    v8::String* v8_content = reinterpret_cast<v8::String*> (graal_content);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::String>::New(v8_isolate, v8_content);
 }

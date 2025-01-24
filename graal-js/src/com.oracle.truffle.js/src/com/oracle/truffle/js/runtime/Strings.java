@@ -262,6 +262,7 @@ public final class Strings {
     public static final TruffleString TO_REVERSED = constant("toReversed");
     public static final TruffleString TO_SORTED = constant("toSorted");
     public static final TruffleString TO_SPLICED = constant("toSpliced");
+    public static final TruffleString TO_TEMPORAL_INSTANT = constant("toTemporalInstant");
 
     public static final TruffleString UC_ARRAY = constant("Array");
     public static final TruffleString UC_OBJECT = constant("Object");
@@ -478,7 +479,6 @@ public final class Strings {
     public static final TruffleString UC_Z = constant("Z");
     public static final TruffleString Z = constant("z");
     public static final TruffleString UC_ETC = constant("Etc");
-    public static final TruffleString UNICODE_MINUS_SIGN = constant("\u2212");
 
     public static final TruffleString MUTABLE = constant("mutable");
     public static final TruffleString ELEMENT = constant("element");
@@ -505,6 +505,10 @@ public final class Strings {
     public static final TruffleString ROUNDING_MODE = Strings.constant("roundingMode");
     public static final TruffleString TIME_ZONE = Strings.constant("timeZone");
     public static final TruffleString TIME_ZONE_NAME = Strings.constant("timeZoneName");
+
+    /* RegExp.escape constants */
+    public static final TruffleString REGEXP_SYNTAX_CHARS_WITH_SOLIDUS = Strings.constant("^$\\.*+?()[]{}|/");
+    public static final TruffleString REGEXP_OTHER_PUNCTUATORS = Strings.constant(",-=<>#&!%:;@~'`\"");
 
     /* end of constants */
 
@@ -560,6 +564,10 @@ public final class Strings {
 
     public static int codePointAt(TruffleString.CodePointAtByteIndexNode node, TruffleString s, int i) {
         return node.execute(s, i << 1, TruffleString.Encoding.UTF_16);
+    }
+
+    public static int lengthOfCodePointAt(TruffleString.ByteLengthOfCodePointNode node, TruffleString s, int i) {
+        return node.execute(s, i << 1, TruffleString.Encoding.UTF_16) >> 1;
     }
 
     public static TruffleString concat(TruffleString s1, TruffleString s2) {
@@ -938,6 +946,14 @@ public final class Strings {
         node.execute(sb, chr);
     }
 
+    public static void builderAppend(TruffleStringBuilder.AppendCodePointNode node, TruffleStringBuilderUTF16 sb, int cp) {
+        node.execute(sb, cp);
+    }
+
+    public static void builderAppend(TruffleStringBuilder.AppendCodePointNode node, TruffleStringBuilderUTF16 sb, int cp, int repeat) {
+        node.execute(sb, cp, repeat);
+    }
+
     public static void builderAppend(TruffleStringBuilderUTF16 sb, int i) {
         TruffleStringBuilder.AppendIntNumberNode.getUncached().execute(sb, i);
     }
@@ -956,6 +972,10 @@ public final class Strings {
 
     public static void builderAppend(TruffleStringBuilderUTF16 sb, String str) {
         TruffleStringBuilder.AppendJavaStringUTF16Node.getUncached().execute(sb, str, 0, str.length());
+    }
+
+    public static void builderAppend(TruffleStringBuilder.AppendJavaStringUTF16Node node, TruffleStringBuilderUTF16 sb, String str) {
+        node.execute(sb, str);
     }
 
     public static void builderAppend(TruffleStringBuilderUTF16 sb, TruffleString str) {

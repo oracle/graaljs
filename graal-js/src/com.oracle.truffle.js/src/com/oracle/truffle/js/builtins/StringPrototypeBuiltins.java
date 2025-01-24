@@ -1309,7 +1309,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "stringEquals(equalsNode, cachedReplaceValue, replaceValue)", limit = "1")
         protected Object replaceStringCached(TruffleString thisObj, TruffleString searchValue, @SuppressWarnings("unused") TruffleString replaceValue,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("replaceValue") TruffleString cachedReplaceValue,
                         @Cached(value = "parseReplaceValue(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValue,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode,
@@ -1320,7 +1320,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = "replaceStringCached")
         protected Object replaceString(Object thisObj, TruffleString searchValue, TruffleString replaceValue,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared InlinedBranchProfile dollarProfile) {
             requireObjectCoercible(thisObj);
             return builtinReplaceString(searchValue, replaceValue, thisObj, null, dollarProfile, node);
@@ -1329,7 +1329,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isStringString(searchValue, replaceValue)")
         protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
                         @Cached IsCallableNode isCallableNode,
@@ -1413,7 +1413,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object replaceStringCached(Object thisObj, TruffleString searchValue, @SuppressWarnings("unused") TruffleString replaceValue,
                         @Cached("replaceValue") TruffleString cachedReplaceValue,
                         @Cached(value = "parseReplaceValue(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValue,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode,
                         @Cached @Shared TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
                         @Cached @Shared InlinedConditionProfile isSearchValueEmpty,
@@ -1462,7 +1462,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isStringString(searchValue, replaceValue)")
         protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Exclusive InlinedBranchProfile errorBranch,
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
@@ -1599,7 +1599,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected Object replace(Object thisObj, Object searchValue, Object replaceValue,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
                         @Cached InlinedCountingConditionProfile ifIsMatch,
@@ -2807,9 +2807,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected Object codePointAt(Object thisObj, Object position,
                         @Cached TruffleString.CodePointAtByteIndexNode codePointAtRawNode,
-                        @Cached InlinedBranchProfile undefinedBranch,
-                        @Cached InlinedBranchProfile needSecondBranch,
-                        @Cached InlinedBranchProfile needCalculationBranch) {
+                        @Cached InlinedBranchProfile undefinedBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int pos = toIntegerAsInt(position);
@@ -2817,18 +2815,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 undefinedBranch.enter(this);
                 return Undefined.instance;
             }
-            int first = Strings.codePointAt(codePointAtRawNode, thisStr, pos);
-            boolean isEnd = (pos + 1 == Strings.length(thisStr));
-            if (isEnd || first < 0xD800 || first > 0xDBFF) {
-                return first;
-            }
-            needSecondBranch.enter(this);
-            int second = Strings.codePointAt(codePointAtRawNode, thisStr, pos + 1);
-            if (second < 0xDC00 || second > 0xDFFF) {
-                return first;
-            }
-            needCalculationBranch.enter(this);
-            return ((first - 0xD800) * 1024) + (second - 0xDC00) + 0x10000;
+            return Strings.codePointAt(codePointAtRawNode, thisStr, pos);
         }
     }
 

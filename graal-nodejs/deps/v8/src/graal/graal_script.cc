@@ -63,7 +63,9 @@ v8::Local<v8::Script> GraalScript::Compile(v8::Local<v8::String> source_code, v8
         return v8::Local<v8::Script>();
     } else {
         GraalScript* graal_script = GraalScript::Allocate(graal_isolate, java_script);
-        return reinterpret_cast<v8::Script*> (graal_script);
+        v8::Script* v8_script = reinterpret_cast<v8::Script*> (graal_script);
+        v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+        return v8::Local<v8::Script>::New(v8_isolate, v8_script);
     }
 }
 
@@ -72,13 +74,19 @@ GraalHandleContent* GraalScript::CopyImpl(jobject java_object_copy) {
 }
 
 v8::Local<v8::Value> GraalScript::Run() {
-    JNI_CALL(jobject, java_result, Isolate(), GraalAccessMethod::script_run, Object, GetJavaObject());
-    GraalValue* graal_value = (java_result == NULL) ? nullptr : GraalValue::FromJavaObject(Isolate(), java_result);
-    return reinterpret_cast<v8::Value*> (graal_value);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_result, graal_isolate, GraalAccessMethod::script_run, Object, GetJavaObject());
+    GraalValue* graal_value = (java_result == NULL) ? nullptr : GraalValue::FromJavaObject(graal_isolate, java_result);
+    v8::Value* v8_value = reinterpret_cast<v8::Value*> (graal_value);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Value>::New(v8_isolate, v8_value);
 }
 
 v8::Local<v8::UnboundScript> GraalScript::GetUnboundScript() {
-    JNI_CALL(jobject, java_unbound, Isolate(), GraalAccessMethod::script_get_unbound_script, Object, GetJavaObject());
-    GraalUnboundScript* graal_unbound = GraalUnboundScript::Allocate(Isolate(), java_unbound);
-    return reinterpret_cast<v8::UnboundScript*> (graal_unbound);
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_unbound, graal_isolate, GraalAccessMethod::script_get_unbound_script, Object, GetJavaObject());
+    GraalUnboundScript* graal_unbound = GraalUnboundScript::Allocate(graal_isolate, java_unbound);
+    v8::UnboundScript* v8_unbound = reinterpret_cast<v8::UnboundScript*> (graal_unbound);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::UnboundScript>::New(v8_isolate, v8_unbound);
 }

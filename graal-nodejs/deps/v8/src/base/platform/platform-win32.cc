@@ -22,6 +22,7 @@
 #include <dbghelp.h>  // For SymLoadModule64 and al.
 #include <malloc.h>   // For _msize()
 #include <mmsystem.h>  // For timeGetTime().
+#include <psapi.h>     // For GetProcessmMemoryInfo().
 #include <tlhelp32.h>  // For Module32First and al.
 
 #include <limits>
@@ -29,6 +30,7 @@
 #include "src/base/bits.h"
 #include "src/base/lazy-instance.h"
 #include "src/base/macros.h"
+#include "src/base/platform/platform-win32.h"
 #include "src/base/platform/platform.h"
 #include "src/base/platform/time.h"
 #include "src/base/timezone-cache.h"
@@ -135,8 +137,6 @@ namespace v8 {
 namespace base {
 
 namespace {
-
-bool g_hard_abort = false;
 
 }  // namespace
 
@@ -486,6 +486,18 @@ int OS::GetUserTime(uint32_t* secs,  uint32_t* usecs) {
   return 0;
 }
 
+int OS::GetPeakMemoryUsageKb() {
+  constexpr int KB = 1024;
+
+  PROCESS_MEMORY_COUNTERS mem_counters;
+  int ret;
+
+  ret = GetProcessMemoryInfo(GetCurrentProcess(), &mem_counters,
+                             sizeof(mem_counters));
+  if (ret == 0) return -1;
+
+  return static_cast<int>(mem_counters.PeakWorkingSetSize / KB);
+}
 
 // Returns current time as the number of milliseconds since
 // 00:00:00 UTC, January 1, 1970.
@@ -690,6 +702,7 @@ void OS::PrintError(const char* format, ...) {
   va_start(args, format);
   VPrintError(format, args);
   va_end(args);
+  fflush(stderr);
 }
 
 
@@ -739,8 +752,8 @@ DEFINE_LAZY_LEAKY_OBJECT_GETTER(RandomNumberGenerator,
                                 GetPlatformRandomNumberGenerator)
 static LazyMutex rng_mutex = LAZY_MUTEX_INITIALIZER;
 
-void OS::Initialize(bool hard_abort, const char* const gc_fake_mmap) {
-  g_hard_abort = hard_abort;
+void OS::Initialize(AbortMode abort_mode, const char* const gc_fake_mmap) {
+  g_abort_mode = abort_mode;
 }
 
 typedef PVOID(__stdcall* VirtualAlloc2_t)(HANDLE, PVOID, SIZE_T, ULONG, ULONG,
@@ -1020,7 +1033,7 @@ void OS::SetDataReadOnly(void* address, size_t size) {
   DCHECK_EQ(0, reinterpret_cast<uintptr_t>(address) % CommitPageSize());
   DCHECK_EQ(0, size % CommitPageSize());
 
-  unsigned long old_protection;
+  DWORD old_protection;
   CHECK(VirtualProtect(address, size, PAGE_READONLY, &old_protection));
   CHECK(old_protection == PAGE_READWRITE || old_protection == PAGE_WRITECOPY);
 }
@@ -1129,6 +1142,57 @@ void OS::Sleep(TimeDelta interval) {
   ::Sleep(static_cast<DWORD>(interval.InMilliseconds()));
 }
 
+PreciseSleepTimer::PreciseSleepTimer() : timer_(NULL) {}
+PreciseSleepTimer::~PreciseSleepTimer() { Close(); }
+PreciseSleepTimer::PreciseSleepTimer(PreciseSleepTimer&& other) V8_NOEXCEPT {
+  Close();
+  timer_ = other.timer_;
+  other.timer_ = NULL;
+}
+PreciseSleepTimer& PreciseSleepTimer::operator=(PreciseSleepTimer&& other)
+    V8_NOEXCEPT {
+  Close();
+  timer_ = other.timer_;
+  other.timer_ = NULL;
+  return *this;
+}
+bool PreciseSleepTimer::IsInitialized() const { return timer_ != NULL; }
+void PreciseSleepTimer::Close() {
+  if (timer_ != NULL) {
+    CloseHandle(timer_);
+    timer_ = NULL;
+  }
+}
+
+void PreciseSleepTimer::TryInit() {
+  Close();
+  // This flag allows precise sleep times, but is only available since Windows
+  // 10 version 1803.
+  DWORD flags = CREATE_WAITABLE_TIMER_HIGH_RESOLUTION;
+  // The TIMER_MODIFY_STATE permission allows setting the timer, and SYNCHRONIZE
+  // allows waiting for it.
+  DWORD desired_access = TIMER_MODIFY_STATE | SYNCHRONIZE;
+  timer_ =
+      CreateWaitableTimerExW(NULL,  // Cannot be inherited by child processes
+                             NULL,  // Cannot be looked up by name
+                             flags, desired_access);
+}
+
+void PreciseSleepTimer::Sleep(TimeDelta interval) const {
+  // Time is specified in 100 nanosecond intervals. Negative values indicate
+  // relative time.
+  LARGE_INTEGER due_time;
+  due_time.QuadPart = -interval.InMicroseconds() * 10;
+  LONG period = 0;  // Not periodic; wake only once
+  PTIMERAPCROUTINE completion_routine = NULL;
+  LPVOID arg_to_completion_routine = NULL;
+  BOOL resume = false;  // No need to wake system from sleep
+  CHECK(SetWaitableTimer(timer_, &due_time, period, completion_routine,
+                         arg_to_completion_routine, resume));
+
+  DWORD timeout_interval = INFINITE;  // Return only when the object is signaled
+  CHECK_EQ(WAIT_OBJECT_0, WaitForSingleObject(timer_, timeout_interval));
+}
 
 void OS::Abort() {
   // Give a chance to debug the failure.
@@ -1140,9 +1204,15 @@ void OS::Abort() {
   fflush(stdout);
   fflush(stderr);
 
-  if (g_hard_abort) {
-    IMMEDIATE_CRASH();
+  switch (g_abort_mode) {
+    case AbortMode::kSoft:
+      _exit(-1);
+    case AbortMode::kHard:
+      IMMEDIATE_CRASH();
+    case AbortMode::kDefault:
+      break;
   }
+
   // Make the MSVCRT do a silent abort.
   raise(SIGABRT);
 
@@ -1589,7 +1659,7 @@ int OS::ActivationFrameAlignment() {
 #endif
 }
 
-#if (defined(_WIN32) || defined(_WIN64))
+#if defined(V8_OS_WIN)
 void EnsureConsoleOutputWin32() {
   UINT new_flags =
       SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX;
@@ -1605,7 +1675,7 @@ void EnsureConsoleOutputWin32() {
   _set_error_mode(_OUT_TO_STDERR);
 #endif  // defined(_MSC_VER)
 }
-#endif  // (defined(_WIN32) || defined(_WIN64))
+#endif  // defined(V8_OS_WIN)
 
 // ----------------------------------------------------------------------------
 // Win32 thread support.

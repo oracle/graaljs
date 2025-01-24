@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -188,16 +188,14 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         JSDynamicObject proxy = (JSDynamicObject) holder;
         PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
 
+        Object found = null;
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 if (indexedHandler.getQuery() != 0) {
-                    return (NativeAccess.executePropertyHandlerQuery(indexedHandler.getQuery(), holder, nativeCallArgs, indexedHandler.getData(), false) != null);
+                    found = NativeAccess.executePropertyHandlerQuery(indexedHandler.getQuery(), holder, nativeCallArgs, indexedHandler.getData(), false);
                 } else if (indexedHandler.getDescriptor() != 0) {
-                    Object result = NativeAccess.executePropertyHandlerDescriptor(indexedHandler.getDescriptor(), holder, nativeCallArgs, indexedHandler.getData(), false);
-                    if (result != null) {
-                        return true;
-                    }
+                    found = NativeAccess.executePropertyHandlerDescriptor(indexedHandler.getDescriptor(), holder, nativeCallArgs, indexedHandler.getData(), false);
                 }
             }
         } else if (!template.getStringKeysOnly() || key instanceof TruffleString) {
@@ -206,14 +204,14 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             if (namedHandler != null) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 if (namedHandler.getQuery() != 0) {
-                    return (NativeAccess.executePropertyHandlerQuery(namedHandler.getQuery(), holder, nativeCallArgs, namedHandler.getData(), true) != null);
+                    found = NativeAccess.executePropertyHandlerQuery(namedHandler.getQuery(), holder, nativeCallArgs, namedHandler.getData(), true);
                 } else if (namedHandler.getDescriptor() != 0) {
-                    Object result = NativeAccess.executePropertyHandlerDescriptor(namedHandler.getDescriptor(), holder, nativeCallArgs, namedHandler.getData(), true);
-                    if (result != null) {
-                        return true;
-                    }
+                    found = NativeAccess.executePropertyHandlerDescriptor(namedHandler.getDescriptor(), holder, nativeCallArgs, namedHandler.getData(), true);
                 }
             }
+        }
+        if (found != null) {
+            return true;
         }
         JSDynamicObject target = (JSDynamicObject) arguments[2];
         return JSObject.hasProperty(target, key);
@@ -283,10 +281,6 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             }
             if (desc == null) {
                 desc = JSObject.getOwnProperty((JSDynamicObject) arguments[2], arguments[3]);
-                if (desc == null && indexedHandler != null) {
-                    // handles a suspicious part of indexedinterceptors-test in nan package
-                    desc = executeGetOwnPropertyDescriptorHelper(template, holder, arguments, false);
-                }
             }
         }
         return (desc == null) ? Undefined.instance : JSRuntime.fromPropertyDescriptor(desc, context);

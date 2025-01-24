@@ -162,7 +162,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!hasOverloadedOperators(right)"}, replaces = {"doInt", "doDouble", "doNumberString"})
     protected Object doPrimitiveConversion(Object right,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveB,
                     @Cached JSToNumberNode toNumberB,
                     @Cached("leftValueToString()") @Shared TruffleString leftString,

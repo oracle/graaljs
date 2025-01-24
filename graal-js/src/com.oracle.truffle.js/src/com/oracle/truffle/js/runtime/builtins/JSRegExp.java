@@ -55,6 +55,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.RegExpFunctionBuiltins;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -77,7 +78,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResult;
 
-public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     static final TruffleString BRACKET_REG_EXP_SPC = Strings.constant("[RegExp ");
 
@@ -389,7 +390,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, RegExpFunctionBuiltins.BUILTINS);
     }
 
     @Override

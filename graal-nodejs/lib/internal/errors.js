@@ -1,5 +1,5 @@
 /* eslint node-core/documented-errors: "error" */
-/* eslint node-core/alphabetize-errors: "error" */
+/* eslint node-core/alphabetize-errors: ["error", {checkErrorDeclarations: true}] */
 /* eslint node-core/prefer-util-format-errors: "error" */
 
 'use strict';
@@ -12,7 +12,6 @@
 
 const {
   AggregateError,
-  ArrayFrom,
   ArrayIsArray,
   ArrayPrototypeFilter,
   ArrayPrototypeIncludes,
@@ -33,10 +32,10 @@ const {
   Number,
   NumberIsInteger,
   ObjectAssign,
-  ObjectDefineProperty,
   ObjectDefineProperties,
-  ObjectIsExtensible,
+  ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
+  ObjectIsExtensible,
   ObjectKeys,
   ObjectPrototypeHasOwnProperty,
   RangeError,
@@ -1209,12 +1208,12 @@ E('ERR_FEATURE_UNAVAILABLE_ON_PLATFORM',
   ', which is being used to run Node.js',
   TypeError);
 E('ERR_FS_CP_DIR_TO_NON_DIR',
-  'Cannot overwrite directory with non-directory', SystemError);
+  'Cannot overwrite non-directory with directory', SystemError);
 E('ERR_FS_CP_EEXIST', 'Target already exists', SystemError);
 E('ERR_FS_CP_EINVAL', 'Invalid src or dest', SystemError);
 E('ERR_FS_CP_FIFO_PIPE', 'Cannot copy a FIFO pipe', SystemError);
 E('ERR_FS_CP_NON_DIR_TO_DIR',
-  'Cannot overwrite non-directory with directory', SystemError);
+  'Cannot overwrite directory with non-directory', SystemError);
 E('ERR_FS_CP_SOCKET', 'Cannot copy a socket file', SystemError);
 E('ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY',
   'Cannot overwrite symlink in subdirectory of self', SystemError);
@@ -1338,15 +1337,10 @@ E('ERR_HTTP_SOCKET_ENCODING',
 E('ERR_HTTP_TRAILER_INVALID',
   'Trailers are invalid with this transfer encoding', Error);
 E('ERR_ILLEGAL_CONSTRUCTOR', 'Illegal constructor', TypeError);
-// TODO(aduh95): change the error to mention import attributes instead of import assertions.
-E('ERR_IMPORT_ASSERTION_TYPE_FAILED',
+E('ERR_IMPORT_ATTRIBUTE_MISSING',
+  'Module "%s" needs an import attribute of "%s: %s"', TypeError);
+E('ERR_IMPORT_ATTRIBUTE_TYPE_INCOMPATIBLE',
   'Module "%s" is not of type "%s"', TypeError);
-// TODO(aduh95): change the error to mention import attributes instead of import assertions.
-E('ERR_IMPORT_ASSERTION_TYPE_MISSING',
-  'Module "%s" needs an import attribute of type "%s"', TypeError);
-// TODO(aduh95): change the error to mention import attributes instead of import assertions.
-E('ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED',
-  'Import attribute type "%s" is unsupported', TypeError);
 E('ERR_IMPORT_ATTRIBUTE_UNSUPPORTED',
   'Import attribute "%s" with value "%s" is not supported', TypeError);
 E('ERR_INCOMPATIBLE_OPTION_PAIR',
@@ -1534,6 +1528,7 @@ E('ERR_INVALID_SYNC_FORK_INPUT',
   TypeError);
 E('ERR_INVALID_THIS', 'Value of "this" must be of type %s', TypeError);
 E('ERR_INVALID_TUPLE', '%s must be an iterable %s tuple', TypeError);
+E('ERR_INVALID_TYPESCRIPT_SYNTAX', '%s', SyntaxError);
 E('ERR_INVALID_URI', 'URI malformed', URIError);
 E('ERR_INVALID_URL', function(input, base = null) {
   this.input = input;
@@ -1560,6 +1555,9 @@ E('ERR_IPC_CHANNEL_CLOSED', 'Channel closed', Error);
 E('ERR_IPC_DISCONNECTED', 'IPC channel is already disconnected', Error);
 E('ERR_IPC_ONE_PIPE', 'Child process can have only one IPC pipe', Error);
 E('ERR_IPC_SYNC_FORK', 'IPC cannot be used with synchronous forks', Error);
+E('ERR_IP_BLOCKED', function(ip) {
+  return `IP(${ip}) is blocked by net.BlockList`;
+}, Error);
 E(
   'ERR_LOADER_CHAIN_INCOMPLETE',
   '"%s" did not call the next hook in its chain and did not' +
@@ -1567,40 +1565,6 @@ E(
   ' `shortCircuit: true` in the hook\'s return.',
   Error,
 );
-E('ERR_MANIFEST_ASSERT_INTEGRITY',
-  (moduleURL, realIntegrities) => {
-    let msg = `The content of "${
-      moduleURL
-    }" does not match the expected integrity.`;
-    if (realIntegrities.size) {
-      const sri = ArrayPrototypeJoin(
-        ArrayFrom(realIntegrities.entries(),
-                  ({ 0: alg, 1: dgs }) => `${alg}-${dgs}`),
-        ' ',
-      );
-      msg += ` Integrities found are: ${sri}`;
-    } else {
-      msg += ' The resource was not found in the policy.';
-    }
-    return msg;
-  }, Error);
-E('ERR_MANIFEST_DEPENDENCY_MISSING',
-  'Manifest resource %s does not list %s as a dependency specifier for ' +
-  'conditions: %s',
-  Error);
-E('ERR_MANIFEST_INTEGRITY_MISMATCH',
-  'Manifest resource %s has multiple entries but integrity lists do not match',
-  SyntaxError);
-E('ERR_MANIFEST_INVALID_RESOURCE_FIELD',
-  'Manifest resource %s has invalid property value for %s',
-  TypeError);
-E('ERR_MANIFEST_INVALID_SPECIFIER',
-  'Manifest resource %s has invalid dependency mapping %s',
-  TypeError);
-E('ERR_MANIFEST_TDZ', 'Manifest initialization has not yet run', Error);
-E('ERR_MANIFEST_UNKNOWN_ONERROR',
-  'Manifest specified unknown error behavior "%s".',
-  SyntaxError);
 E('ERR_METHOD_NOT_IMPLEMENTED', 'The %s method is not implemented', Error);
 E('ERR_MISSING_ARGS',
   (...args) => {
@@ -1635,10 +1599,6 @@ E('ERR_NAPI_INVALID_TYPEDARRAY_ALIGNMENT',
   'start offset of %s should be a multiple of %s', RangeError);
 E('ERR_NAPI_INVALID_TYPEDARRAY_LENGTH',
   'Invalid typed array length', RangeError);
-E('ERR_NETWORK_IMPORT_BAD_RESPONSE',
-  "import '%s' received a bad response: %s", Error);
-E('ERR_NETWORK_IMPORT_DISALLOWED',
-  "import of '%s' by %s is not supported: %s", Error);
 E('ERR_NOT_BUILDING_SNAPSHOT',
   'Operation cannot be invoked when not building startup snapshot', Error);
 E('ERR_NOT_IN_SINGLE_EXECUTABLE_APPLICATION',
@@ -1648,6 +1608,8 @@ E('ERR_NO_CRYPTO',
   'Node.js is not compiled with OpenSSL crypto support', Error);
 E('ERR_NO_ICU',
   '%s is not supported on Node.js compiled without ICU', TypeError);
+E('ERR_NO_TYPESCRIPT',
+  'Node.js is not compiled with TypeScript support', Error);
 E('ERR_OPERATION_FAILED', 'Operation failed: %s', Error, TypeError);
 E('ERR_OUT_OF_RANGE',
   (str, range, input, replaceDefaultBoolean = false) => {
@@ -1692,6 +1654,16 @@ E('ERR_PARSE_ARGS_UNKNOWN_OPTION', (option, allowPositionals) => {
 E('ERR_PERFORMANCE_INVALID_TIMESTAMP',
   '%d is not a valid timestamp', TypeError);
 E('ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS', '%s', TypeError);
+E('ERR_QUIC_APPLICATION_ERROR', 'A QUIC application error occurred. %d [%s]', Error);
+E('ERR_QUIC_CONNECTION_FAILED', 'QUIC connection failed', Error);
+E('ERR_QUIC_ENDPOINT_CLOSED', 'QUIC endpoint closed: %s (%d)', Error);
+E('ERR_QUIC_OPEN_STREAM_FAILED', 'Failed to open QUIC stream', Error);
+E('ERR_QUIC_TRANSPORT_ERROR', 'A QUIC transport error occurred. %d [%s]', Error);
+E('ERR_QUIC_VERSION_NEGOTIATION_ERROR', 'The QUIC session requires version negotiation', Error);
+E('ERR_REQUIRE_ASYNC_MODULE', 'require() cannot be used on an ESM ' +
+  'graph with top-level await. Use import() instead. To see where the' +
+  ' top-level await comes from, use --experimental-print-required-tla.', Error);
+E('ERR_REQUIRE_CYCLE_MODULE', '%s', Error);
 E('ERR_REQUIRE_ESM',
   function(filename, hasEsmSyntax, parentPath = null, packageJsonPath = null) {
     hideInternalStackFrames(this);
@@ -1751,6 +1723,8 @@ E('ERR_SOCKET_CONNECTION_TIMEOUT',
 E('ERR_SOCKET_DGRAM_IS_CONNECTED', 'Already connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_CONNECTED', 'Not connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_RUNNING', 'Not running', Error);
+E('ERR_SOURCE_MAP_CORRUPT', `The source map for '%s' does not exist or is corrupt.`, Error);
+E('ERR_SOURCE_MAP_MISSING_SOURCE', `Cannot find '%s' imported from the source map for '%s'`, Error);
 E('ERR_SRI_PARSE',
   'Subresource Integrity string %j had an unexpected %j at position %d',
   SyntaxError);
@@ -1876,6 +1850,9 @@ E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url, supported) => {
   msg += `. Received protocol '${url.protocol}'`;
   return msg;
 }, Error);
+E('ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING',
+  'Stripping types is currently unsupported for files under node_modules, for "%s"',
+  Error);
 E('ERR_UNSUPPORTED_RESOLVE_REQUEST',
   'Failed to resolve module specifier "%s" from "%s": Invalid relative URL or base scheme is not hierarchical.',
   TypeError);
@@ -1907,6 +1884,10 @@ E('ERR_WORKER_INIT_FAILED', 'Worker initialization failure: %s', Error);
 E('ERR_WORKER_INVALID_EXEC_ARGV', (errors, msg = 'invalid execArgv flags') =>
   `Initiated Worker with ${msg}: ${ArrayPrototypeJoin(errors, ', ')}`,
   Error);
+E('ERR_WORKER_MESSAGING_ERRORED', 'The destination thread threw an error while processing the message', Error);
+E('ERR_WORKER_MESSAGING_FAILED', 'Cannot find the destination thread or listener', Error);
+E('ERR_WORKER_MESSAGING_SAME_THREAD', 'Cannot sent a message to the same thread', Error);
+E('ERR_WORKER_MESSAGING_TIMEOUT', 'Sending a message to another thread timed out', Error);
 E('ERR_WORKER_NOT_RUNNING', 'Worker instance not running', Error);
 E('ERR_WORKER_OUT_OF_MEMORY',
   'Worker terminated due to reaching memory limit: %s', Error);
@@ -1925,4 +1906,3 @@ E('ERR_WORKER_UNSERIALIZABLE_ERROR',
   'Serializing an uncaught exception failed', Error);
 E('ERR_WORKER_UNSUPPORTED_OPERATION',
   '%s is not supported in workers', TypeError);
-E('ERR_ZLIB_INITIALIZATION_FAILED', 'Initialization failed', Error);

@@ -1,10 +1,6 @@
 'use strict';
 
 const {
-  emitExperimentalWarning,
-} = require('internal/util');
-
-const {
   ArrayPrototypeAt,
   ArrayPrototypeForEach,
   ArrayPrototypeIncludes,
@@ -13,27 +9,36 @@ const {
   FunctionPrototypeApply,
   FunctionPrototypeBind,
   FunctionPrototypeToString,
-  globalThis,
   NumberIsNaN,
-  ObjectDefineProperty,
   ObjectDefineProperties,
+  ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyDescriptors,
   Promise,
   Symbol,
   SymbolAsyncIterator,
-  SymbolDispose,
+  globalThis,
 } = primordials;
+
 const {
   validateAbortSignal,
-  validateArray,
   validateNumber,
+  validateStringArray,
 } = require('internal/validators');
 
 const {
+  emitExperimentalWarning,
+  SymbolDispose,
+} = require('internal/util');
+const {
   AbortError,
-  codes: { ERR_INVALID_STATE, ERR_INVALID_ARG_VALUE },
+  codes: {
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_STATE,
+  },
 } = require('internal/errors');
+
+const { TIMEOUT_MAX } = require('internal/timers');
 
 const PriorityQueue = require('internal/priority_queue');
 const nodeTimers = require('timers');
@@ -59,9 +64,9 @@ function abortIt(signal) {
 }
 
 /**
- * @enum {('setTimeout'|'setInterval'|'setImmediate'|'Date')[]} Supported timers
+ * @enum {('setTimeout'|'setInterval'|'setImmediate'|'Date', 'scheduler.wait')[]} Supported timers
  */
-const SUPPORTED_APIS = ['setTimeout', 'setInterval', 'setImmediate', 'Date'];
+const SUPPORTED_APIS = ['setTimeout', 'setInterval', 'setImmediate', 'Date', 'scheduler.wait'];
 const TIMERS_DEFAULT_INTERVAL = {
   __proto__: null,
   setImmediate: -1,
@@ -103,6 +108,7 @@ class MockTimers {
 
   #realPromisifiedSetTimeout;
   #realPromisifiedSetInterval;
+  #realTimersPromisifiedSchedulerWait;
 
   #realTimersSetTimeout;
   #realTimersClearTimeout;
@@ -187,6 +193,13 @@ class MockTimers {
     );
   }
 
+  #restoreOriginalSchedulerWait() {
+    nodeTimersPromises.scheduler.wait = FunctionPrototypeBind(
+      this.#realTimersPromisifiedSchedulerWait,
+      this,
+    );
+  }
+
   #restoreOriginalSetTimeout() {
     ObjectDefineProperty(
       globalThis,
@@ -261,6 +274,14 @@ class MockTimers {
     );
   }
 
+  #storeOriginalSchedulerWait() {
+
+    this.#realTimersPromisifiedSchedulerWait = FunctionPrototypeBind(
+      nodeTimersPromises.scheduler.wait,
+      this,
+    );
+  }
+
   #storeOriginalSetTimeout() {
     this.#realSetTimeout = ObjectGetOwnPropertyDescriptor(
       globalThis,
@@ -285,6 +306,10 @@ class MockTimers {
   }
 
   #createTimer(isInterval, callback, delay, ...args) {
+    if (delay > TIMEOUT_MAX) {
+      delay = 1;
+    }
+
     const timerId = this.#currentTimer++;
     const opts = {
       __proto__: null,
@@ -301,7 +326,7 @@ class MockTimers {
   }
 
   #clearTimer(timer) {
-    if (timer.priorityQueuePosition !== undefined) {
+    if (timer?.priorityQueuePosition !== undefined) {
       this.#executionQueue.removeAt(timer.priorityQueuePosition);
       timer.priorityQueuePosition = undefined;
     }
@@ -310,6 +335,9 @@ class MockTimers {
   #createDate() {
     kMock ??= Symbol('MockTimers');
     const NativeDateConstructor = this.#nativeDateDescriptor.value;
+    if (NativeDateConstructor.isMock) {
+      throw new ERR_INVALID_STATE('Date is already being mocked!');
+    }
     /**
      * Function to mock the Date constructor, treats cases as per ECMA-262
      * and returns a Date object with a mocked implementation
@@ -374,7 +402,7 @@ class MockTimers {
       return FunctionPrototypeToString(MockDate[kMock].#nativeDateDescriptor.value);
     };
 
-    // We need to polute the prototype of this
+    // We need to pollute the prototype of this
     ObjectDefineProperties(MockDate, {
       __proto__: null,
       [kMock]: {
@@ -553,8 +581,14 @@ class MockTimers {
     const options = {
       __proto__: null,
       toFake: {
-        __proto__: null,
-        setTimeout: () => {
+        '__proto__': null,
+        'scheduler.wait': () => {
+          this.#storeOriginalSchedulerWait();
+
+          nodeTimersPromises.scheduler.wait = (delay, options) =>
+            this.#setTimeoutPromisified(delay, undefined, options);
+        },
+        'setTimeout': () => {
           this.#storeOriginalSetTimeout();
 
           globalThis.setTimeout = this.#setTimeout;
@@ -568,7 +602,7 @@ class MockTimers {
             this,
           );
         },
-        setInterval: () => {
+        'setInterval': () => {
           this.#storeOriginalSetInterval();
 
           globalThis.setInterval = this.#setInterval;
@@ -582,7 +616,7 @@ class MockTimers {
             this,
           );
         },
-        setImmediate: () => {
+        'setImmediate': () => {
           this.#storeOriginalSetImmediate();
 
           // setImmediate functions needs to bind MockTimers
@@ -606,23 +640,26 @@ class MockTimers {
             this,
           );
         },
-        Date: () => {
+        'Date': () => {
           this.#nativeDateDescriptor = ObjectGetOwnPropertyDescriptor(globalThis, 'Date');
           globalThis.Date = this.#createDate();
         },
       },
       toReal: {
-        __proto__: null,
-        setTimeout: () => {
+        '__proto__': null,
+        'scheduler.wait': () => {
+          this.#restoreOriginalSchedulerWait();
+        },
+        'setTimeout': () => {
           this.#restoreOriginalSetTimeout();
         },
-        setInterval: () => {
+        'setInterval': () => {
           this.#restoreOriginalSetInterval();
         },
-        setImmediate: () => {
+        'setImmediate': () => {
           this.#restoreSetImmediate();
         },
-        Date: () => {
+        'Date': () => {
           ObjectDefineProperty(globalThis, 'Date', this.#nativeDateDescriptor);
         },
       },
@@ -673,7 +710,7 @@ class MockTimers {
    */
   /**
    * Enables the MockTimers replacing the native timers with the fake ones.
-   * @param {EnableOptions} options
+   * @param {EnableOptions} [options]
    */
   enable(options = { __proto__: null, apis: SUPPORTED_APIS, now: 0 }) {
     const internalOptions = { __proto__: null, ...options };
@@ -685,15 +722,11 @@ class MockTimers {
       throw new ERR_INVALID_ARG_VALUE('now', internalOptions.now, `epoch must be a positive integer received ${internalOptions.now}`);
     }
 
-    if (!internalOptions.now) {
-      internalOptions.now = 0;
-    }
+    internalOptions.now ||= 0;
 
-    if (!internalOptions.apis) {
-      internalOptions.apis = SUPPORTED_APIS;
-    }
+    internalOptions.apis ||= SUPPORTED_APIS;
 
-    validateArray(internalOptions.apis, 'options.apis');
+    validateStringArray(internalOptions.apis, 'options.apis');
     // Check that the timers passed are supported
     ArrayPrototypeForEach(internalOptions.apis, (timer) => {
       if (!ArrayPrototypeIncludes(SUPPORTED_APIS, timer)) {

@@ -196,6 +196,25 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         return true;
     }
 
+    /**
+     * Abstract operation IsTypedArrayFixedLength( O ).
+     */
+    public boolean isFixedLength() {
+        return !hasAutoLength() && (getArrayBuffer().isFixedLength() || JSSharedArrayBuffer.isJSSharedArrayBuffer(getArrayBuffer()));
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean preventExtensions(boolean doThrow) {
+        if (!isFixedLength()) {
+            if (doThrow) {
+                throw Errors.createTypeError("Cannot prevent extensions of variable-length typed array");
+            }
+            return false;
+        }
+        return super.preventExtensions(doThrow);
+    }
+
     @TruffleBoundary
     @Override
     public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {

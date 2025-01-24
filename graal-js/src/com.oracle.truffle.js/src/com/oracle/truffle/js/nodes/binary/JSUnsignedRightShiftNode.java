@@ -170,7 +170,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(lval)", "!hasOverloadedOperators(rval)", "!isHandled(lval, rval)"})
     protected static Number doGeneric(Object lval, Object rval,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached JSToNumericNode lvalToNumericNode,
                     @Cached JSToNumericNode rvalToNumericNode,
                     @Cached JSUnsignedRightShiftNode innerShiftNode,

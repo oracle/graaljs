@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,6 +142,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.RelativeTimeFormat",
                     "Intl.Segmenter",
                     "Map",
+                    "Math.sumPrecise",
                     "Object.fromEntries",
                     "Object.hasOwn",
                     "Object.is",
@@ -154,6 +155,7 @@ public class Test262Runnable extends TestRunnable {
                     "Reflect.construct",
                     "Reflect.set",
                     "Reflect.setPrototypeOf",
+                    "RegExp.escape",
                     "Set",
                     "ShadowRealm",
                     "SharedArrayBuffer",
@@ -205,6 +207,7 @@ public class Test262Runnable extends TestRunnable {
                     "async-functions",
                     "async-iteration",
                     "caller",
+                    "canonical-tz",
                     "change-array-by-copy",
                     "class",
                     "class-fields-private",
@@ -239,6 +242,7 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta",
                     "intl-normative-optional",
                     "iterator-helpers",
+                    "iterator-sequencing",
                     "json-modules",
                     "json-parse-with-source",
                     "json-superset",
@@ -258,6 +262,7 @@ public class Test262Runnable extends TestRunnable {
                     "regexp-duplicate-named-groups",
                     "regexp-lookbehind",
                     "regexp-match-indices",
+                    "regexp-modifiers",
                     "regexp-named-groups",
                     "regexp-unicode-property-escapes",
                     "regexp-v-flag",
@@ -278,10 +283,8 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
-                    "Math.sumPrecise",
-                    "RegExp.escape",
                     "explicit-resource-management",
-                    "regexp-modifiers",
+                    "import-defer",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
@@ -291,8 +294,11 @@ public class Test262Runnable extends TestRunnable {
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Float16Array",
                     "Intl.Locale-info",
+                    "Math.sumPrecise",
+                    "RegExp.escape",
                     "ShadowRealm",
                     "decorators",
+                    "iterator-sequencing",
                     "json-parse-with-source",
                     "promise-try",
                     "uint8array-base64",

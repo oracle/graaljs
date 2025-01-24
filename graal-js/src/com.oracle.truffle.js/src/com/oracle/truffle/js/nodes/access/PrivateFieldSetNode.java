@@ -90,7 +90,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(limit = "3")
     Object doField(JSObject target, HiddenKey key, Object value,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("target") DynamicObjectLibrary access,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
         if (!Properties.putIfPresent(access, target, key, value)) {

@@ -1,15 +1,28 @@
 'use strict';
 
+const {
+  ArrayPrototypePush,
+  Boolean,
+  MathFloor,
+  Number,
+  NumberIsNaN,
+  Promise,
+  PromisePrototypeThen,
+  PromiseReject,
+  PromiseResolve,
+  Symbol,
+} = primordials;
+
 const { AbortController, AbortSignal } = require('internal/abort_controller');
 
 const {
+  AbortError,
   codes: {
-    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
     ERR_MISSING_ARGS,
     ERR_OUT_OF_RANGE,
   },
-  AbortError,
 } = require('internal/errors');
 const {
   validateAbortSignal,
@@ -23,20 +36,6 @@ const {
   addAbortSignalNoValidate,
 } = require('internal/streams/add-abort-signal');
 const { isWritable, isNodeStream } = require('internal/streams/utils');
-const { deprecate } = require('internal/util');
-
-const {
-  ArrayPrototypePush,
-  Boolean,
-  MathFloor,
-  Number,
-  NumberIsNaN,
-  Promise,
-  PromiseReject,
-  PromiseResolve,
-  PromisePrototypeThen,
-  Symbol,
-} = primordials;
 
 const kEmpty = Symbol('kEmpty');
 const kEof = Symbol('kEof');
@@ -212,25 +211,6 @@ function map(fn, options) {
         resume();
         resume = null;
       }
-    }
-  }.call(this);
-}
-
-function asIndexedPairs(options = undefined) {
-  if (options != null) {
-    validateObject(options, 'options');
-  }
-  if (options?.signal != null) {
-    validateAbortSignal(options.signal, 'options.signal');
-  }
-
-  return async function* asIndexedPairs() {
-    let index = 0;
-    for await (const val of this) {
-      if (options?.signal?.aborted) {
-        throw new AbortError({ cause: options.signal.reason });
-      }
-      yield [index++, val];
     }
   }.call(this);
 }
@@ -438,7 +418,6 @@ function take(number, options = undefined) {
 }
 
 module.exports.streamReturningOperators = {
-  asIndexedPairs: deprecate(asIndexedPairs, 'readable.asIndexedPairs will be removed in a future version.'),
   drop,
   filter,
   flatMap,

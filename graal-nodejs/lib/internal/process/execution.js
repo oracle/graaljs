@@ -1,8 +1,8 @@
 'use strict';
 
 const {
-  Symbol,
   RegExpPrototypeExec,
+  Symbol,
   globalThis,
 } = primordials;
 
@@ -10,9 +10,9 @@ const path = require('path');
 
 const {
   codes: {
+    ERR_EVAL_ESM_CANNOT_PRINT,
     ERR_INVALID_ARG_TYPE,
     ERR_UNCAUGHT_EXCEPTION_CAPTURE_ALREADY_SET,
-    ERR_EVAL_ESM_CANNOT_PRINT,
   },
 } = require('internal/errors');
 const { pathToFileURL } = require('internal/url');
@@ -49,7 +49,7 @@ function tryGetCwd() {
 
 let evalIndex = 0;
 function getEvalModuleUrl() {
-  return pathToFileURL(`${process.cwd()}/[eval${++evalIndex}]`).href;
+  return `${pathToFileURL(process.cwd())}/[eval${++evalIndex}]`;
 }
 
 /**
@@ -83,7 +83,7 @@ function evalScript(name, body, breakFirstLine, print, shouldLoadESM = false) {
 
   if (getOptionValue('--experimental-detect-module') &&
     getOptionValue('--input-type') === '' && getOptionValue('--experimental-default-type') === '' &&
-    containsModuleSyntax(body, name)) {
+    containsModuleSyntax(body, name, null, 'no CJS variables')) {
     return evalModuleEntryPoint(body, print);
   }
 
@@ -119,7 +119,10 @@ function evalScript(name, body, breakFirstLine, print, shouldLoadESM = false) {
     });
     if (print) {
       const { log } = require('internal/console/global');
-      log(result);
+
+      process.on('exit', () => {
+        log(result);
+      });
     }
 
     if (origModule !== undefined)

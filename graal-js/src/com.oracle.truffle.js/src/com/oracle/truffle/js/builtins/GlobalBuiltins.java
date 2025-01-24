@@ -1087,7 +1087,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "!isShortStringInt10(input, radix0)")
         protected static Object parseIntGeneric(Object input, Object radix0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached JSToStringNode toStringNode,
                         @Cached @Shared JSToInt32Node toInt32,
                         @Cached @Shared InlinedBranchProfile needsNaN,

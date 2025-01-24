@@ -128,7 +128,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization
     protected Object[] toArray(JSObject obj, int arrayLengthLimit,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("create(getJSContext())") JSGetLengthNode getLengthNode,
                     @Cached("create(getJSContext())") ReadElementNode readNode,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
@@ -178,7 +178,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isForeignObject(obj)"}, limit = "InteropLibraryLimit")
     protected Object[] doForeignObject(Object obj, int arrayLengthLimit,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached ImportValueNode foreignConvertNode) {

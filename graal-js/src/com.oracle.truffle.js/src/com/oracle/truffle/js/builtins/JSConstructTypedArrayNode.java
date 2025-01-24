@@ -355,7 +355,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isUndefined(newTarget)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
     protected JSDynamicObject doObject(JSDynamicObject newTarget, JSObject object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                     @Cached @Exclusive InlinedConditionProfile isIterableProfile,
                     @Cached("createWriteOwn()") @Shared WriteElementNode writeOwnNode,
@@ -401,7 +401,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @InliningCutoff
     @Specialization(guards = {"!isUndefined(newTarget)", "isForeignObject(object)"}, limit = "InteropLibraryLimit")
     protected JSDynamicObject doForeignObject(JSDynamicObject newTarget, Object object, Object byteOffset0, Object length0,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("createWriteOwn()") @Shared WriteElementNode writeOwnNode,
                     @Cached ImportValueNode importValue,

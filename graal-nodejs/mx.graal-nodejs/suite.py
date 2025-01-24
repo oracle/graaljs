@@ -93,7 +93,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "spotbugs" : "true",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "com.oracle.truffle.trufflenode.test" : {
@@ -137,9 +137,7 @@ suite = {
         "sdk:JLINE3",
       ],
       "description" : "Graal Node.js",
-      "maven" : {
-        "artifactId" : "graal-nodejs",
-      }
+      "maven" : False
     },
     "TRUFFLENODE_GRAALVM_SUPPORT" : {
       "native" : True,
@@ -202,9 +200,7 @@ suite = {
         "TRUFFLENODE"
       ],
       "description" : "Graal Node.js testing",
-      "maven" : {
-        "artifactId" : "graal-nodejs-test",
-      },
+      "maven" : False,
       "useModulePath": True,
     },
   },

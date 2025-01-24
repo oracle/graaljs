@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -347,12 +347,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    private abstract static class IteratorFromGeneratorNode<T extends IteratorArgs> extends IteratorMethodWithCallableNode {
+    protected abstract static class IteratorFromGeneratorNode<T extends IteratorArgs> extends IteratorMethodWithCallableNode {
 
         private final BuiltinFunctionKey nextKey;
         private final Function<JSContext, JSFunctionData> nextFactory;
 
-        IteratorFromGeneratorNode(JSContext context, JSBuiltin builtin, BuiltinFunctionKey nextKey, Function<JSContext, JSFunctionData> nextFactory) {
+        protected IteratorFromGeneratorNode(JSContext context, JSBuiltin builtin, BuiltinFunctionKey nextKey, Function<JSContext, JSFunctionData> nextFactory) {
             super(context, builtin);
 
             this.nextKey = nextKey;
@@ -370,7 +370,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             protected final JSContext context;
 
-            public IteratorFromGeneratorImplNode(JSContext context) {
+            protected IteratorFromGeneratorImplNode(JSContext context) {
                 this.context = context;
 
                 this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
@@ -396,9 +396,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return createResultContinue(frame, thisObj, iteratorValue(next));
             }
 
-            protected final Object createResultContinue(VirtualFrame frame, JSIteratorHelperObject thisObj, Object value) {
+            protected static Object generatorYield(JSIteratorHelperObject thisObj, Object result) {
                 thisObj.setGeneratorState(JSFunction.GeneratorState.SuspendedYield);
-                return createIterResultObjectNode.execute(frame, value, false);
+                return result;
+            }
+
+            protected final Object createResultContinue(VirtualFrame frame, JSIteratorHelperObject thisObj, Object value) {
+                return generatorYield(thisObj, createIterResultObjectNode.execute(frame, value, false));
             }
 
             protected final Object createResultDone(VirtualFrame frame, JSIteratorHelperObject thisObj) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.polyglot.io.ByteSequence;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -75,6 +77,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.AssumedValue;
@@ -118,7 +121,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNod
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructShadowRealmNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalCalendarNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalDurationNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalInstantNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateNodeGen;
@@ -126,7 +128,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTempor
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainMonthDayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainYearMonthNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalTimeZoneNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalZonedDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
@@ -141,6 +142,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFu
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
 import com.oracle.truffle.js.builtins.helper.CanBeHeldWeaklyNode;
 import com.oracle.truffle.js.builtins.json.JSONBuiltins;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -191,7 +193,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
@@ -275,7 +277,6 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -303,7 +304,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.LRUCache;
-import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -402,11 +402,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         PlainDate(3),
         PlainDateTime(3),
         Duration(0),
-        Calendar(1),
         PlainYearMonth(2),
         PlainMonthDay(2),
         Instant(1),
-        TimeZone(1),
         ZonedDateTime(2),
 
         // --- not new.target-capable below ---
@@ -446,7 +444,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 case AsyncFunction, SharedArrayBuffer -> JSConfig.ECMAScript2017;
                 case AsyncGeneratorFunction -> JSConfig.ECMAScript2018;
                 case WeakRef, FinalizationRegistry -> JSConfig.ECMAScript2021;
-                case PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, TimeZone, ZonedDateTime -> JSConfig.StagingECMAScriptVersion;
+                case PlainTime, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, ZonedDateTime -> JSConfig.StagingECMAScriptVersion;
                 case Iterator, AsyncIterator -> JSConfig.StagingECMAScriptVersion;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
@@ -681,13 +679,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case Calendar:
-                if (construct) {
-                    return ConstructTemporalCalendarNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
-
-                } else {
-                    return createCallRequiresNew(context, builtin);
-                }
             case PlainYearMonth:
                 if (construct) {
                     return ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
@@ -706,13 +697,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case TimeZone:
-                if (construct) {
-                    return ConstructTemporalTimeZoneNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
-                } else {
-                    return createCallRequiresNew(context, builtin);
-                }
-
             case ZonedDateTime:
                 if (construct) {
                     return ConstructTemporalZonedDateTimeNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(4).createArgumentNodes(context));
@@ -878,7 +862,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"isOneForeignArg(args)"})
         protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached("create(getContext())") @Shared ArrayCreateNode arrayCreateNode,
                         @Cached @Exclusive InlinedConditionProfile isNumber,
@@ -1163,7 +1147,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int y = toIntegerNode.executeIntOrThrow(isoYear);
             final int m = toIntegerNode.executeIntOrThrow(isoMonth);
             final int d = toIntegerNode.executeIntOrThrow(isoDay);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainDate.create(getContext(), realm, proto, y, m, d, calendar, this, errorBranch);
@@ -1228,7 +1212,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
             final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
             final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainDateTime.create(getContext(), realm, proto,
@@ -1275,35 +1259,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
-    public abstract static class ConstructTemporalCalendar extends ConstructWithNewTargetNode {
-
-        protected ConstructTemporalCalendar(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
-            super(context, builtin, isNewTargetCase);
-        }
-
-        @Specialization
-        protected JSDynamicObject constructTemporalCalendar(JSDynamicObject newTarget, Object arg,
-                        @Cached InlinedBranchProfile errorBranch) {
-            if (arg instanceof TruffleString id) {
-                JSRealm realm = getRealm();
-                JSDynamicObject proto = getPrototype(realm, newTarget);
-                if (!TemporalUtil.isBuiltinCalendar(id)) {
-                    errorBranch.enter(this);
-                    throw TemporalErrors.createRangeErrorCalendarNotSupported();
-                }
-                return JSTemporalCalendar.create(getContext(), realm, proto, id);
-            } else {
-                errorBranch.enter(this);
-                throw Errors.createTypeErrorNotAString(arg);
-            }
-        }
-
-        @Override
-        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getTemporalCalendarPrototype();
-        }
-    }
-
     public abstract static class ConstructTemporalPlainYearMonth extends ConstructWithNewTargetNode {
 
         protected ConstructTemporalPlainYearMonth(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
@@ -1323,7 +1278,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             int y = toInteger.executeIntOrThrow(isoYear);
             int m = toInteger.executeIntOrThrow(isoMonth);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             int ref = toInteger.executeIntOrThrow(referenceISODay);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
@@ -1354,7 +1309,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             int m = toInt.executeIntOrThrow(isoMonth);
             int d = toInt.executeIntOrThrow(isoDay);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             int ref = toInt.executeIntOrThrow(referenceISOYear); // non-spec
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
@@ -1392,41 +1347,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
-    public abstract static class ConstructTemporalTimeZone extends ConstructWithNewTargetNode {
-
-        protected ConstructTemporalTimeZone(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
-            super(context, builtin, isNewTargetCase);
-        }
-
-        @Specialization
-        protected JSDynamicObject constructTemporalTimeZone(JSDynamicObject newTarget, Object identifier,
-                        @Cached JSToStringNode toStringNode) {
-            TruffleString id = toStringNode.executeString(identifier);
-            return constructTemporalTimeZoneIntl(newTarget, id);
-        }
-
-        @TruffleBoundary
-        private JSDynamicObject constructTemporalTimeZoneIntl(JSDynamicObject newTarget, TruffleString idParam) {
-            TruffleString id = idParam;
-            boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(id);
-            if (!canParse) {
-                Pair<TruffleString, TruffleString> timeZoneIdentifierRecord = TemporalUtil.getAvailableNamedTimeZoneIdentifier(id);
-                if (timeZoneIdentifierRecord == null) {
-                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
-                }
-                id = timeZoneIdentifierRecord.getFirst();
-            }
-            JSRealm realm = getRealm();
-            JSDynamicObject proto = getPrototype(realm, newTarget);
-            return TemporalUtil.createTemporalTimeZone(getContext(), realm, proto, id);
-        }
-
-        @Override
-        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getTemporalTimeZonePrototype();
-        }
-    }
-
     public abstract static class ConstructTemporalZonedDateTime extends ConstructWithNewTargetNode {
 
         protected ConstructTemporalZonedDateTime(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
@@ -1435,7 +1355,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalZonedDateTime(JSDynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
-                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
+                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
                         @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached JSToBigIntNode toBigIntNode,
                         @Cached InlinedBranchProfile errorBranch) {
@@ -1444,8 +1364,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            Object timeZone = toTimeZoneSlotValue.execute(timeZoneLike);
-            Object calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString timeZone = toTimeZoneIdentifier.execute(timeZoneLike);
+            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
 
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
@@ -1477,7 +1397,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSObject constructRegExp(JSDynamicObject newTarget, Object pattern, Object flags,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
                         @Cached InlinedBranchProfile regexpObject,
                         @Cached InlinedBranchProfile regexpMatcherObject,
@@ -1946,7 +1866,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "InteropLibraryLimit")
         protected Object constructObjectJSObject(@SuppressWarnings("unused") JSDynamicObject newTarget, Object[] arguments,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached JSToObjectNode toObjectNode,
                         @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,
                         @Cached InlinedConditionProfile isNull) {
@@ -2770,7 +2690,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isNullOrUndefined(iterable)")
         protected final JSObject constructMapFromIterable(JSDynamicObject newTarget, Object iterable,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached IsObjectNode isObjectNode,
                         @Cached IsCallableNode isCallableNode,
@@ -2834,7 +2754,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isNullOrUndefined(iterable)")
         protected JSObject constructSetFromIterable(JSDynamicObject newTarget, Object iterable,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached IsCallableNode isCallableNode,
                         @Cached(inline = true) GetIteratorNode getIteratorNode,
                         @Cached InlinedBranchProfile errorBranch) {
@@ -3131,14 +3051,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSObject constructModule(JSDynamicObject newTarget, Object bytes) {
-            Object byteSource = exportByteSourceNode.execute(bytes);
+            ByteSequence byteSource = exportByteSourceNode.execute(bytes);
             JSRealm realm = getRealm();
+            Source wasmSource = WebAssemblyBuiltins.buildSource(byteSource);
             Object wasmModule;
             try {
-                Object decode = realm.getWASMModuleDecode();
-                wasmModule = decodeModuleLib.execute(decode, byteSource);
-            } catch (InteropException ex) {
-                throw Errors.shouldNotReachHere(ex);
+                wasmModule = WebAssemblyBuiltins.moduleDecode(realm, wasmSource);
             } catch (AbstractTruffleException tex) {
                 try {
                     ExceptionType type = InteropLibrary.getUncached(tex).getExceptionType(tex);
@@ -3151,7 +3069,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw tex;
             }
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSWebAssemblyModule.create(getContext(), realm, proto, wasmModule);
+            return JSWebAssemblyModule.create(getContext(), realm, proto, wasmModule, wasmSource);
         }
 
         @Override

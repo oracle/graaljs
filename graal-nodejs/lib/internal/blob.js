@@ -6,12 +6,14 @@ const {
   MathMin,
   ObjectDefineProperties,
   ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  PromisePrototypeThen,
   PromiseReject,
-  ReflectConstruct,
+  PromiseWithResolvers,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
-  StringPrototypeToLowerCase,
   StringPrototypeSplit,
+  StringPrototypeToLowerCase,
   Symbol,
   SymbolIterator,
   SymbolToStringTag,
@@ -35,7 +37,7 @@ const {
 const { URL } = require('internal/url');
 
 const {
-  makeTransferable,
+  markTransferMode,
   kClone,
   kDeserialize,
 } = require('internal/worker/js_transferable');
@@ -46,21 +48,21 @@ const {
 } = require('internal/util/types');
 
 const {
-  createDeferredPromise,
   customInspectSymbol: kInspect,
   kEmptyObject,
   kEnumerableProperty,
   lazyDOMException,
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
+const { convertToInt } = require('internal/webidl');
 
 const {
   codes: {
+    ERR_BUFFER_TOO_LARGE,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-    ERR_INVALID_THIS,
     ERR_INVALID_STATE,
-    ERR_BUFFER_TOO_LARGE,
+    ERR_INVALID_THIS,
   },
 } = require('internal/errors');
 
@@ -138,6 +140,8 @@ class Blob {
    * @constructs {Blob}
    */
   constructor(sources = [], options) {
+    markTransferMode(this, true, false);
+
     if (sources === null ||
         typeof sources[SymbolIterator] !== 'function' ||
         typeof sources === 'string') {
@@ -169,9 +173,6 @@ class Blob {
     type = `${type}`;
     this[kType] = RegExpPrototypeExec(disallowedTypeCharacters, type) !== null ?
       '' : StringPrototypeToLowerCase(type);
-
-    // eslint-disable-next-line no-constructor-return
-    return makeTransferable(this);
   }
 
   [kInspect](depth, options) {
@@ -200,7 +201,7 @@ class Blob {
     const length = this[kLength];
     return {
       data: { handle, type, length },
-      deserializeInfo: 'internal/blob:ClonedBlob',
+      deserializeInfo: 'internal/blob:Blob',
     };
   }
 
@@ -239,6 +240,12 @@ class Blob {
   slice(start = 0, end = this[kLength], contentType = '') {
     if (!isBlob(this))
       throw new ERR_INVALID_THIS('Blob');
+
+    // Coerce values to int
+    const opts = { __proto__: null, signed: true };
+    start = convertToInt('start', start, 64, opts);
+    end = convertToInt('end', end, 64, opts);
+
     if (start < 0) {
       start = MathMax(this[kLength] + start, 0);
     } else {
@@ -273,43 +280,33 @@ class Blob {
     if (!isBlob(this))
       return PromiseReject(new ERR_INVALID_THIS('Blob'));
 
-    const { promise, resolve, reject } = createDeferredPromise();
-    const reader = this[kHandle].getReader();
-    const buffers = [];
-    const readNext = () => {
-      reader.pull((status, buffer) => {
-        if (status === 0) {
-          // EOS, concat & resolve
-          // buffer should be undefined here
-          resolve(concat(buffers));
-          return;
-        } else if (status < 0) {
-          // The read could fail for many different reasons when reading
-          // from a non-memory resident blob part (e.g. file-backed blob).
-          // The error details the system error code.
-          const error = lazyDOMException('The blob could not be read', 'NotReadableError');
-          reject(error);
-          return;
-        }
-        if (buffer !== undefined)
-          buffers.push(buffer);
-        queueMicrotask(() => readNext());
-      });
-    };
-    readNext();
-    return promise;
+    return arrayBuffer(this);
   }
 
   /**
    * @returns {Promise<string>}
    */
-  async text() {
+  text() {
     if (!isBlob(this))
-      throw new ERR_INVALID_THIS('Blob');
+      return PromiseReject(new ERR_INVALID_THIS('Blob'));
 
     dec ??= new TextDecoder();
 
-    return dec.decode(await this.arrayBuffer());
+    return PromisePrototypeThen(
+      arrayBuffer(this),
+      (buffer) => dec.decode(buffer));
+  }
+
+  /**
+   * @returns {Promise<Uint8Array>}
+   */
+  bytes() {
+    if (!isBlob(this))
+      return PromiseReject(new ERR_INVALID_THIS('Blob'));
+
+    return PromisePrototypeThen(
+      arrayBuffer(this),
+      (buffer) => new Uint8Array(buffer));
   }
 
   /**
@@ -328,7 +325,7 @@ class Blob {
         this.pendingPulls = [];
       },
       pull(c) {
-        const { promise, resolve, reject } = createDeferredPromise();
+        const { promise, resolve, reject } = PromiseWithResolvers();
         this.pendingPulls.push({ resolve, reject });
         const readNext = () => {
           reader.pull((status, buffer) => {
@@ -395,17 +392,23 @@ class Blob {
   }
 }
 
-function ClonedBlob() {
-  return makeTransferable(ReflectConstruct(function() {}, [], Blob));
+function TransferableBlob(handle, length, type = '') {
+  markTransferMode(this, true, false);
+  this[kHandle] = handle;
+  this[kType] = type;
+  this[kLength] = length;
 }
-ClonedBlob.prototype[kDeserialize] = () => {};
+
+ObjectSetPrototypeOf(TransferableBlob.prototype, Blob.prototype);
+ObjectSetPrototypeOf(TransferableBlob, Blob);
 
 function createBlob(handle, length, type = '') {
-  return makeTransferable(ReflectConstruct(function() {
-    this[kHandle] = handle;
-    this[kType] = type;
-    this[kLength] = length;
-  }, [], Blob));
+  const transferredBlob = new TransferableBlob(handle, length, type);
+
+  // Fix issues like: https://github.com/nodejs/node/pull/49730#discussion_r1331720053
+  transferredBlob.constructor = Blob;
+
+  return transferredBlob;
 }
 
 ObjectDefineProperty(Blob.prototype, SymbolToStringTag, {
@@ -421,6 +424,7 @@ ObjectDefineProperties(Blob.prototype, {
   stream: kEnumerableProperty,
   text: kEnumerableProperty,
   arrayBuffer: kEnumerableProperty,
+  bytes: kEnumerableProperty,
 });
 
 function resolveObjectURL(url) {
@@ -472,9 +476,36 @@ function createBlobFromFilePath(path, options) {
   return res;
 }
 
+function arrayBuffer(blob) {
+  const { promise, resolve, reject } = PromiseWithResolvers();
+  const reader = blob[kHandle].getReader();
+  const buffers = [];
+  const readNext = () => {
+    reader.pull((status, buffer) => {
+      if (status === 0) {
+        // EOS, concat & resolve
+        // buffer should be undefined here
+        resolve(concat(buffers));
+        return;
+      } else if (status < 0) {
+        // The read could fail for many different reasons when reading
+        // from a non-memory resident blob part (e.g. file-backed blob).
+        // The error details the system error code.
+        const error = lazyDOMException('The blob could not be read', 'NotReadableError');
+        reject(error);
+        return;
+      }
+      if (buffer !== undefined)
+        buffers.push(buffer);
+      queueMicrotask(() => readNext());
+    });
+  };
+  readNext();
+  return promise;
+}
+
 module.exports = {
   Blob,
-  ClonedBlob,
   createBlob,
   createBlobFromFilePath,
   isBlob,

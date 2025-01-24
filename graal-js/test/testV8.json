@@ -714,10 +714,6 @@
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/harmony/regexp-modifiers.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
-  }, {
     "filePath" : "mjsunit/harmony/regexp-property-special.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
@@ -1081,6 +1077,10 @@
     "filePath" : "mjsunit/regress/regress-1359230.js",
     "status" : "FAIL",
     "comment" : "Uses d8.serializer.[de]serialize"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1385368.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
   }, {
     "filePath" : "mjsunit/regress/regress-1394663.js",
     "status" : "FAIL",
@@ -1502,6 +1502,10 @@
     "filePath" : "mjsunit/regress/regress-crbug-1339722.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1360736.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/pull/4325"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1381404.js",
     "status" : "FAIL",
@@ -4233,17 +4237,85 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-11-28"
   }, {
+    "filePath" : "mjsunit/temporal/calendar-date-add.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-date-from-fields.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-date-until.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-day-of-week.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-day-of-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-day.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-days-in-month.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-days-in-week.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-days-in-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
     "filePath" : "mjsunit/temporal/calendar-fields.js",
     "status" : "FAIL",
     "comment" : "Passes fields that are no longer valid to Calendar.prototype.fields()."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-from.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-in-leap-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-merge-fields.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-month-code.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
   }, {
     "filePath" : "mjsunit/temporal/calendar-month-day-from-fields.js",
     "status" : "FAIL",
     "comment" : "Obsolete/off-spec test."
   }, {
-    "filePath" : "mjsunit/temporal/date-totemporalinstant.js",
+    "filePath" : "mjsunit/temporal/calendar-month.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-months-in-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-year-month-from-fields.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
+    "filePath" : "mjsunit/temporal/calendar-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
   }, {
     "filePath" : "mjsunit/temporal/duration-from.js",
     "status" : "FAIL",
@@ -4473,6 +4545,10 @@
     "status" : "FAIL",
     "comment" : "Obsolete/off-spec test."
   }, {
+    "filePath" : "mjsunit/temporal/time-zone-constructor.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete Temporal test."
+  }, {
     "filePath" : "mjsunit/test-builtins-setup.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -4551,6 +4627,10 @@
     "status" : "SKIP",
     "comment" : "Long running test"
   }, {
+    "filePath" : "mjsunit/typedarray-growablesharedarraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/pull/4325"
+  }, {
     "filePath" : "mjsunit/typedarray-resizablearraybuffer-array-methods.js",
     "status" : "SKIP",
     "comment" : "Long running test"
@@ -4558,6 +4638,10 @@
     "filePath" : "mjsunit/typedarray-resizablearraybuffer-atomics.js",
     "status" : "FAIL",
     "comment" : "Expects different error message and error type (off-spec, TypeError x RangeError)"
+  }, {
+    "filePath" : "mjsunit/typedarray-resizablearraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/pull/4325"
   }, {
     "filePath" : "mjsunit/tzoffset-seoul-noi18n.js",
     "status" : "FAIL",

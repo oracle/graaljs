@@ -82,10 +82,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             destOffset = 0;
         } else {
             destOffset = toIntNode.executeInt(destOffset0);
-            if (destOffset < 0) {
-                errorBranch.enter();
-                throw indexOutOfRange();
-            } else if (destOffset > bufferLen) {
+            if (destOffset < 0 || destOffset > bufferLen) {
                 errorBranch.enter();
                 throw offsetOutOfBounds();
             }
@@ -97,7 +94,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             maxLength = toIntNode.executeInt(bytes);
             if (maxLength < 0) {
                 errorBranch.enter();
-                throw indexOutOfRange();
+                throw lengthOutOfBounds();
             }
             maxLength = Math.min(bufferLen - destOffset, maxLength);
         }

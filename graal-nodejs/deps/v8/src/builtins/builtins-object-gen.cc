@@ -4,8 +4,8 @@
 
 #include "src/builtins/builtins-object-gen.h"
 
+#include "src/builtins/builtins-inl.h"
 #include "src/builtins/builtins-utils-gen.h"
-#include "src/builtins/builtins.h"
 #include "src/common/globals.h"
 #include "src/heap/factory-inl.h"
 #include "src/ic/accessor-assembler.h"
@@ -56,10 +56,10 @@ void ObjectBuiltinsAssembler::ReturnToStringFormat(TNode<Context> context,
   TNode<String> lhs = StringConstant("[object ");
   TNode<String> rhs = StringConstant("]");
 
-  Callable callable = CodeFactory::StringAdd(isolate(), STRING_ADD_CHECK_NONE);
+  Builtin builtin = Builtins::StringAdd(STRING_ADD_CHECK_NONE);
 
-  Return(CallStub(callable, context, CallStub(callable, context, lhs, string),
-                  rhs));
+  Return(CallBuiltin(builtin, context,
+                     CallBuiltin(builtin, context, lhs, string), rhs));
 }
 
 TNode<JSObject> ObjectBuiltinsAssembler::ConstructAccessorDescriptor(
@@ -216,8 +216,7 @@ TNode<JSArray> ObjectEntriesValuesBuiltinsAssembler::FastGetOwnValuesOrEntries(
   {
     GotoIf(WordEqual(object_enum_length, IntPtrConstant(0)), if_no_properties);
     TNode<FixedArray> values_or_entries =
-        CAST(AllocateFixedArray(PACKED_ELEMENTS, object_enum_length,
-                                AllocationFlag::kAllowLargeObjectAllocation));
+        CAST(AllocateFixedArray(PACKED_ELEMENTS, object_enum_length));
 
     // If in case we have enum_cache,
     // we can't detect accessor of object until loop through descriptors.
@@ -954,59 +953,13 @@ TF_BUILTIN(ObjectToString, ObjectBuiltinsAssembler) {
 
   BIND(&checkstringtag);
   {
-    // Check if all relevant maps (including the prototype maps) don't
-    // have any interesting symbols (i.e. that none of them have the
-    // @@toStringTag property).
-    Label loop(this, {&var_holder, &var_holder_map}), return_default(this),
-        return_generic(this, Label::kDeferred);
-    Goto(&loop);
-    BIND(&loop);
-    {
-      Label interesting_symbols(this);
-      TNode<HeapObject> holder = var_holder.value();
-      TNode<Map> holder_map = var_holder_map.value();
-      GotoIf(IsNull(holder), &return_default);
-      TNode<Uint32T> holder_bit_field3 = LoadMapBitField3(holder_map);
-      GotoIf(IsSetWord32<Map::Bits3::MayHaveInterestingSymbolsBit>(
-                 holder_bit_field3),
-             &interesting_symbols);
-      var_holder = LoadMapPrototype(holder_map);
-      var_holder_map = LoadMap(var_holder.value());
-      Goto(&loop);
-      BIND(&interesting_symbols);
-      {
-        // Check flags for dictionary objects.
-        GotoIf(IsClearWord32<Map::Bits3::IsDictionaryMapBit>(holder_bit_field3),
-               &return_generic);
-        GotoIf(
-            InstanceTypeEqual(LoadMapInstanceType(holder_map), JS_PROXY_TYPE),
-            &if_proxy);
-        TNode<Object> properties =
-            LoadObjectField(holder, JSObject::kPropertiesOrHashOffset);
-        CSA_DCHECK(this, TaggedIsNotSmi(properties));
-        // TODO(pthier): Support swiss dictionaries.
-        if constexpr (!V8_ENABLE_SWISS_NAME_DICTIONARY_BOOL) {
-          CSA_DCHECK(this, IsNameDictionary(CAST(properties)));
-          TNode<Smi> flags =
-              GetNameDictionaryFlags<NameDictionary>(CAST(properties));
-          GotoIf(IsSetSmi(flags,
-                          NameDictionary::MayHaveInterestingSymbolsBit::kMask),
-                 &return_generic);
-          var_holder = LoadMapPrototype(holder_map);
-          var_holder_map = LoadMap(var_holder.value());
-        }
-        Goto(&loop);
-      }
-    }
-
-    BIND(&return_generic);
-    {
-      TNode<Object> tag = GetProperty(context, ToObject(context, receiver),
-                                      ToStringTagSymbolConstant());
-      GotoIf(TaggedIsSmi(tag), &return_default);
-      GotoIfNot(IsString(CAST(tag)), &return_default);
-      ReturnToStringFormat(context, CAST(tag));
-    }
+    Label return_default(this);
+    TNode<Object> tag =
+        GetInterestingProperty(context, receiver, &var_holder, &var_holder_map,
+                               ToStringTagSymbolConstant(), &return_default);
+    GotoIf(TaggedIsSmi(tag), &return_default);
+    GotoIfNot(IsString(CAST(tag)), &return_default);
+    ReturnToStringFormat(context, CAST(tag));
 
     BIND(&return_default);
     Return(var_default.value());
@@ -1119,13 +1072,8 @@ TF_BUILTIN(ObjectCreate, ObjectBuiltinsAssembler) {
     BIND(&null_proto);
     {
       map = LoadSlowObjectWithNullPrototypeMap(native_context);
-      if constexpr (V8_ENABLE_SWISS_NAME_DICTIONARY_BOOL) {
-        new_properties =
-            AllocateSwissNameDictionary(SwissNameDictionary::kInitialCapacity);
-      } else {
-        new_properties =
-            AllocateNameDictionary(NameDictionary::kInitialCapacity);
-      }
+      new_properties =
+          AllocatePropertyDictionary(PropertyDictionary::kInitialCapacity);
       Goto(&instantiate_map);
     }
 
@@ -1139,9 +1087,15 @@ TF_BUILTIN(ObjectCreate, ObjectBuiltinsAssembler) {
       TNode<PrototypeInfo> prototype_info =
           LoadMapPrototypeInfo(LoadMap(CAST(prototype)), &call_runtime);
       Comment("Load ObjectCreateMap from PrototypeInfo");
-      TNode<MaybeObject> maybe_map = LoadMaybeWeakObjectField(
-          prototype_info, PrototypeInfo::kObjectCreateMapOffset);
-      GotoIf(TaggedEqual(maybe_map, UndefinedConstant()), &call_runtime);
+      TNode<HeapObject> derived_maps = CAST(
+          LoadObjectField(prototype_info, PrototypeInfo::kDerivedMapsOffset));
+      // In case it exists, derived maps is a weak array list where the first
+      // element is the object create map.
+      GotoIf(TaggedEqual(derived_maps, UndefinedConstant()), &call_runtime);
+      CSA_DCHECK(this, InstanceTypeEqual(LoadInstanceType(derived_maps),
+                                         WEAK_ARRAY_LIST_TYPE));
+      TNode<MaybeObject> maybe_map = UncheckedCast<MaybeObject>(LoadObjectField(
+          derived_maps, IntPtrConstant(WeakArrayList::kHeaderSize)));
       map = CAST(GetHeapObjectAssumeWeak(maybe_map, &call_runtime));
       Goto(&instantiate_map);
     }
@@ -1179,7 +1133,7 @@ TF_BUILTIN(ObjectIs, ObjectBuiltinsAssembler) {
 
 TF_BUILTIN(CreateIterResultObject, ObjectBuiltinsAssembler) {
   const auto value = Parameter<Object>(Descriptor::kValue);
-  const auto done = Parameter<Oddball>(Descriptor::kDone);
+  const auto done = Parameter<Boolean>(Descriptor::kDone);
   const auto context = Parameter<Context>(Descriptor::kContext);
 
   const TNode<NativeContext> native_context = LoadNativeContext(context);
@@ -1267,8 +1221,8 @@ TF_BUILTIN(CreateGeneratorObject, ObjectBuiltinsAssembler) {
   TNode<IntPtrT> size =
       IntPtrAdd(WordSar(frame_size, IntPtrConstant(kTaggedSizeLog2)),
                 formal_parameter_count);
-  TNode<FixedArrayBase> parameters_and_registers = AllocateFixedArray(
-      HOLEY_ELEMENTS, size, AllocationFlag::kAllowLargeObjectAllocation);
+  TNode<FixedArrayBase> parameters_and_registers =
+      AllocateFixedArray(HOLEY_ELEMENTS, size);
   FillFixedArrayWithValue(HOLEY_ELEMENTS, parameters_and_registers,
                           IntPtrConstant(0), size, RootIndex::kUndefinedValue);
   // TODO(cbruni): support start_offset to avoid double initialization.
@@ -1403,8 +1357,8 @@ void ObjectBuiltinsAssembler::AddToDictionaryIf(
   Label done(this);
   GotoIfNot(condition, &done);
 
-  Add<PropertyDictionary>(CAST(name_dictionary), HeapConstant(name), value,
-                          bailout);
+  AddToDictionary<PropertyDictionary>(CAST(name_dictionary),
+                                      HeapConstantNoHole(name), value, bailout);
   Goto(&done);
 
   BIND(&done);
@@ -1460,10 +1414,7 @@ TNode<JSObject> ObjectBuiltinsAssembler::FromPropertyDescriptor(
         native_context, Context::SLOW_OBJECT_WITH_OBJECT_PROTOTYPE_MAP));
     // We want to preallocate the slots for value, writable, get, set,
     // enumerable and configurable - a total of 6
-    TNode<HeapObject> properties =
-        V8_ENABLE_SWISS_NAME_DICTIONARY_BOOL
-            ? TNode<HeapObject>(AllocateSwissNameDictionary(6))
-            : AllocateNameDictionary(6);
+    TNode<HeapObject> properties = AllocatePropertyDictionary(6);
     TNode<JSObject> js_desc = AllocateJSObjectFromMap(map, properties);
 
     Label bailout(this, Label::kDeferred);

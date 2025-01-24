@@ -3,6 +3,7 @@
 const {
   ObjectDefineProperties,
   PromiseResolve,
+  PromiseWithResolvers,
   ReflectConstruct,
 } = primordials;
 
@@ -28,14 +29,10 @@ const {
   writableStreamDefaultControllerErrorIfNeeded,
 } = require('internal/webstreams/writablestream');
 
-const {
-  createDeferredPromise,
-} = require('internal/util');
-
 const assert = require('internal/assert');
 
 const {
-  makeTransferable,
+  markTransferMode,
   kClone,
   kDeserialize,
 } = require('internal/worker/js_transferable');
@@ -49,13 +46,12 @@ const {
 class CloneableDOMException extends DOMException {
   constructor(message, name) {
     super(message, name);
+    markTransferMode(this, true, false);
     this[kDeserialize]({
       message: this.message,
       name: this.name,
       code: this.code,
     });
-    // eslint-disable-next-line no-constructor-return
-    return makeTransferable(this);
   }
 
   [kClone]() {
@@ -95,11 +91,10 @@ class CloneableDOMException extends DOMException {
 }
 
 function InternalCloneableDOMException() {
-  return makeTransferable(
-    ReflectConstruct(
-      CloneableDOMException,
-      [],
-      DOMException));
+  return ReflectConstruct(
+    CloneableDOMException,
+    [],
+    DOMException);
 }
 InternalCloneableDOMException[kDeserialize] = () => {};
 
@@ -183,7 +178,7 @@ class CrossRealmTransformWritableSink {
     this[kState] = {
       port,
       controller: undefined,
-      backpressurePromise: createDeferredPromise(),
+      backpressurePromise: PromiseWithResolvers(),
       unref,
     };
 
@@ -241,7 +236,7 @@ class CrossRealmTransformWritableSink {
       };
     }
     await this[kState].backpressurePromise.promise;
-    this[kState].backpressurePromise = createDeferredPromise();
+    this[kState].backpressurePromise = PromiseWithResolvers();
     try {
       this[kState].port.postMessage({ type: 'chunk', value: chunk });
     } catch (error) {
