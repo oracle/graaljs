@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,50 +40,52 @@
  */
 package com.oracle.truffle.js.nodes.module;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * Returns the {@code import.meta} object of a module, initializing it if necessary.
+ * Create the {@code import.meta} object of a module.
  */
-public abstract class ImportMetaNode extends JavaScriptNode {
+@ImportStatic({Strings.class})
+public abstract class CreateImportMetaNode extends JavaScriptBaseNode {
 
-    @Child @Executed JavaScriptNode moduleNode;
-
-    ImportMetaNode(JavaScriptNode moduleNode) {
-        this.moduleNode = moduleNode;
+    protected CreateImportMetaNode() {
     }
 
     @NeverDefault
-    public static JavaScriptNode create(JavaScriptNode moduleNode) {
-        return ImportMetaNodeGen.create(moduleNode);
+    public static CreateImportMetaNode create() {
+        return CreateImportMetaNodeGen.create();
     }
 
-    @Specialization(guards = {"importMeta != null"})
-    protected static JSObject getImportMeta(@SuppressWarnings("unused") JSModuleRecord module,
-                    @Bind("module.getImportMetaOrNull()") JSObject importMeta) {
-        return importMeta;
+    public abstract JSObject execute(JSModuleRecord module);
+
+    @Specialization(guards = {"context.hasImportMetaInitializerBeenSet()"})
+    protected static JSObject doCustomInitializer(JSModuleRecord module,
+                    @Bind("getJSContext()") JSContext context) {
+        JSObject metaObj = JSOrdinary.createWithNullPrototype(context);
+        context.notifyImportMetaInitializer(metaObj, module);
+        return metaObj;
     }
 
     @Fallback
-    protected static JSObject createImportMeta(Object module,
-                    @Cached CreateImportMetaNode createImportMetaNode) {
-        return ((JSModuleRecord) module).getImportMeta(createImportMetaNode);
+    protected static JSObject doDefaultInitializer(JSModuleRecord module,
+                    @Bind("getJSContext()") JSContext context,
+                    @Cached(parameters = {"context", "URL"}) CreateDataPropertyNode setURINode,
+                    @Cached TruffleString.FromJavaStringNode fromJavaString) {
+        JSObject metaObj = JSOrdinary.createWithNullPrototype(context);
+        setURINode.executeVoid(metaObj, Strings.fromJavaString(fromJavaString, module.getURL()));
+        return metaObj;
     }
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(moduleNode, materializedTags));
-    }
-
 }
