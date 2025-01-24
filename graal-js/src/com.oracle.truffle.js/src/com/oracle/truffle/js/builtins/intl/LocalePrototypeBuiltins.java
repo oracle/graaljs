@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,7 @@ import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLoca
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.InitializeLocaleNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -350,9 +351,10 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        public Object doLocale(JSLocaleObject localeObject) {
-            int fw = localeObject.getInternalState().getFirstDayOfWeek();
-            return (fw == -1) ? Undefined.instance : fw;
+        public Object doLocale(JSLocaleObject localeObject,
+                        @Cached TruffleString.FromJavaStringNode fromJavaScriptNode) {
+            String fw = localeObject.getInternalState().getFirstDayOfWeek();
+            return (fw == null) ? Undefined.instance : Strings.fromJavaString(fromJavaScriptNode, fw);
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -662,7 +664,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached InlinedBranchProfile growProfile) {
             Calendar.WeekData weekData = weekData(localeObject);
 
-            int fw = localeObject.getInternalState().getFirstDayOfWeek();
+            int fw = InitializeLocaleNode.stringToWeekdayValue(localeObject.getInternalState().getFirstDayOfWeek());
             int firstDay;
             if (fw == -1) {
                 firstDay = calendarToECMAScriptDay(weekData.firstDayOfWeek);

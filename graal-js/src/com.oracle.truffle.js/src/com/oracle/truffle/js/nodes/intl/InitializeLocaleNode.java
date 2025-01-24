@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.MissingResourceException;
 
@@ -69,10 +68,6 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     private static final String SAT = "sat";
     private static final String SUN = "sun";
 
-    private static final List<String> FIRST_DAY_OF_WEEK_OPTION_VALUES = List.of(
-                    MON, TUE, WED, THU, FRI, SAT, SUN,
-                    "0", "1", "2", "3", "4", "5", "6", "7");
-
     @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
     @Child GetStringOptionNode getLanguageOption;
     @Child GetStringOptionNode getScriptOption;
@@ -93,7 +88,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         this.getRegionOption = GetStringOptionNode.create(context, IntlUtil.KEY_REGION, null, null);
         this.getCalendarOption = GetStringOptionNode.create(context, IntlUtil.KEY_CALENDAR, null, null);
         this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.KEY_COLLATION, null, null);
-        this.getFirstDayOfWeekOption = GetStringOptionNode.create(context, IntlUtil.KEY_FIRST_DAY_OF_WEEK, FIRST_DAY_OF_WEEK_OPTION_VALUES, null);
+        this.getFirstDayOfWeekOption = GetStringOptionNode.create(context, IntlUtil.KEY_FIRST_DAY_OF_WEEK, null, null);
         this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR_CYCLE, GetStringOptionNode.HOUR_CYCLE_OPTION_VALUES, null);
         this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.KEY_CASE_FIRST, GetStringOptionNode.CASE_FIRST_OPTION_VALUES, null);
         this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_NUMERIC, null);
@@ -126,6 +121,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
             String optFirstDayOfWeek = getFirstDayOfWeekOption.executeValue(options);
             if (optFirstDayOfWeek != null) {
                 optFirstDayOfWeek = weekDayToString(optFirstDayOfWeek);
+                IntlUtil.validateUnicodeLocaleIdentifierType(optFirstDayOfWeek, errorBranch);
             }
             String optHourCycle = getHourCycleOption.executeValue(options);
             String optCaseFirst = getCaseFirstOption.executeValue(options);
@@ -239,7 +235,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         };
     }
 
-    public static int weekDayToNumber(String fw) {
+    public static int stringToWeekdayValue(String fw) {
         if (fw == null) {
             return -1;
         } else {
@@ -251,7 +247,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
                 case FRI -> 5;
                 case SAT -> 6;
                 case SUN -> 7;
-                default -> throw Errors.shouldNotReachHere(fw);
+                default -> -1;
             };
         }
     }
