@@ -3733,6 +3733,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
+    "filePath" : "staging/sm/Array/length-truncate-nonconfigurable-sparse.js",
+    "status" : "SKIP",
+    "comment" : "Long running test"
+  }, {
+    "filePath" : "staging/sm/Array/splice-suppresses-unvisited-indexes.js",
+    "status" : "SKIP",
+    "comment" : "GR-61718"
+  }, {
     "filePath" : "staging/sm/AsyncGenerators/for-await-bad-syntax.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
