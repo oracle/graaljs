@@ -432,7 +432,6 @@ public class Test262Runnable extends TestRunnable {
         if (suite.getConfig().isExtLauncher()) {
             testResult = runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         } else {
-            Thread.currentThread().setName("Test262 Main Thread");
             testResult = runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         }
 
