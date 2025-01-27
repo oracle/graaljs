@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -396,6 +396,12 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     public abstract static class FormatCacheNode extends JavaScriptBaseNode {
 
+        @Child TruffleString.EqualNode equalsNode;
+
+        protected FormatCacheNode() {
+            this.equalsNode = TruffleString.EqualNode.create();
+        }
+
         public abstract TruffleString execute(TruffleString name);
 
         public static FormatCacheNode create() {
@@ -406,8 +412,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = {"stringEquals(equalsNode, cachedName, name)"}, limit = "10")
         protected TruffleString doCached(TruffleString name,
                         @Cached("name") TruffleString cachedName,
-                        @Cached("doUncached(name)") TruffleString cachedResult,
-                        @Cached TruffleString.EqualNode equalsNode) {
+                        @Cached("doUncached(name)") TruffleString cachedResult) {
             return cachedResult;
         }
 
