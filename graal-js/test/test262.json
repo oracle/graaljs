@@ -3834,8 +3834,10 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/JSON/parse-with-source.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires json-parse-with-source"
   }, {
     "filePath" : "staging/sm/lexical-environment/block-scoped-functions-annex-b-label.js",
     "status" : "FAIL",
@@ -3854,8 +3856,10 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/Math/f16round.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires Float16Array"
   }, {
     "filePath" : "staging/sm/misc/new-with-non-constructor.js",
     "status" : "FAIL",
@@ -3926,32 +3930,47 @@
     "comment" : "https://github.com/tc39/test262/pull/4345"
   }, {
     "filePath" : "staging/sm/Set/difference.js",
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/Set/intersection.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires set-methods"
   }, {
     "filePath" : "staging/sm/Set/is-disjoint-from.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires set-methods"
   }, {
     "filePath" : "staging/sm/Set/is-subset-of.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires set-methods"
   }, {
     "filePath" : "staging/sm/Set/is-superset-of.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires set-methods"
   }, {
     "filePath" : "staging/sm/Set/symmetric-difference.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires set-methods"
   }, {
     "filePath" : "staging/sm/Set/union.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires set-methods"
   }, {
     "filePath" : "staging/sm/statements/arrow-function-in-for-statement-head.js",
     "status" : "FAIL",
@@ -4026,8 +4045,10 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/TypedArray/prototype-constructor-identity.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "expects uint8array-base64 to be enabled"
   }, {
     "filePath" : "staging/sm/TypedArray/seal-and-freeze.js",
     "status" : "FAIL",
@@ -4038,12 +4059,16 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/TypedArray/sort-negative-nan.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires Float16Array"
   }, {
     "filePath" : "staging/sm/TypedArray/sort_small.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires Float16Array"
   }, {
     "filePath" : "staging/sm/TypedArray/test-integrity-level-detached.js",
     "status" : "FAIL",
@@ -4054,8 +4079,10 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/TypedArray/toString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "comment" : "requires Float16Array"
   }, {
     "filePath" : "staging/Temporal/Regex/old/instant.js",
     "status" : "FAIL",
