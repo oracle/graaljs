@@ -3769,10 +3769,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/Error/constructor-ordering.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/expressions/destructuring-pattern-parenthesized.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
@@ -3874,18 +3870,6 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/Reflect/construct.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Reflect/deleteProperty.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Reflect/set.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/RegExp/constructor-ordering-2.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
@@ -4037,10 +4021,6 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/Temporal/ZonedDateTime/zones-and-links.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/TypedArray/constructor-buffer-sequence.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
