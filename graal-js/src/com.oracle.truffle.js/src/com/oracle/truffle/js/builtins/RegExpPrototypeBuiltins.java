@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1174,10 +1174,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (global) {
                     // Set(rx, "lastIndex", 0, true) will be performed after the loop.
                     lastIndex = 0;
-                } else if (sticky) {
-                    lastIndex = toLength.executeLong(parent.getLastIndex(rx));
                 } else {
-                    lastIndex = 0;
+                    // ToLength(lastIndex) always needs to be performed for potential side effects
+                    lastIndex = toLength.executeLong(parent.getLastIndex(rx));
+                    // although lastIndex is only used if sticky flag is set.
+                    if (!sticky) {
+                        lastIndex = 0;
+                    }
                 }
                 Object lastRegexResult = null;
                 while (lastIndex <= length) {
