@@ -1426,40 +1426,43 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             Object p;
             Object f;
-            if (JSRegExp.isJSRegExp(pattern)) {
+            Object compiledRegex;
+            JSDynamicObject proto;
+            TruffleString patternStr;
+            if (pattern instanceof JSRegExpObject regExpPattern) {
                 regexpObject.enter(node);
-                Object compiledRegex = JSRegExp.getCompiledRegex((JSRegExpObject) pattern);
+                compiledRegex = JSRegExp.getCompiledRegex(regExpPattern);
+                proto = getPrototype(realm, newTarget);
+                patternStr = readPattern.execute(node, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
                 if (flags != Undefined.instance) {
                     regexpObjectNewFlagsBranch.enter(node);
                     if (getContext().getEcmaScriptVersion() < 6) {
                         throw Errors.createTypeError("Cannot supply flags when constructing one RegExp from another");
                     }
                     Object flagsStr = flagsToString(flags);
-                    TruffleString patternStr = readPattern.execute(node, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
                     compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
                 }
-                var proto = getPrototype(realm, newTarget);
-                return getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled, realm, proto);
-            } else if (hasMatchSymbol) {
-                regexpMatcherObject.enter(node);
-                JSObject patternJSObj = (JSObject) pattern;
-                p = getSource(patternJSObj);
-                if (flags == Undefined.instance) {
-                    f = getFlags(patternJSObj);
+            } else {
+                if (hasMatchSymbol) {
+                    regexpMatcherObject.enter(node);
+                    JSObject patternJSObj = (JSObject) pattern;
+                    p = getSource(patternJSObj);
+                    if (flags == Undefined.instance) {
+                        f = getFlags(patternJSObj);
+                    } else {
+                        f = flags;
+                    }
                 } else {
+                    regexpNonObject.enter(node);
+                    p = pattern;
                     f = flags;
                 }
-            } else {
-                regexpNonObject.enter(node);
-                p = pattern;
-                f = flags;
+                proto = getPrototype(realm, newTarget);
+                patternStr = getPatternToStringNode().executeString(p);
+                Object flagsStr = flagsToString(f);
+                compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
             }
 
-            var proto = getPrototype(realm, newTarget);
-
-            TruffleString patternStr = getPatternToStringNode().executeString(p);
-            Object flagsStr = flagsToString(f);
-            Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
             JSRegExpObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled, realm, proto);
             if (getContext().getLanguageOptions().testV8Mode()) {
                 // workaround for the reference equality check at the end of mjsunit/regexp.js
