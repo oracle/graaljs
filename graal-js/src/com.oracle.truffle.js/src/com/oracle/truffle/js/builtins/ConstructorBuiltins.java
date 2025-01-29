@@ -2272,18 +2272,20 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructError(JSDynamicObject newTarget, TruffleString message, Object options) {
-            return constructErrorImpl(newTarget, message, options);
+            JSRealm realm = getRealm();
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            return constructErrorImpl(newTarget, message, options, realm, proto);
         }
 
         @Specialization(guards = "!isString(message)")
         protected JSDynamicObject constructError(JSDynamicObject newTarget, Object message, Object options,
                         @Cached JSToStringNode toStringNode) {
-            return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message), options);
-        }
-
-        private JSDynamicObject constructErrorImpl(JSDynamicObject newTarget, TruffleString messageOpt, Object options) {
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
+            return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message), options, realm, proto);
+        }
+
+        private JSDynamicObject constructErrorImpl(JSDynamicObject newTarget, TruffleString messageOpt, Object options, JSRealm realm, JSDynamicObject proto) {
             JSErrorObject errorObj = JSError.createErrorObject(getContext(), realm, errorType, proto);
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
