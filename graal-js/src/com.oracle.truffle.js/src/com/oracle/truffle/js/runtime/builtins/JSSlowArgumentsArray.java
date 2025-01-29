@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -55,10 +56,6 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
     @TruffleBoundary
     @Override
     public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
-        if (isSealedOrFrozen(thisObj)) {
-            return true;
-        }
-
         boolean isMappedArguments = isMappedArguments(thisObj);
         boolean indexDisconnected = isMappedArguments && wasIndexDisconnected(thisObj, index);
         Object oldValue = indexDisconnected ? null : get(thisObj, index);
@@ -66,6 +63,12 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
         boolean wasDeleted;
         ScriptArray arrayType = arrayGetArrayType(thisObj);
         if (arrayType.hasElement(thisObj, index)) {
+            if (arrayType.isSealed()) {
+                if (isStrict) {
+                    throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(index);
+                }
+                return false;
+            }
             arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
             wasDeleted = true;
         } else {
@@ -76,11 +79,6 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
             disconnectIndex(thisObj, index, oldValue);
         }
         return wasDeleted;
-    }
-
-    private static boolean isSealedOrFrozen(JSDynamicObject thisObj) {
-        ScriptArray array = arrayGetArrayType(thisObj);
-        return array.isSealed() || array.isFrozen();
     }
 
     public static boolean isJSSlowArgumentsObject(JSDynamicObject obj) {
