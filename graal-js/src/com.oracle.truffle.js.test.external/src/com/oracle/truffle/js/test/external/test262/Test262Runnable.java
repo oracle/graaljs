@@ -59,10 +59,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -80,20 +77,12 @@ import com.oracle.truffle.js.test.external.suite.TestSuite.TestThread;
 
 public class Test262Runnable extends TestRunnable {
     private static final String ASYNC_TEST_COMPLETE = "Test262:AsyncTestComplete";
-    private static final Pattern NEGATIVE_PREFIX = Pattern.compile("^[\t ]*negative:");
-    private static final Pattern NEGATIVE_TYPE_PREFIX = Pattern.compile("^[\t ]*type: ");
-    private static final String FLAGS_PREFIX = "flags: ";
-    private static final String INCLUDES_PREFIX = "includes: ";
-    private static final String FEATURES_PREFIX = "features: ";
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
     private static final String ASYNC_FLAG = "async";
     private static final String MODULE_FLAG = "module";
     private static final String RAW_FLAG = "raw";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
-    private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?[a-zA-Z-]+)*)\\]");
-    private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
-    private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
-    private static final Pattern SPLIT_PATTERN = Pattern.compile(",\\s*");
+    private static final Pattern FRONTMATTER_PATTERN = Pattern.compile(Pattern.quote("/*---") + "(.*)" + Pattern.quote("---*/"), Pattern.DOTALL);
 
     private static final Set<String> SUPPORTED_FEATURES = featureSet(new String[]{
                     "AggregateError",
@@ -312,11 +301,13 @@ public class Test262Runnable extends TestRunnable {
     public void run() {
         suite.printProgress(testFile);
         final File file = suite.resolveTestFilePath(testFile);
-        List<String> scriptCodeList = TestSuite.readFileContentList(file);
-        String negativeExpectedMessage = getNegativeMessage(scriptCodeList);
+        String scriptCode = TestSuite.readFileContent(file);
+        String frontmatter = getFrontmatter(scriptCode);
+        Map<String, Object> meta = SimpleYAML.parseMap(frontmatter);
+        String negativeExpectedMessage = getNegativeMessage(meta);
         boolean negative = negativeExpectedMessage != null;
-        Set<String> flags = getFlags(scriptCodeList);
-        Set<String> features = getFeatures(scriptCodeList);
+        Set<String> flags = getFlags(meta);
+        Set<String> features = getFeatures(meta);
         boolean runStrict = flags.contains(ONLY_STRICT_FLAG);
         boolean asyncTest = flags.contains(ASYNC_FLAG);
         boolean module = flags.contains(MODULE_FLAG);
@@ -364,7 +355,7 @@ public class Test262Runnable extends TestRunnable {
                 System.out.println("====== Testcase: " + getName());
                 System.out.println("================================================================");
                 System.out.println();
-                System.out.println(TestSuite.toPrintableCode(scriptCodeList));
+                System.out.println(scriptCode);
             }
         }
 
@@ -375,10 +366,10 @@ public class Test262Runnable extends TestRunnable {
              * directory must not be evaluated, and the test must be executed just once (in
              * non-strict mode, only).
              */
-            assert getIncludes(scriptCodeList).count() == 0 && !runStrict && !asyncTest;
+            assert getIncludes(meta).size() == 0 && !runStrict && !asyncTest;
             harnessSources = new Source[0];
         } else {
-            harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList), testFile.getFilePath());
+            harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(meta).stream(), testFile.getFilePath());
         }
 
         boolean supported = true;
@@ -416,7 +407,7 @@ public class Test262Runnable extends TestRunnable {
         }
         String prefix = runStrict ? "\"use strict\";" : "";
         Source testSource = null;
-        testSource = createSource(file, prefix, TestSuite.toPrintableCode(scriptCodeList), module);
+        testSource = createSource(file, prefix, scriptCode, module);
         final Source src = testSource;
         if (supported) {
             testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, src, negative, asyncTest, runStrict, module, negativeExpectedMessage, harnessSources, extraOptions)));
@@ -441,7 +432,6 @@ public class Test262Runnable extends TestRunnable {
         if (suite.getConfig().isExtLauncher()) {
             testResult = runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         } else {
-            Thread.currentThread().setName("Test262 Main Thread");
             testResult = runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         }
 
@@ -584,50 +574,44 @@ public class Test262Runnable extends TestRunnable {
         return builder.buildLiteral();
     }
 
-    private static String getNegativeMessage(List<String> scriptCode) {
-        boolean lookForType = false;
-        for (String line : scriptCode) {
-            if (!lookForType) {
-                Matcher matcher = NEGATIVE_PREFIX.matcher(line);
-                if (matcher.find()) {
-                    String candidate = line.substring(matcher.end());
-                    if (!candidate.isBlank()) {
-                        return candidate.strip();
-                    } else {
-                        lookForType = true;
-                    }
-                }
-            } else {
-                Matcher matcher = NEGATIVE_TYPE_PREFIX.matcher(line);
-                if (matcher.find()) {
-                    return line.substring(matcher.end()).strip();
-                }
-            }
+    private static String getFrontmatter(String scriptCode) {
+        var m = FRONTMATTER_PATTERN.matcher(scriptCode);
+        return m.find() ? m.group(1).stripTrailing().stripIndent() : "";
+    }
+
+    private static String getNegativeMessage(Map<String, Object> meta) {
+        Map<String, String> negative = getAsMap(meta, "negative", null);
+        return negative == null ? null : negative.getOrDefault("type", "");
+    }
+
+    private static Set<String> getFlags(Map<String, Object> meta) {
+        return Set.copyOf(getAsList(meta, "flags", List.of()));
+    }
+
+    private static List<String> getIncludes(Map<String, Object> meta) {
+        return getAsList(meta, "includes", List.of());
+    }
+
+    private static Set<String> getFeatures(Map<String, Object> meta) {
+        return Set.copyOf(getAsList(meta, "features", List.of()));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> List<T> getAsList(Map<String, Object> meta, String key, List<T> defaultValue) {
+        if (meta.get(key) instanceof List<?> list) {
+            return (List<T>) list;
+        } else {
+            return defaultValue;
         }
-        return null;
     }
 
-    private static Set<String> getFlags(List<String> scriptCode) {
-        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
-    }
-
-    private static Stream<String> getIncludes(List<String> scriptCode) {
-        Stream<String> includes = getStrings(scriptCode, INCLUDES_PREFIX, INCLUDES_PATTERN, SPLIT_PATTERN);
-
-        // There are few tests whose "includes:" section has the form
-        // includes:
-        // - propertyHelper.js
-        for (String line : scriptCode) {
-            if ("- propertyHelper.js".equals(line.trim())) {
-                assert includes.count() == 0;
-                includes = Stream.of("propertyHelper.js");
-            }
+    @SuppressWarnings("unchecked")
+    private static <T> Map<String, T> getAsMap(Map<String, Object> meta, String key, Map<String, T> defaultValue) {
+        if (meta.get(key) instanceof Map<?, ?> map) {
+            return (Map<String, T>) map;
+        } else {
+            return defaultValue;
         }
-        return includes;
-    }
-
-    private static Set<String> getFeatures(List<String> scriptCode) {
-        return getStrings(scriptCode, FEATURES_PREFIX, FEATURES_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
     }
 
     private static final class ModuleSourceFS extends ForwardingFileSystem {

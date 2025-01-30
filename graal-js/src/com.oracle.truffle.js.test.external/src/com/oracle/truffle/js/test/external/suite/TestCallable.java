@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -114,9 +114,10 @@ public class TestCallable extends AbstractTestCallable {
         return testSource.getCharacters().toString();
     }
 
+    @SuppressWarnings("try")
     @Override
     public Object call() throws Exception {
-        try (Context context = contextBuilder.build()) {
+        try (var tn = new ThreadNameScope(); Context context = contextBuilder.build()) {
             boolean snapshot = getConfig().useSnapshots();
             if (snapshot) {
                 SnapshotUtil.installEvalUsingSnapshotBuiltin(context, snapshotCache);
@@ -170,4 +171,17 @@ public class TestCallable extends AbstractTestCallable {
 
     private static final Map<com.oracle.truffle.api.source.Source, byte[]> snapshotCache = new ConcurrentHashMap<>();
 
+    protected final class ThreadNameScope implements AutoCloseable {
+        private String prevName;
+
+        protected ThreadNameScope() {
+            this.prevName = Thread.currentThread().getName();
+            Thread.currentThread().setName(String.format("%s-%s (%s)", getConfig().getSuiteName(), prevName, getScriptFile()));
+        }
+
+        @Override
+        public void close() {
+            Thread.currentThread().setName(prevName);
+        }
+    }
 }

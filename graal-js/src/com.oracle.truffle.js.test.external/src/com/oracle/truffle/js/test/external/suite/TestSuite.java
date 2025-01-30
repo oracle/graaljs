@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -950,32 +951,36 @@ public abstract class TestSuite {
         return passedPercentFormatted;
     }
 
+    public static String readFileContent(File pfile) {
+        try {
+            byte[] bytes = Files.readAllBytes(pfile.toPath());
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+    }
+
     public static List<String> readFileContentList(File pfile) {
         return readFileContentList(pfile, true);
     }
 
     public static List<String> readFileContentList(File pfile, boolean keepCRfromCRLF) {
         List<String> list = new ArrayList<>();
-        try {
-            byte[] bytes = Files.readAllBytes(pfile.toPath());
-            String content = new String(bytes, "UTF-8");
-            int lastIndex = 0;
-            while (lastIndex < content.length()) {
-                int index = content.indexOf('\n', lastIndex);
-                if (index == -1) {
-                    list.add(content.substring(lastIndex));
-                    break;
-                } else {
-                    String line = content.substring(lastIndex, index);
-                    if (!keepCRfromCRLF && line.endsWith("\r")) {
-                        line = line.substring(0, line.length() - 1);
-                    }
-                    list.add(line);
-                    lastIndex = index + 1;
+        String content = readFileContent(pfile);
+        int lastIndex = 0;
+        while (lastIndex < content.length()) {
+            int index = content.indexOf('\n', lastIndex);
+            if (index == -1) {
+                list.add(content.substring(lastIndex));
+                break;
+            } else {
+                String line = content.substring(lastIndex, index);
+                if (!keepCRfromCRLF && line.endsWith("\r")) {
+                    line = line.substring(0, line.length() - 1);
                 }
+                list.add(line);
+                lastIndex = index + 1;
             }
-        } catch (IOException ex) {
-            ex.printStackTrace();
         }
         return list;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -179,7 +179,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             if (isStrict) {
                 throw Errors.createTypeErrorNotWritableProperty(index, thisObj, encapsulatingNode);
             }
-            return true;
+            return false;
         } else {
             return super.set(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         }
@@ -196,7 +196,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             if (isStrict) {
                 throw Errors.createTypeErrorNotWritableProperty(index, thisObj, encapsulatingNode);
             }
-            return true;
+            return false;
         } else {
             return super.set(thisObj, index, value, receiver, isStrict, encapsulatingNode);
         }

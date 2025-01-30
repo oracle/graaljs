@@ -233,6 +233,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSetIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -3633,21 +3634,20 @@ public final class GraalJSAccess {
 
     @TruffleBoundary
     public Object regexpGetSource(Object regexp) {
-        return regexpPattern((JSDynamicObject) regexp);
+        return regexpPattern((JSRegExpObject) regexp);
     }
 
-    public static Object regexpPattern(JSDynamicObject regexp) {
-        assert JSRegExp.isJSRegExp(regexp);
+    public static Object regexpPattern(JSRegExpObject regexp) {
         Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
         return TRegexUtil.InteropReadStringMemberNode.getUncached().execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
     }
 
     @TruffleBoundary
     public int regexpGetFlags(Object regexp) {
-        return regexpV8Flags((JSDynamicObject) regexp);
+        return regexpV8Flags((JSRegExpObject) regexp);
     }
 
-    public static int regexpV8Flags(JSDynamicObject regexp) {
+    public static int regexpV8Flags(JSRegExpObject regexp) {
         Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
         Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.FLAGS);
 
