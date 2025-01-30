@@ -1095,14 +1095,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return arrayGetArrayType(thisObj) instanceof SparseArray;
         }
 
-        protected static boolean isArrayWithoutHolesAndNotSealed(JSDynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode, TestArrayNode isSealedNode) {
-            boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && !hasHolesNode.executeBoolean(thisObj) && !isSealedNode.executeBoolean(thisObj);
+        protected static boolean isArrayWithoutHolesAndNotSealed(JSArrayObject thisObj, TestArrayNode hasHolesNode, TestArrayNode isSealedNode) {
+            return !hasHolesNode.executeBoolean(thisObj) && !isSealedNode.executeBoolean(thisObj);
         }
 
-        @Specialization(guards = {"isArrayWithoutHolesAndNotSealed(thisObj, isArrayNode, hasHolesNode, isSealedNode)"})
-        protected Object shiftWithoutHoles(JSDynamicObject thisObj,
-                        @Shared @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+        @Specialization(guards = {"isArrayWithoutHolesAndNotSealed(thisObj, hasHolesNode, isSealedNode)"})
+        protected Object shiftWithoutHoles(JSArrayObject thisObj,
                         @Shared @Cached("createHasHolesOrUnused()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Cached InlinedExactClassProfile arrayTypeProfile,
@@ -1124,14 +1122,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        protected static boolean isArrayWithHolesOrSealed(JSDynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode, TestArrayNode isSealedNode) {
-            boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && (hasHolesNode.executeBoolean(thisObj) || isSealedNode.executeBoolean(thisObj)) && !isSparseArray(thisObj);
+        protected static boolean isArrayWithHolesOrSealed(JSArrayObject thisObj, TestArrayNode hasHolesNode, TestArrayNode isSealedNode) {
+            return (hasHolesNode.executeBoolean(thisObj) || isSealedNode.executeBoolean(thisObj)) && !isSparseArray(thisObj);
         }
 
-        @Specialization(guards = {"isArrayWithHolesOrSealed(thisObj, isArrayNode, hasHolesNode, isSealedNode)"})
-        protected Object shiftWithHoles(JSDynamicObject thisObj,
-                        @Shared @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+        @Specialization(guards = {"isArrayWithHolesOrSealed(thisObj, hasHolesNode, isSealedNode)"})
+        protected Object shiftWithHoles(JSArrayObject thisObj,
                         @Shared @Cached("createHasHolesOrUnused()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Shared @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode,
@@ -1157,9 +1153,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj)"})
-        protected Object shiftSparse(JSDynamicObject thisObj,
-                        @Shared @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+        @Specialization(guards = {"isSparseArray(thisObj)"})
+        protected Object shiftSparse(JSArrayObject thisObj,
                         @Shared @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode,
                         @Shared @Cached InlinedConditionProfile lengthIsZero,
                         @Cached("create(getContext())") JSArrayFirstElementIndexNode firstElementIndexNode,
