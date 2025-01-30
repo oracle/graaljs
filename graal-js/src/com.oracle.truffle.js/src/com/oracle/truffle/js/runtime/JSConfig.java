@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,8 +130,8 @@ public final class JSConfig {
     public static final boolean FastOwnKeys = true;
     /** AST-level inlining of trivial built-in functions (e.g. String.prototype.charAt). */
     public static final boolean InlineTrivialBuiltins = true;
-    /** [Construct] as part of the CallTarget names. Off by default (footprint). */
-    public static final boolean DetailedCallTargetNames = false;
+    /** [Construct] as part of the CallTarget names. */
+    public static final boolean DetailedCallTargetNames = Boolean.parseBoolean(System.getProperty("truffle.js.DetailedCallTargetNames", "true"));
     public static final int SpreadArgumentPlaceholderCount = 3;
     /** Always capture stack trace eagerly. */
     public static final boolean EagerStackTrace = false;
