@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractObjectArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -83,12 +82,12 @@ public class ScriptArrayTest extends JSTest {
     @Test
     public void testIntArray() {
         JSArrayObject arrayObject = createEmptyArray();
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
         assertEquals(0, array.length(arrayObject));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 0));
 
         arrayObject = createEmptyArray();
-        array = JSObject.getArray(arrayObject);
+        array = arrayObject.getArrayType();
         for (int i = 0; i < 100; i++) {
             array = array.setElement(arrayObject, i, i, false);
         }
@@ -102,7 +101,7 @@ public class ScriptArrayTest extends JSTest {
     @Test
     public void testIntArrayWithHole() {
         JSArrayObject arrayObject = createEmptyArray();
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
         assertEquals(0, array.length(arrayObject));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 0));
 
@@ -118,7 +117,7 @@ public class ScriptArrayTest extends JSTest {
     @Test
     public void testIntArrayReverseFill() {
         JSArrayObject arrayObject = createEmptyArray();
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
         for (int i = 99; i >= 0; i--) {
             array = array.setElement(arrayObject, i, i, false);
         }
@@ -131,7 +130,7 @@ public class ScriptArrayTest extends JSTest {
     @Test
     public void testCapacity() {
         JSArrayObject arrayObject = createEmptyArray(51);
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
         assertEquals(51, array.length(arrayObject));
         array = array.setElement(arrayObject, 50, 50, false);
         assertEquals(Undefined.instance, array.getElement(arrayObject, 0));
@@ -147,12 +146,11 @@ public class ScriptArrayTest extends JSTest {
     @Test
     public void testHolesIntArray() {
         JSArrayObject arrayObject = createEmptyArray();
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
 
         for (int i = 0; i < 100; i += 2) {
             array = array.setElement(arrayObject, i, i, false);
-            JSObject.setArray(arrayObject, array);
-            // System.out.println(Arrays.toString(array.toArray()));
+            arrayObject.setArrayType(array);
         }
         assertEquals(99, array.length(arrayObject));
         for (int i = 0; i < 100; i += 2) {
@@ -168,7 +166,7 @@ public class ScriptArrayTest extends JSTest {
     @Test
     public void testRewriteIntToDoubleToObject() {
         JSArrayObject arrayObject = createEmptyArray();
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
 
         for (int i = 0; i < 10; i++) {
             array = array.setElement(arrayObject, i, i, false);
@@ -199,14 +197,14 @@ public class ScriptArrayTest extends JSTest {
         Assume.assumeTrue(JSConfig.MaxArrayHoleSize > 0);
 
         JSArrayObject arrayObject = createEmptyArray();
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
         int interval = JSConfig.MaxArrayHoleSize * 2;
         int elementCount = 100;
         int limit = elementCount * interval;
 
         for (int i = 0; i < limit; i += interval) {
             array = array.setElement(arrayObject, i, i, false);
-            JSObject.setArray(arrayObject, array);
+            arrayObject.setArrayType(array);
         }
         assertEquals(limit - ((limit - 1) % interval), array.length(arrayObject));
         for (int i = 0; i < limit; i += interval) {
@@ -224,7 +222,7 @@ public class ScriptArrayTest extends JSTest {
     @SuppressWarnings("unused")
     private static int elementCount(JSArrayObject arrayObject) {
         int count = 0;
-        for (Object x : JSObject.getArray(arrayObject).asIterable(arrayObject)) {
+        for (Object x : arrayObject.getArrayType().asIterable(arrayObject)) {
             count++;
         }
         return count;
