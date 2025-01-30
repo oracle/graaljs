@@ -2132,35 +2132,22 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private void spliceJSArrayElementwiseWalkDown(JSArrayObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
-            long k = len - 1;
-            long delta = itemCount - actualDeleteCount;
-            while (k > (actualStart + actualDeleteCount - 1)) {
-                spliceMoveValue(thisObj, k, k + delta);
-                if ((k - delta) > (actualStart + actualDeleteCount - 1) && !hasProperty(thisObj, k - delta)) {
-                    // previousElementIndex lets us not visit all elements, thus this delete
-                    deletePropertyNode.executeEvaluated(thisObj, k);
-                }
-                k = previousElementIndex(thisObj, k);
+            for (long k = len - actualDeleteCount - 1; k >= actualStart; k--) {
+                long from = k + actualDeleteCount;
+                long to = k + itemCount;
+                spliceMoveValue(thisObj, from, to);
             }
         }
 
         private void spliceJSArrayElementwiseWalkUp(JSArrayObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
-            long k = actualStart + actualDeleteCount;
-            long delta = itemCount - actualDeleteCount;
-            while (k < len) {
-                spliceMoveValue(thisObj, k, k + delta);
-
-                if ((k - delta) < len && !hasProperty(thisObj, k - delta)) {
-                    // nextElementIndex lets us not visit all elements, thus this delete
-                    deletePropertyNode.executeEvaluated(thisObj, k);
-                }
-                k = nextElementIndex(thisObj, k, len);
+            for (long k = actualStart; k < len - actualDeleteCount; k++) {
+                long from = k + actualDeleteCount;
+                long to = k + itemCount;
+                spliceMoveValue(thisObj, from, to);
             }
 
-            k = len - 1;
-            while (k >= len + delta) {
+            for (long k = len - 1; k >= len - actualDeleteCount + itemCount; k--) {
                 deletePropertyNode.executeEvaluated(thisObj, k);
-                k = previousElementIndex(thisObj, k);
             }
         }
 
