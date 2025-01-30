@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1973,22 +1973,22 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long len = getLength(thisObj);
 
             long actualStart = JSRuntime.getOffset(toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 0)), len, this, offsetProfile);
-            long insertCount;
+            long itemCount;
             long actualDeleteCount;
             if (argsLength0Profile.profile(this, args.length == 0)) {
-                insertCount = 0;
+                itemCount = 0;
                 actualDeleteCount = 0;
             } else if (argsLength1Profile.profile(this, args.length == 1)) {
-                insertCount = 0;
+                itemCount = 0;
                 actualDeleteCount = len - actualStart;
             } else {
                 assert args.length >= 2;
-                insertCount = args.length - 2;
+                itemCount = args.length - 2;
                 long deleteCount = toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 1));
                 actualDeleteCount = Math.min(Math.max(deleteCount, 0), len - actualStart);
             }
 
-            if (len + insertCount - actualDeleteCount > JSRuntime.MAX_SAFE_INTEGER_LONG) {
+            if (len + itemCount - actualDeleteCount > JSRuntime.MAX_SAFE_INTEGER_LONG) {
                 errorBranch.enter();
                 throwLengthError();
             }
@@ -2002,16 +2002,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             setLength(aObj, actualDeleteCount);
 
-            long itemCount = insertCount;
-            boolean isJSArray = JSArray.isJSArray(thisObj);
-            if (isJSArray) {
-                JSArrayObject dynObj = (JSArrayObject) thisObj;
-                ScriptArray arrayType = arrayGetArrayType(dynObj);
-                spliceJSArray.execute(dynObj, len, actualStart, actualDeleteCount, itemCount, arrayType, this);
-            } else if (JSDynamicObject.isJSDynamicObject(thisObj)) {
+            if (thisObj instanceof JSArrayObject arrayObj) {
+                ScriptArray arrayType = arrayGetArrayType(arrayObj);
+                spliceJSArray.execute(arrayObj, len, actualStart, actualDeleteCount, itemCount, arrayType, this);
+            } else if (thisObj instanceof JSObject jsObj) {
                 objectBranch.enter(this);
-                spliceJSObject(thisObj, len, actualStart, actualDeleteCount, itemCount);
+                spliceJSObject(jsObj, len, actualStart, actualDeleteCount, itemCount);
             } else {
+                assert !JSRuntime.isJSPrimitive(thisObj) : thisObj;
                 spliceForeignArray(thisObj, len, actualStart, actualDeleteCount, itemCount);
             }
 
@@ -2031,10 +2029,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             SpliceJSArrayNode() {
             }
 
-            abstract void execute(JSDynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent);
+            abstract void execute(JSArrayObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent);
 
             @Specialization(guards = {"cachedArrayType.isInstance(arrayType)"}, limit = "5")
-            static void doCached(JSDynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
+            static void doCached(JSArrayObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
                             @Cached("arrayType") ScriptArray cachedArrayType,
                             @Bind Node node,
                             @Cached @Shared GetPrototypeNode getPrototypeNode,
@@ -2047,7 +2045,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             @Specialization(replaces = "doCached")
-            static void doUncached(JSDynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
+            static void doUncached(JSArrayObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
                             @Bind Node node,
                             @Cached @Shared GetPrototypeNode getPrototypeNode,
                             @Cached @Shared InlinedConditionProfile arrayElementwise) {
@@ -2088,7 +2086,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceJSObject(Object thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
+        private void spliceJSObject(JSObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
             if (itemCount < actualDeleteCount) {
                 branchA.enter();
                 spliceJSObjectShrink(thisObj, len, actualStart, actualDeleteCount, itemCount);
@@ -2098,13 +2096,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceJSObjectMove(Object thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
+        private void spliceJSObjectMove(JSObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
             for (long k = len - actualDeleteCount; k > actualStart; k--) {
                 spliceMoveValue(thisObj, (k + actualDeleteCount - 1), (k + itemCount - 1));
             }
         }
 
-        private void spliceJSObjectShrink(Object thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
+        private void spliceJSObjectShrink(JSObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
             for (long k = actualStart; k < len - actualDeleteCount; k++) {
                 spliceMoveValue(thisObj, (k + actualDeleteCount), (k + itemCount));
             }
@@ -2113,7 +2111,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceMoveValue(Object thisObj, long fromIndex, long toIndex) {
+        private void spliceMoveValue(JSObject thisObj, long fromIndex, long toIndex) {
             if (hasProperty(thisObj, fromIndex)) {
                 Object val = read(thisObj, fromIndex);
                 write(thisObj, toIndex, val);
@@ -2123,8 +2121,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        final void spliceJSArrayElementwise(JSDynamicObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
-            assert JSArray.isJSArray(thisObj); // contract
+        final void spliceJSArrayElementwise(JSArrayObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
             if (itemCount < actualDeleteCount) {
                 branchA.enter();
                 spliceJSArrayElementwiseWalkUp(thisObj, len, actualStart, actualDeleteCount, itemCount);
@@ -2134,7 +2131,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceJSArrayElementwiseWalkDown(JSDynamicObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
+        private void spliceJSArrayElementwiseWalkDown(JSArrayObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
             long k = len - 1;
             long delta = itemCount - actualDeleteCount;
             while (k > (actualStart + actualDeleteCount - 1)) {
@@ -2147,7 +2144,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceJSArrayElementwiseWalkUp(JSDynamicObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
+        private void spliceJSArrayElementwiseWalkUp(JSArrayObject thisObj, long len, long actualStart, long actualDeleteCount, long itemCount) {
             long k = actualStart + actualDeleteCount;
             long delta = itemCount - actualDeleteCount;
             while (k < len) {
@@ -2167,8 +2164,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        final void spliceJSArrayBlockwise(JSDynamicObject thisObj, long actualStart, long actualDeleteCount, long itemCount, ScriptArray array) {
-            assert JSArray.isJSArray(thisObj); // contract
+        final void spliceJSArrayBlockwise(JSArrayObject thisObj, long actualStart, long actualDeleteCount, long itemCount, ScriptArray array) {
             if (itemCount < actualDeleteCount) {
                 branchA.enter();
                 arraySetArrayType(thisObj, array.removeRange(thisObj, actualStart + itemCount, actualStart + actualDeleteCount, errorBranch));
