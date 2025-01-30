@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,8 +54,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
@@ -85,7 +83,6 @@ import com.oracle.truffle.js.builtins.helper.HeapDump;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -99,9 +96,9 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -447,11 +444,11 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected TruffleString arraytype(Object array) {
-            if (!(JSDynamicObject.isJSDynamicObject(array)) || !(JSObject.hasArray(array))) {
+        protected TruffleString arraytype(Object arrayLike) {
+            if (!(arrayLike instanceof JSObject jsObj) || !(JSObject.hasArray(jsObj))) {
                 return NOT_AN_ARRAY;
             }
-            return Strings.fromJavaString(JSObject.getArray((JSDynamicObject) array).getClass().getSimpleName());
+            return Strings.fromJavaString(JSObject.getArray(jsObj).getClass().getSimpleName());
         }
     }
 
@@ -514,26 +511,15 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
      * Exposes the "holes" property of arrays. Used e.g. by V8HasFastHoleyElements.
      */
     public abstract static class DebugIsHolesArrayNode extends JSBuiltinNode {
-        @Child private JSToObjectNode toObjectNode;
-        private final ValueProfile arrayType;
-        private final ConditionProfile isArray;
 
         public DebugIsHolesArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.toObjectNode = JSToObjectNode.create();
-            this.arrayType = ValueProfile.createClassProfile();
-            this.isArray = ConditionProfile.create();
         }
 
+        @TruffleBoundary
         @Specialization
-        protected boolean isHolesArray(Object arr) {
-            Object obj = toObjectNode.execute(arr);
-            if (isArray.profile(JSArray.isJSArray(obj))) {
-                JSDynamicObject dynObj = (JSDynamicObject) obj;
-                return arrayType.profile(JSObject.getArray(dynObj)).hasHoles(dynObj);
-            } else {
-                return false;
-            }
+        protected boolean isHolesArray(Object obj) {
+            return obj instanceof JSArrayObject jsArray && jsArray.getArrayType().hasHoles(jsArray);
         }
     }
 
