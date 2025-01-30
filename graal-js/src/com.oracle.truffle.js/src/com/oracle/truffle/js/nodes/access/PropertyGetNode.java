@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,7 +96,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -1460,7 +1460,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            JSDynamicObject store = receiverCheck.getStore(thisObj);
+            JSArrayObject store = getStoreAsJSArray(thisObj);
             if (!longLength) {
                 try {
                     return arrayLengthRead.executeInt(store);
@@ -1475,21 +1475,17 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
-            assert assertIsArray(thisObj);
-            return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj));
+            return arrayLengthRead.executeInt(getStoreAsJSArray(thisObj));
         }
 
         @Override
         protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            assert assertIsArray(thisObj);
-            return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj));
+            return arrayLengthRead.executeDouble(getStoreAsJSArray(thisObj));
         }
 
-        private boolean assertIsArray(Object thisObj) {
-            JSDynamicObject store = receiverCheck.getStore(thisObj);
-            // shape check should be sufficient to guarantee this assertion
-            assert JSArray.isJSArray(store);
-            return true;
+        private JSArrayObject getStoreAsJSArray(Object thisObj) {
+            // shape check is sufficient to guarantee this is a JSArrayObject.
+            return (JSArrayObject) receiverCheck.getStore(thisObj);
         }
     }
 
