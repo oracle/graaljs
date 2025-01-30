@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -270,14 +270,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return BuildGroupsObjectNodeGen.create();
         }
 
-        public abstract JSDynamicObject execute(JSDynamicObject regExp, Object regexResult, Object input, boolean isIndices);
+        public abstract JSDynamicObject execute(JSRegExpObject regExp, Object regexResult, Object input, boolean isIndices);
 
         // We can reuse the cachedGroupsFactory even if the new groups factory is different, as long
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
         // created for the same regular expression.
         @Specialization(guards = "getGroupsFactory(regExp) == cachedGroupsFactory || getCompiledRegex(regExp) == cachedCompiledRegex", limit = "LIMIT")
         final JSDynamicObject doCachedGroupsFactory(
-                        @SuppressWarnings("unused") JSDynamicObject regExp,
+                        @SuppressWarnings("unused") JSRegExpObject regExp,
                         Object regexResult,
                         TruffleString input,
                         boolean isIndices,
@@ -289,7 +289,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         @Specialization
         @TruffleBoundary
-        final JSDynamicObject doVaryingGroupsFactory(JSDynamicObject regExp, Object regexResult, TruffleString input, boolean isIndices) {
+        final JSDynamicObject doVaryingGroupsFactory(JSRegExpObject regExp, Object regexResult, TruffleString input, boolean isIndices) {
             return doIt(getRealm(), JSRegExp.getGroupsFactory(regExp), regexResult, input, isIndices);
         }
 
@@ -472,7 +472,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // builds the object containing the matches of the named capture groups
-        private JSDynamicObject getGroupsObject(JSDynamicObject regExp, Object result, Object input, boolean isIndices) {
+        private JSDynamicObject getGroupsObject(JSRegExpObject regExp, Object result, Object input, boolean isIndices) {
             if (groupsBuilder == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 groupsBuilder = insert(BuildGroupsObjectNode.create());

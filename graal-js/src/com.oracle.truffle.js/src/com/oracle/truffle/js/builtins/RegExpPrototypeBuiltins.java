@@ -306,13 +306,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 errorBranch.enter(node);
                 throw Errors.createTypeError("RegExp.prototype.compile cannot be used on subclasses of RegExp.");
             }
-            boolean isRegExp = isRegExpProfile.profile(node, JSRegExp.isJSRegExp(patternObj));
-            if (isRegExp) {
+            if (isRegExpProfile.profile(node, patternObj instanceof JSRegExpObject)) {
                 if (flagsObj != Undefined.instance) {
                     errorBranch.enter(node);
                     throw Errors.createTypeError("flags must be undefined", node);
                 }
-                Object regex = JSRegExp.getCompiledRegex((JSDynamicObject) patternObj);
+                Object regex = JSRegExp.getCompiledRegex((JSRegExpObject) patternObj);
                 pattern = TRegexCompiledRegexAccessor.pattern(regex, node, readPattern);
                 flags = TRegexFlagsAccessor.source(TRegexCompiledRegexAccessor.flags(regex, node, readFlags), node, readSource);
             } else {

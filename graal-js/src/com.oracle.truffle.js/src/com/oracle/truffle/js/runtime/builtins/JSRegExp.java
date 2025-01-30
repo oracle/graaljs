@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -258,13 +258,13 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         return factory.trackAllocation(newObj);
     }
 
-    private static void initialize(JSContext ctx, JSDynamicObject regExp, Object regex) {
-        ((JSRegExpObject) regExp).setCompiledRegex(regex);
-        ((JSRegExpObject) regExp).setGroupsFactory(computeGroupsFactory(ctx, regex));
+    private static void initialize(JSContext ctx, JSRegExpObject regExp, Object regex) {
+        regExp.setCompiledRegex(regex);
+        regExp.setGroupsFactory(computeGroupsFactory(ctx, regex));
     }
 
-    public static void updateCompilation(JSContext ctx, JSDynamicObject thisObj, Object regex) {
-        assert isJSRegExp(thisObj) && regex != null;
+    public static void updateCompilation(JSContext ctx, JSRegExpObject thisObj, Object regex) {
+        assert regex != null;
         initialize(ctx, thisObj, regex);
     }
 
@@ -312,7 +312,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * Example: <code>/ab*c/gi</code>
      */
     @TruffleBoundary
-    public static TruffleString prototypeToString(JSDynamicObject thisObj) {
+    public static TruffleString prototypeToString(JSRegExpObject thisObj) {
         Object regex = getCompiledRegex(thisObj);
         InteropReadStringMemberNode readString = InteropReadStringMemberNode.getUncached();
         TruffleString pattern = readString.execute(null, regex, TRegexUtil.Props.CompiledRegex.PATTERN);
