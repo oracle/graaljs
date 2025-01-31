@@ -2058,8 +2058,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         final boolean mustUseElementwise(JSDynamicObject obj, long expectedLength, long deleteCount, long itemCount, ScriptArray array, GetPrototypeNode getPrototypeNode) {
-            return array instanceof SparseArray ||
-                            array.isLengthNotWritable() ||
+            return array.isLengthNotWritable() ||
                             getPrototypeNode.execute(obj) != getRealm().getArrayPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() ||
                             (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj)) ||
