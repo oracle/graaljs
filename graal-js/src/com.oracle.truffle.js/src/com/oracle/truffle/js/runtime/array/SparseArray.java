@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -212,23 +212,26 @@ public final class SparseArray extends DynamicArray {
         return true;
     }
 
+    /**
+     * Removes elements from start (inclusive) to end (exclusive), shifting succeeding elements.
+     */
     @Override
     public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
         assert start <= end;
         assert start >= 0;
-        assert end < length(object);
+        assert end <= length(object);
 
-        long delta = end - start + 1;
+        long delta = end - start;
         long pos = start;
         if (!hasElement(object, pos)) {
             pos = nextElementIndex(object, pos);
         }
         // delete the elements in the removed range
-        while (pos <= end) {
+        while (pos < end) {
             deleteElementImpl(object, pos, false);
             pos = nextElementIndex(object, pos);
         }
-        // move all element higher downwards
+        // move all elements higher downwards
         while (pos < length(object)) {
             setElement(object, pos - delta, getElement(object, pos), false);
             deleteElementImpl(object, pos, false);
@@ -237,15 +240,18 @@ public final class SparseArray extends DynamicArray {
         return this;
     }
 
+    /**
+     * Shift elements starting from offset by size.
+     */
     @Override
     public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
-        assert offset < length(object);
+        assert offset <= length(object);
 
-        long pos = length(object);
+        long pos = length(object) - 1;
         if (!hasElement(object, pos)) {
             pos = previousElementIndex(object, pos);
         }
-        // move all element higher upwards
+        // move all elements higher upwards
         while (pos >= offset) {
             setElement(object, pos + size, getElement(object, pos), false);
             deleteElementImpl(object, pos, false);
