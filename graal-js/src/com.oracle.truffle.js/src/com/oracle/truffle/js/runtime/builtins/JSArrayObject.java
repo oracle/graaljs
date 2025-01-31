@@ -214,10 +214,9 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
         ScriptArray strategy = this.getArrayType();
         long len = strategy.length(this);
         strategy = strategy.removeRange(this, index, index + 1);
-        JSObject.setArray(this, strategy);
+        this.setArrayType(strategy);
         strategy = strategy.setLength(this, len - 1, true);
-        JSObject.setArray(this, strategy);
-        return;
+        this.setArrayType(strategy);
     }
 
     @TruffleBoundary
