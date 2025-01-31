@@ -925,7 +925,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic({JSRuntime.class, JSConfig.class})
+    @ImportStatic({JSRuntime.class, JSConfig.class, JSArray.class})
     protected abstract static class DeleteAndSetLengthNode extends JavaScriptBaseNode {
         protected static final boolean THROW_ERROR = true;  // DeletePropertyOrThrow
 
@@ -942,13 +942,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return PropertySetNode.create(JSArray.LENGTH, false, context, THROW_ERROR);
         }
 
-        protected static boolean isArray(JSDynamicObject object) {
-            // currently, must be fast array
-            return JSArray.isJSFastArray(object);
-        }
-
-        @Specialization(guards = {"isArray(object)", "longIsRepresentableAsInt(longLength)"})
-        protected static void setArrayLength(JSObject object, long longLength,
+        // currently, must be fast array
+        @Specialization(guards = {"isJSFastArray(object)", "longIsRepresentableAsInt(longLength)"})
+        protected static void setArrayLength(JSArrayObject object, long longLength,
                         @Cached("createSetOrDelete(THROW_ERROR)") ArrayLengthWriteNode arrayLengthWriteNode) {
             arrayLengthWriteNode.executeVoid(object, (int) longLength);
         }

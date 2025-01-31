@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -49,8 +50,10 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
+@ImportStatic(JSArray.class)
 public abstract class JSSetLengthNode extends JavaScriptBaseNode {
     private final JSContext context;
     protected final boolean isStrict;
@@ -71,13 +74,9 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
         return PropertySetNode.create(JSArray.LENGTH, false, context, isStrict);
     }
 
-    protected static boolean isArray(Object object) {
-        // currently, must be fast array
-        return JSArray.isJSFastArray(object);
-    }
-
-    @Specialization(guards = "isArray(object)")
-    protected static int setArrayLength(JSDynamicObject object, int length,
+    // currently, must be fast array
+    @Specialization(guards = "isJSFastArray(object)")
+    protected static int setArrayLength(JSArrayObject object, int length,
                     @Cached("create(isStrict)") ArrayLengthWriteNode arrayLengthWriteNode) {
         arrayLengthWriteNode.executeVoid(object, length);
         return length;
