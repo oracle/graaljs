@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -70,20 +70,20 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ExportLibrary(InteropLibrary.class)
 public class JSArgumentsObject extends JSArrayBase {
 
-    protected JSArgumentsObject(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+    protected JSArgumentsObject(Shape shape, JSDynamicObject proto, DynamicArray arrayType, Object array, int length) {
         super(shape, proto, arrayType, array, null, length, 0, 0, 0, 0);
     }
 
     public static final class Unmapped extends JSArgumentsObject {
 
-        protected Unmapped(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+        protected Unmapped(Shape shape, JSDynamicObject proto, DynamicArray arrayType, Object array, int length) {
             super(shape, proto, arrayType, array, length);
         }
     }
 
     public static final class Mapped extends JSArgumentsObject {
 
-        protected Mapped(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+        protected Mapped(Shape shape, JSDynamicObject proto, DynamicArray arrayType, Object array, int length) {
             super(shape, proto, arrayType, array, length);
             this.connectedArgumentCount = length;
         }

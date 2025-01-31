@@ -216,6 +216,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.WorkerAgent;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
+import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
@@ -832,7 +833,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             if (JSConfig.TrackArrayAllocationSites && arrayAllocationSite != null && arrayAllocationSite.isTyped()) {
-                ScriptArray initialType = arrayAllocationSite.getInitialArrayType();
+                DynamicArray initialType = arrayAllocationSite.getInitialArrayType();
                 // help checker tool see this is always true, guarded by isTyped()
                 if (initialType != null) {
                     return JSArray.create(getContext(), realm, proto, initialType, ((AbstractWritableArray) initialType).allocateArray(length), length);
@@ -952,8 +953,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         private static final class ConstructArrayAllocationSite implements ArrayAllocationSite {
-            private static final ScriptArray UNINIT_ARRAY_TYPE = ScriptArray.createConstantEmptyArray();
-            @CompilationFinal private ScriptArray concreteArrayType = UNINIT_ARRAY_TYPE;
+            private static final DynamicArray UNINIT_ARRAY_TYPE = ScriptArray.createConstantEmptyArray();
+            @CompilationFinal private DynamicArray concreteArrayType = UNINIT_ARRAY_TYPE;
             @CompilationFinal private Assumption assumption = Truffle.getRuntime().createAssumption("Array allocation site (untyped)");
 
             public boolean isTyped() {
@@ -961,7 +962,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
 
             @Override
-            public void notifyArrayTransition(ScriptArray arrayType, int length) {
+            public void notifyArrayTransition(DynamicArray arrayType, int length) {
                 CompilerAsserts.neverPartOfCompilation("do not notify array transitions from compiled code");
                 assert JSConfig.TrackArrayAllocationSites;
                 if (arrayType instanceof AbstractWritableArray && length > 0) {
@@ -977,7 +978,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
 
             @Override
-            public ScriptArray getInitialArrayType() {
+            public DynamicArray getInitialArrayType() {
                 if (isTyped()) {
                     return concreteArrayType;
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,25 +78,26 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ExportLibrary(InteropLibrary.class)
 public final class JSArrayObject extends JSArrayBase implements JSCopyableObject {
 
-    protected JSArrayObject(Shape shape, JSDynamicObject proto, ScriptArray arrayType,
+    protected JSArrayObject(Shape shape, JSDynamicObject proto, DynamicArray arrayType,
                     Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         super(shape, proto, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static JSArrayObject create(Shape shape, JSDynamicObject proto, ScriptArray arrayType,
+    public static JSArrayObject create(Shape shape, JSDynamicObject proto, DynamicArray arrayType,
                     Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         return new JSArrayObject(shape, proto, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static JSArrayObject createEmpty(Shape shape, JSDynamicObject proto, ScriptArray arrayType) {
+    public static JSArrayObject createEmpty(Shape shape, JSDynamicObject proto, DynamicArray arrayType) {
         assert arrayType instanceof AbstractConstantEmptyArray || arrayType instanceof ConstantObjectArray || arrayType instanceof AbstractObjectArray;
         return new JSArrayObject(shape, proto, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
     }
 
     @Override
     protected JSObject copyWithoutProperties(Shape shape) {
-        Object clonedArray = ((DynamicArray) getArrayType()).cloneArray(this);
-        return new JSArrayObject(shape, getPrototypeOf(), getArrayType(), clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
+        DynamicArray arrayType = (DynamicArray) getArrayType();
+        Object clonedArray = arrayType.cloneArray(this);
+        return new JSArrayObject(shape, getPrototypeOf(), arrayType, clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
     @Override
