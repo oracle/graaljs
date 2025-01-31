@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -576,7 +576,7 @@ public class InternalArrayTest extends JSTest {
         sparse.setElement(object, 601, UPPER_BORDER_1, false);
         sparse.setElement(object, 900, END, false);
 
-        sparse = sparse.removeRange(object, 400, 600); // deleting 201 elements
+        sparse = sparse.removeRange(object, 400, 601); // deleting 201 elements
 
         assertTrue(sparse instanceof SparseArray);
 
