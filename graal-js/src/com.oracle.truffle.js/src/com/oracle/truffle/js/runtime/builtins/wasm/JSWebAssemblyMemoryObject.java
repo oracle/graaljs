@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,9 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
@@ -74,21 +76,37 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
         return shared;
     }
 
+    @TruffleBoundary
+    private JSArrayBufferObject createBufferObject(JSContext context, JSRealm realm) {
+        InteropLibrary lib = InteropLibrary.getUncached();
+        try {
+            if (lib.getBufferSize(wasmMemory) > Integer.MAX_VALUE) {
+                throw Errors.createRangeErrorInvalidBufferSize();
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(wasmMemory, e, "WebAssembly.Memory underlying buffer object is not an interop buffer", null);
+        }
+        if (!shared) {
+            return JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
+        } else {
+            synchronized (wasmMemory) {
+                ByteBuffer buffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(wasmMemory, lib, realm);
+                if (buffer == null) {
+                    throw Errors.createTypeError("No ByteBuffer exposed from WebAssembly memory");
+                }
+                JSArrayBufferObject bufferObj = JSSharedArrayBuffer.createSharedArrayBuffer(context, realm, buffer);
+                boolean status = bufferObj.setIntegrityLevel(true, false);
+                if (!status) {
+                    throw Errors.createTypeError("Failed to set integrity level of buffer object");
+                }
+                return bufferObj;
+            }
+        }
+    }
+
     public JSArrayBufferObject getBufferObject(JSContext context, JSRealm realm) {
         if (bufferObject == null) {
-            if (!shared) {
-                bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
-            } else {
-                synchronized (wasmMemory) {
-                    InteropLibrary lib = InteropLibrary.getUncached();
-                    ByteBuffer buffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(wasmMemory, lib, realm);
-                    bufferObject = JSSharedArrayBuffer.createSharedArrayBuffer(context, realm, buffer);
-                    boolean status = bufferObject.setIntegrityLevel(true, false);
-                    if (!status) {
-                        throw Errors.createTypeError("Failed to set integrity level of buffer object");
-                    }
-                }
-            }
+            bufferObject = createBufferObject(context, realm);
         }
         return bufferObject;
     }
