@@ -5721,19 +5721,26 @@
   }, {
     "filePath" : "mjsunit/wasm/memory_1gb_oob.js",
     "status" : "SKIP",
-    "comment" : "long-running test, deactivated"
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    },
+    "runInIsolation" : true
   }, {
     "filePath" : "mjsunit/wasm/memory_2gb_oob.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
+      "POLYGLOT" : "FAIL"
+    },
+    "runInIsolation" : true,
+    "comment" : "Fails when trying to access the underlying ArrayBuffer of a WebAssembly.Memory. This is because GraalJS ArrayBuffers are currently capped at 2GB (- 1 byte) and this test exercises 2GB large memories."
   }, {
     "filePath" : "mjsunit/wasm/memory_4gb_oob.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
+      "POLYGLOT" : "FAIL"
+    },
+    "runInIsolation" : true,
+    "comment" : "Fails when trying to access the underlying ArrayBuffer of a WebAssembly.Memory. This is because GraalJS ArrayBuffers are currently capped at 2GB (- 1 byte) and this test exercises 4GB large memories."
   }, {
     "filePath" : "mjsunit/wasm/module-memory.js",
     "status" : "SKIP",
