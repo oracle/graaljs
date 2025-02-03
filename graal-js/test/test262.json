@@ -3968,6 +3968,18 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
+    "filePath" : "staging/sm/String/string-code-point-upper-lower-mapping.js",
+    "javaVersion" : {
+      "minVersion" : 24
+    },
+    "comment" : "requires Unicode 16.0"
+  }, {
+    "filePath" : "staging/sm/String/string-upper-lower-mapping.js",
+    "javaVersion" : {
+      "minVersion" : 24
+    },
+    "comment" : "requires Unicode 16.0"
+  }, {
     "filePath" : "staging/sm/Symbol/property-reflection.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"

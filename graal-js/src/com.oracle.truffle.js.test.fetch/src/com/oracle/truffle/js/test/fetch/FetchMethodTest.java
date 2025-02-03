@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.test.fetch;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -59,6 +58,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -78,6 +78,7 @@ public class FetchMethodTest extends JSTest {
     private static Source fetchSource;
 
     private FetchTestServer localServer;
+    private int port;
 
     @BeforeClass
     public static void testSetup() throws IOException {
@@ -89,7 +90,8 @@ public class FetchMethodTest extends JSTest {
 
     @Before
     public void startServer() throws IOException {
-        localServer = new FetchTestServer(8080);
+        localServer = new FetchTestServer(0);
+        port = localServer.getPort();
         localServer.start();
     }
 
@@ -1174,25 +1176,33 @@ public class FetchMethodTest extends JSTest {
                         """, out);
     }
 
-    private static String async(String test) {
+    private String replacePortNumber(String expected) {
+        return expected.replace(":8080", ":" + port);
+    }
+
+    private void assertEquals(String expected, String actual) {
+        Assert.assertEquals(replacePortNumber(expected), actual);
+    }
+
+    private String async(String test) {
         TestOutput out = new TestOutput();
         try (Context context = newContext(out)) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
-                            test +
+                            replacePortNumber(test) +
                             "})");
             asyncFn.executeVoid();
         }
         return out.toString();
     }
 
-    private static String asyncThrows(String test) {
+    private String asyncThrows(String test) {
         TestOutput out = new TestOutput();
         try (Context context = newContext(out)) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "try {" +
-                            test +
+                            replacePortNumber(test) +
                             "}" +
                             "catch (error) {" +
                             "console.log(error.message)" +

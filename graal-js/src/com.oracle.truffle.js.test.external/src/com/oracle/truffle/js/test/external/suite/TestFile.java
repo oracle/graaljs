@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ public final class TestFile {
 
     private final String filePath;
     private EcmaVersion ecmaVersion;
+    private JavaVersion javaVersion;
     private Status status;
     private EnumMap<StatusOverrideCondition, Status> statusOverrides;
     private Boolean runInIsolation;
@@ -99,6 +100,14 @@ public final class TestFile {
 
     public void setEcmaVersion(EcmaVersion ecmaVersion) {
         this.ecmaVersion = ecmaVersion;
+    }
+
+    public JavaVersion getJavaVersion() {
+        return javaVersion;
+    }
+
+    public void setJavaVersion(JavaVersion javaVersion) {
+        this.javaVersion = javaVersion;
     }
 
     /**
@@ -184,6 +193,9 @@ public final class TestFile {
      */
     @JsonIgnore
     public Status getRealStatus(SuiteConfig config) {
+        if (javaVersion != null && !javaVersion.isSupported(Runtime.version())) {
+            return Status.SKIP;
+        }
         if (statusOverrides != null) {
             for (Map.Entry<StatusOverrideCondition, Status> entry : statusOverrides.entrySet()) {
                 if (entry.getKey().getCondition().test(config)) {
@@ -216,6 +228,7 @@ public final class TestFile {
         return "TestFile{" +
                         "filePath=" + filePath +
                         ", ecmaVersion=" + ecmaVersion +
+                        ", javaVersion=" + javaVersion +
                         ", status=" + status +
                         ", statusOverrides=" + statusOverrides +
                         ", runInIsolation=" + runInIsolation +
@@ -343,6 +356,19 @@ public final class TestFile {
             return new EcmaVersion(null, null, maxVersion);
         }
 
+    }
+
+    /**
+     * Represents a range of supported Java versions.
+     */
+    public record JavaVersion(
+                    Integer minVersion,
+                    Integer maxVersion) {
+
+        public boolean isSupported(Runtime.Version version) {
+            int feature = version.feature();
+            return (minVersion == null || (minVersion <= feature)) && (maxVersion == null || (feature <= maxVersion));
+        }
     }
 
     /**

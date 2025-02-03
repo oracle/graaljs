@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,10 @@ public class FetchTestServer {
 
     public void stop() {
         server.stop(0);
+    }
+
+    public int getPort() {
+        return server.getAddress().getPort();
     }
 
     private void setupHandlers() {
