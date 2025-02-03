@@ -823,7 +823,8 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedBranchProfile objectValueBranch,
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached CreateWritableProfileAccess createWritableProfile) {
-            if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff)) {
+            if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff && constantArray.length(target) <= Integer.MAX_VALUE)) {
+                // Note: createWritable* must only be used if the array length fits in int.
                 ScriptArray newArray;
                 if (value instanceof Integer) {
                     intValueBranch.enter(this);
