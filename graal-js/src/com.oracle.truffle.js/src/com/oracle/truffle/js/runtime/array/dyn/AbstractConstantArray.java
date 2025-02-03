@@ -86,11 +86,6 @@ public abstract class AbstractConstantArray extends DynamicArray {
     public abstract Object getElementInBounds(JSDynamicObject object, int index);
 
     @Override
-    public long length(JSDynamicObject object) {
-        return lengthInt(object);
-    }
-
-    @Override
     public long firstElementIndex(JSDynamicObject object) {
         return 0;
     }

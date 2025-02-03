@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,12 +69,6 @@ public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArra
     }
 
     @Override
-    public ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
-        setCapacity(object, length);
-        return this;
-    }
-
-    @Override
     public AbstractIntArray createWriteableInt(JSDynamicObject object, long index, int value, Node node, CreateWritableProfileAccess profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.createWriteableInt(object, index, value, node, profile);
@@ -96,18 +90,6 @@ public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArra
     public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.createWriteableObject(object, index, value, node, profile);
-    }
-
-    @Override
-    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
-        setCapacity(object, getCapacity(object) - (end - start));
-        return this;
-    }
-
-    @Override
-    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
-        setCapacity(object, getCapacity(object) + size);
-        return this;
     }
 
     @Override
