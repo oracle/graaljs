@@ -113,7 +113,7 @@ function assertBufferSource(body, allowString, hookName) {
  */
 function stringify(body) {
   if (typeof body === 'string') { return body; }
-  assertBufferSource(body, false, 'transformSource');
+  assertBufferSource(body, false, 'load');
   const { TextDecoder } = require('internal/encoding');
   DECODER = DECODER === null ? new TextDecoder() : DECODER;
   return DECODER.decode(body);
@@ -304,8 +304,7 @@ translators.set('builtin', async function builtinStrategy(url) {
 });
 
 // Strategy for loading a JSON file
-translators.set('json', async function jsonStrategy(url, source) {
-  emitExperimentalWarning('Importing JSON modules');
+translators.set('json', function jsonStrategy(url, source) {
   assertBufferSource(source, true, 'load');
   debug(`Loading JSONModule ${url}`);
   const pathname = StringPrototypeStartsWith(url, 'file:') ?

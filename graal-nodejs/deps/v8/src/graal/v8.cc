@@ -553,7 +553,7 @@ namespace v8 {
         heap_statistics->total_physical_size_ = 0;
         heap_statistics->total_available_size_ = graal_isolate->ReadInt64FromSharedBuffer();
         heap_statistics->used_heap_size_ = graal_isolate->ReadInt64FromSharedBuffer();
-        heap_statistics->heap_size_limit_ = 0;
+        heap_statistics->heap_size_limit_ = 4294967296;
         heap_statistics->malloced_memory_ = 0;
         heap_statistics->external_memory_ = 4096; // dummy value
         heap_statistics->peak_malloced_memory_ = 0;
