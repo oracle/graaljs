@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NonIdempotent;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -102,6 +103,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
     /**
      * @param object dummy parameter to force evaluation of the guard by the DSL
      */
+    @NonIdempotent
     protected final boolean hasPrototypeElements(JSDynamicObject object) {
         return !context.getArrayPrototypeNoElementsAssumption().isValid();
     }
