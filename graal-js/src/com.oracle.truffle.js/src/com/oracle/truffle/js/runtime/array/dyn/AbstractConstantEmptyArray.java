@@ -252,6 +252,24 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        setCapacity(object, length);
+        return this;
+    }
+
+    @Override
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
+        setCapacity(object, getCapacity(object) - (end - start));
+        return this;
+    }
+
+    @Override
+    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
+        setCapacity(object, getCapacity(object) + size);
+        return this;
+    }
+
+    @Override
     public boolean isHolesType() {
         return true;
     }
