@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
 
     @Override
     public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
-        if (index <= Integer.MAX_VALUE) {
+        if (index < Integer.MAX_VALUE && length(object) <= Integer.MAX_VALUE) {
             if (value instanceof Integer) {
                 return createWriteableInt(object, index, (int) value, null, CreateWritableProfileAccess.getUncached()).setElementImpl(object, index, value, strict);
             } else if (value instanceof Double) {
@@ -86,7 +86,7 @@ public abstract class AbstractConstantArray extends DynamicArray {
     public abstract Object getElementInBounds(JSDynamicObject object, int index);
 
     @Override
-    public final long length(JSDynamicObject object) {
+    public long length(JSDynamicObject object) {
         return lengthInt(object);
     }
 
