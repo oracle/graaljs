@@ -1,6 +1,6 @@
 const t = require('tap')
-const { resolve, dirname, join } = require('path')
-const fs = require('fs')
+const { resolve, dirname, join } = require('node:path')
+const fs = require('node:fs')
 const { time } = require('proc-log')
 const { load: loadMockNpm } = require('../fixtures/mock-npm.js')
 const mockGlobals = require('@npmcli/mock-globals')
@@ -558,4 +558,12 @@ t.test('usage', async t => {
       })
     }
   })
+})
+
+t.test('print usage if non-command param provided', async t => {
+  const { npm, joinedOutput } = await loadMockNpm(t)
+
+  await t.rejects(npm.exec('tset'), { command: 'tset', exitCode: 1 })
+  t.match(joinedOutput(), 'Unknown command: "tset"')
+  t.match(joinedOutput(), 'Did you mean this?')
 })

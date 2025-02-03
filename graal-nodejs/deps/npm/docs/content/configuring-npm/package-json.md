@@ -225,23 +225,35 @@ npm also sets a top-level "maintainers" field with your npm user info.
 ### funding
 
 You can specify an object containing a URL that provides up-to-date
-information about ways to help fund development of your package, or a
-string URL, or an array of these:
+information about ways to help fund development of your package, a
+string URL, or an array of objects and string URLs:
 
 ```json
 {
   "funding": {
     "type" : "individual",
     "url" : "http://example.com/donate"
-  },
+  }
+}
+```
 
+```json
+{
   "funding": {
     "type" : "patreon",
     "url" : "https://www.patreon.com/my-account"
-  },
+  }
+}
+```
 
-  "funding": "http://example.com/donate",
+```json
+{
+  "funding": "http://example.com/donate"
+}
+```
 
+```json
+{
   "funding": [
     {
       "type" : "individual",
@@ -258,7 +270,7 @@ string URL, or an array of these:
 
 Users can use the `npm fund` subcommand to list the `funding` URLs of all
 dependencies of their project, direct and indirect. A shortcut to visit
-each funding url is also available when providing the project name such as:
+each funding URL is also available when providing the project name such as:
 `npm fund <projectname>` (when there are multiple URLs, the first one will
 be visited)
 
@@ -368,7 +380,7 @@ For example, myapp could have this:
 ```json
 {
   "bin": {
-    "myapp": "./cli.js"
+    "myapp": "bin/cli.js"
   }
 }
 ```
@@ -385,7 +397,7 @@ package, then you can just supply it as a string.  For example:
 {
   "name": "my-program",
   "version": "1.2.5",
-  "bin": "./path/to/program"
+  "bin": "path/to/program"
 }
 ```
 
@@ -396,7 +408,7 @@ would be the same as this:
   "name": "my-program",
   "version": "1.2.5",
   "bin": {
-    "my-program": "./path/to/program"
+    "my-program": "path/to/program"
   }
 }
 ```
@@ -497,7 +509,7 @@ walking the folder.
 ### repository
 
 Specify the place where your code lives. This is helpful for people who
-want to contribute.  If the git repo is on GitHub, then the `npm docs`
+want to contribute.  If the git repo is on GitHub, then the `npm repo`
 command will be able to find you.
 
 Do it like this:
@@ -506,7 +518,7 @@ Do it like this:
 {
   "repository": {
     "type": "git",
-    "url": "https://github.com/npm/cli.git"
+    "url": "git+https://github.com/npm/cli.git"
   }
 }
 ```
@@ -541,8 +553,8 @@ which it lives:
 {
   "repository": {
     "type": "git",
-    "url": "https://github.com/facebook/react.git",
-    "directory": "packages/react-dom"
+    "url": "git+https://github.com/npm/cli.git",
+    "directory": "workspaces/libnpmpublish"
   }
 }
 ```
@@ -818,11 +830,12 @@ to express this. If you depend on features introduced in 1.5.2, use
 
 ### peerDependenciesMeta
 
-When a user installs your package, npm will emit warnings if packages
-specified in `peerDependencies` are not already installed. The
-`peerDependenciesMeta` field serves to provide npm more information on how
+The `peerDependenciesMeta` field serves to provide npm more information on how
 your peer dependencies are to be used. Specifically, it allows peer
-dependencies to be marked as optional.
+dependencies to be marked as optional. Npm will not automatically install
+optional peer dependencies. This allows you to
+integrate and interact with a variety of host packages without requiring
+all of them to be installed.
 
 For example:
 
@@ -841,11 +854,6 @@ For example:
   }
 }
 ```
-
-Marking a peer dependency as optional ensures npm will not emit a warning
-if the `soy-milk` package is not installed on the host. This allows you to
-integrate and interact with a variety of host packages without requiring
-all of them to be installed.
 
 ### bundleDependencies
 

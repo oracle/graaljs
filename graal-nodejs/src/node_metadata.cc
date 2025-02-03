@@ -17,7 +17,7 @@
 #include "zlib.h"
 
 #if HAVE_OPENSSL
-#include <openssl/opensslv.h>
+#include <openssl/crypto.h>
 #if NODE_OPENSSL_HAS_QUIC
 #include <openssl/quic.h>
 #endif
@@ -43,15 +43,25 @@ Metadata metadata;
 
 #if HAVE_OPENSSL
 static constexpr size_t search(const char* s, char c, size_t n = 0) {
-  return *s == c ? n : search(s + 1, c, n + 1);
+  return *s == '\0' ? n : (*s == c ? n : search(s + 1, c, n + 1));
 }
 
 static inline std::string GetOpenSSLVersion() {
   // sample openssl version string format
   // for reference: "OpenSSL 1.1.0i 14 Aug 2018"
-  constexpr size_t start = search(OPENSSL_VERSION_TEXT, ' ') + 1;
-  constexpr size_t len = search(&OPENSSL_VERSION_TEXT[start], ' ');
-  return std::string(OPENSSL_VERSION_TEXT, start, len);
+  const char* version = OpenSSL_version(OPENSSL_VERSION);
+  const size_t first_space = search(version, ' ');
+
+  // When Node.js is linked to an alternative library implementing the
+  // OpenSSL API e.g. BoringSSL, the version string may not match the
+  //  expected pattern. In this case just return “0.0.0” as placeholder.
+  if (version[first_space] == '\0') {
+    return "0.0.0";
+  }
+
+  const size_t start = first_space + 1;
+  const size_t len = search(&version[start], ' ');
+  return std::string(version, start, len);
 }
 #endif  // HAVE_OPENSSL
 

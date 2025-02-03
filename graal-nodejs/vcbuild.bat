@@ -568,21 +568,36 @@ if not defined SSHCONFIG (
 )
 
 if not defined STAGINGSERVER set STAGINGSERVER=node-www
+if not defined CLOUDFLARE_BUCKET set CLOUDFLARE_BUCKET=r2:dist-staging
 ssh -F %SSHCONFIG% %STAGINGSERVER% "mkdir -p nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%"
 if errorlevel 1 goto exit
 scp -F %SSHCONFIG% Release\node.exe %STAGINGSERVER%:nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node.exe
 if errorlevel 1 goto exit
+ssh -F %SSHCONFIG% %STAGINGSERVER% "rclone copyto nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node.exe %CLOUDFLARE_BUCKET%/nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node.exe"
+if errorlevel 1 goto exit
 scp -F %SSHCONFIG% Release\node.lib %STAGINGSERVER%:nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node.lib
+if errorlevel 1 goto exit
+ssh -F %SSHCONFIG% %STAGINGSERVER% "rclone copyto nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node.lib %CLOUDFLARE_BUCKET%/nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node.lib"
 if errorlevel 1 goto exit
 scp -F %SSHCONFIG% Release\node_pdb.zip %STAGINGSERVER%:nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node_pdb.zip
 if errorlevel 1 goto exit
+ssh -F %SSHCONFIG% %STAGINGSERVER% "rclone copyto nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node_pdb.zip %CLOUDFLARE_BUCKET%/nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node_pdb.zip"
+if errorlevel 1 goto exit
 scp -F %SSHCONFIG% Release\node_pdb.7z %STAGINGSERVER%:nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node_pdb.7z
+if errorlevel 1 goto exit
+ssh -F %SSHCONFIG% %STAGINGSERVER% "rclone copyto nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node_pdb.7z %CLOUDFLARE_BUCKET%/nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%/node_pdb.7z"
 if errorlevel 1 goto exit
 scp -F %SSHCONFIG% Release\%TARGET_NAME%.7z %STAGINGSERVER%:nodejs/%DISTTYPEDIR%/v%FULLVERSION%/%TARGET_NAME%.7z
 if errorlevel 1 goto exit
+ssh -F %SSHCONFIG% %STAGINGSERVER% "rclone copyto nodejs/%DISTTYPEDIR%/v%FULLVERSION%/%TARGET_NAME%.7z %CLOUDFLARE_BUCKET%/nodejs/%DISTTYPEDIR%/v%FULLVERSION%/%TARGET_NAME%.7z"
+if errorlevel 1 goto exit
 scp -F %SSHCONFIG% Release\%TARGET_NAME%.zip %STAGINGSERVER%:nodejs/%DISTTYPEDIR%/v%FULLVERSION%/%TARGET_NAME%.zip
 if errorlevel 1 goto exit
+ssh -F %SSHCONFIG% %STAGINGSERVER% "rclone copyto nodejs/%DISTTYPEDIR%/v%FULLVERSION%/%TARGET_NAME%.zip %CLOUDFLARE_BUCKET%/nodejs/%DISTTYPEDIR%/v%FULLVERSION%/%TARGET_NAME%.zip"
+if errorlevel 1 goto exit
 scp -F %SSHCONFIG% node-v%FULLVERSION%-%target_arch%.msi %STAGINGSERVER%:nodejs/%DISTTYPEDIR%/v%FULLVERSION%/
+if errorlevel 1 goto exit
+ssh -F %SSHCONFIG% %STAGINGSERVER% "rclone copyto nodejs/%DISTTYPEDIR%/v%FULLVERSION%/node-v%FULLVERSION%-%target_arch%.msi %CLOUDFLARE_BUCKET%/nodejs/%DISTTYPEDIR%/v%FULLVERSION%/node-v%FULLVERSION%-%target_arch%.msi"
 if errorlevel 1 goto exit
 ssh -F %SSHCONFIG% %STAGINGSERVER% "touch nodejs/%DISTTYPEDIR%/v%FULLVERSION%/node-v%FULLVERSION%-%target_arch%.msi.done nodejs/%DISTTYPEDIR%/v%FULLVERSION%/%TARGET_NAME%.zip.done nodejs/%DISTTYPEDIR%/v%FULLVERSION%/%TARGET_NAME%.7z.done nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%.done && chmod -R ug=rw-x+X,o=r+X nodejs/%DISTTYPEDIR%/v%FULLVERSION%/node-v%FULLVERSION%-%target_arch%.* nodejs/%DISTTYPEDIR%/v%FULLVERSION%/win-%target_arch%*"
 if errorlevel 1 goto exit
