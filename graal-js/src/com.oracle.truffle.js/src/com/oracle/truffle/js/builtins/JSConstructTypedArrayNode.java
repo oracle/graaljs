@@ -61,7 +61,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSConstructTypedArrayNodeGen.IntegerIndexedObjectCreateNodeGen;
@@ -110,7 +110,6 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     // for TypedArray(factory)
     @Child private GetPrototypeFromConstructorNode getPrototypeFromConstructorViewNode;
     @Child private IntegerIndexedObjectCreateNode integerIndexObjectCreateNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     private final TypedArrayFactory factory;
 
@@ -143,9 +142,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return integerIndexObjectCreateNode.execute(arrayBuffer, typedArray, offset, length, proto);
     }
 
-    private void checkDetachedBuffer(JSArrayBufferObject buffer) {
+    private void checkDetachedBuffer(JSArrayBufferObject buffer, InlinedBranchProfile errorBranch) {
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(buffer)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorDetachedBuffer();
         }
     }
@@ -174,23 +173,25 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)"})
     protected JSDynamicObject doArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Heap arrayBuffer, Object byteOffset0, Object length0,
+                    @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_ARRAY, this, lengthIsUndefined, null);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_ARRAY, this, errorBranch, lengthIsUndefined, null);
     }
 
     @Specialization(guards = {"!isUndefined(newTarget)"})
     protected JSDynamicObject doDirectArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Direct arrayBuffer, Object byteOffset0, Object length0,
+                    @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_DIRECT, this, lengthIsUndefined, null);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_DIRECT, this, errorBranch, lengthIsUndefined, null);
     }
 
     private JSDynamicObject doArrayBufferImpl(JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0, JSDynamicObject newTarget,
-                    byte bufferType, Node node, InlinedConditionProfile lengthIsUndefinedProfile, InteropLibrary interop) {
+                    byte bufferType, Node node, InlinedBranchProfile errorBranch, InlinedConditionProfile lengthIsUndefinedProfile, InteropLibrary interop) {
         JSDynamicObject proto = getPrototypeFromConstructorView(newTarget);
         final int elementSize = factory.getBytesPerElement();
 
         final long byteOffset = toIndex(byteOffset0);
-        rangeCheckIsMultipleOfElementSize(byteOffset % elementSize == 0, "start offset", factory.getName(), elementSize);
+        rangeCheckIsMultipleOfElementSize(byteOffset % elementSize == 0, "start offset", factory.getName(), elementSize, errorBranch);
 
         long length = 0;
         if (!lengthIsUndefinedProfile.profile(node, length0 == Undefined.instance)) {
@@ -199,7 +200,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
 
         if (bufferType != BUFFER_TYPE_SHARED) {
-            checkDetachedBuffer(arrayBuffer);
+            checkDetachedBuffer(arrayBuffer, errorBranch);
         }
 
         assert interop != null == arrayBuffer instanceof JSArrayBufferObject.Interop;
@@ -208,18 +209,18 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                         : ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength(interop);
         if (lengthIsUndefinedProfile.profile(node, length0 == Undefined.instance)) {
             if (arrayBuffer.isFixedLength()) {
-                rangeCheckIsMultipleOfElementSize(bufferByteLength % elementSize == 0, "buffer.byteLength", factory.getName(), elementSize);
+                rangeCheckIsMultipleOfElementSize(bufferByteLength % elementSize == 0, "buffer.byteLength", factory.getName(), elementSize, errorBranch);
                 length = ((bufferByteLength - byteOffset) / elementSize);
-                rangeCheck(length >= 0, "length < 0");
+                rangeCheck(length >= 0, "length < 0", errorBranch);
             } else {
-                rangeCheck(byteOffset <= bufferByteLength, "byteOffset > bufferByteLength");
+                rangeCheck(byteOffset <= bufferByteLength, "byteOffset > bufferByteLength", errorBranch);
                 length = JSArrayBufferViewBase.AUTO_LENGTH;
             }
         } else {
-            checkLengthLimit(length, elementSize);
+            checkLengthLimit(length, elementSize, errorBranch);
             final int byteLength = toByteLength((int) length, elementSize);
             if (byteOffset + byteLength > bufferByteLength) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw throwInappropriateLengthError(length);
             }
         }
@@ -239,8 +240,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)"})
     protected JSDynamicObject doSharedArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Shared arrayBuffer, Object byteOffset0, Object length0,
+                    @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_SHARED, this, lengthIsUndefined, null);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_SHARED, this, errorBranch, lengthIsUndefined, null);
     }
 
     /**
@@ -253,9 +255,10 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)"})
     protected JSDynamicObject doInteropArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject.Interop arrayBuffer, Object byteOffset0, Object length0,
+                    @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached @Shared InlinedConditionProfile lengthIsUndefined,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bufferInterop) {
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_INTEROP, this, lengthIsUndefined, bufferInterop);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_INTEROP, this, errorBranch, lengthIsUndefined, bufferInterop);
     }
 
     /**
@@ -264,18 +267,19 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isUndefined(newTarget)"})
     protected JSDynamicObject doTypedArray(JSDynamicObject newTarget, JSTypedArrayObject arrayBufferView, Object byteOffset0, Object length0,
+                    @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached @Exclusive InlinedConditionProfile bulkCopyProfile) {
         JSDynamicObject proto = getPrototypeFromConstructorView(newTarget);
 
         if (JSArrayBufferView.isOutOfBounds(arrayBufferView, getContext())) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorOutOfBoundsTypedArray();
         }
 
         TypedArray sourceType = arrayBufferView.getArrayType();
         long length = sourceType.length(arrayBufferView);
 
-        JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length);
+        JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length, errorBranch);
 
         boolean elementTypeIsBig = factory.isBigInt();
         boolean sourceTypeIsBig = sourceType instanceof TypedArray.TypedBigIntArray;
@@ -325,16 +329,18 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isUndefined(newTarget)", "isUndefined(arg0)"})
-    protected JSDynamicObject doEmpty(JSDynamicObject newTarget, JSDynamicObject arg0, Object byteOffset0, Object length0) {
-        return createTypedArrayWithLength(0, newTarget);
+    protected JSDynamicObject doEmpty(JSDynamicObject newTarget, JSDynamicObject arg0, Object byteOffset0, Object length0,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
+        return createTypedArrayWithLength(0, newTarget, errorBranch);
     }
 
     /**
      * %TypedArray%(length).
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "length >= 0"})
-    protected JSDynamicObject doIntLength(JSDynamicObject newTarget, int length, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0) {
-        return createTypedArrayWithLength(length, newTarget);
+    protected JSDynamicObject doIntLength(JSDynamicObject newTarget, int length, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
+        return createTypedArrayWithLength(length, newTarget, errorBranch);
     }
 
     /**
@@ -344,8 +350,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * argument and the Type of the first argument is not Object.
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "!isJSObject(arg0)", "!isForeignObject(arg0)"}, replaces = "doIntLength")
-    protected JSDynamicObject doLength(JSDynamicObject newTarget, Object arg0, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0) {
-        return createTypedArrayWithLength(toIndex(arg0), newTarget);
+    protected JSDynamicObject doLength(JSDynamicObject newTarget, Object arg0, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
+        return createTypedArrayWithLength(toIndex(arg0), newTarget, errorBranch);
     }
 
     /**
@@ -364,6 +371,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createWriteOwn()") @Shared WriteElementNode writeOwnNode,
                     @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                     @Cached IterableToListNode iterableToListNode,
+                    @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
                     @Cached("create(getContext())") ReadElementNode readNode) {
         assert JSRuntime.isObject(object) && !JSArrayBufferView.isJSArrayBufferView(object) && !JSAbstractBuffer.isJSAbstractBuffer(object);
@@ -375,7 +383,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         if (isIterableProfile.profile(node, usingIterator != Undefined.instance)) {
             SimpleArrayList<Object> values = iterableToListNode.execute(getIteratorFromMethodNode.execute(node, object, usingIterator));
             int len = values.size();
-            JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(len);
+            JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(len, errorBranch);
             TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer() ? BUFFER_TYPE_DIRECT : BUFFER_TYPE_ARRAY, false, true);
             JSDynamicObject obj = integerIndexedObjectCreate(arrayBuffer, typedArray, 0, len, proto);
             for (int k = 0; k < len; k++) {
@@ -388,7 +396,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         // NOTE: object is not an Iterable so assume it is already an array-like object.
         long len = getLengthNode.executeLong(object);
-        JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(len);
+        JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(len, errorBranch);
         assert len <= Integer.MAX_VALUE;
         TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer() ? BUFFER_TYPE_DIRECT : BUFFER_TYPE_ARRAY, false, true);
         JSDynamicObject obj = integerIndexedObjectCreate(arrayBuffer, typedArray, 0, (int) len, proto);
@@ -408,11 +416,13 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("createWriteOwn()") @Shared WriteElementNode writeOwnNode,
                     @Cached ImportValueNode importValue,
+                    @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached @Exclusive InlinedConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {
+            int bufferSize = ConstructorBuiltins.ConstructArrayBufferNode.getBufferSizeSafe(object, interop, this, errorBranch);
             JSArrayBufferObject.Interop arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), object);
-            checkLengthLimit(arrayBuffer.getByteLength(interop), 1);
-            return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_INTEROP, node, lengthIsUndefined, interop);
+            checkLengthLimit(bufferSize, 1, errorBranch);
+            return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, BUFFER_TYPE_INTEROP, node, errorBranch, lengthIsUndefined, interop);
         }
 
         long length;
@@ -429,7 +439,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             length = 0;
         }
 
-        JSDynamicObject obj = createTypedArrayWithLength(length, newTarget);
+        JSDynamicObject obj = createTypedArrayWithLength(length, newTarget, errorBranch);
         if (fromArray) {
             assert length <= Integer.MAX_VALUE;
             for (int k = 0; k < length; k++) {
@@ -462,10 +472,10 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         throw Errors.createTypeError("newTarget is not a function");
     }
 
-    private JSArrayBufferObject createTypedArrayBuffer(long length) {
+    private JSArrayBufferObject createTypedArrayBuffer(long length, InlinedBranchProfile errorBranch) {
         assert length >= 0;
         int elementSize = factory.getBytesPerElement();
-        checkLengthLimit(length, elementSize);
+        checkLengthLimit(length, elementSize, errorBranch);
         int byteLength = toByteLength((int) length, elementSize);
         assert length <= Integer.MAX_VALUE && byteLength >= 0 && byteLength <= Integer.MAX_VALUE;
         JSRealm realm = getRealm();
@@ -484,9 +494,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * ArrayBuffer, the contents are initialized to 0. If the requested number of bytes could not be
      * allocated an exception is raised.
      */
-    private JSDynamicObject createTypedArrayWithLength(long length, JSDynamicObject newTarget) {
+    private JSDynamicObject createTypedArrayWithLength(long length, JSDynamicObject newTarget, InlinedBranchProfile errorBranch) {
         JSDynamicObject proto = getPrototypeFromConstructorView(newTarget);
-        JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length);
+        JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length, errorBranch);
         TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer() ? BUFFER_TYPE_DIRECT : BUFFER_TYPE_ARRAY, false, true);
         return createTypedArray(arrayBuffer, typedArray, 0, (int) length, proto);
     }
@@ -496,9 +506,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return integerIndexedObjectCreate(arrayBuffer, typedArray, offset, length, proto);
     }
 
-    private int checkLengthLimit(long length, int elementSize) {
+    private int checkLengthLimit(long length, int elementSize, InlinedBranchProfile errorBranch) {
         if (length > getContext().getLanguageOptions().maxTypedArrayLength() / elementSize) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw throwInappropriateLengthError(length);
         }
         return (int) length;
@@ -519,17 +529,17 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
     }
 
-    private boolean rangeCheck(boolean condition, String message) {
+    private boolean rangeCheck(boolean condition, String message, InlinedBranchProfile errorBranch) {
         if (!condition) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createRangeError(message);
         }
         return condition;
     }
 
-    private boolean rangeCheckIsMultipleOfElementSize(boolean condition, String what, TruffleString name, int bytesPerElement) {
+    private boolean rangeCheckIsMultipleOfElementSize(boolean condition, String what, TruffleString name, int bytesPerElement, InlinedBranchProfile errorBranch) {
         if (!condition) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw createRangeErrorNotMultipleOfElementSize(what, name, bytesPerElement);
         }
         return condition;

@@ -38,6 +38,9 @@ test-typescript-module               : FAIL
 # Unclassified
 test-require-module-tla              : SKIP
 
+# transient test failure tracked under GR-61384
+test-esm-long-path-win               : SKIP
+
 [$system==linux || $system==freebsd]
 # https://github.com/nodejs/node/issues/47836
 test-esm-loader-http-imports: PASS,FLAKY
