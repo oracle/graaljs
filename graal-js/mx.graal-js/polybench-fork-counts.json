@@ -1,0 +1,10 @@
+{
+    "polybench:warmup/specjbb2005.js": 3,
+    "polybench:warmup/acorn-polybench.js": 10,
+    "polybench:warmup/typescript-polybench.js": 20,
+    "polybench:interpreter/jsinit.js": 5,
+    "polybench:interpreter/deltablue.js": 5,
+    "polybench:interpreter/fibonacci.js": 0,
+    "polybench:interpreter/richards.js": 5,
+    "polybench:interpreter/sieve.js": 5
+}

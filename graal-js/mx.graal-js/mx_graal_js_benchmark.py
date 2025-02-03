@@ -25,8 +25,9 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import os
 
-import mx, mx_benchmark, mx_graal_js, mx_sdk_vm
+import mx, mx_benchmark, mx_graal_js, mx_polybench, mx_sdk_vm
 from mx_benchmark import GuestVm
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
@@ -161,3 +162,46 @@ if not mx.is_linux():
 
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
 mx_sdk_vm.register_vm_config('ee', ee_components, _suite)
+
+
+def js_polybench_runner(polybench_run: mx_polybench.PolybenchRunFunction, tags) -> None:
+    fork_count_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "polybench-fork-counts.json")
+    if "gate" in tags:
+        polybench_run(["--jvm", "interpreter/*.js", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+        polybench_run(["--native", "interpreter/*.js", "--experimental-options", "--engine.Compilation=false", "-w", "1", "-i", "1"])
+        polybench_run(["--jvm", "compiler/*.js", "-w", "0", "-i", "1"])
+        polybench_run(["--native", "compiler/*.js", "-w", "0", "-i", "1"])
+        polybench_run(["--native", "warmup/*.js", "--metric=one-shot", "--mx-benchmark-args",
+                       "--fork-count-file", fork_count_file])
+    if "benchmark" in tags:
+        polybench_run(["--jvm", "interpreter/*.js", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--native", "interpreter/*.js", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--jvm", "interpreter/*.js"])
+        polybench_run(["--native", "interpreter/*.js"])
+        polybench_run(["--jvm", "compiler/*.js", "-w", "0", "-i", "10", "--metric=compilation-time"])
+        polybench_run(["--native", "compiler/*.js", "-w", "0", "-i", "10", "--metric=compilation-time"])
+        polybench_run(["--jvm", "compiler/*.js", "-w", "0", "-i", "10", "--metric=partial-evaluation-time"])
+        polybench_run(["--native", "compiler/*.js", "-w", "0", "-i", "10", "--metric=partial-evaluation-time"])
+        polybench_run(["--native", "warmup/*.js", "--metric=one-shot", "--mx-benchmark-args",
+                       "--fork-count-file", fork_count_file])
+        polybench_run(
+            ["--jvm", "interpreter/jsinit.js", "-w", "0", "-i", "0", "--metric=none", "--mx-benchmark-args", "--fork-count-file", fork_count_file])
+        polybench_run(
+            ["--native", "interpreter/jsinit.js", "-w", "0", "-i", "0", "--metric=none", "--mx-benchmark-args", "--fork-count-file", fork_count_file])
+        polybench_run(["--jvm", "interpreter/*.js", "--metric=metaspace-memory"])
+        polybench_run(["--jvm", "interpreter/*.js", "--metric=application-memory"])
+        polybench_run(["--jvm", "interpreter/*.js", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--native", "interpreter/*.js", "--metric=allocated-bytes", "-w", "40", "-i", "10", "--experimental-options", "--engine.Compilation=false"])
+        polybench_run(["--jvm", "interpreter/*.js", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+        polybench_run(["--native", "interpreter/*.js", "--metric=allocated-bytes", "-w", "40", "-i", "10"])
+    if "instructions" in tags:
+        assert mx_polybench.is_enterprise()
+        polybench_run(["--native", "interpreter/*.js", "--metric=instructions", "--experimental-options", "--engine.Compilation=false",
+                       "--mx-benchmark-args", "--fork-count-file", fork_count_file])
+
+
+mx_polybench.register_polybench_language(mx_suite=_suite, language="js", distributions=["GRAALJS"])
+mx_polybench.register_polybench_benchmark_suite(mx_suite=_suite, name="js", languages=["js"],
+                                                benchmark_distribution="GRAALJS_POLYBENCH_BENCHMARKS",
+                                                benchmark_file_filter=".*js", runner=js_polybench_runner,
+                                                tags={"gate", "benchmark", "instructions"})
