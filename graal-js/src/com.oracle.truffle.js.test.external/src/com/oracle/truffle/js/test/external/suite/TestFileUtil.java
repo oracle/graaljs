@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,8 @@ public final class TestFileUtil {
         mergedTestFile.setBlockedBy(blockedBy != null ? blockedBy : first.getBlockedBy());
         String comment = second.getComment();
         mergedTestFile.setComment(comment != null ? comment : first.getComment());
+        TestFile.JavaVersion javaVersion = second.getJavaVersion();
+        mergedTestFile.setJavaVersion(javaVersion != null ? javaVersion : first.getJavaVersion());
         return mergedTestFile;
     }
 
