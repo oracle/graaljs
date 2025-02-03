@@ -8,9 +8,6 @@ prefix parallel
 
 [true] # This section applies to all platforms
 
-# gc({ execution: 'async' }) not supported
-test-abortsignal-drop-settled-signals: FAIL
-
 # Missing detection of unsettled top-level-await
 test-aborted-util: FAIL
 test-worker-data-url: FAIL
@@ -306,6 +303,7 @@ test-http-server-request-timeouts-mixed: PASS,FLAKY
 test-http2-server-rst-stream: SKIP
 test-signal-args: PASS,FAIL
 # GC-based random failures
+test-abortsignal-drop-settled-signals: SKIP
 test-async-hooks-destroy-on-gc: SKIP
 test-domain-async-id-map-leak: SKIP
 test-https-server-connections-checking-leak: SKIP
