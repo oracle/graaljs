@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -161,11 +161,11 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
     public long nextObjectViaPolling(Object object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         long index = currentIndex + 1;
-        while (!hasPropertyNode.executeBoolean(object, index)) {
+        while (index < length && !hasPropertyNode.executeBoolean(object, index)) {
             index++;
-            if (index >= length) {
-                return JSRuntime.MAX_SAFE_INTEGER_LONG;
-            }
+        }
+        if (index >= length) {
+            return JSRuntime.MAX_SAFE_INTEGER_LONG;
         }
         return index;
     }
