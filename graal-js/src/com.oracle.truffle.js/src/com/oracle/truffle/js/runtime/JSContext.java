@@ -65,6 +65,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NonIdempotent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.nodes.Node;
@@ -1698,6 +1699,7 @@ public class JSContext {
         this.importMetaInitializer = importMetaInitializer;
     }
 
+    @NonIdempotent
     public final boolean hasImportMetaInitializerBeenSet() {
         return !importMetaInitializerNotUsedAssumption.isValid();
     }
@@ -1714,6 +1716,7 @@ public class JSContext {
         this.importModuleDynamicallyCallback = callback;
     }
 
+    @NonIdempotent
     public final boolean hasImportModuleDynamicallyCallbackBeenSet() {
         return !importModuleDynamicallyCallbackNotUsedAssumption.isValid();
     }
