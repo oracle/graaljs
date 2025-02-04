@@ -1998,7 +1998,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (actualDeleteCount > 0) {
                 // copy deleted elements into result array
                 branchDelete.enter(this);
-                spliceRead(thisObj, actualStart, actualDeleteCount, aObj, len);
+                spliceRead(thisObj, actualStart, actualDeleteCount, aObj);
             }
             setLength(aObj, actualDeleteCount);
 
@@ -2065,15 +2065,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                             array.length(obj) != expectedLength;
         }
 
-        private void spliceRead(Object thisObj, long actualStart, long actualDeleteCount, Object aObj, long length) {
+        private void spliceRead(Object thisObj, long actualStart, long actualDeleteCount, Object aObj) {
+            final long deleteEnd = actualDeleteCount + actualStart;
             long kPlusStart = actualStart;
             if (!hasProperty(thisObj, kPlusStart)) {
-                kPlusStart = nextElementIndex(thisObj, kPlusStart, length);
+                kPlusStart = nextElementIndex(thisObj, kPlusStart, deleteEnd);
             }
-            while (kPlusStart < (actualDeleteCount + actualStart)) {
+            while (kPlusStart < deleteEnd) {
                 Object fromValue = read(thisObj, kPlusStart);
                 writeOwn(aObj, kPlusStart - actualStart, fromValue);
-                kPlusStart = nextElementIndex(thisObj, kPlusStart, length);
+                kPlusStart = nextElementIndex(thisObj, kPlusStart, deleteEnd);
             }
         }
 
