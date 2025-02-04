@@ -444,6 +444,7 @@ suite = {
           "com.oracle.truffle.js.nodes.arguments to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.cast to org.graalvm.nodejs",
           "com.oracle.truffle.js.nodes.function to org.graalvm.nodejs",
+          "com.oracle.truffle.js.nodes.promise to org.graalvm.nodejs",
           "com.oracle.truffle.js.parser to org.graalvm.nodejs",
           "com.oracle.truffle.js.runtime to org.graalvm.nodejs",
           "com.oracle.truffle.js.runtime.array to org.graalvm.nodejs",

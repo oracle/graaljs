@@ -170,8 +170,11 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
+import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.parser.GraalJSParserHelper;
 import com.oracle.truffle.js.parser.JSParser;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
@@ -311,6 +314,8 @@ public final class GraalJSAccess {
     public static final TruffleString NODE_INSPECTOR = Strings.constant("node:inspector");
     public static final TruffleString DOT_JS = Strings.constant(".js");
     public static final TruffleString SHEBANG = Strings.constant("#!");
+    public static final TruffleString EXECUTION = Strings.constant("execution");
+    public static final TruffleString ASYNC = Strings.constant("async");
 
     private static final boolean VERBOSE = Boolean.getBoolean("truffle.node.js.verbose");
     private static final boolean USE_NIO_BUFFER = !"false".equals(System.getProperty("node.buffer.nio"));
@@ -2889,10 +2894,32 @@ public final class GraalJSAccess {
 
         JSFunctionData functionData = getContextEmbedderData(realm.getContext()).getOrCreateFunctionData(GcBuiltinRoot, (c) -> {
             JavaScriptRootNode rootNode = new JavaScriptRootNode() {
+                @Child IsObjectNode isObject = IsObjectNode.create();
+                @Child PropertyGetNode getExecution = PropertyGetNode.create(EXECUTION, c);
+                @Child TruffleString.EqualNode equalNode = TruffleString.EqualNode.create();
+                @Child PromiseResolveNode promiseResolve = PromiseResolveNode.create(c);
+
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    boolean async = false;
+                    Object[] arguments = frame.getArguments();
+                    if (JSArguments.getUserArgumentCount(arguments) != 0) {
+                        Object arg0 = JSArguments.getUserArgument(arguments, 0);
+                        if (isObject.executeBoolean(arg0)) {
+                            Object execution = getExecution.getValue(arg0);
+                            if (execution instanceof TruffleString string && Strings.equals(equalNode, string, ASYNC)) {
+                                async = true;
+                            }
+                        }
+                    }
+
                     GraalJSAccess.get(this).isolatePerformGC();
-                    return Undefined.instance;
+
+                    if (async) {
+                        return promiseResolve.executeDefault(Undefined.instance);
+                    } else {
+                        return Undefined.instance;
+                    }
                 }
             };
             return JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, Strings.GC);
