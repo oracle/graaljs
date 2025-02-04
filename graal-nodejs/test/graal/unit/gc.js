@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,5 +58,8 @@ describe('GC', function () {
     });
     it('RemoveGCEpilogueCallbackTest should remove a registered callback', function () {
         assert.strictEqual(module.GC_RemoveGCEpilogueCallbackTest(), true);
+    });
+    it('gc({ execution: "async" }) should be a promise', function(done) {
+        global.gc({ execution: 'async' }).then(() => done());
     });
 });
