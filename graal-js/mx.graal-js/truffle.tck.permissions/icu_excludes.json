@@ -7,53 +7,58 @@
           "parameterTypes" : [
               "java.lang.StringBuilder",
               "org.graalvm.shadowed.com.ibm.icu.text.NFRuleSet"
+        ]}
+    ]
+  }, {
+    "name" : "org.graalvm.shadowed.com.ibm.icu.text.LocaleDisplayNames",
+    "methods" : [
+        { "name" : "getInstance",
+          "justification" : "Reflectively calls getInstance on statically pre-configured class.",
+          "parameterTypes" : [
+              "org.graalvm.shadowed.com.ibm.icu.util.ULocale",
+              "org.graalvm.shadowed.com.ibm.icu.text.DisplayContext[]"
         ]},
-        { "name" : "getLenientScannerProvider",
-          "justification" : "Loads and instantiates RbnfLenientScannerProvider reflectively, points-to analysis assumes all classes configured for reflective access.",
+        { "name" : "getInstance",
+          "justification" : "Reflectively calls getInstance on statically pre-configured class.",
           "parameterTypes" : [
+              "org.graalvm.shadowed.com.ibm.icu.util.ULocale",
+              "org.graalvm.shadowed.com.ibm.icu.text.LocaleDisplayNames$DialectHandling"
         ]}
     ]
-  },
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUResourceBundle",
+  }, {
+    "name" : "org.graalvm.shadowed.com.ibm.icu.util.ULocale$JDKLocaleHelper",
     "methods" : [
-        { "name" : "addBundleBaseNamesFromClassLoader",
-          "justification" : "Loads resources using class loader, dynamic classloading is not supported by SVM.",
-          "parameterTypes" : [
-            "java.lang.String",
-            "java.lang.ClassLoader",
-            "java.util.Set"
-        ]}
+        { "name" : "getDefault",
+          "justification" : "Reflectively calls java.util.Locale#getDefault(Category)."
+        }
     ]
-  },
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ResourceBundleWrapper$2",
+  }, {
+    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.URLHandler",
     "methods" : [
-        { "name" : "load",
-          "justification" : "Loads and instantiates ResourceBundle reflectively, points-to analysis assumes all classes configured for reflective access.",
+        { "name" : "get",
+          "justification" : "Reflectively creates statically pre-configured URLHandler.",
           "parameterTypes" : [
-        ]}
+            "java.net.URL"
+          ]
+        }
     ]
-  },
-  {
+  }, {
     "name" : "org.graalvm.shadowed.com.ibm.icu.text.NumberFormat",
     "methods" : [
         { "name" : "getShim",
-          "justification" : "Loads and instantiates NumberFormatShim reflectively, points-to analysis assumes all classes configured for reflective access.",
+          "justification" : "Instantiates NumberFormatShim reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
         ]}
     ]
-  },
-  {
+  }, {
     "name" : "org.graalvm.shadowed.com.ibm.icu.text.BreakIterator",
     "methods" : [
         { "name" : "getShim",
-          "justification" : "Loads and instantiates BreakIteratorServiceShim reflectively, points-to analysis assumes all classes configured for reflective access.",
+          "justification" : "Instantiates BreakIteratorServiceShim reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
         ]}
     ]
-  },
-  {
+  }, {
     "name" : "org.graalvm.shadowed.com.ibm.icu.text.Collator",
     "methods" : [
         { "name" : "getShim",
@@ -61,110 +66,12 @@
           "parameterTypes" : [
         ]}
     ]
-  },
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ClassLoaderUtil$BootstrapClassLoader",
+  }, {
+    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ResourceBundleWrapper$2",
     "methods" : [
-        { "name" : "<init>",
-          "justification" : "Creates a new dummy ClassLoader to represent a null ClassLoader, classloading is not supported by SVM.",
+        { "name" : "load",
+          "justification" : "Loads and instantiates ResourceBundle reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
-        ]}
-    ]
-  },
-
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUData",
-    "justification" : "Loads resources using class loader, classloading is not supported by SVM.",
-    "methods" : [
-        { "name" : "getStream",
-          "parameterTypes" : [
-            "java.lang.Class",
-            "java.lang.String",
-            "boolean"
-        ]},
-        { "name" : "getStream",
-          "parameterTypes" : [
-            "java.lang.ClassLoader",
-            "java.lang.String",
-            "boolean"
-        ]}
-    ]
-  },
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUBinary",
-    "methods" : [
-        { "name" : "mapFile",
-          "justification" : "In runtime unused, JavaScript loads data from resources instead of files.",
-          "parameterTypes" : [
-            "java.io.File"
-        ]}
-    ]
-  },
-
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUConfig",
-    "methods" : [
-        { "name" : "get",
-          "justification" : "Reads system property for ICU library.",
-          "parameterTypes" : [
-            "java.lang.String",
-            "java.lang.String"
-        ]}
-    ]
-  },
-
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.URLHandler$JarURLHandler",
-    "justification" : "Unreachable in runtime but called in PrivilegedAction which makes it visible in context insensitive points-to-analyses.",
-    "methods" : [
-        { "name" : "<init>",
-          "parameterTypes" : [
-            "java.net.URL"
-        ]}
-    ]
-  },
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.URLHandler$FileURLHandler",
-    "justification" : "Unreachable in runtime but called in PrivilegedAction which makes it visible in context insensitive points-to-analyses.",
-    "methods" : [
-        { "name" : "<init>",
-          "parameterTypes" : [
-            "java.net.URL"
-        ]},
-        { "name" : "guide",
-          "parameterTypes" : [
-            "org.graalvm.shadowed.com.ibm.icu.impl.URLHandler$URLVisitor",
-            "boolean",
-            "boolean"
-        ]},
-        { "name" : "process",
-          "parameterTypes" : [
-            "org.graalvm.shadowed.com.ibm.icu.impl.URLHandler$URLVisitor",
-            "boolean",
-            "boolean",
-            "java.lang.String",
-            "java.io.File[]"
-        ]}
-    ]
-  },
-
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.number.DecimalFormatProperties",
-    "methods" : [
-      { "name" : "toStringBare",
-        "justification" : "Uses reflection to read the object's field values. Used by DecimalFormatProperties.toString() which is never actually called.",
-        "parameterTypes" : [
-            "java.lang.StringBuilder"
-        ]}
-    ]
-  },
-  {
-    "name" : "org.graalvm.shadowed.com.ibm.icu.text.CurrencyMetaInfo",
-    "methods" : [
-      { "name" : "debugString",
-        "justification" : "Uses reflection to read the object's field values. Used by CurrencyMetaInfo.*.toString() which is never actually called.",
-        "parameterTypes" : [
-            "java.lang.Object"
         ]}
     ]
   }
