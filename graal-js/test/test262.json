@@ -4042,10 +4042,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/TypedArray/slice-bitwise-same.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/TypedArray/sort-negative-nan.js",
     "ecmaVersion" : {
       "minVersion" : 16
