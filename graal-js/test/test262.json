@@ -3844,8 +3844,11 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/Math/exp-exact.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "status" : "PASS",
+    "statusOverrides" : {
+      "AARCH64" : "FAIL"
+    },
+    "comment" : "The test expects more than the specification. Namely, it expects Math.exp(1) === Math.E, which we fail to satisfy on aarch64"
   }, {
     "filePath" : "staging/sm/Math/f16round.js",
     "ecmaVersion" : {
