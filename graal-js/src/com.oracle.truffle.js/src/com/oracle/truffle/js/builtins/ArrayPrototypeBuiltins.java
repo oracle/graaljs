@@ -172,8 +172,10 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
@@ -982,6 +984,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArraySliceNode extends ArrayForEachIndexCallOperation {
+        @Child private InteropLibrary interopLibrary;
 
         public JSArraySliceNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -992,7 +995,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached JSToIntegerAsLongNode toIntegerAsLong,
                         @Cached InlinedConditionProfile sizeIsZero,
                         @Cached InlinedConditionProfile offsetProfile1,
-                        @Cached InlinedConditionProfile offsetProfile2) {
+                        @Cached InlinedConditionProfile offsetProfile2,
+                        @Cached InlinedConditionProfile sameElementTypeProfile) {
             Object thisArrayObj = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(thisArrayObj);
             long startPos = begin != Undefined.instance ? JSRuntime.getOffset(toIntegerAsLong.executeLong(begin), len, this, offsetProfile1) : 0;
@@ -1008,8 +1012,36 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisArrayObj, size);
             if (sizeIsZero.profile(this, size > 0)) {
                 if (isTypedArrayImplementation) {
-                    checkOutOfBounds((JSTypedArrayObject) thisObj);
+                    JSTypedArrayObject srcTypedArray = (JSTypedArrayObject) thisObj;
+                    checkOutOfBounds(srcTypedArray);
                     endPos = Math.min(endPos, getLength(thisArrayObj));
+
+                    JSTypedArrayObject targetTypedArray = (JSTypedArrayObject) resultArray;
+                    TypedArray srcType = srcTypedArray.getArrayType();
+                    TypedArray targetType = targetTypedArray.getArrayType();
+                    if (sameElementTypeProfile.profile(this, srcType.getElementType() == targetType.getElementType())) {
+                        JSArrayBufferObject srcBuffer = srcTypedArray.getArrayBuffer();
+                        JSArrayBufferObject targetBuffer = targetTypedArray.getArrayBuffer();
+                        int elementSize = srcType.bytesPerElement();
+                        int srcByteOffset = srcType.getOffset(srcTypedArray);
+                        long srcByteIndex = startPos * elementSize + srcByteOffset;
+                        int targetByteIndex = targetType.getOffset(targetTypedArray);
+                        long bytes = (endPos - startPos) * elementSize;
+                        TypedArray srcUint8Type = toUint8Type(srcType);
+                        TypedArray targetUint8Type = toUint8Type(targetType);
+
+                        InteropLibrary interop = getInterop(srcUint8Type);
+                        if (interop == null) {
+                            interop = getInterop(targetUint8Type);
+                        }
+
+                        for (long i = 0; i < bytes; i++) {
+                            Object value = srcUint8Type.getBufferElement(srcBuffer, (int) (srcByteIndex + i), true, interop);
+                            targetUint8Type.setBufferElement(targetBuffer, (int) (targetByteIndex + i), true, value, interop);
+                        }
+
+                        return resultArray;
+                    }
                 }
                 forEachIndexCall(thisArrayObj, null, startPos, startPos, endPos, resultArray);
             }
@@ -1017,6 +1049,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 setLength(resultArray, size);
             }
             return resultArray;
+        }
+
+        private InteropLibrary getInterop(TypedArray arrayType) {
+            if (interopLibrary == null && arrayType.isInterop()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopLibrary = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+            }
+            return interopLibrary;
+        }
+
+        private static TypedArray toUint8Type(TypedArray arrayType) {
+            return TypedArrayFactory.Uint8Array.createArrayType(arrayType.getBufferType(), false, true);
         }
 
         @Override
