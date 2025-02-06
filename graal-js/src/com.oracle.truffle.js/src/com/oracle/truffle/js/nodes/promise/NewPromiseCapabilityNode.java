@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -101,8 +102,8 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
         JSContext context = realm.getContext();
         assert JSFunction.isConstructor(constructor);
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);
-        JSDynamicObject executor = getCapabilitiesExecutor(context, realm, promiseCapability);
-        JSDynamicObject promise = (JSDynamicObject) JSFunction.construct(constructor, new Object[]{executor});
+        JSFunctionObject executor = getCapabilitiesExecutor(context, realm, promiseCapability);
+        JSPromiseObject promise = (JSPromiseObject) JSFunction.construct(constructor, new Object[]{executor});
         assert JSFunction.isJSFunction(promiseCapability.getResolve()) && JSFunction.isJSFunction(promiseCapability.getReject());
         promiseCapability.setPromise(promise);
         return promiseCapability;
@@ -114,7 +115,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
             throw Errors.createTypeErrorNotAConstructor(constructor, context);
         }
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);
-        JSDynamicObject executor = getCapabilitiesExecutor(promiseCapability);
+        JSFunctionObject executor = getCapabilitiesExecutor(promiseCapability);
         Object promise = newPromise.executeCall(JSArguments.create(Undefined.instance, constructor, executor));
         if (!(promise instanceof JSDynamicObject)) {
             errorBranch.enter();
@@ -128,16 +129,16 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
         return promiseCapability;
     }
 
-    private JSDynamicObject getCapabilitiesExecutor(PromiseCapabilityRecord promiseCapability) {
+    private JSFunctionObject getCapabilitiesExecutor(PromiseCapabilityRecord promiseCapability) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseGetCapabilitiesExecutor, (c) -> createGetCapabilitiesExecutorImpl(c));
-        JSDynamicObject function = JSFunction.create(getRealm(), functionData);
+        JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setPromiseCapability.setValue(function, promiseCapability);
         return function;
     }
 
-    private static JSDynamicObject getCapabilitiesExecutor(JSContext context, JSRealm realm, PromiseCapabilityRecord promiseCapability) {
+    private static JSFunctionObject getCapabilitiesExecutor(JSContext context, JSRealm realm, PromiseCapabilityRecord promiseCapability) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseGetCapabilitiesExecutor, (c) -> createGetCapabilitiesExecutorImpl(c));
-        JSDynamicObject function = JSFunction.create(realm, functionData);
+        JSFunctionObject function = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(function, PROMISE_CAPABILITY_KEY, promiseCapability);
         return function;
     }
@@ -151,7 +152,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 PromiseCapabilityRecord capability = (PromiseCapabilityRecord) getPromiseCapability.getValue(functionObject);
                 if (capability.getResolve() != Undefined.instance || capability.getReject() != Undefined.instance) {
                     errorBranch.enter();
