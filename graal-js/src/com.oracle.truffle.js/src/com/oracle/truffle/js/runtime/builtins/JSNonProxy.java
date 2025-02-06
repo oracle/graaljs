@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -532,9 +532,18 @@ public abstract class JSNonProxy extends JSClass {
     public static boolean testIntegrityLevelFast(JSDynamicObject obj, boolean frozen) {
         int objectFlags = JSDynamicObject.getObjectFlags(obj);
         if (frozen) {
-            return (objectFlags & JSShape.FROZEN_FLAG) != 0;
+            if ((objectFlags & JSShape.FROZEN_FLAG) != 0) {
+                return true;
+            }
         } else {
-            return (objectFlags & JSShape.SEALED_FLAG) != 0;
+            if ((objectFlags & JSShape.SEALED_FLAG) != 0) {
+                return true;
+            }
+        }
+        if ((objectFlags & JSShape.NOT_EXTENSIBLE_FLAG) != 0) {
+            return testSealedProperties(obj) && (!frozen || testFrozenProperties(obj));
+        } else {
+            return false;
         }
     }
 
@@ -565,10 +574,12 @@ public abstract class JSNonProxy extends JSClass {
         return true;
     }
 
+    @TruffleBoundary
     private static boolean testSealedProperties(JSDynamicObject thisObj) {
         return JSDynamicObject.testProperties(thisObj, p -> p.isHidden() || (p.getFlags() & JSAttributes.NOT_CONFIGURABLE) != 0);
     }
 
+    @TruffleBoundary
     private static boolean testFrozenProperties(JSDynamicObject thisObj) {
         return JSDynamicObject.testProperties(thisObj, p -> p.isHidden() || (p.getFlags() & JSProperty.ACCESSOR) != 0 || (p.getFlags() & JSAttributes.NOT_WRITABLE) != 0);
     }
