@@ -304,19 +304,21 @@ public final class GraalJSEvaluator implements JSParser {
             // Note: If loading failed, we must not perform module linking.
 
             moduleRecord.link(realm);
+            // On failure, an exception is thrown and this module's [[Status]] remains unlinked.
+
             Object promise = moduleRecord.evaluate(realm);
-            boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
-            if (isAsync) {
+            if (context.isOptionTopLevelAwait()) {
                 JSFunctionObject onRejected = createTopLevelAwaitReject(context, realm);
                 JSFunctionObject onAccepted = createTopLevelAwaitResolve(context, realm);
                 // Non-standard: throw error from onRejected handler.
                 performPromiseThenNode.execute((JSPromiseObject) promise, onAccepted, onRejected, null);
             }
+
             if (context.getLanguageOptions().esmEvalReturnsExports()) {
                 JSDynamicObject moduleNamespace = moduleRecord.getModuleNamespace();
                 assert moduleNamespace != null;
                 return moduleNamespace;
-            } else if (isAsync) {
+            } else if (context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation()) {
                 return promise;
             } else {
                 return moduleRecord.getExecutionResultOrThrow();
