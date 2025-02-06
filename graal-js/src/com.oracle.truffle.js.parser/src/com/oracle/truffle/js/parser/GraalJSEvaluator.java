@@ -754,9 +754,7 @@ public final class GraalJSEvaluator implements JSParser {
         if (!(abstractModule instanceof CyclicModuleRecord moduleRecord)) {
             JSPromiseObject promise = abstractModule.evaluate(realm);
             assert !JSPromise.isPending(promise);
-            if (JSPromise.isRejected(promise)) {
-                throw JSRuntime.getException(JSPromise.getPromiseResult(promise));
-            }
+            JSPromise.throwIfRejected(promise, realm);
             return index;
         }
         if (moduleRecord.getStatus() == Status.EvaluatingAsync || moduleRecord.getStatus() == Status.Evaluated) {

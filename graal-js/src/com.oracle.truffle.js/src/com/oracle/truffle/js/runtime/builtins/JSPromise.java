@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSPromise extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
     public static final TruffleString CLASS_NAME = Strings.constant("Promise");
@@ -152,6 +153,17 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
 
     public static Object getPromiseResult(JSPromiseObject obj) {
         return JSRuntime.nullToUndefined(obj.getPromiseResult());
+    }
+
+    public static void throwIfRejected(JSPromiseObject promise, JSRealm realm) {
+        if (JSPromise.isRejected(promise)) {
+            if (!promise.isHandled()) {
+                // Notify the promise rejection tracker that this promise has been handled.
+                realm.getContext().notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance, realm.getAgent());
+                promise.setIsHandled(true);
+            }
+            throw JSRuntime.getException(JSPromise.getPromiseResult(promise));
+        }
     }
 
     @Override
