@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -383,11 +383,10 @@ public class ImportCallNode extends JavaScriptNode {
 
                     // Evaluate() should always return a promise.
                     // Yet, if top-level-await is disabled, returns/throws the result instead.
-                    Object evaluatePromise = moduleRecord.evaluate(realm);
+                    JSPromiseObject evaluatePromise = moduleRecord.evaluate(realm);
                     if (context.isOptionTopLevelAwait() || !(moduleRecord instanceof CyclicModuleRecord cyclicModuleRecord)) {
-                        assert evaluatePromise instanceof JSPromiseObject : evaluatePromise;
                         JSFunctionObject onFulfilled = createFulfilledClosure(context, realm, captures);
-                        promiseThenNode.execute((JSPromiseObject) evaluatePromise, onFulfilled, onRejected);
+                        promiseThenNode.execute(evaluatePromise, onFulfilled, onRejected);
                     } else {
                         // Rethrow any previous execution errors.
                         cyclicModuleRecord.getExecutionResultOrThrow();
