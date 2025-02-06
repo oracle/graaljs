@@ -55,7 +55,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -88,9 +87,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
     public final void loadRequestedModulesSync(JSRealm realm, Object hostDefinedArg) {
         JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefinedArg);
         assert !JSPromise.isPending(loadPromise);
-        if (JSPromise.isRejected(loadPromise)) {
-            throw JSRuntime.getException(JSPromise.getPromiseResult(loadPromise));
-        }
+        JSPromise.throwIfRejected(loadPromise, realm);
     }
 
     /**
