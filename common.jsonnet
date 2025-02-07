@@ -66,6 +66,10 @@ targets +
     capabilities+: ['tmpfs25g', 'e3'],
   },
 
+  x52:: self.linux_amd64 + {
+    capabilities+: ['tmpfs25g', 'x52'],
+  },
+
   linux_aarch64:: common.linux_aarch64 + self.linux_common,
 
   darwin_amd64:: common.darwin_amd64 + self.darwin_common + {
