@@ -70,7 +70,7 @@ local cicommon = import '../ci/common.jsonnet';
     ]) else []),
   },
 
-  local gateCoverage = {
+  local gateCoverage = common.oraclejdk21.tools_java_home + {
     suiteimports+:: ['wasm', 'tools'],
     coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacoco-format', 'lcov', '--jacocout', 'coverage'],
     run+: [
@@ -199,7 +199,7 @@ local cicommon = import '../ci/common.jsonnet';
     graalNodeJs + common.weekly    + gateCoverage                                                                                  + {name: 'coverage'},
     graalNodeJs + common.ondemand  + gateCoverage                                                                                  + {name: 'coverage'},
 
-  ], platforms=[common.jdk21 + common.linux_amd64]),
+  ], platforms=[common.jdklatest + common.linux_amd64]),
 
   builds: styleBuilds + testingBuilds + otherBuilds,
 }

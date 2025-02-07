@@ -21,7 +21,7 @@ local ci = import '../ci.jsonnet';
     },
   },
 
-  local gateCoverage = {
+  local gateCoverage = common.oraclejdk21.tools_java_home + {
     coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacoco-format', 'lcov', '--jacocout', 'coverage'],
     run+: [
       ['mx', '--dynamicimports', '/wasm', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle', '--strict-mode', '--tags', 'build,coverage'] + self.coverage_gate_args,
@@ -178,7 +178,7 @@ local ci = import '../ci.jsonnet';
     # Note: weekly coverage is sync'ed with the graal repo (while ondemand is not).
     graalJs + common.weekly    + gateCoverage                                                             + {name: 'coverage'},
     graalJs + common.ondemand  + gateCoverage                                                             + {name: 'coverage'},
-  ], platforms=[common.jdk21 + common.linux_amd64]),
+  ], platforms=[common.jdklatest + common.linux_amd64]),
 
   // Benchmark builds; need to run on a benchmark machine
   local benchBuilds = generateBuilds([
