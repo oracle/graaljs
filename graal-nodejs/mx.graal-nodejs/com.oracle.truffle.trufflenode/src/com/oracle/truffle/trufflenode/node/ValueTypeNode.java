@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,7 +109,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
@@ -251,11 +250,10 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"cachedArray == value.getArrayType()"}, limit = "TYPED_ARRAY_LIMIT")
     protected final int doArrayBufferView(JSTypedArrayObject value,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached("value.getArrayType()") TypedArray cachedArray,
                     @Cached("identifyType(cachedArray)") int cachedTypeInt,
-                    @Cached @Shared("getByteLength") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
-        assert JSArrayBufferView.isJSArrayBufferView(value);
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         if (useSharedBuffer) {
             ByteBuffer sharedBuffer = GraalJSAccess.get(this).getSharedBuffer();
             sharedBuffer.putInt(getByteLengthNode.executeInt(node, value, context));
@@ -266,8 +264,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = "doArrayBufferView")
     protected final int doArrayBufferViewOverLimit(JSTypedArrayObject value,
-                    @Cached @Shared("getByteLength") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
-        assert JSArrayBufferView.isJSArrayBufferView(value);
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         if (useSharedBuffer) {
             ByteBuffer sharedBuffer = GraalJSAccess.get(this).getSharedBuffer();
             sharedBuffer.putInt(getByteLengthNode.executeInt(this, value, context));

@@ -362,7 +362,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * argument and the Type of the first argument is Object and that object does not have either a
      * [[TypedArrayName]] or an [[ArrayBufferData]] internal slot.
      */
-    @SuppressWarnings("truffle-static-method")
+    @SuppressWarnings({"truffle-static-method", "truffle-interpreted-performance"})
     @Specialization(guards = {"!isUndefined(newTarget)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
     protected JSDynamicObject doObject(JSDynamicObject newTarget, JSObject object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
                     @Bind Node node,
@@ -417,7 +417,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createWriteOwn()") @Shared WriteElementNode writeOwnNode,
                     @Cached ImportValueNode importValue,
                     @Cached @Shared InlinedBranchProfile errorBranch,
-                    @Cached @Exclusive InlinedConditionProfile lengthIsUndefined) {
+                    @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {
             int bufferSize = ConstructorBuiltins.ConstructArrayBufferNode.getBufferSizeSafe(object, interop, this, errorBranch);
             JSArrayBufferObject.Interop arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), object);
