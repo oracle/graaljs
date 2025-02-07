@@ -81,7 +81,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
-import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -381,18 +380,9 @@ public class ImportCallNode extends JavaScriptNode {
                     // If link is an abrupt completion, reject the promise from import().
                     moduleRecord.link(realm);
 
-                    // Evaluate() should always return a promise.
-                    // Yet, if top-level-await is disabled, returns/throws the result instead.
                     JSPromiseObject evaluatePromise = moduleRecord.evaluate(realm);
-                    if (context.isOptionTopLevelAwait() || !(moduleRecord instanceof CyclicModuleRecord cyclicModuleRecord)) {
-                        JSFunctionObject onFulfilled = createFulfilledClosure(context, realm, captures);
-                        promiseThenNode.execute(evaluatePromise, onFulfilled, onRejected);
-                    } else {
-                        // Rethrow any previous execution errors.
-                        cyclicModuleRecord.getExecutionResultOrThrow();
-                        var namespace = moduleRecord.getModuleNamespace();
-                        callPromiseResolve.executeCall(JSArguments.createOneArg(Undefined.instance, importPromiseCapability.getResolve(), namespace));
-                    }
+                    JSFunctionObject onFulfilled = createFulfilledClosure(context, realm, captures);
+                    promiseThenNode.execute(evaluatePromise, onFulfilled, onRejected);
                 } catch (AbstractTruffleException ex) {
                     rejectPromise(importPromiseCapability, ex);
                 }
