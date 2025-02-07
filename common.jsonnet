@@ -1,13 +1,19 @@
 local common = (import "ci/common.jsonnet");
 
 local jdks = {
-  jdk21:: common.jdks["labsjdk-ee-21"] + {
-    jdk:: 'jdk' + super.jdk_version,
+  [name]: common.jdks[name] + {
+    jdk:: if self.jdk_name == 'jdk-latest' then 'jdklatest' else 'jdk' + super.jdk_version,
+    tools_java_home:: {
+      downloads+: {
+        TOOLS_JAVA_HOME: common.jdks_data[name],
+      },
+    },
   },
-
-  jdklatest:: common.jdks["labsjdk-ee-latest"] + {
-    jdk:: 'jdklatest',
-  },
+  for name in std.objectFields(common.jdks_data)
+} + {
+  # Some convenient JDK aliases
+  jdk21:: self["labsjdk-ee-21"],
+  jdklatest:: self["labsjdk-ee-latest"],
 };
 
 local targets = {
