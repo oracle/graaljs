@@ -191,7 +191,7 @@ local cicommon = import '../ci/common.jsonnet';
 
     graalNodeJs + vm_env + build            + testNode(parallelHttp2, max_heap='4G')                                               + {name: 'parallel-http2'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform], override=true),
-  ]], defaultTarget=common.weekly),
+  ]], platforms=ci.jdklatestPlatforms, defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
