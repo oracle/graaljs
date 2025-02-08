@@ -44,11 +44,6 @@ import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -56,6 +51,11 @@ import java.util.Arrays;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -156,6 +156,12 @@ public class ForeignBufferTypedArrayTest {
         @SuppressWarnings("unused")
         public static double readBufferDouble(ForeignZeroBuffer receiver, ByteOrder byteOrder, long byteOffset) {
             return 0;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("unused")
+        static void readBuffer(ForeignZeroBuffer receiver, long byteOffset, byte[] destination, int destinationOffset, int readLength) {
+            Arrays.fill(destination, destinationOffset, destinationOffset + readLength, (byte) 0);
         }
     }
 }

@@ -182,8 +182,8 @@ local ci = import '../ci.jsonnet';
 
   // Benchmark builds; need to run on a benchmark machine
   local benchBuilds = generateBuilds([
-    graalJs + common.dailyBench+ interopJmhBenchmarks                                                     + {name: 'interop-jmh'},
-  ], platforms=[common.jdk21 + common.e3]),
+    graalJs + common.weeklyBench + interopJmhBenchmarks                                                   + {name: 'interop-jmh'},
+  ], platforms=[common.jdklatest + common.x52]),
 
   builds: styleBuilds + testingBuilds + otherBuilds + benchBuilds,
 }
