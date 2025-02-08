@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,7 +111,7 @@ public interface Evaluator {
 
     void moduleLinking(JSRealm realm, CyclicModuleRecord moduleRecord);
 
-    Object moduleEvaluation(JSRealm realm, CyclicModuleRecord moduleRecord);
+    JSPromiseObject moduleEvaluation(JSRealm realm, CyclicModuleRecord moduleRecord);
 
     /**
      * Parses a script string. Returns an executable script object.
