@@ -3645,6 +3645,10 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "staging/built-ins/Object/seal/seal-variable-length-typed-arrays.js",
+    "status" : "FAIL",
+    "comment" : "Off-spec: expects Object.seal(fixed length TA backed by GSAB) not to throw. It throws because it has configurable integer properties that cannot be redefined to be non-configurable."
+  }, {
     "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
@@ -3979,10 +3983,6 @@
     },
     "comment" : "requires Unicode 16.0"
   }, {
-    "filePath" : "staging/sm/Symbol/property-reflection.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/Temporal/Calendar/compare-to-datetimeformat.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
@@ -4041,10 +4041,6 @@
     },
     "comment" : "expects uint8array-base64 to be enabled"
   }, {
-    "filePath" : "staging/sm/TypedArray/seal-and-freeze.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/TypedArray/sort-negative-nan.js",
     "ecmaVersion" : {
       "minVersion" : 16
@@ -4058,10 +4054,6 @@
     "comment" : "requires Float16Array"
   }, {
     "filePath" : "staging/sm/TypedArray/test-integrity-level-detached.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/TypedArray/test-integrity-level.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {

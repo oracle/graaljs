@@ -882,6 +882,10 @@
     "filePath" : "mjsunit/number-tostring-big-integer.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/object-seal.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, see https://github.com/v8/v8/commit/58fe43dd2fbb2b3c4fad55f8c40bd0daa78612a7#diff-8c4973d7623f46ba59c9c0fa41083040ac0b33cf160ebfc89ecf2151f12309a1"
+  }, {
     "filePath" : "mjsunit/opt-elements-kind.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
@@ -1363,6 +1367,10 @@
     "filePath" : "mjsunit/regress/regress-948307.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-95920.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, see https://github.com/v8/v8/commit/58fe43dd2fbb2b3c4fad55f8c40bd0daa78612a7#diff-3463c63ce3409b70aa17c9e8cd3af8429d2dd1764c57219229b28d3f6aa31d6e"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-100859.js",
     "runInIsolation" : true,

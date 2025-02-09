@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,8 @@ public abstract class JSArrayBase extends JSNonProxyObject {
     @Override
     public final boolean testIntegrityLevel(boolean frozen) {
         DynamicArray array = (DynamicArray) getArrayType();
-        boolean arrayIs = frozen ? array.isFrozen() : array.isSealed();
+        boolean arrayIs = (frozen ? array.isFrozen() : array.isSealed()) ||
+                        (!array.isExtensible() && array.firstElementIndex(this) > array.lastElementIndex(this));
         return arrayIs && JSNonProxy.testIntegrityLevelFast(this, frozen);
     }
 

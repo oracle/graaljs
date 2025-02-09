@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -82,15 +82,15 @@ assertTrue(Object.isExtensible(ta));
 assertFalse(Object.isSealed(ta));
 assertFalse(Object.isFrozen(ta));
 
-Object.seal(ta);
+try { Object.seal(ta); } catch {}
 assertFalse(Object.isExtensible(ta));
-assertTrue(Object.isSealed(ta));
+assertFalse(Object.isSealed(ta));
 assertFalse(Object.isFrozen(ta));
 assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "0")), `{"value":0,"writable":true,"enumerable":true,"configurable":true}`);
 
 try { Object.freeze(ta); } catch {}
 assertFalse(Object.isExtensible(ta));
-assertTrue(Object.isSealed(ta));
+assertFalse(Object.isSealed(ta));
 assertFalse(Object.isFrozen(ta));
 assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "0")), `{"value":0,"writable":true,"enumerable":true,"configurable":true}`);
 
@@ -101,16 +101,16 @@ assertTrue(Object.isExtensible(ta));
 assertFalse(Object.isSealed(ta));
 assertFalse(Object.isFrozen(ta));
 
-Object.seal(ta);
+try { Object.seal(ta); } catch {}
 assertFalse(Object.isExtensible(ta));
-assertTrue(Object.isSealed(ta));
+assertFalse(Object.isSealed(ta));
 assertFalse(Object.isFrozen(ta));
 assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "0")), `{"value":0,"writable":true,"enumerable":true,"configurable":true}`);
-assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "x")), `{"value":42,"writable":true,"enumerable":true,"configurable":false}`);
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "x")), `{"value":42,"writable":true,"enumerable":true,"configurable":true}`);
 
 try { Object.freeze(ta); } catch {}
 assertFalse(Object.isExtensible(ta));
-assertTrue(Object.isSealed(ta));
+assertFalse(Object.isSealed(ta));
 assertFalse(Object.isFrozen(ta));
 assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "0")), `{"value":0,"writable":true,"enumerable":true,"configurable":true}`);
-assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "x")), `{"value":42,"writable":true,"enumerable":true,"configurable":false}`);
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "x")), `{"value":42,"writable":true,"enumerable":true,"configurable":true}`);
