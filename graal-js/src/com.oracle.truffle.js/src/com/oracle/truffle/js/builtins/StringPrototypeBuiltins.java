@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -956,9 +956,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (separator == Undefined.instance) {
                 isUndefinedBranch.enter(this);
                 return split(thisStr, limit, NOP_SPLITTER, null, 1, zeroLimit);
-            } else if (JSRegExp.isJSRegExp(separator)) {
+            } else if (separator instanceof JSRegExpObject regExp) {
                 isRegexpBranch.enter(this);
-                JSRegExpObject regExp = (JSRegExpObject) separator;
                 int groupCount = TRegexCompiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(regExp), this, readGroupCount);
                 return split(thisStr, limit, regexpSplitter, regExp, groupCount, zeroLimit);
             } else {
@@ -1614,7 +1613,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
-            if (isRegExp.profile(node, JSRegExp.isJSRegExp(searchValue))) {
+            if (isRegExp.profile(node, searchValue instanceof JSRegExpObject)) {
                 JSRegExpObject searchRegExp = (JSRegExpObject) searchValue;
                 Object tRegexCompiledRegex = JSRegExp.getCompiledRegex(searchRegExp);
                 int groupCount = TRegexCompiledRegexAccessor.groupCount(tRegexCompiledRegex, node, readGroupCount);
@@ -2364,7 +2363,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getGlobalFlag) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            if (isGlobalRegExp.profile(this, JSRegExp.isJSRegExp(searchObj) && isGlobal(JSRegExp.getCompiledRegex((JSRegExpObject) searchObj), getGlobalFlag))) {
+            if (isGlobalRegExp.profile(this, searchObj instanceof JSRegExpObject searchRegExp && isGlobal(JSRegExp.getCompiledRegex(searchRegExp), getGlobalFlag))) {
                 return matchGlobal(thisStr, (JSRegExpObject) searchObj,
                                 this, isMatch, substringNode, readIsMatch, getStart, getEnd);
             } else {
