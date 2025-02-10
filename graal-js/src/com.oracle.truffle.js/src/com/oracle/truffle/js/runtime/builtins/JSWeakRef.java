@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,6 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     public static TruffleWeakReference<?> getInternalWeakRef(JSDynamicObject obj) {
-        assert isJSWeakRef(obj);
         return ((JSWeakRefObject) obj).getWeakReference();
     }
 

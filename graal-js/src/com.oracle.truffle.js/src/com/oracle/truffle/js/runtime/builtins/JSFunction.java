@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -206,12 +206,10 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static MaterializedFrame getEnclosingFrame(JSDynamicObject obj) {
-        assert isJSFunction(obj);
         return ((JSFunctionObject) obj).getEnclosingFrame();
     }
 
     public static JSFunctionData getFunctionData(JSDynamicObject obj) {
-        assert isJSFunction(obj);
         return ((JSFunctionObject) obj).getFunctionData();
     }
 
@@ -220,17 +218,14 @@ public final class JSFunction extends JSNonProxy {
     }
 
     private static Object getClassPrototypeField(JSDynamicObject obj) {
-        assert isJSFunction(obj);
         return ((JSFunctionObject) obj).getClassPrototype();
     }
 
     private static void setClassPrototypeField(JSDynamicObject obj, Object classPrototype) {
-        assert isJSFunction(obj);
         ((JSFunctionObject) obj).setClassPrototype(classPrototype);
     }
 
     public static JSRealm getRealm(JSDynamicObject obj) {
-        assert isJSFunction(obj);
         return ((JSFunctionObject) obj).getRealm();
     }
 
@@ -242,7 +237,6 @@ public final class JSFunction extends JSNonProxy {
      * Version optimized for a single Realm.
      */
     public static JSRealm getRealm(JSFunctionObject functionObj, JSContext context, Node node) {
-        assert isJSFunction(functionObj);
         JSRealm realm;
         if (context.isSingleRealm()) {
             realm = JSRealm.get(node);
@@ -303,7 +297,6 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static Object call(JSFunctionObject functionObject, Object thisObject, Object[] argumentValues) {
-        assert JSFunction.isJSFunction(functionObject);
         assert thisObject != null;
         Object[] arguments = JSArguments.create(thisObject, functionObject, argumentValues);
         return getCallTarget(functionObject).call(arguments);
@@ -316,7 +309,7 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static Object construct(JSFunctionObject functionObject, Object[] argumentValues) {
-        assert isJSFunction(functionObject) && isConstructor(functionObject);
+        assert isConstructor(functionObject);
         Object[] arguments = JSArguments.create(CONSTRUCT, functionObject, argumentValues);
         return getConstructTarget(functionObject).call(arguments);
     }
@@ -404,7 +397,6 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static boolean isConstructor(JSDynamicObject obj) {
-        assert JSFunction.isJSFunction(obj);
         return getFunctionData(obj).isConstructor();
     }
 

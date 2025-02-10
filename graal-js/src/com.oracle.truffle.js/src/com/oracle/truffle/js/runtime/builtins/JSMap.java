@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,12 +82,10 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     public static JSHashMap getInternalMap(JSDynamicObject obj) {
-        assert isJSMap(obj);
         return ((JSMapObject) obj).getMap();
     }
 
     public static int getMapSize(JSDynamicObject obj) {
-        assert isJSMap(obj);
         return getInternalMap(obj).size();
     }
 

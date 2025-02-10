@@ -292,7 +292,6 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     }
 
     public static InternalState getInternalState(JSDynamicObject collatorObj) {
-        assert isJSCollator(collatorObj);
         return ((JSCollatorObject) collatorObj).getInternalState();
     }
 
