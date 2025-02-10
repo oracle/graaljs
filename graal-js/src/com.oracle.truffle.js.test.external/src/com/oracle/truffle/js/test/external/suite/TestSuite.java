@@ -53,11 +53,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -398,7 +399,9 @@ public abstract class TestSuite {
 
     private void printHTMLOutput(String result) {
         try (PrintStream htmlStream = new PrintStream(new FileOutputStream(getHTMLFileName()))) {
-            htmlStream.println("<html><head><title>" + config.getSuiteDescription() + " output</title><head><body>" + (new Date()).toString() + "<br/><br/>");
+            htmlStream.println("<html><head><title>" + config.getSuiteDescription() + " output</title></head>");
+            htmlStream.println("<body style=\"font-family: monospace;\">");
+            htmlStream.println(DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now()) + "<br/><br/>");
 
             htmlStream.println("<h3>Failing Tests</h3>");
             htmlStream.println("<ul>");
