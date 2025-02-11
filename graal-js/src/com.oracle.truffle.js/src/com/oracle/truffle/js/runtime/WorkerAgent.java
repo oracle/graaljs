@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -62,6 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -70,6 +72,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 
 public final class WorkerAgent extends JSAgent {
+    private static final TruffleString DATA = Strings.constant("data");
     private static final SerializedData WAKE_UP_MESSAGE = new SerializedData(Undefined.instance);
 
     private final TruffleContext workerContext;
@@ -118,14 +121,17 @@ public final class WorkerAgent extends JSAgent {
 
                     Object messageHandler = JSObject.get(realm.getGlobalObject(), Strings.ONMESSAGE);
                     if (JSRuntime.isCallable(messageHandler)) {
-                        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WorkerProcessMessage, (c) -> createProcessMessage(c));
+                        JSContext context = realm.getContext();
+                        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WorkerProcessMessage, (c) -> createProcessMessage(c));
                         JSFunctionObject processMessage = JSFunction.create(realm, functionData);
 
                         while (true) {
                             SerializedData message = inMessages.take();
                             if (message != WAKE_UP_MESSAGE) {
                                 Object deserialized = message.deserialize(realm);
-                                JSFunction.call(processMessage, Undefined.instance, new Object[]{deserialized});
+                                JSObject arg = JSOrdinary.create(context, realm);
+                                JSObject.set(arg, DATA, deserialized);
+                                JSFunction.call(processMessage, Undefined.instance, new Object[]{arg});
                             }
                             processAllPromises(true);
                         }
