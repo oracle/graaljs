@@ -70,7 +70,7 @@ local cicommon = import '../ci/common.jsonnet';
     ]) else []),
   },
 
-  local gateCoverage = {
+  local gateCoverage = common.oraclejdk21.tools_java_home + {
     suiteimports+:: ['wasm', 'tools'],
     coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacoco-format', 'lcov', '--jacocout', 'coverage'],
     run+: [
@@ -191,7 +191,7 @@ local cicommon = import '../ci/common.jsonnet';
 
     graalNodeJs + vm_env + build            + testNode(parallelHttp2, max_heap='4G')                                               + {name: 'parallel-http2'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform], override=true),
-  ]], defaultTarget=common.weekly),
+  ]], platforms=ci.jdklatestPlatforms, defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
@@ -199,7 +199,7 @@ local cicommon = import '../ci/common.jsonnet';
     graalNodeJs + common.weekly    + gateCoverage                                                                                  + {name: 'coverage'},
     graalNodeJs + common.ondemand  + gateCoverage                                                                                  + {name: 'coverage'},
 
-  ], platforms=[common.jdk21 + common.linux_amd64]),
+  ], platforms=[common.jdklatest + common.linux_amd64]),
 
   builds: styleBuilds + testingBuilds + otherBuilds,
 }
