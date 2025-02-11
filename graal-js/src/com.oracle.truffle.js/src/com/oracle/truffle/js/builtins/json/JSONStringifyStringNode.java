@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
+import com.oracle.truffle.js.runtime.builtins.JSBigIntObject;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -283,7 +284,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         if (builtinClass == JSNumber.INSTANCE) {
             return JSRuntime.toNumber(valueObj);
         } else if (builtinClass == JSBigInt.INSTANCE) {
-            return JSBigInt.valueOf(valueObj);
+            return JSBigInt.valueOf((JSBigIntObject) valueObj);
         } else if (builtinClass == JSString.INSTANCE) {
             return JSRuntime.toString(valueObj);
         } else if (builtinClass == JSBoolean.INSTANCE) {

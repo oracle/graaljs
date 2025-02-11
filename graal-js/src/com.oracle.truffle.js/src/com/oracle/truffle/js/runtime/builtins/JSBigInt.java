@@ -77,12 +77,8 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
         return factory.trackAllocation(newObj);
     }
 
-    private static BigInt getBigIntegerField(JSDynamicObject obj) {
-        return ((JSBigIntObject) obj).getBigIntValue();
-    }
-
-    public static BigInt valueOf(JSDynamicObject obj) {
-        return getBigIntegerField(obj);
+    public static BigInt valueOf(JSBigIntObject obj) {
+        return obj.getBigIntValue();
     }
 
     @Override
