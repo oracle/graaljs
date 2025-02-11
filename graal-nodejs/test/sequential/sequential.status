@@ -45,11 +45,6 @@ test-watch-mode: SKIP
 test-worker-fshandles-open-close-on-termination: SKIP
 test-worker-http2-stream-terminate: SKIP
 
-[$system==solaris]
-
-# Needs too many system resources (starts 80 child processes)
-test-child-process-pass-fd: SKIP
-
 [$system==win32]
 
 # Triggers stack-overflow that may not be handled well

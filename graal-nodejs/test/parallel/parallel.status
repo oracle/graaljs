@@ -326,6 +326,9 @@ test-strace-openat-openssl: FAIL
 test-windows-failed-heap-allocation: FAIL
 # Subtest "TZ environment variable" fails consistently on windows
 test-dotenv-node-options: FAIL
+# Error: EBUSY: resource busy or locked, unlink 'test\.tmp.*\database-*.db'
+test-sqlite-database-sync: SKIP
+test-sqlite-statement-sync: SKIP
 
 # Unclassified
 test-datetime-change-notify: FAIL
@@ -343,19 +346,6 @@ test-async-local-storage-exit-does-not-leak: PASS,FAIL
 
 # Random timeouts.
 test-child-process-stdio-inherit: PASS,FAIL
-
-[$system==solaris]
-test-http2-respond-file-fd-invalid : FAIL
-
-# SIGBUS at DES_encrypt2.constprop
-test-crypto: FAIL
-test-crypto-binary-default: FAIL
-test-crypto-cipheriv-decipheriv: FAIL
-test-crypto-rsa-dsa: FAIL
-test-https-pfx: FAIL
-test-tls-multi-pfx: FAIL
-test-tls-ocsp-callback: FAIL
-test-tls-passphrase: FAIL
 
 ### graal-nodejs-specific end ###
 
