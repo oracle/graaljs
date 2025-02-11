@@ -326,6 +326,9 @@ test-strace-openat-openssl: FAIL
 test-windows-failed-heap-allocation: FAIL
 # Subtest "TZ environment variable" fails consistently on windows
 test-dotenv-node-options: FAIL
+# Error: EBUSY: resource busy or locked, unlink 'test\.tmp.*\database-*.db'
+test-sqlite-database-sync: SKIP
+test-sqlite-statement-sync: SKIP
 
 # Unclassified
 test-datetime-change-notify: FAIL
