@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@
 package com.oracle.truffle.js.runtime.array.dyn;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 
 import java.util.List;
 
@@ -51,7 +50,6 @@ import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
@@ -61,7 +59,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
  * Whenever a lazy array is written to, the entire lazy array is enumerated and copied and loses its
  * lazy lookup property.
  */
-public class LazyArray extends AbstractConstantArray {
+public class LazyArray extends AbstractConstantLazyArray {
 
     private static final LazyArray LAZY_ARRAY = new LazyArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
@@ -92,16 +90,6 @@ public class LazyArray extends AbstractConstantArray {
     }
 
     @Override
-    public boolean hasElement(JSDynamicObject object, long index) {
-        return index >= 0 && index < lengthInt(object);
-    }
-
-    @Override
-    public int lengthInt(JSDynamicObject object) {
-        return (int) arrayGetLength(object);
-    }
-
-    @Override
     public AbstractWritableArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
         // enumerate the whole array
         int len = lengthInt(object);
@@ -115,41 +103,6 @@ public class LazyArray extends AbstractConstantArray {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
-    }
-
-    @Override
-    public AbstractWritableArray createWriteableDouble(JSDynamicObject object, long index, double value, Node node, CreateWritableProfileAccess profile) {
-        return createWriteableObject(object, index, value, node, profile);
-    }
-
-    @Override
-    public AbstractWritableArray createWriteableInt(JSDynamicObject object, long index, int value, Node node, CreateWritableProfileAccess profile) {
-        return createWriteableObject(object, index, value, node, profile);
-    }
-
-    @Override
-    public AbstractWritableArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, Node node, CreateWritableProfileAccess profile) {
-        return createWriteableObject(object, index, value, node, profile);
-    }
-
-    @Override
-    public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
-        return createWriteableObject(object, index, null, null, CreateWritableProfileAccess.getUncached()).deleteElementImpl(object, index, strict);
-    }
-
-    @Override
-    public ScriptArray setLengthImpl(JSDynamicObject object, long len, Node node, SetLengthProfileAccess profile) {
-        return createWriteableObject(object, len - 1, null, node, profile).setLengthImpl(object, len, node, profile);
-    }
-
-    @Override
-    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
-        return createWriteableObject(object, start, null, null, CreateWritableProfileAccess.getUncached()).removeRangeImpl(object, start, end);
-    }
-
-    @Override
-    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
-        return createWriteableObject(object, offset, null, null, CreateWritableProfileAccess.getUncached()).addRangeImpl(object, offset, size);
     }
 
     @Override

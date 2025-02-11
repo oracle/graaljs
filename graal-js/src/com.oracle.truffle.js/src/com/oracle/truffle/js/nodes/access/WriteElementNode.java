@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -796,7 +796,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Specialization
-        protected boolean doLazyRegexREsultIndicesArray(JSDynamicObject target, LazyRegexResultIndicesArray lazyRegexResultIndicesArray, long index, Object value, WriteElementNode root,
+        protected boolean doLazyRegexResultIndicesArray(JSDynamicObject target, LazyRegexResultIndicesArray lazyRegexResultIndicesArray, long index, Object value, WriteElementNode root,
                         @Cached InlinedConditionProfile inBoundsIf) {
             ScriptArray newArray = lazyRegexResultIndicesArray.createWritable(root.context, target, index, value,
                             null, getStartNode, getEndNode);
@@ -823,7 +823,8 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedBranchProfile objectValueBranch,
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached CreateWritableProfileAccess createWritableProfile) {
-            if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff)) {
+            if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff && constantArray.length(target) <= Integer.MAX_VALUE)) {
+                // Note: createWritable* must only be used if the array length fits in int.
                 ScriptArray newArray;
                 if (value instanceof Integer) {
                     intValueBranch.enter(this);

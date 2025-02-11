@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,8 +73,15 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public int lengthInt(JSDynamicObject object) {
-        return (int) getCapacity(object);
+    public final long length(JSDynamicObject object) {
+        return getCapacity(object);
+    }
+
+    @Override
+    public final int lengthInt(JSDynamicObject object) {
+        long capacity = getCapacity(object);
+        assert JSRuntime.longIsRepresentableAsInt(capacity) : capacity;
+        return (int) capacity;
     }
 
     @Override
@@ -242,6 +249,24 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
             indexOffset = 0;
         }
         return ContiguousObjectArray.makeContiguousObjectArray(object, capacity, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
+    }
+
+    @Override
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        setCapacity(object, length);
+        return this;
+    }
+
+    @Override
+    public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
+        setCapacity(object, getCapacity(object) - (end - start));
+        return this;
+    }
+
+    @Override
+    public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
+        setCapacity(object, getCapacity(object) + size);
+        return this;
     }
 
     @Override
