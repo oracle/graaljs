@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,17 +89,17 @@ public final class JSStringObject extends JSNonProxyObject {
 
     @ExportMessage
     public String asString() {
-        return Strings.toJavaString(JSString.getString(this));
+        return Strings.toJavaString(getString());
     }
 
     @TruffleBoundary
     @Override
     public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return Strings.concatAll(Strings.BRACKET_OPEN, JSString.CLASS_NAME, Strings.SPACE, JSString.getString(this), Strings.BRACKET_CLOSE);
+            return Strings.concatAll(Strings.BRACKET_OPEN, JSString.CLASS_NAME, Strings.SPACE, getString(), Strings.BRACKET_CLOSE);
         } else {
             return JSRuntime.objectToDisplayString(this, allowSideEffects, format, depth,
-                            getBuiltinToStringTag(), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{JSString.getString(this)});
+                            getBuiltinToStringTag(), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{getString()});
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,11 +88,13 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSSymbolObject;
@@ -305,11 +307,11 @@ public class JSRuntimeTest extends JSTest {
 
     @Test
     public void testSafeToStringCollections() {
-        JSDynamicObject map = JSMap.create(testHelper.getJSContext(), testHelper.getRealm());
+        JSMapObject map = JSMap.create(testHelper.getJSContext(), testHelper.getRealm());
         JSMap.getInternalMap(map).put("foo", "bar");
         assertEquals(Strings.constant("Map(1){\"foo\" => \"bar\"}"), JSRuntime.safeToString(map));
 
-        JSDynamicObject set = JSSet.create(testHelper.getJSContext(), testHelper.getRealm());
+        JSSetObject set = JSSet.create(testHelper.getJSContext(), testHelper.getRealm());
         JSSet.getInternalSet(set).put("foo", "UNUSED");
         assertEquals(Strings.constant("Set(1){\"foo\"}"), JSRuntime.safeToString(set));
     }

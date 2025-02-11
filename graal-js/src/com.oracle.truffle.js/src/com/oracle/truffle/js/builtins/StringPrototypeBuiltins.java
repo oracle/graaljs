@@ -151,6 +151,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringIterator;
+import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -1887,8 +1888,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return thisStr;
         }
 
-        @Specialization(guards = "isJSString(thisStr)")
-        protected TruffleString toStringString(JSDynamicObject thisStr) {
+        @Specialization
+        protected static TruffleString toStringStringObject(JSStringObject thisStr) {
             return JSString.getString(thisStr);
         }
 

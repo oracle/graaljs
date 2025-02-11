@@ -73,8 +73,8 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
         return factory.trackAllocation(weakRefObj);
     }
 
-    public static TruffleWeakReference<?> getInternalWeakRef(JSDynamicObject obj) {
-        return ((JSWeakRefObject) obj).getWeakReference();
+    public static TruffleWeakReference<?> getInternalWeakRef(JSWeakRefObject obj) {
+        return obj.getWeakReference();
     }
 
     @Override

@@ -187,20 +187,20 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @NeverDefault
-    public static Object getCompiledRegex(JSDynamicObject thisObj) {
-        return ((JSRegExpObject) thisObj).getCompiledRegex();
+    public static Object getCompiledRegex(JSRegExpObject thisObj) {
+        return thisObj.getCompiledRegex();
     }
 
-    public static JSObjectFactory getGroupsFactory(JSDynamicObject thisObj) {
-        return ((JSRegExpObject) thisObj).getGroupsFactory();
+    public static JSObjectFactory getGroupsFactory(JSRegExpObject thisObj) {
+        return thisObj.getGroupsFactory();
     }
 
-    public static Object getRealm(JSDynamicObject thisObj) {
-        return ((JSRegExpObject) thisObj).getRealm();
+    public static Object getRealm(JSRegExpObject thisObj) {
+        return thisObj.getRealm();
     }
 
-    public static boolean getLegacyFeaturesEnabled(JSDynamicObject thisObj) {
-        return ((JSRegExpObject) thisObj).getLegacyFeaturesEnabled();
+    public static boolean getLegacyFeaturesEnabled(JSRegExpObject thisObj) {
+        return thisObj.getLegacyFeaturesEnabled();
     }
 
     /**

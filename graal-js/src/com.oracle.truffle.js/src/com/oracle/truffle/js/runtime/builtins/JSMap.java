@@ -81,11 +81,11 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
         return factory.trackAllocation(newObj);
     }
 
-    public static JSHashMap getInternalMap(JSDynamicObject obj) {
-        return ((JSMapObject) obj).getMap();
+    public static JSHashMap getInternalMap(JSMapObject obj) {
+        return obj.getMap();
     }
 
-    public static int getMapSize(JSDynamicObject obj) {
+    public static int getMapSize(JSMapObject obj) {
         return getInternalMap(obj).size();
     }
 

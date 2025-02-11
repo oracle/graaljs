@@ -129,8 +129,12 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         return index >= 0 && index < getStringLength(thisObj);
     }
 
+    public static TruffleString getString(JSStringObject obj) {
+        return obj.getString();
+    }
+
     public static TruffleString getString(JSDynamicObject obj) {
-        return ((JSStringObject) obj).getString();
+        return getString((JSStringObject) obj);
     }
 
     @TruffleBoundary

@@ -103,8 +103,8 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static boolean valueOf(JSDynamicObject obj) {
-        return ((JSBooleanObject) obj).getBooleanValue();
+    public static boolean valueOf(JSBooleanObject obj) {
+        return obj.getBooleanValue();
     }
 
     public static boolean isJSBoolean(Object obj) {

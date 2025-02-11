@@ -105,11 +105,11 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
         return value;
     }
 
-    public static JSHashMap getInternalSet(JSDynamicObject obj) {
-        return ((JSSetObject) obj).getMap();
+    public static JSHashMap getInternalSet(JSSetObject obj) {
+        return obj.getMap();
     }
 
-    public static int getSetSize(JSDynamicObject obj) {
+    public static int getSetSize(JSSetObject obj) {
         return getInternalSet(obj).size();
     }
 
