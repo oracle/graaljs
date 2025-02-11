@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,7 +130,7 @@ public final class JSDateObject extends JSNonProxyObject {
     @TruffleBoundary
     @Override
     public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        double time = JSDate.getTimeMillisField(this);
+        double time = getTimeMillis();
         TruffleString formattedDate;
         if (JSDate.isTimeValid(time)) {
             formattedDate = JSDate.toISOStringIntl(time, JSRealm.get(null));

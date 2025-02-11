@@ -103,14 +103,6 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     private JSDate() {
     }
 
-    public static void setTimeMillisField(JSDateObject obj, double timeMillis) {
-        obj.setTimeMillis(timeMillis);
-    }
-
-    public static double getTimeMillisField(JSDateObject obj) {
-        return obj.getTimeMillis();
-    }
-
     public static boolean isJSDate(Object obj) {
         return obj instanceof JSDateObject;
     }
@@ -580,7 +572,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     public static double setTime(JSDateObject thisDate, double time) {
         double v = timeClip(time);
-        setTimeMillisField(thisDate, v);
+        thisDate.setTimeMillis(v);
         return v;
     }
 
@@ -691,13 +683,13 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     public static boolean isValidDate(JSDateObject date) {
-        return !Double.isNaN(getTimeMillisField(date));
+        return !Double.isNaN(date.getTimeMillis());
     }
 
     @TruffleBoundary
     public static Instant asInstant(JSDateObject date) {
         assert isValidDate(date);
-        return Instant.ofEpochMilli((long) getTimeMillisField(date));
+        return Instant.ofEpochMilli((long) date.getTimeMillis());
     }
 
     @TruffleBoundary

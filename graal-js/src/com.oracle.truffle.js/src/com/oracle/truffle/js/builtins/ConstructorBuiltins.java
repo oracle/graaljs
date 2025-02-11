@@ -1052,7 +1052,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length == 1", "isJSDate(arg0(args))"})
         protected final JSObject constructDateFromDate(JSDynamicObject newTarget, Object[] args) {
-            double dateValue = JSDate.getTimeMillisField((JSDateObject) args[0]);
+            double dateValue = ((JSDateObject) args[0]).getTimeMillis();
             assert JSRuntime.isSameValue(JSDate.timeClip(dateValue), dateValue);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);

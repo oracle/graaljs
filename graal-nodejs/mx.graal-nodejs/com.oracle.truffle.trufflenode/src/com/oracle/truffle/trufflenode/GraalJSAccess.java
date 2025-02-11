@@ -1578,7 +1578,7 @@ public final class GraalJSAccess {
     }
 
     public double dateValueOf(Object date) {
-        return JSDate.getTimeMillisField((JSDateObject) date);
+        return ((JSDateObject) date).getTimeMillis();
     }
 
     private enum TimeZoneDetection {
