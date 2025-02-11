@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -110,8 +109,7 @@ public final class WorkerAgent extends JSAgent {
                         findAndEvalV8Mockup();
                     }
 
-                    Object postMessage = realm.lookupFunction(GlobalBuiltins.GLOBAL_WORKER, Strings.POST_MESSAGE);
-                    JSObjectUtil.putDataProperty(realm.getGlobalObject(), Strings.POST_MESSAGE, postMessage, JSAttributes.getDefaultNotEnumerable());
+                    JSObjectUtil.putFunctionsFromContainer(realm, realm.getGlobalObject(), GlobalBuiltins.GLOBAL_WORKER);
 
                     Source workerSource = Source.newBuilder(JavaScriptLanguage.ID, code, "worker").build();
                     CallTarget callTarget = realm.getEnv().parsePublic(workerSource);

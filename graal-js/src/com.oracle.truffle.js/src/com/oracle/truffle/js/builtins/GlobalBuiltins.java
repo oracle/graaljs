@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,6 +88,7 @@ import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalNashornExtensionParseToJSONNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalScriptingEXECNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalCloseNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDecodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalEncodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalExitNodeGen;
@@ -405,6 +406,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         public enum GlobalWorker implements BuiltinEnum<GlobalWorker> {
+            close(0),
             postMessage(1);
 
             private final int length;
@@ -422,6 +424,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Override
         protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalWorker builtinEnum) {
             switch (builtinEnum) {
+                case close:
+                    return JSGlobalCloseNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
                 case postMessage:
                     return JSGlobalPostMessageNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             }
@@ -1809,6 +1813,20 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         protected Object postMessage(Object message) {
             ((WorkerAgent) getRealm().getAgent()).postOutMessage(message);
+            return Undefined.instance;
+        }
+
+    }
+
+    public abstract static class JSGlobalCloseNode extends JSBuiltinNode {
+
+        public JSGlobalCloseNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object cloase() {
+            ((WorkerAgent) getRealm().getAgent()).terminate();
             return Undefined.instance;
         }
 
