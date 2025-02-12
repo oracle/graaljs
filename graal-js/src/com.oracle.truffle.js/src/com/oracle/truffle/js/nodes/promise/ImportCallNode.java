@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,7 +81,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
-import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -381,19 +380,9 @@ public class ImportCallNode extends JavaScriptNode {
                     // If link is an abrupt completion, reject the promise from import().
                     moduleRecord.link(realm);
 
-                    // Evaluate() should always return a promise.
-                    // Yet, if top-level-await is disabled, returns/throws the result instead.
-                    Object evaluatePromise = moduleRecord.evaluate(realm);
-                    if (context.isOptionTopLevelAwait() || !(moduleRecord instanceof CyclicModuleRecord cyclicModuleRecord)) {
-                        assert evaluatePromise instanceof JSPromiseObject : evaluatePromise;
-                        JSFunctionObject onFulfilled = createFulfilledClosure(context, realm, captures);
-                        promiseThenNode.execute((JSPromiseObject) evaluatePromise, onFulfilled, onRejected);
-                    } else {
-                        // Rethrow any previous execution errors.
-                        cyclicModuleRecord.getExecutionResultOrThrow();
-                        var namespace = moduleRecord.getModuleNamespace();
-                        callPromiseResolve.executeCall(JSArguments.createOneArg(Undefined.instance, importPromiseCapability.getResolve(), namespace));
-                    }
+                    JSPromiseObject evaluatePromise = moduleRecord.evaluate(realm);
+                    JSFunctionObject onFulfilled = createFulfilledClosure(context, realm, captures);
+                    promiseThenNode.execute(evaluatePromise, onFulfilled, onRejected);
                 } catch (AbstractTruffleException ex) {
                     rejectPromise(importPromiseCapability, ex);
                 }

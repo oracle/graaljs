@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -88,9 +87,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
     public final void loadRequestedModulesSync(JSRealm realm, Object hostDefinedArg) {
         JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefinedArg);
         assert !JSPromise.isPending(loadPromise);
-        if (JSPromise.isRejected(loadPromise)) {
-            throw JSRuntime.getException(JSPromise.getPromiseResult(loadPromise));
-        }
+        JSPromise.throwIfRejected(loadPromise, realm);
     }
 
     /**
@@ -108,7 +105,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
      *
      * Link must have completed successfully prior to invoking this method.
      */
-    public abstract Object evaluate(JSRealm realm);
+    public abstract JSPromiseObject evaluate(JSRealm realm);
 
     @TruffleBoundary
     public final Collection<TruffleString> getExportedNames() {

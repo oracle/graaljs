@@ -304,19 +304,19 @@ public final class GraalJSEvaluator implements JSParser {
             // Note: If loading failed, we must not perform module linking.
 
             moduleRecord.link(realm);
-            Object promise = moduleRecord.evaluate(realm);
-            boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
-            if (isAsync) {
-                JSFunctionObject onRejected = createTopLevelAwaitReject(context, realm);
-                JSFunctionObject onAccepted = createTopLevelAwaitResolve(context, realm);
-                // Non-standard: throw error from onRejected handler.
-                performPromiseThenNode.execute((JSPromiseObject) promise, onAccepted, onRejected, null);
-            }
+            // On failure, an exception is thrown and this module's [[Status]] remains unlinked.
+
+            JSPromiseObject promise = moduleRecord.evaluate(realm);
+            JSFunctionObject onRejected = createTopLevelAwaitReject(context, realm);
+            JSFunctionObject onAccepted = createTopLevelAwaitResolve(context, realm);
+            // Non-standard: throw error from onRejected handler.
+            performPromiseThenNode.execute(promise, onAccepted, onRejected, null);
+
             if (context.getLanguageOptions().esmEvalReturnsExports()) {
                 JSDynamicObject moduleNamespace = moduleRecord.getModuleNamespace();
                 assert moduleNamespace != null;
                 return moduleNamespace;
-            } else if (isAsync) {
+            } else if (context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation()) {
                 return promise;
             } else {
                 return moduleRecord.getExecutionResultOrThrow();
@@ -700,47 +700,32 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public Object moduleEvaluation(JSRealm realm, CyclicModuleRecord moduleRecord) {
+    public JSPromiseObject moduleEvaluation(JSRealm realm, CyclicModuleRecord moduleRecord) {
         // Evaluate ( ) Concrete Method
         CyclicModuleRecord module = moduleRecord;
+        assert module.getStatus() == Status.Linked || module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated : module.getStatus();
+        if (module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated) {
+            module = module.getCycleRoot();
+        }
+        if (module.getTopLevelCapability() != null) {
+            return (JSPromiseObject) module.getTopLevelCapability().getPromise();
+        }
         Deque<CyclicModuleRecord> stack = new ArrayDeque<>(4);
-        if (realm.getContext().isOptionTopLevelAwait()) {
-            assert module.getStatus() == Status.Linked || module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated : module.getStatus();
-            if (module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated) {
-                module = module.getCycleRoot();
-            }
-            if (module.getTopLevelCapability() != null) {
-                return module.getTopLevelCapability().getPromise();
-            }
-            PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
-            module.setTopLevelCapability(capability);
-            try {
-                innerModuleEvaluation(realm, module, stack, 0);
-                assert module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated;
-                assert module.getEvaluationError() == null;
-                if (!module.isAsyncEvaluation()) {
-                    assert module.getStatus() == Status.Evaluated;
-                    JSFunction.call(JSArguments.create(Undefined.instance, capability.getResolve(), Undefined.instance));
-                }
-                assert stack.isEmpty();
-            } catch (AbstractTruffleException e) {
-                handleModuleEvaluationError(module, stack, e);
-            }
-            return capability.getPromise();
-        } else {
-            try {
-                innerModuleEvaluation(realm, module, stack, 0);
-            } catch (AbstractTruffleException e) {
-                handleModuleEvaluationError(module, stack, e);
-                throw e;
-            }
+        PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
+        module.setTopLevelCapability(capability);
+        try {
+            innerModuleEvaluation(realm, module, stack, 0);
             assert module.getStatus() == Status.EvaluatingAsync || module.getStatus() == Status.Evaluated;
             assert module.getEvaluationError() == null;
-
+            if (!module.isAsyncEvaluation()) {
+                assert module.getStatus() == Status.Evaluated;
+                JSFunction.call(JSArguments.create(Undefined.instance, capability.getResolve(), Undefined.instance));
+            }
             assert stack.isEmpty();
-            Object result = module.getExecutionResult();
-            return result == null ? Undefined.instance : result;
+        } catch (AbstractTruffleException e) {
+            handleModuleEvaluationError(module, stack, e);
         }
+        return (JSPromiseObject) capability.getPromise();
     }
 
     private static void handleModuleEvaluationError(CyclicModuleRecord module, Deque<CyclicModuleRecord> stack, AbstractTruffleException e) {
@@ -752,9 +737,7 @@ public final class GraalJSEvaluator implements JSParser {
         assert module.getStatus() == Status.Evaluated && module.getEvaluationError() == e;
 
         PromiseCapabilityRecord capability = module.getTopLevelCapability();
-        if (capability != null) {
-            JSFunction.call(JSArguments.create(Undefined.instance, capability.getReject(), getErrorObject(e)));
-        }
+        JSFunction.call(JSArguments.create(Undefined.instance, capability.getReject(), getErrorObject(e)));
     }
 
     private static Object getErrorObject(AbstractTruffleException e) {
@@ -769,13 +752,9 @@ public final class GraalJSEvaluator implements JSParser {
         // InnerModuleEvaluation( module, stack, index )
         int index = index0;
         if (!(abstractModule instanceof CyclicModuleRecord moduleRecord)) {
-            Object result = abstractModule.evaluate(realm);
-            if (result instanceof JSPromiseObject promise) {
-                assert !JSPromise.isPending(promise);
-                if (JSPromise.isRejected(promise)) {
-                    throw JSRuntime.getException(JSPromise.getPromiseResult(promise));
-                }
-            }
+            JSPromiseObject promise = abstractModule.evaluate(realm);
+            assert !JSPromise.isPending(promise);
+            JSPromise.throwIfRejected(promise, realm);
             return index;
         }
         if (moduleRecord.getStatus() == Status.EvaluatingAsync || moduleRecord.getStatus() == Status.Evaluated) {

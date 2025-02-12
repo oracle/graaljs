@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 
 /**
  * A Cyclic Module Record is used to represent information about a module that can participate in
@@ -139,7 +140,7 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
     public abstract Object executeModule(JSRealm realm, PromiseCapabilityRecord capability);
 
     @Override
-    public final Object evaluate(JSRealm realm) {
+    public final JSPromiseObject evaluate(JSRealm realm) {
         return context.getEvaluator().moduleEvaluation(realm, this);
     }
 
