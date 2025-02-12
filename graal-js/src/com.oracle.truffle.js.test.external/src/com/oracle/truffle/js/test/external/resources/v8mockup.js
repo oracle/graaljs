@@ -1273,3 +1273,38 @@ globalThis['%WasmLeaveDebugging'] = function() {
 globalThis['%IsWasmDebugFunction'] = function() {
     return v8IgnoreResult;
 };
+
+globalThis['%SetPriorityBestEffort'] = function() {
+};
+
+globalThis['%SetPriorityUserBlocking'] = function() {
+};
+
+globalThis['%RuntimeEvaluateREPL'] = eval;
+
+globalThis['%StringIsFlat'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%HasCowElements'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%StringWrapperToPrimitiveProtector'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%TypedArrayLengthProtector'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%GetInitializerFunction'] = function() {
+};
+
+globalThis['%DefineObjectOwnProperty'] = function(o, key, value) {
+    Reflect.defineProperty(o, key, { value, configurable: true, enumerable: true, writable: true });
+    return value;
+};
+
+globalThis['%GetFeedback'] = function() {
+};
