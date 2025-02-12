@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.js.nodes;
+
+import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -134,7 +136,7 @@ public final class JSNodeUtil {
         } else {
             String sourceName = section.getSource().getName();
             int startLine = section.getStartLine();
-            return String.format("%s:%d%s", sourceName, startLine, estimated ? "~" : "");
+            return String.format(Locale.ROOT, "%s:%d%s", sourceName, startLine, estimated ? "~" : "");
         }
     }
 

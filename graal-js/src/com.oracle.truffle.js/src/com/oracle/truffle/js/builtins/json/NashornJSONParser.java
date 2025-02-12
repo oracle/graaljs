@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ package com.oracle.truffle.js.builtins.json;
 import static com.oracle.js.parser.TokenType.STRING;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
+
+import java.util.Locale;
 
 import com.oracle.js.parser.ECMAErrors;
 import com.oracle.js.parser.JSErrorType;
@@ -469,7 +471,7 @@ public class NashornJSONParser {
         } else {
             entity = String.format("token %s", found);
         }
-        String message = String.format("Unexpected %s in JSON at position %d", entity, start);
+        String message = String.format(Locale.ROOT, "Unexpected %s in JSON at position %d", entity, start);
         return new ParserException(message);
     }
 

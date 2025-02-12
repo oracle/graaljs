@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,8 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetHol
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetIndexOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
+
+import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -858,7 +860,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         assert isHolesType();
         int holeCount = arrayGetHoleCount(object);
         int countedHoles = countHoles(object);
-        assert holeCount == countedHoles : String.format("holeCount, %d, differs from the actual count, %d", holeCount, countedHoles);
+        assert holeCount == countedHoles : String.format(Locale.ROOT, "holeCount, %d, differs from the actual count, %d", holeCount, countedHoles);
         return true;
     }
 

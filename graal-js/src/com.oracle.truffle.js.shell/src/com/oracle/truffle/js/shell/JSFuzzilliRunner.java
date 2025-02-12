@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.function.Consumer;
@@ -112,9 +113,9 @@ class JSFuzzilliRunner {
                     byte[] scriptChars = new byte[scriptSize];
                     int n = dataReadF.read(scriptChars);
                     if (n != scriptSize) {
-                        log(LogLevel.severe, String.format("ERROR: read %d bytes, but scriptSize was %d", n, scriptSize));
+                        log(LogLevel.severe, String.format(Locale.ROOT, "ERROR: read %d bytes, but scriptSize was %d", n, scriptSize));
                     } else {
-                        log(LogLevel.debug, String.format("got %d bytes", n));
+                        log(LogLevel.debug, String.format(Locale.ROOT, "got %d bytes", n));
                     }
                     script = new String(scriptChars, StandardCharsets.UTF_8);
                     log(LogLevel.debug, "Got script:");

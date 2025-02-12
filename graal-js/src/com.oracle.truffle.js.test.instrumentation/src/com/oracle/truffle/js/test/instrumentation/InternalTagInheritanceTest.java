@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -94,8 +95,8 @@ public class InternalTagInheritanceTest {
                         } else if (k == 2) {
                             evalSourceInTextSourceName += IN_TEXT_INTERNAL_SOURCE_ANNOTATION;
                         }
-                        String evalSource = String.format(EVAL_SOURCE_TEMPLATE, i, j, k, evalSourceInTextSourceName);
-                        String mainSource = String.format(MAIN_SOURCE_TEMPLATE, i, j, evalSource, mainSourceInTextSourceName);
+                        String evalSource = String.format(Locale.ROOT, EVAL_SOURCE_TEMPLATE, i, j, k, evalSourceInTextSourceName);
+                        String mainSource = String.format(Locale.ROOT, MAIN_SOURCE_TEMPLATE, i, j, evalSource, mainSourceInTextSourceName);
                         Source source = Source.newBuilder("js", mainSource, MAIN_SOURCE_NAME).internal(mainSourceInternal).build();
                         sources.clear();
                         Value val = ctx.eval(source);
