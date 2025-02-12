@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1109,7 +1109,7 @@ public class Parser extends AbstractParser {
         // Build up node.
         if (BinaryNode.isLogical(opType)) {
             if (forbiddenNullishCoalescingUsage(opType, lhs, rhs)) {
-                throw error(String.format("nullish coalescing operator cannot immediately contain, or be contained within, an && or || operation"));
+                throw error("nullish coalescing operator cannot immediately contain, or be contained within, an && or || operation");
             }
             return new BinaryNode(op, new JoinPredecessorExpression(lhs), new JoinPredecessorExpression(rhs));
         }
