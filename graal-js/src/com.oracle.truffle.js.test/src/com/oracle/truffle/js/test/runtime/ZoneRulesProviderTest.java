@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,7 @@ public class ZoneRulesProviderTest {
 
     private static Context newContext(boolean intl) {
         return JSTest.newContextBuilder().//
+                        option(JSContextOptions.LOCALE_NAME, "en").//
                         option(JSContextOptions.TIME_ZONE_NAME, "Europe/Prague").//
                         option(JSContextOptions.INTL_402_NAME, Boolean.toString(intl)).//
                         option(JSContextOptions.ZONE_RULES_BASED_TIME_ZONES_NAME, "true").//

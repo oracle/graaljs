@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import static org.junit.Assert.assertTrue;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
 import com.oracle.truffle.js.test.polyglot.ForeignNull;
@@ -84,7 +85,7 @@ public class ForeignBoxedObjectTest {
 
     @Test
     public void testForeignBoxedNumber() {
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.LOCALE_NAME, "en").build()) {
             context.getBindings("js").putMember("obj", ForeignBoxedObject.createNew(42));
             assertTrue(context.eval(ID, "typeof Object(obj) === 'object'").asBoolean());
             assertTrue(context.eval(ID, "typeof obj.valueOf === 'function'").asBoolean());
