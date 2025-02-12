@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,14 +85,6 @@ public abstract class JSTargetableNode extends JavaScriptNode {
             return ((JSTargetableNode) ((WrapperNode) this).getDelegateNode()).getTarget();
         }
         throw Errors.notImplemented("getTarget");
-    }
-
-    @Override
-    public String expressionToString() {
-        if (this instanceof WrapperNode) {
-            return ((JSTargetableNode) ((WrapperNode) this).getDelegateNode()).expressionToString();
-        }
-        return super.expressionToString();
     }
 
     public static Object evaluateReceiver(JavaScriptNode targetNode, VirtualFrame frame, Object targetValue) {
