@@ -1825,7 +1825,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected Object cloase() {
+        protected Object close() {
             ((WorkerAgent) getRealm().getAgent()).terminate();
             return Undefined.instance;
         }
