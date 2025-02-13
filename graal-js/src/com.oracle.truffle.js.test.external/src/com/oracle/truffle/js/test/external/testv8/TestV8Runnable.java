@@ -93,7 +93,10 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-stringref",
                     "--experimental-wasm-type-reflection",
                     "--expose-fast-api",
+                    "--expose-memory-corruption-api",
                     "--harmony-struct",
+                    "--sandbox-fuzzing",
+                    "--sandbox-testing",
                     "--wasm-test-streaming"
     });
     private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
