@@ -205,12 +205,10 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
     public abstract static class WebAssemblyCompileNode extends PromisifiedBuiltinNode {
 
         @Child ExportByteSourceNode exportByteSourceNode;
-        @Child InteropLibrary decodeModuleLib;
 
         public WebAssemblyCompileNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.exportByteSourceNode = ExportByteSourceNode.create(context, "WebAssembly.compile(): Argument 0 must be a buffer source", "WebAssembly.compile(): BufferSource argument is empty");
-            this.decodeModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -234,7 +232,6 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         @Child ExportByteSourceNode exportByteSourceNode;
         @Child IsObjectNode isObjectNode;
         @Child PerformPromiseThenNode performPromiseThenNode;
-        @Child InteropLibrary decodeModuleLib;
         @Child InteropLibrary instantiateModuleLib;
         private final BranchProfile errorBranch = BranchProfile.create();
 
@@ -244,7 +241,6 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                             "WebAssembly.instantiate(): BufferSource argument is empty");
             this.isObjectNode = IsObjectNode.create();
             this.performPromiseThenNode = PerformPromiseThenNode.create(context);
-            this.decodeModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.instantiateModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
@@ -348,12 +344,10 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
     public abstract static class WebAssemblyValidateNode extends JSBuiltinNode {
 
         @Child ExportByteSourceNode exportByteSourceNode;
-        @Child InteropLibrary validateModuleLib;
 
         public WebAssemblyValidateNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.exportByteSourceNode = ExportByteSourceNode.create(context, "WebAssembly.validate(): Argument 0 must be a buffer source", null);
-            this.validateModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @TruffleBoundary

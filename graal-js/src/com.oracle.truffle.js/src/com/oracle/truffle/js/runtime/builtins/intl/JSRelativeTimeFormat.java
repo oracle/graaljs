@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,10 +123,6 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSRelativeTimeFormatObject(shape, proto, state), realm, proto);
         return factory.trackAllocation(newObj);
-    }
-
-    public static RelativeDateTimeFormatter getRelativeDateTimeFormatterProperty(JSRelativeTimeFormatObject obj) {
-        return obj.getInternalState().getRelativeDateTimeFormatter();
     }
 
     private static void ensureFiniteNumber(double d) {

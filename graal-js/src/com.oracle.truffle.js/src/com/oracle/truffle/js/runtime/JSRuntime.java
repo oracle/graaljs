@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1876,10 +1876,6 @@ public final class JSRuntime {
 
     public static Object nullToUndefined(Object value) {
         return value == null ? Undefined.instance : value;
-    }
-
-    public static Object undefinedToNull(Object value) {
-        return value == Undefined.instance ? null : value;
     }
 
     public static Object toJSNull(Object value) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,6 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     public static final BigInt ZERO = new BigInt(BigInteger.ZERO);
     public static final BigInt ONE = new BigInt(BigInteger.ONE);
     public static final BigInt NEGATIVE_ONE = new BigInt(BigInteger.valueOf(-1));
-    public static final BigInt TWO = new BigInt(BigInteger.valueOf(2));
 
     public static final BigInt MAX_INT = new BigInt(BigInteger.valueOf(Integer.MAX_VALUE));
     public static final BigInt MIN_INT = new BigInt(BigInteger.valueOf(Integer.MIN_VALUE));

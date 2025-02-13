@@ -83,11 +83,6 @@ public abstract class JSArrayBase extends JSNonProxyObject {
     ScriptArray arrayStrategy;
     ArrayAllocationSite allocationSite;
 
-    @SuppressWarnings("static-method")
-    public final ArrayAccess arrayAccess() {
-        return ArrayAccess.SINGLETON;
-    }
-
     public final ScriptArray getArrayType() {
         return arrayStrategy;
     }

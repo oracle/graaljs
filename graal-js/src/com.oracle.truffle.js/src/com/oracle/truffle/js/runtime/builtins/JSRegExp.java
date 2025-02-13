@@ -221,13 +221,6 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static JSRegExpObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object compiledRegex, JSObjectFactory groupsFactory) {
-        return create(context, realm, proto, compiledRegex, groupsFactory, true);
-    }
-
-    /**
-     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
-     */
     public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory) {
         return create(context, realm, compiledRegex, groupsFactory, true);
     }

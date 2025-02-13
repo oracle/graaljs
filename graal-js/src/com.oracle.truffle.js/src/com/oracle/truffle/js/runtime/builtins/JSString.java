@@ -79,7 +79,6 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     public static final TruffleString TYPE_NAME = Strings.STRING;
     public static final TruffleString CLASS_NAME = Strings.UC_STRING;
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("String.prototype");
-    public static final TruffleString CLASS_NAME_EXTENSIONS = Strings.constant("StringExtensions");
 
     public static final TruffleString LENGTH = Strings.LENGTH;
 

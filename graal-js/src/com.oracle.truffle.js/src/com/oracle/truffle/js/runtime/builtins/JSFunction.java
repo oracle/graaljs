@@ -795,10 +795,6 @@ public final class JSFunction extends JSNonProxy {
         return enumerateIteratorPrototype;
     }
 
-    public static Shape makeInitialForInIteratorShape(JSContext context, JSDynamicObject iteratorPrototype) {
-        return JSObjectUtil.getProtoChildShape(iteratorPrototype, JSOrdinary.INSTANCE, context);
-    }
-
     public static JSDynamicObject createOrdinaryHasInstanceFunction(JSRealm realm) {
         JSContext ctx = realm.getContext();
         return JSFunction.create(realm, ctx.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.OrdinaryHasInstance, c -> {

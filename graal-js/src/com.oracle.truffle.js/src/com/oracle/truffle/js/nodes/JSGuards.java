@@ -403,10 +403,6 @@ public final class JSGuards {
         return JavaPackage.isJavaPackage(target);
     }
 
-    public static boolean isJavaArray(Object value) {
-        return value != null && value.getClass().isArray();
-    }
-
     public static boolean isBigInt(Object target) {
         return target instanceof BigInt;
     }
@@ -479,10 +475,6 @@ public final class JSGuards {
         return JSRuntime.isJavaPrimitive(value);
     }
 
-    public static boolean isJavaPrimitiveNumber(Object value) {
-        return value instanceof Number && JSRuntime.isJavaPrimitive(value);
-    }
-
     public static boolean isForeignObjectOrNumber(Object a) {
         return isForeignObject(a) || isForeignNumber(a);
     }
@@ -497,9 +489,5 @@ public final class JSGuards {
 
     public static boolean hasOverloadedOperators(Object value) {
         return JSOverloadedOperatorsObject.hasOverloadedOperators(value);
-    }
-
-    public static boolean longFitsInDouble(long value) {
-        return JSRuntime.longFitsInDouble(value);
     }
 }
