@@ -131,7 +131,8 @@ public class TestV8Runnable extends TestRunnable {
         List<String> setupFiles = getFiles(code, getConfig().getSuiteLoc());
 
         Map<String, String> extraOptions = new HashMap<>(2);
-        if (suite.getConfig().isPolyglot()) {
+        boolean isPolyglot = suite.getConfig().isPolyglot();
+        if (isPolyglot) {
             extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));
             // TODO: remove after threads are enabled by default in wasm
             extraOptions.put("wasm.Threads", "true");
@@ -155,7 +156,7 @@ public class TestV8Runnable extends TestRunnable {
             printScript(TestSuite.toPrintableCode(code));
         }
 
-        boolean supported = true;
+        boolean supported = isPolyglot || !isWasmTest(code);
         int minESVersion = suite.getConfig().getMinESVersion();
         int flagVersion = minESVersion;
         for (String flag : flags) {
@@ -216,6 +217,10 @@ public class TestV8Runnable extends TestRunnable {
         } else {
             testFile.setStatus(TestFile.Status.SKIP); // attn: does not force-skip statusOverrides
         }
+    }
+
+    private static boolean isWasmTest(List<String> code) {
+        return code.stream().anyMatch(line -> line.contains("WebAssembly") || line.contains("WasmModuleBuilder"));
     }
 
     private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions, List<String> setupFiles) {
