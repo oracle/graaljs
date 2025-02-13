@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.js.runtime;
+
+import java.util.Locale;
 
 import com.oracle.js.parser.ParserException;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -110,7 +112,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createRangeErrorFormat(String message, Node originatingNode, Object... args) {
-        return JSException.create(JSErrorType.RangeError, String.format(message, args), originatingNode);
+        return JSException.create(JSErrorType.RangeError, String.format(Locale.ROOT, message, args), originatingNode);
     }
 
     @TruffleBoundary
@@ -125,7 +127,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorFormat(String message, Object... args) {
-        return JSException.create(JSErrorType.TypeError, String.format(message, args));
+        return JSException.create(JSErrorType.TypeError, String.format(Locale.ROOT, message, args));
     }
 
     @TruffleBoundary
@@ -259,7 +261,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createSyntaxErrorFormat(String message, Node originatingNode, Object... args) {
-        return JSException.create(JSErrorType.SyntaxError, String.format(message, args), originatingNode);
+        return JSException.create(JSErrorType.SyntaxError, String.format(Locale.ROOT, message, args), originatingNode);
     }
 
     @TruffleBoundary

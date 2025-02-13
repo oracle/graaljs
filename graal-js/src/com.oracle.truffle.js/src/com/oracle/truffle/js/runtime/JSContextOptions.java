@@ -735,7 +735,7 @@ public final class JSContextOptions {
                 }
                 return iv;
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(String.format("Value \"%s\" is not an integer in the range [%d, %d].", sv, min, max));
+                throw new IllegalArgumentException(String.format(Locale.ROOT, "Value \"%s\" is not an integer in the range [%d, %d].", sv, min, max));
             }
         });
     }

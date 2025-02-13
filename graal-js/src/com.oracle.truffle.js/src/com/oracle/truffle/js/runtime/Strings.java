@@ -1032,7 +1032,7 @@ public final class Strings {
     }
 
     public static TruffleString format(String formatString, Object... args) {
-        return fromJavaString(String.format(formatString, args));
+        return fromJavaString(String.format(Locale.ROOT, formatString, args));
     }
 
     @TruffleBoundary

@@ -64,6 +64,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -737,7 +738,7 @@ public class Recording {
 
         @Override
         public String rhs() {
-            return String.format("%s.create(%s, null, null, null, %d, %s, %d)", typeName(JSFunctionData.class), context, functionData.getLength(),
+            return String.format(Locale.ROOT, "%s.create(%s, null, null, null, %d, %s, %d)", typeName(JSFunctionData.class), context, functionData.getLength(),
                             JSRuntime.quote(functionData.getName()), functionData.getFlags());
         }
 
@@ -1980,7 +1981,7 @@ public class Recording {
 
     static void logv(String format, Object... args) {
         if (VERBOSE) {
-            System.out.println(String.format(format, args));
+            System.out.println(String.format(Locale.ROOT, format, args));
         }
     }
 

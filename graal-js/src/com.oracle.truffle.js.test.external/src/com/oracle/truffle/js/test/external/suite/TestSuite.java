@@ -935,7 +935,7 @@ public abstract class TestSuite {
     private static String runtime(long millis) {
         long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
         long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) - TimeUnit.MINUTES.toSeconds(minutes);
-        return String.format("%dm %ds %dms", minutes, seconds, millis - TimeUnit.MINUTES.toMillis(minutes) - TimeUnit.SECONDS.toMillis(seconds));
+        return String.format(Locale.ROOT, "%dm %ds %dms", minutes, seconds, millis - TimeUnit.MINUTES.toMillis(minutes) - TimeUnit.SECONDS.toMillis(seconds));
     }
 
     private static String formatPercent(double passedProportion, int failedCount) {
