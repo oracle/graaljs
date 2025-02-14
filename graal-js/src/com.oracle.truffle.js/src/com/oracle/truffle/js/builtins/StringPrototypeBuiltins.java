@@ -950,7 +950,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached @Shared StringSplitter stringSplitter,
                         @Cached RegExpSplitter regexpSplitter,
                         @Cached @Shared InlinedConditionProfile zeroLimit,
-                        @Cached(inline = true) TRegexUtil.InteropReadIntMemberNode readGroupCount) {
+                        @Cached TRegexUtil.InteropReadIntMemberNode readGroupCount) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int limit = getLimit(limitObj);
@@ -1605,8 +1605,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached InlinedCountingConditionProfile ifIsMatch,
                         @Cached InlinedConditionProfile isRegExp,
                         @Cached InlinedCountingConditionProfile isFnRepl,
-                        @Cached(inline = true) TRegexUtil.InteropReadIntMemberNode readGroupCount,
-                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        @Cached TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
                         @Cached TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getGlobalFlag) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
@@ -2160,8 +2160,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected int search(Object thisObj, Object[] args,
                         @Cached("create(getContext())") JSToRegExpNode toRegExpNode,
-                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
-                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart) {
+                        @Cached TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart) {
             assert getContext().getEcmaScriptVersion() < 6;
             Object searchObj = JSRuntime.getArgOrUndefined(args, 0);
             requireObjectCoercible(thisObj);
@@ -2355,9 +2355,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached InlinedCountingConditionProfile isMatch,
                         @Cached InlinedCountingConditionProfile isGlobalRegExp,
                         @Cached TruffleString.SubstringByteIndexNode substringNode,
-                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
-                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
-                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
                         @Cached TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getGlobalFlag) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);

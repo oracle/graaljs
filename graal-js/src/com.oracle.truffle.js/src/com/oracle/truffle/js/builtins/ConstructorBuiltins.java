@@ -1406,7 +1406,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached InlinedBranchProfile regexpObjectNewFlagsBranch,
                         @Cached InlinedConditionProfile callIsRegExpProfile,
                         @Cached InlinedConditionProfile constructorEquivalentProfile,
-                        @Cached(inline = true) TRegexUtil.InteropReadStringMemberNode readPattern) {
+                        @Cached TRegexUtil.InteropReadStringMemberNode readPattern) {
             JSRealm realm = getRealm();
             boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
             boolean legacyFeaturesEnabled;
