@@ -167,6 +167,17 @@ suite = {
       "workingSets" : "Truffle,JavaScript",
     },
 
+    "com.oracle.truffle.js.fuzzillilauncher" : {
+      "subDir" : "src",
+      "sourceDirs": ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.js.shell"
+      ],
+      "checkstyle" : "com.oracle.truffle.js",
+      "spotbugs" : "true",
+      "javaCompliance": "17+",
+    },
+
     "com.oracle.truffle.js.annotations" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -508,6 +519,7 @@ suite = {
         "name" : "org.graalvm.js.launcher",
         "exports" : [
             "com.oracle.truffle.js.shell to org.graalvm.launcher",
+            "com.oracle.truffle.js.shell to org.graalvm.js.fuzzillilauncher",
         ],
         "requires": [
           "org.graalvm.polyglot",
@@ -525,6 +537,28 @@ suite = {
         "artifactId" : "js-launcher",
         "tag": ["default", "public"],
       },
+      "allowsJavadocWarnings": True,
+      "useModulePath": True,
+    },
+
+    "GRAALJS_FUZZILLI_LAUNCHER" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.js.fuzzillilauncher",
+        "requires": [
+          "org.graalvm.js.launcher",
+          "org.graalvm.polyglot",
+        ],
+      },
+      "subDir" : "src",
+      "dependencies" : ["com.oracle.truffle.js.fuzzillilauncher"],
+      "mainClass" : "com.oracle.truffle.js.fuzzillilauncher.JSFuzzilliLauncher",
+      "distDependencies" : [
+        "sdk:LAUNCHER_COMMON",
+        "sdk:JLINE3",
+        "GRAALJS_LAUNCHER",
+        "GRAALJS"
+      ],
+      "description" : "GraalJS, a high-performance embeddable JavaScript runtime for Java. This artifact provides a command-line launcher for fuzzing GraalJS with Fuzzilli.",
       "allowsJavadocWarnings": True,
       "useModulePath": True,
     },

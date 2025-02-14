@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import java.util.Set;
 
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -78,7 +79,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
     }
 
     private boolean printResult = false;
-    private boolean fuzzilliREPRL = false;
     private boolean allowExperimentalOptions = false;
     private boolean useSharedEngine = false;
     private boolean wasmEnabled = false;
@@ -90,11 +90,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
     @Override
     protected void launch(Context.Builder contextBuilder) {
         int exitCode;
-        if (fuzzilliREPRL) {
-            exitCode = JSFuzzilliRunner.runFuzzilliREPRL(contextBuilder);
-        } else {
-            exitCode = executeScripts(contextBuilder);
-        }
+        exitCode = executeScripts(contextBuilder);
         if (exitCode != 0) {
             throw abort((String) null, exitCode);
         }
@@ -216,9 +212,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 return Consumed;
             case "version":
                 versionAction = VersionAction.PrintAndExit;
-                return Consumed;
-            case "fuzzilli-reprl":
-                fuzzilliREPRL = true;
                 return Consumed;
             case "shared-engine":
                 useSharedEngine = true;
