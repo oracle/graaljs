@@ -2484,20 +2484,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 long elementLen = (long) arguments[2];
                 long targetIndex = (long) arguments[3];
                 long depth = (long) arguments[4];
-                return flattenNode.flatten(resultArray, element, elementLen, targetIndex, depth, null, null);
+                return flattenNode.executeLong(resultArray, element, elementLen, targetIndex, depth, null, null);
             }
         }
 
-        protected final JSContext context;
-        protected final boolean withMapCallback;
-
         @Child private ForEachIndexCallNode forEachIndexNode;
-        @Child private JSToObjectNode toObjectNode;
-        @Child private JSGetLengthNode getLengthNode;
 
         protected FlattenIntoArrayNode(JSContext context, boolean withMapCallback) {
-            this.context = context;
-            this.withMapCallback = withMapCallback;
+            var mapCallbackNode = withMapCallback ? new ArrayForEachIndexCallOperation.DefaultCallbackNode() : null;
+            this.forEachIndexNode = ForEachIndexCallNode.create(context, mapCallbackNode, makeMaybeResultNode(context), true, true);
         }
 
         @NeverDefault
@@ -2508,47 +2503,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected abstract long executeLong(Object target, Object source, long sourceLen, long start, long depth, Object callback, Object thisArg);
 
         @Specialization
-        protected long flatten(Object resultArray, Object source, long sourceLen, long start, long depth, Object callback, Object thisArg) {
-
+        protected long flatten(Object resultArray, Object source, long sourceLen, long start, long depth, Object callback, Object thisArg,
+                        @Cached JSToObjectNode toObjectNode) {
             boolean callbackUndefined = callback == null;
 
             FlattenState flattenState = new FlattenState(resultArray, start, depth, callbackUndefined);
-            Object thisJSObj = toObject(source);
+            Object thisJSObj = toObjectNode.execute(source);
             forEachIndexCall(thisJSObj, callback, thisArg, 0, sourceLen, flattenState);
 
             return flattenState.targetIndex;
         }
 
-        protected final Object forEachIndexCall(Object arrayObj, Object callbackObj, Object thisArg, long fromIndex, long length, Object initialResult) {
-            if (forEachIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                forEachIndexNode = insert(makeForEachIndexCallNode());
-            }
-            return forEachIndexNode.executeForEachIndex(arrayObj, callbackObj, thisArg, fromIndex, length, initialResult);
-        }
-
-        private ForEachIndexCallNode makeForEachIndexCallNode() {
-            return ForEachIndexCallNode.create(context, makeCallbackNode(), makeMaybeResultNode(), true, true);
-        }
-
-        protected CallbackNode makeCallbackNode() {
-            return withMapCallback ? new ArrayForEachIndexCallOperation.DefaultCallbackNode() : null;
-        }
-
-        protected final Object toObject(Object target) {
-            if (toObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.create());
-            }
-            return toObjectNode.execute(target);
-        }
-
-        protected long getLength(Object thisObject) {
-            if (getLengthNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getLengthNode = insert(JSGetLengthNode.create(context));
-            }
-            return getLengthNode.executeLong(thisObject);
+        protected final void forEachIndexCall(Object arrayObj, Object callbackObj, Object thisArg, long fromIndex, long length, Object initialResult) {
+            forEachIndexNode.executeForEachIndex(arrayObj, callbackObj, thisArg, fromIndex, length, initialResult);
         }
 
         static final class FlattenState {
@@ -2565,13 +2532,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        protected MaybeResultNode makeMaybeResultNode() {
+        static MaybeResultNode makeMaybeResultNode(JSContext context) {
             return new ForEachIndexCallNode.MaybeResultNode() {
 
                 protected final BranchProfile errorBranch = BranchProfile.create();
 
                 @Child private WriteElementNode writeOwnNode = WriteElementNode.create(context, true, true);
                 @Child private DirectCallNode innerFlattenCall;
+                @Child private JSToObjectNode toObjectNode;
+                @Child private JSGetLengthNode getLengthNode;
 
                 @Override
                 public MaybeResult<Object> apply(long index, Object originalValue, Object callbackResult, Object resultState) {
@@ -2602,6 +2571,22 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                     return (long) innerFlattenCall.call(targetArray, element, elementLength, targetIndex, depth);
                 }
+
+                private Object toObject(Object target) {
+                    if (toObjectNode == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        toObjectNode = insert(JSToObjectNode.create());
+                    }
+                    return toObjectNode.execute(target);
+                }
+
+                private long getLength(Object thisObject) {
+                    if (getLengthNode == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        getLengthNode = insert(JSGetLengthNode.create(context));
+                    }
+                    return getLengthNode.executeLong(thisObject);
+                }
             };
         }
 
@@ -2623,7 +2608,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object callbackFn = checkCallbackIsFunction(callback);
 
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
-            flattenIntoArrayNode.flatten(resultArray, thisJSObj, length, 0, 1, callbackFn, thisArg);
+            flattenIntoArrayNode.executeLong(resultArray, thisJSObj, length, 0, 1, callbackFn, thisArg);
             return resultArray;
         }
 
@@ -2642,13 +2627,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object flat(Object thisObj, Object depth,
-                        @Cached("createFlattenIntoArrayNode(getContext())") FlattenIntoArrayNode flattenIntoArrayNode) {
+                        @Cached(parameters = {"getContext()", "false"}) FlattenIntoArrayNode flattenIntoArrayNode) {
             Object thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
             long depthNum = (depth == Undefined.instance) ? 1 : toIntegerAsInt(depth);
 
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
-            flattenIntoArrayNode.flatten(resultArray, thisJSObj, length, 0, depthNum, null, null);
+            flattenIntoArrayNode.executeLong(resultArray, thisJSObj, length, 0, depthNum, null, null);
             return resultArray;
         }
 
@@ -2658,11 +2643,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 toIntegerNode = insert(JSToIntegerAsIntNode.create());
             }
             return toIntegerNode.executeInt(depth);
-        }
-
-        @NeverDefault
-        protected static final FlattenIntoArrayNode createFlattenIntoArrayNode(JSContext context) {
-            return FlattenIntoArrayNodeGen.create(context, false);
         }
     }
 
