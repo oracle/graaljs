@@ -147,6 +147,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -525,7 +526,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return callNode.executeCall(JSArguments.create(target, function, args));
         }
 
-        protected final Object invoke(JSDynamicObject regExp, Symbol symbol, TruffleString thisStr) {
+        protected final Object invoke(JSRegExpObject regExp, Symbol symbol, TruffleString thisStr) {
             assert JSRuntime.isPropertyKey(symbol);
             if (getSymbolNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -973,7 +974,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = {"isES6OrNewer()", "isUndefined(limit)"})
-        protected Object splitES6StrStrUndefined(TruffleString thisStr, TruffleString sepStr, @SuppressWarnings("unused") JSDynamicObject limit,
+        protected Object splitES6StrStrUndefined(TruffleString thisStr, TruffleString sepStr, @SuppressWarnings("unused") Object limit,
                         @Cached @Shared StringSplitter stringSplitter,
                         @Cached @Shared InlinedConditionProfile zeroLimit) {
             return split(thisStr, Integer.MAX_VALUE, stringSplitter, sepStr, 1, zeroLimit);
@@ -1607,11 +1608,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached InlinedCountingConditionProfile isFnRepl,
                         @Cached TRegexUtil.InteropReadIntMemberNode readGroupCount,
                         @Cached TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
-                        @Cached TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getGlobalFlag) {
+                        @Cached TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getGlobalFlag,
+                        @Cached InlinedBranchProfile errorBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             if (Strings.length(thisStr) > getContext().getStringLengthLimit()) {
-                CompilerDirectives.transferToInterpreter();
+                errorBranch.enter(node);
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             if (isRegExp.profile(node, searchValue instanceof JSRegExpObject)) {
@@ -1619,7 +1621,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 Object tRegexCompiledRegex = JSRegExp.getCompiledRegex(searchRegExp);
                 int groupCount = TRegexCompiledRegexAccessor.groupCount(tRegexCompiledRegex, node, readGroupCount);
                 if (isFnRepl.profile(node, JSFunction.isJSFunction(replaceValue))) {
-                    JSDynamicObject replaceFunc = (JSDynamicObject) replaceValue;
+                    JSFunctionObject replaceFunc = (JSFunctionObject) replaceValue;
                     if (isGlobal(tRegexCompiledRegex, node, getGlobalFlag)) {
                         return replaceAll(searchRegExp, thisStr, groupCount, getFunctionReplacerNode(), replaceFunc, tRegexCompiledRegex,
                                         node, ifIsMatch, readIsMatch);
@@ -1640,7 +1642,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 TruffleString searchStr = toString2Node.executeString(searchValue);
                 if (isFnRepl.profile(node, JSFunction.isJSFunction(replaceValue))) {
-                    return replaceFirst(thisStr, searchStr, getFunctionReplacerNode(), (JSDynamicObject) replaceValue,
+                    return replaceFirst(thisStr, searchStr, getFunctionReplacerNode(), (JSFunctionObject) replaceValue,
                                     node, ifIsMatch);
                 } else {
                     TruffleString replaceStr = toString3Node.executeString(replaceValue);
@@ -1654,7 +1656,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getGlobalFlag.execute(node, tRegexCompiledRegex, TRegexUtil.Props.Flags.GLOBAL);
         }
 
-        private void setLastIndex(JSDynamicObject regExp, int value) {
+        private void setLastIndex(JSRegExpObject regExp, int value) {
             if (setLastIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 setLastIndexNode = insert(PropertySetNode.create(JSRegExp.LAST_INDEX, false, getContext(), true));
@@ -1825,7 +1827,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        protected static final class FunctionReplacer extends Replacer<JSDynamicObject> {
+        protected static final class FunctionReplacer extends Replacer<JSFunctionObject> {
             @Child private JSFunctionCallNode functionCallNode = JSFunctionCallNode.createCall();
             @Child private JSToStringNode toStringNode = JSToStringNode.create();
 
@@ -1838,20 +1840,20 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacementRegex(TruffleStringBuilderUTF16 sb, TruffleString input, Object result, int groupCount, JSDynamicObject replaceFunc, JSStringReplaceES5Node parent,
+            void appendReplacementRegex(TruffleStringBuilderUTF16 sb, TruffleString input, Object result, int groupCount, JSFunctionObject replaceFunc, JSStringReplaceES5Node parent,
                             Object tRegexCompiledRegex, int matchStart, int matchEnd) {
                 parent.append(sb, callReplaceValueFunc(parent.getContext(), result, input, groupCount, replaceFunc, matchStart));
             }
 
             @Override
-            void appendReplacementString(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString matchedString, int pos, JSDynamicObject replaceFunc, JSStringReplaceES5Node parent) {
+            void appendReplacementString(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString matchedString, int pos, JSFunctionObject replaceFunc, JSStringReplaceES5Node parent) {
                 Object[] arguments = createArguments(new Object[]{matchedString}, pos, input, replaceFunc);
                 Object replaceValue = functionCallNode.executeCall(arguments);
                 TruffleString replaceStr = toStringNode.executeString(replaceValue);
                 parent.append(sb, replaceStr);
             }
 
-            private TruffleString callReplaceValueFunc(JSContext context, Object result, TruffleString input, int groupCount, JSDynamicObject replaceFunc, int matchStart) {
+            private TruffleString callReplaceValueFunc(JSContext context, Object result, TruffleString input, int groupCount, JSFunctionObject replaceFunc, int matchStart) {
                 Object[] matches = TRegexMaterializeResult.materializeFull(context, result, groupCount, input,
                                 parentNode, parentNode.substringNode, parentNode.getStart, parentNode.getEnd);
                 Object[] arguments = createArguments(matches, matchStart, input, replaceFunc);
@@ -1859,9 +1861,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return toStringNode.executeString(replaceValue);
             }
 
-            private static Object[] createArguments(Object[] matches, int matchIndex, Object input, JSDynamicObject replaceFunc) {
-                JSDynamicObject target = Undefined.instance;
-                Object[] arguments = JSArguments.createInitial(target, replaceFunc, matches.length + 2);
+            private static Object[] createArguments(Object[] matches, int matchIndex, Object input, JSFunctionObject replaceFunc) {
+                Object[] arguments = JSArguments.createInitial(Undefined.instance, replaceFunc, matches.length + 2);
                 JSArguments.setUserArguments(arguments, 0, matches);
                 JSArguments.setUserArgument(arguments, matches.length, matchIndex);
                 JSArguments.setUserArgument(arguments, matches.length + 1, input);
@@ -2127,7 +2128,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private Object builtinSearch(Object thisObj, Object regex) {
             TruffleString thisStr = toString(thisObj);
             Object cRe = getCompileRegexNode().compile(regex == Undefined.instance ? Strings.EMPTY_STRING : toString(regex));
-            JSDynamicObject regExp = getCreateRegExpNode().createRegExp(cRe);
+            JSRegExpObject regExp = getCreateRegExpNode().createRegExp(cRe);
             return invoke(regExp, Symbol.SYMBOL_SEARCH, thisStr);
         }
 
@@ -2283,7 +2284,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private Object builtinMatch(Object thisObj, Object regex) {
             TruffleString thisStr = toString(thisObj);
             Object cRe = getCompileRegexNode().compile(regex == Undefined.instance ? Strings.EMPTY_STRING : toString(regex), matchAll ? Strings.G : Strings.EMPTY_STRING);
-            JSDynamicObject regExp = getCreateRegExpNode().createRegExp(cRe);
+            JSRegExpObject regExp = getCreateRegExpNode().createRegExp(cRe);
             return invoke(regExp, matchSymbol(), thisStr);
         }
 
@@ -2340,7 +2341,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             assert context.getEcmaScriptVersion() < 6;
         }
 
-        private void setLastIndex(JSDynamicObject regExp, int value) {
+        private void setLastIndex(JSRegExpObject regExp, int value) {
             if (setLastIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 setLastIndexNode = insert(PropertySetNode.create(JSRegExp.LAST_INDEX, false, getContext(), true));
@@ -2631,7 +2632,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isUndefined(position)")
-        protected boolean startsWithString(TruffleString thisObj, TruffleString searchStr, @SuppressWarnings("unused") JSDynamicObject position,
+        protected boolean startsWithString(TruffleString thisObj, TruffleString searchStr, @SuppressWarnings("unused") Object position,
                         @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
             if (Strings.length(searchStr) <= 0) {
                 return true;
