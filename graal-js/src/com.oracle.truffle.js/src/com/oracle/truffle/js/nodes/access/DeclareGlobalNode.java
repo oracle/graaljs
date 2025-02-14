@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -64,7 +63,7 @@ public abstract class DeclareGlobalNode extends JavaScriptBaseNode {
         this.varName = varName;
     }
 
-    public abstract void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm);
+    public abstract void executeVoid(JSContext context, JSRealm realm);
 
     public void verify(JSContext context, JSRealm realm) {
         if (hasLexicalBindingNode == null) {

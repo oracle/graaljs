@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -92,7 +91,7 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
     }
 
     @Override
-    public final void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
+    public final void executeVoid(JSContext context, JSRealm realm) {
         JSDynamicObject globalScope = realm.getGlobalScope();
         assert !JSObject.hasOwnProperty(globalScope, varName); // checked in advance
         assert JSObject.isExtensible(globalScope);
