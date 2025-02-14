@@ -1561,7 +1561,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return JSFunction.getClassPrototype(functionObj);
             } else if (constantFun != GENERIC_FUN) {
                 if (constantFun == functionObj) {
-                    return JSFunction.getClassPrototypeInitialized(constantFun);
+                    return JSFunction.getClassPrototypeInitialized((JSFunctionObject) constantFun);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     constantFunction = GENERIC_FUN;

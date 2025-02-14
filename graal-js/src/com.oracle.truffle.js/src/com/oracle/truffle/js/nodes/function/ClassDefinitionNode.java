@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -177,7 +178,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
     private Object executeWithName(VirtualFrame frame, Object name, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
         JSObject proto;
-        JSObject constructor;
+        JSFunctionObject constructor;
         Object[] decorators;
         ClassElementDefinitionRecord[] instanceElements;
         ClassElementDefinitionRecord[] staticElements;
@@ -266,7 +267,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         realm);
     }
 
-    private Object defineClassElements(VirtualFrame frame, JSObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
+    private Object defineClassElements(VirtualFrame frame, JSObject proto, JSFunctionObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] staticElements, int startIndex, int instanceElementIndex,
                     int staticElementIndex, int stateSlot, JSRealm realm) {
         initializeMembers(frame, proto, constructor,
@@ -432,7 +433,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, JSObject proto, JSObject constructor, ClassElementDefinitionRecord[] instanceElements,
+    private void initializeMembers(VirtualFrame frame, JSObject proto, JSFunctionObject constructor, ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] staticElements, int startIndex, int instanceElementsIdx,
                     int staticElementIdx, int stateSlot, JSRealm realm) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
@@ -513,7 +514,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
     private record ClassDefinitionResumptionRecord(
                     JSObject proto,
-                    JSObject constructor,
+                    JSFunctionObject constructor,
                     ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] staticElements,
                     int instanceElementIndex,

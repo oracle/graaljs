@@ -554,9 +554,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 ctor = getConstructorProperty(originalArray);
                 if (ctor instanceof JSObject) {
                     JSObject ctorObj = (JSObject) ctor;
-                    if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
+                    if (ctorObj instanceof JSFunctionObject ctorFunction && JSFunction.isConstructor(ctorFunction)) {
                         JSRealm thisRealm = getRealm();
-                        JSRealm ctorRealm = JSFunction.getRealm((JSFunctionObject) ctorObj);
+                        JSRealm ctorRealm = JSFunction.getRealm(ctorFunction);
                         if (thisRealm != ctorRealm) {
                             differentRealm.enter();
                             if (ctorRealm.getArrayConstructor() == ctor) {

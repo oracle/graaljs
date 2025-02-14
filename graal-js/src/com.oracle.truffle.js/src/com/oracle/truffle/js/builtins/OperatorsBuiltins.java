@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -153,7 +154,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         protected JSDynamicObject doOperators(VirtualFrame frame, Object table, Object... extraTables) {
             JSDynamicObject prototype = createPrototypeNode.execute(frame);
             OperatorSet operatorSet = constructOperatorSetNode.execute(table, extraTables);
-            JSDynamicObject constructor = createConstructor(operatorSet);
+            JSFunctionObject constructor = createConstructor(operatorSet);
             JSFunction.setClassPrototype(constructor, prototype);
             setConstructorNode.executeVoid(prototype, constructor);
             setOperatorDefinitionsNode.setValue(constructor, operatorSet);
@@ -161,7 +162,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @TruffleBoundary
-        private JSDynamicObject createConstructor(OperatorSet operatorSet) {
+        private JSFunctionObject createConstructor(OperatorSet operatorSet) {
             CallTarget callTarget = new JavaScriptRootNode() {
                 @Child private PropertyNode getPrototypeNode = PropertyNode.createProperty(getContext(), null, JSObject.PROTOTYPE);
                 @Child private CreateOverloadedOperatorsObjectNode createOverloadedOperatorsObjectNode = CreateOverloadedOperatorsObjectNode.create(getContext(), operatorSet);
