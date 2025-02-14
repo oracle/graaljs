@@ -69,11 +69,8 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBigIntObject;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
 import com.oracle.truffle.js.runtime.builtins.JSRawJSONObject;
-import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -283,15 +280,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private static Object prepareJSObject(JSObject valueObj) {
-        JSClass builtinClass = JSObject.getJSClass(valueObj);
-        if (builtinClass == JSNumber.INSTANCE) {
-            return JSRuntime.toNumber((JSNumberObject) valueObj);
-        } else if (builtinClass == JSBigInt.INSTANCE) {
-            return JSBigInt.valueOf((JSBigIntObject) valueObj);
-        } else if (builtinClass == JSString.INSTANCE) {
-            return JSRuntime.toString((JSStringObject) valueObj);
-        } else if (builtinClass == JSBoolean.INSTANCE) {
-            return JSBoolean.valueOf((JSBooleanObject) valueObj);
+        if (valueObj instanceof JSNumberObject numberObj) {
+            return JSRuntime.toNumber(numberObj);
+        } else if (valueObj instanceof JSBigIntObject bigIntObj) {
+            return JSBigInt.valueOf(bigIntObj);
+        } else if (valueObj instanceof JSStringObject stringObj) {
+            return JSRuntime.toString(stringObj);
+        } else if (valueObj instanceof JSBooleanObject booleanObj) {
+            return JSBoolean.valueOf(booleanObj);
         } else if (JSRuntime.isCallableIsJSObject(valueObj)) {
             return Undefined.instance;
         }
