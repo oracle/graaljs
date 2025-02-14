@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import java.text.MessageFormat;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -56,9 +54,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 @NodeInfo(shortName = "debugger")
 public class DebuggerNode extends StatementNode {
 
-    private static long time;
-    private static boolean timingEnabled;
-
     DebuggerNode() {
     }
 
@@ -68,28 +63,7 @@ public class DebuggerNode extends StatementNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        doTiming();
         return EMPTY;
-    }
-
-    public static void timingStart() {
-        time = System.nanoTime();
-        timingEnabled = true;
-    }
-
-    public static void timingStop() {
-        timingEnabled = false;
-    }
-
-    @TruffleBoundary
-    private static void doTiming() {
-        if (timingEnabled) {
-            long now = System.nanoTime();
-            if (time != 0L) {
-                System.out.println(MessageFormat.format("run time: {0,number,#,###.##} ms", (now - time) / 1000d / 1000d));
-            }
-            time = now;
-        }
     }
 
     @Override
