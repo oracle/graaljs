@@ -2531,8 +2531,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.initCollatorNode = InitializeCollatorNode.createInitalizeCollatorNode(context);
         }
 
-        @TruffleBoundary
-        private JSDynamicObject createCollator(Object locales, Object options) {
+        private JSCollatorObject createCollator(Object locales, Object options) {
             JSCollatorObject collatorObj = JSCollator.create(getContext(), getRealm());
             initCollatorNode.executeInit(collatorObj, locales, options);
             return collatorObj;
@@ -2544,7 +2543,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             TruffleString thatStr = toString2Node.executeString(thatObj);
-            JSDynamicObject collator = createCollator(locales, options);
+            JSCollatorObject collator = createCollator(locales, options);
             return JSCollator.compare(collator, Strings.toJavaString(thisStr), Strings.toJavaString(thatStr));
         }
     }
