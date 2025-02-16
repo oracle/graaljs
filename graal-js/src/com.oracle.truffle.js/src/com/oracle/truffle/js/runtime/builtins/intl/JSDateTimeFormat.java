@@ -107,6 +107,11 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
      */
     private static final LazyValue<UnmodifiableEconomicMap<String, Pair<String, String>>> canonicalTimeZoneIDMap = new LazyValue<>(JSDateTimeFormat::initCanonicalTimeZoneIDMap);
 
+    // non-IANA time zones names provided by ICU4J,
+    // https://github.com/unicode-org/icu/blob/main/icu4c/source/tools/tzcode/icuzones
+    private static final Set<String> nonIANATimeZones = Set.of("ACT", "AET", "AGT", "ART", "AST", "BET", "BST", "CAT", "CNT", "CST", "CTT", "EAT", "ECT", "IET", "IST", "JST", "MIT", "NET", "NST",
+                    "PLT", "PNT", "PRT", "PST", "SST", "VST");
+
     private JSDateTimeFormat() {
     }
 
@@ -646,6 +651,9 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<String, Pair<String, String>> map = EconomicMap.create();
         for (String available : TimeZone.getAvailableIDs()) {
+            if (nonIANATimeZones.contains(available)) {
+                continue;
+            }
             String canonical = TimeZone.getCanonicalID(available);
             if ("Etc/UTC".equals(canonical) || "Etc/GMT".equals(canonical)) {
                 canonical = "UTC";
