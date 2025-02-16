@@ -27,6 +27,10 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/date-format/timezone.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, expects time-zone canonicalization."
+  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -72,6 +76,10 @@
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
   }, {
+    "filePath" : "intl/regress-1074578.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, expects time-zone canonicalization."
+  }, {
     "filePath" : "intl/regress-1130489.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -79,6 +87,10 @@
     },
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
+  }, {
+    "filePath" : "intl/regress-1177623.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, expects time-zone canonicalization."
   }, {
     "filePath" : "intl/regress-1427932.js",
     "status" : "FAIL",
@@ -1816,6 +1828,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-364374.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, expects time-zone canonicalization."
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-385002.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1856,6 +1872,10 @@
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-484077.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-487322.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, expects time-zone canonicalization."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-491062.js",
     "status" : "SKIP",

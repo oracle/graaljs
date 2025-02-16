@@ -2688,6 +2688,10 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
+    "filePath" : "intl402/DateTimeFormat/canonicalize-utc-timezone.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, see https://github.com/tc39/test262/pull/4336"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/numbering-system.js",
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
@@ -2735,18 +2739,6 @@
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/timezone-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/timezone-legacy-non-iana.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/timezone-not-canonicalized.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
     "status" : "PASS",
@@ -3373,10 +3365,6 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/iana-legacy-names.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/legacy-non-iana.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
