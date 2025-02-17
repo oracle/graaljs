@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -277,10 +277,11 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         String tzId;
         tzId = maybeParseAndFormatTimeZoneOffset(name);
         if (tzId == null) {
-            tzId = JSDateTimeFormat.canonicalizeTimeZoneName(name);
-            if (tzId == null) {
+            Pair<String, String> pair = JSDateTimeFormat.getAvailableNamedTimeZoneIdentifier(name);
+            if (pair == null) {
                 throw Errors.createRangeErrorInvalidTimeZone(name);
             }
+            tzId = pair.getFirst();
             timeZone = IntlUtil.getICUTimeZone(tzId, context);
         } else {
             timeZone = IntlUtil.getICUTimeZoneForOffset(tzId);

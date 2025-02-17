@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,6 +106,11 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
      * canonical ID.
      */
     private static final LazyValue<UnmodifiableEconomicMap<String, Pair<String, String>>> canonicalTimeZoneIDMap = new LazyValue<>(JSDateTimeFormat::initCanonicalTimeZoneIDMap);
+
+    // non-IANA time zones names provided by ICU4J,
+    // https://github.com/unicode-org/icu/blob/main/icu4c/source/tools/tzcode/icuzones
+    private static final Set<String> nonIANATimeZones = Set.of("ACT", "AET", "AGT", "ART", "AST", "BET", "BST", "CAT", "CNT", "CST", "CTT", "EAT", "ECT", "IET", "IST", "JST", "MIT", "NET", "NST",
+                    "PLT", "PNT", "PRT", "PST", "SST", "VST");
 
     private JSDateTimeFormat() {
     }
@@ -646,6 +651,9 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<String, Pair<String, String>> map = EconomicMap.create();
         for (String available : TimeZone.getAvailableIDs()) {
+            if (nonIANATimeZones.contains(available)) {
+                continue;
+            }
             String canonical = TimeZone.getCanonicalID(available);
             if ("Etc/UTC".equals(canonical) || "Etc/GMT".equals(canonical)) {
                 canonical = "UTC";
@@ -653,18 +661,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             map.put(IntlUtil.toUpperCase(available), new Pair<>(available, canonical));
         }
         return map;
-    }
-
-    /**
-     * Returns the canonical and case-regularized form of the timeZone argument. Returns null if the
-     * argument is not a valid time zone name.
-     *
-     * https://tc39.github.io/ecma402/#sec-canonicalizetimezonename
-     */
-    @TruffleBoundary
-    public static String canonicalizeTimeZoneName(String tzId) {
-        Pair<String, String> result = getAvailableNamedTimeZoneIdentifier(tzId);
-        return (result == null) ? null : result.getSecond();
     }
 
     @TruffleBoundary
