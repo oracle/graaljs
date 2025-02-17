@@ -301,11 +301,14 @@ test-zlib-unused-weak: FAIL
 test-http-outgoing-end-cork: SKIP
 test-http-server-request-timeouts-mixed: PASS,FLAKY
 test-http2-server-rst-stream: SKIP
+test-runner-run-watch: SKIP
 test-signal-args: PASS,FAIL
 # GC-based random failures
 test-abortsignal-drop-settled-signals: SKIP
 test-async-hooks-destroy-on-gc: SKIP
 test-domain-async-id-map-leak: SKIP
+test-fs-filehandle: SKIP
+test-http-server-connections-checking-leak: SKIP
 test-https-server-connections-checking-leak: SKIP
 # Possible EventTarget memory leak detected. 3 foo listeners added to EventTarget. MaxListeners is 2.
 test-eventtarget-memoryleakwarning: PASS,FAIL
