@@ -227,8 +227,8 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
                         @Bind Node node,
                         @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,
-                        @Cached(inline = true) @Shared InvokeExecMethodNode invokeExec,
-                        @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch) {
+                        @Cached @Shared InvokeExecMethodNode invokeExec,
+                        @Cached @Shared InteropReadBooleanMemberNode readIsMatch) {
             return doExec(regExp, input, lastIndex, cachedCompiledRegex,
                             node, areLegacyFeaturesEnabled, invokeExec, readIsMatch);
         }
@@ -236,8 +236,8 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Specialization(replaces = "doCached")
         Object doUncached(JSRegExpObject regExp, TruffleString input, long lastIndex,
                         @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,
-                        @Cached(inline = true) @Shared InvokeExecMethodNode invokeExec,
-                        @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch) {
+                        @Cached @Shared InvokeExecMethodNode invokeExec,
+                        @Cached @Shared InteropReadBooleanMemberNode readIsMatch) {
             Object compiledRegex = JSRegExp.getCompiledRegex(regExp);
             return doExec(regExp, input, lastIndex, compiledRegex,
                             this, areLegacyFeaturesEnabled, invokeExec, readIsMatch);

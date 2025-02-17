@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,9 +64,9 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
+import com.oracle.truffle.js.runtime.builtins.JSBigIntObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormatObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Contains builtins for {@linkplain JSBigInt}.prototype.
@@ -126,10 +126,6 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeError(JSRuntime.safeToString(value) + " is not a BigInt");
         }
 
-        protected BigInt getBigIntValue(JSDynamicObject obj) {
-            return JSBigInt.valueOf(obj);
-        }
-
         protected int toIntegerAsInt(Object target) {
             if (toIntegerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -159,14 +155,14 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isJSBigInt(thisObj)", "isUndefined(radix)"})
-        protected TruffleString toStringRadix10(JSDynamicObject thisObj, Object radix,
+        @Specialization(guards = {"isUndefined(radix)"})
+        protected TruffleString toStringRadix10(JSBigIntObject thisObj, Object radix,
                         @Cached @Shared InlinedBranchProfile radixErrorBranch) {
             return toStringImpl(JSBigInt.valueOf(thisObj), 10, radixErrorBranch);
         }
 
-        @Specialization(guards = {"isJSBigInt(thisObj)", "!isUndefined(radix)"})
-        protected TruffleString toString(JSDynamicObject thisObj, Object radix,
+        @Specialization(guards = {"!isUndefined(radix)"})
+        protected TruffleString toString(JSBigIntObject thisObj, Object radix,
                         @Cached @Shared InlinedBranchProfile radixErrorBranch) {
             return toStringImpl(JSBigInt.valueOf(thisObj), radix, radixErrorBranch);
         }
@@ -209,10 +205,10 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSNumberFormat.format(numberFormatObj, thisObj);
         }
 
-        @Specialization(guards = "isJSBigInt(thisObj)")
-        protected TruffleString jsBigIntToLocaleString(JSDynamicObject thisObj, Object locales, Object options) {
+        @Specialization
+        protected TruffleString jsBigIntToLocaleString(JSBigIntObject thisObj, Object locales, Object options) {
             JSNumberFormatObject numberFormatObj = createNumberFormat(locales, options);
-            return JSNumberFormat.format(numberFormatObj, getBigIntValue(thisObj));
+            return JSNumberFormat.format(numberFormatObj, JSBigInt.valueOf(thisObj));
         }
 
         @Fallback
@@ -234,9 +230,9 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toLocaleStringImpl(thisObj);
         }
 
-        @Specialization(guards = "isJSBigInt(thisObj)")
-        protected TruffleString toLocaleStringJSBigInt(JSDynamicObject thisObj) {
-            return toLocaleStringImpl(getBigIntValue(thisObj));
+        @Specialization
+        protected TruffleString toLocaleStringJSBigInt(JSBigIntObject thisObj) {
+            return toLocaleStringImpl(JSBigInt.valueOf(thisObj));
         }
 
         private static TruffleString toLocaleStringImpl(BigInt bi) {
@@ -260,8 +256,8 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return thisObj;
         }
 
-        @Specialization(guards = "isJSBigInt(thisObj)")
-        protected BigInt valueOf(JSDynamicObject thisObj) {
+        @Specialization
+        protected BigInt valueOf(JSBigIntObject thisObj) {
             return JSBigInt.valueOf(thisObj);
         }
 

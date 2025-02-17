@@ -79,7 +79,6 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     public static final TruffleString TYPE_NAME = Strings.STRING;
     public static final TruffleString CLASS_NAME = Strings.UC_STRING;
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("String.prototype");
-    public static final TruffleString CLASS_NAME_EXTENSIONS = Strings.constant("StringExtensions");
 
     public static final TruffleString LENGTH = Strings.LENGTH;
 
@@ -129,14 +128,16 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         return index >= 0 && index < getStringLength(thisObj);
     }
 
+    public static TruffleString getString(JSStringObject obj) {
+        return obj.getString();
+    }
+
     public static TruffleString getString(JSDynamicObject obj) {
-        assert isJSString(obj);
-        return ((com.oracle.truffle.js.runtime.builtins.JSStringObject) obj).getString();
+        return getString((JSStringObject) obj);
     }
 
     @TruffleBoundary
     public static int getStringLength(JSDynamicObject obj) {
-        assert isJSString(obj);
         return Strings.length(getString(obj));
     }
 

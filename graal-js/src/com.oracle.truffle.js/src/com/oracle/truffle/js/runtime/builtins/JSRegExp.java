@@ -187,24 +187,20 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @NeverDefault
-    public static Object getCompiledRegex(JSDynamicObject thisObj) {
-        assert isJSRegExp(thisObj);
-        return ((JSRegExpObject) thisObj).getCompiledRegex();
+    public static Object getCompiledRegex(JSRegExpObject thisObj) {
+        return thisObj.getCompiledRegex();
     }
 
-    public static JSObjectFactory getGroupsFactory(JSDynamicObject thisObj) {
-        assert isJSRegExp(thisObj);
-        return ((JSRegExpObject) thisObj).getGroupsFactory();
+    public static JSObjectFactory getGroupsFactory(JSRegExpObject thisObj) {
+        return thisObj.getGroupsFactory();
     }
 
-    public static Object getRealm(JSDynamicObject thisObj) {
-        assert isJSRegExp(thisObj);
-        return ((JSRegExpObject) thisObj).getRealm();
+    public static Object getRealm(JSRegExpObject thisObj) {
+        return thisObj.getRealm();
     }
 
-    public static boolean getLegacyFeaturesEnabled(JSDynamicObject thisObj) {
-        assert isJSRegExp(thisObj);
-        return ((JSRegExpObject) thisObj).getLegacyFeaturesEnabled();
+    public static boolean getLegacyFeaturesEnabled(JSRegExpObject thisObj) {
+        return thisObj.getLegacyFeaturesEnabled();
     }
 
     /**
@@ -220,13 +216,6 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         JSRegExpObject obj = create(ctx, realm, compiledRegex, groupsFactory);
         JSObjectUtil.putDataProperty(obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         return obj;
-    }
-
-    /**
-     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
-     */
-    public static JSRegExpObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object compiledRegex, JSObjectFactory groupsFactory) {
-        return create(context, realm, proto, compiledRegex, groupsFactory, true);
     }
 
     /**

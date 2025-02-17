@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -89,7 +88,7 @@ public class DynamicArrayTest extends JSTest {
     }
 
     private static void assertEmpty(JSArrayObject arrayObject) {
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
         assertEquals(0, array.length(arrayObject));
         assertEquals(0, array.firstElementIndex(arrayObject));
         assertEquals(-1, array.lastElementIndex(arrayObject));
@@ -105,7 +104,7 @@ public class DynamicArrayTest extends JSTest {
     @Test
     public void testInBoundsContiguousAccess() {
         JSArrayObject arrayObject = setArrayElement(createEmptyArray(4), 3, INT);
-        AbstractIntArray array = (AbstractIntArray) JSObject.getArray(arrayObject);
+        AbstractIntArray array = (AbstractIntArray) arrayObject.getArrayType();
         assertEquals(true, array.isInBounds(arrayObject, 3));
         assertEquals(true, array.isInBoundsFast(arrayObject, 3));
         assertEquals(true, array.isInBounds(arrayObject, 2));
@@ -131,7 +130,7 @@ public class DynamicArrayTest extends JSTest {
     @Test
     public void testInBoundsZeroAccess() {
         JSArrayObject arrayObject = setArrayElement(createEmptyArray(4), 0, INT);
-        AbstractIntArray array = (AbstractIntArray) JSObject.getArray(arrayObject);
+        AbstractIntArray array = (AbstractIntArray) arrayObject.getArrayType();
         assertEquals(true, array.isInBounds(arrayObject, 0));
         assertEquals(true, array.isInBoundsFast(arrayObject, 0));
         assertEquals(true, array.isInBounds(arrayObject, 1));
@@ -162,7 +161,7 @@ public class DynamicArrayTest extends JSTest {
     @Test
     public void testInBoundsZeroAccessLengthExtension() {
         JSArrayObject arrayObject = setArrayElement(createEmptyArray(), 0, INT);
-        AbstractIntArray array = (AbstractIntArray) JSObject.getArray(arrayObject);
+        AbstractIntArray array = (AbstractIntArray) arrayObject.getArrayType();
         assertEquals(ZeroBasedIntArray.class, array.getClass());
         assertEquals(1, array.length(arrayObject));
 
@@ -177,7 +176,7 @@ public class DynamicArrayTest extends JSTest {
     @Test
     public void testInBoundsContiguousLengthExtension() {
         JSArrayObject arrayObject = setArrayElement(createEmptyArray(), 1, INT);
-        AbstractIntArray array = (AbstractIntArray) JSObject.getArray(arrayObject);
+        AbstractIntArray array = (AbstractIntArray) arrayObject.getArrayType();
         assertEquals(ContiguousIntArray.class, array.getClass());
         assertEquals(2, array.length(arrayObject));
 
@@ -192,7 +191,7 @@ public class DynamicArrayTest extends JSTest {
     @Test
     public void testInBoundsHoles() {
         JSArrayObject arrayObject = setArrayElement(createEmptyArray(8), 4, INT);
-        AbstractIntArray array = (AbstractIntArray) JSObject.getArray(arrayObject);
+        AbstractIntArray array = (AbstractIntArray) arrayObject.getArrayType();
         array = (AbstractIntArray) array.setElement(arrayObject, 2, INT, false);
         assertEquals(HolesIntArray.class, array.getClass());
         assertEquals(8, array.length(arrayObject));
@@ -322,12 +321,12 @@ public class DynamicArrayTest extends JSTest {
     }
 
     private static JSArrayObject setArrayElement(JSArrayObject arrayObject, int index, Object value) {
-        JSObject.setArray(arrayObject, JSObject.getArray(arrayObject).setElement(arrayObject, index, value, false));
+        arrayObject.setArrayType(arrayObject.getArrayType().setElement(arrayObject, index, value, false));
         return arrayObject;
     }
 
     private static void assertScriptArray(JSArrayObject arrayObject, Object value) {
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
 
         assertEquals(value, array.getElement(arrayObject, 0));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 1));
@@ -351,61 +350,61 @@ public class DynamicArrayTest extends JSTest {
     }
 
     private static void assertDelete(Object value, JSArrayObject arrayObject) {
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
 
         // delete at end
-        JSObject.setArray(arrayObject, array = array.setElement(arrayObject, 0, value, false));
-        JSObject.setArray(arrayObject, array = array.setElement(arrayObject, 1, value, false));
-        JSObject.setArray(arrayObject, array = array.deleteElement(arrayObject, 1, false));
+        arrayObject.setArrayType(array = array.setElement(arrayObject, 0, value, false));
+        arrayObject.setArrayType(array = array.setElement(arrayObject, 1, value, false));
+        arrayObject.setArrayType(array = array.deleteElement(arrayObject, 1, false));
 
         assertEquals(2, array.length(arrayObject));
         assertEquals(value, array.getElement(arrayObject, 0));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 1));
 
-        JSObject.setArray(arrayObject, array = array.setElement(arrayObject, 2, value, false));
-        JSObject.setArray(arrayObject, array = array.deleteElement(arrayObject, 2, false));
+        arrayObject.setArrayType(array = array.setElement(arrayObject, 2, value, false));
+        arrayObject.setArrayType(array = array.deleteElement(arrayObject, 2, false));
         assertEquals(value, array.getElement(arrayObject, 0));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 1));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 2));
     }
 
     private static void assertLength(Object value, JSArrayObject arrayObject) {
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
         // test length
-        JSObject.setArray(arrayObject, array = array.setLength(arrayObject, 10, false));
+        arrayObject.setArrayType(array = array.setLength(arrayObject, 10, false));
         assertEquals(10, array.length(arrayObject));
 
-        JSObject.setArray(arrayObject, array = array.setLength(arrayObject, 1, false));
+        arrayObject.setArrayType(array = array.setLength(arrayObject, 1, false));
         assertEquals(1, array.length(arrayObject));
 
         assertEquals(value, array.getElement(arrayObject, 0));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 1));
 
-        JSObject.setArray(arrayObject, array = array.setLength(arrayObject, 0, false));
+        arrayObject.setArrayType(array = array.setLength(arrayObject, 0, false));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 0));
 
-        JSObject.setArray(arrayObject, array = array.setLength(arrayObject, 1, false));
-        JSObject.setArray(arrayObject, array = array.setElement(arrayObject, 0, value, false));
+        arrayObject.setArrayType(array = array.setLength(arrayObject, 1, false));
+        arrayObject.setArrayType(array = array.setElement(arrayObject, 0, value, false));
         assertEquals(value, array.getElement(arrayObject, 0));
 
-        JSObject.setArray(arrayObject, array = array.setLength(arrayObject, 0, false));
+        arrayObject.setArrayType(array = array.setLength(arrayObject, 0, false));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 0));
 
-        JSObject.setArray(arrayObject, array = array.setElement(arrayObject, 2, value, false));
+        arrayObject.setArrayType(array = array.setElement(arrayObject, 2, value, false));
         assertEquals(value, array.getElement(arrayObject, 2));
         assertEquals(3, array.length(arrayObject));
 
-        JSObject.setArray(arrayObject, array = array.setElement(arrayObject, 3, value, false));
+        arrayObject.setArrayType(array = array.setElement(arrayObject, 3, value, false));
         assertEquals(value, array.getElement(arrayObject, 3));
         assertEquals(4, array.length(arrayObject));
 
-        JSObject.setArray(arrayObject, array = array.setLength(arrayObject, 3, false));
+        arrayObject.setArrayType(array = array.setLength(arrayObject, 3, false));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 3));
 
-        JSObject.setArray(arrayObject, array = array.setElement(arrayObject, 5, value, false));
+        arrayObject.setArrayType(array = array.setElement(arrayObject, 5, value, false));
         assertEquals(6, array.length(arrayObject));
 
-        JSObject.setArray(arrayObject, array = array.setLength(arrayObject, 2, false));
+        arrayObject.setArrayType(array = array.setLength(arrayObject, 2, false));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 2));
         assertEquals(Undefined.instance, array.getElement(arrayObject, 5));
     }
@@ -464,14 +463,14 @@ public class DynamicArrayTest extends JSTest {
     @Test(expected = AssertionError.class)
     public void testInvalidDoubleHoles() {
         JSArrayObject arrayObject = createEmptyArray();
-        JSObject.getArray(arrayObject).setElement(arrayObject, 0, HolesDoubleArray.HOLE_VALUE_DOUBLE, false);
+        arrayObject.getArrayType().setElement(arrayObject, 0, HolesDoubleArray.HOLE_VALUE_DOUBLE, false);
     }
 
     @Ignore
     @Test(expected = AssertionError.class)
     public void testInvalidObjectHoles() {
         JSArrayObject arrayObject = createEmptyArray();
-        JSObject.getArray(arrayObject).setElement(arrayObject, 0, null, false);
+        arrayObject.getArrayType().setElement(arrayObject, 0, null, false);
     }
 
     private void assertBackward(Object value) {
@@ -518,7 +517,7 @@ public class DynamicArrayTest extends JSTest {
 
     private static void assertBackward(JSArrayObject arrayObject, int stepSize, Object value, int rangeStart, int rangeEnd) {
         String message = "Range " + rangeStart + " to " + rangeEnd + " stepsize " + stepSize;
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
 
         assert rangeEnd < rangeStart;
 
@@ -527,14 +526,14 @@ public class DynamicArrayTest extends JSTest {
 
         for (int i = start; i >= end; i -= stepSize) {
             array = array.setElement(arrayObject, i, value, false);
-            JSObject.setArray(arrayObject, array);
+            arrayObject.setArrayType(array);
         }
 
         verifyRange(stepSize, value, message, arrayObject);
     }
 
     private static void verifyRange(int stepSize, Object value, String message, JSArrayObject arrayObject) {
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
         Object[] objectArray = array.toArray(arrayObject);
         for (long i = array.firstElementIndex(arrayObject); i <= array.lastElementIndex(arrayObject); i += 1) {
             if (i % stepSize == 0) {
@@ -565,7 +564,7 @@ public class DynamicArrayTest extends JSTest {
 
     private static void assertForward(JSArrayObject arrayObject, int stepSize, Object value, int rangeStart, int rangeEnd) {
         String message = "Range " + rangeStart + " to " + rangeEnd + " stepsize " + stepSize;
-        ScriptArray array = JSObject.getArray(arrayObject);
+        ScriptArray array = arrayObject.getArrayType();
 
         assert rangeEnd > rangeStart;
 
@@ -574,7 +573,7 @@ public class DynamicArrayTest extends JSTest {
 
         for (int i = start; i < end; i += stepSize) {
             array = array.setElement(arrayObject, i, value, false);
-            JSObject.setArray(arrayObject, array);
+            arrayObject.setArrayType(array);
         }
 
         verifyRange(stepSize, value, message, arrayObject);

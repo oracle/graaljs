@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
+import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -284,7 +285,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return ownPropertyKeysContiguous(object);
     }
 
-    private void notifyAllocationSite(JSDynamicObject object, ScriptArray newArray) {
+    private void notifyAllocationSite(JSDynamicObject object, DynamicArray newArray) {
         if (JSConfig.TrackArrayAllocationSites && CompilerDirectives.inInterpreter()) {
             ArrayAllocationSite site = JSAbstractArray.arrayGetAllocationSite(object);
             if (site != null) {

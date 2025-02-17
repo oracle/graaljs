@@ -102,7 +102,6 @@ public class ImportCallNode extends JavaScriptNode {
     private final ScriptOrModule activeScriptOrModule;
     @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private JSToStringNode toStringNode;
-    @Child private PromiseReactionJobNode promiseReactionJobNode;
     @Child private JavaScriptNode optionsRefNode;
 
     // lazily initialized
@@ -122,7 +121,6 @@ public class ImportCallNode extends JavaScriptNode {
         this.optionsRefNode = optionsRefNode;
         this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
         this.toStringNode = JSToStringNode.create();
-        this.promiseReactionJobNode = PromiseReactionJobNode.create(context);
     }
 
     @NeverDefault
@@ -358,7 +356,6 @@ public class ImportCallNode extends JavaScriptNode {
             @Child private PropertySetNode setCaptures = PropertySetNode.createSetHidden(LINK_AND_EVALUATE_KEY, context);
 
             @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
-            @Child private JSFunctionCallNode callPromiseResolve = JSFunctionCallNode.createCall();
             @Child private JSFunctionCallNode callPromiseReject;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 

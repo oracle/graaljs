@@ -45,7 +45,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Arrays;
 import java.util.function.Consumer;
 
 import org.junit.Assume;
@@ -145,7 +144,7 @@ public class InternalArrayTest extends JSTest {
     @Test
     public void testSimpleArraySetTest4() {
         var array = testHelper.runJSArray("function fn() { var a = [1,2,3,4,5]; a[1] = -2; return a; } fn()");
-        assertTrue(Arrays.equals(new Object[]{1, -2, 3, 4, 5}, JSArray.toArray(array)));
+        assertArrayEquals(new Object[]{1, -2, 3, 4, 5}, JSArray.toArray(array));
         for (int i = 0; i < 5; i++) {
             assertEquals(i != 1 ? i + 1 : -2, JSObject.get(array, i));
         }
@@ -174,7 +173,7 @@ public class InternalArrayTest extends JSTest {
     public void testIntArrayDelete() {
         String script = "var a = [10,11,12,13,14,15]; delete a[1]; delete a[5]; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertArrayEquals(new Object[]{10, Undefined.instance, 12, 13, 14, Undefined.instance}, arr);
 
         String script2 = "var s=''; for (var i in a) { s+= i.toString(); } s;";
@@ -194,7 +193,7 @@ public class InternalArrayTest extends JSTest {
     public void testObjectArrayDelete() {
         String script = "var a = ['test',11,12,13,14,15]; delete a[1]; delete a[5]; a; ";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertArrayEquals(new Object[]{TEST, Undefined.instance, 12, 13, 14, Undefined.instance}, arr);
 
         String script2 = "var s=''; for (var i in a) { s+= i.toString(); } s;";
@@ -205,7 +204,7 @@ public class InternalArrayTest extends JSTest {
     public void testSparseArrayDelete() {
         String script = "var a = ['test',11,12,13,14,15]; a[10000] = true; delete a[10000]; delete a[5]; delete a[1]; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertEquals(10001, arr.length);
         assertEquals(TEST, arr[0]);
         assertEquals(Undefined.instance, arr[1]);
@@ -221,7 +220,7 @@ public class InternalArrayTest extends JSTest {
     public void testObjectDeletedArray() {
         String script = "var a = ['test',11,12,13,14,15]; delete a[1]; for (var i=2;i<a.length;i++) { a[i] = i+20; } a[2]=true;a[5]='foo'; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertArrayEquals(new Object[]{TEST, Undefined.instance, true, 23, 24, FOO}, arr);
     }
 
@@ -229,7 +228,7 @@ public class InternalArrayTest extends JSTest {
     public void testIntArrayGrowing() {
         String script = "var a = []; a[3] = 1; a[2] = 2; a[4] = 3; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertArrayEquals(new Object[]{Undefined.instance, Undefined.instance, 2, 1, 3}, arr);
     }
 
@@ -237,8 +236,8 @@ public class InternalArrayTest extends JSTest {
     public void testIntArrayGrowingRightWithHoles() {
         String script = "var a = []; a[3] = 1; a[2] = 2; a[7] = 3; a;";
         var array = testHelper.runJSArray(script);
-        assertEquals(HolesIntArray.class, JSObject.getArray(array).getClass());
-        Object[] arr = JSObject.getArray(array).toArray(array);
+        assertEquals(HolesIntArray.class, array.getArrayType().getClass());
+        Object[] arr = array.getArrayType().toArray(array);
         assertArrayEquals(new Object[]{Undefined.instance, Undefined.instance, 2, 1, Undefined.instance, Undefined.instance, Undefined.instance, 3}, arr);
     }
 
@@ -246,8 +245,8 @@ public class InternalArrayTest extends JSTest {
     public void testIntArrayGrowingLeftWithHoles() {
         String script = "var a = []; a[7] = 1; a[8] = 2; a[3] = 3; a;";
         var array = testHelper.runJSArray(script);
-        assertEquals(HolesIntArray.class, JSObject.getArray(array).getClass());
-        Object[] arr = JSObject.getArray(array).toArray(array);
+        assertEquals(HolesIntArray.class, array.getArrayType().getClass());
+        Object[] arr = array.getArrayType().toArray(array);
         assertArrayEquals(new Object[]{Undefined.instance, Undefined.instance, Undefined.instance, 3, Undefined.instance, Undefined.instance, Undefined.instance, 1, 2}, arr);
     }
 
@@ -266,7 +265,7 @@ public class InternalArrayTest extends JSTest {
     public void testObjectArrayReduceLength() {
         String script = "var a = ['test',11]; a.length = 1; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertArrayEquals(new Object[]{TEST}, arr);
     }
 
@@ -274,7 +273,7 @@ public class InternalArrayTest extends JSTest {
     public void testObjectDeletedArrayReduceLength() {
         String script = "var a = ['test',11,12]; delete(a[1]); a.length = 2; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertArrayEquals(new Object[]{TEST, Undefined.instance}, arr);
     }
 
@@ -300,7 +299,7 @@ public class InternalArrayTest extends JSTest {
     public void testIntBaseOffset() {
         String script = "var a = new Array(5); var i; for (i=4;i>=0;i--) {a[i] = i; }; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertArrayEquals(new Object[]{0, 1, 2, 3, 4}, arr);
     }
 
@@ -308,7 +307,7 @@ public class InternalArrayTest extends JSTest {
     public void testObjectBaseOffset() {
         String script = "var o = {}; var a = new Array(5); var i; for (i=4;i>=0;i--) {a[i] = o; }; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertEquals(5, arr.length);
         assertTrue(arr[0] instanceof JSDynamicObject);
         assertTrue(arr[1] instanceof JSDynamicObject);
@@ -322,7 +321,7 @@ public class InternalArrayTest extends JSTest {
         // tests whether the ObjectArray(int capacity) sets the length correctly
         String script = "var o = {}; var a = [1,2]; a[0] = undefined; a[1] = undefined; a[0]=o; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertEquals(2, arr.length);
         assertTrue(arr[0] instanceof JSDynamicObject);
         assertEquals(Undefined.instance, arr[1]);
@@ -424,7 +423,7 @@ public class InternalArrayTest extends JSTest {
     public void testEvaluationOrder() {
         String script = "var a = [0,1,2,3,4]; var i=2; a[i] = a[++i]+10; a;";
         var result = testHelper.runJSArray(script);
-        Object[] arr = JSObject.getArray(result).toArray(result);
+        Object[] arr = result.getArrayType().toArray(result);
         assertArrayEquals(new Object[]{0, 1, 13, 3, 4}, arr);
     }
 
@@ -462,7 +461,7 @@ public class InternalArrayTest extends JSTest {
     @Test
     public void testReduceLengthBelowIndexOffset() {
         var result = testHelper.runJSArray("var a = []; a[20] = 42; a.length = 10; a[15] = 666; a;");
-        Object[] array = JSObject.getArray(result).toArray(result);
+        Object[] array = result.getArrayType().toArray(result);
         assertEquals(16, array.length);
         assertEquals(666, array[15]);
     }
@@ -566,7 +565,7 @@ public class InternalArrayTest extends JSTest {
     public void testSparseArrayRemoveRange() {
         testHelper.enterContext();
         var object = JSArray.createSparseArray(testHelper.getJSContext(), testHelper.getRealm(), 1000);
-        ScriptArray sparse = JSObject.getArray(object);
+        ScriptArray sparse = object.getArrayType();
 
         sparse.setElement(object, 100, START, false);
         sparse.setElement(object, 399, LOWER_BORDER_1, false);
@@ -598,7 +597,7 @@ public class InternalArrayTest extends JSTest {
     public void testSparseArrayAddRange() {
         testHelper.enterContext();
         var object = JSArray.createSparseArray(testHelper.getJSContext(), testHelper.getRealm(), 1000);
-        ScriptArray sparse = JSObject.getArray(object);
+        ScriptArray sparse = object.getArrayType();
 
         sparse.setElement(object, 100, START, false);
         sparse.setElement(object, 399, LOWER_BORDER_1, false);

@@ -98,7 +98,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
 
         // must be invoked before any code that tries to access ICU library data
         try {
-            JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
+            JSCollator.InternalState state = collatorObj.getInternalState();
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             Object options = coerceOptionsToObjectNode.execute(optionsArg);
             String usage = getUsageOption.executeValue(options);

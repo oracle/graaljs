@@ -105,7 +105,6 @@ public final class JSConfig {
 
     // LazyString options
     public static final boolean LazyStrings = true;
-    public static final int MinLazyStringLength = 20;
 
     // Parser options
     public static final boolean ReturnOptimizer = true;

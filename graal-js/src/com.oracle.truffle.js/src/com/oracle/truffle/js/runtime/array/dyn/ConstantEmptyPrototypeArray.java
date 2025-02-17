@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -56,7 +55,7 @@ public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArra
 
     private static final ConstantEmptyPrototypeArray CONSTANT_EMPTY_PROTOTYPE_ARRAY = new ConstantEmptyPrototypeArray(INTEGRITY_LEVEL_NONE, createCache()).maybePreinitializeCache();
 
-    public static ScriptArray createConstantEmptyPrototypeArray() {
+    public static AbstractConstantArray createConstantEmptyPrototypeArray() {
         return CONSTANT_EMPTY_PROTOTYPE_ARRAY;
     }
 

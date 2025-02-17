@@ -55,7 +55,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
  * Base class for Array, ArgumentsObject, and %Object.prototype%.
  */
 public abstract class JSArrayBase extends JSNonProxyObject {
-    protected JSArrayBase(Shape shape, JSDynamicObject proto, ScriptArray arrayType,
+    protected JSArrayBase(Shape shape, JSDynamicObject proto, DynamicArray arrayType,
                     Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         super(shape, proto);
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
@@ -82,11 +82,6 @@ public abstract class JSArrayBase extends JSNonProxyObject {
     Object arrayStorage;
     ScriptArray arrayStrategy;
     ArrayAllocationSite allocationSite;
-
-    @SuppressWarnings("static-method")
-    public final ArrayAccess arrayAccess() {
-        return ArrayAccess.SINGLETON;
-    }
 
     public final ScriptArray getArrayType() {
         return arrayStrategy;

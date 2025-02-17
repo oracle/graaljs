@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -78,11 +77,6 @@ public abstract class ArrayBufferViewGetByteLengthNode extends JavaScriptBaseNod
     protected static int getByteLength(Node node, JSTypedArrayObject typedArray, JSContext context,
                     @Cached TypedArrayLengthNode typedArrayLengthNode) {
         return typedArrayLengthNode.execute(node, typedArray, context) << typedArray.getArrayType().bytesPerElementShift();
-    }
-
-    @NeverDefault
-    protected static TypedArray getArrayType(JSTypedArrayObject obj) {
-        return JSArrayBufferView.typedArrayGetArrayType(obj);
     }
 
 }

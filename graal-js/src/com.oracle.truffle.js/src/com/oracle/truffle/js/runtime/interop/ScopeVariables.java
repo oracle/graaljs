@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -758,8 +759,7 @@ public final class ScopeVariables implements TruffleObject {
         // this can be either undefined or not populated yet
         // => try to avoid returning undefined in the latter case
         Object function = JSArguments.getFunctionObject(args);
-        if (JSFunction.isJSFunction(function)) {
-            JSDynamicObject jsFunction = (JSDynamicObject) function;
+        if (function instanceof JSFunctionObject jsFunction) {
             return isArrowFunctionWithThisCaptured(jsFunction) ? JSFunction.getLexicalThis(jsFunction) : thisFromArguments(args);
         }
         return Undefined.instance;
@@ -768,7 +768,7 @@ public final class ScopeVariables implements TruffleObject {
     static Object thisFromArguments(Object[] args) {
         Object thisObject = JSArguments.getThisObject(args);
         Object function = JSArguments.getFunctionObject(args);
-        if (JSFunction.isJSFunction(function) && !JSFunction.isStrict((JSDynamicObject) function)) {
+        if (function instanceof JSFunctionObject jsFunction && !JSFunction.isStrict(jsFunction)) {
             JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
             if (thisObject == Undefined.instance || thisObject == Null.instance) {
                 thisObject = realm.getGlobalObject();
@@ -779,7 +779,7 @@ public final class ScopeVariables implements TruffleObject {
         return thisObject;
     }
 
-    private static boolean isArrowFunctionWithThisCaptured(JSDynamicObject function) {
+    private static boolean isArrowFunctionWithThisCaptured(JSFunctionObject function) {
         return !JSFunction.isConstructor(function) && JSFunction.isClassPrototypeInitialized(function);
     }
 

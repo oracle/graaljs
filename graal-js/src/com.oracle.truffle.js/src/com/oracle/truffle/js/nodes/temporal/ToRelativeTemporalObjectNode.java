@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
@@ -94,11 +93,6 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
     public record Result(
                     JSTemporalPlainDateObject plainRelativeTo,
                     JSTemporalZonedDateTimeObject zonedRelativeTo) {
-
-        public JSTemporalCalendarHolder relativeTo() {
-            return zonedRelativeTo != null ? zonedRelativeTo : plainRelativeTo;
-        }
-
     }
 
     public abstract Result execute(JSDynamicObject options);

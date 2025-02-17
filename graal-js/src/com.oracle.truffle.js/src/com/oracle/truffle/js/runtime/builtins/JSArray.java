@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
+import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantByteArray;
@@ -130,55 +131,55 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return createConstantEmptyArray(context, realm);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, DynamicArray arrayType, Object array, long length) {
         return create(context, realm, arrayType, array, length, 0);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, DynamicArray arrayType, Object array, long length, int usedLength) {
         return create(context, realm, arrayType, array, length, usedLength, 0, 0);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, DynamicArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset) {
         return create(context, realm, arrayType, array, length, usedLength, indexOffset, arrayOffset, 0);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, DynamicArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         return createDefaultProto(context, realm, arrayType, array, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, ScriptArray arrayType, Object array, long length) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, DynamicArray arrayType, Object array, long length) {
         return create(context, realm, proto, arrayType, array, length, 0);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, ScriptArray arrayType, Object array, long length, int usedLength) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, DynamicArray arrayType, Object array, long length, int usedLength) {
         return create(context, realm, proto, arrayType, array, length, usedLength, 0, 0);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset) {
+    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, DynamicArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset) {
         return create(context, realm, proto, arrayType, array, length, usedLength, indexOffset, arrayOffset, 0);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset,
+    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, DynamicArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset,
                     int holeCount) {
         return createWithProto(context, realm, proto, arrayType, array, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
     @InliningCutoff
     public static JSArrayObject createDefaultProto(JSContext context, JSRealm realm,
-                    ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+                    DynamicArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         JSObjectFactory factory = context.getArrayFactory();
         return createImpl(factory, realm, INSTANCE.getIntrinsicDefaultProto(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
     @InliningCutoff
     public static JSArrayObject createWithProto(JSContext context, JSRealm realm, JSDynamicObject prototype,
-                    ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+                    DynamicArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         JSObjectFactory factory = context.getArrayFactory();
         return createImpl(factory, realm, prototype, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
     private static JSArrayObject createImpl(JSObjectFactory factory, JSRealm realm, JSDynamicObject prototype,
-                    ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+                    DynamicArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         var shape = factory.getShape(realm, prototype);
         var newObj = factory.initProto(new JSArrayObject(shape, prototype, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount), realm, prototype);
@@ -322,7 +323,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, int capacity) {
-        ScriptArray arrayType = ScriptArray.createConstantEmptyArray();
+        var arrayType = ScriptArray.createConstantEmptyArray();
         return create(context, realm, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, capacity);
     }
 
@@ -335,27 +336,27 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, JSDynamicObject prototype, ArrayAllocationSite site, int capacity) {
-        ScriptArray arrayType = ScriptArray.createConstantEmptyArray();
+        var arrayType = ScriptArray.createConstantEmptyArray();
         return createWithProto(context, realm, prototype, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, site, capacity, 0, 0, 0, 0);
     }
 
     public static JSArrayObject createConstantByteArray(JSContext context, JSRealm realm, byte[] byteArray) {
-        ScriptArray arrayType = ConstantByteArray.createConstantByteArray();
+        var arrayType = ConstantByteArray.createConstantByteArray();
         return create(context, realm, arrayType, byteArray, byteArray.length);
     }
 
     public static JSArrayObject createConstantIntArray(JSContext context, JSRealm realm, int[] intArray) {
-        ScriptArray arrayType = ConstantIntArray.createConstantIntArray();
+        var arrayType = ConstantIntArray.createConstantIntArray();
         return create(context, realm, arrayType, intArray, intArray.length);
     }
 
     public static JSArrayObject createConstantDoubleArray(JSContext context, JSRealm realm, double[] doubleArray) {
-        ScriptArray arrayType = ConstantDoubleArray.createConstantDoubleArray();
+        var arrayType = ConstantDoubleArray.createConstantDoubleArray();
         return create(context, realm, arrayType, doubleArray, doubleArray.length);
     }
 
     public static JSArrayObject createConstantObjectArray(JSContext context, JSRealm realm, Object[] objectArray) {
-        ScriptArray arrayType = ConstantObjectArray.createConstantObjectArray();
+        var arrayType = ConstantObjectArray.createConstantObjectArray();
         return create(context, realm, arrayType, objectArray, objectArray.length);
     }
 

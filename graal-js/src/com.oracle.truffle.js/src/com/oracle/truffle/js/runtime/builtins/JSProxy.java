@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -139,7 +139,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static Object getTarget(JSDynamicObject obj) {
-        assert isJSProxy(obj);
         return ((JSProxyObject) obj).getProxyTarget();
     }
 
@@ -156,7 +155,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static JSDynamicObject getHandler(JSDynamicObject obj) {
-        assert isJSProxy(obj);
         return ((JSProxyObject) obj).getProxyHandler();
     }
 

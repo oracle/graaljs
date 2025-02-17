@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -122,7 +122,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+        JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
         FunctionTemplate functionTemplate = (FunctionTemplate) getFunctionTemplateNode.getValue(functionObject);
 
         JSRealm realm = JSFunction.getRealm(functionObject);

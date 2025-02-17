@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.CompiledRegex;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadBooleanMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadIntArrayMemberNodeGen;
-import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadIntMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadStringMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeExecMethodNodeGen;
@@ -134,7 +133,8 @@ public final class TRegexUtil {
         public static final int CAPTURE_GROUP_NO_MATCH = -1;
     }
 
-    @GenerateInline
+    @GenerateCached
+    @GenerateInline(inlineByDefault = true)
     @GenerateUncached
     public abstract static class InteropReadMemberNode extends Node {
 
@@ -159,8 +159,8 @@ public final class TRegexUtil {
         }
     }
 
-    @GenerateInline
-    @GenerateUncached
+    @GenerateCached(false)
+    @GenerateInline(inlineByDefault = true)
     public abstract static class InteropReadIntMemberNode extends Node {
 
         public abstract int execute(Node node, Object obj, String key);
@@ -173,18 +173,10 @@ public final class TRegexUtil {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
-
-        @NeverDefault
-        public static InteropReadIntMemberNode create() {
-            return InteropReadIntMemberNodeGen.create();
-        }
-
-        public static InteropReadIntMemberNode getUncached() {
-            return InteropReadIntMemberNodeGen.getUncached();
-        }
     }
 
-    @GenerateInline
+    @GenerateCached(false)
+    @GenerateInline(inlineByDefault = true)
     @GenerateUncached
     public abstract static class InteropReadIntArrayMemberNode extends Node {
 
@@ -205,17 +197,13 @@ public final class TRegexUtil {
             }
         }
 
-        @NeverDefault
-        public static InteropReadIntArrayMemberNode create() {
-            return InteropReadIntArrayMemberNodeGen.create();
-        }
-
         public static InteropReadIntArrayMemberNode getUncached() {
             return InteropReadIntArrayMemberNodeGen.getUncached();
         }
     }
 
-    @GenerateInline
+    @GenerateCached
+    @GenerateInline(inlineByDefault = true)
     @GenerateUncached
     public abstract static class InteropReadBooleanMemberNode extends Node {
 
@@ -242,6 +230,7 @@ public final class TRegexUtil {
         }
     }
 
+    @GenerateCached(false)
     @GenerateInline
     @GenerateUncached
     public abstract static class InteropReadStringMemberNode extends Node {
@@ -259,16 +248,12 @@ public final class TRegexUtil {
             }
         }
 
-        @NeverDefault
-        public static InteropReadStringMemberNode create() {
-            return InteropReadStringMemberNodeGen.create();
-        }
-
         public static InteropReadStringMemberNode getUncached() {
             return InteropReadStringMemberNodeGen.getUncached();
         }
     }
 
+    @GenerateCached(false)
     @GenerateInline
     @GenerateUncached
     public abstract static class InteropToBooleanNode extends Node {
@@ -291,7 +276,8 @@ public final class TRegexUtil {
         }
     }
 
-    @GenerateInline
+    @GenerateCached
+    @GenerateInline(inlineByDefault = true)
     @GenerateUncached
     public abstract static class InteropToIntNode extends Node {
 
@@ -313,7 +299,7 @@ public final class TRegexUtil {
         }
     }
 
-    @SuppressWarnings("truffle-inlining")
+    @GenerateCached(false)
     @GenerateInline
     @GenerateUncached
     @ImportStatic(JSGuards.class)
@@ -327,12 +313,14 @@ public final class TRegexUtil {
             return Strings.fromJavaString(fromJavaStringNode, obj);
         }
 
+        @SuppressWarnings("truffle-inlining")
         @Specialization
         static TruffleString coerceDirect(TruffleString obj,
                         @Cached @Shared TruffleString.SwitchEncodingNode switchEncoding) {
             return switchEncoding.execute(obj, TruffleString.Encoding.UTF_16);
         }
 
+        @SuppressWarnings("truffle-inlining")
         @Specialization(guards = {"!isTruffleString(obj)", "objs.isString(obj)"}, limit = "3")
         static TruffleString coerce(Object obj,
                         @CachedLibrary("obj") InteropLibrary objs,
@@ -341,6 +329,7 @@ public final class TRegexUtil {
         }
     }
 
+    @GenerateCached(false)
     @GenerateInline
     @GenerateUncached
     @ImportStatic(CompiledRegex.class)
@@ -358,17 +347,13 @@ public final class TRegexUtil {
             }
         }
 
-        @NeverDefault
-        public static InvokeExecMethodNode create() {
-            return InvokeExecMethodNodeGen.create();
-        }
-
         public static InvokeExecMethodNode getUncached() {
             return InvokeExecMethodNodeGen.getUncached();
         }
     }
 
-    @GenerateInline
+    @GenerateCached
+    @GenerateInline(inlineByDefault = true)
     @GenerateUncached
     public abstract static class InvokeGetGroupBoundariesMethodNode extends Node {
 
@@ -424,10 +409,6 @@ public final class TRegexUtil {
     public static final class TRegexNamedCaptureGroupsAccessor {
 
         private TRegexNamedCaptureGroupsAccessor() {
-        }
-
-        public static boolean isNull(Object namedCaptureGroupsMap, InteropLibrary interop) {
-            return interop.isNull(namedCaptureGroupsMap);
         }
 
         public static boolean hasGroup(Object namedCaptureGroupsMap, TruffleString name, InteropLibrary interop) {

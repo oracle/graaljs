@@ -215,6 +215,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSCollectionIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
@@ -229,6 +230,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMapIteratorObject;
+import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -239,8 +241,10 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSetIteratorObject;
+import com.oracle.truffle.js.runtime.builtins.JSSetObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
@@ -1574,7 +1578,7 @@ public final class GraalJSAccess {
     }
 
     public double dateValueOf(Object date) {
-        return JSDate.getTimeMillisField((JSDateObject) date);
+        return ((JSDateObject) date).getTimeMillis();
     }
 
     private enum TimeZoneDetection {
@@ -3527,7 +3531,7 @@ public final class GraalJSAccess {
     }
 
     public boolean booleanObjectValueOf(Object object) {
-        return JSBoolean.valueOf((JSDynamicObject) object);
+        return JSBoolean.valueOf((JSBooleanObject) object);
     }
 
     public Object stringEmpty() {
@@ -3621,7 +3625,7 @@ public final class GraalJSAccess {
     }
 
     public Object stringObjectValueOf(Object object) {
-        return JSString.getString((JSDynamicObject) object);
+        return JSString.getString((JSStringObject) object);
     }
 
     public Object numberObjectNew(Object context, double value) {
@@ -4088,18 +4092,18 @@ public final class GraalJSAccess {
     }
 
     public void mapSet(Object set, Object key, Object value) {
-        JSDynamicObject object = (JSDynamicObject) set;
+        JSMapObject object = (JSMapObject) set;
         JSMap.getInternalMap(object).put(JSSet.normalize(key), value);
     }
 
     public Object mapGet(Object set, Object key) {
-        JSDynamicObject object = (JSDynamicObject) set;
+        JSMapObject object = (JSMapObject) set;
         Object value = JSMap.getInternalMap(object).get(JSSet.normalize(key));
         return JSRuntime.nullToUndefined(value);
     }
 
     public boolean mapDelete(Object set, Object key) {
-        JSDynamicObject object = (JSDynamicObject) set;
+        JSMapObject object = (JSMapObject) set;
         return JSMap.getInternalMap(object).remove(JSSet.normalize(key));
     }
 
@@ -4110,7 +4114,7 @@ public final class GraalJSAccess {
     }
 
     public void setAdd(Object set, Object key) {
-        JSDynamicObject object = (JSDynamicObject) set;
+        JSSetObject object = (JSSetObject) set;
         JSSet.getInternalSet(object).put(JSSet.normalize(key), new Object());
     }
 

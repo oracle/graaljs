@@ -97,7 +97,6 @@ public final class JSContextOptions {
 
     public static final String JS_OPTION_PREFIX = JavaScriptLanguage.ID + ".";
 
-    @CompilationFinal private JSParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_LATEST = "latest";

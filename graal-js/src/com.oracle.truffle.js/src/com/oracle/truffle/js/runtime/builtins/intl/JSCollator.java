@@ -48,6 +48,7 @@ import org.graalvm.shadowed.com.ibm.icu.text.Collator;
 import org.graalvm.shadowed.com.ibm.icu.text.RuleBasedCollator;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -231,17 +232,14 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         return factory.trackAllocation(newObj);
     }
 
-    public static Collator getCollatorProperty(JSDynamicObject obj) {
-        return getInternalState(obj).collator;
-    }
-
     @TruffleBoundary
-    public static int compare(JSDynamicObject collatorObj, String one, String two) {
-        Collator collator = getCollatorProperty(collatorObj);
+    public static int compare(JSCollatorObject collatorObj, String one, String two) {
+        Collator collator = collatorObj.getInternalState().collator;
         return collator.compare(normalize(one), normalize(two));
     }
 
     private static String normalize(String s) {
+        CompilerAsserts.neverPartOfCompilation();
         return Normalizer.normalize(s, Normalizer.Form.NFD);
     }
 
@@ -286,14 +284,9 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject collatorObj) {
-        InternalState state = getInternalState(collatorObj);
+    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSCollatorObject collatorObj) {
+        InternalState state = collatorObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject collatorObj) {
-        assert isJSCollator(collatorObj);
-        return ((JSCollatorObject) collatorObj).getInternalState();
     }
 
     @Override

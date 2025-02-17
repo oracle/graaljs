@@ -161,7 +161,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeRecord;
-import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -1159,25 +1158,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static List<TruffleString> iterableToListOfTypeString(JSDynamicObject items) {
-        IteratorRecord iter = JSRuntime.getIterator(items /* , sync */);
-        List<TruffleString> values = new ArrayList<>();
-        Object next = Boolean.TRUE;
-        while (next != Boolean.FALSE) {
-            next = JSRuntime.iteratorStep(iter);
-            if (next != Boolean.FALSE) {
-                Object nextValue = JSRuntime.iteratorValue(next);
-                if (!(nextValue instanceof TruffleString str)) {
-                    JSRuntime.iteratorClose(iter.getIterator());
-                    throw Errors.createTypeError("string expected");
-                }
-                values.add(str);
-            }
-        }
-        return values;
-    }
-
-    @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateTimeString(TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseCalendarDateTime();
         if (rec == null) {
@@ -1553,28 +1533,6 @@ public final class TemporalUtil {
             return -1;
         }
         return 0;
-    }
-
-    public static JSTemporalPlainDateObject requireTemporalDate(Object obj, Node node, InlinedBranchProfile errorBranch) {
-        if (!(obj instanceof JSTemporalPlainDateObject)) {
-            errorBranch.enter(node);
-            throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
-        }
-        return (JSTemporalPlainDateObject) obj;
-    }
-
-    public static JSTemporalPlainDateObject requireTemporalDate(Object obj) {
-        if (!(obj instanceof JSTemporalPlainDateObject)) {
-            throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
-        }
-        return (JSTemporalPlainDateObject) obj;
-    }
-
-    public static JSTemporalDurationObject requireTemporalDuration(Object obj) {
-        if (!(obj instanceof JSTemporalDurationObject)) {
-            throw TemporalErrors.createTypeErrorTemporalDurationExpected();
-        }
-        return (JSTemporalDurationObject) obj;
     }
 
     public static boolean isTemporalZonedDateTime(Object obj) {
@@ -1986,14 +1944,6 @@ public final class TemporalUtil {
             throw Errors.createRangeError("Time is infinite");
         }
         return new TimeDurationRecord(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-    }
-
-    public static JSDynamicObject toDynamicObject(Object obj) {
-        if (obj instanceof JSDynamicObject) {
-            return (JSDynamicObject) obj;
-        } else {
-            throw Errors.createTypeErrorNotAnObject(obj);
-        }
     }
 
     // TODO (GR-32375) for interop support, this needs to detect and convert foreign temporal values
@@ -3281,14 +3231,6 @@ public final class TemporalUtil {
         return new ISODateRecord(referenceISOYear, result.month(), result.day());
     }
 
-    public static JSTemporalDurationRecord createDurationRecord(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
-                    double microseconds, double nanoseconds) {
-        if (!isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
-            throw TemporalErrors.createTypeErrorDurationOutsideRange();
-        }
-        return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-    }
-
     // TODO ultimately, dtoi should probably throw instead of having an assertion
     // Legitimate uses are in the Duration area, elsewhere it could be missing cleanup
     public static long dtol(double d) {
@@ -3304,14 +3246,6 @@ public final class TemporalUtil {
         }
         assert JSRuntime.doubleIsRepresentableAsInt(d);
         return (int) d;
-    }
-
-    @TruffleBoundary
-    public static long dtol(double d, boolean failOnError) {
-        if (failOnError && !JSRuntime.doubleIsRepresentableAsLong(d)) {
-            throw Errors.createRangeError("value out of range");
-        }
-        return (long) d;
     }
 
     // always fails if long does not fit into int

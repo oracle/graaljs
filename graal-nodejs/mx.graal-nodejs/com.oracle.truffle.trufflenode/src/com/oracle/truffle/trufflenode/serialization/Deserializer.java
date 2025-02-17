@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,9 +71,11 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
@@ -375,7 +377,7 @@ public class Deserializer {
     }
 
     private JSDynamicObject readJSMap(JSContext context, JSRealm realm) {
-        JSDynamicObject object = JSMap.create(context, realm);
+        JSMapObject object = JSMap.create(context, realm);
         JSHashMap internalMap = JSMap.getInternalMap(object);
         assignId(object);
         SerializationTag tag;
@@ -394,7 +396,7 @@ public class Deserializer {
     }
 
     private JSDynamicObject readJSSet(JSContext context, JSRealm realm) {
-        JSDynamicObject object = JSSet.create(context, realm);
+        JSSetObject object = JSSet.create(context, realm);
         JSHashMap internalMap = JSSet.getInternalSet(object);
         assignId(object);
         SerializationTag tag;

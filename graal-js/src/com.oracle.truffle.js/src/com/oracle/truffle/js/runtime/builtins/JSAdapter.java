@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,12 +93,10 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     public static JSDynamicObject getAdaptee(JSDynamicObject obj) {
-        assert isJSAdapter(obj);
         return ((JSAdapterObject) obj).getAdaptee();
     }
 
     public static JSDynamicObject getOverrides(JSDynamicObject obj) {
-        assert isJSAdapter(obj);
         return ((JSAdapterObject) obj).getOverrides();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -1012,7 +1013,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            JSDynamicObject store = receiverCheck.getStore(thisObj);
+            JSArrayObject store = getStoreAsJSArray(thisObj);
             boolean ret = JSArray.setLength(store, value, this);
             if (!ret && isStrict) {
                 errorBranch.enter();
@@ -1023,7 +1024,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
-            JSDynamicObject store = receiverCheck.getStore(thisObj);
+            JSArrayObject store = getStoreAsJSArray(thisObj);
             // shape check should be sufficient to guarantee this
             assert JSArray.isJSFastArray(store);
             if (value < 0) {
@@ -1032,6 +1033,10 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             arrayLengthWrite.executeVoid(store, value);
             return true;
+        }
+
+        private JSArrayObject getStoreAsJSArray(Object thisObj) {
+            return (JSArrayObject) receiverCheck.getStore(thisObj);
         }
     }
 
