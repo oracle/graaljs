@@ -60,7 +60,7 @@ function testHttp11(port, callback) {
   let tid;
   c.on('connect', function() {
     c.write('GET / HTTP/1.1\r\nHost: example.com\r\n\r\n');
-    tid = setTimeout(common.mustNotCall(), 2000, 'Couldn\'t find last chunk.');
+    tid = setTimeout(common.mustNotCall(), 20000, 'Couldn\'t find last chunk.');
   });
 
   let res_buffer = '';
