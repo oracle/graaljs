@@ -1295,9 +1295,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached InlinedBranchProfile dollarProfile,
                             @Cached InlinedBranchProfile lastIndexNotIntBranch) {
                 TruffleString replaceString = null;
-                JSDynamicObject replaceFunction = null;
+                Object replaceFunction = null;
                 if (functionalReplace) {
-                    replaceFunction = (JSDynamicObject) replaceValue;
+                    replaceFunction = replaceValue;
                 } else {
                     replaceString = (TruffleString) replaceValue;
                 }
