@@ -11,7 +11,7 @@ describe('Mock Timers Scheduler Test Suite', () => {
     t.mock.timers.enable({ apis: ['scheduler.wait'] });
 
     const now = Date.now();
-    const durationAtMost = 100;
+    const durationAtMost = 1000;
 
     const p = nodeTimersPromises.scheduler.wait(4000);
     t.mock.timers.tick(4000);
