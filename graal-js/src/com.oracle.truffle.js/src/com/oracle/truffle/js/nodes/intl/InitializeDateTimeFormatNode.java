@@ -282,7 +282,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
                 throw Errors.createRangeErrorInvalidTimeZone(name);
             }
             tzId = pair.getFirst();
-            timeZone = IntlUtil.getICUTimeZone(tzId, context);
+            timeZone = IntlUtil.getICUTimeZone(pair.getSecond(), context);
         } else {
             timeZone = IntlUtil.getICUTimeZoneForOffset(tzId);
         }
