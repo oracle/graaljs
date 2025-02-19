@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,8 @@ import java.util.Set;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -198,7 +198,11 @@ public abstract class JSLessOrEqualNode extends JSCompareNode {
                     @Cached JSToStringOrNumberNode toStringOrNumber2,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive2,
                     @Cached JSLessOrEqualNode lessOrEqualNode) {
-        return lessOrEqualNode.executeBoolean(toStringOrNumber1.execute(toPrimitive1.execute(a)), toStringOrNumber2.execute(toPrimitive2.execute(b)));
+        Object aPrimitive = toPrimitive1.execute(a);
+        Object bPrimitive = toPrimitive2.execute(b);
+        aPrimitive = toStringOrNumber1.execute(aPrimitive);
+        bPrimitive = toStringOrNumber2.execute(bPrimitive);
+        return lessOrEqualNode.executeBoolean(aPrimitive, bPrimitive);
     }
 
     @Override
