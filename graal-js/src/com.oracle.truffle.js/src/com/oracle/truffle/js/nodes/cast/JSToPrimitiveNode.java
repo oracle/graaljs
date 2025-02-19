@@ -155,20 +155,20 @@ abstract class ToPrimitiveBaseNode extends JavaScriptBaseNode {
  * Actual implementation of ToPrimitive (input, hint).
  */
 @GenerateCached(false)
-@GenerateInline
 @GenerateUncached
 @ImportStatic({JSConfig.class, JSToPrimitiveNode.Hint.class, Symbol.class})
 abstract class ToPrimitiveNode extends ToPrimitiveBaseNode {
 
-    public abstract Object execute(Node node, Object value, JSToPrimitiveNode.Hint hint);
+    protected abstract Object execute(Object value, JSToPrimitiveNode.Hint hint);
 
     @Specialization
-    protected static Object doJSObject(Node node, JSObject object, JSToPrimitiveNode.Hint hint,
-                    @Shared @Cached(value = "createGetMethod(SYMBOL_TO_PRIMITIVE, getJSContext())", uncached = "getNullNode()", inline = false) PropertyGetNode getToPrimitive,
+    protected static Object doJSObject(JSObject object, JSToPrimitiveNode.Hint hint,
+                    @Bind Node node,
+                    @Shared @Cached(value = "createGetMethod(SYMBOL_TO_PRIMITIVE, getJSContext())", uncached = "getNullNode()") PropertyGetNode getToPrimitive,
                     @Shared @Cached InlinedConditionProfile exoticToPrimProfile,
-                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode callExoticToPrim,
+                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callExoticToPrim,
                     @Shared @Cached AsPrimitiveNode asPrimitiveNode,
-                    @Shared @Cached(inline = false) OrdinaryToPrimitiveNode ordinaryToPrimitiveNode) {
+                    @Shared @Cached OrdinaryToPrimitiveNode ordinaryToPrimitiveNode) {
         Object exoticToPrim = getMethod(object, Symbol.SYMBOL_TO_PRIMITIVE, getToPrimitive);
         Object result;
         if (exoticToPrimProfile.profile(node, !JSRuntime.isNullOrUndefined(exoticToPrim))) {
@@ -184,15 +184,16 @@ abstract class ToPrimitiveNode extends ToPrimitiveBaseNode {
 
     @InliningCutoff
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
-    protected static Object doForeignObject(Node node, Object object, JSToPrimitiveNode.Hint hint,
+    protected static Object doForeignObject(Object object, JSToPrimitiveNode.Hint hint,
+                    @Bind Node node,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Shared @Cached InlinedConditionProfile exoticToPrimProfile,
-                    @Shared @Cached(inline = false) ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                    @Shared @Cached(value = "createGetMethod(SYMBOL_TO_PRIMITIVE, getJSContext())", uncached = "getNullNode()", inline = false) PropertyGetNode getToPrimitive,
-                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode callExoticToPrim,
+                    @Shared @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
+                    @Shared @Cached(value = "createGetMethod(SYMBOL_TO_PRIMITIVE, getJSContext())", uncached = "getNullNode()") PropertyGetNode getToPrimitive,
+                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callExoticToPrim,
                     @Shared @Cached AsPrimitiveNode asPrimitiveNode,
-                    @Shared @Cached(inline = false) OrdinaryToPrimitiveNode ordinaryToPrimitiveNode,
-                    @Shared @Cached(inline = false) TruffleString.SwitchEncodingNode switchEncoding) {
+                    @Shared @Cached OrdinaryToPrimitiveNode ordinaryToPrimitiveNode,
+                    @Shared @Cached TruffleString.SwitchEncodingNode switchEncoding) {
         Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(object, null, interop, switchEncoding, node);
         if (primitive != null) {
             return primitive;
@@ -247,8 +248,9 @@ abstract class ToPrimitiveNode extends ToPrimitiveBaseNode {
  * @see OrdinaryToPrimitiveNode
  */
 @SuppressWarnings("hiding")
+@GenerateCached(true)
 @ImportStatic({JSConfig.class})
-public abstract class JSToPrimitiveNode extends ToPrimitiveBaseNode {
+public abstract class JSToPrimitiveNode extends ToPrimitiveNode {
 
     public enum Hint {
         Default(Strings.HINT_DEFAULT),
@@ -280,8 +282,6 @@ public abstract class JSToPrimitiveNode extends ToPrimitiveBaseNode {
         return execute(value, hint);
     }
 
-    protected abstract Object execute(Object value, Hint hint);
-
     @NeverDefault
     public static JSToPrimitiveNode createHintDefault() {
         return create(Hint.Default);
@@ -300,18 +300,6 @@ public abstract class JSToPrimitiveNode extends ToPrimitiveBaseNode {
     @NeverDefault
     public static JSToPrimitiveNode create(Hint hint) {
         return JSToPrimitiveNodeGen.create(hint);
-    }
-
-    @Specialization
-    protected final Object doJSObject(JSObject value, Hint hint,
-                    @Cached @Shared ToPrimitiveNode toPrimitiveNode) {
-        return toPrimitiveNode.execute(this, value, hint);
-    }
-
-    @Specialization(guards = "isForeignObject(value)")
-    protected final Object doForeignObject(Object value, Hint hint,
-                    @Cached @Shared ToPrimitiveNode toPrimitiveNode) {
-        return toPrimitiveNode.execute(this, value, hint);
     }
 
     public static Object tryHostObjectToPrimitive(Object object, Hint hint, InteropLibrary interop) {
@@ -342,6 +330,13 @@ public abstract class JSToPrimitiveNode extends ToPrimitiveBaseNode {
         }
     }
 
+    /** At least one specialization or fallback is needed to trigger the DSL node generator. */
+    @Fallback
+    @Override
+    protected Object doFallback(Object value, Hint hint, @Bind Node node) {
+        return super.doFallback(value, hint, node);
+    }
+
     @DenyReplace
     @GenerateCached(false)
     private static final class Uncached extends JSToPrimitiveNode {
@@ -356,7 +351,7 @@ public abstract class JSToPrimitiveNode extends ToPrimitiveBaseNode {
 
         @Override
         public Object execute(Object value, Hint hint) {
-            return ToPrimitiveNodeGen.getUncached().execute(null, value, hint);
+            return ToPrimitiveNodeGen.getUncached().execute(value, hint);
         }
 
     }
