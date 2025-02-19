@@ -974,16 +974,16 @@ public final class DatePrototypeBuiltins {
             @Specialization(guards = {"equals(strEqual, HINT_NUMBER, hint)"})
             static Object toPrimitiveHintNumber(Object obj, TruffleString hint,
                             @Cached @Shared TruffleString.EqualNode strEqual,
-                            @Cached("createHintNumber()") OrdinaryToPrimitiveNode ordinaryToPrimitiveHintNumber) {
-                return ordinaryToPrimitiveHintNumber.execute(obj);
+                            @Cached @Shared OrdinaryToPrimitiveNode ordinaryToPrimitive) {
+                return ordinaryToPrimitive.execute(obj, JSToPrimitiveNode.Hint.Number);
             }
 
             @SuppressWarnings("unused")
             @Specialization(guards = {"equals(strEqual, HINT_STRING, hint) || equals(strEqual, HINT_DEFAULT, hint)"})
             static Object toPrimitiveHintStringOrDefault(Object obj, TruffleString hint,
                             @Cached @Shared TruffleString.EqualNode strEqual,
-                            @Cached("createHintString()") OrdinaryToPrimitiveNode ordinaryToPrimitiveHintString) {
-                return ordinaryToPrimitiveHintString.execute(obj);
+                            @Cached @Shared OrdinaryToPrimitiveNode ordinaryToPrimitive) {
+                return ordinaryToPrimitive.execute(obj, JSToPrimitiveNode.Hint.String);
             }
 
             @Fallback
