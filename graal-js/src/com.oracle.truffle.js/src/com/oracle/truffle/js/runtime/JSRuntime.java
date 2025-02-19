@@ -71,7 +71,6 @@ import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
-import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
@@ -304,94 +303,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitive(Object value, JSToPrimitiveNode.Hint hint) {
-        if (value == Null.instance || value == Undefined.instance) {
-            return value;
-        } else if (JSObject.isJSObject(value)) {
-            return JSObject.toPrimitive((JSObject) value, hint);
-        } else if (isForeignObject(value)) {
-            return toPrimitiveFromForeign(value, hint);
-        }
-        return value;
-
-    }
-
-    /**
-     * Converts a foreign object to a primitive value.
-     */
-    @TruffleBoundary
-    public static Object toPrimitiveFromForeign(Object tObj, JSToPrimitiveNode.Hint hint) {
-        assert isForeignObject(tObj);
-        InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
-        Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(tObj, null, interop, TruffleString.SwitchEncodingNode.getUncached(), null);
-        if (primitive != null) {
-            return primitive;
-        }
-
-        // Try foreign object prototype [Symbol.toPrimitive] property first.
-        // e.g.: Instant and ZonedDateTime use Date.prototype[@@toPrimitive].
-        JSDynamicObject proto = ForeignObjectPrototypeNode.getUncached().execute(tObj);
-        Object exoticToPrim = JSObject.getOrDefault(proto, Symbol.SYMBOL_TO_PRIMITIVE, tObj, Undefined.instance);
-        if (!JSRuntime.isNullOrUndefined(exoticToPrim)) {
-            Object result = JSRuntime.call(exoticToPrim, tObj, new Object[]{hint.getHintName()});
-            if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
-                primitive = result;
-            } else {
-                throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", null);
-            }
-        } else {
-            if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
-                Object maybeResult = JSToPrimitiveNode.tryHostObjectToPrimitive(tObj, hint, interop);
-                if (maybeResult != null) {
-                    return maybeResult;
-                }
-            }
-
-            primitive = foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.Default ? JSToPrimitiveNode.Hint.Number : hint, interop);
-        }
-
-        primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, InteropLibrary.getUncached(primitive), TruffleString.SwitchEncodingNode.getUncached(), null);
-        if (primitive != null) {
-            return primitive;
-        } else {
-            throw Errors.createTypeErrorCannotConvertToPrimitiveValue();
-        }
-    }
-
-    @TruffleBoundary
-    private static Object foreignOrdinaryToPrimitive(Object obj, JSToPrimitiveNode.Hint hint, InteropLibrary interop) {
-        TruffleString[] methodNames;
-        if (hint == JSToPrimitiveNode.Hint.String) {
-            methodNames = new TruffleString[]{Strings.TO_STRING, Strings.VALUE_OF};
-        } else {
-            assert hint == JSToPrimitiveNode.Hint.Number;
-            methodNames = new TruffleString[]{Strings.VALUE_OF, Strings.TO_STRING};
-        }
-
-        JSDynamicObject proto = ForeignObjectPrototypeNode.getUncached().execute(obj);
-
-        for (TruffleString name : methodNames) {
-            if (interop.hasMembers(obj) && interop.isMemberInvocable(obj, Strings.toJavaString(name))) {
-                if (!OrdinaryToPrimitiveNode.isJavaArray(obj, interop)) {
-                    try {
-                        Object result = importValue(interop.invokeMember(obj, Strings.toJavaString(name)));
-                        if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
-                            return result;
-                        }
-                    } catch (InteropException e) {
-                        // ignore
-                    }
-                }
-            }
-
-            Object method = JSObject.getMethod(proto, obj, name);
-            if (isCallable(method)) {
-                Object result = call(method, obj, new Object[]{});
-                if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
-                    return result;
-                }
-            }
-        }
-        throw Errors.createTypeErrorCannotConvertToPrimitiveValue();
+        return JSToPrimitiveNode.getUncached(hint).execute(value);
     }
 
     /**
@@ -406,14 +318,15 @@ public final class JSRuntime {
     }
 
     private static Object toPrimitiveHintNumber(Object value) {
-        if (isObject(value)) {
-            return JSObject.toPrimitive((JSObject) value, JSToPrimitiveNode.Hint.Number);
-        } else if (isForeignObject(value)) {
-            return toPrimitiveFromForeign(value, JSToPrimitiveNode.Hint.Number);
-        } else {
-            assert IsPrimitiveNode.getUncached().executeBoolean(value) : value;
+        if (isNumber(value)) {
+            // fast path for likely value types
             return value;
         }
+        return JSToPrimitiveNode.getUncachedHintNumber().execute(value);
+    }
+
+    private static Object toPrimitiveHintString(Object value) {
+        return JSToPrimitiveNode.getUncachedHintString().execute(value);
     }
 
     /**
@@ -808,10 +721,10 @@ public final class JSRuntime {
         } else if (value instanceof BigInt) {
             return Strings.fromBigInt((BigInt) value);
         } else if (JSObject.isJSObject(value)) {
-            return toString(JSObject.toPrimitive((JSObject) value, JSToPrimitiveNode.Hint.String));
+            return toString(toPrimitiveHintString(value));
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value);
-            return toString(toPrimitiveFromForeign(value, JSToPrimitiveNode.Hint.String));
+            return toString(toPrimitiveHintString(value));
         }
         throw toStringTypeError(value);
     }
@@ -1206,7 +1119,7 @@ public final class JSRuntime {
         } else if (value == Null.instance) {
             return Null.NAME;
         }
-        return toString(JSObject.toPrimitive(value, JSToPrimitiveNode.Hint.String));
+        return toString(toPrimitiveHintString(value));
     }
 
     public static TruffleString numberToString(Number number) {
