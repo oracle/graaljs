@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -661,7 +661,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization(guards = {"isCallable.executeBoolean(callback)"})
-        protected Object forEachFunction(JSSetObject thisObj, JSDynamicObject callback, Object thisArg,
+        protected Object forEachFunction(JSSetObject thisObj, Object callback, Object thisArg,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") JSFunctionCallNode callNode) {
             JSHashMap map = JSSet.getInternalSet(thisObj);
