@@ -106,6 +106,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-json-parse-with-source",
                     "--harmony-shadow-realm",
                     "--harmony-weak-refs-with-cleanup-some",
+                    "--js-decorators",
                     "--js-staging",
     });
 
