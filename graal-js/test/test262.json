@@ -3908,8 +3908,7 @@
     "ecmaVersion" : {
       "minVersion" : 16
     },
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "requires set-methods"
   }, {
     "filePath" : "staging/sm/Set/intersection.js",
     "ecmaVersion" : {

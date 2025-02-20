@@ -448,7 +448,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             int thisSize = thisSetData.size();
             if (thisSize <= otherRec.size()) {
                 thisSetSmallerProfile.enter(this);
-                JSHashMap.Cursor cursor = thisSetData.getEntries();
+                JSHashMap.Cursor cursor = resultSetData.getEntries();
                 while (cursor.advance()) {
                     Object e = cursor.getKey();
                     Object inOtherObj = call(otherRec.has(), otherRec.set(), e);
