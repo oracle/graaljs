@@ -138,7 +138,7 @@
   }, {
     "filePath" : "mjsunit/array-buffer-limit.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (--mock-arraybuffer-allocator-limit option)"
   }, {
     "filePath" : "mjsunit/array-constructor-feedback.js",
     "status" : "SKIP",
@@ -352,7 +352,7 @@
   }, {
     "filePath" : "mjsunit/compiler/conditional-chain.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Very deep conditional chain causes stack overflow"
   }, {
     "filePath" : "mjsunit/compiler/regress-1065737.js",
     "status" : "FAIL",
@@ -364,7 +364,7 @@
   }, {
     "filePath" : "mjsunit/compiler/regress-385386138.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Expects a different error message, passes otherwise"
   }, {
     "filePath" : "mjsunit/compiler/regress-445907.js",
     "status" : "SKIP",
@@ -410,11 +410,11 @@
   }, {
     "filePath" : "mjsunit/compiler/typed-array-length-as-number.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/compiler/typed-array-length-iteration.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
@@ -456,19 +456,19 @@
   }, {
     "filePath" : "mjsunit/d8/flush-denormals-flag.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (--flush-denormals option)"
   }, {
     "filePath" : "mjsunit/d8/flush-denormals-helper.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (d8.test.setFlushDenormals)"
   }, {
     "filePath" : "mjsunit/d8/flush-denormals-worker.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (flushDenormals option of Worker)"
   }, {
     "filePath" : "mjsunit/d8/modules-data-url.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Relaxed parsing of data URIs"
   }, {
     "filePath" : "mjsunit/d8/performance-mark.js",
     "status" : "FAIL",
@@ -479,10 +479,6 @@
   }, {
     "filePath" : "mjsunit/debugPrint.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/decorators/auto-accessors-reparsing.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/disallow-codegen-from-strings.js",
     "status" : "FAIL",
@@ -647,7 +643,7 @@
   }, {
     "filePath" : "mjsunit/extras-cped.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
   }, {
     "filePath" : "mjsunit/function-caller.js",
     "status" : "FAIL",
@@ -702,15 +698,15 @@
   }, {
     "filePath" : "mjsunit/harmony/await-using-tick-count.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/harmony/await-using-with-sync-async-null-undefined-tick-count.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/harmony/await-using-with-sync-null-undefined-tick-count.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/harmony/bigint/regressions.js",
     "status" : "FAIL",
@@ -772,7 +768,7 @@
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-368503280.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-369010108.js",
     "status" : "SKIP",
@@ -780,15 +776,15 @@
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-369652654.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-380677637.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-385406640.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-crbug-1422812.js",
     "ecmaVersion" : {
@@ -803,26 +799,6 @@
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
-  }, {
-    "filePath" : "mjsunit/harmony/set-difference.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/harmony/set-intersection.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/harmony/set-is-disjoint-from.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/harmony/set-is-subset-of.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/harmony/set-is-superset-of.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/harmony/shadowrealm-callsite-throw.js",
     "status" : "FAIL",
