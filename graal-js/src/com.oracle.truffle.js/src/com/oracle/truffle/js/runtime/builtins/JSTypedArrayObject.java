@@ -184,7 +184,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     @Override
     public boolean testIntegrityLevel(boolean frozen) {
-        if (getArraySize() > 0) {
+        if (!JSArrayBufferView.hasDetachedBuffer(getJSContext(), this) && getLength() > 0) {
             return false;
         }
         return JSNonProxy.testIntegrityLevelFast(this, frozen);
@@ -193,7 +193,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
     @Override
     public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
         preventExtensions(doThrow);
-        if (getArraySize() > 0) {
+        if (!JSArrayBufferView.hasDetachedBuffer(getJSContext(), this) && getLength() > 0) {
             throw Errors.createTypeErrorCannotRedefineTypedArrayElement();
         }
         JSNonProxy.setIntegrityLevelFast(this, freeze);

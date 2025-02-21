@@ -408,7 +408,7 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     // IsTypedArrayOutOfBounds()
     public static boolean isOutOfBounds(JSTypedArrayObject typedArray, JSContext ctx) {
-        if (!ctx.getTypedArrayNotDetachedAssumption().isValid() && hasDetachedBuffer(typedArray)) {
+        if (hasDetachedBuffer(ctx, typedArray)) {
             return true;
         }
         if (ctx.getArrayBufferNotShrunkAssumption().isValid()) {
@@ -426,8 +426,8 @@ public final class JSArrayBufferView extends JSNonProxy {
         }
     }
 
-    private static boolean hasDetachedBuffer(JSDynamicObject obj) {
-        return JSArrayBuffer.isDetachedBuffer(getArrayBuffer(obj));
+    public static boolean hasDetachedBuffer(JSContext ctx, JSTypedArrayObject typedArray) {
+        return !ctx.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(getArrayBuffer(typedArray));
     }
 
     @Override
