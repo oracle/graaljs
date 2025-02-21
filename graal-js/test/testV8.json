@@ -946,7 +946,7 @@
   }, {
     "filePath" : "mjsunit/maglev/extras-cped.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
   }, {
     "filePath" : "mjsunit/maglev/function-apply.js",
     "status" : "FAIL",
@@ -954,111 +954,111 @@
   }, {
     "filePath" : "mjsunit/maglev/regress-324459570.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Tests V8-specific deoptimization"
   }, {
     "filePath" : "mjsunit/maglev/regress-330427711.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses d8.dom.Div"
   }, {
     "filePath" : "mjsunit/maglev/regress-355256380.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Structs (GC proposal)"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-abs.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-as-number-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-as-number.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-bitwise.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-branch-if-root.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-branch-if-to-boolean-true.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-deopt-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-exception-phi.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-index-into-array-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-index-into-array.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-index-into-typed-array-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-index-into-typed-array.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-iteration-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-iteration.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-parseint.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-phi.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-store-as-uint8clamped.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-store-into-global-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-store-into-global.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-store-script-context-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-store-script-context.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-to-boolean.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-to-number-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/maglev/typed-array-length-to-number.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/messages.js",
     "status" : "FAIL"
@@ -1130,7 +1130,7 @@
   }, {
     "filePath" : "mjsunit/regress-332570754.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses console.profile"
   }, {
     "filePath" : "mjsunit/regress-382896285.js",
     "status" : "FAIL",
@@ -1271,7 +1271,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-1415210.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses d8.terminate()"
   }, {
     "filePath" : "mjsunit/regress/regress-14433.js",
     "status" : "FAIL",
@@ -1319,7 +1319,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-333926321.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses d8.test.enableJSPI()"
   }, {
     "filePath" : "mjsunit/regress/regress-336820.js",
     "runInIsolation" : true,
@@ -1331,11 +1331,11 @@
   }, {
     "filePath" : "mjsunit/regress/regress-344664770.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "mjsunit/regress/regress-347118120.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "mjsunit/regress/regress-350865.js",
     "status" : "SKIP",
@@ -1343,7 +1343,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-351926098.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
   }, {
     "filePath" : "mjsunit/regress/regress-353058.js",
     "runInIsolation" : true,
@@ -1355,11 +1355,11 @@
   }, {
     "filePath" : "mjsunit/regress/regress-353628445.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
   }, {
     "filePath" : "mjsunit/regress/regress-354626177.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
   }, {
     "filePath" : "mjsunit/regress/regress-360733.js",
     "runInIsolation" : true,
@@ -1367,11 +1367,11 @@
   }, {
     "filePath" : "mjsunit/regress/regress-366323504.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses %WasmStruct and %WasmArray"
   }, {
     "filePath" : "mjsunit/regress/regress-366783816.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses d8.dom.Div"
   }, {
     "filePath" : "mjsunit/regress/regress-368467195.js",
     "status" : "SKIP",
@@ -1379,11 +1379,11 @@
   }, {
     "filePath" : "mjsunit/regress/regress-371237560.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses performance.measureMemory()"
   }, {
     "filePath" : "mjsunit/regress/regress-375748220.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "mjsunit/regress/regress-380416869.js",
     "status" : "FAIL",
@@ -1391,7 +1391,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-381390367.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses console.profile"
   }, {
     "filePath" : "mjsunit/regress/regress-388905056.js",
     "status" : "FAIL",
@@ -3511,99 +3511,99 @@
   }, {
     "filePath" : "mjsunit/turboshaft/extras-cped.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/constructor-extend-null-throw.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/constructor-super-called-twice.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/has-in-prototype-chain-wasm.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "GC proposal"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/not-initialized-let-in-switch.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-as-number-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-as-number.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-branch-if-to-boolean-true.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-deopt-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-exception-phi.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-index-into-array-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-index-into-array.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-index-into-typed-array-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-index-into-typed-array.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-iteration-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-iteration.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-phi.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-store-into-global-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-store-into-global.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-store-script-context-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-store-script-context.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-to-boolean.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-to-number-large.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/turboshaft/maglev-frontend/typed-array-length-to-number.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Allocates typed array of length 8589934592"
   }, {
     "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-array-methods.js",
     "status" : "SKIP",

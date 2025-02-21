@@ -4040,10 +4040,6 @@
     },
     "comment" : "requires Float16Array"
   }, {
-    "filePath" : "staging/sm/TypedArray/test-integrity-level-detached.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/TypedArray/toString.js",
     "ecmaVersion" : {
       "minVersion" : 16
