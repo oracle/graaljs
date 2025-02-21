@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -119,9 +119,9 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization
     protected Number doJSObject(JSObject value,
-                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
-        return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
+        return toNumberNode.executeNumber(toPrimitiveNode.executeHintNumber(value));
     }
 
     @Specialization
@@ -147,9 +147,9 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
     protected Number doJSOrForeignObject(Object value,
-                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
-        return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
+        return toNumberNode.executeNumber(toPrimitiveNode.executeHintNumber(value));
     }
 
     public abstract static class JSToNumberUnaryNode extends JSUnaryNode {

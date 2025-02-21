@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -292,15 +292,17 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
      */
     public abstract static class TestV8ToPrimitiveNode extends JSBuiltinNode {
         @Child private JSToPrimitiveNode toPrimitiveNode;
+        private final JSToPrimitiveNode.Hint hint;
 
         public TestV8ToPrimitiveNode(JSContext context, JSBuiltin builtin, JSToPrimitiveNode.Hint hint) {
             super(context, builtin);
-            toPrimitiveNode = JSToPrimitiveNode.create(hint);
+            this.toPrimitiveNode = JSToPrimitiveNode.create();
+            this.hint = hint;
         }
 
         @Specialization
         protected Object toPrimitive(Object obj) {
-            return toPrimitiveNode.execute(obj);
+            return toPrimitiveNode.execute(obj, hint);
         }
     }
 

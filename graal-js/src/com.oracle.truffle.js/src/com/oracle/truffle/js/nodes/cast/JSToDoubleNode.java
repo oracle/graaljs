@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,8 +118,8 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     @Specialization
     protected double doJSObject(JSObject value,
                     @Shared @Cached JSToDoubleNode recursiveToDouble,
-                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
-        return recursiveToDouble.executeDouble(toPrimitiveNode.execute(value));
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode) {
+        return recursiveToDouble.executeDouble(toPrimitiveNode.executeHintNumber(value));
     }
 
     @Specialization
@@ -131,7 +131,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     @Specialization(guards = "isJSObject(object) || isForeignObjectOrNumber(object)", replaces = "doJSObject")
     protected double doForeignObject(Object object,
                     @Shared @Cached JSToDoubleNode recursiveToDouble,
-                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
-        return recursiveToDouble.executeDouble(toPrimitiveNode.execute(object));
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode) {
+        return recursiveToDouble.executeDouble(toPrimitiveNode.executeHintNumber(object));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -269,26 +269,26 @@ public abstract class JSEqualNode extends JSCompareNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isPrimitiveNode.executeBoolean(b)"})
     protected static boolean doJSObjectVsPrimitive(JSObject a, Object b,
                     @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
-                    @Shared @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
                     @Shared @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(b, bInterop)) {
             return false;
         }
-        return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
+        return nestedEqualNode.executeBoolean(toPrimitiveNode.executeHintDefault(a), b);
     }
 
     @InliningCutoff
     @Specialization(guards = {"!hasOverloadedOperators(b)", "isPrimitiveNode.executeBoolean(a)"})
     protected static boolean doJSObjectVsPrimitive(Object a, JSObject b,
                     @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
-                    @Shared @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
                     @Shared @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(a, aInterop)) {
             return false;
         }
-        return nestedEqualNode.executeBoolean(a, toPrimitiveNode.execute(b));
+        return nestedEqualNode.executeBoolean(a, toPrimitiveNode.executeHintDefault(b));
     }
 
     @Specialization
@@ -340,7 +340,7 @@ public abstract class JSEqualNode extends JSCompareNode {
                     @Bind("isForeignObjectOrNumber(b)") boolean isBForeign,
                     @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
-                    @Shared @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached IsPrimitiveNode isPrimitiveNode,
                     @Shared @Cached JSEqualNode nestedEqualNode,
                     @Cached LongToBigIntNode longToBigIntA,
@@ -361,8 +361,8 @@ public abstract class JSEqualNode extends JSCompareNode {
         }
         // If one of them is primitive, we attempt to convert the other one ToPrimitive.
         // Foreign primitive values always have to be converted to JS primitive values.
-        Object primA = !isAPrimitive || isAForeign ? toPrimitiveNode.execute(a) : a;
-        Object primB = !isBPrimitive || isBForeign ? toPrimitiveNode.execute(b) : b;
+        Object primA = !isAPrimitive || isAForeign ? toPrimitiveNode.executeHintDefault(a) : a;
+        Object primB = !isBPrimitive || isBForeign ? toPrimitiveNode.executeHintDefault(b) : b;
         // Now that both are primitive values, we can compare them using normal JS semantics.
         assert !JSGuards.isForeignObject(primA) && !JSGuards.isForeignObject(primB);
         primA = longToBigIntA.execute(this, primA);

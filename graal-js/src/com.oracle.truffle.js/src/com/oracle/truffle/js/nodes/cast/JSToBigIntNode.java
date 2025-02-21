@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,9 +87,9 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isBigInt(value)"})
     protected final BigInt doOther(Object value,
-                    @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSPrimitiveToBigIntNode primitiveToBigInt) {
-        return primitiveToBigInt.executeBigInt(this, toPrimitiveNode.execute(value));
+        return primitiveToBigInt.executeBigInt(this, toPrimitiveNode.executeHintNumber(value));
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -219,9 +219,9 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(object)")
     protected static double doForeignObject(Object object,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToUInt32Node toUInt32Node) {
-        return JSRuntime.toDouble(toUInt32Node.executeNumber(toPrimitiveNode.execute(object)));
+        return JSRuntime.toDouble(toUInt32Node.executeNumber(toPrimitiveNode.executeHintNumber(object)));
     }
 
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {

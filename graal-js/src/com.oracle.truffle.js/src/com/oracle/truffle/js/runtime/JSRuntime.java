@@ -303,7 +303,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitive(Object value, JSToPrimitiveNode.Hint hint) {
-        return JSToPrimitiveNode.getUncached(hint).execute(value);
+        return JSToPrimitiveNode.getUncached().execute(value, hint);
     }
 
     /**
@@ -322,11 +322,11 @@ public final class JSRuntime {
             // fast path for likely value types
             return value;
         }
-        return JSToPrimitiveNode.getUncachedHintNumber().execute(value);
+        return JSToPrimitiveNode.getUncached().executeHintNumber(value);
     }
 
     private static Object toPrimitiveHintString(Object value) {
-        return JSToPrimitiveNode.getUncachedHintString().execute(value);
+        return JSToPrimitiveNode.getUncached().executeHintString(value);
     }
 
     /**

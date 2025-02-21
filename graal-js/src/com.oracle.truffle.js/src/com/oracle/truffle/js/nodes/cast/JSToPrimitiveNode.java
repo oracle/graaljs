@@ -59,7 +59,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -86,7 +85,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Abstract base class of {@link ToPrimitiveNode} and {@link AsPrimitiveNode} that defines the
+ * Abstract base class of {@link JSToPrimitiveNode} and {@link AsPrimitiveNode} that defines the
  * common primitive specializations shared by these nodes. {@link JSObject} and foreign object
  * specializations are to be implemented in each subclass. The hint is not used in this class.
  */
@@ -152,14 +151,59 @@ abstract class ToPrimitiveBaseNode extends JavaScriptBaseNode {
 }
 
 /**
- * Actual implementation of ToPrimitive (input, hint).
+ * Implements ToPrimitive (input, hint).
+ *
+ * @see OrdinaryToPrimitiveNode
  */
-@GenerateCached(false)
+@SuppressWarnings("hiding")
 @GenerateUncached
-@ImportStatic({JSConfig.class, JSToPrimitiveNode.Hint.class, Symbol.class})
-abstract class ToPrimitiveNode extends ToPrimitiveBaseNode {
+@ImportStatic({JSConfig.class, Symbol.class})
+public abstract class JSToPrimitiveNode extends ToPrimitiveBaseNode {
 
-    protected abstract Object execute(Object value, JSToPrimitiveNode.Hint hint);
+    public enum Hint {
+        Default(Strings.HINT_DEFAULT),
+        Number(Strings.HINT_NUMBER),
+        String(Strings.HINT_STRING);
+
+        private final TruffleString hintName;
+
+        Hint(TruffleString hintName) {
+            this.hintName = hintName;
+        }
+
+        public TruffleString getHintName() {
+            return hintName;
+        }
+
+        public Hint getOrdinaryToPrimitiveHint() {
+            return this == String ? Hint.String : Hint.Number;
+        }
+    }
+
+    protected JSToPrimitiveNode() {
+    }
+
+    public final Object executeHintDefault(Object value) {
+        return execute(value, Hint.Default);
+    }
+
+    public final Object executeHintNumber(Object value) {
+        return execute(value, Hint.Number);
+    }
+
+    public final Object executeHintString(Object value) {
+        return execute(value, Hint.String);
+    }
+
+    /**
+     * This execute method should only be used with compilation-final hints. Where possible, one of
+     * the dedicated {@code executeHint...} methods should preferably be used instead.
+     *
+     * @see #executeHintDefault(Object)
+     * @see #executeHintNumber(Object)
+     * @see #executeHintString(Object)
+     */
+    public abstract Object execute(Object value, Hint hint);
 
     @Specialization
     protected static Object doJSObject(JSObject object, JSToPrimitiveNode.Hint hint,
@@ -225,83 +269,6 @@ abstract class ToPrimitiveNode extends ToPrimitiveBaseNode {
         return asPrimitiveNode.execute(node, result, hint);
     }
 
-    static Object getMethod(JSDynamicObject obj, Object propertyKey, PropertyGetNode getNode) {
-        if (getNode != null) {
-            return getNode.getValue(obj);
-        } else {
-            return JSObject.getMethod(obj, propertyKey);
-        }
-    }
-
-    static Object getPrototypeMethod(JSDynamicObject proto, Object receiver, Object propertyKey, PropertyGetNode getNode) {
-        if (getNode != null) {
-            return getNode.getValueOrUndefined(proto, receiver);
-        } else {
-            return JSObject.getMethod(proto, receiver, propertyKey);
-        }
-    }
-}
-
-/**
- * Implements ToPrimitive.
- *
- * @see OrdinaryToPrimitiveNode
- */
-@SuppressWarnings("hiding")
-@GenerateCached(true)
-@ImportStatic({JSConfig.class})
-public abstract class JSToPrimitiveNode extends ToPrimitiveNode {
-
-    public enum Hint {
-        Default(Strings.HINT_DEFAULT),
-        Number(Strings.HINT_NUMBER),
-        String(Strings.HINT_STRING);
-
-        private final TruffleString hintName;
-
-        Hint(TruffleString hintName) {
-            this.hintName = hintName;
-        }
-
-        public TruffleString getHintName() {
-            return hintName;
-        }
-
-        public Hint getOrdinaryToPrimitiveHint() {
-            return this == String ? Hint.String : Hint.Number;
-        }
-    }
-
-    protected final Hint hint;
-
-    protected JSToPrimitiveNode(Hint hint) {
-        this.hint = hint;
-    }
-
-    public final Object execute(Object value) {
-        return execute(value, hint);
-    }
-
-    @NeverDefault
-    public static JSToPrimitiveNode createHintDefault() {
-        return create(Hint.Default);
-    }
-
-    @NeverDefault
-    public static JSToPrimitiveNode createHintString() {
-        return create(Hint.String);
-    }
-
-    @NeverDefault
-    public static JSToPrimitiveNode createHintNumber() {
-        return create(Hint.Number);
-    }
-
-    @NeverDefault
-    public static JSToPrimitiveNode create(Hint hint) {
-        return JSToPrimitiveNodeGen.create(hint);
-    }
-
     public static Object tryHostObjectToPrimitive(Object object, Hint hint, InteropLibrary interop) {
         if (hint != Hint.String && JavaScriptLanguage.get(interop).getJSContext().isOptionNashornCompatibilityMode() &&
                         interop.isMemberInvocable(object, "doubleValue")) {
@@ -330,54 +297,30 @@ public abstract class JSToPrimitiveNode extends ToPrimitiveNode {
         }
     }
 
-    /** At least one specialization or fallback is needed to trigger the DSL node generator. */
-    @Fallback
-    @Override
-    protected Object doFallback(Object value, Hint hint, @Bind Node node) {
-        return super.doFallback(value, hint, node);
-    }
-
-    @DenyReplace
-    @GenerateCached(false)
-    private static final class Uncached extends JSToPrimitiveNode {
-
-        private static final JSToPrimitiveNode HINT_DEFAULT = new Uncached(Hint.Default);
-        private static final JSToPrimitiveNode HINT_NUMBER = new Uncached(Hint.Number);
-        private static final JSToPrimitiveNode HINT_STRING = new Uncached(Hint.String);
-
-        Uncached(Hint hint) {
-            super(hint);
+    static Object getMethod(JSDynamicObject obj, Object propertyKey, PropertyGetNode getNode) {
+        if (getNode != null) {
+            return getNode.getValue(obj);
+        } else {
+            return JSObject.getMethod(obj, propertyKey);
         }
+    }
 
-        @Override
-        public Object execute(Object value, Hint hint) {
-            return ToPrimitiveNodeGen.getUncached().execute(value, hint);
+    static Object getPrototypeMethod(JSDynamicObject proto, Object receiver, Object propertyKey, PropertyGetNode getNode) {
+        if (getNode != null) {
+            return getNode.getValueOrUndefined(proto, receiver);
+        } else {
+            return JSObject.getMethod(proto, receiver, propertyKey);
         }
-
     }
 
     @NeverDefault
-    public static JSToPrimitiveNode getUncachedHintDefault() {
-        return Uncached.HINT_DEFAULT;
+    public static JSToPrimitiveNode create() {
+        return JSToPrimitiveNodeGen.create();
     }
 
     @NeverDefault
-    public static JSToPrimitiveNode getUncachedHintNumber() {
-        return Uncached.HINT_NUMBER;
-    }
-
-    @NeverDefault
-    public static JSToPrimitiveNode getUncachedHintString() {
-        return Uncached.HINT_STRING;
-    }
-
-    @NeverDefault
-    public static JSToPrimitiveNode getUncached(Hint hint) {
-        return switch (hint) {
-            case Number -> getUncachedHintNumber();
-            case String -> getUncachedHintString();
-            case Default -> getUncachedHintDefault();
-        };
+    public static JSToPrimitiveNode getUncached() {
+        return JSToPrimitiveNodeGen.getUncached();
     }
 }
 

@@ -1064,7 +1064,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached InlinedConditionProfile isSpecialCase,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached InlinedConditionProfile stringOrNumberProfile,
-                        @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                        @Cached JSToPrimitiveNode toPrimitiveNode,
                         @Cached @Shared JSToDoubleNode toDoubleNode) {
             JSRealm realm = getRealm();
             Object arg0 = args[0];
@@ -1072,7 +1072,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (getContext().getEcmaScriptVersion() >= 6 && interop.isInstant(arg0)) {
                 rawDateValue = JSDate.getDateValueFromInstant(arg0, interop);
             } else {
-                Object value = toPrimitiveNode.execute(arg0);
+                Object value = toPrimitiveNode.executeHintDefault(arg0);
                 if (stringOrNumberProfile.profile(this, value instanceof TruffleString)) {
                     rawDateValue = parseDate(getContext(), realm, (TruffleString) value);
                 } else {
@@ -1961,8 +1961,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected final BigInt toBigInt(Object value,
                         @Cached JSToBigIntNode.CoercePrimitiveToBigIntNode toBigIntNode,
-                        @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
-            Object primitive = toPrimitiveNode.execute(value);
+                        @Cached JSToPrimitiveNode toPrimitiveNode) {
+            Object primitive = toPrimitiveNode.executeHintNumber(value);
             return toBigIntNode.executeBigInt(this, primitive);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -227,8 +227,8 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                     "doIntSafeInteger", "doSafeIntegerInt", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
     protected static Object doPrimitiveConversion(Object a, Object b,
                     @Bind Node node,
-                    @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveA,
-                    @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveB,
+                    @Cached JSToPrimitiveNode toPrimitiveA,
+                    @Cached JSToPrimitiveNode toPrimitiveB,
                     @Cached JSToNumericNode toNumericA,
                     @Cached JSToNumericNode toNumericB,
                     @Cached JSToStringNode toStringA,
@@ -238,8 +238,8 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                     @Cached("copyRecursive()") JSAddNode add,
                     @Cached InlinedBranchProfile mixedNumericTypes) {
 
-        Object primitiveA = toPrimitiveA.execute(a);
-        Object primitiveB = toPrimitiveB.execute(b);
+        Object primitiveA = toPrimitiveA.executeHintDefault(a);
+        Object primitiveB = toPrimitiveB.executeHintDefault(b);
 
         Object castA;
         Object castB;

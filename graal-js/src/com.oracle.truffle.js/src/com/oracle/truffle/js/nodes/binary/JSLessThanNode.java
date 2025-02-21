@@ -188,12 +188,12 @@ public abstract class JSLessThanNode extends JSCompareNode {
                     "doBigInt", "doBigIntAndInt", "doIntAndBigInt", "doBigIntAndNumber", "doNumberAndBigInt"})
     protected static boolean doGeneric(Object a, Object b,
                     @Cached JSToStringOrNumberNode toStringOrNumber1,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
+                    @Cached JSToPrimitiveNode toPrimitive1,
                     @Cached JSToStringOrNumberNode toStringOrNumber2,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive2,
+                    @Cached JSToPrimitiveNode toPrimitive2,
                     @Cached JSLessThanNode lessThanNode) {
-        Object aPrimitive = toPrimitive1.execute(a);
-        Object bPrimitive = toPrimitive2.execute(b);
+        Object aPrimitive = toPrimitive1.executeHintNumber(a);
+        Object bPrimitive = toPrimitive2.executeHintNumber(b);
         aPrimitive = toStringOrNumber1.execute(aPrimitive);
         bPrimitive = toStringOrNumber2.execute(bPrimitive);
         return lessThanNode.executeBoolean(aPrimitive, bPrimitive);

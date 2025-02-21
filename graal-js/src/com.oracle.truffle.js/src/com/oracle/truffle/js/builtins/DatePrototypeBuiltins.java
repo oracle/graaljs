@@ -908,14 +908,14 @@ public final class DatePrototypeBuiltins {
 
         public JSDateToJSONNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            toObjectNode = JSToObjectNode.create();
-            toPrimitiveNode = JSToPrimitiveNode.createHintNumber();
+            this.toObjectNode = JSToObjectNode.create();
+            this.toPrimitiveNode = JSToPrimitiveNode.create();
         }
 
         @Specialization
         protected Object toJSON(Object thisDate, @SuppressWarnings("unused") Object key) {
             Object o = toObjectNode.execute(thisDate);
-            Object tv = toPrimitiveNode.execute(o);
+            Object tv = toPrimitiveNode.executeHintNumber(o);
             if (JSRuntime.isNumber(tv)) {
                 double d = JSRuntime.doubleValue(((Number) tv));
                 if (Double.isInfinite(d) || Double.isNaN(d)) {

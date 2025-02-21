@@ -116,14 +116,14 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             methodCall1 = callValueOfNode;
             methodCall2 = callToStringNode;
         }
-        Object method = ToPrimitiveNode.getMethod(object, propertyKey1, getMethod1);
+        Object method = JSToPrimitiveNode.getMethod(object, propertyKey1, getMethod1);
         if (isCallableNode.executeBoolean(method)) {
             Object result = methodCall1.executeCall(JSArguments.createZeroArg(object, method));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
-        method = ToPrimitiveNode.getMethod(object, propertyKey2, getMethod2);
+        method = JSToPrimitiveNode.getMethod(object, propertyKey2, getMethod2);
         if (isCallableNode.executeBoolean(method)) {
             Object result = methodCall2.executeCall(JSArguments.createZeroArg(object, method));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -181,7 +181,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             return result;
         }
         JSDynamicObject proto = foreignObjectPrototypeNode.execute(object);
-        Object method = ToPrimitiveNode.getPrototypeMethod(proto, object, propertyKey1, getMethod1);
+        Object method = JSToPrimitiveNode.getPrototypeMethod(proto, object, propertyKey1, getMethod1);
         if (isCallableNode.executeBoolean(method)) {
             result = methodCall1.executeCall(JSArguments.createZeroArg(object, method));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -193,7 +193,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         if (result != null) {
             return result;
         }
-        method = ToPrimitiveNode.getPrototypeMethod(proto, object, propertyKey2, getMethod2);
+        method = JSToPrimitiveNode.getPrototypeMethod(proto, object, propertyKey2, getMethod2);
         if (isCallableNode.executeBoolean(method)) {
             result = methodCall2.executeCall(JSArguments.createZeroArg(object, method));
             if (isPrimitiveNode.executeBoolean(result)) {

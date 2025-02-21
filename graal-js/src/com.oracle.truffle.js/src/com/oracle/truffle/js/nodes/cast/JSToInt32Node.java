@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -202,9 +202,9 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization(guards = "isForeignObject(object)")
     protected static int doForeignObject(Object object,
-                    @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToInt32Node toInt32Node) {
-        return toInt32Node.executeInt(toPrimitiveNode.execute(object));
+        return toInt32Node.executeInt(toPrimitiveNode.executeHintNumber(object));
     }
 
     @ImportStatic({JSRuntime.class})
@@ -327,9 +327,9 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
 
         @Specialization(guards = "isForeignObject(object)")
         protected static int doForeignObject(Object object,
-                        @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                        @Cached JSToPrimitiveNode toPrimitiveNode,
                         @Cached @Shared JSToInt32Node toInt32Node) {
-            return toInt32Node.executeInt(toPrimitiveNode.execute(object));
+            return toInt32Node.executeInt(toPrimitiveNode.executeHintNumber(object));
         }
 
         @Idempotent
