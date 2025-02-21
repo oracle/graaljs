@@ -122,7 +122,11 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     @ExportMessage
     public long getArraySize() {
-        return getLength();
+        if (JSArrayBufferView.isOutOfBounds(this, getJSContext())) {
+            return 0;
+        } else {
+            return getLength();
+        }
     }
 
     @ExportMessage
