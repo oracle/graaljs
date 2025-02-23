@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,9 +154,12 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization(replaces = "doUndefined")
     protected TruffleString doJSObject(JSDynamicObject value,
-                    @Shared @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveHintStringNode,
                     @Shared @Cached JSToStringNode toStringNode) {
-        return (undefinedToEmpty && (value == Undefined.instance)) ? Strings.EMPTY_STRING : toStringNode.executeString(toPrimitiveHintStringNode.execute(value));
+        if (undefinedToEmpty && (value == Undefined.instance)) {
+            return Strings.EMPTY_STRING;
+        }
+        return toStringNode.executeString(toPrimitiveHintStringNode.executeHintString(value));
     }
 
     @TruffleBoundary
@@ -172,9 +175,9 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization(guards = {"isForeignObject(object)"})
     protected TruffleString doTruffleObject(Object object,
-                    @Shared @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveHintStringNode,
                     @Shared @Cached JSToStringNode toStringNode) {
-        return toStringNode.executeString(toPrimitiveHintStringNode.execute(object));
+        return toStringNode.executeString(toPrimitiveHintStringNode.executeHintString(object));
     }
 
     public abstract static class JSToStringWrapperNode extends JSUnaryNode {

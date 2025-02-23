@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,10 +142,10 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isToNumericOperand()", "!hasOverloadedOperators(value)"})
     protected final Object doToNumericOperandOther(Object value,
-                    @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
-        Object primValue = toPrimitiveNode.execute(value);
+        Object primValue = toPrimitiveNode.executeHintNumber(value);
         Object alreadyNumeric = numericOrNullNode.execute(this, primValue);
         if (alreadyNumeric != null) {
             return alreadyNumeric;
@@ -155,10 +155,10 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isToNumericOperand()", "!isBigInt(value)"})
     protected final Object doToNumericOther(Object value,
-                    @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
-        Object primValue = toPrimitiveNode.execute(value);
+        Object primValue = toPrimitiveNode.executeHintNumber(value);
         Object alreadyNumeric = numericOrNullNode.execute(this, primValue);
         if (alreadyNumeric != null) {
             return alreadyNumeric;

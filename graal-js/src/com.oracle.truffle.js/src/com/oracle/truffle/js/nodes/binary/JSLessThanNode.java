@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -188,11 +188,15 @@ public abstract class JSLessThanNode extends JSCompareNode {
                     "doBigInt", "doBigIntAndInt", "doIntAndBigInt", "doBigIntAndNumber", "doNumberAndBigInt"})
     protected static boolean doGeneric(Object a, Object b,
                     @Cached JSToStringOrNumberNode toStringOrNumber1,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
+                    @Cached JSToPrimitiveNode toPrimitive1,
                     @Cached JSToStringOrNumberNode toStringOrNumber2,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive2,
+                    @Cached JSToPrimitiveNode toPrimitive2,
                     @Cached JSLessThanNode lessThanNode) {
-        return lessThanNode.executeBoolean(toStringOrNumber1.execute(toPrimitive1.execute(a)), toStringOrNumber2.execute(toPrimitive2.execute(b)));
+        Object aPrimitive = toPrimitive1.executeHintNumber(a);
+        Object bPrimitive = toPrimitive2.executeHintNumber(b);
+        aPrimitive = toStringOrNumber1.execute(aPrimitive);
+        bPrimitive = toStringOrNumber2.execute(bPrimitive);
+        return lessThanNode.executeBoolean(aPrimitive, bPrimitive);
     }
 
     @Override

@@ -908,14 +908,14 @@ public final class DatePrototypeBuiltins {
 
         public JSDateToJSONNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            toObjectNode = JSToObjectNode.create();
-            toPrimitiveNode = JSToPrimitiveNode.createHintNumber();
+            this.toObjectNode = JSToObjectNode.create();
+            this.toPrimitiveNode = JSToPrimitiveNode.create();
         }
 
         @Specialization
         protected Object toJSON(Object thisDate, @SuppressWarnings("unused") Object key) {
             Object o = toObjectNode.execute(thisDate);
-            Object tv = toPrimitiveNode.execute(o);
+            Object tv = toPrimitiveNode.executeHintNumber(o);
             if (JSRuntime.isNumber(tv)) {
                 double d = JSRuntime.doubleValue(((Number) tv));
                 if (Double.isInfinite(d) || Double.isNaN(d)) {
@@ -974,16 +974,16 @@ public final class DatePrototypeBuiltins {
             @Specialization(guards = {"equals(strEqual, HINT_NUMBER, hint)"})
             static Object toPrimitiveHintNumber(Object obj, TruffleString hint,
                             @Cached @Shared TruffleString.EqualNode strEqual,
-                            @Cached("createHintNumber()") OrdinaryToPrimitiveNode ordinaryToPrimitiveHintNumber) {
-                return ordinaryToPrimitiveHintNumber.execute(obj);
+                            @Cached @Shared OrdinaryToPrimitiveNode ordinaryToPrimitive) {
+                return ordinaryToPrimitive.execute(obj, JSToPrimitiveNode.Hint.Number);
             }
 
             @SuppressWarnings("unused")
             @Specialization(guards = {"equals(strEqual, HINT_STRING, hint) || equals(strEqual, HINT_DEFAULT, hint)"})
             static Object toPrimitiveHintStringOrDefault(Object obj, TruffleString hint,
                             @Cached @Shared TruffleString.EqualNode strEqual,
-                            @Cached("createHintString()") OrdinaryToPrimitiveNode ordinaryToPrimitiveHintString) {
-                return ordinaryToPrimitiveHintString.execute(obj);
+                            @Cached @Shared OrdinaryToPrimitiveNode ordinaryToPrimitive) {
+                return ordinaryToPrimitive.execute(obj, JSToPrimitiveNode.Hint.String);
             }
 
             @Fallback

@@ -294,12 +294,12 @@ public class JSRuntimeTest extends JSTest {
     public void testToPrimitiveRuntimeAndNode() {
         Object[] values = createValues(testHelper.getRealm());
         for (var hint : JSToPrimitiveNode.Hint.values()) {
-            JSToPrimitiveNode node = adopt(JSToPrimitiveNode.create(hint));
+            JSToPrimitiveNode node = adopt(JSToPrimitiveNode.create());
 
             for (int i = 0; i < values.length; i++) {
                 Object v1 = values[i];
                 Object r1 = JSRuntime.toPrimitive(v1, hint);
-                Object r2 = node.execute(v1);
+                Object r2 = node.execute(v1, hint);
                 assertTrue("wrong outcome of ToPrimitive for i=" + i + " (" + v1 + ")", JSRuntime.identical(r1, r2));
             }
         }

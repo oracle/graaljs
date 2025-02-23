@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,8 +52,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -75,174 +74,142 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  *
  * @see JSToPrimitiveNode
  */
-@ImportStatic({JSConfig.class})
+@GenerateUncached
+@ImportStatic({JSConfig.class, Hint.class, Strings.class})
 public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
-    private final Hint hint;
-    @Child private PropertyGetNode getToStringNode;
-    @Child private PropertyGetNode getValueOfNode;
-    @Child private IsCallableNode isCallableNode;
-    @Child private JSFunctionCallNode callToStringNode;
-    @Child private JSFunctionCallNode callValueOfNode;
-    @Child private IsPrimitiveNode isPrimitiveNode;
-    @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
 
-    protected OrdinaryToPrimitiveNode(Hint hint) {
-        assert hint == Hint.String || hint == Hint.Number;
-        this.hint = hint;
-        this.isCallableNode = IsCallableNode.create();
-        this.isPrimitiveNode = IsPrimitiveNode.create();
+    protected OrdinaryToPrimitiveNode() {
     }
 
-    public abstract Object execute(Object object);
+    public abstract Object execute(Object object, Hint hint);
 
     @Specialization
-    protected Object doObject(JSObject object,
-                    @Shared @Cached InlinedConditionProfile toStringIsFunction,
-                    @Shared @Cached InlinedConditionProfile valueOfIsFunction) {
-        if (hint == Hint.String) {
-            return doHintString(object, this, toStringIsFunction, valueOfIsFunction);
-        } else {
-            assert hint == Hint.Number;
-            return doHintNumber(object, this, toStringIsFunction, valueOfIsFunction);
-        }
-    }
-
-    @InliningCutoff
-    @SuppressWarnings("truffle-static-method")
-    @Specialization(guards = {"isForeignObject(object)"}, limit = "InteropLibraryLimit")
-    protected final Object doForeign(Object object,
+    protected static Object doObject(JSObject object, Hint hint,
                     @Bind Node node,
-                    @CachedLibrary("object") InteropLibrary interop,
-                    @Shared @Cached InlinedConditionProfile toStringIsFunction,
-                    @Shared @Cached InlinedConditionProfile valueOfIsFunction) {
+                    @Shared @Cached(value = "createGetMethod(TO_STRING, getJSContext())", uncached = "getNullNode()") PropertyGetNode getToStringNode,
+                    @Shared @Cached(value = "createGetMethod(VALUE_OF, getJSContext())", uncached = "getNullNode()") PropertyGetNode getValueOfNode,
+                    @Shared @Cached IsCallableNode isCallableNode,
+                    @Shared @Cached IsPrimitiveNode isPrimitiveNode,
+                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callToStringNode,
+                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callValueOfNode) {
+        TruffleString propertyKey1;
+        TruffleString propertyKey2;
+        PropertyGetNode getMethod1;
+        PropertyGetNode getMethod2;
+        JSFunctionCallNode methodCall1;
+        JSFunctionCallNode methodCall2;
         if (hint == Hint.String) {
-            return doForeignHintString(object, node, interop, toStringIsFunction, valueOfIsFunction);
+            // toString(), valueOf()
+            propertyKey1 = Strings.TO_STRING;
+            propertyKey2 = Strings.VALUE_OF;
+            getMethod1 = getToStringNode;
+            getMethod2 = getValueOfNode;
+            methodCall1 = callToStringNode;
+            methodCall2 = callValueOfNode;
         } else {
+            // valueOf(), toString()
             assert hint == Hint.Number;
-            return doForeignHintNumber(object, node, interop, toStringIsFunction, valueOfIsFunction);
+            propertyKey1 = Strings.VALUE_OF;
+            propertyKey2 = Strings.TO_STRING;
+            getMethod1 = getValueOfNode;
+            getMethod2 = getToStringNode;
+            methodCall1 = callValueOfNode;
+            methodCall2 = callToStringNode;
         }
-    }
-
-    @NeverDefault
-    public static OrdinaryToPrimitiveNode createHintString() {
-        return create(Hint.String);
-    }
-
-    @NeverDefault
-    public static OrdinaryToPrimitiveNode createHintNumber() {
-        return create(Hint.Number);
-    }
-
-    @NeverDefault
-    public static OrdinaryToPrimitiveNode create(Hint hint) {
-        return OrdinaryToPrimitiveNodeGen.create(hint);
-    }
-
-    private Object doHintString(JSObject object,
-                    Node node, InlinedConditionProfile toStringIsFunction, InlinedConditionProfile valueOfIsFunction) {
-        Object toString = getToString().getValue(object);
-        if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(toString))) {
-            Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
+        Object method = JSToPrimitiveNode.getMethod(object, propertyKey1, getMethod1);
+        if (isCallableNode.executeBoolean(method)) {
+            Object result = methodCall1.executeCall(JSArguments.createZeroArg(object, method));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
-
-        Object valueOf = getValueOf().getValue(object);
-        if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(valueOf))) {
-            Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, valueOf));
+        method = JSToPrimitiveNode.getMethod(object, propertyKey2, getMethod2);
+        if (isCallableNode.executeBoolean(method)) {
+            Object result = methodCall2.executeCall(JSArguments.createZeroArg(object, method));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
-
-        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
-    }
-
-    private Object doHintNumber(JSObject object,
-                    Node node, InlinedConditionProfile toStringIsFunction, InlinedConditionProfile valueOfIsFunction) {
-        assert JSGuards.isJSObject(object);
-        Object valueOf = getValueOf().getValue(object);
-        if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(valueOf))) {
-            Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, valueOf));
-            if (isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
-        }
-
-        Object toString = getToString().getValue(object);
-        if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(toString))) {
-            Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
-            if (isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
-        }
-
-        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
-    }
-
-    private Object doForeignHintString(Object object,
-                    Node node, InteropLibrary interop, InlinedConditionProfile toStringIsFunction, InlinedConditionProfile valueOfIsFunction) {
-        Object result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING_JLS);
-        if (result != null) {
-            return result;
-        }
-        JSDynamicObject proto = getForeignObjectPrototype(object);
-        Object func = getToString().getValueOrUndefined(proto, object);
-        if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
-            result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
-            if (isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
-        }
-
-        result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF_JLS);
-        if (result != null) {
-            return result;
-        }
-        func = getValueOf().getValue(proto);
-        if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
-            result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
-            if (isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
-        }
-
-        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
-    }
-
-    private Object doForeignHintNumber(Object object,
-                    Node node, InteropLibrary interop, InlinedConditionProfile toStringIsFunction, InlinedConditionProfile valueOfIsFunction) {
-        Object result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF_JLS);
-        if (result != null) {
-            return result;
-        }
-        JSDynamicObject proto = getForeignObjectPrototype(object);
-        Object func = getValueOf().getValueOrUndefined(proto, object);
-        if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
-            result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
-            if (isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
-        }
-
-        result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING_JLS);
-        if (result != null) {
-            return result;
-        }
-        func = getToString().getValue(proto);
-        if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
-            result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
-            if (isPrimitiveNode.executeBoolean(result)) {
-                return result;
-            }
-        }
-
-        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(node);
     }
 
     @InliningCutoff
-    private Object tryInvokeForeignMethod(Object object, InteropLibrary interop, String methodName) {
+    @Specialization(guards = {"isForeignObject(object)"}, limit = "InteropLibraryLimit")
+    protected static Object doForeign(Object object, Hint hint,
+                    @Bind Node node,
+                    @Shared @Cached(value = "createGetMethod(TO_STRING, getJSContext())", uncached = "getNullNode()") PropertyGetNode getToStringNode,
+                    @Shared @Cached(value = "createGetMethod(VALUE_OF, getJSContext())", uncached = "getNullNode()") PropertyGetNode getValueOfNode,
+                    @Shared @Cached IsCallableNode isCallableNode,
+                    @Shared @Cached IsPrimitiveNode isPrimitiveNode,
+                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callToStringNode,
+                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callValueOfNode,
+                    @Shared @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
+                    @CachedLibrary("object") InteropLibrary interop) {
+        TruffleString propertyKey1;
+        TruffleString propertyKey2;
+        String stringKey1;
+        String stringKey2;
+        PropertyGetNode getMethod1;
+        PropertyGetNode getMethod2;
+        JSFunctionCallNode methodCall1;
+        JSFunctionCallNode methodCall2;
+        if (hint == Hint.String) {
+            // toString(), valueOf()
+            propertyKey1 = Strings.TO_STRING;
+            propertyKey2 = Strings.VALUE_OF;
+            stringKey1 = Strings.TO_STRING_JLS;
+            stringKey2 = Strings.VALUE_OF_JLS;
+            getMethod1 = getToStringNode;
+            getMethod2 = getValueOfNode;
+            methodCall1 = callToStringNode;
+            methodCall2 = callValueOfNode;
+        } else {
+            // valueOf(), toString()
+            assert hint == Hint.Number;
+            propertyKey1 = Strings.VALUE_OF;
+            propertyKey2 = Strings.TO_STRING;
+            stringKey1 = Strings.VALUE_OF_JLS;
+            stringKey2 = Strings.TO_STRING_JLS;
+            getMethod1 = getValueOfNode;
+            getMethod2 = getToStringNode;
+            methodCall1 = callValueOfNode;
+            methodCall2 = callToStringNode;
+        }
+
+        Object result = tryInvokeForeignMethod(object, stringKey1, interop, isPrimitiveNode);
+        if (result != null) {
+            return result;
+        }
+        JSDynamicObject proto = foreignObjectPrototypeNode.execute(object);
+        Object method = JSToPrimitiveNode.getPrototypeMethod(proto, object, propertyKey1, getMethod1);
+        if (isCallableNode.executeBoolean(method)) {
+            result = methodCall1.executeCall(JSArguments.createZeroArg(object, method));
+            if (isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+
+        result = tryInvokeForeignMethod(object, stringKey2, interop, isPrimitiveNode);
+        if (result != null) {
+            return result;
+        }
+        method = JSToPrimitiveNode.getPrototypeMethod(proto, object, propertyKey2, getMethod2);
+        if (isCallableNode.executeBoolean(method)) {
+            result = methodCall2.executeCall(JSArguments.createZeroArg(object, method));
+            if (isPrimitiveNode.executeBoolean(result)) {
+                return result;
+            }
+        }
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(node);
+    }
+
+    @NeverDefault
+    public static OrdinaryToPrimitiveNode create() {
+        return OrdinaryToPrimitiveNodeGen.create();
+    }
+
+    @InliningCutoff
+    private static Object tryInvokeForeignMethod(Object object, String methodName, InteropLibrary interop, IsPrimitiveNode isPrimitiveNode) {
         if (interop.hasMembers(object) && interop.isMemberInvocable(object, methodName)) {
             // Avoid calling toString() on Java arrays; use Array.prototype.toString() instead.
             if (isJavaArray(object, interop)) {
@@ -262,32 +229,5 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
 
     public static boolean isJavaArray(Object object, InteropLibrary interop) {
         return JSRealm.get(interop).getEnv().isHostObject(object) && interop.hasArrayElements(object) && interop.isMemberReadable(object, "length");
-    }
-
-    private PropertyGetNode getToString() {
-        if (getToStringNode == null || callToStringNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getToStringNode = insert(PropertyGetNode.createGetMethod(Strings.TO_STRING, getLanguage().getJSContext()));
-            callToStringNode = insert(JSFunctionCallNode.createCall());
-        }
-        return getToStringNode;
-    }
-
-    private PropertyGetNode getValueOf() {
-        if (getValueOfNode == null || callValueOfNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getValueOfNode = insert(PropertyGetNode.createGetMethod(Strings.VALUE_OF, getLanguage().getJSContext()));
-            callValueOfNode = insert(JSFunctionCallNode.createCall());
-        }
-        return getValueOfNode;
-    }
-
-    private JSDynamicObject getForeignObjectPrototype(Object truffleObject) {
-        assert JSRuntime.isForeignObject(truffleObject);
-        if (foreignObjectPrototypeNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
-        }
-        return foreignObjectPrototypeNode.execute(truffleObject);
     }
 }

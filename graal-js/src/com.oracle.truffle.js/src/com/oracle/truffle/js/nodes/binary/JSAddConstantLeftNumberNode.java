@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -163,13 +163,13 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
     @Specialization(guards = {"!hasOverloadedOperators(right)"}, replaces = {"doInt", "doDouble", "doNumberString"})
     protected Object doPrimitiveConversion(Object right,
                     @Bind Node node,
-                    @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveB,
+                    @Cached JSToPrimitiveNode toPrimitiveB,
                     @Cached JSToNumberNode toNumberB,
                     @Cached("leftValueToString()") @Shared TruffleString leftString,
                     @Cached @Shared JSConcatStringsNode createLazyString,
                     @Cached InlinedConditionProfile profileB) {
 
-        Object primitiveRight = toPrimitiveB.execute(right);
+        Object primitiveRight = toPrimitiveB.executeHintDefault(right);
 
         if (profileB.profile(node, isString(primitiveRight))) {
             return createLazyString.executeTString(leftString, (TruffleString) primitiveRight);
