@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,6 +118,19 @@ public class InteropArrayTest {
             assertEquals(1, array.getMember("2").asInt());
             assertEquals(1, array.getArrayElement(2).asInt());
             assertEquals(array.getMemberKeys().toString(), Set.of("0", "1", "2", "3"), array.getMemberKeys());
+        }
+    }
+
+    @Test
+    public void testArraySizeOfDetachedTypedArray() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value array = context.eval(ID, """
+                            var buffer = new ArrayBuffer(8);
+                            var array = new Float32Array(buffer);
+                            buffer.transfer();
+                            array;
+                            """);
+            assertEquals(0, array.getArraySize());
         }
     }
 
