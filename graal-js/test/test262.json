@@ -3852,10 +3852,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/Number/defaultvalue.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/Number/toFixed-values.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
