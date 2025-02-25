@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -29,6 +29,12 @@ var assertSame = (function (originalAssertSame) {
         }
     };
 })(assertSame);
+
+var assertException = (function (originalAssertException) {
+    return function (e, type_opt, cause_opt) {
+        return originalAssertException(e, type_opt);
+    };
+})(assertException);
 
 // ---------------------- V8 Compiler ---------------------- //
 // let compiler tests pass by overriding following functions
