@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -285,7 +285,7 @@ public class DateParser {
                         do {
                             token = next();
                             if (!((token == Token.NUMBER && setTimeField(numValue))
-                                    || ((token == Token.END || token == Token.SEPARATOR) && setTimeField(0)))) {
+                                    || ((token == Token.END || token == Token.SEPARATOR) && setTimeField(numValue = 0)))) {
                                 return false;
                             }
                         } while (isSet(SECOND) ? (skipDelimiter('.') || skipDelimiter(':')) : skipDelimiter(':'));
@@ -455,6 +455,7 @@ public class DateParser {
     }
 
     private boolean checkLegacyField(final int field, final int value) {
+        assert numValue == value;
         switch (field) {
             case HOUR:
                 return isHour(value);
@@ -470,6 +471,7 @@ public class DateParser {
     }
 
     private boolean checkEcmaField(final int field, final int value) {
+        assert numValue == value;
         switch (field) {
             case YEAR:
                 return tokenLength == 4;
@@ -490,6 +492,7 @@ public class DateParser {
     }
 
     private boolean checkMilliseconds(final int value) {
+        assert numValue == value;
         if (value < 0) {
             return false;
         }
@@ -643,10 +646,11 @@ public class DateParser {
     }
 
     private boolean setTimeField(final int n) {
+        assert numValue == n;
         for (int field = HOUR; field != TIMEZONE; field++) {
             if (!isSet(field)) {
                 if (checkLegacyField(field, n)) {
-                    set(field, n);
+                    set(field, numValue);
                     return true;
                 }
                 return false;
