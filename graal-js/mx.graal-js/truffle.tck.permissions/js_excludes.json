@@ -8,6 +8,27 @@
     ]
   },
   {
+    "name" : "com.oracle.truffle.js.builtins.DebugBuiltins$DebugSystemProperty",
+    "methods" : [
+      { "name" : "systemProperty",
+        "parameterTypes" : [
+          "java.lang.Object"
+        ],
+        "justification" : "Debug builtin that needs to be enabled by the js.debug-builtin option."
+      }
+    ]
+  },
+  {
+    "name" : "com.oracle.truffle.js.builtins.DebugBuiltins$DebugSystemProperties",
+    "methods" : [
+      { "name" : "systemProperties",
+        "parameterTypes" : [
+        ],
+        "justification" : "Debug builtin that needs to be enabled by the js.debug-builtin option."
+      }
+    ]
+  },
+  {
     "name" : "com.oracle.truffle.js.runtime.util.DebugJSAgent",
     "methods" : [
       { "name" : "terminate",

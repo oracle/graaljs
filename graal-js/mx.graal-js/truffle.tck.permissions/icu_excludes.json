@@ -33,6 +33,17 @@
         }
     ]
   }, {
+    "name" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUConfig",
+    "methods" : [
+        { "name" : "get",
+          "justification" : "Read a system property to get ICU configuration.",
+          "parameterTypes" : [
+            "java.lang.String",
+            "java.lang.String"
+          ]
+        }
+    ]
+  }, {
     "name" : "org.graalvm.shadowed.com.ibm.icu.impl.URLHandler",
     "methods" : [
         { "name" : "get",
