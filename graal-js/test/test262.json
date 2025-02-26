@@ -3751,7 +3751,7 @@
   }, {
     "filePath" : "staging/sm/Date/non-iso.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Expects new Date('<some non-ecma date>').getTime() to be NaN, but parsing of non-ecma dates is implementation specific"
   }, {
     "filePath" : "staging/sm/Date/two-digit-years.js",
     "status" : "FAIL",
