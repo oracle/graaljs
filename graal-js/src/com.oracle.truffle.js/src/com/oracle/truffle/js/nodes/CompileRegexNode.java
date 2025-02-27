@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,11 +55,12 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 import com.oracle.truffle.js.runtime.Strings;
 
-@ImportStatic(JSConfig.class)
+@ImportStatic({JSConfig.class, Strings.class})
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
 
     private final JSContext context;
     @Child private InteropLibrary isCompiledRegexNullNode;
+    @Child TruffleString.EqualNode equalsNode = TruffleString.EqualNode.create();
 
     protected CompileRegexNode(JSContext context) {
         this.context = context;
@@ -81,13 +82,11 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     protected abstract Object executeCompile(Object pattern, Object flags);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"stringEquals(equalsNode, pattern, cachedPattern)", "stringEquals(equalsNode2, flags, cachedFlags)"}, limit = "MaxCompiledRegexCacheLength")
+    @Specialization(guards = {"equals(equalsNode, pattern, cachedPattern)", "equals(equalsNode, flags, cachedFlags)"}, limit = "MaxCompiledRegexCacheLength")
     protected Object getCached(TruffleString pattern, TruffleString flags,
                     @Cached("pattern") TruffleString cachedPattern,
                     @Cached("flags") TruffleString cachedFlags,
                     @Cached("createAssumedValue()") AssumedValue<Object> cachedCompiledRegex,
-                    @Cached TruffleString.EqualNode equalsNode,
-                    @Cached TruffleString.EqualNode equalsNode2,
                     @Cached @Shared TruffleString.ToJavaStringNode toJavaString) {
         // Note: we must not compile the regex while holding the AST lock (initializing @Cached).
         Object cached = cachedCompiledRegex.get();
@@ -96,10 +95,6 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
             cachedCompiledRegex.set(cached);
         }
         return cached;
-    }
-
-    protected static boolean stringEquals(TruffleString.EqualNode node, TruffleString a, TruffleString b) {
-        return Strings.equals(node, a, b);
     }
 
     @Specialization(guards = {"!TrimCompiledRegexCache"})
