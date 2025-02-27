@@ -46,6 +46,7 @@ import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JS_EXT;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.MJS_EXT;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.NODE_EXT;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getCoreModuleReplacement;
+import static com.oracle.truffle.js.runtime.JSContextOptions.ModuleLoaderFactoryMode.HANDLER;
 
 import java.util.Map;
 import java.util.Objects;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSEngine;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -169,6 +171,21 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     @TruffleBoundary
     private Object requireImpl(String moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
         log("required module '", moduleIdentifier, "' from path ", entryPath);
+        // 1.1 (Non-spec): If a module resolver hook has been installed, give it a chance to resolve the module, but
+        // only if `handler` mode is enabled for JS module resolution.
+        if (realm.getContextOptions().getModuleLoaderFactoryMode().equals(HANDLER)) {
+            var resolver = JSEngine.getCjsResolverHook();
+            if (resolver != null) {
+                log("custom import hook is active; there is a resolver. loading module '", moduleIdentifier, "'");
+                var maybeResolved = resolver.resolveModule(realm, moduleIdentifier, entryPath);
+                if (maybeResolved != null) {
+                    log("custom handler returned module impl for '", moduleIdentifier, "'");
+                    return maybeResolved;
+                } else if (LOG_REQUIRE_PATH_RESOLUTION) {
+                    log("custom handler returned null; falling back for module '", moduleIdentifier, "'");
+                }
+            }
+        }
         String moduleReplacementName = getCoreModuleReplacement(realm, moduleIdentifier);
         if (moduleReplacementName != null) {
             log("using module replacement for module '", moduleIdentifier, "' with ", moduleReplacementName);
