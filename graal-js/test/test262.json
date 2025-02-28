@@ -3848,14 +3848,6 @@
     },
     "comment" : "requires Float16Array"
   }, {
-    "filePath" : "staging/sm/misc/new-with-non-constructor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Reflect/construct.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/RegExp/match-local-tolength-recompilation.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectApplyNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectConstructNodeGen;
@@ -230,7 +231,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
     public abstract static class ReflectConstructNode extends ReflectOperation {
 
-        @Child private JSFunctionCallNode constructCall = JSFunctionCallNode.createNewTarget();
+        @Child private JSFunctionCallNode constructNew = JSFunctionCallNode.createNew();
+        @Child private JSFunctionCallNode constructNewTarget = JSFunctionCallNode.createNewTarget();
         @Child private JSToObjectArrayNode toObjectArray = JSToObjectArrayNodeGen.create();
 
         public ReflectConstructNode(JSContext context, JSBuiltin builtin) {
@@ -239,7 +241,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization
         protected Object reflectConstruct(Object target, Object argumentsList, Object[] optionalArgs,
-                        @Cached IsConstructorNode isConstructorNode) {
+                        @Cached IsConstructorNode isConstructorNode,
+                        @Cached InlinedConditionProfile isNew) {
             if (!isConstructorNode.executeBoolean(target)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAConstructor(target, getContext());
@@ -261,8 +264,13 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             int maxApplyArgumentLength = getContext().getLanguageOptions().maxApplyArgumentLength();
             Object[] args = toObjectArray.executeObjectArray(argumentsList, maxApplyArgumentLength);
             assert args.length <= maxApplyArgumentLength;
-            Object[] passedOnArguments = JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, target, newTarget, args);
-            return constructCall.executeCall(passedOnArguments);
+            if (isNew.profile(this, target == newTarget)) {
+                Object[] passedOnArguments = JSArguments.create(JSFunction.CONSTRUCT, target, args);
+                return constructNew.executeCall(passedOnArguments);
+            } else {
+                Object[] passedOnArguments = JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, target, newTarget, args);
+                return constructNewTarget.executeCall(passedOnArguments);
+            }
         }
 
         @Override
