@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -133,7 +133,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
 
         if (!isConstructor.executeBoolean(JSProxy.getTarget(proxy))) {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorNotAFunction(function, this);
+            throw Errors.createTypeErrorNotAConstructor(function, this, getJSContext());
         } else {
             JSDynamicObject pxHandler = JSProxy.getHandler(proxy);
             if (pxHandler == Null.instance) {
