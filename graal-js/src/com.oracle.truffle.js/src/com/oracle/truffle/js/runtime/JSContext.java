@@ -412,6 +412,7 @@ public class JSContext {
         DecoratorContextAddInitializer,
         DedentCallback,
         WorkerProcessMessage,
+        OperatorsConstructor,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;

@@ -46,7 +46,6 @@ import org.graalvm.collections.EconomicSet;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -67,7 +66,6 @@ import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
@@ -151,46 +149,47 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @Specialization
-        protected JSDynamicObject doOperators(VirtualFrame frame, Object table, Object... extraTables) {
+        protected JSFunctionObject doOperators(VirtualFrame frame, Object table, Object... extraTables) {
             JSDynamicObject prototype = createPrototypeNode.execute(frame);
             OperatorSet operatorSet = constructOperatorSetNode.execute(table, extraTables);
-            JSFunctionObject constructor = createConstructor(operatorSet);
+            JSFunctionData constructorFunctionData = getContext().getOrCreateBuiltinFunctionData(
+                            JSContext.BuiltinFunctionKey.OperatorsConstructor, OperatorsNode::createConstructorImpl);
+            JSFunctionObject constructor = JSFunction.create(getRealm(), constructorFunctionData);
             JSFunction.setClassPrototype(constructor, prototype);
             setConstructorNode.executeVoid(prototype, constructor);
             setOperatorDefinitionsNode.setValue(constructor, operatorSet);
             return constructor;
         }
 
-        @TruffleBoundary
-        private JSFunctionObject createConstructor(OperatorSet operatorSet) {
-            CallTarget callTarget = new JavaScriptRootNode() {
-                @Child private PropertyNode getPrototypeNode = PropertyNode.createProperty(getContext(), null, JSObject.PROTOTYPE);
-                @Child private CreateOverloadedOperatorsObjectNode createOverloadedOperatorsObjectNode = CreateOverloadedOperatorsObjectNode.create(getContext(), operatorSet);
+        private static JSFunctionData createConstructorImpl(JSContext context) {
+            CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+                @Child private PropertyGetNode getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, context);
+                @Child private PropertyGetNode getOperatorDefinitionsNode = PropertyGetNode.createGetHidden(OPERATOR_DEFINITIONS_ID, context);
+                @Child private CreateOverloadedOperatorsObjectNode createOverloadedOperatorsObjectNode = CreateOverloadedOperatorsObjectNode.create(context);
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    Object constructor = JSArguments.getNewTarget(frame.getArguments());
-                    Object prototype = getPrototypeNode.executeWithTarget(frame, constructor);
-                    return createOverloadedOperatorsObjectNode.execute(prototype);
+                    Object newTarget = JSArguments.getNewTarget(frame.getArguments());
+                    Object constructor = JSArguments.getFunctionObject(frame.getArguments());
+                    OperatorSet operatorSet = (OperatorSet) getOperatorDefinitionsNode.getValue(constructor);
+                    Object prototype = getPrototypeNode.getValue(newTarget);
+                    return createOverloadedOperatorsObjectNode.execute(prototype, operatorSet);
                 }
             }.getCallTarget();
-            JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), callTarget, 0, Strings.EMPTY_STRING);
-            return JSFunction.create(getRealm(), constructorFunctionData);
+            return JSFunctionData.create(context, callTarget, 0, Strings.EMPTY_STRING);
         }
     }
 
     public abstract static class CreateOverloadedOperatorsObjectNode extends JavaScriptBaseNode {
 
         protected final JSContext context;
-        protected final OperatorSet operatorSet;
 
-        protected CreateOverloadedOperatorsObjectNode(JSContext context, OperatorSet operatorSet) {
+        protected CreateOverloadedOperatorsObjectNode(JSContext context) {
             this.context = context;
-            this.operatorSet = operatorSet;
         }
 
-        public static CreateOverloadedOperatorsObjectNode create(JSContext context, OperatorSet operatorSet) {
-            return OperatorsBuiltinsFactory.CreateOverloadedOperatorsObjectNodeGen.create(context, operatorSet);
+        public static CreateOverloadedOperatorsObjectNode create(JSContext context) {
+            return OperatorsBuiltinsFactory.CreateOverloadedOperatorsObjectNodeGen.create(context);
         }
 
         @Idempotent
@@ -198,7 +197,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return context;
         }
 
-        protected abstract JSOverloadedOperatorsObject execute(Object prototype);
+        protected abstract JSOverloadedOperatorsObject execute(Object prototype, OperatorSet operatorSet);
 
         protected Shape getProtoChildShape(Object prototype) {
             CompilerAsserts.neverPartOfCompilation();
@@ -222,14 +221,14 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @Specialization(guards = {"!getContext().isMultiContext()", "prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "getContext().getPropertyCacheLimit()")
-        protected JSOverloadedOperatorsObject doCachedProto(@SuppressWarnings("unused") Object prototype,
+        protected JSOverloadedOperatorsObject doCachedProto(@SuppressWarnings("unused") Object prototype, OperatorSet operatorSet,
                         @Cached("prototype") @SuppressWarnings("unused") Object cachedPrototype,
                         @Cached("getProtoChildShape(prototype)") Shape cachedShape) {
             return JSOverloadedOperatorsObject.create(getContext(), cachedShape, (JSObject) cachedPrototype, operatorSet);
         }
 
         @Specialization
-        protected JSOverloadedOperatorsObject createWithProto(JSObject prototype,
+        protected JSOverloadedOperatorsObject createWithProto(JSObject prototype, OperatorSet operatorSet,
                         @CachedLibrary(limit = "3") DynamicObjectLibrary setProtoNode,
                         @Cached("getShapeWithoutProto()") Shape cachedShape) {
             JSOverloadedOperatorsObject object = JSOverloadedOperatorsObject.create(getContext(), cachedShape, prototype, operatorSet);
@@ -238,7 +237,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @Specialization(guards = {"!isJSObject(prototype)"})
-        public JSOverloadedOperatorsObject createDefaultProto(@SuppressWarnings("unused") Object prototype,
+        public JSOverloadedOperatorsObject createDefaultProto(@SuppressWarnings("unused") Object prototype, OperatorSet operatorSet,
                         @Cached("getShapeWithDefaultProto(getRealm())") Shape cachedShape) {
             return JSOverloadedOperatorsObject.create(getContext(), cachedShape, getRealm().getObjectPrototype(), operatorSet);
         }
