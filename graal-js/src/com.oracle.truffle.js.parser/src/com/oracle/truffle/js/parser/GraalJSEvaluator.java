@@ -115,7 +115,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
@@ -752,9 +751,7 @@ public final class GraalJSEvaluator implements JSParser {
         // InnerModuleEvaluation( module, stack, index )
         int index = index0;
         if (!(abstractModule instanceof CyclicModuleRecord moduleRecord)) {
-            JSPromiseObject promise = abstractModule.evaluate(realm);
-            assert !JSPromise.isPending(promise);
-            JSPromise.throwIfRejected(promise, realm);
+            abstractModule.evaluateSync(realm);
             return index;
         }
         if (moduleRecord.getStatus() == Status.EvaluatingAsync || moduleRecord.getStatus() == Status.Evaluated) {

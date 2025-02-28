@@ -107,6 +107,21 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
      */
     public abstract JSPromiseObject evaluate(JSRealm realm);
 
+    /*
+     * This method can be used for non-{@link CyclicModuleRecord}s, for which {@link #evaluate}
+     * always returns a settled promise, so we can throw the evaluation error immediately, if any.
+     * Should not be used for {@link CyclicModuleRecord}s, since they may require async execution.
+     *
+     * May be overridden by synthetic module records to skip the unnecessary promise creation.
+     */
+    @TruffleBoundary
+    public void evaluateSync(JSRealm realm) {
+        assert !(this instanceof CyclicModuleRecord) : this;
+        JSPromiseObject loadPromise = evaluate(realm);
+        assert !JSPromise.isPending(loadPromise);
+        JSPromise.throwIfRejected(loadPromise, realm);
+    }
+
     @TruffleBoundary
     public final Collection<TruffleString> getExportedNames() {
         return getExportedNames(new HashSet<>());
