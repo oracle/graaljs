@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,62 +40,17 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.util.Optional;
-import java.util.ServiceLoader;
+import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-
-public final class JSEngine {
-    private static final JSEngine INSTANCE = new JSEngine();
-
-    @CompilerDirectives.CompilationFinal
-    private static volatile JSModuleLoaderFactory MODULE_LOADER_FACTORY = null;
-
-    @CompilerDirectives.CompilationFinal
-    private static volatile CommonJSResolverHook CJS_RESOLVER_HOOK = null;
-
-    private final Evaluator parser;
-
-    private JSEngine() {
-        ClassLoader classLoader = getClass().getClassLoader();
-        this.parser = ServiceLoader.load(Evaluator.class, classLoader).iterator().next();
-    }
-
-    public static JSEngine getInstance() {
-        return INSTANCE;
-    }
-
-    public Evaluator getEvaluator() {
-        return parser;
-    }
-
-    public Evaluator getParser() {
-        return parser;
-    }
-
-    private JSContext createContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
-        return JSContext.createContext(parser, language, env);
-    }
-
-    public static void setModuleLoaderFactory(JSModuleLoaderFactory factory) {
-        MODULE_LOADER_FACTORY = factory;
-    }
-
-    public static void setCjsResolverHook(CommonJSResolverHook hook) {
-        CJS_RESOLVER_HOOK = hook;
-    }
-
-    public static JSModuleLoaderFactory getModuleLoaderFactory() {
-        return MODULE_LOADER_FACTORY;
-    }
-
-    public static CommonJSResolverHook getCjsResolverHook() {
-        return CJS_RESOLVER_HOOK;
-    }
-
-    public static JSContext createJSContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
-        return JSEngine.getInstance().createContext(language, env);
-    }
+/**
+ * Allows GraalJs users to hook into the JavaScript ESM loading process.
+ */
+public interface JSModuleLoaderFactory {
+    /**
+     * Create an instance of the JavaScript module loader.
+     *
+     * @param realm JavaScript realm which intends to own this loader.
+     * @return Loader instance.
+     */
+    JSModuleLoader createLoader(JSRealm realm);
 }
