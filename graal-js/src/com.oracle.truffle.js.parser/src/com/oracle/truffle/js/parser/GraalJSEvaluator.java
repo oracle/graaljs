@@ -637,7 +637,7 @@ public final class GraalJSEvaluator implements JSParser {
         stack.push(moduleRecord);
 
         for (ModuleRequest required : moduleRecord.getRequestedModules()) {
-            if (required.phase() != ImportPhase.Evaluation) {
+            if (required.phase() == ImportPhase.Source) {
                 continue;
             }
             AbstractModuleRecord requiredAbstractModule = moduleRecord.getImportedModule(required);
@@ -744,7 +744,7 @@ public final class GraalJSEvaluator implements JSParser {
         stack.push(moduleRecord);
 
         for (ModuleRequest required : moduleRecord.getRequestedModules()) {
-            if (required.phase() != ImportPhase.Evaluation) {
+            if (required.phase() == ImportPhase.Source) {
                 continue;
             }
             AbstractModuleRecord requiredAbstractModule = moduleRecord.getImportedModule(required);
