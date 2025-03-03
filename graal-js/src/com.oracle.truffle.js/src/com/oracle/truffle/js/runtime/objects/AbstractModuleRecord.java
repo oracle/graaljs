@@ -177,7 +177,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
         this.environment = null;
     }
 
-    public FrameDescriptor getFrameDescriptor() {
+    public final FrameDescriptor getFrameDescriptor() {
         return environment.getFrameDescriptor();
     }
 

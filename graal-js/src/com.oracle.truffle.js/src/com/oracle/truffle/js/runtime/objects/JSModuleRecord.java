@@ -52,7 +52,6 @@ import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.module.CreateImportMetaNode;
@@ -96,11 +95,6 @@ public class JSModuleRecord extends CyclicModuleRecord {
 
     public JSFunctionData getFunctionData() {
         return parsedModule.getFunctionData();
-    }
-
-    @Override
-    public FrameDescriptor getFrameDescriptor() {
-        return parsedModule.getFrameDescriptor();
     }
 
     public JSModuleData getModuleData() {
