@@ -78,11 +78,14 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     private final List<TruffleString> exportedNames;
     private Consumer<SyntheticModuleRecord> evaluationSteps;
 
+    private final FrameDescriptor frameDescriptor;
+
     public SyntheticModuleRecord(JSContext context, Source source, Object hostDefined,
                     List<TruffleString> exportedNames, Consumer<SyntheticModuleRecord> evaluationSteps) {
         super(context, source, hostDefined);
         this.exportedNames = Objects.requireNonNull(exportedNames);
         this.evaluationSteps = Objects.requireNonNull(evaluationSteps);
+        this.frameDescriptor = createFrameDescriptor(exportedNames);
     }
 
     @TruffleBoundary
@@ -144,16 +147,17 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
         return ExportResolution.notFound();
     }
 
-    private void initializeEnvironment() {
-        var exportNames = getExportedNames();
-        int exportNameCount = exportNames.size();
-        FrameDescriptor.Builder b = FrameDescriptor.newBuilder(exportNameCount);
+    private static FrameDescriptor createFrameDescriptor(Collection<TruffleString> exportNames) {
+        FrameDescriptor.Builder b = FrameDescriptor.newBuilder(exportNames.size());
         b.defaultValue(Undefined.instance);
         for (TruffleString name : exportNames) {
             b.addSlot(FrameSlotKind.Illegal, name, null);
         }
-        FrameDescriptor desc = b.build();
-        MaterializedFrame env = Truffle.getRuntime().createMaterializedFrame(JSArguments.EMPTY_ARGUMENTS_ARRAY, desc);
+        return b.build();
+    }
+
+    private void initializeEnvironment() {
+        MaterializedFrame env = Truffle.getRuntime().createMaterializedFrame(JSArguments.EMPTY_ARGUMENTS_ARRAY, frameDescriptor);
         setEnvironment(env);
     }
 
