@@ -76,7 +76,7 @@ import com.oracle.truffle.js.runtime.util.Pair;
 public final class SyntheticModuleRecord extends AbstractModuleRecord {
 
     private final List<TruffleString> exportedNames;
-    private final Consumer<SyntheticModuleRecord> evaluationSteps;
+    private Consumer<SyntheticModuleRecord> evaluationSteps;
 
     public SyntheticModuleRecord(JSContext context, Source source, Object hostDefined,
                     List<TruffleString> exportedNames, Consumer<SyntheticModuleRecord> evaluationSteps) {
@@ -120,7 +120,12 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     @TruffleBoundary
     @Override
     public void evaluateSync(JSRealm realm) {
+        if (evaluationSteps == null) {
+            // module has already been evaluated, with normal completion.
+            return;
+        }
         evaluationSteps.accept(this);
+        evaluationSteps = null;
     }
 
     @Override
