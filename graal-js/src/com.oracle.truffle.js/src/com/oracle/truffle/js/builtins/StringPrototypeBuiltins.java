@@ -1440,10 +1440,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (isSearchValueEmpty.profile(node, Strings.isEmpty(searchValue))) {
                 int len = Strings.length(thisStr);
                 var sb = Strings.builderCreate((len + 1) * Strings.length(replaceValue) + len);
-                append(sb, replaceValue);
+                appendSubstitution(sb, thisStr, replaceValue, searchValue, 0, this, node, dollarProfile);
                 for (int i = 0; i < len; i++) {
                     appendLen(sb, thisStr, i, 1);
-                    append(sb, replaceValue);
+                    appendSubstitution(sb, thisStr, replaceValue, searchValue, i + 1, this, node, dollarProfile);
                 }
                 return builderToString(sb);
             }
