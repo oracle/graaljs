@@ -48,7 +48,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_S
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -60,8 +59,6 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 
 import com.oracle.js.parser.ir.Expression;
-import com.oracle.js.parser.ir.Module;
-import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
@@ -69,7 +66,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -83,8 +79,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSFrameDescriptor;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -130,6 +124,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
+import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.objects.WebAssemblyModuleRecord;
 
@@ -427,43 +422,16 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public JSModuleRecord parseJSONModule(JSRealm realm, Source source) {
+    public AbstractModuleRecord parseJSONModule(JSRealm realm, Source source) {
         assert JSON_MIME_TYPE.equals(source.getMimeType()) || (source.getMimeType() == null && source.getName().endsWith(JSON_SOURCE_NAME_SUFFIX)) : source;
         Object json = JSFunction.call(JSArguments.createOneArg(Undefined.instance, realm.getJsonParseFunctionObject(), Strings.fromJavaString(source.getCharacters().toString())));
-        return createSyntheticJSONModule(realm, source, json);
+        return createDefaultExportSyntheticModule(realm.getContext(), source, json);
     }
 
-    private static JSModuleRecord createSyntheticJSONModule(JSRealm realm, Source source, Object hostDefined) {
-        final TruffleString exportName = Strings.DEFAULT;
-        JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
-        JSFrameSlot slot = frameDescBuilder.addFrameSlot(exportName);
-        FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
-        List<ExportEntry> localExportEntries = Collections.singletonList(ExportEntry.exportSpecifier(exportName));
-        Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
-        JavaScriptRootNode rootNode = new JavaScriptRootNode(realm.getContext().getLanguage(), source.createUnavailableSection(), frameDescriptor) {
-            private final int defaultSlot = slot.getIndex();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
-                if (module.getEnvironment() == null) {
-                    assert module.getStatus() == Status.Linking;
-                    module.setEnvironment(frame.materialize());
-                } else {
-                    assert module.getStatus() == Status.Evaluating;
-                    setSyntheticModuleExport(module);
-                }
-                return Undefined.instance;
-            }
-
-            private void setSyntheticModuleExport(JSModuleRecord module) {
-                module.getEnvironment().setObject(defaultSlot, module.getHostDefined());
-            }
-        };
-        CallTarget callTarget = rootNode.getCallTarget();
-        JSFunctionData functionData = JSFunctionData.create(realm.getContext(), callTarget, callTarget, 0, Strings.EMPTY_STRING, false, false, true, true);
-        final JSModuleData parseModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
-        return new JSModuleRecord(parseModule, realm.getModuleLoader(), hostDefined);
+    private static SyntheticModuleRecord createDefaultExportSyntheticModule(JSContext ctx, Source source, Object defaultExport) {
+        return new SyntheticModuleRecord(ctx, source, defaultExport, List.of(Strings.DEFAULT), (module) -> {
+            module.setSyntheticModuleExport(Strings.DEFAULT, module.getHostDefined());
+        });
     }
 
     @TruffleBoundary

@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 public interface Evaluator {
@@ -103,7 +102,7 @@ public interface Evaluator {
 
     AbstractModuleRecord parseWasmModuleSource(JSRealm realm, Source source);
 
-    JSModuleRecord parseJSONModule(JSRealm realm, Source source);
+    AbstractModuleRecord parseJSONModule(JSRealm realm, Source source);
 
     void hostLoadImportedModule(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest, Object hostDefined, Object payload);
 
