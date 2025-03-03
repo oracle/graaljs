@@ -80,7 +80,7 @@ public class JSModuleRecord extends CyclicModuleRecord {
     }
 
     public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, Object hostDefined) {
-        super(parsedModule.getContext(), parsedModule.getSource(), hostDefined, parsedModule.isTopLevelAsync());
+        super(parsedModule.getContext(), parsedModule.getSource(), hostDefined, parsedModule.getFrameDescriptor(), parsedModule.isTopLevelAsync());
         this.parsedModule = parsedModule;
         this.moduleLoader = moduleLoader;
     }

@@ -78,14 +78,11 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     private final List<TruffleString> exportedNames;
     private Consumer<SyntheticModuleRecord> evaluationSteps;
 
-    private final FrameDescriptor frameDescriptor;
-
     public SyntheticModuleRecord(JSContext context, Source source, Object hostDefined,
                     List<TruffleString> exportedNames, Consumer<SyntheticModuleRecord> evaluationSteps) {
-        super(context, source, hostDefined);
+        super(context, source, hostDefined, createFrameDescriptor(exportedNames));
         this.exportedNames = Objects.requireNonNull(exportedNames);
         this.evaluationSteps = Objects.requireNonNull(evaluationSteps);
-        this.frameDescriptor = createFrameDescriptor(exportedNames);
     }
 
     @TruffleBoundary
@@ -157,7 +154,7 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     }
 
     private void initializeEnvironment() {
-        MaterializedFrame env = Truffle.getRuntime().createMaterializedFrame(JSArguments.EMPTY_ARGUMENTS_ARRAY, frameDescriptor);
+        MaterializedFrame env = Truffle.getRuntime().createMaterializedFrame(JSArguments.EMPTY_ARGUMENTS_ARRAY, getFrameDescriptor());
         setEnvironment(env);
     }
 

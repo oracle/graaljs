@@ -70,12 +70,14 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
     private JSModuleNamespaceObject namespace;
     /** Lazily initialized frame ({@code [[Environment]]}). */
     private MaterializedFrame environment;
+    private FrameDescriptor frameDescriptor;
 
     // [HostDefined]
     private Object hostDefined;
 
-    protected AbstractModuleRecord(JSContext context, Source source, Object hostDefined) {
+    protected AbstractModuleRecord(JSContext context, Source source, Object hostDefined, FrameDescriptor frameDescriptor) {
         super(context, source);
+        this.frameDescriptor = frameDescriptor;
         this.hostDefined = hostDefined;
     }
 
@@ -178,7 +180,11 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
     }
 
     public final FrameDescriptor getFrameDescriptor() {
-        return environment.getFrameDescriptor();
+        return frameDescriptor;
+    }
+
+    protected final void setFrameDescriptor(FrameDescriptor frameDescriptor) {
+        this.frameDescriptor = frameDescriptor;
     }
 
     public final Object getHostDefined() {

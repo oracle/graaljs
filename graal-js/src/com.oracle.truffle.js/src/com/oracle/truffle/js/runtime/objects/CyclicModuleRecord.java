@@ -47,6 +47,7 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -109,12 +110,12 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
     /** Implementation-specific: The result of ModuleExecution if no exception occurred. */
     private Object executionResult;
 
-    protected CyclicModuleRecord(JSContext context, Source source, Object hostDefined) {
-        this(context, source, hostDefined, false);
+    protected CyclicModuleRecord(JSContext context, Source source, Object hostDefined, FrameDescriptor frameDescriptor) {
+        this(context, source, hostDefined, frameDescriptor, false);
     }
 
-    protected CyclicModuleRecord(JSContext context, Source source, Object hostDefined, boolean hasTLA) {
-        super(context, source, hostDefined);
+    protected CyclicModuleRecord(JSContext context, Source source, Object hostDefined, FrameDescriptor frameDescriptor, boolean hasTLA) {
+        super(context, source, hostDefined, frameDescriptor);
         this.hasTLA = hasTLA;
         this.status = Status.New;
     }
