@@ -80,8 +80,13 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
 
     public SyntheticModuleRecord(JSContext context, Source source, Object hostDefined,
                     List<TruffleString> exportedNames, Consumer<SyntheticModuleRecord> evaluationSteps) {
-        super(context, source, hostDefined, createFrameDescriptor(exportedNames));
-        this.exportedNames = Objects.requireNonNull(exportedNames);
+        this(context, source, hostDefined, SharedData.fromExportNames(exportedNames), evaluationSteps);
+    }
+
+    public SyntheticModuleRecord(JSContext context, Source source, Object hostDefined,
+                    SharedData shared, Consumer<SyntheticModuleRecord> evaluationSteps) {
+        super(context, source, hostDefined, shared.frameDescriptor);
+        this.exportedNames = Objects.requireNonNull(shared.exportNames);
         this.evaluationSteps = Objects.requireNonNull(evaluationSteps);
     }
 
@@ -178,5 +183,11 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     public String toString() {
         CompilerAsserts.neverPartOfCompilation();
         return "SyntheticModule" + "@" + Integer.toHexString(System.identityHashCode(this)) + "[source=" + getSource() + "]";
+    }
+
+    public record SharedData(List<TruffleString> exportNames, FrameDescriptor frameDescriptor) {
+        public static SharedData fromExportNames(List<TruffleString> exportNames) {
+            return new SharedData(exportNames, createFrameDescriptor(exportNames));
+        }
     }
 }

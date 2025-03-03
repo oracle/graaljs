@@ -111,6 +111,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -119,7 +120,6 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -131,7 +131,6 @@ import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ir.FunctionNode;
-import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -145,8 +144,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -165,7 +162,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.json.JSONBuiltins;
 import com.oracle.truffle.js.builtins.json.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -191,7 +187,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -268,6 +263,7 @@ import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
+import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -3918,32 +3914,22 @@ public final class GraalJSAccess {
     }
 
     public boolean moduleIsSourceTextModule(Object module) {
-        return !(module instanceof NativeBackedModuleRecord);
+        return (module instanceof JSModuleRecord);
     }
 
     public Object moduleCreateSyntheticModule(Object moduleName, Object[] exportNames, final long evaluationStepsCallback) {
-        List<Module.ExportEntry> localExportEntries = new ArrayList<>();
-        for (Object exportName : exportNames) {
-            localExportEntries.add(Module.ExportEntry.exportSpecifier((TruffleString) exportName));
-        }
-        Module moduleNode = new Module(List.of(), List.of(), localExportEntries, List.of(), List.of(), null, null);
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", Strings.toJavaString((TruffleString) moduleName)).build();
+        TruffleString moduleNameAsStr = (TruffleString) moduleName;
+        List<TruffleString> exportNamesAsStr = List.of(Arrays.copyOf(exportNames, exportNames.length, TruffleString[].class));
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", Strings.toJavaString(moduleNameAsStr)).build();
 
         EngineCacheData engineCacheData = getContextEngineCacheData(mainJSContext);
-        JSFunctionData functionData = engineCacheData.getOrCreateSyntheticModuleData((TruffleString) moduleName, exportNames, (c) -> {
-            JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
-            for (Object exportName : exportNames) {
-                frameDescBuilder.addFrameSlot(exportName);
-            }
-            FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
-            JavaScriptRootNode rootNode = new SyntheticModuleRootNode(mainJSContext.getLanguage(), source, frameDescriptor);
-            CallTarget callTarget = rootNode.getCallTarget();
-            return JSFunctionData.create(mainJSContext, callTarget, callTarget, 0, (TruffleString) moduleName, false, false, true, true);
-        });
+        var moduleData = engineCacheData.getOrCreateSyntheticModuleData(moduleNameAsStr, exportNamesAsStr,
+                        (desc) -> SyntheticModuleRecord.SharedData.fromExportNames(desc.exportNames()));
 
-        FrameDescriptor frameDescriptor = ((RootCallTarget) functionData.getCallTarget()).getRootNode().getFrameDescriptor();
-        final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
-        return new NativeBackedModuleRecord(parsedModule, getModuleLoader(), evaluationStepsCallback);
+        JSRealm realm = getCurrentRealm();
+        return new SyntheticModuleRecord(mainJSContext, source, null, moduleData, (module) -> {
+            NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, module);
+        });
     }
 
     public Object moduleRequestGetSpecifier(Object moduleRequest) {
@@ -3967,29 +3953,9 @@ public final class GraalJSAccess {
         return moduleRequestGetImportAssertionsImpl(request, true);
     }
 
-    public static final class NativeBackedModuleRecord extends JSModuleRecord {
-
-        private final long evaluationStepsCallback;
-
-        NativeBackedModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, long evaluationStepsCallback) {
-            super(parsedModule, moduleLoader);
-            this.evaluationStepsCallback = evaluationStepsCallback;
-        }
-
-        public long getEvaluationStepsCallback() {
-            return evaluationStepsCallback;
-        }
-    }
-
     public void moduleSetSyntheticModuleExport(Object module, Object exportName, Object exportValue) {
-        JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
-        OptionalInt frameSlot = JSFrameUtil.findOptionalFrameSlotIndex(frameDescriptor, exportName);
-        if (!frameSlot.isPresent()) {
-            throw Errors.createReferenceError("Export '" + exportName + "' is not defined in module");
-        }
-        MaterializedFrame frame = moduleRecord.getEnvironment();
-        frame.setObject(frameSlot.getAsInt(), exportValue);
+        SyntheticModuleRecord syntheticModule = (SyntheticModuleRecord) module;
+        syntheticModule.setSyntheticModuleExport((TruffleString) exportName, exportValue);
     }
 
     private static final ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
