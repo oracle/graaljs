@@ -168,6 +168,7 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
         return loadedModules.get(moduleRequest);
     }
 
+    @Override
     public final Status getStatus() {
         return status;
     }

@@ -77,6 +77,7 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
 
     private final List<TruffleString> exportedNames;
     private Consumer<SyntheticModuleRecord> evaluationSteps;
+    private CyclicModuleRecord.Status status = CyclicModuleRecord.Status.New;
 
     public SyntheticModuleRecord(JSContext context, Source source, Object hostDefined,
                     List<TruffleString> exportedNames, Consumer<SyntheticModuleRecord> evaluationSteps) {
@@ -106,6 +107,7 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
             return;
         }
         initializeEnvironment();
+        status = CyclicModuleRecord.Status.Linked;
     }
 
     @TruffleBoundary
@@ -129,8 +131,12 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
             // module has already been evaluated, with normal completion.
             return;
         }
-        evaluationSteps.accept(this);
-        evaluationSteps = null;
+        try {
+            evaluationSteps.accept(this);
+            evaluationSteps = null;
+        } finally {
+            status = CyclicModuleRecord.Status.Evaluated;
+        }
     }
 
     @Override
@@ -177,6 +183,14 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     @Override
     public Object getModuleSource() {
         throw Errors.createSyntaxError("Source phase import is not available for Synthetic Module");
+    }
+
+    /**
+     * Off-spec extension: Provides a status for Node.js. Can only be New, Linked, or Evaluated.
+     */
+    @Override
+    public CyclicModuleRecord.Status getStatus() {
+        return status;
     }
 
     @Override

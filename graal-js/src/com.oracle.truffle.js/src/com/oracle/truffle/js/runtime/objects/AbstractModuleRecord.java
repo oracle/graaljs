@@ -190,4 +190,6 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
     public final Object getHostDefined() {
         return this.hostDefined;
     }
+
+    public abstract CyclicModuleRecord.Status getStatus();
 }

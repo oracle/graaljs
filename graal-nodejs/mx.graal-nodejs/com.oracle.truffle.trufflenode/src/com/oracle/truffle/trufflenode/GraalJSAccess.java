@@ -3851,9 +3851,7 @@ public final class GraalJSAccess {
     }
 
     public int moduleGetStatus(Object module) {
-        if (!(module instanceof CyclicModuleRecord record)) {
-            return 0; // v8::Module::Status::kUninstantiated
-        }
+        AbstractModuleRecord record = (AbstractModuleRecord) module;
         switch (record.getStatus()) {
             case New:
             case Unlinked:
@@ -3866,7 +3864,7 @@ public final class GraalJSAccess {
                 return 3; // v8::Module::Status::Evaluating
             case EvaluatingAsync:
             case Evaluated:
-                if (record.getEvaluationError() == null) {
+                if (!(record instanceof CyclicModuleRecord cyclicModuleRecord) || cyclicModuleRecord.getEvaluationError() == null) {
                     return 4; // v8::Module::Status::kEvaluated
                 } else {
                     return 5; // v8::Module::Status::kErrored
