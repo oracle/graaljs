@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalInt;
@@ -201,7 +203,15 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
 
     public record SharedData(List<TruffleString> exportNames, FrameDescriptor frameDescriptor) {
         public static SharedData fromExportNames(List<TruffleString> exportNames) {
-            return new SharedData(exportNames, createFrameDescriptor(exportNames));
+            List<TruffleString> sortedNames = toSorted(exportNames, TruffleString::compareCharsUTF16Uncached);
+            return new SharedData(sortedNames, createFrameDescriptor(sortedNames));
+        }
+
+        @SuppressWarnings("unchecked")
+        private static <T> List<T> toSorted(List<T> list, Comparator<T> comparator) {
+            T[] names = (T[]) list.toArray();
+            Arrays.sort(names, comparator);
+            return List.of(names);
         }
     }
 }
