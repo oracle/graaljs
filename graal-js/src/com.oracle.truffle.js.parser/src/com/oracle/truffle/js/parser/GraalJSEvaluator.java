@@ -493,7 +493,7 @@ public final class GraalJSEvaluator implements JSParser {
             int requestedModuleCount = moduleRecord.getRequestedModules().size();
             state.pendingModulesCount += requestedModuleCount;
             for (ModuleRequest required : moduleRecord.getRequestedModules()) {
-                AbstractModuleRecord resolved = moduleRecord.getLoadedModule(realm, required);
+                AbstractModuleRecord resolved = moduleRecord.getLoadedModule(required);
                 if (resolved != null) {
                     boolean innerRecursiveLoad = required.phase() != ImportPhase.Source;
                     innerModuleLoading(realm, state, resolved, innerRecursiveLoad);

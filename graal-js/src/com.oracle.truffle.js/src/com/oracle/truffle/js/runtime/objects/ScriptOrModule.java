@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,11 +77,6 @@ public class ScriptOrModule {
 
     public final Source getSource() {
         return source;
-    }
-
-    @TruffleBoundary
-    public AbstractModuleRecord getLoadedModule(JSRealm realm, ModuleRequest moduleRequest) {
-        return realm.getModuleLoader().resolveImportedModule(this, moduleRequest);
     }
 
     @TruffleBoundary
