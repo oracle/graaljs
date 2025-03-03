@@ -3771,19 +3771,19 @@
   }, {
     "filePath" : "staging/sm/extensions/arguments-property-access-in-function.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'arguments' property"
   }, {
     "filePath" : "staging/sm/extensions/censor-strict-caller.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/extensions/function-caller-skips-eval-frames.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/extensions/function-properties.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' and 'arguments' properties"
   }, {
     "filePath" : "staging/sm/extensions/inc-dec-functioncall.js",
     "status" : "FAIL",
@@ -3791,7 +3791,7 @@
   }, {
     "filePath" : "staging/sm/extensions/regress-469625-01.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Expects a particular error message"
   }, {
     "filePath" : "staging/sm/Function/constructor-binding.js",
     "status" : "FAIL",
@@ -3858,31 +3858,31 @@
   }, {
     "filePath" : "staging/sm/regress/regress-577648-1.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/regress/regress-577648-2.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/regress/regress-584355.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/regress/regress-586482-1.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/regress/regress-586482-2.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/regress/regress-586482-3.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/regress/regress-586482-4.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "Test of non-standard 'caller' property"
   }, {
     "filePath" : "staging/sm/regress/regress-609617.js",
     "status" : "FAIL",
@@ -3937,10 +3937,6 @@
     "filePath" : "staging/sm/statements/for-of-iterator-close.js",
     "status" : "FAIL",
     "comment" : "https://github.com/tc39/test262/pull/4345"
-  }, {
-    "filePath" : "staging/sm/String/replaceAll.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/String/string-code-point-upper-lower-mapping.js",
     "javaVersion" : {
