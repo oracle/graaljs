@@ -254,6 +254,8 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -264,7 +266,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -2727,12 +2728,15 @@ public final class GraalJSAccess {
             } else if (object instanceof JSDynamicObject jsObject) {
                 target = jsObject;
                 key = HIDDEN_WEAK_CALLBACK;
-            } else if (object instanceof JSModuleRecord moduleRecord) {
+            } else if (object instanceof CyclicModuleRecord moduleRecord) {
                 if (moduleRecord.getStatus() == JSModuleRecord.Status.New || moduleRecord.getStatus() == JSModuleRecord.Status.Unlinked) {
                     assert (callbackPointer == 0);
                     // ClearWeak() called on a module that cannot be weak yet
                     return null;
                 }
+                target = moduleRecord.getModuleNamespace();
+                key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
+            } else if (object instanceof AbstractModuleRecord moduleRecord) {
                 target = moduleRecord.getModuleNamespace();
                 key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
             } else {
@@ -3832,7 +3836,7 @@ public final class GraalJSAccess {
 
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
         JSRealm jsRealm = (JSRealm) context;
-        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        AbstractModuleRecord moduleRecord = (AbstractModuleRecord) module;
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         try {
@@ -3845,22 +3849,15 @@ public final class GraalJSAccess {
 
     public Object moduleEvaluate(Object context, Object module) {
         JSRealm jsRealm = (JSRealm) context;
-        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        AbstractModuleRecord moduleRecord = (AbstractModuleRecord) module;
 
-        if (!moduleRecord.hasBeenEvaluated()) {
-            moduleRecord.evaluate(jsRealm);
-        }
-
-        PromiseCapabilityRecord promiseCapability = moduleRecord.getTopLevelCapability();
-        if (promiseCapability != null) {
-            return promiseCapability.getPromise();
-        } else {
-            return moduleRecord.getExecutionResultOrThrow();
-        }
+        return moduleRecord.evaluate(jsRealm);
     }
 
     public int moduleGetStatus(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
+        if (!(module instanceof CyclicModuleRecord record)) {
+            return 0; // v8::Module::Status::kUninstantiated
+        }
         switch (record.getStatus()) {
             case New:
             case Unlinked:
@@ -3884,7 +3881,10 @@ public final class GraalJSAccess {
     }
 
     public Object moduleGetException(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
+        if (!(module instanceof CyclicModuleRecord record)) {
+            // synthetic module evaluation is always successful, currently
+            return null;
+        }
         Throwable evaluationError = record.getEvaluationError();
         if (evaluationError instanceof GraalJSException) {
             return ((GraalJSException) evaluationError).getErrorObject();
@@ -3893,12 +3893,15 @@ public final class GraalJSAccess {
     }
 
     public Object moduleGetModuleRequests(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
-        return record.getModule().getRequestedModules().toArray();
+        if (!(module instanceof CyclicModuleRecord record)) {
+            // synthetic modules do not have any module requests
+            return new Object[0];
+        }
+        return record.getRequestedModules().toArray();
     }
 
     public Object moduleGetNamespace(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
+        AbstractModuleRecord record = (AbstractModuleRecord) module;
         return record.getModuleNamespace();
     }
 
@@ -3907,7 +3910,10 @@ public final class GraalJSAccess {
     }
 
     public boolean moduleIsGraphAsync(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
+        if (!(module instanceof CyclicModuleRecord record)) {
+            // synthetic modules are never async
+            return false;
+        }
         return record.hasTLA() || record.isAsyncEvaluation();
     }
 
@@ -3989,7 +3995,7 @@ public final class GraalJSAccess {
     private static final ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
 
     public Object moduleGetUnboundModuleScript(Object module) {
-        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        AbstractModuleRecord moduleRecord = (AbstractModuleRecord) module;
         return new UnboundScript(moduleRecord.getSource(), DUMMY_UNBOUND_MODULE_PARSE_RESULT);
     }
 
@@ -4298,7 +4304,7 @@ public final class GraalJSAccess {
     }
 
     static class ESModuleLoader implements JSModuleLoader {
-        private final Map<ScriptOrModule, Map<TruffleString, JSModuleRecord>> cache = new HashMap<>();
+        private final Map<ScriptOrModule, Map<TruffleString, AbstractModuleRecord>> cache = new HashMap<>();
         private long resolver;
 
         void setResolver(long resolver) {
@@ -4306,14 +4312,14 @@ public final class GraalJSAccess {
         }
 
         @Override
-        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
-            Map<TruffleString, JSModuleRecord> referrerCache = cache.get(referrer);
+        public AbstractModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
+            Map<TruffleString, AbstractModuleRecord> referrerCache = cache.get(referrer);
             TruffleString specifier = moduleRequest.specifier();
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();
                 cache.put(referrer, referrerCache);
             } else {
-                JSModuleRecord cached = referrerCache.get(specifier);
+                AbstractModuleRecord cached = referrerCache.get(specifier);
                 if (cached != null) {
                     return cached;
                 }
@@ -4325,7 +4331,7 @@ public final class GraalJSAccess {
             }
             Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, true);
             JSRealm realm = JSRealm.get(null);
-            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
+            AbstractModuleRecord result = (AbstractModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
             referrerCache.put(specifier, result);
             return result;
         }
