@@ -268,7 +268,7 @@ public final class GraalJSEvaluator implements JSParser {
         return ScriptNode.fromFunctionData(functionData);
     }
 
-    private final class ModuleScriptRoot extends JavaScriptRootNode {
+    private static final class ModuleScriptRoot extends JavaScriptRootNode {
         private final JSContext context;
         private final JSModuleData parsedModule;
         private final Source source;
@@ -292,7 +292,9 @@ public final class GraalJSEvaluator implements JSParser {
         private Object evalModule(JSRealm realm) {
             JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, realm.getModuleLoader());
             ModuleRequest moduleRequest = ModuleRequest.create(Strings.fromJavaString(source.getName()));
-            realm.getModuleLoader().addLoadedModule(moduleRequest, moduleRecord);
+            if (source.isCached()) {
+                realm.getModuleLoader().addLoadedModule(moduleRequest, moduleRecord);
+            }
 
             moduleRecord.loadRequestedModulesSync(realm, Undefined.instance);
             // Note: If loading failed, we must not perform module linking.
