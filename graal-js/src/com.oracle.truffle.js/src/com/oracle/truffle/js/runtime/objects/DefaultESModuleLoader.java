@@ -66,7 +66,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -300,7 +299,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     private AbstractModuleRecord loadModuleFromSource(ScriptOrModule referrer, ModuleRequest moduleRequest, Source source, String mimeType, String canonicalPath) {
         Map<TruffleString, TruffleString> attributes = moduleRequest.attributes();
-        TruffleString assertedType = attributes.get(JSContext.getTypeImportAttribute());
+        TruffleString assertedType = attributes.get(Strings.TYPE);
         if (!doesModuleTypeMatchAssertionType(assertedType, mimeType)) {
             throw Errors.createTypeError("Invalid module type was asserted");
         }

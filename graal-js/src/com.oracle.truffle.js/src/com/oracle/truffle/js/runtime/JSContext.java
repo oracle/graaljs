@@ -564,8 +564,6 @@ public class JSContext {
 
     private final Set<TruffleString> supportedImportAttributes;
 
-    private static final TruffleString TYPE_IMPORT_ATTRIBUTE = Strings.TYPE;
-
     /**
      * A shared root node that acts as a parent providing a lock to nodes that are not rooted in a
      * tree but in shared object factories for the purpose of adding properties to newly allocated
@@ -773,7 +771,7 @@ public class JSContext {
         this.regexOptions = createRegexOptions(languageOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAttributes = (languageOptions.importAttributes() || languageOptions.importAssertions()) ? Set.of(TYPE_IMPORT_ATTRIBUTE) : Set.of();
+        this.supportedImportAttributes = (languageOptions.importAttributes() || languageOptions.importAssertions()) ? Set.of(Strings.TYPE) : Set.of();
 
         this.webAssemblyCache = new JSWebAssemblyInstance.Cache();
     }
@@ -1938,10 +1936,6 @@ public class JSContext {
 
     public final Set<TruffleString> getSupportedImportAttributes() {
         return supportedImportAttributes;
-    }
-
-    public static TruffleString getTypeImportAttribute() {
-        return TYPE_IMPORT_ATTRIBUTE;
     }
 
     public JSWebAssemblyInstance.Cache getWebAssemblyCache() {
