@@ -2715,6 +2715,8 @@ public final class GraalJSAccess {
             map = scriptOrModule.getWeakCallbackMap();
         } else if (object instanceof UnboundScript script) {
             map = script.getWeakCallbackMap();
+        } else if (object instanceof AbstractModuleRecord moduleRecord) {
+            map = ((NodeHostDefined) moduleRecord.getHostDefined()).getWeakCallbackMap();
         } else {
             JSDynamicObject target;
             HiddenKey key;
@@ -2724,17 +2726,6 @@ public final class GraalJSAccess {
             } else if (object instanceof JSDynamicObject jsObject) {
                 target = jsObject;
                 key = HIDDEN_WEAK_CALLBACK;
-            } else if (object instanceof CyclicModuleRecord moduleRecord) {
-                if (moduleRecord.getStatus() == JSModuleRecord.Status.New || moduleRecord.getStatus() == JSModuleRecord.Status.Unlinked) {
-                    assert (callbackPointer == 0);
-                    // ClearWeak() called on a module that cannot be weak yet
-                    return null;
-                }
-                target = moduleRecord.getModuleNamespace();
-                key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
-            } else if (object instanceof AbstractModuleRecord moduleRecord) {
-                target = moduleRecord.getModuleNamespace();
-                key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
             } else {
                 System.err.println("Weak references not supported for " + object);
                 return null;
@@ -2748,6 +2739,10 @@ public final class GraalJSAccess {
 
         WeakCallback weakCallback = map.get(reference);
         if (weakCallback == null) {
+            if (callbackPointer == 0) {
+                // ClearWeak()
+                return null;
+            }
             weakCallback = new WeakCallback(object, data, callbackPointer, type, weakCallbackQueue);
             map.put(reference, weakCallback);
         } else {
@@ -3826,8 +3821,7 @@ public final class GraalJSAccess {
         // Get the correct Source instance to be used as weak map key.
         source = parsedModule.getSource();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
-        JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader(), hostDefinedOptions);
-        return moduleRecord;
+        return new JSModuleRecord(parsedModule, getModuleLoader(), new NodeHostDefined());
     }
 
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
@@ -3925,7 +3919,7 @@ public final class GraalJSAccess {
                         (desc) -> SyntheticModuleRecord.SharedData.fromExportNames(desc.exportNames()));
 
         JSRealm realm = getCurrentRealm();
-        return new SyntheticModuleRecord(mainJSContext, source, null, moduleData, (module) -> {
+        return new SyntheticModuleRecord(mainJSContext, source, new NodeHostDefined(), moduleData, (module) -> {
             NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, module);
         });
     }
@@ -4346,4 +4340,17 @@ public final class GraalJSAccess {
 
     }
 
+    static final class NodeHostDefined {
+        private Map<Long, WeakCallback> weakCallbackMap;
+
+        NodeHostDefined() {
+        }
+
+        Map<Long, WeakCallback> getWeakCallbackMap() {
+            if (weakCallbackMap == null) {
+                weakCallbackMap = new HashMap<>();
+            }
+            return weakCallbackMap;
+        }
+    }
 }
