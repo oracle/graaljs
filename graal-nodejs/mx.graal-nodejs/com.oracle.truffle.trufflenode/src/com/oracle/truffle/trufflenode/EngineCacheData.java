@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,9 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -53,6 +52,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.trufflenode.info.Accessor;
 import com.oracle.truffle.trufflenode.info.FunctionTemplate;
 import com.oracle.truffle.trufflenode.info.ObjectTemplate;
@@ -65,7 +65,7 @@ public final class EngineCacheData {
     private final ConcurrentHashMap<FunctionTemplate.Descriptor, JSFunctionData> persistedTemplatesFunctionData;
     private final ConcurrentHashMap<Accessor.Descriptor, JSFunctionData> persistedAccessorsFunctionData;
     private final ConcurrentHashMap<ObjectTemplate.Descriptor, JSFunctionData> persistedNativePropertyHandlerData;
-    private final ConcurrentHashMap<SyntheticModuleDescriptor, JSFunctionData> persistedSyntheticModulesData;
+    private final ConcurrentHashMap<SyntheticModuleDescriptor, SyntheticModuleRecord.SharedData> persistedSyntheticModulesData;
     private final Map<TruffleString, SingletonSymbolUsageDescriptor> cachedSingletonSymbols;
 
     public EngineCacheData(JSContext context) {
@@ -94,9 +94,10 @@ public final class EngineCacheData {
         return persistedNativePropertyHandlerData.computeIfAbsent(template.getEngineCacheDescriptor(mode), d -> factory.apply(context));
     }
 
-    public JSFunctionData getOrCreateSyntheticModuleData(TruffleString moduleName, Object[] exportNames, Function<JSContext, JSFunctionData> factory) {
+    public SyntheticModuleRecord.SharedData getOrCreateSyntheticModuleData(TruffleString moduleName, List<TruffleString> exportNames,
+                    Function<SyntheticModuleDescriptor, SyntheticModuleRecord.SharedData> factory) {
         SyntheticModuleDescriptor descriptor = new SyntheticModuleDescriptor(moduleName, exportNames);
-        return persistedSyntheticModulesData.computeIfAbsent(descriptor, d -> factory.apply(context));
+        return persistedSyntheticModulesData.computeIfAbsent(descriptor, factory);
     }
 
     @TruffleBoundary
@@ -113,34 +114,7 @@ public final class EngineCacheData {
         return Symbol.create(name);
     }
 
-    private static class SyntheticModuleDescriptor {
-
-        private final TruffleString moduleName;
-        private final Object[] exportNames;
-
-        SyntheticModuleDescriptor(TruffleString moduleName, Object[] exportNames) {
-            this.moduleName = moduleName;
-            this.exportNames = exportNames;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            SyntheticModuleDescriptor that = (SyntheticModuleDescriptor) o;
-            return Objects.equals(moduleName, that.moduleName) && Arrays.equals(exportNames, that.exportNames);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = Objects.hash(moduleName);
-            result = 31 * result + Arrays.hashCode(exportNames);
-            return result;
-        }
+    public record SyntheticModuleDescriptor(TruffleString moduleName, List<TruffleString> exportNames) {
     }
 
     static class SingletonSymbolUsageDescriptor {

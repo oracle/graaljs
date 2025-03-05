@@ -42,12 +42,15 @@ package com.oracle.truffle.js.runtime.objects;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -87,7 +90,7 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
      */
     private int dfsAncestorIndex = -1;
 
-    private final EconomicMap<ModuleRequest, AbstractModuleRecord> loadedModules = EconomicMap.create();
+    private final EconomicMap<LoadedModuleRequest, AbstractModuleRecord> loadedModules = EconomicMap.create();
 
     // [[CycleRoot]]
     private CyclicModuleRecord cycleRoot = this;
@@ -109,12 +112,12 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
     /** Implementation-specific: The result of ModuleExecution if no exception occurred. */
     private Object executionResult;
 
-    protected CyclicModuleRecord(JSContext context, Source source, Object hostDefined) {
-        this(context, source, hostDefined, false);
+    protected CyclicModuleRecord(JSContext context, Source source, Object hostDefined, FrameDescriptor frameDescriptor) {
+        this(context, source, hostDefined, frameDescriptor, false);
     }
 
-    protected CyclicModuleRecord(JSContext context, Source source, Object hostDefined, boolean hasTLA) {
-        super(context, source, hostDefined);
+    protected CyclicModuleRecord(JSContext context, Source source, Object hostDefined, FrameDescriptor frameDescriptor, boolean hasTLA) {
+        super(context, source, hostDefined, frameDescriptor);
         this.hasTLA = hasTLA;
         this.status = Status.New;
     }
@@ -150,23 +153,24 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
     }
 
     @TruffleBoundary
-    @Override
-    public final AbstractModuleRecord getLoadedModule(JSRealm realm, ModuleRequest moduleRequest) {
-        return loadedModules.get(moduleRequest);
+    public final AbstractModuleRecord getLoadedModule(ModuleRequest moduleRequest) {
+        return loadedModules.get(LoadedModuleRequest.of(moduleRequest));
     }
 
     @TruffleBoundary
     @Override
     public final AbstractModuleRecord addLoadedModule(JSRealm realm, ModuleRequest moduleRequest, AbstractModuleRecord module) {
-        return loadedModules.putIfAbsent(moduleRequest, module);
+        return loadedModules.putIfAbsent(LoadedModuleRequest.of(moduleRequest), module);
     }
 
     @TruffleBoundary
     public final AbstractModuleRecord getImportedModule(ModuleRequest moduleRequest) {
-        assert loadedModules.containsKey(moduleRequest) : moduleRequest;
-        return loadedModules.get(moduleRequest);
+        AbstractModuleRecord loadedModule = getLoadedModule(moduleRequest);
+        assert loadedModule != null : moduleRequest;
+        return loadedModule;
     }
 
+    @Override
     public final Status getStatus() {
         return status;
     }
@@ -302,5 +306,17 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
 
     public final CyclicModuleRecord getCycleRoot() {
         return cycleRoot;
+    }
+
+    public record LoadedModuleRequest(
+                    TruffleString specifier,
+                    Map<TruffleString, TruffleString> attributes) {
+        /**
+         * Only keep specifier and import attributes for loaded module lookup, drop import phase.
+         * See ModuleRequestsEqual.
+         */
+        public static LoadedModuleRequest of(ModuleRequest request) {
+            return new LoadedModuleRequest(request.specifier(), request.attributes());
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,7 +83,7 @@ public class WebAssemblyModuleRecord extends CyclicModuleRecord {
     private List<TruffleString> exportNameList;
 
     public WebAssemblyModuleRecord(JSContext context, Source source, JSWebAssemblyModuleObject webAssemblyModule) {
-        super(context, source, null);
+        super(context, source, null, null);
         this.webAssemblyModule = webAssemblyModule;
     }
 
@@ -179,6 +179,7 @@ public class WebAssemblyModuleRecord extends CyclicModuleRecord {
             b.addSlot(FrameSlotKind.Illegal, name, null);
         }
         FrameDescriptor desc = b.build();
+        setFrameDescriptor(desc);
         MaterializedFrame env = Truffle.getRuntime().createMaterializedFrame(JSArguments.EMPTY_ARGUMENTS_ARRAY, desc);
         for (int i = 0; i < exportNameCount; i++) {
             env.clear(i); // mark as dead in temporal dead zone

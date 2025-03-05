@@ -105,6 +105,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -547,7 +548,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected TruffleString loadModule(Object nameObj, Object modulesSourceMapObj) {
+        protected JSPromiseObject loadModule(Object nameObj, Object modulesSourceMapObj) {
             TruffleString name = JSRuntime.toString(nameObj);
             JSDynamicObject modulesSourceMap = (JSDynamicObject) modulesSourceMapObj;
             Evaluator evaluator = getContext().getEvaluator();
@@ -573,8 +574,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             JSRealm realm = getRealm();
             module.loadRequestedModulesSync(realm, Undefined.instance);
             module.link(realm);
-            module.evaluate(realm);
-            return Strings.fromJavaString(String.valueOf(module));
+            return module.evaluate(realm);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
@@ -156,6 +157,31 @@ public class ModuleTest {
             context.eval(Source.newBuilder("js", "import('other.mjs').then(({answer}) => console.log(answer));", "test1.js").buildLiteral());
             context.eval(Source.newBuilder("js", "import('other.mjs').then(({answer}) => console.log(answer + 1));", "test1.mjs").buildLiteral());
             assertEquals("42\n43", out.toString().trim());
+        }
+    }
+
+    @Test
+    public void testNotCachedModuleSource() {
+        Map<String, String> modules = Map.of("test1.mjs", "globalThis.evaluated++;");
+        for (boolean cached : new boolean[]{false, true}) {
+            try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(new MockFileSystem(modules)).build()).build()) {
+
+                Source initSrc = Source.newBuilder("js", "globalThis.evaluated = 0;", "init.js").buildLiteral();
+                Source test1Src = Source.newBuilder("js", new File("./test1.mjs")).content(modules.get("test1.mjs")).cached(cached).buildLiteral();
+                Source test2Src = Source.newBuilder("js", "import './test1.mjs';", "test2.mjs").buildLiteral();
+                String msg = "cached=" + cached;
+
+                context.eval(initSrc);
+                context.eval(test1Src);
+                context.eval(test1Src);
+                assertEquals(msg, 2, context.getBindings("js").getMember("evaluated").asInt());
+
+                context.eval(test2Src);
+                assertEquals(msg, cached ? 2 : 3, context.getBindings("js").getMember("evaluated").asInt());
+
+                context.eval(test2Src);
+                assertEquals(msg, cached ? 2 : 3, context.getBindings("js").getMember("evaluated").asInt());
+            }
         }
     }
 }

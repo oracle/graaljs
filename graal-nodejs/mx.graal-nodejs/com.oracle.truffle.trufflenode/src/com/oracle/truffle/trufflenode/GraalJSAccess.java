@@ -111,6 +111,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -119,7 +120,6 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -131,7 +131,6 @@ import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ir.FunctionNode;
-import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -145,8 +144,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -165,7 +162,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.json.JSONBuiltins;
 import com.oracle.truffle.js.builtins.json.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -191,7 +187,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -254,6 +249,8 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -264,9 +261,9 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
+import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -2718,6 +2715,8 @@ public final class GraalJSAccess {
             map = scriptOrModule.getWeakCallbackMap();
         } else if (object instanceof UnboundScript script) {
             map = script.getWeakCallbackMap();
+        } else if (object instanceof AbstractModuleRecord moduleRecord) {
+            map = ((NodeHostDefined) moduleRecord.getHostDefined()).getWeakCallbackMap();
         } else {
             JSDynamicObject target;
             HiddenKey key;
@@ -2727,14 +2726,6 @@ public final class GraalJSAccess {
             } else if (object instanceof JSDynamicObject jsObject) {
                 target = jsObject;
                 key = HIDDEN_WEAK_CALLBACK;
-            } else if (object instanceof JSModuleRecord moduleRecord) {
-                if (moduleRecord.getStatus() == JSModuleRecord.Status.New || moduleRecord.getStatus() == JSModuleRecord.Status.Unlinked) {
-                    assert (callbackPointer == 0);
-                    // ClearWeak() called on a module that cannot be weak yet
-                    return null;
-                }
-                target = moduleRecord.getModuleNamespace();
-                key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
             } else {
                 System.err.println("Weak references not supported for " + object);
                 return null;
@@ -2748,6 +2739,10 @@ public final class GraalJSAccess {
 
         WeakCallback weakCallback = map.get(reference);
         if (weakCallback == null) {
+            if (callbackPointer == 0) {
+                // ClearWeak()
+                return null;
+            }
             weakCallback = new WeakCallback(object, data, callbackPointer, type, weakCallbackQueue);
             map.put(reference, weakCallback);
         } else {
@@ -3826,13 +3821,12 @@ public final class GraalJSAccess {
         // Get the correct Source instance to be used as weak map key.
         source = parsedModule.getSource();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
-        JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader(), hostDefinedOptions);
-        return moduleRecord;
+        return new JSModuleRecord(parsedModule, getModuleLoader(), new NodeHostDefined());
     }
 
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
         JSRealm jsRealm = (JSRealm) context;
-        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        AbstractModuleRecord moduleRecord = (AbstractModuleRecord) module;
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         try {
@@ -3845,22 +3839,13 @@ public final class GraalJSAccess {
 
     public Object moduleEvaluate(Object context, Object module) {
         JSRealm jsRealm = (JSRealm) context;
-        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        AbstractModuleRecord moduleRecord = (AbstractModuleRecord) module;
 
-        if (!moduleRecord.hasBeenEvaluated()) {
-            moduleRecord.evaluate(jsRealm);
-        }
-
-        PromiseCapabilityRecord promiseCapability = moduleRecord.getTopLevelCapability();
-        if (promiseCapability != null) {
-            return promiseCapability.getPromise();
-        } else {
-            return moduleRecord.getExecutionResultOrThrow();
-        }
+        return moduleRecord.evaluate(jsRealm);
     }
 
     public int moduleGetStatus(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
+        AbstractModuleRecord record = (AbstractModuleRecord) module;
         switch (record.getStatus()) {
             case New:
             case Unlinked:
@@ -3873,7 +3858,7 @@ public final class GraalJSAccess {
                 return 3; // v8::Module::Status::Evaluating
             case EvaluatingAsync:
             case Evaluated:
-                if (record.getEvaluationError() == null) {
+                if (!(record instanceof CyclicModuleRecord cyclicModuleRecord) || cyclicModuleRecord.getEvaluationError() == null) {
                     return 4; // v8::Module::Status::kEvaluated
                 } else {
                     return 5; // v8::Module::Status::kErrored
@@ -3884,7 +3869,10 @@ public final class GraalJSAccess {
     }
 
     public Object moduleGetException(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
+        if (!(module instanceof CyclicModuleRecord record)) {
+            // synthetic module evaluation is always successful, currently
+            return null;
+        }
         Throwable evaluationError = record.getEvaluationError();
         if (evaluationError instanceof GraalJSException) {
             return ((GraalJSException) evaluationError).getErrorObject();
@@ -3893,12 +3881,15 @@ public final class GraalJSAccess {
     }
 
     public Object moduleGetModuleRequests(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
-        return record.getModule().getRequestedModules().toArray();
+        if (!(module instanceof CyclicModuleRecord record)) {
+            // synthetic modules do not have any module requests
+            return new Object[0];
+        }
+        return record.getRequestedModules().toArray();
     }
 
     public Object moduleGetNamespace(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
+        AbstractModuleRecord record = (AbstractModuleRecord) module;
         return record.getModuleNamespace();
     }
 
@@ -3907,37 +3898,30 @@ public final class GraalJSAccess {
     }
 
     public boolean moduleIsGraphAsync(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
+        if (!(module instanceof CyclicModuleRecord record)) {
+            // synthetic modules are never async
+            return false;
+        }
         return record.hasTLA() || record.isAsyncEvaluation();
     }
 
     public boolean moduleIsSourceTextModule(Object module) {
-        return !(module instanceof NativeBackedModuleRecord);
+        return (module instanceof JSModuleRecord);
     }
 
     public Object moduleCreateSyntheticModule(Object moduleName, Object[] exportNames, final long evaluationStepsCallback) {
-        List<Module.ExportEntry> localExportEntries = new ArrayList<>();
-        for (Object exportName : exportNames) {
-            localExportEntries.add(Module.ExportEntry.exportSpecifier((TruffleString) exportName));
-        }
-        Module moduleNode = new Module(List.of(), List.of(), localExportEntries, List.of(), List.of(), null, null);
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", Strings.toJavaString((TruffleString) moduleName)).build();
+        TruffleString moduleNameAsStr = (TruffleString) moduleName;
+        List<TruffleString> exportNamesAsStr = List.of(Arrays.copyOf(exportNames, exportNames.length, TruffleString[].class));
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", Strings.toJavaString(moduleNameAsStr)).build();
 
         EngineCacheData engineCacheData = getContextEngineCacheData(mainJSContext);
-        JSFunctionData functionData = engineCacheData.getOrCreateSyntheticModuleData((TruffleString) moduleName, exportNames, (c) -> {
-            JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
-            for (Object exportName : exportNames) {
-                frameDescBuilder.addFrameSlot(exportName);
-            }
-            FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
-            JavaScriptRootNode rootNode = new SyntheticModuleRootNode(mainJSContext.getLanguage(), source, frameDescriptor);
-            CallTarget callTarget = rootNode.getCallTarget();
-            return JSFunctionData.create(mainJSContext, callTarget, callTarget, 0, (TruffleString) moduleName, false, false, true, true);
-        });
+        var moduleData = engineCacheData.getOrCreateSyntheticModuleData(moduleNameAsStr, exportNamesAsStr,
+                        (desc) -> SyntheticModuleRecord.SharedData.fromExportNames(desc.exportNames()));
 
-        FrameDescriptor frameDescriptor = ((RootCallTarget) functionData.getCallTarget()).getRootNode().getFrameDescriptor();
-        final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
-        return new NativeBackedModuleRecord(parsedModule, getModuleLoader(), evaluationStepsCallback);
+        JSRealm realm = getCurrentRealm();
+        return new SyntheticModuleRecord(mainJSContext, source, new NodeHostDefined(), moduleData, (module) -> {
+            NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, module);
+        });
     }
 
     public Object moduleRequestGetSpecifier(Object moduleRequest) {
@@ -3961,35 +3945,15 @@ public final class GraalJSAccess {
         return moduleRequestGetImportAssertionsImpl(request, true);
     }
 
-    public static final class NativeBackedModuleRecord extends JSModuleRecord {
-
-        private final long evaluationStepsCallback;
-
-        NativeBackedModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, long evaluationStepsCallback) {
-            super(parsedModule, moduleLoader);
-            this.evaluationStepsCallback = evaluationStepsCallback;
-        }
-
-        public long getEvaluationStepsCallback() {
-            return evaluationStepsCallback;
-        }
-    }
-
     public void moduleSetSyntheticModuleExport(Object module, Object exportName, Object exportValue) {
-        JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
-        OptionalInt frameSlot = JSFrameUtil.findOptionalFrameSlotIndex(frameDescriptor, exportName);
-        if (!frameSlot.isPresent()) {
-            throw Errors.createReferenceError("Export '" + exportName + "' is not defined in module");
-        }
-        MaterializedFrame frame = moduleRecord.getEnvironment();
-        frame.setObject(frameSlot.getAsInt(), exportValue);
+        SyntheticModuleRecord syntheticModule = (SyntheticModuleRecord) module;
+        syntheticModule.setSyntheticModuleExport((TruffleString) exportName, exportValue);
     }
 
     private static final ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
 
     public Object moduleGetUnboundModuleScript(Object module) {
-        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        AbstractModuleRecord moduleRecord = (AbstractModuleRecord) module;
         return new UnboundScript(moduleRecord.getSource(), DUMMY_UNBOUND_MODULE_PARSE_RESULT);
     }
 
@@ -4298,7 +4262,7 @@ public final class GraalJSAccess {
     }
 
     static class ESModuleLoader implements JSModuleLoader {
-        private final Map<ScriptOrModule, Map<TruffleString, JSModuleRecord>> cache = new HashMap<>();
+        private final Map<ScriptOrModule, Map<TruffleString, AbstractModuleRecord>> cache = new HashMap<>();
         private long resolver;
 
         void setResolver(long resolver) {
@@ -4306,14 +4270,14 @@ public final class GraalJSAccess {
         }
 
         @Override
-        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
-            Map<TruffleString, JSModuleRecord> referrerCache = cache.get(referrer);
+        public AbstractModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
+            Map<TruffleString, AbstractModuleRecord> referrerCache = cache.get(referrer);
             TruffleString specifier = moduleRequest.specifier();
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();
                 cache.put(referrer, referrerCache);
             } else {
-                JSModuleRecord cached = referrerCache.get(specifier);
+                AbstractModuleRecord cached = referrerCache.get(specifier);
                 if (cached != null) {
                     return cached;
                 }
@@ -4325,7 +4289,7 @@ public final class GraalJSAccess {
             }
             Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, true);
             JSRealm realm = JSRealm.get(null);
-            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
+            AbstractModuleRecord result = (AbstractModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
             referrerCache.put(specifier, result);
             return result;
         }
@@ -4376,4 +4340,17 @@ public final class GraalJSAccess {
 
     }
 
+    static final class NodeHostDefined {
+        private Map<Long, WeakCallback> weakCallbackMap;
+
+        NodeHostDefined() {
+        }
+
+        Map<Long, WeakCallback> getWeakCallbackMap() {
+            if (weakCallbackMap == null) {
+                weakCallbackMap = new HashMap<>();
+            }
+            return weakCallbackMap;
+        }
+    }
 }
