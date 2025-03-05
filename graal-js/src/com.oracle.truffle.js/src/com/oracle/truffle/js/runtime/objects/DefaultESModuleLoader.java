@@ -547,7 +547,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     private static boolean doesModuleTypeMatchAssertionType(TruffleString assertedType, String mimeType) {
         if (assertedType == null) {
-            return true;
+            return !mimeType.equals(JavaScriptLanguage.JSON_MIME_TYPE);
         }
         if (Strings.equals(Strings.JSON, assertedType)) {
             return mimeType.equals(JavaScriptLanguage.JSON_MIME_TYPE);
