@@ -62,6 +62,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -160,7 +161,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     private AbstractModuleRecord loadCoreModuleReplacement(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String moduleReplacementName) {
         String specifier = moduleRequest.specifier().toJavaStringUncached();
         log("IMPORT resolve built-in ", specifier);
-        AbstractModuleRecord existingModule = moduleMap.get(specifier);
+        CanonicalModuleKey moduleKey = new CanonicalModuleKey(specifier, moduleRequest.attributes());
+        AbstractModuleRecord existingModule = moduleMap.get(moduleKey);
         if (existingModule != null) {
             log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;
@@ -197,12 +199,13 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
         JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
         JSModuleRecord record = new JSModuleRecord(parsedModule, this);
-        moduleMap.put(specifier, record);
+        moduleMap.put(moduleKey, record);
         return record;
     }
 
     private AbstractModuleRecord tryLoadingAsCommonjsModule(String specifier) {
-        AbstractModuleRecord existingModule = moduleMap.get(specifier);
+        CanonicalModuleKey moduleKey = new CanonicalModuleKey(specifier, Map.of());
+        AbstractModuleRecord existingModule = moduleMap.get(moduleKey);
         if (existingModule != null) {
             log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;
@@ -231,7 +234,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         Source src = Source.newBuilder(ID, moduleBody.toString(), specifier + "-internal.mjs").build();
         JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
         JSModuleRecord record = new JSModuleRecord(parsedModule, this);
-        moduleMap.put(specifier, record);
+        moduleMap.put(moduleKey, record);
         return record;
     }
 

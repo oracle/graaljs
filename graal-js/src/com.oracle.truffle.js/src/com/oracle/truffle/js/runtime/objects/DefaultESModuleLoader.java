@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,7 +81,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     private static final String DATA_URI_SOURCE_NAME_PREFIX = "data-uri";
 
     protected final JSRealm realm;
-    protected final Map<String, AbstractModuleRecord> moduleMap = new HashMap<>();
+    protected final Map<CanonicalModuleKey, AbstractModuleRecord> moduleMap = new HashMap<>();
 
     public static DefaultESModuleLoader create(JSRealm realm) {
         return new DefaultESModuleLoader(realm);
@@ -233,7 +233,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     protected AbstractModuleRecord loadModuleFromURL(ScriptOrModule referrer, ModuleRequest moduleRequest, URI moduleURI) throws IOException {
         assert !isFileURI(moduleURI) : moduleURI;
         String canonicalPath = moduleURI.toString();
-        AbstractModuleRecord existingModule = moduleMap.get(canonicalPath);
+        AbstractModuleRecord existingModule = moduleMap.get(new CanonicalModuleKey(canonicalPath, moduleRequest.attributes()));
         if (existingModule != null) {
             return existingModule;
         }
@@ -286,7 +286,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             canonicalPath = maybeCanonicalPath;
         }
 
-        AbstractModuleRecord existingModule = moduleMap.get(canonicalPath);
+        AbstractModuleRecord existingModule = moduleMap.get(new CanonicalModuleKey(canonicalPath, moduleRequest.attributes()));
         if (existingModule != null) {
             return existingModule;
         }
@@ -319,7 +319,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             }
         };
 
-        moduleMap.put(canonicalPath, newModule);
+        moduleMap.put(new CanonicalModuleKey(canonicalPath, attributes), newModule);
 
         if (referrer != null) {
             referrer.rememberImportedModuleSource(moduleRequest.specifier(), source);
@@ -558,7 +558,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     @Override
     public AbstractModuleRecord addLoadedModule(ModuleRequest moduleRequest, AbstractModuleRecord moduleRecord) {
         String canonicalPath = getCanonicalPath(moduleRecord.getSource());
-        return moduleMap.putIfAbsent(canonicalPath, moduleRecord);
+        return moduleMap.putIfAbsent(new CanonicalModuleKey(canonicalPath, moduleRequest.attributes()), moduleRecord);
     }
 
     private String getCanonicalPath(Source source) {
@@ -626,5 +626,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             return URI.create(refURI.getScheme() + ":" + schemeSpecificPart.substring(0, pathStart) + newPath);
         }
         return refURI.resolve(uri);
+    }
+
+    public record CanonicalModuleKey(String canonicalPath, Map<TruffleString, TruffleString> importAttributes) {
     }
 }
