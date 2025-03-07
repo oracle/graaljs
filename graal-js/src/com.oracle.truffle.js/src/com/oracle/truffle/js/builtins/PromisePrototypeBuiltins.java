@@ -248,7 +248,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 @Override
                 public Object execute(VirtualFrame frame) {
                     JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                    JSDynamicObject onFinally = (JSDynamicObject) getOnFinally.getValue(functionObject);
+                    Object onFinally = getOnFinally.getValue(functionObject);
                     assert JSRuntime.isCallable(onFinally);
                     Object result = callFinally.executeCall(JSArguments.createZeroArg(Undefined.instance, onFinally));
                     JSDynamicObject constructor = (JSDynamicObject) getConstructor.getValue(functionObject);
