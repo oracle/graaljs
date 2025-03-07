@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -248,10 +248,10 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 @Override
                 public Object execute(VirtualFrame frame) {
                     JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                    JSDynamicObject onFinally = (JSDynamicObject) getOnFinally.getValue(functionObject);
+                    Object onFinally = getOnFinally.getValue(functionObject);
                     assert JSRuntime.isCallable(onFinally);
                     Object result = callFinally.executeCall(JSArguments.createZeroArg(Undefined.instance, onFinally));
-                    JSDynamicObject constructor = (JSDynamicObject) getConstructor.getValue(functionObject);
+                    Object constructor = getConstructor.getValue(functionObject);
                     assert JSRuntime.isConstructor(constructor);
                     JSDynamicObject promise = promiseResolve.execute(constructor, result);
                     Object value = valueNode.execute(frame);

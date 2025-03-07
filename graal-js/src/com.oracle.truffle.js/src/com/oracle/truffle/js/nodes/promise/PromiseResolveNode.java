@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -68,8 +67,7 @@ public class PromiseResolveNode extends JavaScriptBaseNode {
         return new PromiseResolveNode(context);
     }
 
-    public JSDynamicObject execute(JSDynamicObject constructor, Object value) {
-        assert JSRuntime.isObject(constructor);
+    public JSDynamicObject execute(Object constructor, Object value) {
         if (JSPromise.isJSPromise(value)) {
             Object otherConstructor = getConstructor.getValue(value);
             if (otherConstructor == constructor) {
