@@ -88,7 +88,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
+public class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
 
     private static final URI TryCommonJS = URI.create("custom:///try-common-js-token");
     private static final URI TryCustomESM = URI.create("custom:///try-custom-esm-token");
@@ -107,7 +107,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         return new NpmCompatibleESModuleLoader(realm);
     }
 
-    private NpmCompatibleESModuleLoader(JSRealm realm) {
+    protected NpmCompatibleESModuleLoader(JSRealm realm) {
         super(realm);
     }
 
