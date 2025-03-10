@@ -3503,6 +3503,10 @@ public class Parser extends AbstractParser {
 
         Expression expression = unaryExpression(yield, true, CoverExpressionError.DENY);
 
+        if (type == TokenType.EXP) {
+            throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
+        }
+
         if (isModule && currentFunction.isModule()) {
             // Top-level await module: mark the body of the module as async.
             currentFunction.setFlag(FunctionNode.IS_ASYNC);
