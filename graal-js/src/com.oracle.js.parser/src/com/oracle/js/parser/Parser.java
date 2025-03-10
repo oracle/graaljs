@@ -3005,6 +3005,9 @@ public class Parser extends AbstractParser {
 
                 switch (type) {
                     case SEMICOLON:
+                        if (isForAwaitOf) {
+                            throw error(expectMessage(OF));
+                        }
                         // for (init; test; modify)
                         if (varDeclList != null) {
                             assert init == null;
