@@ -1517,10 +1517,6 @@
     },
     "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
   }, {
-    "filePath" : "mjsunit/regress/regress-926036.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/regress/regress-944.js",
     "status" : "FAIL"
   }, {

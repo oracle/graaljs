@@ -3729,14 +3729,6 @@
     "status" : "SKIP",
     "comment" : "Long running test"
   }, {
-    "filePath" : "staging/sm/AsyncGenerators/for-await-bad-syntax.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/class/methDefnGen.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/class/strictExecution.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
@@ -3758,10 +3750,6 @@
     "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/expressions/destructuring-pattern-parenthesized.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/expressions/exponentiation-unparenthesised-unary.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {

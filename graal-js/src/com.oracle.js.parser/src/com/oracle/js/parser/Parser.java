@@ -3005,6 +3005,9 @@ public class Parser extends AbstractParser {
 
                 switch (type) {
                     case SEMICOLON:
+                        if (isForAwaitOf) {
+                            throw error(expectMessage(OF));
+                        }
                         // for (init; test; modify)
                         if (varDeclList != null) {
                             assert init == null;
@@ -3499,6 +3502,10 @@ public class Parser extends AbstractParser {
         next();
 
         Expression expression = unaryExpression(yield, true, CoverExpressionError.DENY);
+
+        if (type == TokenType.EXP) {
+            throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
+        }
 
         if (isModule && currentFunction.isModule()) {
             // Top-level await module: mark the body of the module as async.
@@ -4420,7 +4427,7 @@ public class Parser extends AbstractParser {
             final TokenType getOrSet = type;
             next();
 
-            if (type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
+            if (!generator && type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
                 final long getOrSetToken = propertyToken;
                 if (getOrSet == GET) {
                     final PropertyFunction getter = propertyGetterFunction(getOrSetToken, functionLine, yield, await, false);
