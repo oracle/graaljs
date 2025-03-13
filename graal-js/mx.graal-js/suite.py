@@ -176,6 +176,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
       "javaCompliance": "17+",
+      "testProject" : True,
     },
 
     "com.oracle.truffle.js.annotations" : {
@@ -561,6 +562,7 @@ suite = {
       "description" : "GraalJS, a high-performance embeddable JavaScript runtime for Java. This artifact provides a command-line launcher for fuzzing GraalJS with Fuzzilli.",
       "allowsJavadocWarnings": True,
       "useModulePath": True,
+      "testDistribution": True,
     },
 
     "GRAALJS_SCRIPTENGINE" : {
