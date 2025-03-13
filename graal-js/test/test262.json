@@ -2030,6 +2030,90 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/String/prototype/match/cstm-matcher-on-bigint-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/match/cstm-matcher-on-boolean-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/match/cstm-matcher-on-number-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/match/cstm-matcher-on-string-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/cstm-matchall-on-bigint-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/cstm-matchall-on-number-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/cstm-matchall-on-string-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/replace/cstm-replace-on-bigint-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/replace/cstm-replace-on-boolean-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/replace/cstm-replace-on-number-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/replaceAll/cstm-replaceall-on-bigint-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/replaceAll/cstm-replaceall-on-boolean-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/replaceAll/cstm-replaceall-on-number-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/search/cstm-search-on-bigint-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/search/cstm-search-on-boolean-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/search/cstm-search-on-number-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/search/cstm-search-on-string-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/split/cstm-split-on-bigint-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/split/cstm-split-on-boolean-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/split/cstm-split-on-number-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
+    "filePath" : "built-ins/String/prototype/split/cstm-split-on-string-primitive.js",
+    "status" : "FAIL",
+    "comment" : "Normative change: https://github.com/tc39/ecma262/pull/3009"
+  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
@@ -2213,6 +2297,22 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/since/wrapping-at-end-of-month.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2252,6 +2352,22 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-subsecond.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/round/balance.js",
     "status" : "FAIL",
@@ -2333,9 +2449,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/fields-string.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/equals/argument-string.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
   }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/refisoyear-out-of-range.js",
     "status" : "FAIL",
@@ -2416,6 +2540,22 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
@@ -2520,6 +2660,22 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/zoneddatetime-string.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/era/branding.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/era/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/eraYear/branding.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/eraYear/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/branding.js",
     "status" : "FAIL",
@@ -2688,10 +2844,6 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "intl402/DateTimeFormat/canonicalize-utc-timezone.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test, see https://github.com/tc39/test262/pull/4336"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/numbering-system.js",
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
@@ -2760,6 +2912,10 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "intl402/Locale/getters.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
   }, {
     "filePath" : "intl402/NumberFormat/currency-digits-nonstandard-notation.js",
     "status" : "FAIL",
@@ -2853,22 +3009,6 @@
     "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/equals/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/era/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/era/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/eraYear/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/eraYear/prop-desc.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
@@ -2989,22 +3129,6 @@
     "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/equals/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/era/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/era/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/eraYear/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/eraYear/prop-desc.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
@@ -3248,22 +3372,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/era/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/era/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/eraYear/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/eraYear/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/since/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -3384,6 +3492,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/canonicalize-utc-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-03-13"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -3395,22 +3507,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/timezone-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/era/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/branding.js",
-    "status" : "FAIL",
-    "comment" : "Temporal tests still failing"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/eraYear/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/nanoseconds-subtracted-or-added-at-dst-transition.js",
     "status" : "FAIL",
@@ -3593,18 +3689,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "language/module-code/source-phase-import/import-source-binding-name-2.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test (see https://github.com/tc39/test262/issues/4193)"
-  }, {
-    "filePath" : "language/module-code/source-phase-import/import-source-binding-name.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test (see https://github.com/tc39/test262/issues/4193)"
-  }, {
-    "filePath" : "language/module-code/source-phase-import/import-source-newlines.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test (see https://github.com/tc39/test262/issues/4193)"
-  }, {
     "filePath" : "language/module-code/top-level-await/syntax/for-await-expr-nested.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -3632,10 +3716,6 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
-  }, {
-    "filePath" : "staging/built-ins/Object/seal/seal-variable-length-typed-arrays.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec: expects Object.seal(fixed length TA backed by GSAB) not to throw. It throws because it has configurable integer properties that cannot be redefined to be non-configurable."
   }, {
     "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months.js",
     "status" : "FAIL",
@@ -3773,10 +3853,6 @@
     "status" : "FAIL",
     "comment" : "Test of non-standard 'caller' and 'arguments' properties"
   }, {
-    "filePath" : "staging/sm/extensions/inc-dec-functioncall.js",
-    "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/pull/4345"
-  }, {
     "filePath" : "staging/sm/extensions/regress-469625-01.js",
     "status" : "FAIL",
     "comment" : "Expects a particular error message"
@@ -3872,10 +3948,6 @@
     "status" : "FAIL",
     "comment" : "Test of non-standard 'caller' property"
   }, {
-    "filePath" : "staging/sm/regress/regress-609617.js",
-    "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/pull/4345"
-  }, {
     "filePath" : "staging/sm/Set/difference.js",
     "ecmaVersion" : {
       "minVersion" : 16
@@ -3921,10 +3993,6 @@
     "filePath" : "staging/sm/statements/arrow-function-in-for-statement-head.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/statements/for-of-iterator-close.js",
-    "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/pull/4345"
   }, {
     "filePath" : "staging/sm/String/string-code-point-upper-lower-mapping.js",
     "javaVersion" : {
