@@ -336,6 +336,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     protected abstract static class IteratorMethodWithCallableNode extends IteratorMethodNode {
 
         @Child private IsCallableNode isCallableNode;
+        @Child private IteratorCloseNode iteratorCloseNode;
 
         protected IteratorMethodWithCallableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -344,6 +345,19 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         public final boolean isCallable(Object fn) {
             return isCallableNode.executeBoolean(fn);
+        }
+
+        /**
+         * Closes the iterator on argument validation failure.
+         *
+         * @param iterator the receiver iterator object
+         */
+        protected final void iteratorCloseDirectAbrupt(Object iterator) {
+            if (iteratorCloseNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
+            }
+            iteratorCloseNode.executeAbrupt(iterator);
         }
     }
 
@@ -500,8 +514,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
-            throw Errors.createTypeErrorCallableExpected();
+        public Object unsupported(Object thisObj, Object mapper,
+                        @Cached IsObjectNode isObjectNode) {
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
+            iteratorCloseDirectAbrupt(thisObj);
+            throw Errors.createTypeErrorNotAFunction(mapper);
         }
 
         protected abstract static class IteratorMapNextNode extends IteratorFromGeneratorImplNode<IteratorMapArgs> {
@@ -568,8 +587,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(filterer)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object filterer) {
-            throw Errors.createTypeErrorCallableExpected();
+        public Object unsupported(Object thisObj, Object filterer,
+                        @Cached IsObjectNode isObjectNode) {
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
+            iteratorCloseDirectAbrupt(thisObj);
+            throw Errors.createTypeErrorNotAFunction(filterer);
         }
 
         protected abstract static class IteratorFilterNextNode extends IteratorFromGeneratorImplNode<IteratorFilterArgs> {
@@ -647,22 +671,27 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public JSDynamicObject take(Object thisObj, Object limit,
                         @Cached IsObjectNode isObjectNode,
                         @Cached InlinedBranchProfile errorBranch) {
-
             if (!isObjectNode.executeBoolean(thisObj)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorNotAnObject(thisObj, this);
             }
 
-            Number numLimit = toNumberNode.executeNumber(limit);
-            if (JSRuntime.isNaN(numLimit)) {
-                errorBranch.enter(this);
-                throw Errors.createRangeError("NaN is not allowed", this);
-            }
+            double integerLimit;
+            try {
+                Number numLimit = toNumberNode.executeNumber(limit);
+                if (JSRuntime.isNaN(numLimit)) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeError("NaN is not allowed", this);
+                }
 
-            double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
-            if (integerLimit < 0) {
-                errorBranch.enter(this);
-                throw Errors.createRangeErrorIndexNegative(this);
+                integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
+                if (integerLimit < 0) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeErrorIndexNegative(this);
+                }
+            } catch (AbstractTruffleException e) {
+                iteratorCloseDirectAbrupt(thisObj);
+                throw e;
             }
 
             IteratorRecord iterated = getIteratorDirect(thisObj);
@@ -733,22 +762,27 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public JSDynamicObject drop(Object thisObj, Object limit,
                         @Cached IsObjectNode isObjectNode,
                         @Cached InlinedBranchProfile errorBranch) {
-
             if (!isObjectNode.executeBoolean(thisObj)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorNotAnObject(thisObj, this);
             }
 
-            Number numLimit = toNumberNode.executeNumber(limit);
-            if (JSRuntime.isNaN(numLimit)) {
-                errorBranch.enter(this);
-                throw Errors.createRangeError("NaN is not allowed", this);
-            }
+            double integerLimit;
+            try {
+                Number numLimit = toNumberNode.executeNumber(limit);
+                if (JSRuntime.isNaN(numLimit)) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeError("NaN is not allowed", this);
+                }
 
-            double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
-            if (integerLimit < 0) {
-                errorBranch.enter(this);
-                throw Errors.createRangeErrorIndexNegative(this);
+                integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
+                if (integerLimit < 0) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeErrorIndexNegative(this);
+                }
+            } catch (AbstractTruffleException e) {
+                iteratorCloseDirectAbrupt(thisObj);
+                throw e;
             }
 
             IteratorRecord iterated = getIteratorDirect(thisObj);
@@ -818,8 +852,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
-            throw Errors.createTypeErrorCallableExpected();
+        public Object unsupported(Object thisObj, Object mapper,
+                        @Cached IsObjectNode isObjectNode) {
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
+            iteratorCloseDirectAbrupt(thisObj);
+            throw Errors.createTypeErrorNotAFunction(mapper);
         }
 
         protected abstract static class IteratorFlatMapNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorFlatMapArgs> {
@@ -966,7 +1005,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        protected void incompatible(@SuppressWarnings("unused") Object thisObj, Object fn) {
+        protected void incompatible(Object thisObj, Object fn) {
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
+            iteratorCloseDirectAbrupt(thisObj);
             throw Errors.createTypeErrorNotAFunction(fn);
         }
 
@@ -1131,7 +1174,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(reducer)")
-        protected void incompatible(@SuppressWarnings("unused") Object thisObj, Object reducer, @SuppressWarnings("unused") Object[] args) {
+        protected void incompatible(Object thisObj, Object reducer, @SuppressWarnings("unused") Object[] args,
+                        @Cached IsObjectNode isObjectNode) {
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
+            iteratorCloseDirectAbrupt(thisObj);
             throw Errors.createTypeErrorNotAFunction(reducer);
         }
 
