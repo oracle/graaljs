@@ -506,6 +506,7 @@ public final class Strings {
     public static final TruffleString ROUNDING_MODE = Strings.constant("roundingMode");
     public static final TruffleString TIME_ZONE = Strings.constant("timeZone");
     public static final TruffleString TIME_ZONE_NAME = Strings.constant("timeZoneName");
+    public static final TruffleString UND = Strings.constant("und");
 
     /* RegExp.escape constants */
     public static final TruffleString REGEXP_SYNTAX_CHARS_WITH_SOLIDUS = Strings.constant("^$\\.*+?()[]{}|/");

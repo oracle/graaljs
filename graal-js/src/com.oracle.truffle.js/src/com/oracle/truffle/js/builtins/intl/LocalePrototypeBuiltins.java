@@ -435,13 +435,13 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        public Object doLocale(JSLocaleObject localeObject) {
+        public TruffleString doLocale(JSLocaleObject localeObject) {
             String language = localeObject.getInternalState().getLanguage();
-            return language.isEmpty() ? Undefined.instance : Strings.fromJavaString(language);
+            return language.isEmpty() ? Strings.UND : Strings.fromJavaString(language);
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
-        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+        public TruffleString doOther(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorLocaleExpected();
         }
 
