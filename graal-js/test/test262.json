@@ -2913,10 +2913,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Locale/getters.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-03-13"
-  }, {
     "filePath" : "intl402/NumberFormat/currency-digits-nonstandard-notation.js",
     "status" : "FAIL",
     "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/4349"
