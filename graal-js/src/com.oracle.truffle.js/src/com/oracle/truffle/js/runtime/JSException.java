@@ -171,8 +171,14 @@ public final class JSException extends GraalJSException {
     @Override
     @TruffleBoundary
     public String getMessage() {
+        String name = type.name();
         String message = getRawMessage();
-        return (message == null || message.isEmpty()) ? type.name() : type.name() + ": " + message;
+        var errorObj = getErrorObjectLazy();
+        if (errorObj != null) {
+            name = getErrorNameSafe(errorObj, name);
+            message = getErrorMessageSafe(errorObj, message);
+        }
+        return concatErrorNameAndMessage(name, message);
     }
 
     public String getRawMessage() {
