@@ -7561,7 +7561,7 @@ public class Parser extends AbstractParser {
         if (currentFunction.isMethod()) {
             currentFunction.setFlag(FunctionNode.USES_SUPER);
             addIdentifierReference(SUPER.getName());
-            addIdentifierReference(THIS.getName());
+            markThis();
         }
     }
 
