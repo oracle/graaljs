@@ -94,6 +94,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.MathContext;
 import java.time.Instant;
 import java.time.Year;
@@ -287,10 +288,13 @@ public final class TemporalUtil {
     public static final BigInt BI_NS_PER_HOUR = BigInt.valueOf(3_600_000_000_000L);
     public static final BigInt BI_NS_PER_MINUTE = BigInt.valueOf(60_000_000_000L);
     public static final BigInt BI_NS_PER_SECOND = BigInt.valueOf(1_000_000_000);
-    public static final BigInt BI_NS_PER_MS = BigInt.valueOf(1_000_000);
+    public static final BigInt BI_1000_000 = BigInt.valueOf(1_000_000);
+    public static final BigInt BI_NS_PER_MS = BI_1000_000;
     public static final BigInt BI_1000 = BigInt.valueOf(1_000);
     public static final BigInt BI_24 = BigInt.valueOf(24);
     public static final BigInt BI_60 = BigInt.valueOf(60);
+    public static final BigInt BI_3600 = BigInt.valueOf(3600);
+    public static final BigInt BI_86400 = BigInt.valueOf(86400);
 
     public static final BigDecimal BD_10 = BigDecimal.valueOf(10);
     public static final BigDecimal BD_60 = BigDecimal.valueOf(60);
@@ -2025,12 +2029,16 @@ public final class TemporalUtil {
         if (Math.abs(years) >= twoPow32 || Math.abs(months) >= twoPow32 || Math.abs(weeks) >= twoPow32) {
             return false;
         }
-        long normalizedSeconds = 86400 * (long) days + 3600 * (long) hours + 60 * (long) minutes + (long) seconds + ((long) milliseconds) / 1000 + ((long) microseconds) / 1000_000 +
-                        ((long) nanoseconds) / 1000_000_000;
-        if (Math.abs(normalizedSeconds) >= 1L << 53) {
-            return false;
-        }
-        return true;
+        BigInteger normalizedSeconds;
+        normalizedSeconds = JSRuntime.toBigInteger(days).multiply(BI_86400.bigIntegerValue());
+        normalizedSeconds = normalizedSeconds.add(JSRuntime.toBigInteger(hours).multiply(BI_3600.bigIntegerValue()));
+        normalizedSeconds = normalizedSeconds.add(JSRuntime.toBigInteger(minutes).multiply(BI_60.bigIntegerValue()));
+        normalizedSeconds = normalizedSeconds.add(JSRuntime.toBigInteger(seconds));
+        BigInteger normalizedNanos = normalizedSeconds.multiply(BI_NS_PER_SECOND.bigIntegerValue());
+        normalizedNanos = normalizedNanos.add(JSRuntime.toBigInteger(milliseconds).multiply(BI_1000_000.bigIntegerValue()));
+        normalizedNanos = normalizedNanos.add(JSRuntime.toBigInteger(microseconds).multiply(BI_1000.bigIntegerValue()));
+        normalizedNanos = normalizedNanos.add(JSRuntime.toBigInteger(nanoseconds));
+        return normalizedNanos.abs().compareTo(MAX_TIME_DURATION.bigIntegerValue()) <= 0;
     }
 
     // 7.5.6

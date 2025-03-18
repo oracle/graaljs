@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -2809,6 +2810,18 @@ public final class JSRuntime {
             }
         }
         return s;
+    }
+
+    @TruffleBoundary
+    public static BigInteger toBigInteger(double integer) {
+        assert isIntegralNumber(integer);
+        long bits = Double.doubleToRawLongBits(integer);
+        boolean negative = (bits & 0x8000000000000000L) != 0;
+        int exponentOffset = 1023;
+        int mantissaLength = 52;
+        int exponent = (int) ((bits & 0x7ff0000000000000L) >> mantissaLength) - exponentOffset - mantissaLength;
+        long mantissa = (bits & 0x000fffffffffffffL) | 0x0010000000000000L;
+        return BigInteger.valueOf(negative ? -mantissa : mantissa).shiftLeft(exponent);
     }
 
     public static Object getBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArray.ElementType elementType, int index) {

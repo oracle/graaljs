@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,8 +39,6 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.js.nodes.cast;
-
-import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -99,14 +97,7 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
         if (!JSRuntime.isInteger(value)) {
             throw Errors.createRangeError("BigInt out of range");
         }
-        long bits = Double.doubleToRawLongBits(value);
-        boolean negative = (bits & 0x8000000000000000L) != 0;
-        int exponentOffset = 1023;
-        int mantissaLength = 52;
-        int exponent = (int) ((bits & 0x7ff0000000000000L) >> mantissaLength) - exponentOffset - mantissaLength;
-        long mantissa = (bits & 0x000fffffffffffffL) | 0x0010000000000000L;
-        BigInteger bigInteger = BigInteger.valueOf(negative ? -mantissa : mantissa).shiftLeft(exponent);
-        return new BigInt(bigInteger);
+        return new BigInt(JSRuntime.toBigInteger(value));
     }
 
     @Fallback
