@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,8 +81,11 @@ public final class CallNode extends OptionalExpression {
     /** It this a super call in the default derived constructor? */
     private static final int IS_DEFAULT_DERIVED_CONSTRUCTOR_SUPER_CALL = 1 << 7;
 
-    /** Is this a source phase import call? */
+    /** Is this an {@code import.source} call? */
     private static final int IS_IMPORT_SOURCE = 1 << 8;
+
+    /** Is this an {@code import.defer} call? */
+    private static final int IS_IMPORT_DEFER = 1 << 9;
 
     private final int flags;
 
@@ -119,8 +122,10 @@ public final class CallNode extends OptionalExpression {
                                         (isDefaultDerivedConstructorSuperCall ? IS_DEFAULT_DERIVED_CONSTRUCTOR_SUPER_CALL : 0));
     }
 
-    public static Expression forImport(int lineNumber, long token, int start, int finish, IdentNode importIdent, List<Expression> args, boolean source) {
-        return new CallNode(lineNumber, token, start, finish, importIdent, args, IS_IMPORT | (source ? IS_IMPORT_SOURCE : 0));
+    public static Expression forImport(int lineNumber, long token, int start, int finish, IdentNode importIdent, List<Expression> args, Module.ImportPhase phase) {
+        return new CallNode(lineNumber, token, start, finish, importIdent, args, IS_IMPORT |
+                        (phase == Module.ImportPhase.Source ? IS_IMPORT_SOURCE : 0) |
+                        (phase == Module.ImportPhase.Defer ? IS_IMPORT_DEFER : 0));
     }
 
     private CallNode(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args, int flags) {
@@ -271,10 +276,17 @@ public final class CallNode extends OptionalExpression {
     }
 
     /**
-     * Check if this call is a dynamic import.source call.
+     * Check if this call is a dynamic {@code import.source} call.
      */
     public boolean isImportSource() {
         return (flags & IS_IMPORT_SOURCE) != 0;
+    }
+
+    /**
+     * Check if this call is a dynamic {@code import.defer} call.
+     */
+    public boolean isImportDefer() {
+        return (flags & IS_IMPORT_DEFER) != 0;
     }
 
     /**

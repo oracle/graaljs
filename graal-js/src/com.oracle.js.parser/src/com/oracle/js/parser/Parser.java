@@ -205,6 +205,7 @@ public class Parser extends AbstractParser {
     static final TruffleString NEW_TARGET_NAME_TS = ParserStrings.constant(NEW_TARGET_NAME);
     private static final TruffleString IMPORT_META_NAME = ParserStrings.constant("import.meta");
     private static final TruffleString IMPORT_SOURCE_NAME = ParserStrings.constant("import.source");
+    private static final TruffleString IMPORT_DEFER_NAME = ParserStrings.constant("import.defer");
     private static final String PROTOTYPE_NAME = "prototype";
     /** Function.prototype.apply method name. */
     private static final String APPLY_NAME = "apply";
@@ -258,6 +259,8 @@ public class Parser extends AbstractParser {
     private static final String META = "meta";
     private static final String SOURCE = "source";
     private static final TruffleString SOURCE_TS = ParserStrings.constant("source");
+    private static final String DEFER = "defer";
+    private static final TruffleString DEFER_TS = ParserStrings.constant("defer");
     private static final TruffleString TARGET = ParserStrings.constant("target");
 
     private static final String CONTEXT_ASSIGNMENT_TARGET = "assignment target";
@@ -959,6 +962,10 @@ public class Parser extends AbstractParser {
      */
     private boolean isES2022() {
         return env.ecmaScriptVersion >= ES_2022;
+    }
+
+    private boolean isImportDefer() {
+        return env.ecmaScriptVersion >= ES_STAGING;
     }
 
     private boolean isClassDecorators() {
@@ -5116,27 +5123,38 @@ public class Parser extends AbstractParser {
             next();
             expectDontAdvance(IDENT);
             String meta = ((TruffleString) getValueNoEscape()).toJavaStringUncached();
-            if (META.equals(meta)) {
-                if (!isModule) {
-                    throw error(AbstractParser.message(MSG_UNEXPECTED_IMPORT_META), importToken);
+            switch (meta) {
+                case META -> {
+                    if (!isModule) {
+                        throw error(AbstractParser.message(MSG_UNEXPECTED_IMPORT_META), importToken);
+                    }
+                    next();
+                    return new IdentNode(importToken, finish, lexer.stringIntern(IMPORT_META_NAME)).setIsImportMeta();
                 }
-                next();
-                return new IdentNode(importToken, finish, lexer.stringIntern(IMPORT_META_NAME)).setIsImportMeta();
-            } else if (SOURCE.equals(meta) && env.sourcePhaseImports) {
-                next();
-                expectDontAdvance(LPAREN);
-                return importCall(yield, await, importToken, importStart, importLine, IMPORT_SOURCE_NAME, true);
-            } else {
-                throw error(AbstractParser.message(MSG_UNEXPECTED_IDENT, meta), token);
+                case SOURCE -> {
+                    if (env.sourcePhaseImports) {
+                        next();
+                        expectDontAdvance(LPAREN);
+                        return importCall(yield, await, importToken, importStart, importLine, IMPORT_SOURCE_NAME, ImportPhase.Source);
+                    }
+                }
+                case DEFER -> {
+                    if (isImportDefer()) {
+                        next();
+                        expectDontAdvance(LPAREN);
+                        return importCall(yield, await, importToken, importStart, importLine, IMPORT_DEFER_NAME, ImportPhase.Defer);
+                    }
+                }
             }
+            throw error(AbstractParser.message(MSG_UNEXPECTED_IDENT, meta), token);
         } else if (type == LPAREN) {
-            return importCall(yield, await, importToken, importStart, importLine, IMPORT.getNameTS(), false);
+            return importCall(yield, await, importToken, importStart, importLine, IMPORT.getNameTS(), ImportPhase.Evaluation);
         } else {
             throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, IMPORT.getName()), importToken);
         }
     }
 
-    private Expression importCall(boolean yield, boolean await, long importToken, int importStart, int importLine, TruffleString importName, boolean sourcePhase) {
+    private Expression importCall(boolean yield, boolean await, long importToken, int importStart, int importLine, TruffleString importName, ImportPhase phase) {
         assert type == LPAREN;
         next();
         List<Expression> arguments = new ArrayList<>();
@@ -5153,7 +5171,7 @@ public class Parser extends AbstractParser {
         expect(RPAREN);
 
         IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), lexer.stringIntern(importName));
-        return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, arguments, sourcePhase);
+        return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, arguments, phase);
     }
 
     private ArrayList<Expression> argumentList(boolean yield, boolean await) {
@@ -6984,7 +7002,7 @@ public class Parser extends AbstractParser {
         if (!isES2020()) {
             return false;
         }
-        // import followed by `(` or `.source(`
+        // import followed by `(` or `.source(` or `.defer(`
         boolean seenPeriod = false;
         boolean seenIdent = false;
         for (int i = 1;; i++) {
@@ -6997,7 +7015,7 @@ public class Parser extends AbstractParser {
                 case LPAREN:
                     return !seenPeriod || seenIdent;
                 case PERIOD:
-                    if (!env.sourcePhaseImports || seenPeriod) {
+                    if (seenPeriod) {
                         return false;
                     }
                     seenPeriod = true;
@@ -7005,7 +7023,8 @@ public class Parser extends AbstractParser {
                 case IDENT:
                     if (!seenPeriod || seenIdent) {
                         return false;
-                    } else if (SOURCE_TS.equals(getValueNoEscape(currentToken))) {
+                    } else if (getValueNoEscape(currentToken) instanceof TruffleString ident &&
+                                    (SOURCE_TS.equals(ident) || DEFER_TS.equals(ident))) {
                         seenIdent = true;
                         continue;
                     } else {
@@ -7109,6 +7128,20 @@ public class Parser extends AbstractParser {
                     ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes, ImportPhase.Source);
                     module.addModuleRequest(moduleRequest);
                     module.addImportEntry(ImportEntry.importSource(moduleRequest, importedBinding.getNameTS()));
+                    break end;
+                } else if ((isImportDefer() && DEFER.equals(importedDefaultBinding.getName())) && type == MUL) {
+                    // import defer * as ImportedBinding FromClause WithClause_opt;
+                    NameSpaceImportNode namespaceNode = nameSpaceImport();
+                    importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namespaceNode);
+
+                    LiteralNode<TruffleString> fromClause = fromClause();
+                    Map<TruffleString, TruffleString> attributes = withClause();
+
+                    module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromClause, attributes));
+                    TruffleString moduleSpecifier = fromClause.getValue();
+                    ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes, ImportPhase.Defer);
+                    module.addModuleRequest(moduleRequest);
+                    module.addImportEntry(ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getNameTS()).withFrom(moduleRequest));
                     break end;
                 }
 
