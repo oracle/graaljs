@@ -2441,10 +2441,10 @@ public final class JSRuntime {
             JSDynamicObject prototype = JSObject.getPrototype(receiver);
             if (prototype != Null.instance) {
                 Object constructor = getDataProperty(prototype, JSObject.CONSTRUCTOR);
-                if (constructor instanceof JSFunctionObject constructorObj) {
-                    TruffleString name = JSFunction.getName(constructorObj);
-                    if (!name.isEmpty() && !name.equals(Strings.UC_OBJECT)) {
-                        return name;
+                if (constructor instanceof JSObject constructorObj) {
+                    Object name = getDataProperty(constructorObj, Strings.NAME);
+                    if (name instanceof TruffleString nameStr && !nameStr.isEmpty() && !nameStr.equals(Strings.UC_OBJECT)) {
+                        return nameStr;
                     }
                 }
             }
