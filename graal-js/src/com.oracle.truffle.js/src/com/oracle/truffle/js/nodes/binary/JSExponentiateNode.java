@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,8 +81,8 @@ public abstract class JSExponentiateNode extends JSBinaryNode {
     }
 
     @Specialization(guards = "isBigIntNegativeVal(b)")
-    protected void doBigIntNegativeExponent(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
-        throw Errors.createRangeError("Exponent must be positve");
+    protected Object doBigIntNegativeExponent(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
+        throw Errors.createRangeError("BigInt exponent must not be negative");
     }
 
     @Specialization(guards = {"isBigIntZero(a)", "!isBigIntZero(b)", "!isBigIntNegativeVal(b)"})

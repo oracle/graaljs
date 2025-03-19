@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,15 +43,15 @@ package com.oracle.truffle.js.runtime.objects;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.module.CreateImportMetaNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
  * Source Text Module Record.
@@ -83,7 +83,7 @@ public class JSModuleRecord extends ScriptOrModule {
     /** Lazily initialized frame ({@code [[Environment]]}). */
     private MaterializedFrame environment;
     /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
-    private JSDynamicObject importMeta;
+    private JSObject importMeta;
 
     // [HostDefined]
     private Object hostDefined;
@@ -219,26 +219,21 @@ public class JSModuleRecord extends ScriptOrModule {
         }
     }
 
-    public JSDynamicObject getImportMeta() {
-        if (importMeta == null) {
-            importMeta = createMetaObject();
-        }
+    public JSObject getImportMetaOrNull() {
         return importMeta;
     }
 
-    private JSDynamicObject createMetaObject() {
-        JSObject metaObj = JSOrdinary.createWithNullPrototype(context);
-        if (context.hasImportMetaInitializerBeenSet()) {
-            context.notifyImportMetaInitializer(metaObj, this);
-        } else {
-            initializeMetaObject(metaObj);
+    public JSObject getImportMeta(CreateImportMetaNode createImportMeta) {
+        JSObject metaObj = importMeta;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, metaObj == null)) {
+            importMeta = metaObj = createImportMeta.execute(this);
         }
         return metaObj;
     }
 
     @TruffleBoundary
-    private void initializeMetaObject(JSObject metaObj) {
-        JSObject.set(metaObj, Strings.URL, Strings.fromJavaString(getSource().getURI().toString()));
+    public String getURL() {
+        return getSource().getURI().toString();
     }
 
     public void setUnlinked() {
