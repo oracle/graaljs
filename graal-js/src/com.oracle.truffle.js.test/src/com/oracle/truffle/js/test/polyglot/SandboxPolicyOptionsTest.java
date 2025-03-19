@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,7 +89,9 @@ public class SandboxPolicyOptionsTest {
                         new Option(JSContextOptions.ALLOW_EVAL_NAME, "true", SandboxPolicy.CONSTRAINED),
                         new Option(JSContextOptions.ALLOW_EVAL_NAME, "false", SandboxPolicy.CONSTRAINED),
                         new Option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "none", SandboxPolicy.CONSTRAINED),
-                        new Option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw", SandboxPolicy.CONSTRAINED));
+                        new Option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw", SandboxPolicy.CONSTRAINED),
+                        new Option(JSContextOptions.TEXT_ENCODING_NAME, "true", SandboxPolicy.CONSTRAINED),
+                        new Option(JSContextOptions.TEXT_ENCODING_NAME, "false", SandboxPolicy.CONSTRAINED));
         return policies.stream().flatMap(p -> options.stream().map(o -> new Object[]{p, o})).toList();
     }
 
