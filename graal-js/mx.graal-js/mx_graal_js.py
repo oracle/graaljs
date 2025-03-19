@@ -42,6 +42,9 @@ from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
 import mx_unittest
 from mx_unittest import unittest
 
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
+
 _suite = mx.suite('graal-js')
 
 # Git repository of Test262: ECMAScript Test Suite.
@@ -533,6 +536,28 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 def is_wasm_available():
     return any(wasm_suite in mx.get_dynamic_imports() for wasm_suite in [('wasm', True), ('wasm-enterprise', True)])
 
+# Functions called from suite.py
+
+def has_suite(name):
+    return mx.suite(name, fatalIfMissing=False)
+
+def is_ee():
+    return has_suite('graal-enterprise')
+
+def graaljs_standalone_deps():
+    deps = mx_truffle.resolve_truffle_dist_names()
+    if is_wasm_available():
+        deps += ['wasm:WASM']
+    return deps
+
+def libjsvm_build_args():
+    if is_ee() and not mx.is_windows():
+        return [
+            '-H:+AuxiliaryEngineCache',
+            '-H:ReservedAuxiliaryImageBytes=2145482548',
+        ]
+    else:
+        return []
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,

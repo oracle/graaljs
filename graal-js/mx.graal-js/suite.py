@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-  "mxversion" : "7.27.0",
+  "mxversion" : "7.45.0",
 
   "name" : "graal-js",
 
@@ -435,6 +435,41 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript,Test",
     },
+
+    "graaljs_licenses": {
+      "class": "StandaloneLicenses",
+      "community_license_file": "LICENSE_GRAALJS",
+      "community_3rd_party_license_file": "THIRD_PARTY_LICENSE_GRAALJS.txt",
+    },
+
+    "graaljs_thin_launcher": {
+      "class": "ThinLauncherProject",
+      "mainClass": "com.oracle.truffle.js.shell.JSLauncher",
+      "jar_distributions": ["graal-js:GRAALJS_LAUNCHER"],
+      "relative_home_paths": {
+        "js": "..",
+      },
+      "relative_jre_path": "../jvm",
+      "relative_module_path": "../modules",
+      "relative_extracted_lib_paths": {
+        "truffle.attach.library": "../jvmlibs/<lib:truffleattach>",
+      },
+      "liblang_relpath": "../lib/<lib:jsvm>",
+    },
+
+    "libjsvm": {
+      "class": "LanguageLibraryProject",
+      "dependencies": [
+        "GRAALJS_STANDALONE_DEPENDENCIES",
+      ],
+      "build_args": [
+        # From mx.graal-js/native-image.properties
+        "-Dpolyglot.image-build-time.PreinitializeContexts=js",
+        # Configure launcher
+        "-Dorg.graalvm.launcher.class=com.oracle.truffle.js.shell.JSLauncher",
+      ],
+      "dynamicBuildArgs": "libjsvm_build_args",
+    },
   },
 
   "distributions" : {
@@ -752,6 +787,102 @@ suite = {
         "LICENSE_GRAALJS.txt" : "file:LICENSE_GRAALJS",
         "THIRD_PARTY_LICENSE_GRAALJS.txt": "file:THIRD_PARTY_LICENSE_GRAALJS.txt",
       },
+    },
+
+    "GRAALJS_STANDALONE_DEPENDENCIES": {
+      "description": "GraalJS standalone dependencies",
+      "class": "DynamicPOMDistribution",
+      "distDependencies": [
+        "graal-js:GRAALJS_LAUNCHER",
+        "graal-js:GRAALJS",
+        "sdk:TOOLS_FOR_STANDALONE",
+      ],
+      "dynamicDistDependencies": "graaljs_standalone_deps",
+      "maven": False,
+    },
+
+    "GRAALJS_STANDALONE_COMMON": {
+      "description": "Common layout for Native and JVM standalones",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "extracted-dependency:GRAALJS_GRAALVM_SUPPORT",
+          "dependency:graaljs_licenses/*",
+        ],
+        "bin/<exe:js>": "dependency:graaljs_thin_launcher",
+        "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
+      },
+    },
+
+    "GRAALJS_NATIVE_STANDALONE": {
+      "description": "GraalJS Native standalone",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "dependency:GRAALJS_STANDALONE_COMMON/*",
+        ],
+        "lib/": "dependency:libjsvm",
+      },
+    },
+
+    "GRAALJS_JVM_STANDALONE": {
+      "description": "GraalJS JVM standalone",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "dependency:GRAALJS_STANDALONE_COMMON/*",
+        ],
+        "jvm/": {
+          "source_type": "dependency",
+          "dependency": "sdk:STANDALONE_JAVA_HOME",
+          "path": "*",
+          "exclude": [
+            # Native Image-related
+            "bin/native-image*",
+            "lib/static",
+            "lib/svm",
+            "lib/<lib:native-image-agent>",
+            "lib/<lib:native-image-diagnostics-agent>",
+            # Unnecessary and big
+            "lib/src.zip",
+            "jmods",
+          ],
+        },
+        "jvmlibs/": [
+          "extracted-dependency:truffle:TRUFFLE_ATTACH_GRAALVM_SUPPORT",
+        ],
+        "modules/": [
+          {
+            "source_type": "classpath-dependencies",
+            "dependencies": [
+              "GRAALJS_STANDALONE_DEPENDENCIES",
+              "sdk:MAVEN_DOWNLOADER",
+            ],
+          },
+        ],
+      },
+    },
+
+    "GRAALJS_NATIVE_STANDALONE_RELEASE_ARCHIVE": {
+        "class": "DeliverableStandaloneArchive",
+        "platformDependent": True,
+        "standalone_dist": "GRAALJS_NATIVE_STANDALONE",
+        "community_archive_name": "graaljs-community",
+        "enterprise_archive_name": "graaljs",
+    },
+
+    "GRAALJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
+        "class": "DeliverableStandaloneArchive",
+        "platformDependent": True,
+        "standalone_dist": "GRAALJS_JVM_STANDALONE",
+        "community_archive_name": "graaljs-community-jvm",
+        "enterprise_archive_name": "graaljs-jvm",
     },
 
     "JS_INTEROP_MICRO_BENCHMARKS" : {

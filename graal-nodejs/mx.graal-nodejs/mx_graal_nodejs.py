@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,9 @@ from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
 from mx_graal_js import get_jdk, is_wasm_available
+
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_vm_ng import StandaloneLicenses, NativeImageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
 
 _suite = mx.suite('graal-nodejs')
 _current_os = mx.get_os()
@@ -650,6 +653,29 @@ def _prepare_svm_env():
 
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
+
+# Functions called from suite.py
+
+def has_suite(name):
+    return mx.suite(name, fatalIfMissing=False)
+
+def is_ee():
+    return has_suite('graal-enterprise')
+
+def graalnodejs_standalone_deps():
+    deps = mx_truffle.resolve_truffle_dist_names()
+    if is_wasm_available():
+        deps += ['wasm:WASM']
+    return deps
+
+def libgraalnodejs_build_args():
+    if is_ee() and not mx.is_windows():
+        return [
+            '-H:+AuxiliaryEngineCache',
+            '-H:ReservedAuxiliaryImageBytes=2145482548',
+        ]
+    else:
+        return []
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
