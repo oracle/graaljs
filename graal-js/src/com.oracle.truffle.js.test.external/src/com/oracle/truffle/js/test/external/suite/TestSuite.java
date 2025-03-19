@@ -82,13 +82,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.UserScriptException;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class TestSuite {
 
@@ -537,11 +535,18 @@ public abstract class TestSuite {
     }
 
     private static String getDetailedCause(Throwable cause) {
-        if (cause instanceof UserScriptException) {
-            UserScriptException use = (UserScriptException) cause;
-            Object exceptionObject = use.getErrorObject();
-            if (exceptionObject instanceof JSDynamicObject) {
-                return String.valueOf(JSObject.get((JSDynamicObject) exceptionObject, Strings.MESSAGE));
+        if (cause instanceof PolyglotException polyglotException) {
+            Value guestObject = polyglotException.getGuestObject();
+            if (guestObject != null) {
+                try {
+                    if (guestObject.hasMembers()) {
+                        Value message = guestObject.getMember("message");
+                        if (message != null) {
+                            return message.toString();
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
             }
         }
         return "";
