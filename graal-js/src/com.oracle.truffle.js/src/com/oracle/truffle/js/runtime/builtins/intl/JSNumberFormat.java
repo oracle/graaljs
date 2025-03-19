@@ -624,9 +624,8 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static JSObject formatToParts(JSContext context, JSRealm realm, JSNumberFormatObject numberFormatObj, Object n) {
+    public static JSObject formatToParts(JSContext context, JSRealm realm, JSNumberFormatObject numberFormatObj, Number x) {
         InternalState state = numberFormatObj.getInternalState();
-        Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         FormattedValue formattedValue = formattedValue(state, x);
         AttributedCharacterIterator fit = formattedValue.toCharacterIterator();
         String formatted = formattedValue.toString();
