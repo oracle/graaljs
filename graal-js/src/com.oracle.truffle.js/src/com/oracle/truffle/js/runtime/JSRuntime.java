@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2433,7 +2433,7 @@ public final class JSRuntime {
         }
 
         // Try function name of prototype.constructor
-        if (!isProxy(receiver)) {
+        if (!isProxyLike(receiver)) {
             JSDynamicObject prototype = JSObject.getPrototype(receiver);
             if (prototype != Null.instance) {
                 Object constructor = getDataProperty(prototype, JSObject.CONSTRUCTOR);
@@ -2466,7 +2466,7 @@ public final class JSRuntime {
     public static Object getDataProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         JSDynamicObject current = thisObj;
-        while (current != Null.instance && current != null && !isProxy(current)) {
+        while (current != Null.instance && current != null && !isProxyLike(current)) {
             PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
             if (desc != null) {
                 if (desc.isDataDescriptor()) {
@@ -2480,7 +2480,7 @@ public final class JSRuntime {
         return null;
     }
 
-    private static boolean isProxy(JSDynamicObject receiver) {
+    private static boolean isProxyLike(JSDynamicObject receiver) {
         return JSProxy.isJSProxy(receiver) || JSAdapter.isJSAdapter(receiver);
     }
 
