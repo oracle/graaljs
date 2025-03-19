@@ -2331,10 +2331,14 @@ public final class JSRuntime {
         }
     }
 
+    public static TruffleString getConstructorName(JSObject receiver) {
+        return getConstructorName(receiver, null);
+    }
+
     /**
      * Carefully try getting the constructor name, must not throw.
      */
-    public static TruffleString getConstructorName(JSDynamicObject receiver) {
+    public static TruffleString getConstructorName(JSObject receiver, TruffleString defaultName) {
         // Try @@toStringTag first
         Object toStringTag = getDataProperty(receiver, Symbol.SYMBOL_TO_STRING_TAG);
         if (toStringTag instanceof TruffleString str) {
@@ -2346,14 +2350,17 @@ public final class JSRuntime {
             JSDynamicObject prototype = JSObject.getPrototype(receiver);
             if (prototype != Null.instance) {
                 Object constructor = getDataProperty(prototype, JSObject.CONSTRUCTOR);
-                if (JSFunction.isJSFunction(constructor)) {
-                    return JSFunction.getName((JSFunctionObject) constructor);
+                if (constructor instanceof JSFunctionObject constructorObj) {
+                    TruffleString name = JSFunction.getName(constructorObj);
+                    if (!name.isEmpty() && !name.equals(Strings.UC_OBJECT)) {
+                        return name;
+                    }
                 }
             }
         }
 
         // As a last resort, use class name
-        return JSObject.getClassName(receiver);
+        return defaultName != null ? defaultName : JSObject.getClassName(receiver);
     }
 
     public static TruffleString getPrimitiveConstructorName(Object primitive) {

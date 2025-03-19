@@ -557,14 +557,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         if (nameValue instanceof TruffleString nameStr && !nameStr.isEmpty() && !nameStr.equals(Strings.UC_ERROR)) {
             return Strings.toJavaString(nameStr);
         }
-        Object constructorValue = JSRuntime.getDataProperty(errorObj, JSObject.CONSTRUCTOR);
-        if (constructorValue instanceof JSObject constructorObj) {
-            nameValue = JSRuntime.getDataProperty(constructorObj, JSError.NAME);
-            if (nameValue instanceof TruffleString nameStr && !nameStr.isEmpty()) {
-                return Strings.toJavaString(nameStr);
-            }
-        }
-        return name;
+        return Strings.toJavaString(JSRuntime.getConstructorName(errorObj, Strings.fromJavaString(name)));
     }
 
     protected static String getErrorMessageSafe(JSObject errorObj, String message) {
@@ -704,8 +697,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
                 if (thisObject == JSFunction.CONSTRUCT) {
                     return getFunctionName();
                 } else if (!JSRuntime.isNullOrUndefined(thisObject) && !global) {
-                    if (JSDynamicObject.isJSDynamicObject(thisObject)) {
-                        return JSRuntime.getConstructorName((JSDynamicObject) thisObject);
+                    if (thisObject instanceof JSObject receiver) {
+                        return JSRuntime.getConstructorName(receiver);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
                         return JSRuntime.getPrimitiveConstructorName(thisObject);
                     }
