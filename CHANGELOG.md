@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 24.2.1
+* Made option `js.text-encoding` stable and allowed in `SandboxPolicy.CONSTRAINED`.
+
 ## Version 24.2.0
 * Updated Node.js to version 22.13.1.
 * Implemented the [`Error.isError`](https://github.com/tc39/proposal-is-error) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
