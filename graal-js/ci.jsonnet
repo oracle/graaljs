@@ -43,7 +43,7 @@ local ci = import '../ci.jsonnet';
     nativeimages+:: ['lib:jsvm', 'lib:jvmcicompiler'],
     extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
-      ['mx', 'build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      ['mx', 'build'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
@@ -114,7 +114,7 @@ local ci = import '../ci.jsonnet';
     nativeimages+:: ['lib:jsvm'],
     graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['mx', 'build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      ['mx', 'build'],
       ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
     ],
     timelimit: '1:00:00',

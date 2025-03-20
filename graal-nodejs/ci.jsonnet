@@ -34,7 +34,7 @@ local cicommon = import '../ci/common.jsonnet';
   local build = {
     run+: [
       // build only if no artifact is being used to avoid rebuilding
-      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac', '--dependencies', std.join(',', self.build_dependencies)],
+      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac'] + (if self.build_dependencies == [] then [] else ['--dependencies', std.join(',', self.build_dependencies)]),
     ],
   },
 
