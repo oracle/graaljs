@@ -10,7 +10,7 @@
 # ------
 # To run:
 # graal-js $ ../../graalvm-tests/test.py --keep-on-error -g $(mx --quiet graalvm-home) test/repl/aggregate-error.test
-# graal-js $ ../../graalvm-tests/test.py --keep-on-error -g $(mx --quiet --dynamicimports /vm standalone-home js) test/repl/aggregate-error.test
+# graal-js $ ../../graalvm-tests/test.py --keep-on-error -g $(mx --quiet paths --output GRAALJS_NATIVE_STANDALONE) test/repl/aggregate-error.test
 #
 >[7r] js --engine.WarnInterpreterOnly=false --unhandled-rejections=throw ${TEST_DIR}/throw-aggregate-error.js
 AggregateError: dolor

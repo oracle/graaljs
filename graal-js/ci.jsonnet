@@ -48,11 +48,11 @@ local ci = import '../ci.jsonnet';
       ['${GRAALVM_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       # standalone smoke tests
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'js', '--type=native']],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE']],
       ['${STANDALONE_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       ['${STANDALONE_HOME}/bin/js', '--experimental-options', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'js', '--type=jvm']],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_JVM_STANDALONE']],
       ['${STANDALONE_HOME}/bin/js', '--jvm', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '--jvm', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       ['${STANDALONE_HOME}/bin/js', '--experimental-options', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
@@ -115,7 +115,7 @@ local ci = import '../ci.jsonnet';
     graalvmtests:: '../../graalvm-tests',
     run+: [
       ['mx', 'build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
-      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'standalone-home', 'js'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
     ],
     timelimit: '1:00:00',
   },
