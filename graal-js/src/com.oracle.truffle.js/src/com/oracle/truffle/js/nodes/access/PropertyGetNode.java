@@ -111,6 +111,7 @@ import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -1074,22 +1075,55 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static final class ModuleNamespacePropertyGetNode extends LinkedPropertyGetNode {
+    static final class ModuleNamespacePropertyGetNode extends LinkedPropertyGetNode {
 
-        private final Location location;
+        private final Property property;
         @Child ReadImportBindingNode readBindingNode;
 
-        public ModuleNamespacePropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
+        ModuleNamespacePropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
             assert JSProperty.isModuleNamespaceExport(property);
-            this.location = property.getLocation();
+            this.property = property;
             this.readBindingNode = ReadImportBindingNode.create();
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             JSModuleNamespaceObject store = (JSModuleNamespaceObject) receiverCheck.getStore(thisObj);
-            ExportResolution.Resolved exportResolution = (ExportResolution.Resolved) location.get(store, guard);
+            assert !store.isDeferred(); // guaranteed by shape check
+            ExportResolution.Resolved exportResolution = (ExportResolution.Resolved) property.getLocation().get(store, guard);
+            return readBindingNode.execute(exportResolution);
+        }
+    }
+
+    static final class DeferredModuleNamespacePropertyGetNode extends LinkedPropertyGetNode {
+
+        private final Property property;
+        @Child ReadImportBindingNode readBindingNode;
+        private final BranchProfile evaluateDeferredBranch = BranchProfile.create();
+
+        DeferredModuleNamespacePropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            this.property = property;
+            this.readBindingNode = ReadImportBindingNode.create();
+        }
+
+        @Override
+        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
+            JSModuleNamespaceObject store = (JSModuleNamespaceObject) receiverCheck.getStore(thisObj);
+            assert store.isDeferred(); // guaranteed by shape check
+            // Trigger module evaluation if needed (either not evaluated yet or errored).
+            // Not necessary for synthetic modules since their errors are thrown during load.
+            if (store.getModule() instanceof CyclicModuleRecord cyclicModule) {
+                if (cyclicModule.getStatus() != CyclicModuleRecord.Status.Evaluated || cyclicModule.getEvaluationError() != null) {
+                    evaluateDeferredBranch.enter();
+                    store.getModuleExportsList();
+                }
+            }
+            if (property == null) {
+                return Undefined.instance;
+            }
+            ExportResolution.Resolved exportResolution = (ExportResolution.Resolved) property.getLocation().get(store, guard);
             return readBindingNode.execute(exportResolution);
         }
     }
@@ -1777,7 +1811,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false);
         if (JSProperty.isData(property)) {
-            return createSpecializationFromDataProperty(property, shapeCheck, context);
+            return createSpecializationFromDataProperty(property, shapeCheck, proto);
         } else {
             assert JSProperty.isAccessor(property);
             return new AccessorPropertyGetNode(property, shapeCheck);
@@ -1820,14 +1854,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         if (JSProperty.isData(property)) {
-            return createSpecializationFromDataProperty(property, receiverCheck, context);
+            return createSpecializationFromDataProperty(property, receiverCheck, proto);
         } else {
             assert JSProperty.isAccessor(property);
             return new AccessorPropertyGetNode(property, receiverCheck);
         }
     }
 
-    private static GetCacheNode createSpecializationFromDataProperty(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
+    private GetCacheNode createSpecializationFromDataProperty(Property property, ReceiverCheckNode receiverCheck, JSDynamicObject store) {
         assert JSProperty.isData(property);
         if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
             return new IntPropertyGetNode(property, receiverCheck);
@@ -1836,7 +1870,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
             return new BooleanPropertyGetNode(property, receiverCheck);
         } else if (JSProperty.isModuleNamespaceExport(property)) {
-            return new ModuleNamespacePropertyGetNode(property, receiverCheck);
+            if (((JSModuleNamespaceObject) store).isDeferred()) {
+                return new DeferredModuleNamespacePropertyGetNode(property, receiverCheck);
+            } else {
+                return new ModuleNamespacePropertyGetNode(property, receiverCheck);
+            }
         } else if (JSProperty.isProxy(property)) {
             if (isArrayLengthProperty(property)) {
                 return new ArrayLengthPropertyGetNode(property, receiverCheck);
@@ -1928,7 +1966,17 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 return createJSProxyCache(createJSClassCheck(thisObj, proto, depth));
             } else {
-                return createUndefinedJSObjectPropertyNode(jsobject, proto, depth);
+                var shapeCheckNode = createShapeCheckNode(jsobject.getShape(), jsobject, proto, depth, false, false);
+                if (store instanceof JSModuleNamespaceObject ns && ns.isDeferred() && !ns.isSymbolLikeNamespaceKey(key)) {
+                    // Property does not exist in the deferred module namespace object.
+                    // We must still intercept the access to ensure the module is evaluated.
+                    // Since the prototype of module namespace objects is always null,
+                    // we can stop the property lookup here and return undefined.
+                    assert ns.getPrototypeOf() == Null.instance && !isRequired();
+                    return new DeferredModuleNamespacePropertyGetNode(null, shapeCheckNode);
+                } else {
+                    return createUndefinedJSObjectPropertyNode(jsobject, shapeCheckNode);
+                }
             }
         } else if (JSProxy.isJSProxy(store)) {
             ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, proto, depth);
@@ -1964,8 +2012,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return (parent instanceof JSProxyPropertyGetNode);
     }
 
-    private GetCacheNode createUndefinedJSObjectPropertyNode(JSDynamicObject jsobject, JSDynamicObject proto, int depth) {
-        AbstractShapeCheckNode shapeCheck = createShapeCheckNode(jsobject.getShape(), jsobject, proto, depth, false, false);
+    private GetCacheNode createUndefinedJSObjectPropertyNode(JSDynamicObject jsobject, AbstractShapeCheckNode shapeCheck) {
         if (JSRuntime.isObject(jsobject)) {
             if (context.isOptionNashornCompatibilityMode() && !(key instanceof Symbol)) {
                 if ((!context.getNoSuchMethodUnusedAssumption().isValid() && JSObject.hasProperty(jsobject, JSObject.NO_SUCH_METHOD_NAME)) ||

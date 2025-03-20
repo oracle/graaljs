@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,9 @@ import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -234,15 +235,15 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         }
     }
 
-    public static final class ModuleNamespaceHasOwnPropertyNode extends LinkedHasPropertyCacheNode {
+    static final class ModuleNamespaceHasOwnPropertyNode extends LinkedHasPropertyCacheNode {
 
-        private final Location location;
-        @Child ReadImportBindingNode readBindingNode;
+        private final Property property;
+        @Child private ReadImportBindingNode readBindingNode;
 
-        public ModuleNamespaceHasOwnPropertyNode(ReceiverCheckNode receiverCheck, Property property) {
+        ModuleNamespaceHasOwnPropertyNode(ReceiverCheckNode receiverCheck, Property property) {
             super(receiverCheck);
             assert JSProperty.isModuleNamespaceExport(property);
-            this.location = property.getLocation();
+            this.property = property;
             this.readBindingNode = ReadImportBindingNode.create();
         }
 
@@ -250,9 +251,51 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             JSModuleNamespaceObject store = (JSModuleNamespaceObject) receiverCheck.getStore(thisObj);
-            ExportResolution.Resolved exportResolution = (ExportResolution.Resolved) location.get(store, receiverCheck.getShape());
-            // Throws ReferenceError in case of an uninitialized binding.
-            readBindingNode.execute(exportResolution);
+            assert !store.isDeferred(); // guaranteed by shape check
+            if (root.isOwnProperty()) {
+                // [[GetOwnProperty]] semantics: Performs a [[Get]].
+                ExportResolution.Resolved exportResolution = (ExportResolution.Resolved) property.getLocation().get(store, receiverCheck.getShape());
+                // Throws ReferenceError in case of an uninitialized binding.
+                readBindingNode.execute(exportResolution);
+            }
+            return true;
+        }
+    }
+
+    static final class DeferredModuleNamespaceHasOwnPropertyNode extends LinkedHasPropertyCacheNode {
+
+        private final Property property;
+        @Child private ReadImportBindingNode readBindingNode;
+        private final BranchProfile evaluateDeferredBranch = BranchProfile.create();
+
+        DeferredModuleNamespaceHasOwnPropertyNode(ReceiverCheckNode receiverCheck, Property property) {
+            super(receiverCheck);
+            this.property = property;
+            this.readBindingNode = ReadImportBindingNode.create();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
+            JSModuleNamespaceObject store = (JSModuleNamespaceObject) receiverCheck.getStore(thisObj);
+            assert store.isDeferred(); // guaranteed by shape check
+            // Trigger module evaluation if needed (either not evaluated or errored).
+            // Not necessary for synthetic modules since their errors are thrown during load.
+            if (store.getModule() instanceof CyclicModuleRecord cyclicModule) {
+                if (cyclicModule.getStatus() != CyclicModuleRecord.Status.Evaluated || cyclicModule.getEvaluationError() != null) {
+                    evaluateDeferredBranch.enter();
+                    store.getModuleExportsList();
+                }
+            }
+            if (property == null) {
+                return false;
+            }
+            if (root.isOwnProperty()) {
+                // [[GetOwnProperty]] semantics: Performs a [[Get]].
+                ExportResolution.Resolved exportResolution = (ExportResolution.Resolved) property.getLocation().get(store, receiverCheck.getShape());
+                // Throws ReferenceError in case of an uninitialized binding.
+                readBindingNode.execute(exportResolution);
+            }
             return true;
         }
     }
@@ -341,8 +384,12 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         } else {
             check = createPrimitiveReceiverCheck(thisObj, proto, depth);
         }
-        if (hasOwnProperty && JSProperty.isModuleNamespaceExport(property)) {
-            return new ModuleNamespaceHasOwnPropertyNode(check, property);
+        if (JSProperty.isModuleNamespaceExport(property)) {
+            if (((JSModuleNamespaceObject) proto).isDeferred()) {
+                return new DeferredModuleNamespaceHasOwnPropertyNode(check, property);
+            } else {
+                return new ModuleNamespaceHasOwnPropertyNode(check, property);
+            }
         }
         return new PresentHasPropertyCacheNode(check);
     }
@@ -361,7 +408,16 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             } else if (JSProxy.isJSProxy(store)) {
                 return new JSProxyDispatcherPropertyHasNode(context, key, createJSClassCheck(thisObj, proto, depth), isOwnProperty());
             } else {
-                return new AbsentHasPropertyCacheNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false));
+                var shapeCheckNode = createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false);
+                if (store instanceof JSModuleNamespaceObject ns && ns.isDeferred() && !ns.isSymbolLikeNamespaceKey(key)) {
+                    // Property does not exist in the deferred module namespace object.
+                    // We must still intercept the access to ensure the module is evaluated.
+                    // Since the prototype of module namespace objects is always null,
+                    // we can stop the property lookup here and return false.
+                    return new DeferredModuleNamespaceHasOwnPropertyNode(shapeCheckNode, null);
+                } else {
+                    return new AbsentHasPropertyCacheNode(shapeCheckNode);
+                }
             }
         } else {
             return new AbsentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass()));

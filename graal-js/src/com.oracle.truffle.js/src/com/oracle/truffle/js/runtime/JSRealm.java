@@ -406,6 +406,8 @@ public class JSRealm {
     private final JSDynamicObject promisePrototype;
     /** Promise.all function object, null in ES5 mode. */
     private JSFunctionObject promiseAllFunctionObject;
+    /** Promise.resolve function object, null in ES5 mode. */
+    private JSFunctionObject promiseResolveFunctionObject;
     private Object unhandledPromiseRejectionHandler;
 
     private final JSDynamicObject ordinaryHasInstanceFunction;
@@ -1730,6 +1732,10 @@ public class JSRealm {
         return promiseAllFunctionObject;
     }
 
+    public final JSFunctionObject getPromiseResolveFunctionObject() {
+        return promiseResolveFunctionObject;
+    }
+
     public final Object getUnhandledPromiseRejectionHandler() {
         return unhandledPromiseRejectionHandler;
     }
@@ -1984,6 +1990,7 @@ public class JSRealm {
             putGlobalProperty(JSProxy.CLASS_NAME, getProxyConstructor());
             putGlobalProperty(JSPromise.CLASS_NAME, getPromiseConstructor());
             this.promiseAllFunctionObject = (JSFunctionObject) JSObject.get(getPromiseConstructor(), Strings.ALL);
+            this.promiseResolveFunctionObject = (JSFunctionObject) JSObject.get(getPromiseConstructor(), Strings.RESOLVE);
         }
         if (getContextOptions().isIteratorHelpers()) {
             putGlobalProperty(JSIterator.CLASS_NAME, getIteratorConstructor());

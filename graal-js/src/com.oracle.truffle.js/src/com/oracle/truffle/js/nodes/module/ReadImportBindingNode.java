@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.module;
 
 import java.util.Set;
 
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -132,12 +133,12 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
                     @Cached InlinedBranchProfile slowPath) {
         AbstractModuleRecord module = resolution.getModule();
         assert !(module instanceof CyclicModuleRecord cyclicModule) || cyclicModule.isLinked() : module;
-        var namespace = module.getModuleNamespaceOrNull();
+        var namespace = module.getModuleNamespaceOrNull(ImportPhase.Evaluation);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, namespace != null)) {
             return namespace;
         } else {
             slowPath.enter(this);
-            return module.getModuleNamespace();
+            return module.getModuleNamespace(ImportPhase.Evaluation);
         }
     }
 

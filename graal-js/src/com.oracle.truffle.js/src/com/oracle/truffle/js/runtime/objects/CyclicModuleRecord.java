@@ -41,12 +41,15 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.Source;
@@ -306,6 +309,35 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
 
     public final CyclicModuleRecord getCycleRoot() {
         return cycleRoot;
+    }
+
+    @TruffleBoundary
+    public final boolean isReadyForSyncExecution() {
+        return isReadyForSyncExecution(new HashSet<>());
+    }
+
+    private boolean isReadyForSyncExecution(Set<AbstractModuleRecord> seen) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (!seen.add(this)) {
+            return true;
+        }
+        if (getStatus() == Status.Evaluated) {
+            return true;
+        } else if (getStatus() == Status.Evaluating || getStatus() == Status.EvaluatingAsync) {
+            return false;
+        } else {
+            assert getStatus() == Status.Linked : getStatus();
+            if (hasTLA()) {
+                return false;
+            }
+            for (ModuleRequest request : getRequestedModules()) {
+                var requiredModule = getImportedModule(request);
+                if (requiredModule instanceof CyclicModuleRecord requiredCyclicModule && !requiredCyclicModule.isReadyForSyncExecution(seen)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     public record LoadedModuleRequest(

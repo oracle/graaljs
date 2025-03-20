@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
 /**
@@ -84,7 +83,7 @@ public class ResolveStarImportNode extends StatementNode {
         AbstractModuleRecord importedModule = moduleProfile.profile(referrer.getImportedModule(moduleRequest));
         // If in.[[ImportName]] is namespace-object, then
         // Let namespace be GetModuleNamespace(importedModule)
-        JSDynamicObject namespace = importedModule.getModuleNamespace();
+        var namespace = importedModule.getModuleNamespace(moduleRequest.phase());
         // envRec.CreateImmutableBinding(in.[[LocalName]], true).
         // Call envRec.InitializeBinding(in.[[LocalName]], namespace).
         writeLocalNode.executeWrite(frame, namespace);

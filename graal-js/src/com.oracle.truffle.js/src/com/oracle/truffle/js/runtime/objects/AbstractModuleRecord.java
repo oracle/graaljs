@@ -47,6 +47,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.js.parser.ir.Module.ImportPhase;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -68,6 +70,8 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
 
     /** Lazily initialized Module Namespace object ({@code [[Namespace]]}). */
     private JSModuleNamespaceObject namespace;
+    /** Lazily initialized Deferred Module Namespace object ({@code [[DeferredNamespace]]}). */
+    private JSModuleNamespaceObject deferredNamespace;
     /** Lazily initialized frame ({@code [[Environment]]}). */
     private MaterializedFrame environment;
     private FrameDescriptor frameDescriptor;
@@ -118,7 +122,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
      */
     @TruffleBoundary
     public void evaluateSync(JSRealm realm) {
-        assert !(this instanceof CyclicModuleRecord) : this;
+        assert !(this instanceof CyclicModuleRecord cyclicModule) || cyclicModule.isReadyForSyncExecution() : this;
         JSPromiseObject loadPromise = evaluate(realm);
         assert !JSPromise.isPending(loadPromise);
         JSPromise.throwIfRejected(loadPromise, realm);
@@ -138,14 +142,29 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
 
     public abstract ExportResolution resolveExport(TruffleString exportName, Set<Pair<? extends AbstractModuleRecord, TruffleString>> resolveSet);
 
-    public final JSModuleNamespaceObject getModuleNamespaceOrNull() {
-        return namespace;
+    public final JSModuleNamespaceObject getModuleNamespaceOrNull(ImportPhase phase) {
+        assert phase == ImportPhase.Evaluation || phase == ImportPhase.Defer : phase;
+        return getModuleNamespaceOrNull(phase == ImportPhase.Defer);
+    }
+
+    public final JSModuleNamespaceObject getModuleNamespace(ImportPhase phase) {
+        assert phase == ImportPhase.Evaluation || phase == ImportPhase.Defer : phase;
+        return getModuleNamespace(phase == ImportPhase.Defer);
+    }
+
+    public final JSModuleNamespaceObject getModuleNamespaceOrNull(boolean deferred) {
+        if (deferred) {
+            return deferredNamespace;
+        } else {
+            return namespace;
+        }
     }
 
     @TruffleBoundary
-    public final JSModuleNamespaceObject getModuleNamespace() {
-        if (namespace != null) {
-            return namespace;
+    public final JSModuleNamespaceObject getModuleNamespace(boolean deferred) {
+        JSModuleNamespaceObject ns = getModuleNamespaceOrNull(deferred);
+        if (ns != null) {
+            return ns;
         }
         assert (!(this instanceof CyclicModuleRecord cyclicModule) || (cyclicModule.getStatus() != CyclicModuleRecord.Status.New)) : this;
         Collection<TruffleString> exportedNames = getExportedNames();
@@ -159,8 +178,12 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
             }
         }
         unambiguousNames.sort((a, b) -> a.getKey().compareCharsUTF16Uncached(b.getKey()));
-        JSModuleNamespaceObject ns = JSModuleNamespace.create(getContext(), JSRealm.get(null), this, unambiguousNames);
-        this.namespace = ns;
+        ns = JSModuleNamespace.create(getContext(), JSRealm.get(null), this, unambiguousNames, deferred);
+        if (deferred) {
+            this.deferredNamespace = ns;
+        } else {
+            this.namespace = ns;
+        }
         return ns;
     }
 
@@ -189,6 +212,36 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
 
     public final Object getHostDefined() {
         return this.hostDefined;
+    }
+
+    /**
+     * Collects the direct post-order list of asynchronous unexecuted transitive dependencies,
+     * stopping the depth-first search for a branch when an asynchronous dependency is found.
+     */
+    @TruffleBoundary
+    public List<AbstractModuleRecord> gatherAsynchronousTransitiveDependencies() {
+        return gatherAsynchronousTransitiveDependencies(new ArrayList<>(), new HashSet<>());
+    }
+
+    private List<AbstractModuleRecord> gatherAsynchronousTransitiveDependencies(List<AbstractModuleRecord> result, Set<AbstractModuleRecord> seen) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (!seen.add(this)) {
+            return result;
+        }
+        if (this instanceof CyclicModuleRecord cyclicModule) {
+            if (cyclicModule.getStatus() == CyclicModuleRecord.Status.Evaluating || cyclicModule.getStatus() == CyclicModuleRecord.Status.Evaluated) {
+                return result;
+            } else if (cyclicModule.hasTLA()) {
+                result.add(cyclicModule);
+                return result;
+            } else {
+                for (var request : cyclicModule.getRequestedModules()) {
+                    var requiredModule = cyclicModule.getImportedModule(request);
+                    requiredModule.gatherAsynchronousTransitiveDependencies(result, seen);
+                }
+            }
+        }
+        return result;
     }
 
     public abstract CyclicModuleRecord.Status getStatus();

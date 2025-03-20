@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -72,15 +73,19 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -243,7 +248,7 @@ public class ImportCallNode extends JavaScriptNode {
             assert JSPromise.isJSPromise(promise);
             return promise;
         } else {
-            var payload = new ContinueDynamicImportPayload(promiseCapability, createContinueDynamicImportHandler(realm));
+            var payload = new ContinueDynamicImportPayload(promiseCapability, phase, createContinueDynamicImportHandler(realm));
             context.getEvaluator().hostLoadImportedModule(realm, referencingScriptOrModule, moduleRequest, Undefined.instance, payload);
             return promiseCapability.getPromise();
         }
@@ -278,6 +283,7 @@ public class ImportCallNode extends JavaScriptNode {
      */
     public record ContinueDynamicImportPayload(
                     PromiseCapabilityRecord promiseCapability,
+                    ImportPhase phase,
                     JSFunctionObject continueDynamicImportCallback) {
     }
 
@@ -287,6 +293,7 @@ public class ImportCallNode extends JavaScriptNode {
     private record LinkAndEvaluateArgs(
                     AbstractModuleRecord moduleRecord,
                     PromiseCapabilityRecord promiseCapability,
+                    ImportPhase phase,
                     JSFunctionObject onRejected) {
     }
 
@@ -305,7 +312,7 @@ public class ImportCallNode extends JavaScriptNode {
      */
     private static JSFunctionData createContinueDynamicImportHandlerImpl(JSContext context) {
         class ContinueDynamicImportRootNode extends JavaScriptRealmBoundaryRootNode {
-            @Child protected JavaScriptNode promiseCapabilityArgument = AccessIndexedArgumentNode.create(0);
+            @Child protected JavaScriptNode payloadArgument = AccessIndexedArgumentNode.create(0);
             @Child protected JavaScriptNode moduleRecordArgument = AccessIndexedArgumentNode.create(1);
 
             @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
@@ -318,13 +325,13 @@ public class ImportCallNode extends JavaScriptNode {
 
             @Override
             public Object executeInRealm(VirtualFrame frame) {
-                PromiseCapabilityRecord importPromiseCapability = (PromiseCapabilityRecord) promiseCapabilityArgument.execute(frame);
+                ContinueDynamicImportPayload payload = (ContinueDynamicImportPayload) payloadArgument.execute(frame);
                 var module = (AbstractModuleRecord) moduleRecordArgument.execute(frame);
                 JSRealm realm = getRealm();
 
                 JSPromiseObject loadPromise = module.loadRequestedModules(realm, Undefined.instance);
-                JSFunctionObject onRejected = createOnRejectedClosure(context, realm, importPromiseCapability);
-                JSFunctionObject linkAndEvaluate = createLinkAndEvaluateClosure(context, realm, module, importPromiseCapability, onRejected);
+                JSFunctionObject onRejected = createOnRejectedClosure(context, realm, payload.promiseCapability());
+                JSFunctionObject linkAndEvaluate = createLinkAndEvaluateClosure(context, realm, module, payload, onRejected);
 
                 promiseThenNode.execute(loadPromise, linkAndEvaluate, onRejected);
                 return Undefined.instance;
@@ -337,10 +344,10 @@ public class ImportCallNode extends JavaScriptNode {
                 return rejectedClosure;
             }
 
-            private JSFunctionObject createLinkAndEvaluateClosure(JSContext cx, JSRealm realm, AbstractModuleRecord module, PromiseCapabilityRecord promiseCapability, JSFunctionObject onRejected) {
+            private JSFunctionObject createLinkAndEvaluateClosure(JSContext cx, JSRealm realm, AbstractModuleRecord module, ContinueDynamicImportPayload payload, JSFunctionObject onRejected) {
                 JSFunctionData functionData = cx.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ContinueDynamicImportLinkAndEvaluateClosure, (c) -> createLinkAndEvaluateImpl(c));
                 JSFunctionObject linkAndEvaluateClosure = JSFunction.create(realm, functionData);
-                setLinkAndEvaluateCaptures.setValue(linkAndEvaluateClosure, new LinkAndEvaluateArgs(module, promiseCapability, onRejected));
+                setLinkAndEvaluateCaptures.setValue(linkAndEvaluateClosure, new LinkAndEvaluateArgs(module, payload.promiseCapability(), payload.phase(), onRejected));
                 return linkAndEvaluateClosure;
             }
         }
@@ -359,26 +366,46 @@ public class ImportCallNode extends JavaScriptNode {
             @Child private JSFunctionCallNode callPromiseReject;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
+            // import.defer only, lazily initialized.
+            @Child private JSFunctionCallNode callOnFulfilled;
+            @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+            @Child private PerformPromiseAllNode performPromiseAllNode;
+            @Child private PropertyGetNode getNext;
+
             protected LinkAndEvaluateRootNode(JavaScriptLanguage lang) {
                 super(lang);
             }
 
             @Override
             protected Object executeInRealm(VirtualFrame frame) {
-                JSDynamicObject thisFunction = (JSDynamicObject) JSArguments.getFunctionObject(frame.getArguments());
+                JSFunctionObject thisFunction = JSFrameUtil.getFunctionObject(frame);
                 LinkAndEvaluateArgs captures = (LinkAndEvaluateArgs) getCaptures.getValue(thisFunction);
                 AbstractModuleRecord moduleRecord = captures.moduleRecord;
                 PromiseCapabilityRecord importPromiseCapability = captures.promiseCapability;
                 JSFunctionObject onRejected = captures.onRejected;
 
                 JSRealm realm = getRealm();
-                assert realm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
+                assert realm == JSFunction.getRealm(thisFunction);
                 try {
                     // If link is an abrupt completion, reject the promise from import().
                     moduleRecord.link(realm);
 
-                    JSPromiseObject evaluatePromise = moduleRecord.evaluate(realm);
                     JSFunctionObject onFulfilled = createFulfilledClosure(context, realm, captures);
+                    JSPromiseObject evaluatePromise;
+                    if (captures.phase() == ImportPhase.Defer) {
+                        if (callOnFulfilled == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            callOnFulfilled = insert(JSFunctionCallNode.createCall());
+                        }
+                        var evaluationList = moduleRecord.gatherAsynchronousTransitiveDependencies();
+                        if (Boundaries.listSize(evaluationList) == 0) {
+                            return callOnFulfilled.executeCall(JSArguments.createZeroArg(Undefined.instance, onFulfilled));
+                        }
+                        evaluatePromise = evaluateDeferred(realm, evaluationList);
+                    } else {
+                        assert captures.phase() == ImportPhase.Evaluation;
+                        evaluatePromise = moduleRecord.evaluate(realm);
+                    }
                     promiseThenNode.execute(evaluatePromise, onFulfilled, onRejected);
                 } catch (AbstractTruffleException ex) {
                     rejectPromise(importPromiseCapability, ex);
@@ -391,6 +418,24 @@ public class ImportCallNode extends JavaScriptNode {
                 JSFunctionObject closure = JSFunction.create(realm, functionData);
                 setCaptures.setValue(closure, captures);
                 return closure;
+            }
+
+            private JSPromiseObject evaluateDeferred(JSRealm realm, List<AbstractModuleRecord> evaluationList) {
+                if (newPromiseCapabilityNode == null || performPromiseAllNode == null || getNext == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    newPromiseCapabilityNode = insert(NewPromiseCapabilityNode.create(context));
+                    performPromiseAllNode = insert(PerformPromiseAllNode.create(context));
+                    getNext = insert(PropertyGetNode.create(Strings.NEXT, context));
+                }
+                JSPromiseObject[] asyncDepsEvaluationPromises = new JSPromiseObject[Boundaries.listSize(evaluationList)];
+                for (int i = 0; i < asyncDepsEvaluationPromises.length; i++) {
+                    asyncDepsEvaluationPromises[i] = Boundaries.listGet(evaluationList, i).evaluate(realm);
+                }
+                var arrayObj = JSArray.createConstant(context, realm, asyncDepsEvaluationPromises);
+                var iteratorObj = JSArrayIterator.create(context, realm, arrayObj, 0L, JSRuntime.ITERATION_KIND_VALUE);
+                var iterator = IteratorRecord.create(iteratorObj, getNext.getValue(iteratorObj), false);
+                PromiseCapabilityRecord pc = newPromiseCapabilityNode.executeDefault();
+                return (JSPromiseObject) performPromiseAllNode.execute(iterator, realm.getPromiseConstructor(), pc, realm.getPromiseResolveFunctionObject());
             }
 
             private void rejectPromise(PromiseCapabilityRecord moduleLoadedCapability, AbstractTruffleException ex) {
@@ -413,12 +458,12 @@ public class ImportCallNode extends JavaScriptNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSFunctionObject thisFunction = (JSFunctionObject) JSArguments.getFunctionObject(frame.getArguments());
+                JSFunctionObject thisFunction = JSFrameUtil.getFunctionObject(frame);
                 LinkAndEvaluateArgs captures = (LinkAndEvaluateArgs) getCaptures.getValue(thisFunction);
                 PromiseCapabilityRecord promiseCapability = captures.promiseCapability;
                 AbstractModuleRecord moduleRecord = captures.moduleRecord;
 
-                var namespace = moduleRecord.getModuleNamespace();
+                var namespace = moduleRecord.getModuleNamespace(captures.phase());
                 callPromiseResolve.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), namespace));
                 return Undefined.instance;
             }

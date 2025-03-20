@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -50,6 +51,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -72,27 +74,45 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
      */
     private final UnmodifiableEconomicMap<TruffleString, ExportResolution> exports;
 
-    protected JSModuleNamespaceObject(Shape shape, AbstractModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
+    /**
+     * Whether this module namespace was obtained through import defer/import.defer().
+     */
+    private final boolean deferred;
+
+    protected JSModuleNamespaceObject(Shape shape, AbstractModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports, boolean deferred) {
         super(shape, Null.instance);
         this.module = module;
         this.exports = exports;
+        this.deferred = deferred;
     }
 
     public AbstractModuleRecord getModule() {
         return module;
     }
 
-    public UnmodifiableEconomicMap<TruffleString, ExportResolution> getExports() {
+    private UnmodifiableEconomicMap<TruffleString, ExportResolution> getExports() {
         return exports;
     }
 
-    public static JSModuleNamespaceObject create(JSRealm realm, JSObjectFactory factory, AbstractModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
-        return factory.initProto(new JSModuleNamespaceObject(factory.getShape(realm), module, exports), realm);
+    @TruffleBoundary
+    public UnmodifiableEconomicMap<TruffleString, ExportResolution> getModuleExportsList() {
+        if (deferred) {
+            if (module instanceof CyclicModuleRecord cyclicModule && cyclicModule.getStatus() != CyclicModuleRecord.Status.Evaluated && !cyclicModule.isReadyForSyncExecution()) {
+                throw Errors.createTypeError("Deferred module not ready for sync execution");
+            }
+            module.evaluateSync(JSRealm.get(null));
+        }
+        return getExports();
+    }
+
+    public static JSModuleNamespaceObject create(JSRealm realm, JSObjectFactory factory, AbstractModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports,
+                    boolean deferred) {
+        return factory.initProto(new JSModuleNamespaceObject(factory.getShape(realm), module, exports, deferred), realm);
     }
 
     @Override
     public TruffleString getClassName() {
-        return JSModuleNamespace.CLASS_NAME;
+        return JSModuleNamespace.TO_STRING_TAG;
     }
 
     @Override
@@ -113,7 +133,8 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
     }
 
     private boolean testIntegrityLevel(boolean frozen, boolean doThrow) {
-        for (ExportResolution binding : getExports().getValues()) {
+        CompilerAsserts.neverPartOfCompilation();
+        for (ExportResolution binding : getModuleExportsList().getValues()) {
             // Check for uninitialized binding (throws ReferenceError)
             JSModuleNamespace.getBindingValue(binding);
             if (frozen) {
@@ -127,9 +148,17 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
         return true;
     }
 
+    public boolean isSymbolLikeNamespaceKey(Object key) {
+        return !(key instanceof TruffleString name) || deferred && Strings.equals(name, Strings.THEN);
+    }
+
+    public boolean isDeferred() {
+        return deferred;
+    }
+
     @Override
     @TruffleBoundary
     public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return Strings.addBrackets(JSModuleNamespace.CLASS_NAME);
+        return Strings.addBrackets(deferred ? JSModuleNamespace.DEFERRED_TO_STRING_TAG : JSModuleNamespace.TO_STRING_TAG);
     }
 }

@@ -45,6 +45,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -209,7 +210,7 @@ public class WebAssemblyModuleRecord extends CyclicModuleRecord {
                 TruffleString name = Strings.interopAsTruffleString(InteropLibrary.getUncached().readMember(importDesc, "name"));
 
                 AbstractModuleRecord importedModule = getImportedModule(ModuleRequest.create(importedModuleName));
-                Object value = importedModule.getModuleNamespace().getValue(name);
+                Object value = importedModule.getModuleNamespace(Module.ImportPhase.Evaluation).getValue(name);
 
                 JSObject moduleImportsObject = (JSObject) importObject.getValue(importedModuleName);
                 JSRuntime.createDataProperty(moduleImportsObject, name, value);

@@ -131,6 +131,7 @@ import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ir.FunctionNode;
+import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -3890,7 +3891,7 @@ public final class GraalJSAccess {
 
     public Object moduleGetNamespace(Object module) {
         AbstractModuleRecord record = (AbstractModuleRecord) module;
-        return record.getModuleNamespace();
+        return record.getModuleNamespace(Module.ImportPhase.Evaluation);
     }
 
     public int moduleGetIdentityHash(Object module) {

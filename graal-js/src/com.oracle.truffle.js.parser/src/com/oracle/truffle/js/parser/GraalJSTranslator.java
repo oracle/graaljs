@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2593,7 +2593,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).isDirectSuper()) {
             call = createCallDirectSuper(function, args, callNode.isDefaultDerivedConstructorSuperCall());
         } else if (callNode.isImport()) {
-            call = createImportCallNode(args, callNode.isImportSource() ? ImportPhase.Source : ImportPhase.Evaluation);
+            ImportPhase phase = callNode.isImportSource() ? ImportPhase.Source
+                            : callNode.isImportDefer() ? ImportPhase.Defer
+                                            : ImportPhase.Evaluation;
+            call = createImportCallNode(args, phase);
         } else {
             call = factory.createFunctionCall(context, function, args);
         }
