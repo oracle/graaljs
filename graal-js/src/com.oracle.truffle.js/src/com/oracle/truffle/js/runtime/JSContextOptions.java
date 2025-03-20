@@ -721,7 +721,7 @@ public final class JSContextOptions {
     @CompilationFinal private short frequencyBasedPropertyCacheLimit;
 
     public static final String TEXT_ENCODING_NAME = JS_OPTION_PREFIX + "text-encoding";
-    @Option(name = TEXT_ENCODING_NAME, category = OptionCategory.EXPERT, help = "Enable TextDecoder and TextEncoder Web APIs.") //
+    @Option(name = TEXT_ENCODING_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.CONSTRAINED, help = "Enable TextDecoder and TextEncoder Web APIs.") //
     public static final OptionKey<Boolean> TEXT_ENCODING = new OptionKey<>(false);
     @CompilationFinal private boolean textEncoding;
 
