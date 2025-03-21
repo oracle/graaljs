@@ -3546,6 +3546,22 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "language/import/import-defer/deferred-namespace-object/exotic-object-behavior.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/issues/4416"
+  }, {
+    "filePath" : "language/import/import-defer/errors/get-self-while-defer-evaluating/main.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/issues/4416"
+  }, {
+    "filePath" : "language/import/import-defer/errors/module-throws/defer-import-after-evaluation.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/issues/4416"
+  }, {
+    "filePath" : "language/import/import-defer/evaluation-top-level-await/flattening-order/main.js",
+    "status" : "FAIL",
+    "comment" : "https://github.com/tc39/test262/issues/4416"
+  }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
     "statusOverrides" : {
