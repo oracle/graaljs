@@ -145,7 +145,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
           "*/mxbuild",
           "*/graal-nodejs/out", # js/graal-nodejs/out
         ] + (if build.build_standalones then [
-          "graal/sdk/mxbuild/" + os + '-' + arch + "/*STANDALONE*",
+          "*/*/mxbuild/" + os + '-' + arch + "/*STANDALONE*",
         ] else []),
       },
     ],
