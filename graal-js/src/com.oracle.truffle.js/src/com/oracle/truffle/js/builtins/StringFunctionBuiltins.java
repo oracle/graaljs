@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -690,13 +690,13 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         InlinedBranchProfile errorBranch) {
             var partialResult = Strings.builderCreate();
             while (iterator.hasNext()) {
-                int ch = iteratorNextNode.execute(iterator);
+                int ch = iteratorNextNode.execute(iterator, TruffleString.Encoding.UTF_16);
                 if (ch == '\\') {
                     if (!iterator.hasNext()) {
                         // Lone backslash at the end.
                         return Undefined.instance;
                     }
-                    final int next = iteratorNextNode.execute(iterator);
+                    final int next = iteratorNextNode.execute(iterator, TruffleString.Encoding.UTF_16);
                     switch (next) {
                         case '0': {
                             // only `\0` by itself is allowed but not e.g. `\02`.
@@ -741,8 +741,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                             appendCharNode.execute(partialResult, '\\');
                             break;
                         case '\r': // CR | CRLF
-                            if (iteratorNextNode.execute(iterator) != '\n') {
-                                iteratorPreviousNode.execute(iterator);
+                            if (iteratorNextNode.execute(iterator, TruffleString.Encoding.UTF_16) != '\n') {
+                                iteratorPreviousNode.execute(iterator, TruffleString.Encoding.UTF_16);
                             }
                             break;
                         case '\n':
@@ -789,8 +789,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private int peekNext(TruffleStringIterator iterator) {
-            int ch = iteratorNextNode.execute(iterator);
-            iteratorPreviousNode.execute(iterator);
+            int ch = iteratorNextNode.execute(iterator, TruffleString.Encoding.UTF_16);
+            iteratorPreviousNode.execute(iterator, TruffleString.Encoding.UTF_16);
             return ch;
         }
 
@@ -806,13 +806,13 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private int varlenHexSequence(TruffleStringIterator iterator,
                         InlinedBranchProfile errorBranch) {
-            int ch = iteratorNextNode.execute(iterator);
+            int ch = iteratorNextNode.execute(iterator, TruffleString.Encoding.UTF_16);
             assert ch == '{';
 
             int value = 0;
             boolean firstIteration = true;
             while (iterator.hasNext()) {
-                ch = iteratorNextNode.execute(iterator);
+                ch = iteratorNextNode.execute(iterator, TruffleString.Encoding.UTF_16);
                 if (ch == '}') {
                     if (!firstIteration) {
                         break;
@@ -846,7 +846,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             int value = 0;
             int i;
             for (i = 0; i < length && iterator.hasNext(); i++) {
-                int ch = iteratorNextNode.execute(iterator);
+                int ch = iteratorNextNode.execute(iterator, TruffleString.Encoding.UTF_16);
                 int digit = convertDigit(ch, 16);
                 if (digit == -1) {
                     errorBranch.enter(this);
