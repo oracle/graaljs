@@ -36,12 +36,18 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/duration-format/format-basic-digital.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "status" : "PASS",
+    "comment" : "Intl.DurationFormat"
   }, {
     "filePath" : "intl/duration-format/format-digital-longdigits.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "ecmaVersion" : {
+      "minVersion" : 16
+    },
+    "status" : "PASS",
+    "comment" : "Intl.DurationFormat"
   }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
@@ -2988,10 +2994,6 @@
     "filePath" : "mjsunit/temporal/duration-from.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/temporal/duration-to-json-boundary-cases.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/temporal/function-exist-no-intl.js",
     "status" : "FAIL",
