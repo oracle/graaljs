@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,9 @@ public abstract class GetStringOptionNode extends JavaScriptBaseNode {
     public static final List<String> HOUR_CYCLE_OPTION_VALUES = List.of(IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24);
     public static final List<String> NARROW_SHORT_LONG_OPTION_VALUES = List.of(IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG);
     public static final List<String> LONG_SHORT_NARROW_OPTION_VALUES = List.of(IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW);
+    public static final List<String> LONG_SHORT_NARROW_DIGITAL_OPTION_VALUES = List.of(IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW, IntlUtil.DIGITAL);
     public static final List<String> CASE_FIRST_OPTION_VALUES = List.of(IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE);
+    public static final List<String> AUTO_ALWAYS_OPTION_VALUES = List.of(IntlUtil.AUTO, IntlUtil.ALWAYS);
 
     private final List<String> validValues;
     private final String fallback;

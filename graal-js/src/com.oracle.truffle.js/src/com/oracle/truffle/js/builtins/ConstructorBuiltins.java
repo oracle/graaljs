@@ -100,6 +100,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataVi
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisplayNamesNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDurationFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFinalizationRegistryNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFunctionNodeGen;
@@ -185,6 +186,7 @@ import com.oracle.truffle.js.nodes.intl.GetBooleanOptionNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDisplayNamesNode;
+import com.oracle.truffle.js.nodes.intl.InitializeDurationFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeListFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeLocaleNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
@@ -266,6 +268,8 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNamesObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSListFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
@@ -342,6 +346,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Segmenter(0),
         DisplayNames(2),
         Locale(1),
+        DurationFormat(0),
 
         Error(1),
         RangeError(1),
@@ -445,6 +450,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 case AsyncFunction, SharedArrayBuffer -> JSConfig.ECMAScript2017;
                 case AsyncGeneratorFunction -> JSConfig.ECMAScript2018;
                 case WeakRef, FinalizationRegistry -> JSConfig.ECMAScript2021;
+                case DurationFormat -> JSConfig.ECMAScript2025;
                 case PlainTime, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, ZonedDateTime -> JSConfig.StagingECMAScriptVersion;
                 case Iterator, AsyncIterator -> JSConfig.StagingECMAScriptVersion;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
@@ -516,6 +522,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case Locale:
                 return construct
                                 ? ConstructLocaleNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
+                                : createCallRequiresNew(context, builtin);
+            case DurationFormat:
+                return construct
+                                ? ConstructDurationFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case Object:
                 return ConstructObjectNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).varArgs().createArgumentNodes(context));
@@ -1767,6 +1777,29 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getLocalePrototype();
+        }
+    }
+
+    public abstract static class ConstructDurationFormatNode extends ConstructWithNewTargetNode {
+
+        @Child InitializeDurationFormatNode initializeDurationFormatNode;
+
+        public ConstructDurationFormatNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+            initializeDurationFormatNode = InitializeDurationFormatNode.create(context);
+        }
+
+        @Specialization
+        protected JSDurationFormatObject constructDurationFormat(JSDynamicObject newTarget, Object locales, Object options) {
+            JSRealm realm = getRealm();
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            JSDurationFormatObject durationFormat = JSDurationFormat.create(getContext(), realm, proto);
+            return initializeDurationFormatNode.executeInit(durationFormat, locales, options);
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getDurationFormatPrototype();
         }
     }
 

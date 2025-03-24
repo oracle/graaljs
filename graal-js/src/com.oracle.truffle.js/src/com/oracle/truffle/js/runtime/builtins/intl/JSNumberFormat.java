@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -697,13 +697,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         }
     }
 
-    public abstract static class BasicInternalState {
+    public abstract static class BasicInternalState extends AbstractInternalState {
         private UnlocalizedNumberFormatter unlocalizedFormatter;
 
-        private Locale javaLocale;
-        private String locale;
-
-        private String numberingSystem;
         private int minimumIntegerDigits;
         private Integer minimumFractionDigits;
         private Integer maximumFractionDigits;
@@ -746,37 +742,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
 
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, Strings.fromJavaString(trailingZeroDisplay), JSAttributes.getDefault());
-        }
-
-        @TruffleBoundary
-        public void resolveLocaleAndNumberingSystem(JSContext ctx, String[] locales, String numberingSystemOpt) {
-            Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
-            Locale strippedLocale = selectedLocale.stripExtensions();
-            if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
-                selectedLocale = ctx.getLocale();
-                strippedLocale = selectedLocale.stripExtensions();
-            }
-            Locale.Builder builder = new Locale.Builder();
-            builder.setLocale(strippedLocale);
-
-            String nuType = selectedLocale.getUnicodeLocaleType("nu");
-            if ((nuType != null) && IntlUtil.isValidNumberingSystem(nuType) && (numberingSystemOpt == null || numberingSystemOpt.equals(nuType))) {
-                this.numberingSystem = nuType;
-                builder.setUnicodeLocaleKeyword("nu", nuType);
-            }
-
-            this.locale = builder.build().toLanguageTag();
-
-            if (numberingSystemOpt != null && IntlUtil.isValidNumberingSystem(numberingSystemOpt)) {
-                this.numberingSystem = numberingSystemOpt;
-                builder.setUnicodeLocaleKeyword("nu", numberingSystemOpt);
-            }
-
-            this.javaLocale = builder.build();
-
-            if (this.numberingSystem == null) {
-                this.numberingSystem = IntlUtil.defaultNumberingSystemName(ctx, this.javaLocale);
-            }
         }
 
         @TruffleBoundary

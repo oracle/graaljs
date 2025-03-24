@@ -137,6 +137,7 @@ import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariabl
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
@@ -526,6 +527,7 @@ public class JSContext {
     private final JSObjectFactory segmentIteratorFactory;
     private final JSObjectFactory displayNamesFactory;
     private final JSObjectFactory localeFactory;
+    private final JSObjectFactory durationFormatFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -730,6 +732,7 @@ public class JSContext {
         this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSOrdinary.BARE_SHAPE_SUPPLIER);
         this.displayNamesFactory = builder.create(JSDisplayNames.INSTANCE);
         this.localeFactory = builder.create(JSLocale.INSTANCE);
+        this.durationFormatFactory = builder.create(JSDurationFormat.INSTANCE);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode();
@@ -1227,6 +1230,10 @@ public class JSContext {
 
     public final JSObjectFactory getLocaleFactory() {
         return localeFactory;
+    }
+
+    public final JSObjectFactory getDurationFormatFactory() {
+        return durationFormatFactory;
     }
 
     public final JSObjectFactory getDateTimeFormatFactory() {
