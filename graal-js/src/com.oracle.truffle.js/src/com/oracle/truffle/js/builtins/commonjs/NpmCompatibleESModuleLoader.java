@@ -61,7 +61,10 @@ import static com.oracle.truffle.js.runtime.Strings.TYPE;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -98,9 +101,31 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     private static final String INVALID_MODULE_SPECIFIER = "Invalid module specifier: '";
     private static final String UNSUPPORTED_FILE_EXTENSION = "Unsupported file extension: '";
     private static final String UNSUPPORTED_PACKAGE_EXPORTS = "Unsupported package exports: '";
+    private static final String INVALID_PACKAGE_EXPORT = "Invalid package export: ";
     private static final String UNSUPPORTED_PACKAGE_IMPORTS = "Unsupported package imports: '";
     private static final String UNSUPPORTED_DIRECTORY_IMPORT = "Unsupported directory import: '";
     private static final String INVALID_PACKAGE_CONFIGURATION = "Invalid package configuration: '";
+    private static final String EXPORT_TYPE_GRAALJS = "graaljs";
+    private static final String EXPORT_TYPE_IMPORT = "import";
+    private static final String EXPORT_TYPE_REQUIRE = "require";
+    private static final String EXPORT_TYPE_DEFAULT = "default";
+    private static final LinkedList<String> EXPORT_TYPES;
+
+    static {
+        EXPORT_TYPES = new LinkedList<>(
+                List.of(EXPORT_TYPE_GRAALJS, EXPORT_TYPE_IMPORT, EXPORT_TYPE_REQUIRE, EXPORT_TYPE_DEFAULT)
+        );
+    }
+
+    public static void registerPreferredExportType(String exportType) {
+        if (!EXPORT_TYPES.contains(exportType)) {
+            EXPORT_TYPES.addFirst(exportType);
+        }
+    }
+
+    public static List<String> getRegisteredExportTypes() {
+        return List.copyOf(EXPORT_TYPES);
+    }
 
     public static NpmCompatibleESModuleLoader create(JSRealm realm) {
         return new NpmCompatibleESModuleLoader(realm);
@@ -340,6 +365,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                 if (url.getPath().endsWith(JS_EXT)) {
                     return Format.ESM;
                 }
+            } else if (url.getPath().endsWith(JS_EXT)) {
+                // Np Fallback to CJS as below (in the case that there is a package.json without a "type" field, or
+                // the "type" field is not "module").
+                return Format.CommonJS;
             }
         } else if (url.getPath().endsWith(JS_EXT)) {
             // Np Package.json with .js extension: try loading as CJS like Node.js does.
@@ -347,6 +376,27 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
         // 8. Otherwise, Throw an Unsupported File Extension error.
         throw fail(UNSUPPORTED_FILE_EXTENSION, url.toString());
+    }
+
+    private URI exportForImport(URI packageUrl, Map<String, String> exports, TruffleLanguage.Env env) {
+        // in order of preference, find the best import to use for this circumstance; this will be `graaljs` if
+        // specified (as top preference), then `import`, then `require`, then `default`. if the developer has registered
+        // their own preferred export types, these will be preferred first.
+        //
+        // this branch only activates if package exports are present and need to be used to resolve an import. thus,
+        // there is no fallback behavior waiting for us, and so an exception is thrown if no export can be matched.
+
+        // 1. for preferred export types...
+        for (String preferred : getRegisteredExportTypes()) {
+            // 1.1: is it specified within the exports?
+            if (exports.containsKey(preferred)) {
+                // 1.2: if so, resolve the import from the package root. make sure to slice off the `./` prefix.
+                return packageUrl.resolve(exports.get(preferred).substring(2));
+            }
+        }
+
+        // 2. if no preferred export types are specified, or none of them are found, throw an exception.
+        throw failMessage(UNSUPPORTED_PACKAGE_EXPORTS);
     }
 
     /**
@@ -424,6 +474,12 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             PackageJson pjson = readPackageJson(packageUrl, env);
             // 11.5 If pjson is not null and pjson.exports is not null or undefined, then
             if (pjson != null && pjson.hasExportsProperty()) {
+                var exp = pjson.getExport(packageSubpath);
+                if (exp != null) {
+                    // we should receive a map of the form `type => path` for the requested export. determine the best
+                    // import type to use and resolve from there.
+                    return exportForImport(packageUrl, exp, env);
+                }
                 throw fail(UNSUPPORTED_PACKAGE_EXPORTS, packageSpecifier);
             } else if (packageSubpath.equals(DOT)) {
                 // 11.6 Otherwise, if packageSubpath is equal to ".", then
@@ -542,6 +598,54 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
 
         public boolean hasExportsProperty() {
             return hasNonNullProperty(jsonObj, EXPORTS_PROPERTY_NAME);
+        }
+
+        public Map<String, String> getExport(String specifier) {
+            assert hasNonNullProperty(jsonObj, EXPORTS_PROPERTY_NAME);
+            var data = JSObject.get(jsonObj, EXPORTS_PROPERTY_NAME);
+            if (data instanceof JSDynamicObject exportsObj) {
+                for (TruffleString key : JSObject.enumerableOwnNames(exportsObj)) {
+                    // find a match for the requested export...
+                    if (key.toString().equals(specifier)) {
+                        // if we found it, it should be a nested object with export mappings. at this point, we've
+                        // already matched the path, so these are mappings of (type => path). `path` must be relative to
+                        // the package root, must start with `.`, must not contain relative backwards references, and
+                        // must be an extant regular file.
+                        Object value = JSObject.get(exportsObj, key);
+                        if (value instanceof JSDynamicObject valueObj) {
+                            var exportKeys = valueObj.ownPropertyKeys();
+                            var exportMap = new HashMap<String, String>();
+                            for (Object exportKey : exportKeys) {
+                                if (exportKey instanceof TruffleString exportKeyStr) {
+                                    Object exportValue = JSObject.get(valueObj, exportKeyStr);
+                                    if (Strings.isTString(exportValue)) {
+                                        var exportStr = exportKeyStr.toString();
+                                        var exportVal = exportValue.toString();
+                                        if (!exportVal.startsWith(".") || exportVal.contains("..")) {
+                                            // must start with `.`, must not contain `..`
+                                            throw failMessage(INVALID_PACKAGE_EXPORT + exportStr);
+                                        }
+                                        exportMap.put(exportKeyStr.toString(), exportValue.toString());
+                                    }
+                                } else {
+                                    throw failMessage(UNSUPPORTED_PACKAGE_EXPORTS + exportKey.toString());
+                                }
+                            }
+                            return exportMap;
+                        } else if (value instanceof TruffleString exportStr) {
+                            // if the export is a string, it should be a path to the file to import.
+                            if (!exportStr.toString().startsWith(".") || exportStr.toString().contains("..")) {
+                                // must start with `.`, must not contain `..`
+                                throw failMessage(INVALID_PACKAGE_EXPORT + exportStr);
+                            }
+                            return Map.of(EXPORT_TYPE_DEFAULT, exportStr.toString());
+                        } else {
+                            throw failMessage(INVALID_PACKAGE_EXPORT + value);
+                        }
+                    }
+                }
+            }
+            return null;
         }
 
         public boolean hasMainProperty() {
