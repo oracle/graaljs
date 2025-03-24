@@ -62,12 +62,14 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationRoundNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToLocaleStringIntlNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.InitializeDurationFormatNode;
 import com.oracle.truffle.js.nodes.temporal.DifferencePlainDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeWithRoundingNode;
@@ -80,6 +82,7 @@ import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationRecordNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalPartialDurationRecordNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -89,6 +92,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormatObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -194,8 +199,13 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case total:
                 return JSTemporalDurationTotalNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toJSON:
-            case toLocaleString:
                 return JSTemporalDurationToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case toLocaleString:
+                if (context.isOptionIntl402()) {
+                    return JSTemporalDurationToLocaleStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                } else {
+                    return JSTemporalDurationToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                }
             case toString:
                 return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case valueOf:
@@ -733,6 +743,32 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSTemporalDuration(thisObj)")
         protected static Object invalidReceiver(Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalDurationExpected();
+        }
+    }
+
+    public abstract static class JSTemporalDurationToLocaleStringIntl extends JSTemporalBuiltinOperation {
+
+        protected JSTemporalDurationToLocaleStringIntl(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected TruffleString toString(JSTemporalDurationObject duration, Object locales, Object options,
+                        @Cached("create(getContext())") InitializeDurationFormatNode initializeDurationFormatNode,
+                        @Cached ToTemporalDurationRecordNode toTemporalDurationRecord,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString) {
+            JSRealm realm = getRealm();
+            JSDynamicObject proto = getContext().getDurationFormatFactory().getPrototype(realm);
+            JSDurationFormatObject durationFormat = JSDurationFormat.create(getContext(), realm, proto);
+            initializeDurationFormatNode.executeInit(durationFormat, locales, options);
+            JSTemporalDurationRecord record = toTemporalDurationRecord.execute(duration);
+            return Strings.fromJavaString(fromJavaString, JSDurationFormat.format(durationFormat.getInternalState(), record));
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSTemporalDuration(thisObj)")
+        protected static Object invalidReceiver(Object thisObj, Object locales, Object options) {
             throw TemporalErrors.createTypeErrorTemporalDurationExpected();
         }
     }
