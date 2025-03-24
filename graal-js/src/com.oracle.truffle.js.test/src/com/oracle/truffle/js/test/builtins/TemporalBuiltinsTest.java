@@ -438,8 +438,8 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationToLocaleString() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = Temporal.Duration.from({ years: 1, days: 1 });");
-            Value toString = ctx.eval(ID, "duration.toLocaleString();");
-            assertEquals("P1Y1D", toString.asString());
+            Value toString = ctx.eval(ID, "duration.toLocaleString('en');");
+            assertEquals("1 yr, 1 day", toString.asString());
         }
     }
 

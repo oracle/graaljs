@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,23 +111,8 @@ public class TemporalDurationHugeTest extends JSTest {
 
     @Test
     public void testDurationConstructorAndFromHuge() {
-        String code1 = "var dur = Temporal.Duration.from({nanoseconds: 1e100});\n" +
-                        "dur.toString() === 'PT10000000000000000159028911097599180468360808563945281389781327557747838772170381060813469985.856815104S'";
-        testTrue(code1);
-
-        String code2 = "var dur1 = Temporal.Duration.from('PT' + (2n**100n) + 'H');\n" +
-                        "var dur2= new Temporal.Duration(0, 0, 0, 0, 2**100);\n" +
-                        "dur1.toString() === dur2.toString() && dur1.toString() == 'PT1267650600228229401496703205376H';";
-        testTrue(code2);
-    }
-
-    @Test
-    public void testPlainTimeAddHugeNanoseconds() {
-        String code = "var time = new Temporal.PlainTime(1, 2, 3);\n" +
-                        "var duration = Temporal.Duration.from({nanoseconds: 1e100});\n" +
-                        "var result = time.add(duration);\n" +
-                        "result.toString() === '00:48:00.328088104';";
-        testTrue(code);
+        assertThrowsRangeError("Temporal.Duration.from({nanoseconds: 1e100})");
+        assertThrowsRangeError("new Temporal.Duration(0, 0, 0, 0, 2**100)");
     }
 
     private static void testTrue(String code) {
