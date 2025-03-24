@@ -43,6 +43,6 @@ AggregateError: Unhandled promise rejections {
   ]
 }
 >[7] js --engine.WarnInterpreterOnly=false --unhandled-rejections=throw ${TEST_DIR}/booby-trapped-aggregate-error.js
-Error
+AggregateError
     at <js> AggregateError\(.*booby-trapped-aggregate-error.js:7.*\)
     at <js> :program\(.*booby-trapped-aggregate-error.js:12.*\)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,11 +51,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @SuppressWarnings("serial")
@@ -66,7 +63,7 @@ public final class UserScriptException extends GraalJSException {
     final Object exceptionObject;
 
     private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
-        super(Strings.toJavaString(getMessage(exceptionObject)), originatingNode, stackTraceLimit);
+        super(getMessage(exceptionObject), originatingNode, stackTraceLimit);
         this.exceptionObject = exceptionObject;
     }
 
@@ -149,31 +146,21 @@ public final class UserScriptException extends GraalJSException {
      * Best effort method to get the error message without side effects.
      */
     @TruffleBoundary
-    private static TruffleString getMessage(Object exc) {
-        if (JSRuntime.isObject(exc)) {
+    private static String getMessage(Object exc) {
+        if (exc instanceof JSObject errorObj) {
             // try to get the constructor name, and then the message
-            JSObject errorObj = (JSObject) exc;
-            JSDynamicObject prototype = JSObject.getPrototype(errorObj);
-            if (prototype != Null.instance) {
-                Object constructor = JSDynamicObject.getOrDefault(prototype, JSObject.CONSTRUCTOR, null);
-                if (JSFunction.isJSFunction(constructor)) {
-                    TruffleString name = JSFunction.getName((JSFunctionObject) constructor);
-                    if (!Strings.isEmpty(name)) {
-                        Object message = JSDynamicObject.getOrDefault(errorObj, JSError.MESSAGE, null);
-                        if (!(message instanceof TruffleString) && JSObject.getJSContext(errorObj).getLanguageOptions().testV8Mode()) {
-                            // allow side-effect
-                            // (MjsUnitAssertionError.prototype.message is a getter)
-                            message = JSObject.get(errorObj, JSError.MESSAGE);
-                        }
-                        if (message instanceof TruffleString messageStr) {
-                            return Strings.concatAll(name, Strings.COLON_SPACE, messageStr);
-                        }
-                        return name;
-                    }
+            String name = getErrorNameSafe(errorObj, "Error");
+            String message = getErrorMessageSafe(errorObj, null);
+            if (message == null && JSObject.getJSContext(errorObj).getLanguageOptions().testV8Mode()) {
+                // allow side effect (MjsUnitAssertionError.prototype.message is a getter)
+                Object messageValue = JSObject.get(errorObj, JSError.MESSAGE);
+                if (messageValue instanceof TruffleString messageStr && !messageStr.isEmpty()) {
+                    message = Strings.toJavaString(messageStr);
                 }
             }
+            return concatErrorNameAndMessage(name, message);
         }
-        return JSRuntime.safeToString(exc);
+        return Strings.toJavaString(JSRuntime.safeToString(exc));
     }
 
 }
