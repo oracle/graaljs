@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import org.graalvm.shadowed.com.ibm.icu.impl.ICUResourceBundle;
 import org.graalvm.shadowed.com.ibm.icu.text.ConstrainedFieldPosition;
 import org.graalvm.shadowed.com.ibm.icu.text.ListFormatter;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
-import org.graalvm.shadowed.com.ibm.icu.util.UResourceBundle;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
@@ -136,47 +134,7 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     @TruffleBoundary
     public static void setupInternalListFormatter(InternalState state) {
         state.javaLocale = Locale.forLanguageTag(state.locale);
-        state.listFormatter = createFormatter(state.javaLocale, getICUListFormatterStyle(state.type, state.style));
-    }
-
-    private static String getICUListFormatterStyle(String type, String style) {
-        switch (type) {
-            case IntlUtil.CONJUNCTION:
-                switch (style) {
-                    case IntlUtil.LONG:
-                        return IntlUtil.STANDARD;
-                    case IntlUtil.NARROW:
-                        return IntlUtil.STANDARD_NARROW;
-                    case IntlUtil.SHORT:
-                        return IntlUtil.STANDARD_SHORT;
-                    default:
-                        throw Errors.shouldNotReachHere(style);
-                }
-            case IntlUtil.DISJUNCTION:
-                switch (style) {
-                    case IntlUtil.LONG:
-                        return IntlUtil.OR;
-                    case IntlUtil.NARROW:
-                        return IntlUtil.OR_NARROW;
-                    case IntlUtil.SHORT:
-                        return IntlUtil.OR_SHORT;
-                    default:
-                        throw Errors.shouldNotReachHere(style);
-                }
-            case IntlUtil.UNIT:
-                switch (style) {
-                    case IntlUtil.LONG:
-                        return IntlUtil.UNIT;
-                    case IntlUtil.NARROW:
-                        return IntlUtil.UNIT_NARROW;
-                    case IntlUtil.SHORT:
-                        return IntlUtil.UNIT_SHORT;
-                    default:
-                        throw Errors.shouldNotReachHere(style);
-                }
-            default:
-                throw Errors.shouldNotReachHere(type);
-        }
+        state.listFormatter = createFormatter(state.javaLocale, state.type, state.style);
     }
 
     public static ListFormatter getListFormatterProperty(JSListFormatObject obj) {
@@ -242,18 +200,27 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         }
     }
 
-    // there is currently no way currently to use any style but standard with the non-deprecated API
-    @SuppressWarnings("deprecation")
-    private static ListFormatter createFormatter(Locale locale, String style) {
+    private static ListFormatter createFormatter(Locale locale, String type, String style) {
         ULocale ulocale = ULocale.forLocale(locale);
-        ICUResourceBundle r = (ICUResourceBundle) UResourceBundle.getBundleInstance(null, ulocale);
+        return ListFormatter.getInstance(ulocale, toICUListFormatterType(type), toICUListFormatterWidth(style));
+    }
 
-        String end = r.getWithFallback("listPattern/" + style + "/end").getString();
-        String middle = r.getWithFallback("listPattern/" + style + "/middle").getString();
-        String two = r.getWithFallback("listPattern/" + style + "/2").getString();
-        String start = r.getWithFallback("listPattern/" + style + "/start").getString();
+    private static ListFormatter.Type toICUListFormatterType(String type) {
+        return switch (type) {
+            case IntlUtil.CONJUNCTION -> ListFormatter.Type.AND;
+            case IntlUtil.DISJUNCTION -> ListFormatter.Type.OR;
+            case IntlUtil.UNIT -> ListFormatter.Type.UNITS;
+            default -> throw Errors.shouldNotReachHereUnexpectedValue(type);
+        };
+    }
 
-        return new ListFormatter(two, start, middle, end);
+    private static ListFormatter.Width toICUListFormatterWidth(String style) {
+        return switch (style) {
+            case IntlUtil.LONG -> ListFormatter.Width.WIDE;
+            case IntlUtil.NARROW -> ListFormatter.Width.NARROW;
+            case IntlUtil.SHORT -> ListFormatter.Width.SHORT;
+            default -> throw Errors.shouldNotReachHereUnexpectedValue(style);
+        };
     }
 
     @TruffleBoundary

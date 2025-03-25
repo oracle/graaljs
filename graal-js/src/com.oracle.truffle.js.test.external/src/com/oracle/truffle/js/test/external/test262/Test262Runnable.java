@@ -123,6 +123,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.DisplayNames",
                     "Intl.DisplayNames-v2",
+                    "Intl.DurationFormat",
                     "Intl.ListFormat",
                     "Intl.Locale",
                     "Intl.Locale-info",
@@ -270,7 +271,6 @@ public class Test262Runnable extends TestRunnable {
                     "well-formed-json-stringify",
     });
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
-                    "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "explicit-resource-management",
                     "import-defer",
@@ -282,6 +282,7 @@ public class Test262Runnable extends TestRunnable {
                     "Error.isError",
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Float16Array",
+                    "Intl.DurationFormat",
                     "Intl.Locale-info",
                     "Math.sumPrecise",
                     "RegExp.escape",

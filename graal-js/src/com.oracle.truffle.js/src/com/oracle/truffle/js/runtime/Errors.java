@@ -762,6 +762,16 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorInvalidDuration(Node originatingNode, Object duration) {
+        return Errors.createRangeErrorFormat("Invalid duration: %s", originatingNode, duration);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorInvalidOptions(Node originatingNode) {
+        return Errors.createRangeError("Invalid options", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorInvalidTimeZone(String timeZoneName) {
         return Errors.createRangeError(String.format("Invalid time zone %s", timeZoneName));
     }

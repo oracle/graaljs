@@ -175,6 +175,7 @@ import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariabl
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSIntl;
 import com.oracle.truffle.js.runtime.builtins.intl.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
@@ -287,6 +288,8 @@ public class JSRealm {
     private final JSDynamicObject displayNamesPrototype;
     private final JSFunctionObject localeConstructor;
     private final JSDynamicObject localePrototype;
+    private final JSFunctionObject durationFormatConstructor;
+    private final JSDynamicObject durationFormatPrototype;
     private final JSFunctionObject dateConstructor;
     private final JSDynamicObject datePrototype;
     @CompilationFinal(dimensions = 1) private final JSFunctionObject[] errorConstructors;
@@ -808,6 +811,15 @@ public class JSRealm {
         ctor = JSLocale.createConstructor(this);
         this.localeConstructor = ctor.getFunctionObject();
         this.localePrototype = ctor.getPrototype();
+
+        if (ecmaScriptVersion >= JSConfig.ECMAScript2025) {
+            ctor = JSDurationFormat.createConstructor(this);
+            this.durationFormatConstructor = ctor.getFunctionObject();
+            this.durationFormatPrototype = ctor.getPrototype();
+        } else {
+            this.durationFormatConstructor = null;
+            this.durationFormatPrototype = null;
+        }
 
         if (es6) {
             ctor = JSFunction.createGeneratorFunctionConstructor(this);
@@ -1381,6 +1393,14 @@ public class JSRealm {
 
     public final JSDynamicObject getLocalePrototype() {
         return localePrototype;
+    }
+
+    public final JSFunctionObject getDurationFormatConstructor() {
+        return durationFormatConstructor;
+    }
+
+    public final JSDynamicObject getDurationFormatPrototype() {
+        return durationFormatPrototype;
     }
 
     public final JSFunctionObject getSymbolConstructor() {
@@ -2171,6 +2191,7 @@ public class JSRealm {
         JSFunctionObject segmenterFn = getSegmenterConstructor();
         JSFunctionObject displayNamesFn = getDisplayNamesConstructor();
         JSFunctionObject localeFn = getLocaleConstructor();
+        JSFunctionObject durationFormatFn = getDurationFormatConstructor();
         JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
@@ -2180,6 +2201,9 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(displayNamesFn), displayNamesFn, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(localeFn), localeFn, JSAttributes.getDefaultNotEnumerable());
+        if (getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2025) {
+            JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(durationFormatFn), durationFormatFn, JSAttributes.getDefaultNotEnumerable());
+        }
         return intlObject;
     }
 

@@ -2145,25 +2145,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/large-number.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/result-out-of-range-3.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/balances-up-to-weeks.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-12-04"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/out-of-range-when-converting-from-normalized-duration.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
@@ -2188,10 +2172,6 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/round/round-and-balance-calendar-units-with-increment-disallowed.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/result-out-of-range-3.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/toString/total-of-duration-time-units-out-of-range.js",
     "status" : "FAIL",

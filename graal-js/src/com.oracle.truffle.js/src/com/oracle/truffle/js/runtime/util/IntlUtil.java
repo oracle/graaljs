@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,10 +108,13 @@ public final class IntlUtil {
     public static final String DATE_STYLE = "dateStyle";
     public static final String DATE_TIME_FIELD = "dateTimeField";
     public static final String DAY = "day";
+    public static final String DAYS = "days";
+    public static final String DAYS_DISPLAY = "daysDisplay";
     public static final String DAY_PERIOD = "dayPeriod";
     public static final String DEFAULT = "default";
     public static final String DECIMAL = "decimal";
     public static final String DIALECT = "dialect";
+    public static final String DIGITAL = "digital";
     public static final String DIRECTION = "direction";
     public static final String DISJUNCTION = "disjunction";
     public static final String ELEMENT = "element";
@@ -126,6 +129,8 @@ public final class IntlUtil {
     public static final String FIRST_DAY_OF_WEEK = "firstDayOfWeek";
     public static final String FLOOR = "floor";
     public static final String FORMAT_MATCHER = "formatMatcher";
+    public static final String FRACTIONAL = "fractional";
+    public static final String FRACTIONAL_DIGITS = "fractionalDigits";
     public static final String FRACTIONAL_SECOND_DIGITS = "fractionalSecondDigits";
     public static final String FRACTION_DIGITS = "fractionDigits";
     public static final String FULL = "full";
@@ -141,6 +146,8 @@ public final class IntlUtil {
     public static final String HALF_FLOOR = "halfFloor";
     public static final String HALF_TRUNC = "halfTrunc";
     public static final String HOUR = "hour";
+    public static final String HOURS = "hours";
+    public static final String HOURS_DISPLAY = "hoursDisplay";
     public static final String HOUR_CYCLE = "hourCycle";
     public static final String HOUR12 = "hour12";
     public static final String INDEX = "index";
@@ -164,6 +171,10 @@ public final class IntlUtil {
     public static final String MAXIMUM_FRACTION_DIGITS = "maximumFractionDigits";
     public static final String MAXIMUM_SIGNIFICANT_DIGITS = "maximumSignificantDigits";
     public static final String MEDIUM = "medium";
+    public static final String MICROSECONDS = "microseconds";
+    public static final String MICROSECONDS_DISPLAY = "microsecondsDisplay";
+    public static final String MILLISECONDS = "milliseconds";
+    public static final String MILLISECONDS_DISPLAY = "millisecondsDisplay";
     public static final String MIN2 = "min2";
     public static final String MINIMAL_DAYS = "minimalDays";
     public static final String MINIMUM_FRACTION_DIGITS = "minimumFractionDigits";
@@ -171,10 +182,16 @@ public final class IntlUtil {
     public static final String MINIMUM_SIGNIFICANT_DIGITS = "minimumSignificantDigits";
     public static final String MINUS_SIGN = "minusSign";
     public static final String MINUTE = "minute";
+    public static final String MINUTES = "minutes";
+    public static final String MINUTES_DISPLAY = "minutesDisplay";
     public static final String MONTH = "month";
+    public static final String MONTHS = "months";
+    public static final String MONTHS_DISPLAY = "monthsDisplay";
     public static final String MORE_PRECISION = "morePrecision";
     public static final String NAME = "name";
     public static final String NAN = "nan";
+    public static final String NANOSECONDS = "nanoseconds";
+    public static final String NANOSECONDS_DISPLAY = "nanosecondsDisplay";
     public static final String NARROW = "narrow";
     public static final String NARROW_SYMBOL = "narrowSymbol";
     public static final String NEGATIVE = "negative";
@@ -183,9 +200,6 @@ public final class IntlUtil {
     public static final String NOTATION = "notation";
     public static final String NUMERIC = "numeric";
     public static final String NUMBERING_SYSTEM = "numberingSystem";
-    public static final String OR = "or";
-    public static final String OR_NARROW = "or-narrow";
-    public static final String OR_SHORT = "or-short";
     public static final String ORDINAL = "ordinal";
     public static final String PERCENT = "percent";
     public static final String PLURAL_CATEGORIES = "pluralCategories";
@@ -200,6 +214,8 @@ public final class IntlUtil {
     public static final String SCRIPT = "script";
     public static final String SEARCH = "search";
     public static final String SECOND = "second";
+    public static final String SECONDS = "seconds";
+    public static final String SECONDS_DISPLAY = "secondsDisplay";
     public static final String SEGMENT = "segment";
     public static final String SENTENCE = "sentence";
     public static final String SENSITIVITY = "sensitivity";
@@ -212,8 +228,6 @@ public final class IntlUtil {
     public static final String SORT = "sort";
     public static final String SOURCE = "source";
     public static final String STANDARD = "standard";
-    public static final String STANDARD_NARROW = "standard-narrow";
-    public static final String STANDARD_SHORT = "standard-short";
     public static final String START_RANGE = "startRange";
     public static final String STRICT = "strict";
     public static final String STRIP_IF_INTEGER = "stripIfInteger";
@@ -228,8 +242,6 @@ public final class IntlUtil {
     public static final String UND = "und";
     public static final String UNIT = "unit";
     public static final String UNIT_DISPLAY = "unitDisplay";
-    public static final String UNIT_NARROW = "unit-narrow";
-    public static final String UNIT_SHORT = "unit-short";
     public static final String UPPER = "upper";
     public static final String USAGE = "usage";
     public static final String USE_GROUPING = "useGrouping";
@@ -238,8 +250,12 @@ public final class IntlUtil {
     public static final String WORD = "word";
     public static final String WEEKDAY = "weekday";
     public static final String WEEKEND = "weekend";
+    public static final String WEEKS = "weeks";
+    public static final String WEEKS_DISPLAY = "weeksDisplay";
     public static final String WEEK_OF_YEAR = "weekOfYear";
     public static final String YEAR = "year";
+    public static final String YEARS = "years";
+    public static final String YEARS_DISPLAY = "yearsDisplay";
     public static final String YEAR_NAME = "yearName";
 
     public static final TruffleString KEY_CALENDAR = Strings.CALENDAR;
@@ -251,6 +267,8 @@ public final class IntlUtil {
     public static final TruffleString KEY_CURRENCY_SIGN = Strings.constant(CURRENCY_SIGN);
     public static final TruffleString KEY_DATE_STYLE = Strings.constant(DATE_STYLE);
     public static final TruffleString KEY_DAY = Strings.DAY;
+    public static final TruffleString KEY_DAYS = Strings.constant(DAYS);
+    public static final TruffleString KEY_DAYS_DISPLAY = Strings.constant(DAYS_DISPLAY);
     public static final TruffleString KEY_DAY_PERIOD = Strings.constant(DAY_PERIOD);
     public static final TruffleString KEY_DIRECTION = Strings.constant(DIRECTION);
     public static final TruffleString KEY_ERA = Strings.ERA;
@@ -258,9 +276,12 @@ public final class IntlUtil {
     public static final TruffleString KEY_FIRST_DAY = Strings.constant(FIRST_DAY);
     public static final TruffleString KEY_FIRST_DAY_OF_WEEK = Strings.constant(FIRST_DAY_OF_WEEK);
     public static final TruffleString KEY_FORMAT_MATCHER = Strings.constant(FORMAT_MATCHER);
+    public static final TruffleString KEY_FRACTIONAL_DIGITS = Strings.constant(FRACTIONAL_DIGITS);
     public static final TruffleString KEY_FRACTIONAL_SECOND_DIGITS = Strings.FRACTIONAL_SECOND_DIGITS;
     public static final TruffleString KEY_GRANULARITY = Strings.constant(GRANULARITY);
     public static final TruffleString KEY_HOUR = Strings.HOUR;
+    public static final TruffleString KEY_HOURS = Strings.constant(HOURS);
+    public static final TruffleString KEY_HOURS_DISPLAY = Strings.constant(HOURS_DISPLAY);
     public static final TruffleString KEY_HOUR_CYCLE = Strings.constant(HOUR_CYCLE);
     public static final TruffleString KEY_HOUR12 = Strings.constant(HOUR12);
     public static final TruffleString KEY_INDEX = Strings.INDEX;
@@ -274,12 +295,22 @@ public final class IntlUtil {
     public static final TruffleString KEY_LTR = Strings.constant(LTR);
     public static final TruffleString KEY_MAXIMUM_FRACTION_DIGITS = Strings.constant(MAXIMUM_FRACTION_DIGITS);
     public static final TruffleString KEY_MAXIMUM_SIGNIFICANT_DIGITS = Strings.constant(MAXIMUM_SIGNIFICANT_DIGITS);
+    public static final TruffleString KEY_MICROSECONDS = Strings.constant(MICROSECONDS);
+    public static final TruffleString KEY_MICROSECONDS_DISPLAY = Strings.constant(MICROSECONDS_DISPLAY);
+    public static final TruffleString KEY_MILLISECONDS = Strings.constant(MILLISECONDS);
+    public static final TruffleString KEY_MILLISECONDS_DISPLAY = Strings.constant(MILLISECONDS_DISPLAY);
     public static final TruffleString KEY_MINIMAL_DAYS = Strings.constant(MINIMAL_DAYS);
     public static final TruffleString KEY_MINIMUM_FRACTION_DIGITS = Strings.constant(MINIMUM_FRACTION_DIGITS);
     public static final TruffleString KEY_MINIMUM_INTEGER_DIGITS = Strings.constant(MINIMUM_INTEGER_DIGITS);
     public static final TruffleString KEY_MINIMUM_SIGNIFICANT_DIGITS = Strings.constant(MINIMUM_SIGNIFICANT_DIGITS);
     public static final TruffleString KEY_MINUTE = Strings.MINUTE;
+    public static final TruffleString KEY_MINUTES = Strings.constant(MINUTES);
+    public static final TruffleString KEY_MINUTES_DISPLAY = Strings.constant(MINUTES_DISPLAY);
     public static final TruffleString KEY_MONTH = Strings.MONTH;
+    public static final TruffleString KEY_MONTHS = Strings.constant(MONTHS);
+    public static final TruffleString KEY_MONTHS_DISPLAY = Strings.constant(MONTHS_DISPLAY);
+    public static final TruffleString KEY_NANOSECONDS = Strings.constant(NANOSECONDS);
+    public static final TruffleString KEY_NANOSECONDS_DISPLAY = Strings.constant(NANOSECONDS_DISPLAY);
     public static final TruffleString KEY_NOTATION = Strings.constant(NOTATION);
     public static final TruffleString KEY_NUMERIC = Strings.constant(NUMERIC);
     public static final TruffleString KEY_NUMBERING_SYSTEM = Strings.constant(NUMBERING_SYSTEM);
@@ -291,6 +322,8 @@ public final class IntlUtil {
     public static final TruffleString KEY_RTL = Strings.constant(RTL);
     public static final TruffleString KEY_SCRIPT = Strings.SCRIPT;
     public static final TruffleString KEY_SECOND = Strings.SECOND;
+    public static final TruffleString KEY_SECONDS = Strings.constant(SECONDS);
+    public static final TruffleString KEY_SECONDS_DISPLAY = Strings.constant(SECONDS_DISPLAY);
     public static final TruffleString KEY_SEGMENT = Strings.constant(SEGMENT);
     public static final TruffleString KEY_SENSITIVITY = Strings.constant(SENSITIVITY);
     public static final TruffleString KEY_SIGN_DISPLAY = Strings.constant(SIGN_DISPLAY);
@@ -308,7 +341,11 @@ public final class IntlUtil {
     public static final TruffleString KEY_VALUE = Strings.VALUE;
     public static final TruffleString KEY_WEEKDAY = Strings.constant(WEEKDAY);
     public static final TruffleString KEY_WEEKEND = Strings.constant(WEEKEND);
+    public static final TruffleString KEY_WEEKS = Strings.constant(WEEKS);
+    public static final TruffleString KEY_WEEKS_DISPLAY = Strings.constant(WEEKS_DISPLAY);
     public static final TruffleString KEY_YEAR = Strings.YEAR;
+    public static final TruffleString KEY_YEARS = Strings.constant(YEARS);
+    public static final TruffleString KEY_YEARS_DISPLAY = Strings.constant(YEARS_DISPLAY);
 
     // https://tc39.es/ecma402/#table-sanctioned-simple-unit-identifiers
     private static final Set<String> SANCTIONED_SIMPLE_UNIT_IDENTIFIERS = Set.of(new String[]{
