@@ -572,10 +572,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 if (field == NumberFormat.Field.SIGN) {
                     type = isPlusSign(value) ? IntlUtil.PLUS_SIGN : IntlUtil.MINUS_SIGN;
                 } else if (field == NumberFormat.Field.INTEGER) {
-                    Object val = IntlUtil.END_RANGE.equals(source) ? y : y;
-                    if (JSRuntime.isNaN(val)) {
-                        type = IntlUtil.NAN;
-                    } else if (val instanceof Double && Double.isInfinite((Double) val)) {
+                    Number val = IntlUtil.END_RANGE.equals(source) ? y : x;
+                    assert !JSRuntime.isNaN(val);
+                    if (val instanceof Double doubleValue && Double.isInfinite(doubleValue)) {
                         type = IntlUtil.INFINITY;
                     } else {
                         type = IntlUtil.INTEGER;

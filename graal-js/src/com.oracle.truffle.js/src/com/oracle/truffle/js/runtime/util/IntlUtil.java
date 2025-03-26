@@ -189,7 +189,6 @@ public final class IntlUtil {
     public static final String MONTHS_DISPLAY = "monthsDisplay";
     public static final String MORE_PRECISION = "morePrecision";
     public static final String NAME = "name";
-    public static final String NAN = "nan";
     public static final String NANOSECONDS = "nanoseconds";
     public static final String NANOSECONDS_DISPLAY = "nanosecondsDisplay";
     public static final String NARROW = "narrow";
