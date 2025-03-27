@@ -118,6 +118,7 @@ import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -982,12 +983,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"isES6OrNewer()", "!isFastPath(thisObj, separator, limit)"})
         protected Object splitES6Generic(Object thisObj, Object separator, Object limit,
+                        @Cached IsObjectNode isObject,
                         @Cached @Shared StringSplitter stringSplitter,
                         @Cached @Shared InlinedConditionProfile zeroLimit,
                         @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
                         @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(this, !(separator == Undefined.instance || separator == Null.instance))) {
+            if (isSpecialProfile.profile(this, isObject.executeBoolean(separator))) {
                 Object splitter = getMethod(separator, Symbol.SYMBOL_SPLIT);
                 if (callSpecialProfile.profile(this, splitter != Undefined.instance)) {
                     return call(splitter, separator, new Object[]{thisObj, limit});
@@ -1331,6 +1333,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "!isStringString(searchValue, replaceValue)")
         protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue,
                         @Bind Node node,
+                        @Cached IsObjectNode isObject,
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
                         @Cached IsCallableNode isCallableNode,
@@ -1338,7 +1341,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached InlinedConditionProfile isSpecialProfile,
                         @Cached InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(node, !(searchValue == Undefined.instance || searchValue == Null.instance))) {
+            if (isSpecialProfile.profile(node, isObject.executeBoolean(searchValue))) {
                 Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
                 if (callSpecialProfile.profile(node, replacer != Undefined.instance)) {
                     return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
@@ -1464,6 +1467,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "!isStringString(searchValue, replaceValue)")
         protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue,
                         @Bind Node node,
+                        @Cached IsObjectNode isObject,
                         @Cached @Exclusive InlinedBranchProfile errorBranch,
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
@@ -1476,7 +1480,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
                         @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(node, !(searchValue == Undefined.instance || searchValue == Null.instance))) {
+            if (isSpecialProfile.profile(node, isObject.executeBoolean(searchValue))) {
                 if (isRegExp.profile(node, getIsRegExpNode().executeBoolean(searchValue))) {
                     Object flags = getFlags(searchValue);
                     requireObjectCoercible(flags);
@@ -2112,11 +2116,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object search(Object thisObj, Object regex,
+                        @Cached IsObjectNode isObject,
                         @Cached InlinedConditionProfile isSpecialProfile,
                         @Cached InlinedConditionProfile callSpecialProfile) {
             assert getContext().getEcmaScriptVersion() >= 6;
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(this, !(regex == Undefined.instance || regex == Null.instance))) {
+            if (isSpecialProfile.profile(this, isObject.executeBoolean(regex))) {
                 Object searcher = getMethod(regex, Symbol.SYMBOL_SEARCH);
                 if (callSpecialProfile.profile(this, searcher != Undefined.instance)) {
                     return call(searcher, regex, new Object[]{thisObj});
@@ -2256,11 +2261,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object match(Object thisObj, Object regex,
+                        @Cached IsObjectNode isObject,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile isSpecialProfile,
                         @Cached InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(this, !(regex == Undefined.instance || regex == Null.instance))) {
+            if (isSpecialProfile.profile(this, isObject.executeBoolean(regex))) {
                 if (matchAll && getIsRegExpNode().executeBoolean(regex)) {
                     Object flags = getFlags(regex);
                     requireObjectCoercible(flags);
