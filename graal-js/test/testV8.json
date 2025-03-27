@@ -1128,6 +1128,10 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
+    "filePath" : "mjsunit/regress/regress-1092896.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, does not reflect normative change https://github.com/tc39/ecma262/pull/3009"
+  }, {
     "filePath" : "mjsunit/regress/regress-10931.js",
     "status" : "SKIP",
     "comment" : "takes too long on Graal.js"
@@ -1975,6 +1979,10 @@
     "filePath" : "mjsunit/regress/regress-v8-7848.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-8357.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, does not reflect normative change https://github.com/tc39/ecma262/pull/3009"
   }, {
     "filePath" : "mjsunit/regress/wasm/export-wrapper-canonical-types.js",
     "status" : "FAIL",
