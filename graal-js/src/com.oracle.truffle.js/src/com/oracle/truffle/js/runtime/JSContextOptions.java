@@ -551,7 +551,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean useUTCForLegacyDates;
 
     public static final String WEBASSEMBLY_NAME = JS_OPTION_PREFIX + "webassembly";
-    @Option(name = WEBASSEMBLY_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enable WebAssembly JavaScript API.") //
+    @Option(name = WEBASSEMBLY_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.CONSTRAINED, help = "Enable WebAssembly JavaScript API.") //
     public static final OptionKey<Boolean> WEBASSEMBLY = new OptionKey<>(false);
     @CompilationFinal private boolean webAssembly;
 
