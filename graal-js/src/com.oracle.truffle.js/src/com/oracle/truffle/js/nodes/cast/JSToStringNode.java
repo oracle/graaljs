@@ -180,6 +180,20 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return toStringNode.executeString(toPrimitiveHintStringNode.executeHintString(object));
     }
 
+    @NeverDefault
+    public static JSToStringNode getUncached() {
+        return Uncached.INSTANCE;
+    }
+
+    static class Uncached extends JSToStringNode {
+        static final Uncached INSTANCE = new Uncached();
+
+        @Override
+        public TruffleString executeString(Object operand) {
+            return JSRuntime.toString(operand);
+        }
+    }
+
     public abstract static class JSToStringWrapperNode extends JSUnaryNode {
 
         protected JSToStringWrapperNode(JavaScriptNode operand) {
