@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -57,12 +58,15 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.api.ArrayBufferLibrary;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.ByteArrayAccess;
 import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -132,6 +136,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @ExportLibrary(ArrayBufferLibrary.class)
     public static final class Heap extends JSArrayBufferObject {
         byte[] byteArray;
 
@@ -313,9 +318,20 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
                 throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
             }
         }
+
+        @ExportMessage
+        protected ByteBuffer getContents() {
+            return isDetached() ? null : ByteBuffer.wrap(byteArray);
+        }
+
+        @ExportMessage(name = "getByteLength")
+        public int libraryGetByteLength() {
+            return isDetached() ? 0 : getByteLength();
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @ExportLibrary(ArrayBufferLibrary.class)
     public abstract static sealed class DirectBase extends JSArrayBufferObject {
         ByteBuffer byteBuffer;
 
@@ -486,6 +502,17 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
                 throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
             }
         }
+
+        @ExportMessage
+        protected final ByteBuffer getContents() {
+            return byteBuffer;
+        }
+
+        @ExportMessage(name = "getByteLength")
+        public int libraryGetByteLength() {
+            return isDetached() ? 0 : getByteLength();
+        }
+
     }
 
     public static final class Direct extends DirectBase {
@@ -556,7 +583,8 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
      * ArrayBuffer backed by Interop Buffer.
      */
     @ImportStatic(JSConfig.class)
-    @ExportLibrary(value = InteropLibrary.class)
+    @ExportLibrary(InteropLibrary.class)
+    @ExportLibrary(ArrayBufferLibrary.class)
     public static final class Interop extends JSArrayBufferObject {
         Object interopBuffer;
 
@@ -566,6 +594,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
             this.interopBuffer = interopBuffer;
         }
 
+        @ExportMessage.Ignore
         public int getByteLength(InteropLibrary interop) {
             try {
                 return isDetached() ? 0 : Math.toIntExact(interop.getBufferSize(interopBuffer));
@@ -575,6 +604,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @Override
+        @ExportMessage.Ignore
         public int getByteLength() {
             return isDetached() ? 0 : getByteLength(InteropLibrary.getUncached(interopBuffer));
         }
@@ -772,6 +802,27 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
             }
             interop.writeBufferDouble(interopBuffer, order, byteOffset, value);
         }
+
+        @ExportMessage
+        @ImportStatic(JSConfig.class)
+        public static class GetContents {
+            @Specialization
+            public static ByteBuffer getContents(JSArrayBufferObject.Interop arrayBuffer,
+                            @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared InteropLibrary interop) {
+                return arrayBuffer.isDetached() ? null : JSInteropUtil.foreignInteropBufferAsByteBuffer(arrayBuffer.getInteropBuffer(), interop, JSRealm.get(interop));
+            }
+        }
+
+        @ExportMessage
+        @ImportStatic(JSConfig.class)
+        public static class GetByteLength {
+            @Specialization
+            public static int getByteLength(JSArrayBufferObject.Interop arrayBuffer,
+                            @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared InteropLibrary interop) {
+                return arrayBuffer.getByteLength(interop);
+            }
+        }
+
     }
 
     public static JSArrayBufferObject createHeapArrayBuffer(Shape shape, JSDynamicObject proto, byte[] byteArray) {
