@@ -240,6 +240,7 @@ public class JSContext {
     private final TimeProfiler timeProfiler;
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
+    private final JSObjectFactory.BoundProto deferredModuleNamespaceFactory;
 
     @CompilationFinal private Object tRegexEmptyResult;
 
@@ -620,7 +621,8 @@ public class JSContext {
         this.evaluator = evaluator;
         this.nodeFactory = evaluator.getDefaultNodeFactory();
 
-        this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this));
+        this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this, false));
+        this.deferredModuleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this, true));
 
         this.prepareStackTraceCallbackNotUsedAssumption = Truffle.getRuntime().createAssumption("prepareStackTraceCallbackNotUsedAssumption");
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
@@ -1160,8 +1162,8 @@ public class JSContext {
         return promiseFactory;
     }
 
-    public final JSObjectFactory.BoundProto getModuleNamespaceFactory() {
-        return moduleNamespaceFactory;
+    public final JSObjectFactory.BoundProto getModuleNamespaceFactory(boolean deferred) {
+        return deferred ? deferredModuleNamespaceFactory : moduleNamespaceFactory;
     }
 
     public final JSObjectFactory getGeneratorObjectFactory() {

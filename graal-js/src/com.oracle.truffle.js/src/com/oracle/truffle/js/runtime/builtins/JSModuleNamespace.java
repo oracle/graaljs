@@ -44,8 +44,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 
+import com.oracle.js.parser.ir.Module.ImportPhase;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -79,48 +79,39 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 public final class JSModuleNamespace extends JSNonProxy {
 
     public static final JSModuleNamespace INSTANCE = new JSModuleNamespace();
+    public static final JSModuleNamespace DEFERRED_INSTANCE = new JSModuleNamespace();
 
-    public static final TruffleString CLASS_NAME = Strings.UC_MODULE;
+    public static final TruffleString TO_STRING_TAG = Strings.UC_MODULE;
+    public static final TruffleString DEFERRED_TO_STRING_TAG = Strings.constant("Deferred Module");
 
     private JSModuleNamespace() {
     }
 
-    /**
-     * [[Exports]]. List of String.
-     *
-     * A List containing the String values of the exported names exposed as own properties of this
-     * object. The list is ordered as if an Array of those String values had been sorted using
-     * Array.prototype.sort using SortCompare as comparefn.
-     */
-    public static UnmodifiableEconomicMap<TruffleString, ExportResolution> getExports(JSDynamicObject obj) {
-        return ((JSModuleNamespaceObject) obj).getExports();
-    }
-
-    public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, AbstractModuleRecord module, List<Map.Entry<TruffleString, ExportResolution>> sortedExports) {
+    public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, AbstractModuleRecord module, List<Map.Entry<TruffleString, ExportResolution>> sortedExports, boolean deferred) {
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<TruffleString, ExportResolution> exportResolutionMap = EconomicMap.create(sortedExports.size());
-        JSObjectFactory factory = context.getModuleNamespaceFactory();
-        JSModuleNamespaceObject obj = JSModuleNamespaceObject.create(realm, factory, module, exportResolutionMap);
+        JSObjectFactory factory = context.getModuleNamespaceFactory(deferred);
+        JSModuleNamespaceObject obj = JSModuleNamespaceObject.create(realm, factory, module, exportResolutionMap, deferred);
+        int propertyFlags = JSAttributes.notConfigurableEnumerableWritable() | JSProperty.MODULE_NAMESPACE_EXPORT;
         for (Map.Entry<TruffleString, ExportResolution> entry : sortedExports) {
-            Properties.putWithFlagsUncached(obj, entry.getKey(), entry.getValue(), JSProperty.MODULE_NAMESPACE_EXPORT | JSAttributes.notConfigurableEnumerableWritable());
-            exportResolutionMap.put(entry.getKey(), entry.getValue());
+            TruffleString key = entry.getKey();
+            if (obj.isSymbolLikeNamespaceKey(key)) {
+                continue;
+            }
+            ExportResolution value = entry.getValue();
+            Properties.putWithFlagsUncached(obj, key, value, propertyFlags);
+            exportResolutionMap.put(key, value);
         }
         assert !JSObject.isExtensible(obj);
         return context.trackAllocation(obj);
     }
 
-    public static Shape makeInitialShape(JSContext context) {
-        Shape initialShape = JSShape.newBuilder(context, INSTANCE, Null.instance, JSShape.NOT_EXTENSIBLE_FLAG).build();
-
-        /*
-         * The initial value of the @@toStringTag property is the String value "Module".
-         *
-         * This property has the attributes { [[Writable]]: false, [[Enumerable]]: false,
-         * [[Configurable]]: false }.
-         */
+    public static Shape makeInitialShape(JSContext context, boolean deferred) {
+        TruffleString toStringTag = deferred ? DEFERRED_TO_STRING_TAG : TO_STRING_TAG;
+        Shape initialShape = JSShape.newBuilder(context, deferred ? DEFERRED_INSTANCE : INSTANCE, Null.instance, JSShape.NOT_EXTENSIBLE_FLAG).build();
         initialShape = Shape.newBuilder(initialShape).//
                         addConstantProperty(JSObject.HIDDEN_PROTO, Null.instance, 0).//
-                        addConstantProperty(Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.notConfigurableNotEnumerableNotWritable()).build();
+                        addConstantProperty(Symbol.SYMBOL_TO_STRING_TAG, toStringTag, JSAttributes.notConfigurableNotEnumerableNotWritable()).build();
         assert !JSShape.isExtensible(initialShape);
         return initialShape;
     }
@@ -128,10 +119,12 @@ public final class JSModuleNamespace extends JSNonProxy {
     @Override
     @TruffleBoundary
     public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
-        if (!(key instanceof TruffleString name)) {
+        var ns = (JSModuleNamespaceObject) store;
+        if (ns.isSymbolLikeNamespaceKey(key)) {
             return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
         }
-        ExportResolution binding = getExports(store).get(name);
+        TruffleString name = (TruffleString) key;
+        ExportResolution binding = ns.getModuleExportsList().get(name);
         if (binding != null) {
             return getBindingValue(binding);
         } else {
@@ -149,7 +142,10 @@ public final class JSModuleNamespace extends JSNonProxy {
             throw Errors.createReferenceErrorNotDefined(bindingName, null);
         }
         if (binding.isNamespace()) {
-            return targetModule.getModuleNamespace();
+            // NOTE: The phase here is always evaluation because in:
+            // `import defer * as x from "..."; export { x };`
+            // binding.[[BindingName]] is "x" and not namespace.
+            return targetModule.getModuleNamespace(ImportPhase.Evaluation);
         }
         FrameDescriptor targetEnvDesc = targetEnv.getFrameDescriptor();
         int slot = JSFrameUtil.findRequiredFrameSlotIndex(targetEnvDesc, bindingName);
@@ -165,19 +161,23 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean hasProperty(JSDynamicObject thisObj, Object key) {
-        if (!(key instanceof TruffleString name)) {
+        var ns = (JSModuleNamespaceObject) thisObj;
+        if (ns.isSymbolLikeNamespaceKey(key)) {
             return super.hasProperty(thisObj, key);
         }
-        return getExports(thisObj).containsKey(name);
+        TruffleString name = (TruffleString) key;
+        return ns.getModuleExportsList().containsKey(name);
     }
 
     @Override
     @TruffleBoundary
     public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
-        if (!(key instanceof TruffleString name)) {
+        var ns = (JSModuleNamespaceObject) thisObj;
+        if (ns.isSymbolLikeNamespaceKey(key)) {
             return super.hasOwnProperty(thisObj, key);
         }
-        ExportResolution binding = getExports(thisObj).get(name);
+        TruffleString name = (TruffleString) key;
+        ExportResolution binding = ns.getModuleExportsList().get(name);
         if (binding != null) {
             // checks for uninitialized bindings
             getBindingValue(binding);
@@ -195,10 +195,12 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
-        if (!(key instanceof TruffleString name)) {
+        var ns = (JSModuleNamespaceObject) thisObj;
+        if (ns.isSymbolLikeNamespaceKey(key)) {
             return super.delete(thisObj, key, isStrict);
         }
-        if (getExports(thisObj).containsKey(name)) {
+        TruffleString name = (TruffleString) key;
+        if (ns.getModuleExportsList().containsKey(name)) {
             if (isStrict) {
                 throw Errors.createTypeErrorNotConfigurableProperty(key);
             } else {
@@ -217,10 +219,12 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
-        if (!(key instanceof TruffleString)) {
+        var ns = (JSModuleNamespaceObject) thisObj;
+        if (ns.isSymbolLikeNamespaceKey(key)) {
             return super.defineOwnProperty(thisObj, key, desc, doThrow);
         }
         PropertyDescriptor current = getOwnProperty(thisObj, key);
+        // Note: If O.[[Deferred]] is true, the step above will ensure that the module is evaluated.
         if (current != null && !desc.isAccessorDescriptor() && desc.getIfHasWritable(true) && desc.getIfHasEnumerable(true) && !desc.getIfHasConfigurable(false) &&
                         (!desc.hasValue() || JSRuntime.isSameValue(desc.getValue(), current.getValue()))) {
             return true;
@@ -231,10 +235,12 @@ public final class JSModuleNamespace extends JSNonProxy {
     @Override
     @TruffleBoundary
     public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
-        if (!(key instanceof TruffleString name)) {
+        var ns = (JSModuleNamespaceObject) thisObj;
+        if (ns.isSymbolLikeNamespaceKey(key)) {
             return super.getOwnProperty(thisObj, key);
         }
-        ExportResolution binding = getExports(thisObj).get(name);
+        TruffleString name = (TruffleString) key;
+        ExportResolution binding = ns.getModuleExportsList().get(name);
         if (binding != null) {
             Object value = getBindingValue(binding);
             return PropertyDescriptor.createData(value, true, true, false);
@@ -263,6 +269,14 @@ public final class JSModuleNamespace extends JSNonProxy {
             throw Errors.createTypeErrorNotExtensible(thisObj, Strings.fromLong(index));
         }
         return false;
+    }
+
+    @Override
+    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
+        var ns = (JSModuleNamespaceObject) thisObj;
+        // Trigger module evaluation if needed
+        ns.getModuleExportsList();
+        return super.getOwnPropertyKeys(thisObj, strings, symbols);
     }
 
     @Override

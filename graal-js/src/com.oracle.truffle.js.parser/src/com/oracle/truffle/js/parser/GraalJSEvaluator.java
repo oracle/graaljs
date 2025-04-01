@@ -52,6 +52,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -309,7 +310,7 @@ public final class GraalJSEvaluator implements JSParser {
             performPromiseThenNode.execute(promise, onAccepted, onRejected, null);
 
             if (context.getLanguageOptions().esmEvalReturnsExports()) {
-                JSDynamicObject moduleNamespace = moduleRecord.getModuleNamespace();
+                var moduleNamespace = moduleRecord.getModuleNamespace(ImportPhase.Evaluation);
                 assert moduleNamespace != null;
                 return moduleNamespace;
             } else if (context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation()) {
@@ -591,7 +592,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
 
         // Perform the remaining steps of ContinueDynamicImport.
-        JSFunction.call(JSArguments.create(Undefined.instance, continuation.continueDynamicImportCallback(), promiseCapability, module));
+        JSFunction.call(JSArguments.create(Undefined.instance, continuation.continueDynamicImportCallback(), continuation, module));
     }
 
     @TruffleBoundary
@@ -637,7 +638,7 @@ public final class GraalJSEvaluator implements JSParser {
         stack.push(moduleRecord);
 
         for (ModuleRequest required : moduleRecord.getRequestedModules()) {
-            if (required.phase() != ImportPhase.Evaluation) {
+            if (required.phase() == ImportPhase.Source) {
                 continue;
             }
             AbstractModuleRecord requiredAbstractModule = moduleRecord.getImportedModule(required);
@@ -741,15 +742,27 @@ public final class GraalJSEvaluator implements JSParser {
         moduleRecord.setPendingAsyncDependencies(0);
         moduleRecord.initAsyncParentModules();
         index++;
-        stack.push(moduleRecord);
 
+        Set<AbstractModuleRecord> evaluationList = new LinkedHashSet<>();
         for (ModuleRequest required : moduleRecord.getRequestedModules()) {
-            if (required.phase() != ImportPhase.Evaluation) {
+            if (required.phase() == ImportPhase.Source) {
                 continue;
             }
             AbstractModuleRecord requiredAbstractModule = moduleRecord.getImportedModule(required);
             // Note: Link must have completed successfully prior to invoking this method,
             // so every requested module is guaranteed to resolve successfully.
+            if (required.phase() == ImportPhase.Defer) {
+                var additionalModules = requiredAbstractModule.gatherAsynchronousTransitiveDependencies();
+                evaluationList.addAll(additionalModules);
+            } else {
+                assert required.phase() == ImportPhase.Evaluation;
+                evaluationList.add(requiredAbstractModule);
+            }
+        }
+
+        stack.push(moduleRecord);
+
+        for (AbstractModuleRecord requiredAbstractModule : evaluationList) {
             index = innerModuleEvaluation(realm, requiredAbstractModule, stack, index);
             if (requiredAbstractModule instanceof CyclicModuleRecord requiredModule) {
                 assert requiredModule.getStatus() == Status.Evaluating || requiredModule.getStatus() == Status.EvaluatingAsync ||

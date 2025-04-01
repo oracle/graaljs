@@ -229,6 +229,7 @@ public class Test262Runnable extends TestRunnable {
                     "host-gc-required",
                     "import-assertions",
                     "import-attributes",
+                    "import-defer",
                     "import.meta",
                     "intl-normative-optional",
                     "iterator-helpers",
@@ -273,7 +274,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "IsHTMLDDA",
                     "explicit-resource-management",
-                    "import-defer",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
@@ -288,6 +288,7 @@ public class Test262Runnable extends TestRunnable {
                     "RegExp.escape",
                     "ShadowRealm",
                     "decorators",
+                    "import-defer",
                     "iterator-sequencing",
                     "json-parse-with-source",
                     "promise-try",
