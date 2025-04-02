@@ -1204,6 +1204,10 @@ public final class TemporalUtil {
         return (pair == null) ? null : new Pair<>(Strings.fromJavaString(pair.getFirst()), Strings.fromJavaString(pair.getSecond()));
     }
 
+    public static boolean isoDateWithinLimits(int year, int month, int day) {
+        return isoDateTimeWithinLimits(year, month, day, 0, 0, 0, 0, 0, 0);
+    }
+
     @TruffleBoundary
     public static boolean isoDateTimeWithinLimits(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
         if (-isoTimeBoundYears <= year && year <= isoTimeBoundYears) {
