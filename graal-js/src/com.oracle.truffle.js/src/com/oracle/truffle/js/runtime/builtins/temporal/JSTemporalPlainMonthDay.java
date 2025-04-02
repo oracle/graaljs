@@ -83,12 +83,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     @InliningCutoff
     public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoMonth, int isoDay, TruffleString calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {
-        if (!TemporalUtil.isValidISODate(referenceISOYear, isoMonth, isoDay)) {
-            errorBranch.enter(node);
-            throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
-        }
-        if (referenceISOYear < -271821 || 275760 < referenceISOYear) {
-            // referenceISOYear is not checked in spec (but in polyfill); open bug listed in #1502
+        if (!TemporalUtil.isoDateWithinLimits(referenceISOYear, isoMonth, isoDay)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }

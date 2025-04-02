@@ -308,9 +308,11 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -1310,21 +1312,40 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalPlainMonthDay(JSDynamicObject newTarget, Object isoMonth,
-                        Object isoDay, Object calendarLike, Object refISOYear,
+                        Object isoDay, Object calendarParam, Object referenceISOYear,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached JSToIntegerThrowOnInfinityNode toInt,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue) {
-            Object referenceISOYear = refISOYear;
-            if (referenceISOYear == Undefined.instance || referenceISOYear == null) {
-                referenceISOYear = 1972;
-            }
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString) {
             int m = toInt.executeIntOrThrow(isoMonth);
             int d = toInt.executeIntOrThrow(isoDay);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
-            int ref = toInt.executeIntOrThrow(referenceISOYear); // non-spec
+
+            TruffleString calendar;
+            if (calendarParam == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarParam instanceof TruffleString calendarTS) {
+                String calendarJLS = IntlUtil.canonicalizeCalendar(toJavaString.execute(calendarTS));
+                calendar = Strings.fromJavaString(fromJavaString, calendarJLS);
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarParam);
+            }
+
+            int y;
+            if (referenceISOYear == Undefined.instance) {
+                y = 1972;
+            } else {
+                y = toInt.executeIntOrThrow(referenceISOYear);
+            }
+
+            if (!TemporalUtil.isValidISODate(y, m, d)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
+            }
+
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSTemporalPlainMonthDay.create(getContext(), realm, proto, m, d, calendar, ref, this, errorBranch);
+            return JSTemporalPlainMonthDay.create(getContext(), realm, proto, m, d, calendar, y, this, errorBranch);
         }
 
         @Override

@@ -48,7 +48,7 @@ public final class JSTemporalPlainMonthDayObject extends JSTemporalCalendarHolde
 
     private final int isoMonth;
     private final int isoDay;
-    private final int isoYear; // not checked in spec, see #1502
+    private final int isoYear;
 
     protected JSTemporalPlainMonthDayObject(Shape shape, JSDynamicObject proto, int isoMonth, int isoDay, TruffleString calendar,
                     int isoYear) {
