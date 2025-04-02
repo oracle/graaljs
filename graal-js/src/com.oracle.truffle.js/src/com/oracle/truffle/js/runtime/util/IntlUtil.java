@@ -893,6 +893,15 @@ public final class IntlUtil {
         return calendars;
     }
 
+    @TruffleBoundary
+    public static String canonicalizeCalendar(String id) {
+        String lcID = id.toLowerCase(Locale.ROOT);
+        if (Arrays.binarySearch(availableCalendars(), lcID) < 0) {
+            throw Errors.createRangeErrorInvalidCalendar(id);
+        }
+        return normalizeCAType(lcID);
+    }
+
     // The returned collations are supposed to be "lower case String values conforming to the
     // type sequence from UTS 35 Unicode Locale Identifier, section 3.2" =>
     // replacing non-conforming collations by their conforming aliases according to
