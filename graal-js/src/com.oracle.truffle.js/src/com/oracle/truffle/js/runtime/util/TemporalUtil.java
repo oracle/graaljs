@@ -525,7 +525,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalMonthDayString(TruffleString string) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseMonthDay();
+        JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalMonthDayString();
         if (rec != null) {
             if (rec.getZ()) {
                 throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();

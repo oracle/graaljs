@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,7 +81,7 @@ public final class TemporalParser {
     private static final String patternTimeZoneBracketedAnnotation = "(\\[!?((?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*))\\])";
     private static final String patternTimeZoneNumericUTCOffset = "^([+\\-])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+\\-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
-    private static final String patternDateSpecMonthDay = "^(?:\\-\\-)?(\\d\\d)[\\-]?(\\d\\d)";
+    private static final String patternDateSpecMonthDay = "^(?:--)?(0[1-9]|1[012])-?(0[1-9]|[12][0-9]|3[01])";
     private static final String patternTimeZoneIANANameComponent = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
     // LowercaseAlpha [a-z]
     // AKeyLeadingChar [a-z_]
@@ -158,8 +158,8 @@ public final class TemporalParser {
             return rec;
         }
 
-        // TemporalMonthDayString => DateSpecMonthDay OR CalendarDateTime(above already!)
-        rec = parseDateSpecMonthDay();
+        // TemporalMonthDayString
+        rec = parseTemporalMonthDayString();
         if (rec != null) {
             return rec;
         }
@@ -193,11 +193,12 @@ public final class TemporalParser {
 
         if (tryParseTimeSpec()) {
             parseTimeZone();
-            boolean hasCalendar = parseCalendar();
-            if (!hasTimeDesignator && !hasCalendar) {
-                // neither of the two first alternatives match
-            } else if (atEnd()) {
-                return result();
+            if (parseAnnotations()) {
+                if (!hasTimeDesignator && (calendar == null)) {
+                    // neither of the two first alternatives match
+                } else if (atEnd()) {
+                    return result();
+                }
             }
         }
 
@@ -392,16 +393,16 @@ public final class TemporalParser {
 
     public JSTemporalParserRecord parseCalendarDateTime() {
         reset();
-        if (parseDateTime()) {
-            parseCalendar();
-            if (atEnd()) {
+        if (tryParseDateTime()) {
+            tryParseTimeZoneBracketedAnnotation();
+            if (parseAnnotations() && atEnd()) {
                 return result();
             }
         }
         return null;
     }
 
-    private boolean parseDateTime() {
+    private boolean tryParseDateTime() {
         if (!parseDate()) {
             return false;
         }
@@ -410,7 +411,6 @@ public final class TemporalParser {
         if (parseTimeSpecSeparator(false)) {
             tryParseTimeZoneUTCOffset();
         }
-        tryParseTimeZoneBracketedAnnotation();
 
         return true;
     }
@@ -422,8 +422,7 @@ public final class TemporalParser {
                 return null;
             }
             parseTimeZone();
-            parseCalendar();
-            if (atEnd()) {
+            if (parseAnnotations() && atEnd()) {
                 return result();
             }
         }
@@ -475,31 +474,19 @@ public final class TemporalParser {
         return null;
     }
 
-    public JSTemporalParserRecord parseMonthDay() {
-        JSTemporalParserRecord rec;
-
-        // DateSpecMonthDay
-        rec = parseDateSpecMonthDay();
-        if (rec != null) {
-            return rec;
-        }
-
-        // CalendarDateTime
-        rec = parseCalendarDateTime();
-        if (rec != null) {
-            return rec;
-        }
-
-        return null;
-    }
-
-    private JSTemporalParserRecord parseDateSpecMonthDay() {
+    public JSTemporalParserRecord parseTemporalMonthDayString() {
         reset();
-        if (tryParseDateSpecMonthDay()) {
-            if (atEnd()) {
+
+        // DateSpecMonthDay or DateTime
+        if (tryParseDateSpecMonthDay() || tryParseDateTime()) {
+            // optional TimeZoneAnnotation
+            tryParseTimeZoneBracketedAnnotation();
+            // optional Annotations
+            if (parseAnnotations() && atEnd()) {
                 return result();
             }
         }
+
         return null;
     }
 
@@ -581,8 +568,8 @@ public final class TemporalParser {
             return rec;
         }
 
-        // DateSpecMonthDay
-        rec = parseDateSpecMonthDay();
+        // TemporalMonthDayString
+        rec = parseTemporalMonthDayString();
         if (rec != null) {
             return rec;
         }
@@ -629,8 +616,7 @@ public final class TemporalParser {
             if (!tryParseTimeZoneNameRequired()) {
                 return null;
             }
-            parseCalendar();
-            if (atEnd()) {
+            if (parseAnnotations() && atEnd()) {
                 return result();
             }
         }
@@ -803,7 +789,8 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean parseCalendar() {
+    private boolean parseAnnotations() {
+        assert calendar == null;
         String foundCalendar = null;
         boolean calendarWasCritical = false;
         while (true) {
@@ -834,7 +821,7 @@ public final class TemporalParser {
                 break;
             }
         }
-        return calendar != null;
+        return true;
     }
 
     private boolean parseTimeZone() {
@@ -940,21 +927,14 @@ public final class TemporalParser {
         Matcher matcher = createMatch(patternTimeZoneBracketedAnnotation, rest);
         if (matcher.matches()) {
             TruffleString content = group(rest, matcher, 2);
-            if (Strings.startsWith(content, U_CA_EQUALS)) {
-                // it's a calendar, not a timezone.
-                return false;
-            }
-
             // content could be TimeZoneIANAName, Etc/GMT, or TimeZOneUTCOffsetName
-            if (content != null) {
-                if (Strings.startsWith(content, Strings.UC_ETC)) {
-                    timeZoneEtcName = content;
-                } else if (isSign(Strings.charAt(content, 0))) {
-                    timeZoneUTCOffsetName = content;
-                } else {
-                    assert isTZLeadingChar(Strings.charAt(content, 0));
-                    timeZoneIANAName = content;
-                }
+            if (Strings.startsWith(content, Strings.UC_ETC)) {
+                timeZoneEtcName = content;
+            } else if (isSign(Strings.charAt(content, 0))) {
+                timeZoneUTCOffsetName = content;
+            } else {
+                assert isTZLeadingChar(Strings.charAt(content, 0));
+                timeZoneIANAName = content;
             }
 
             move(matcher.end(1));
