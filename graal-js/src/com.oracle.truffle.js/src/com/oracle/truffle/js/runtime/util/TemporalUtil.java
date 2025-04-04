@@ -2898,7 +2898,8 @@ public final class TemporalUtil {
     @TruffleBoundary
     private static ParseISODateTimeResult parseTemporalInstantString(TruffleString string) {
         try {
-            ParseISODateTimeResult result = parseISODateTime(string);
+            JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalInstantString();
+            ParseISODateTimeResult result = parseISODateTimeIntl(string, rec);
             JSTemporalTimeZoneRecord timeZoneResult = parseTemporalTimeZoneString(string, true);
             TruffleString offsetString = timeZoneResult.getOffsetString();
             if (timeZoneResult.isZ()) {

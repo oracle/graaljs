@@ -577,26 +577,19 @@ public final class TemporalParser {
         return null;
     }
 
-    private JSTemporalParserRecord parseTemporalInstantString() {
+    public JSTemporalParserRecord parseTemporalInstantString() {
         reset();
         if (parseDate()) {
-            if (parseTimeSpecSeparator(true)) {
-                if (tryParseTimeZoneOffsetRequired()) {
-                    if (atEnd()) {
+            if (parseTimeSpecSeparator(false)) {
+                if (tryParseTimeZoneUTCOffset()) {
+                    tryParseTimeZoneBracketedAnnotation();
+                    if (parseAnnotations() && atEnd()) {
                         return result();
                     }
                 }
             }
         }
         return null;
-    }
-
-    private boolean tryParseTimeZoneOffsetRequired() {
-        if (!tryParseTimeZoneUTCOffset()) {
-            return false;
-        }
-        tryParseTimeZoneBracketedAnnotation(); // optional
-        return true;
     }
 
     private JSTemporalParserRecord parseCalendarName() {
