@@ -187,7 +187,7 @@ public final class TemporalParser {
 
         tryParseTimeDesignator();
         if (tryParseTimeSpec()) {
-            tryParseTimeZoneUTCOffset();
+            tryParseDateTimeUTCOffset();
             tryParseTimeZoneBracketedAnnotation();
             if (parseAnnotations() && atEnd()) {
                 return result();
@@ -215,7 +215,7 @@ public final class TemporalParser {
 
         // optional
         if (parseTimeSpecSeparator(false)) {
-            tryParseTimeZoneUTCOffset();
+            tryParseDateTimeUTCOffset();
         }
 
         return true;
@@ -373,7 +373,7 @@ public final class TemporalParser {
         reset();
         if (parseDate()) {
             if (parseTimeSpecSeparator(false)) {
-                if (tryParseTimeZoneUTCOffset()) {
+                if (tryParseDateTimeUTCOffset()) {
                     tryParseTimeZoneBracketedAnnotation();
                     if (parseAnnotations() && atEnd()) {
                         return result();
@@ -422,7 +422,7 @@ public final class TemporalParser {
     }
 
     private boolean tryParseTimeZoneNameRequired() {
-        tryParseTimeZoneUTCOffset(); // optional
+        tryParseDateTimeUTCOffset(); // optional
 
         if (tryParseTimeZoneBracketedAnnotation()) {
             return true;
@@ -609,7 +609,7 @@ public final class TemporalParser {
         return true;
     }
 
-    private boolean tryParseTimeZoneUTCOffset() {
+    private boolean tryParseDateTimeUTCOffset() {
         if (tryParseTimeZoneNumericUTCOffset(false)) {
             return true;
         }
