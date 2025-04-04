@@ -1398,6 +1398,16 @@ public final class TemporalUtil {
         return JSRuntime.truncateDouble(d);
     }
 
+    @TruffleBoundary
+    public static Number toIntegerWithTruncation(Object value) {
+        Number number = JSRuntime.toNumber(value);
+        double d = number.doubleValue();
+        if (!Double.isFinite(d)) {
+            throw Errors.createRangeError("Invalid integer");
+        }
+        return JSRuntime.truncateDouble(d);
+    }
+
     public static JSTemporalPlainDateObject calendarDateAdd(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject isoDate, JSTemporalDurationObject duration,
                     Overflow overflow,
                     Node node, InlinedBranchProfile errorBranch) {
