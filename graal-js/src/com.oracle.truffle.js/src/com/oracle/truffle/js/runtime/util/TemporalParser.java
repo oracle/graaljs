@@ -78,7 +78,7 @@ public final class TemporalParser {
     // (?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)
     // TimeZoneAnnotation
     // [!?(?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)]
-    private static final String patternTimeZoneBracketedAnnotation = "(\\[!?((?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*))\\])";
+    private static final String patternTimeZoneAnnotation = "(\\[!?((?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*))\\])";
     private static final String patternTimeZoneNumericUTCOffset = "^([+\\-])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+\\-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternDateSpecMonthDay = "^(?:--)?(0[1-9]|1[012])-?(0[1-9]|[12][0-9]|3[01])";
@@ -188,7 +188,7 @@ public final class TemporalParser {
         tryParseTimeDesignator();
         if (tryParseTimeSpec()) {
             tryParseDateTimeUTCOffset();
-            tryParseTimeZoneBracketedAnnotation();
+            tryParseTimeZoneAnnotation();
             if (parseAnnotations() && atEnd()) {
                 return result();
             }
@@ -200,7 +200,7 @@ public final class TemporalParser {
     public JSTemporalParserRecord parseCalendarDateTime() {
         reset();
         if (tryParseDateTime()) {
-            tryParseTimeZoneBracketedAnnotation();
+            tryParseTimeZoneAnnotation();
             if (parseAnnotations() && atEnd()) {
                 return result();
             }
@@ -272,7 +272,7 @@ public final class TemporalParser {
         // DateSpecMonthDay or DateTime
         if (tryParseDateSpecMonthDay() || tryParseDateTime()) {
             // optional TimeZoneAnnotation
-            tryParseTimeZoneBracketedAnnotation();
+            tryParseTimeZoneAnnotation();
             // optional Annotations
             if (parseAnnotations() && atEnd()) {
                 return result();
@@ -374,7 +374,7 @@ public final class TemporalParser {
         if (parseDate()) {
             if (parseTimeSpecSeparator(false)) {
                 if (tryParseDateTimeUTCOffset()) {
-                    tryParseTimeZoneBracketedAnnotation();
+                    tryParseTimeZoneAnnotation();
                     if (parseAnnotations() && atEnd()) {
                         return result();
                     }
@@ -424,7 +424,7 @@ public final class TemporalParser {
     private boolean tryParseTimeZoneNameRequired() {
         tryParseDateTimeUTCOffset(); // optional
 
-        if (tryParseTimeZoneBracketedAnnotation()) {
+        if (tryParseTimeZoneAnnotation()) {
             return true;
         }
         return false;
@@ -691,8 +691,8 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean tryParseTimeZoneBracketedAnnotation() {
-        Matcher matcher = createMatch(patternTimeZoneBracketedAnnotation, rest);
+    private boolean tryParseTimeZoneAnnotation() {
+        Matcher matcher = createMatch(patternTimeZoneAnnotation, rest);
         if (matcher.matches()) {
             TruffleString content = group(rest, matcher, 2);
             // content could be TimeZoneIANAName, Etc/GMT, or TimeZOneUTCOffsetName
