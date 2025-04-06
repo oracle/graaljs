@@ -65,7 +65,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -260,13 +259,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     private static URL uriToURL(URI moduleURI) throws MalformedURLException {
-        if (!JSConfig.SubstrateVM) {
-            try {
-                return moduleURI.toURL();
-            } catch (MalformedURLException e) {
-            }
-        }
-        throw new MalformedURLException("Unsupported URI scheme " + moduleURI.getScheme());
+        return moduleURI.toURL();
     }
 
     protected AbstractModuleRecord loadModuleFromFile(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile moduleFile, String maybeCanonicalPath) throws IOException {
