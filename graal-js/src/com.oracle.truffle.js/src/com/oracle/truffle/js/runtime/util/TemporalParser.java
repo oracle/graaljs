@@ -136,7 +136,7 @@ public final class TemporalParser {
 
         // TemporalDateTimeString => AnnotatedDateTime
         // TemporalTimeString => AnnotatedDateTime OR AnnotatedTime
-        rec = parseCalendarDateTime();
+        rec = parseAnnotatedDateTime(false);
         if (rec != null) {
             return rec;
         }
@@ -147,7 +147,7 @@ public final class TemporalParser {
         }
 
         // TemporalYearMonthString => DateSpecYearMonth OR CalendarDateTime (above already!)
-        rec = parseDateSpecYearMonth();
+        rec = parseAnnotatedYearMonth();
         if (rec != null) {
             return rec;
         }
@@ -182,12 +182,34 @@ public final class TemporalParser {
         return false;
     }
 
+    public JSTemporalParserRecord parseTemporalTimeString() {
+        JSTemporalParserRecord rec = parseAnnotatedTime();
+        if (rec != null) {
+            return rec;
+        }
+
+        return parseAnnotatedDateTime(true);
+    }
+
     private JSTemporalParserRecord parseAnnotatedTime() {
         reset();
 
-        tryParseTimeDesignator();
+        int start = pos;
+        boolean hasTimeDesignator = tryParseTimeDesignator();
         if (tryParseTimeSpec()) {
             tryParseDateTimeUTCOffset();
+            if (!hasTimeDesignator) {
+                int length = pos - start;
+                TruffleString timeDateTimeUTCOffset = Strings.lazySubstring(input, start, length);
+                // Early errors for AnnotatedTime
+                if (createMatch(patternDateSpecYearMonth, timeDateTimeUTCOffset, false).matches()) {
+                    return null;
+                }
+                Matcher matcher = createMatch(patternDateSpecMonthDay, timeDateTimeUTCOffset, false);
+                if (matcher.matches() && isValidMonthDay(matcher.group(1), matcher.group(2))) {
+                    return null;
+                }
+            }
             tryParseTimeZoneAnnotation();
             if (parseAnnotations() && atEnd()) {
                 return result();
@@ -197,9 +219,9 @@ public final class TemporalParser {
         return null;
     }
 
-    public JSTemporalParserRecord parseCalendarDateTime() {
+    public JSTemporalParserRecord parseAnnotatedDateTime(boolean timeRequired) {
         reset();
-        if (tryParseDateTime()) {
+        if (tryParseDateTime(timeRequired)) {
             tryParseTimeZoneAnnotation();
             if (parseAnnotations() && atEnd()) {
                 return result();
@@ -208,7 +230,7 @@ public final class TemporalParser {
         return null;
     }
 
-    private boolean tryParseDateTime() {
+    private boolean tryParseDateTime(boolean timeRequired) {
         if (!parseDate()) {
             return false;
         }
@@ -216,9 +238,10 @@ public final class TemporalParser {
         // optional
         if (parseTimeSpecSeparator(false)) {
             tryParseDateTimeUTCOffset();
+            return true;
+        } else {
+            return !timeRequired;
         }
-
-        return true;
     }
 
     private boolean parseTimeSpecSeparator(boolean optional) {
@@ -242,13 +265,13 @@ public final class TemporalParser {
         JSTemporalParserRecord rec;
 
         // DateSpecYearMonth
-        rec = parseDateSpecYearMonth();
+        rec = parseAnnotatedYearMonth();
         if (rec != null) {
             return rec;
         }
 
-        // CalendarDateTime
-        rec = parseCalendarDateTime();
+        // AnnotatedDateTime
+        rec = parseAnnotatedDateTime(false);
         if (rec != null) {
             return rec;
         }
@@ -256,10 +279,11 @@ public final class TemporalParser {
         return null;
     }
 
-    private JSTemporalParserRecord parseDateSpecYearMonth() {
+    private JSTemporalParserRecord parseAnnotatedYearMonth() {
         reset();
         if (tryParseDateSpecYearMonth()) {
-            if (atEnd()) {
+            tryParseTimeZoneAnnotation();
+            if (parseAnnotations() && atEnd()) {
                 return result();
             }
         }
@@ -270,7 +294,7 @@ public final class TemporalParser {
         reset();
 
         // DateSpecMonthDay or DateTime
-        if (tryParseDateSpecMonthDay() || tryParseDateTime()) {
+        if (tryParseDateSpecMonthDay() || tryParseDateTime(false)) {
             // optional TimeZoneAnnotation
             tryParseTimeZoneAnnotation();
             // optional Annotations
@@ -342,20 +366,20 @@ public final class TemporalParser {
             return rec;
         }
 
-        // CalendarDateTime
-        rec = parseCalendarDateTime();
+        // AnnotatedDateTime
+        rec = parseAnnotatedDateTime(false);
         if (rec != null) {
             return rec;
         }
 
-        // Time
+        // AnnotatedTime
         rec = parseAnnotatedTime();
         if (rec != null) {
             return rec;
         }
 
-        // DAteSpecYearMonth
-        rec = parseDateSpecYearMonth();
+        // AnnotatedYearMonth
+        rec = parseAnnotatedYearMonth();
         if (rec != null) {
             return rec;
         }
@@ -414,7 +438,7 @@ public final class TemporalParser {
 
     public boolean isTemporalDateTimeString() {
         reset();
-        JSTemporalParserRecord rec = parseCalendarDateTime();
+        JSTemporalParserRecord rec = parseAnnotatedDateTime(false);
         if (rec != null) {
             return true;
         }
@@ -529,6 +553,13 @@ public final class TemporalParser {
             return true;
         }
         return false;
+    }
+
+    private static boolean isValidMonthDay(String dateMonth, String dateDay) {
+        if ("31".equals(dateDay) && ("02".equals(dateMonth) || "04".equals(dateMonth) || "06".equals(dateMonth) || "09".equals(dateMonth) || "11".equals(dateMonth))) {
+            return false;
+        }
+        return !("02".equals(dateMonth) && "30".equals(dateDay));
     }
 
     private boolean parseDate() {

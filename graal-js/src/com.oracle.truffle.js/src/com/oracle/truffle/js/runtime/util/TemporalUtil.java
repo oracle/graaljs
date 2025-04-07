@@ -1163,7 +1163,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateTimeString(TruffleString string) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseCalendarDateTime();
+        JSTemporalParserRecord rec = (new TemporalParser(string)).parseAnnotatedDateTime(false);
         if (rec == null) {
             throw Errors.createRangeError("cannot parse the date string");
         }
@@ -1182,12 +1182,20 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalTimeString(TruffleString string) {
-        JSTemporalDateTimeRecord result = parseISODateTime(string, true, true);
-        if (result.hasCalendar()) {
-            return JSTemporalDateTimeRecord.createCalendar(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(),
-                            result.getCalendar());
+        JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalTimeString();
+        if (rec != null) {
+            if (rec.getZ()) {
+                throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
+            }
+            JSTemporalDateTimeRecord result = parseISODateTimeIntl(string, rec);
+            if (result.hasCalendar()) {
+                return JSTemporalDateTimeRecord.createCalendar(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
+                                result.getNanosecond(), result.getCalendar());
+            } else {
+                return JSTemporalDateTimeRecord.create(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
+            }
         } else {
-            return JSTemporalDateTimeRecord.create(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
+            throw Errors.createRangeError("cannot parse time");
         }
     }
 
