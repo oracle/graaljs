@@ -236,7 +236,7 @@ public final class TemporalParser {
         }
 
         // optional
-        if (parseTimeSpecSeparator(false)) {
+        if (parseTimeSpecSeparator()) {
             tryParseDateTimeUTCOffset();
             return true;
         } else {
@@ -244,12 +244,12 @@ public final class TemporalParser {
         }
     }
 
-    private boolean parseTimeSpecSeparator(boolean optional) {
+    private boolean parseTimeSpecSeparator() {
         int posBackup = pos;
         TruffleString restBackup = rest;
 
         if (!tryParseDateTimeSeparator()) {
-            return optional;
+            return false;
         }
         if (!tryParseTimeSpec()) {
             // we found a separator, but no time.
@@ -342,7 +342,7 @@ public final class TemporalParser {
 
     public JSTemporalParserRecord parseTimeZoneNumericUTCOffset() {
         reset();
-        if (tryParseTimeZoneNumericUTCOffset(false)) {
+        if (tryParseTimeZoneNumericUTCOffset()) {
             if (atEnd()) { // catches "+00:01.1"
                 return result();
             }
@@ -396,7 +396,7 @@ public final class TemporalParser {
     public JSTemporalParserRecord parseTemporalInstantString() {
         reset();
         if (parseDate()) {
-            if (parseTimeSpecSeparator(false)) {
+            if (parseTimeSpecSeparator()) {
                 if (tryParseDateTimeUTCOffset()) {
                     tryParseTimeZoneAnnotation();
                     if (parseAnnotations() && atEnd()) {
@@ -641,7 +641,7 @@ public final class TemporalParser {
     }
 
     private boolean tryParseDateTimeUTCOffset() {
-        if (tryParseTimeZoneNumericUTCOffset(false)) {
+        if (tryParseTimeZoneNumericUTCOffset()) {
             return true;
         }
 
@@ -663,7 +663,7 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean tryParseTimeZoneNumericUTCOffset(boolean nonAmbiguous) {
+    private boolean tryParseTimeZoneNumericUTCOffset() {
         Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, true);
         if (matcher.matches()) {
             offsetSign = group(rest, matcher, 1);
@@ -675,14 +675,6 @@ public final class TemporalParser {
 
             if (offsetHour == null) {
                 return false;
-            }
-
-            if (nonAmbiguous) {
-                // this is production TimeZoneNumericUTCOffsetNotAmbiguous
-                // only difference is: does not accept "-HH"
-                if (matcher.start(3) < 0 && Strings.charAt(rest, 0) == '-') {
-                    return false;
-                }
             }
 
             // differentiate between "-08" and "-08:00" here!
@@ -712,7 +704,7 @@ public final class TemporalParser {
 
         // TimeZoneNumericUTCOffset
         reset();
-        if (tryParseTimeZoneNumericUTCOffset(false)) {
+        if (tryParseTimeZoneNumericUTCOffset()) {
             if (offsetSecond != null || offsetFraction != null) {
                 return false;
             }
