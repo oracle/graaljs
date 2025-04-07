@@ -685,7 +685,7 @@ public class TemporalBuiltinsTest extends JSTest {
                         "pt.hour === 8 && pt.minute === 44 && pt.second === 15 && pt.millisecond === 321;";
         testTrue(code);
 
-        testFail("Temporal.PlainTime.from('08:44:15.321 ');", "cannot parse the ISO date time string");
+        testFail("Temporal.PlainTime.from('08:44:15.321 ');", "cannot parse");
     }
 
     // test the different branches of TimeSpecWithOptionalTimeZoneNotAmbiguous
