@@ -2823,6 +2823,9 @@ public final class TemporalUtil {
             if (rec.getYear() == 0 && Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
+            if (rec.getCalendar() != null && !"iso8601".equalsIgnoreCase(rec.getCalendar().toJavaStringUncached())) {
+                throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
+            }
 
             int y = rec.getYear() == Long.MIN_VALUE ? 0 : ltoi(rec.getYear());
             int m = rec.getMonth() == Long.MIN_VALUE ? 0 : ltoi(rec.getMonth());
