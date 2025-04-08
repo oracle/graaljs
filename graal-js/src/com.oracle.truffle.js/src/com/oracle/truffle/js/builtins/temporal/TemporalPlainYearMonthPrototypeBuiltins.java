@@ -112,6 +112,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
     public enum TemporalPlainYearMonthPrototype implements BuiltinEnum<TemporalPlainYearMonthPrototype> {
         // getters
         calendarId(0),
+        era(0),
+        eraYear(0),
         year(0),
         month(0),
         monthCode(0),
@@ -147,7 +149,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(calendarId, year, month, monthCode, daysInMonth, daysInYear, monthsInYear, inLeapYear).contains(this);
+            return EnumSet.of(calendarId, era, eraYear, year, month, monthCode, daysInMonth, daysInYear, monthsInYear, inLeapYear).contains(this);
         }
 
     }
@@ -157,6 +159,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         switch (builtinEnum) {
             case calendarId:
                 return JSTemporalPlainYearMonthCalendarGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case era:
+            case eraYear:
             case year:
             case month:
             case monthCode:
@@ -204,6 +208,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected Object dateGetter(JSTemporalPlainYearMonthObject temporalYM) {
             switch (property) {
+                case era:
+                    return Undefined.instance;
+                case eraYear:
+                    return Undefined.instance;
                 case year:
                     return temporalYM.getYear();
                 case month:
