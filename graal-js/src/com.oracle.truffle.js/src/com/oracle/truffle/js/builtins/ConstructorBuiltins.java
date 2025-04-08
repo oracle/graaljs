@@ -1303,6 +1303,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw Errors.createTypeErrorNotAString(calendarLike);
             }
             int ref = toInteger.executeIntOrThrow(referenceISODay);
+            if (!TemporalUtil.isValidISODate(y, m, ref)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
+            }
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainYearMonth.create(getContext(), realm, proto, y, m, calendar, ref, this, errorBranch);
