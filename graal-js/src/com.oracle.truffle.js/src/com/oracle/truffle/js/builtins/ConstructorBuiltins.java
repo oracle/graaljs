@@ -1283,15 +1283,25 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object isoMonth, Object calendarLike, Object refISODay,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached JSToIntegerThrowOnInfinityNode toInteger,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue) {
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString) {
 
             Object referenceISODay = refISODay;
-            if (referenceISODay == Undefined.instance || referenceISODay == null) {
+            if (referenceISODay == Undefined.instance) {
                 referenceISODay = 1;
             }
             int y = toInteger.executeIntOrThrow(isoYear);
             int m = toInteger.executeIntOrThrow(isoMonth);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar;
+            if (calendarLike == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarLike instanceof TruffleString calendarTS) {
+                String calendarJLS = toJavaString.execute(calendarTS);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarLike);
+            }
             int ref = toInteger.executeIntOrThrow(referenceISODay);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
