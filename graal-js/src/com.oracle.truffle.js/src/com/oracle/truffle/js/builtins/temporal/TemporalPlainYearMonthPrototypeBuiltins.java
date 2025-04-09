@@ -493,7 +493,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         @SuppressWarnings("truffle-static-method")
         @Specialization
-        protected JSTemporalDurationObject differenceTemporalPlainYearMonth(JSTemporalPlainYearMonthObject thisYearMonth, Object otherParam, Object options,
+        protected JSTemporalDurationObject differenceTemporalPlainYearMonth(JSTemporalPlainYearMonthObject yearMonth, Object otherParam, Object options,
                         @Bind Node node,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached GetDifferenceSettingsNode getDifferenceSettings,
@@ -503,7 +503,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.execute(otherParam, Undefined.instance);
-            TruffleString calendar = thisYearMonth.getCalendar();
+            TruffleString calendar = yearMonth.getCalendar();
             if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toCalendarIdentifier)) {
                 errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
@@ -512,11 +512,15 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingYearMonthOrAuto, TemporalUtil.unitMappingYearMonth, Unit.MONTH, Unit.YEAR);
 
             JSRealm realm = getRealm();
+            if (TemporalUtil.compareISODate(yearMonth.getYear(), yearMonth.getMonth(), yearMonth.getDay(), other.getYear(), other.getMonth(), other.getDay()) == 0) {
+                return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
+            }
+
             List<TruffleString> fieldNames = TemporalUtil.listMCY;
             JSDynamicObject otherFields = TemporalUtil.prepareTemporalFields(getContext(), other, fieldNames, TemporalUtil.listEmpty);
             TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
             JSTemporalPlainDateObject otherDate = dateFromFieldsNode.execute(calendar, otherFields, TemporalUtil.Overflow.CONSTRAIN);
-            JSObject thisFields = TemporalUtil.prepareTemporalFields(getContext(), thisYearMonth, fieldNames, TemporalUtil.listEmpty);
+            JSObject thisFields = TemporalUtil.prepareTemporalFields(getContext(), yearMonth, fieldNames, TemporalUtil.listEmpty);
             TemporalUtil.createDataPropertyOrThrow(getContext(), thisFields, DAY, 1);
             JSTemporalPlainDateObject thisDate = dateFromFieldsNode.execute(calendar, thisFields, TemporalUtil.Overflow.CONSTRAIN);
             JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(getContext(), realm, calendar, thisDate, otherDate, settings.largestUnit(), this, errorBranch);
