@@ -2158,6 +2158,16 @@ public final class TemporalUtil {
         return ns;
     }
 
+    public static JSTemporalDurationObject toDateDurationRecordWithoutTime(JSContext context, JSRealm realm, JSTemporalDurationObject duration, Node node, InlinedBranchProfile errorBranch) {
+        // ToInternalDurationRecordWith24HourDays
+        BigInt timeDuration = normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
+                        duration.getNanoseconds());
+        timeDuration = add24HourDaysToNormalizedTimeDuration(timeDuration, duration.getDays());
+
+        BigInt days = timeDuration.divide(BI_NS_PER_DAY);
+        return JSTemporalDuration.createTemporalDuration(context, realm, duration.getYears(), duration.getMonths(), duration.getWeeks(), days.doubleValue(), 0, 0, 0, 0, 0, 0, node, errorBranch);
+    }
+
     @TruffleBoundary
     public static BigInt add24HourDaysToNormalizedTimeDuration(BigInt timeDurationTotalNanoseconds, double days) {
         assert JSRuntime.isIntegralNumber(days) : days;

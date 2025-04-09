@@ -85,9 +85,11 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
@@ -443,29 +445,32 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             if (operation == TemporalUtil.SUBTRACT) {
                 duration = JSTemporalDuration.createNegatedTemporalDuration(getContext(), realm, duration);
             }
-            BigInt norm = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            var balanceResult = TemporalUtil.balanceTimeDuration(norm, Unit.DAY);
-            double days = duration.getDays() + balanceResult.days();
-            int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), days, 0, 0, 0, 0, 0, 0);
-
-            TruffleString calendar = yearMonth.getCalendar();
-
             Object resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(),
+                            duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
+            TruffleString calendar = yearMonth.getCalendar();
+
             List<TruffleString> fieldNames = TemporalUtil.listMCY;
             JSObject fields = TemporalUtil.prepareTemporalFields(getContext(), yearMonth, fieldNames, TemporalUtil.listEmpty);
-            int day;
-            if (sign < 0) {
-                day = TemporalUtil.isoDaysInMonth(yearMonth.getYear(), yearMonth.getMonth());
-            } else {
-                day = 1;
-            }
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, day);
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, 1);
+
             JSTemporalPlainDateObject intermediateDate = dateFromFieldsNode.execute(calendar, fields, TemporalUtil.Overflow.CONSTRAIN);
-            JSTemporalDurationObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), realm,
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), days, 0, 0, 0, 0, 0, 0, this, errorBranch);
-            JSTemporalPlainDateObject addedDate = addDateNode.execute(calendar, intermediateDate, durationToAdd, overflow);
+
+            JSTemporalPlainDateObject date;
+            if (sign < 0) {
+                JSTemporalDurationObject oneMonthDuration = JSTemporalDuration.createTemporalDuration(getContext(), realm,
+                                0, 1, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
+                JSTemporalPlainDateObject nextMonth = addDateNode.execute(calendar, intermediateDate, oneMonthDuration, TemporalUtil.Overflow.CONSTRAIN);
+                ISODateRecord record = TemporalUtil.balanceISODate(nextMonth.getYear(), nextMonth.getMonth(), nextMonth.getDay() - 1);
+                date = JSTemporalPlainDate.create(getContext(), realm, record.year(), record.month(), record.day(), calendar, node, errorBranch);
+            } else {
+                date = intermediateDate;
+            }
+
+            JSTemporalDurationObject durationToAdd = TemporalUtil.toDateDurationRecordWithoutTime(getContext(), realm, duration, this, errorBranch);
+            JSTemporalPlainDateObject addedDate = addDateNode.execute(calendar, date, durationToAdd, overflow);
             JSObject addedDateFields = TemporalUtil.prepareTemporalFields(getContext(), addedDate, fieldNames, TemporalUtil.listEmpty);
             return yearMonthFromFieldsNode.execute(calendar, addedDateFields, overflow);
         }
