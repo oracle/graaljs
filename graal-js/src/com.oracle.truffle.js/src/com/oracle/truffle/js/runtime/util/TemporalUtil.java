@@ -2440,11 +2440,47 @@ public final class TemporalUtil {
 
     // when used with Duration, double is necessary
     // e.g. from Temporal.PlainTime.prototype.add(duration);
-    public static TimeRecord addTimeDouble(int hour, int minute, int second, int millisecond, int microsecond, double nanosecond,
+    public static TimeRecord addTimeDouble(int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
                     double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds,
                     Node node, InlinedBranchProfile errorBranch) {
-        return balanceTimeDouble(hour + hours, minute + minutes, second + seconds, millisecond + milliseconds,
-                        microsecond + microseconds, nanosecond + nanoseconds, node, errorBranch);
+        var qr = JSRuntime.toBigInteger(nanoseconds).add(BigInteger.valueOf(nanosecond)).divideAndRemainder(BI_1000.bigIntegerValue());
+        int ns = qr[1].intValue();
+        if (ns < 0) {
+            ns += 1000;
+            qr[0] = qr[0].subtract(BigInteger.ONE);
+        }
+        qr = JSRuntime.toBigInteger(microseconds).add(BigInteger.valueOf(microsecond)).add(qr[0]).divideAndRemainder(BI_1000.bigIntegerValue());
+        int us = qr[1].intValue();
+        if (us < 0) {
+            us += 1000;
+            qr[0] = qr[0].subtract(BigInteger.ONE);
+        }
+        qr = JSRuntime.toBigInteger(milliseconds).add(BigInteger.valueOf(millisecond)).add(qr[0]).divideAndRemainder(BI_1000.bigIntegerValue());
+        int ms = qr[1].intValue();
+        if (ms < 0) {
+            ms += 1000;
+            qr[0] = qr[0].subtract(BigInteger.ONE);
+        }
+        qr = JSRuntime.toBigInteger(seconds).add(BigInteger.valueOf(second)).add(qr[0]).divideAndRemainder(BI_60.bigIntegerValue());
+        int s = qr[1].intValue();
+        if (s < 0) {
+            s += 60;
+            qr[0] = qr[0].subtract(BigInteger.ONE);
+        }
+        qr = JSRuntime.toBigInteger(minutes).add(BigInteger.valueOf(minute)).add(qr[0]).divideAndRemainder(BI_60.bigIntegerValue());
+        int m = qr[1].intValue();
+        if (m < 0) {
+            m += 60;
+            qr[0] = qr[0].subtract(BigInteger.ONE);
+        }
+        qr = JSRuntime.toBigInteger(hours).add(BigInteger.valueOf(hour)).add(qr[0]).divideAndRemainder(BI_24.bigIntegerValue());
+        int h = qr[1].intValue();
+        double days = qr[0].doubleValue();
+        if (h < 0) {
+            h += 24;
+            days--;
+        }
+        return new TimeRecord(days, h, m, s, ms, us, ns);
     }
 
     @TruffleBoundary
