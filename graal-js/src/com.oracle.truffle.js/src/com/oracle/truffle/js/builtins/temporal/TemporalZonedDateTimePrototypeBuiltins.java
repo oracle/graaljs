@@ -157,6 +157,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         // getters
         calendarId(0),
         timeZoneId(0),
+        era(0),
+        eraYear(0),
         year(0),
         month(0),
         monthCode(0),
@@ -233,6 +235,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 return JSTemporalZonedDateTimeCalendarGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case timeZoneId:
                 return JSTemporalZonedDateTimeTimeZoneIdGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case era:
+            case eraYear:
             case year:
             case month:
             case monthCode:
@@ -360,6 +364,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         protected Object zonedDateTimeGetter(JSTemporalZonedDateTimeObject zdt,
                         @Cached InlinedBranchProfile errorBranch) {
             switch (property) {
+                case era:
+                case eraYear:
                 case year:
                 case month:
                 case monthCode:
@@ -444,6 +450,10 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             TruffleString calendar = zdt.getCalendar();
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
             switch (property) {
+                case era:
+                    return Undefined.instance;
+                case eraYear:
+                    return Undefined.instance;
                 case year:
                     return tdt.getYear();
                 case month:
