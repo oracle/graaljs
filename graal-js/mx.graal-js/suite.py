@@ -503,8 +503,8 @@ suite = {
         "GRAALJS",
         "truffle:TRUFFLE_RUNTIME",
       ],
-      "description":     "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency pulls in GraalJS dependencies and Truffle Community Edition.",
-      "descriptionGFTC": "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency pulls in GraalJS dependencies and Truffle.",
+      "description":     "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency includes GraalJS dependencies and Truffle Community Edition.",
+      "descriptionGFTC": "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency includes GraalJS dependencies and Truffle.",
       "maven": {
         "artifactId": "js-community",
         "tag": ["default", "public"],
