@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,14 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
@@ -66,18 +68,31 @@ public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
     @Specialization
     public JSTemporalInstantObject toTemporalDateTime(Object item,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached JSToStringNode toStringNode,
-                    @Cached InlinedConditionProfile isObjectProfile) {
+                    @Cached JSToPrimitiveNode toPrimitiveNode,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedBranchProfile errorBranch) {
+        Object primitiveItem;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
-            if (TemporalUtil.isTemporalInstant(item)) {
-                return (JSTemporalInstantObject) item;
+            BigInt nanoseconds = null;
+            if (item instanceof JSTemporalInstantObject instant) {
+                nanoseconds = instant.getNanoseconds();
             }
-            if (TemporalUtil.isTemporalZonedDateTime(item)) {
-                return JSTemporalInstant.create(getLanguage().getJSContext(), getRealm(), ((JSTemporalZonedDateTimeObject) item).getNanoseconds());
+            if (item instanceof JSTemporalZonedDateTimeObject zonedDateTime) {
+                nanoseconds = zonedDateTime.getNanoseconds();
             }
+            if (nanoseconds != null) {
+                return JSTemporalInstant.create(getLanguage().getJSContext(), getRealm(), nanoseconds);
+            }
+            primitiveItem = toPrimitiveNode.executeHintString(item);
+        } else {
+            primitiveItem = item;
         }
-        TruffleString string = toStringNode.executeString(item);
-        BigInt epochNanoseconds = TemporalUtil.parseTemporalInstant(string);
-        return JSTemporalInstant.create(getLanguage().getJSContext(), getRealm(), epochNanoseconds);
+        if (primitiveItem instanceof TruffleString string) {
+            BigInt epochNanoseconds = TemporalUtil.parseTemporalInstant(string);
+            return JSTemporalInstant.create(getLanguage().getJSContext(), getRealm(), epochNanoseconds);
+        } else {
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorNotAString(primitiveItem);
+        }
     }
 }
