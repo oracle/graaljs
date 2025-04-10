@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-
 import java.util.EnumSet;
 import java.util.List;
 
@@ -53,7 +51,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayEqualsNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayToPlainDateNodeGen;
@@ -70,14 +67,11 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalMonthDayNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
@@ -100,7 +94,6 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         with(1),
         equals(1),
         toPlainDate(1),
-        getISOFields(0),
         toString(0),
         toLocaleString(0),
         toJSON(0),
@@ -138,8 +131,6 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
                 return JSTemporalPlainMonthDayEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toPlainDate:
                 return JSTemporalPlainMonthDayToPlainDateNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case getISOFields:
-                return JSTemporalPlainMonthDayGetISOFieldsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toString:
                 return JSTemporalPlainMonthDayToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toLocaleString:
@@ -265,28 +256,6 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSTemporalMonthDay(thisObj)")
         protected static Object invalidReceiver(Object thisObj, Object item) {
-            throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
-        }
-    }
-
-    public abstract static class JSTemporalPlainMonthDayGetISOFields extends JSTemporalBuiltinOperation {
-
-        protected JSTemporalPlainMonthDayGetISOFields(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSObject getISOFields(JSTemporalPlainMonthDayObject md) {
-            JSObject obj = JSOrdinary.create(getContext(), getRealm());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, md.getCalendar());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, TemporalConstants.ISO_DAY, md.getDay());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, TemporalConstants.ISO_MONTH, md.getMonth());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, TemporalConstants.ISO_YEAR, md.getYear());
-            return obj;
-        }
-
-        @Specialization(guards = "!isJSTemporalMonthDay(thisObj)")
-        protected static JSObject invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
         }
     }

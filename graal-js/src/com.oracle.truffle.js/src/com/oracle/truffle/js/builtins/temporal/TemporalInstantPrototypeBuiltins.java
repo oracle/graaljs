@@ -107,9 +107,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
     public enum TemporalInstantPrototype implements BuiltinEnum<TemporalInstantPrototype> {
         // getters
-        epochSeconds(0),
         epochMilliseconds(0),
-        epochMicroseconds(0),
         epochNanoseconds(0),
 
         // methods
@@ -138,16 +136,14 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(epochSeconds, epochMilliseconds, epochMicroseconds, epochNanoseconds).contains(this);
+            return EnumSet.of(epochMilliseconds, epochNanoseconds).contains(this);
         }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalInstantPrototype builtinEnum) {
         switch (builtinEnum) {
-            case epochSeconds:
             case epochMilliseconds:
-            case epochMicroseconds:
             case epochNanoseconds:
                 return JSTemporalInstantGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
 
@@ -192,12 +188,8 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BigInt ns = instant.getNanoseconds();
             switch (property) {
                 // roundTowardsZero is a no-op for BigIntegers
-                case epochSeconds:
-                    return ns.divide(TemporalUtil.BI_NS_PER_SECOND).doubleValue();
                 case epochMilliseconds:
                     return ns.divide(TemporalUtil.BI_NS_PER_MS).doubleValue();
-                case epochMicroseconds:
-                    return ns.divide(TemporalUtil.BI_1000);
                 case epochNanoseconds:
                     return instant.getNanoseconds();
             }

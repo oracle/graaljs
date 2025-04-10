@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,20 +91,6 @@ public final class TemporalConstants {
     public static final TruffleString DAY_OF_YEAR = Strings.constant("dayOfYear");
     public static final TruffleString WEEK_OF_YEAR = Strings.constant("weekOfYear");
     public static final TruffleString YEAR_OF_WEEK = Strings.constant("yearOfWeek");
-
-    public static final TruffleString DATE_FROM_FIELDS = Strings.constant("dateFromFields");
-    public static final TruffleString MONTH_DAY_FROM_FIELDS = Strings.constant("monthDayFromFields");
-    public static final TruffleString YEAR_MONTH_FROM_FIELDS = Strings.constant("yearMonthFromFields");
-
-    public static final TruffleString ISO_DAY = Strings.constant("isoDay");
-    public static final TruffleString ISO_HOUR = Strings.constant("isoHour");
-    public static final TruffleString ISO_MICROSECOND = Strings.constant("isoMicrosecond");
-    public static final TruffleString ISO_MILLISECOND = Strings.constant("isoMillisecond");
-    public static final TruffleString ISO_MINUTE = Strings.constant("isoMinute");
-    public static final TruffleString ISO_MONTH = Strings.constant("isoMonth");
-    public static final TruffleString ISO_NANOSECOND = Strings.constant("isoNanosecond");
-    public static final TruffleString ISO_SECOND = Strings.constant("isoSecond");
-    public static final TruffleString ISO_YEAR = Strings.constant("isoYear");
 
     public static final TruffleString PLAIN_DATE = Strings.constant("plainDate");
     public static final TruffleString PLAIN_TIME = Strings.constant("plainTime");
