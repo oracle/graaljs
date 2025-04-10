@@ -146,6 +146,8 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
     public enum TemporalPlainDateTimePrototype implements BuiltinEnum<TemporalPlainDateTimePrototype> {
         // getters
         calendarId(0),
+        era(0),
+        eraYear(0),
         year(0),
         month(0),
         monthCode(0),
@@ -201,8 +203,8 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(calendarId, hour, minute, second, millisecond, microsecond, nanosecond, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, yearOfWeek, daysInWeek,
-                            daysInMonth, daysInYear, monthsInYear, inLeapYear).contains(this);
+            return EnumSet.of(calendarId, era, eraYear, hour, minute, second, millisecond, microsecond, nanosecond, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, yearOfWeek,
+                            daysInWeek, daysInMonth, daysInYear, monthsInYear, inLeapYear).contains(this);
         }
     }
 
@@ -211,6 +213,8 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         switch (builtinEnum) {
             case calendarId:
                 return JSTemporalPlainDateTimeCalendarGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case era:
+            case eraYear:
             case year:
             case month:
             case monthCode:
@@ -320,6 +324,10 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected Object dateTimeGetter(JSTemporalPlainDateTimeObject temporalDT) {
             switch (property) {
+                case era:
+                    return Undefined.instance;
+                case eraYear:
+                    return Undefined.instance;
                 case hour:
                     return temporalDT.getHour();
                 case minute:
