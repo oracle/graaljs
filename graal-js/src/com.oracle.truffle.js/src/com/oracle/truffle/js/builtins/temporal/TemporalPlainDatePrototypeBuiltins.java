@@ -127,6 +127,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
     public enum TemporalPlainDatePrototype implements BuiltinEnum<TemporalPlainDatePrototype> {
         // getters
         calendarId(0),
+        era(0),
+        eraYear(0),
         year(0),
         month(0),
         monthCode(0),
@@ -172,7 +174,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(calendarId, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, yearOfWeek, daysInWeek, daysInMonth, daysInYear,
+            return EnumSet.of(calendarId, era, eraYear, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, yearOfWeek, daysInWeek, daysInMonth, daysInYear,
                             monthsInYear, inLeapYear).contains(this);
         }
     }
@@ -182,6 +184,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         switch (builtinEnum) {
             case calendarId:
                 return JSTemporalPlainDateCalendarGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case era:
+            case eraYear:
             case year:
             case month:
             case monthCode:
@@ -262,6 +266,10 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected final Object dateGetter(JSTemporalPlainDateObject temporalDT) {
             switch (property) {
+                case era:
+                    return Undefined.instance;
+                case eraYear:
+                    return Undefined.instance;
                 case year:
                     return temporalDT.getYear();
                 case month:
