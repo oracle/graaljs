@@ -170,7 +170,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerWithTruncationNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -1154,7 +1154,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalPlainDate(JSDynamicObject newTarget, Object isoYear, Object isoMonth,
                         Object isoDay, Object calendarLike,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
+                        @Cached JSToIntegerWithTruncationNode toIntegerNode,
                         @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
@@ -1197,7 +1197,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode) {
+                        @Cached JSToIntegerWithTruncationNode toIntegerNode) {
             final int hour = (hourObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(hourObj);
             final int minute = (minuteObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(minuteObj);
             final int second = (secondObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(secondObj);
@@ -1226,7 +1226,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainDateTime(JSDynamicObject newTarget, Object yearObj, Object monthObj, Object dayObj, Object hourObj, Object minuteObj,
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject, Object calendarLike,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
+                        @Cached JSToIntegerWithTruncationNode toIntegerNode,
                         @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached InlinedBranchProfile errorBranch) {
             final int year = toIntegerNode.executeIntOrThrow(yearObj);
@@ -1296,7 +1296,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainYearMonth(JSDynamicObject newTarget, Object isoYear,
                         Object isoMonth, Object calendarLike, Object refISODay,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached JSToIntegerThrowOnInfinityNode toInteger,
+                        @Cached JSToIntegerWithTruncationNode toInteger,
                         @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached TruffleString.FromJavaStringNode fromJavaString) {
 
@@ -1342,7 +1342,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainMonthDay(JSDynamicObject newTarget, Object isoMonth,
                         Object isoDay, Object calendarParam, Object referenceISOYear,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached JSToIntegerThrowOnInfinityNode toInt,
+                        @Cached JSToIntegerWithTruncationNode toInt,
                         @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached TruffleString.FromJavaStringNode fromJavaString) {
             int m = toInt.executeIntOrThrow(isoMonth);

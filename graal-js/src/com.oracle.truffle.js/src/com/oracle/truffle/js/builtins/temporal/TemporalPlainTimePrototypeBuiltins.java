@@ -66,7 +66,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeUntilSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeWithNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerWithTruncationNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
@@ -266,7 +266,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected JSTemporalPlainTimeObject with(JSTemporalPlainTimeObject temporalTime, Object temporalTimeLike, Object options,
                         @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntThrows,
+                        @Cached JSToIntegerWithTruncationNode toIntegerWithTruncation,
                         @Cached JSToIntegerAsIntNode toInt,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -276,7 +276,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
-            JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(temporalTimeLike, toIntThrows, getContext());
+            JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(temporalTimeLike, toIntegerWithTruncation, getContext());
             int hour;
             int minute;
             int second;

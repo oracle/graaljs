@@ -56,10 +56,10 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * This implements ToIntegerThrowOnInfinity (via Temporal proposal).
+ * This implements ToIntegerWithTruncation (via Temporal proposal).
  */
 @ImportStatic(JSGuards.class)
-public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode {
+public abstract class JSToIntegerWithTruncationNode extends JavaScriptBaseNode {
 
     private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile isIntProfile = BranchProfile.create();
@@ -105,8 +105,8 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     }
 
     @NeverDefault
-    public static JSToIntegerThrowOnInfinityNode create() {
-        return JSToIntegerThrowOnInfinityNodeGen.create();
+    public static JSToIntegerWithTruncationNode create() {
+        return JSToIntegerWithTruncationNodeGen.create();
     }
 
     @Specialization
@@ -164,15 +164,15 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
 
     @Specialization
     protected Number doString(TruffleString value,
-                    @Shared @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
+                    @Shared @Cached JSToIntegerWithTruncationNode toIntegerWithTruncation,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return (Number) toIntOrInf.execute(stringToNumberNode.execute(value));
+        return (Number) toIntegerWithTruncation.execute(stringToNumberNode.execute(value));
     }
 
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)")
     protected Number doJSOrForeignObject(Object value,
-                    @Shared @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
+                    @Shared @Cached JSToIntegerWithTruncationNode toIntegerWithTruncation,
                     @Cached JSToNumberNode toNumberNode) {
-        return (Number) toIntOrInf.execute(toNumberNode.executeNumber(value));
+        return (Number) toIntegerWithTruncation.execute(toNumberNode.executeNumber(value));
     }
 }

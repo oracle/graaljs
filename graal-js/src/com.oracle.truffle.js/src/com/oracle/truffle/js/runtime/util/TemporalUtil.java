@@ -124,7 +124,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
@@ -170,7 +169,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class TemporalUtil {
 
-    private static final Function<Object, Object> toIntegerThrowOnInfinity = TemporalUtil::toIntegerThrowOnInfinity;
+    private static final Function<Object, Object> toIntegerWithTruncation = TemporalUtil::toIntegerWithTruncation;
     private static final Function<Object, Object> toMonthCode = TemporalUtil::toMonthCode;
     private static final Function<Object, Object> toPositiveInteger = TemporalUtil::toPositiveInteger;
     private static final Function<Object, Object> toString = JSRuntime::toString;
@@ -188,19 +187,19 @@ public final class TemporalUtil {
                     Map.entry(NANOSECOND, NANOSECONDS));
 
     private static final Map<TruffleString, Function<Object, Object>> temporalFieldConversion = Map.ofEntries(
-                    Map.entry(YEAR, toIntegerThrowOnInfinity),
+                    Map.entry(YEAR, toIntegerWithTruncation),
                     Map.entry(MONTH, toPositiveInteger),
                     Map.entry(MONTH_CODE, toMonthCode),
                     Map.entry(DAY, toPositiveInteger),
-                    Map.entry(HOUR, toIntegerThrowOnInfinity),
-                    Map.entry(MINUTE, toIntegerThrowOnInfinity),
-                    Map.entry(SECOND, toIntegerThrowOnInfinity),
-                    Map.entry(MILLISECOND, toIntegerThrowOnInfinity),
-                    Map.entry(MICROSECOND, toIntegerThrowOnInfinity),
-                    Map.entry(NANOSECOND, toIntegerThrowOnInfinity),
+                    Map.entry(HOUR, toIntegerWithTruncation),
+                    Map.entry(MINUTE, toIntegerWithTruncation),
+                    Map.entry(SECOND, toIntegerWithTruncation),
+                    Map.entry(MILLISECOND, toIntegerWithTruncation),
+                    Map.entry(MICROSECOND, toIntegerWithTruncation),
+                    Map.entry(NANOSECOND, toIntegerWithTruncation),
                     Map.entry(OFFSET, toString),
                     Map.entry(ERA, toString),
-                    Map.entry(ERA_YEAR, toIntegerThrowOnInfinity));
+                    Map.entry(ERA_YEAR, toIntegerWithTruncation));
 
     public static final Map<TruffleString, Object> temporalFieldDefaults = Map.ofEntries(
                     Map.entry(YEAR, Undefined.instance),
@@ -932,20 +931,11 @@ public final class TemporalUtil {
     }
 
     public static double toPositiveInteger(Object value) {
-        double result = JSRuntime.doubleValue(toIntegerThrowOnInfinity(value));
+        double result = JSRuntime.doubleValue(toIntegerWithTruncation(value));
         if (result <= 0) {
             throw Errors.createRangeError("positive value expected");
         }
         return result;
-    }
-
-    public static int toPositiveIntegerConstrainInt(Object value, JSToIntegerThrowOnInfinityNode toIntegerThrowOnInfinityNode, Node node, InlinedBranchProfile errorBranch) {
-        int integer = toIntegerThrowOnInfinityNode.executeIntOrThrow(value);
-        if (integer <= 0) {
-            errorBranch.enter(node);
-            throw Errors.createRangeError("positive value expected");
-        }
-        return integer;
     }
 
     // 13.52
@@ -1362,7 +1352,7 @@ public final class TemporalUtil {
                 iVal = 0;
             } else {
                 any = true;
-                iVal = JSRuntime.intValue(toIntegerThrowOnInfinity(val));
+                iVal = JSRuntime.intValue(toIntegerWithTruncation(val));
             }
             if (HOUR.equals(property)) {
                 hour = iVal;
@@ -1382,15 +1372,6 @@ public final class TemporalUtil {
             throw Errors.createTypeError("at least one time-like field expected");
         }
         return JSTemporalDateTimeRecord.create(0, 0, 0, hour, minute, second, millisecond, microsecond, nanosecond);
-    }
-
-    @TruffleBoundary
-    public static Number toIntegerThrowOnInfinity(Object value) {
-        Number integer = toIntegerOrInfinity(value);
-        if (Double.isInfinite(JSRuntime.doubleValue(integer))) {
-            throw Errors.createRangeError("value outside bounds");
-        }
-        return integer;
     }
 
     @TruffleBoundary
