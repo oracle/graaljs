@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,15 +130,16 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     }
 
     @Specialization
-    protected long doDoubleInfinite(double value) {
-        if (Double.isNaN(value) || value == 0d) {
-            return 0;
-        }
+    protected double doDouble(double value) {
         if (Double.isInfinite(value)) {
             errorBranch.enter();
-            throw Errors.createRangeError("infinity not allowed");
+            throw Errors.createRangeError("infinity cannot be converted to integer");
         }
-        return (long) value;
+        if (Double.isNaN(value)) {
+            errorBranch.enter();
+            throw Errors.createRangeError("NaN cannot be converted to integer");
+        }
+        return JSRuntime.truncateDouble(value);
     }
 
     @Specialization(guards = "isJSNull(value)")
@@ -148,7 +149,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
 
     @Specialization(guards = "isUndefined(value)")
     protected static int doUndefined(@SuppressWarnings("unused") Object value) {
-        return 0;
+        throw Errors.createRangeError("undefined cannot be converted to integer");
     }
 
     @Specialization
