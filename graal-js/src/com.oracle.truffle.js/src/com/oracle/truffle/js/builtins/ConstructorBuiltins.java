@@ -1155,15 +1155,29 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainDate(JSDynamicObject newTarget, Object isoYear, Object isoMonth,
                         Object isoDay, Object calendarLike,
                         @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
-            final int y = toIntegerNode.executeIntOrThrow(isoYear);
-            final int m = toIntegerNode.executeIntOrThrow(isoMonth);
-            final int d = toIntegerNode.executeIntOrThrow(isoDay);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            double y = toIntegerNode.executeDouble(isoYear);
+            double m = toIntegerNode.executeDouble(isoMonth);
+            double d = toIntegerNode.executeDouble(isoDay);
+            TruffleString calendar;
+            if (calendarLike == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarLike instanceof TruffleString calendarTS) {
+                String calendarJLS = toJavaString.execute(calendarTS);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarLike);
+            }
+            if (!TemporalUtil.isValidISODate(y, m, d)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+            }
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSTemporalPlainDate.create(getContext(), realm, proto, y, m, d, calendar, this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), realm, proto, (int) y, (int) m, (int) d, calendar, this, errorBranch);
         }
 
         @Override
