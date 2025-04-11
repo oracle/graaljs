@@ -2653,21 +2653,17 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static BigInt addInstant(BigInt epochNanoseconds, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
-        return addInstant(epochNanoseconds, dtol(hours), dtol(minutes), dtol(seconds), dtol(milliseconds), dtol(microseconds), BigInt.valueOf(dtol(nanoseconds)));
-    }
-
-    @TruffleBoundary
-    public static BigInt addInstant(BigInt epochNanoseconds, long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInt nanoseconds) {
-        BigInt result = epochNanoseconds.add(nanoseconds);
-        result = result.add(BigInt.valueOf(microseconds).multiply(BI_1000));
-        result = result.add(BigInt.valueOf(milliseconds).multiply(BI_NS_PER_MS));
-        result = result.add(BigInt.valueOf(seconds).multiply(BI_NS_PER_SECOND));
-        result = result.add(BigInt.valueOf(minutes).multiply(BI_NS_PER_MINUTE));
-        result = result.add(BigInt.valueOf(hours).multiply(BI_NS_PER_HOUR));
+        BigInteger res = epochNanoseconds.bigIntegerValue().add(JSRuntime.toBigInteger(nanoseconds));
+        res = res.add(JSRuntime.toBigInteger(microseconds).multiply(BI_1000.bigIntegerValue()));
+        res = res.add(JSRuntime.toBigInteger(milliseconds).multiply(BI_NS_PER_MS.bigIntegerValue()));
+        res = res.add(JSRuntime.toBigInteger(seconds).multiply(BI_NS_PER_SECOND.bigIntegerValue()));
+        res = res.add(JSRuntime.toBigInteger(minutes).multiply(BI_NS_PER_MINUTE.bigIntegerValue()));
+        res = res.add(JSRuntime.toBigInteger(hours).multiply(BI_NS_PER_HOUR.bigIntegerValue()));
+        BigInt result = new BigInt(res);
         if (!isValidEpochNanoseconds(result)) {
             throw TemporalErrors.createRangeErrorInvalidNanoseconds();
         }
-        return result; // spec return type: BigInt
+        return result;
     }
 
     @TruffleBoundary
