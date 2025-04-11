@@ -2524,6 +2524,16 @@ public final class TemporalUtil {
         return true;
     }
 
+    public static boolean isValidISODate(double year, double month, double day) {
+        if (month < 1 || month > 12) {
+            return false;
+        }
+        if (day < 1 || day > isoDaysInMonth((int) (year % 400), (int) month)) {
+            return false;
+        }
+        return true;
+    }
+
     public static boolean isValidISODate(int year, int month, int day) {
         if (month < 1 || month > 12) {
             return false;
