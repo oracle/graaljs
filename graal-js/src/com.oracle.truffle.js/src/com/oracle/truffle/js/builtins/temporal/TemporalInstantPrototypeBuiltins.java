@@ -187,9 +187,8 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         protected Object instantGetter(JSTemporalInstantObject instant) {
             BigInt ns = instant.getNanoseconds();
             switch (property) {
-                // roundTowardsZero is a no-op for BigIntegers
                 case epochMilliseconds:
-                    return ns.divide(TemporalUtil.BI_NS_PER_MS).doubleValue();
+                    return TemporalUtil.nanosToMillis(ns);
                 case epochNanoseconds:
                     return instant.getNanoseconds();
             }

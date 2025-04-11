@@ -365,9 +365,9 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case hoursInDay:
                     return getterHoursInDay(zdt, errorBranch);
                 case epochMilliseconds:
-                    return getterEpoch(zdt, BigInt.valueOf(1_000_000L)).doubleValue();
+                    return TemporalUtil.nanosToMillis(zdt.getNanoseconds());
                 case epochNanoseconds:
-                    return getterEpoch(zdt, BigInt.ONE);
+                    return zdt.getNanoseconds();
                 case offsetNanoseconds:
                     return getterOffsetNanoseconds(zdt);
                 case offset:
@@ -406,12 +406,6 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             BigInt tomorrowNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, tomorrow, Disambiguation.COMPATIBLE);
             BigInt diffNs = tomorrowNs.subtract(todayNs);
             return diffNs.divide(BigInt.valueOf(36_000_000_000_000L));
-        }
-
-        private static BigInt getterEpoch(JSTemporalZonedDateTimeObject zdt, BigInt factor) {
-            BigInt ns = zdt.getNanoseconds();
-            BigInt s = ns.divide(factor); // roundTowardsZero is a no-op
-            return s;
         }
 
         private Object getterCalendarDetails(JSTemporalZonedDateTimeObject zdt) {

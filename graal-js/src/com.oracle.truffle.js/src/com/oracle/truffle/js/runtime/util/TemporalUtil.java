@@ -3454,4 +3454,14 @@ public final class TemporalUtil {
             throw Errors.createTypeErrorNotAString(primitive);
         }
     }
+
+    public static double nanosToMillis(BigInt nanos) {
+        BigInteger[] qr = nanos.bigIntegerValue().divideAndRemainder(BI_NS_PER_MS.bigIntegerValue());
+        double ms = qr[0].doubleValue();
+        if (qr[1].signum() < 0) {
+            ms--;
+        }
+        return ms;
+    }
+
 }
