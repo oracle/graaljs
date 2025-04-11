@@ -1198,12 +1198,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object microsecondObject, Object nanosecondObject,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached JSToIntegerThrowOnInfinityNode toIntegerNode) {
-            final int hour = toIntegerNode.executeIntOrThrow(hourObj);
-            final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
-            final int second = toIntegerNode.executeIntOrThrow(secondObj);
-            final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
-            final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
-            final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
+            final int hour = (hourObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(hourObj);
+            final int minute = (minuteObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(minuteObj);
+            final int second = (secondObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(secondObj);
+            final int millisecond = (millisecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(millisecondObject);
+            final int microsecond = (microsecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(microsecondObject);
+            final int nanosecond = (nanosecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(nanosecondObject);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainTime.create(getContext(), realm, proto,
@@ -1233,12 +1233,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int month = toIntegerNode.executeIntOrThrow(monthObj);
             final int day = toIntegerNode.executeIntOrThrow(dayObj);
 
-            final int hour = toIntegerNode.executeIntOrThrow(hourObj);
-            final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
-            final int second = toIntegerNode.executeIntOrThrow(secondObj);
-            final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
-            final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
-            final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
+            final int hour = (hourObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(hourObj);
+            final int minute = (minuteObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(minuteObj);
+            final int second = (secondObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(secondObj);
+            final int millisecond = (millisecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(millisecondObject);
+            final int microsecond = (microsecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(microsecondObject);
+            final int nanosecond = (nanosecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(nanosecondObject);
             TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
