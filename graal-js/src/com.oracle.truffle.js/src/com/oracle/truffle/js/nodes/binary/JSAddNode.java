@@ -91,12 +91,12 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                 long value = (long) leftValue + (long) rightValue;
                 return JSRuntime.longIsRepresentableAsInt(value) ? JSConstantNode.createInt((int) value) : JSConstantNode.createDouble(value);
             } else if (right instanceof JSConstantIntegerNode || right instanceof JSConstantDoubleNode) {
-                Object rightValue = ((JSConstantNode) right).execute(null);
+                Object rightValue = right.execute(null);
                 return JSAddConstantRightNumberNodeGen.create(left, (Number) rightValue, truncate);
             } else if (left instanceof JSConstantStringNode && right instanceof JSConstantStringNode) {
                 return JSConstantNode.createString(((TruffleString) left.execute(null)).concatUncached((TruffleString) right.execute(null), TruffleString.Encoding.UTF_16, false));
             } else if (left instanceof JSConstantIntegerNode || left instanceof JSConstantDoubleNode) {
-                Object leftValue = ((JSConstantNode) left).execute(null);
+                Object leftValue = left.execute(null);
                 return JSAddConstantLeftNumberNodeGen.create((Number) leftValue, right, truncate);
             }
         }

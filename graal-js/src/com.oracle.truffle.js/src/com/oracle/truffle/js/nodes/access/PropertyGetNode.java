@@ -216,7 +216,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
             if (c instanceof GenericPropertyGetNode) {
-                return ((GenericPropertyGetNode) c).getValueInt(thisObj, receiver, this, false);
+                return c.getValueInt(thisObj, receiver, this, false);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
@@ -273,7 +273,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
             if (c instanceof GenericPropertyGetNode) {
-                return ((GenericPropertyGetNode) c).getValueDouble(thisObj, receiver, this, false);
+                return c.getValueDouble(thisObj, receiver, this, false);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
@@ -330,7 +330,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
             if (c instanceof GenericPropertyGetNode) {
-                return ((GenericPropertyGetNode) c).getValueBoolean(thisObj, receiver, this, false);
+                return c.getValueBoolean(thisObj, receiver, this, false);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
