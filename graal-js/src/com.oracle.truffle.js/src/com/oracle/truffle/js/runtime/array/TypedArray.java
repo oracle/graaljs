@@ -121,8 +121,8 @@ public abstract class TypedArray extends ScriptArray {
             JSArrayBufferObject arrayBuffer = typedArray.getArrayBuffer();
             int byteLength = switch (bufferType) {
                 case BUFFER_TYPE_INTEROP -> ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
-                case BUFFER_TYPE_ARRAY -> ((JSArrayBufferObject.Heap) arrayBuffer).getByteLength();
-                case BUFFER_TYPE_DIRECT -> ((JSArrayBufferObject.Direct) arrayBuffer).getByteLength();
+                case BUFFER_TYPE_ARRAY -> arrayBuffer.getByteLength();
+                case BUFFER_TYPE_DIRECT -> arrayBuffer.getByteLength();
                 case BUFFER_TYPE_SHARED -> ((JSArrayBufferObject.Shared) arrayBuffer).getByteLength();
                 default -> throw Errors.shouldNotReachHereUnexpectedValue(bufferType);
             };
