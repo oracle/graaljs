@@ -2444,7 +2444,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                JSDynamicObject resultArray = (JSDynamicObject) arguments[0];
+                Object resultArray = arguments[0];
                 Object element = arguments[1];
                 long elementLen = (long) arguments[2];
                 long targetIndex = (long) arguments[3];
