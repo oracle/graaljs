@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,6 @@ public class DebugBuiltinsTest {
         ctx.eval("js", "Debug.className(); Debug.className({}); Debug.className([]);");
         ctx.eval("js", "Debug.getClass(); Debug.getClass({}); Debug.getClass([]);");
         ctx.eval("js", "Debug.shape(); Debug.shape({}); Debug.shape([]);");
-        ctx.eval("js", "Debug.dumpCounters();");
         ctx.eval("js", "Debug.dumpFunctionTree(()=>{return true;});");
         ctx.eval("js", "Debug.printObject(); Debug.printObject({}); Debug.printObject([]);");
         ctx.eval("js", "Debug.toJavaString(); Debug.toJavaString({}); Debug.toJavaString([]);");

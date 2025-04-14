@@ -63,7 +63,6 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateSafeIntegerNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugDumpCountersNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugDumpFunctionTreeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugHeapDumpNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugIsHolesArrayNodeGen;
@@ -136,7 +135,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         getClass(1),
         className(1),
         shape(1),
-        dumpCounters(0),
         dumpFunctionTree(1),
         printObject(1),
         toJavaString(1),
@@ -179,8 +177,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugClassNameNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case shape:
                 return DebugShapeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case dumpCounters:
-                return DebugDumpCountersNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case dumpFunctionTree:
                 return DebugDumpFunctionTreeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case printObject:
@@ -301,20 +297,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             if (obj instanceof JSDynamicObject) {
                 return Strings.fromJavaString(((JSDynamicObject) obj).getShape().toString());
             }
-            return Undefined.instance;
-        }
-    }
-
-    public abstract static class DebugDumpCountersNode extends JSBuiltinNode {
-        public DebugDumpCountersNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected static Object dumpCounters() {
-            com.oracle.truffle.object.DebugCounter.dumpCounters();
-            com.oracle.truffle.js.runtime.util.DebugCounter.dumpCounters();
             return Undefined.instance;
         }
     }
