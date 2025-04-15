@@ -3125,22 +3125,34 @@ public final class TemporalUtil {
         throw Errors.createRangeError("cannot consolidate calendars");
     }
 
-    private static List<BigInt> getPossibleEpochNanoseconds(TruffleString timeZone, JSTemporalPlainDateTimeObject dateTime) {
+    private static List<BigInt> getPossibleEpochNanoseconds(TruffleString timeZone, JSTemporalPlainDateTimeObject isoDateTime) {
         JSTemporalParserRecord rec = new TemporalParser(timeZone).parseTimeZoneIdentifier();
+        List<BigInt> possibleEpochNanoseconds;
         if (rec.getTimeZoneIANAName() == null) {
             int offsetMinutes = (int) (parseTimeZoneOffsetNs(rec) / 60_000_000_000L);
-            BigInt epochNanoseconds = TemporalUtil.getUTCEpochNanoseconds(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute() - offsetMinutes,
-                            dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
-            return List.of(epochNanoseconds);
+            JSTemporalDateTimeRecord balanced = balanceISODateTime(isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay(), isoDateTime.getHour(), isoDateTime.getMinute() - offsetMinutes,
+                            isoDateTime.getSecond(), isoDateTime.getMillisecond(), isoDateTime.getMicrosecond(), isoDateTime.getNanosecond());
+            checkISODaysRange(balanced.getYear(), balanced.getMonth(), balanced.getDay());
+            BigInt epochNanoseconds = TemporalUtil.getUTCEpochNanoseconds(balanced.getYear(), balanced.getMonth(), balanced.getDay(), balanced.getHour(), balanced.getMinute(),
+                            balanced.getSecond(), balanced.getMillisecond(), balanced.getMicrosecond(), balanced.getNanosecond());
+            possibleEpochNanoseconds = List.of(epochNanoseconds);
+        } else {
+            checkISODaysRange(isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay());
+            possibleEpochNanoseconds = TemporalUtil.getIANATimeZoneEpochValue(timeZone, isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay(),
+                            isoDateTime.getHour(), isoDateTime.getMinute(), isoDateTime.getSecond(), isoDateTime.getMillisecond(), isoDateTime.getMicrosecond(), isoDateTime.getNanosecond());
         }
-        List<BigInt> possibleEpochNanoseconds = TemporalUtil.getIANATimeZoneEpochValue(timeZone, dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
-                        dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
         for (BigInt epochNanoseconds : possibleEpochNanoseconds) {
             if (!TemporalUtil.isValidEpochNanoseconds(epochNanoseconds)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
         }
         return possibleEpochNanoseconds;
+    }
+
+    public static void checkISODaysRange(int year, int month, int date) {
+        if (Math.abs(JSDate.isoDateToEpochDays(year, month - 1, date)) > INSTANT_MAX_OFFSET_EPOCH_DAYS) {
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
+        }
     }
 
     @TruffleBoundary
