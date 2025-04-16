@@ -2329,27 +2329,29 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static TimeRecord roundTime(int hours, int minutes, int seconds, int milliseconds, int microseconds,
                     int nanoseconds, int increment, Unit unit, RoundingMode roundingMode, Long dayLengthNsParam) {
-        double fractionalSecond = ((double) nanoseconds / 1_000_000_000) + ((double) microseconds / 1_000_000) +
-                        ((double) milliseconds / 1_000) + seconds;
         double quantity;
-        if (unit == Unit.DAY) {
-            long dayLengthNs = dayLengthNsParam == null ? 86_300_000_000_000L : (long) dayLengthNsParam;
-            quantity = ((double) (((((hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds) * 1000 + microseconds) * 1000 + nanoseconds)) / dayLengthNs;
-        } else if (unit == Unit.HOUR) {
-            quantity = (fractionalSecond / 60 + minutes) / 60 + hours;
+        long unitLength;
+        if (unit == Unit.DAY || unit == Unit.HOUR) {
+            quantity = (((((double) hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds) * 1000 + microseconds) * 1000 + nanoseconds;
+            unitLength = (unit == Unit.DAY) ? NS_PER_DAY_LONG : 3_600_000_000_000L;
         } else if (unit == Unit.MINUTE) {
-            quantity = fractionalSecond / 60 + minutes;
+            quantity = ((((double) minutes * 60 + seconds) * 1000 + milliseconds) * 1000 + microseconds) * 1000 + nanoseconds;
+            unitLength = 60_000_000_000L;
         } else if (unit == Unit.SECOND) {
-            quantity = fractionalSecond;
+            quantity = (((double) seconds * 1000 + milliseconds) * 1000 + microseconds) * 1000 + nanoseconds;
+            unitLength = 1_000_000_000;
         } else if (unit == Unit.MILLISECOND) {
-            quantity = ((double) nanoseconds / 1_000_000) + ((double) microseconds / 1_000) + milliseconds;
+            quantity = ((double) milliseconds * 1000 + microseconds) * 1000 + nanoseconds;
+            unitLength = 1_000_000;
         } else if (unit == Unit.MICROSECOND) {
-            quantity = ((double) nanoseconds / 1_000) + microseconds;
+            quantity = (double) microseconds * 1000 + nanoseconds;
+            unitLength = 1_000;
         } else {
             assert unit == Unit.NANOSECOND;
             quantity = nanoseconds;
+            unitLength = 1;
         }
-        long result = dtol(roundNumberToIncrement(quantity, increment, roundingMode));
+        long result = dtol(roundNumberToIncrement(quantity, increment * unitLength, roundingMode)) / unitLength;
         if (unit == Unit.DAY) {
             return new TimeRecord(result, 0, 0, 0, 0, 0, 0);
         }
