@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 public final class TemporalParser {
 
     private static final String patternDate = "^([+\\-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
-    private static final String patternTime = "^(\\d\\d)(:?(\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
+    private static final String patternTime = "^([01][0-9]|2[0-3])(:?([0-5][0-9])(?::?([0-5][0-9]|60)(?:[.,]([0-9]{1,9}))?)?)?";
     private static final String patternCalendarName = "^(\\w*)$";
     // Hour 0[0-9]|1[0-9]|2[0-3]
     // MinuteSecond [0-5][0-9]
