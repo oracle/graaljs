@@ -1227,23 +1227,45 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject, Object calendarLike,
                         @Cached JSToIntegerWithTruncationNode toIntegerNode,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
-            final int year = toIntegerNode.executeIntOrThrow(yearObj);
-            final int month = toIntegerNode.executeIntOrThrow(monthObj);
-            final int day = toIntegerNode.executeIntOrThrow(dayObj);
+            int isoYear = toIntegerNode.executeIntOrThrow(yearObj);
+            int isoMonth = toIntegerNode.executeIntOrThrow(monthObj);
+            int isoDay = toIntegerNode.executeIntOrThrow(dayObj);
 
-            final int hour = (hourObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(hourObj);
-            final int minute = (minuteObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(minuteObj);
-            final int second = (secondObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(secondObj);
-            final int millisecond = (millisecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(millisecondObject);
-            final int microsecond = (microsecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(microsecondObject);
-            final int nanosecond = (nanosecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(nanosecondObject);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            int hour = (hourObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(hourObj);
+            int minute = (minuteObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(minuteObj);
+            int second = (secondObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(secondObj);
+            int millisecond = (millisecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(millisecondObject);
+            int microsecond = (microsecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(microsecondObject);
+            int nanosecond = (nanosecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(nanosecondObject);
+
+            TruffleString calendar;
+            if (calendarLike == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarLike instanceof TruffleString calendarTS) {
+                String calendarJLS = toJavaString.execute(calendarTS);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarLike);
+            }
+
+            if (!TemporalUtil.isValidISODate(isoYear, isoMonth, isoDay)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+            }
+
+            if (!TemporalUtil.isValidTime(hour, minute, second, millisecond, microsecond, nanosecond)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+            }
+
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainDateTime.create(getContext(), realm, proto,
-                            year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, this, errorBranch);
+                            isoYear, isoMonth, isoDay, hour, minute, second, millisecond, microsecond, nanosecond, calendar, this, errorBranch);
         }
 
         @Override
