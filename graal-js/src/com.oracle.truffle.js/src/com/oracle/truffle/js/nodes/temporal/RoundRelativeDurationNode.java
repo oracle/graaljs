@@ -199,21 +199,27 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
         if (startEpochNs.compareTo(endEpochNs) == 0) {
             throw Errors.createRangeError("custom calendar method returned an illegal result");
         }
-        boolean isNegative = sign < 0;
-        UnsignedRoundingMode unsignedRoundingMode = TemporalUtil.getUnsignedRoundingMode(roundingMode, isNegative);
 
         BigInt numerator = destEpochNs.subtract(startEpochNs);
         BigInt denominator = endEpochNs.subtract(startEpochNs);
-        double total = computeTotal(r1, increment, sign, numerator, denominator);
-        // Let roundedUnit be ApplyUnsignedRoundingMode(total, r1, r2, unsignedRoundingMode).
-        double roundedUnit = TemporalUtil.applyUnsignedRoundingMode(numerator, denominator, r1, r2, unsignedRoundingMode);
-        // Possible spec bug: roundedSign = (roundedUnit - total < 0 ? -1 : 1).
-        int roundedSign = Double.compare(roundedUnit - total, 0);
+        BigDecimal progress = new BigDecimal(numerator.bigIntegerValue()).divide(new BigDecimal(denominator.bigIntegerValue()), MathContext.DECIMAL128);
+        BigDecimal total = new BigDecimal(r1).add(progress.multiply(new BigDecimal(increment * sign)));
+
+        boolean isNegative = sign < 0;
+        UnsignedRoundingMode unsignedRoundingMode = TemporalUtil.getUnsignedRoundingMode(roundingMode, isNegative);
+
+        double roundedUnit;
+        if (BigDecimal.ONE.equals(progress)) {
+            roundedUnit = Math.abs(r2);
+        } else {
+            // ApplyUnsignedRoundingMode(abs(total), abs(r1), abs(r2), unsignedRoundingMode)
+            roundedUnit = TemporalUtil.applyUnsignedRoundingMode(numerator.abs(), denominator.abs(), Math.abs(r1), Math.abs(r2), unsignedRoundingMode);
+        }
 
         boolean didExpandCalendarUnit;
         NormalizedDurationRecord resultDuration;
         BigInt nudgedEpochNs;
-        if (roundedSign == sign) {
+        if (roundedUnit == Math.abs(r2)) {
             didExpandCalendarUnit = true;
             resultDuration = endDuration;
             nudgedEpochNs = endEpochNs;
@@ -222,7 +228,8 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
             resultDuration = startDuration;
             nudgedEpochNs = startEpochNs;
         }
-        return new DurationNudgeResultRecord(resultDuration, total, nudgedEpochNs, didExpandCalendarUnit);
+
+        return new DurationNudgeResultRecord(resultDuration, total.doubleValue(), nudgedEpochNs, didExpandCalendarUnit);
     }
 
     @TruffleBoundary
