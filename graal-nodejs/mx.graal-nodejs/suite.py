@@ -165,7 +165,8 @@ suite = {
         "sdk:JLINE3",
       ],
       "description" : "Graal Node.js",
-      "maven" : False
+      "maven" : False,
+      "useModulePath": True,
     },
 
     "TRUFFLENODE_GRAALVM_SUPPORT" : {
