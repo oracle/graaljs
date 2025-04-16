@@ -493,6 +493,13 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(),
                             precision.getIncrement(), precision.getUnit(), roundingMode,
                             null);
+
+            if (!TemporalUtil.isoDateTimeWithinLimits((int) result.getYears(), (int) result.getMonths(), (int) result.getDays(), (int) result.getHours(), (int) result.getMinutes(),
+                            (int) result.getSeconds(), (int) result.getMilliseconds(), (int) result.getMicroseconds(), (int) result.getNanoseconds())) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+            }
+
             return JSTemporalPlainDateTime.temporalDateTimeToString(
                             dtoi(result.getYears()), dtoi(result.getMonths()), dtoi(result.getDays()),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()),
