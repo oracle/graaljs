@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,8 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.suite;
+package com.oracle.truffle.js.test.wasm;
 
+import com.oracle.truffle.js.test.suite.JSTestRunner;
+import com.oracle.truffle.js.test.suite.JSTestSuite;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
