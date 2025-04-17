@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -71,7 +72,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class JSException extends GraalJSException {
 
     private final JSErrorType type;
-    private JSDynamicObject exceptionObj;
+    private JSObject exceptionObj;
     private final JSRealm realm;
     private final boolean isIncompleteSource;
 
@@ -84,7 +85,7 @@ public final class JSException extends GraalJSException {
         this.isIncompleteSource = false;
     }
 
-    private JSException(JSErrorType type, String message, Node originatingNode, JSDynamicObject exceptionObj, JSRealm realm, int stackTraceLimit) {
+    private JSException(JSErrorType type, String message, Node originatingNode, JSObject exceptionObj, JSRealm realm, int stackTraceLimit) {
         super(message, originatingNode, stackTraceLimit);
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
@@ -107,21 +108,21 @@ public final class JSException extends GraalJSException {
     }
 
     @TruffleBoundary
-    public static JSException createCapture(JSErrorType type, String message, JSDynamicObject exceptionObj, JSRealm realm, int stackTraceLimit, JSDynamicObject skipFramesUpTo, boolean customSkip) {
+    public static JSException createCapture(JSErrorType type, String message, JSObject exceptionObj, JSRealm realm, int stackTraceLimit, JSDynamicObject skipFramesUpTo, boolean customSkip) {
         return fillInStackTrace(new JSException(type, message, null, exceptionObj, realm, stackTraceLimit), true, skipFramesUpTo, customSkip);
     }
 
     @TruffleBoundary
-    public static JSException createCapture(JSErrorType type, String message, JSDynamicObject exceptionObj, JSRealm realm) {
+    public static JSException createCapture(JSErrorType type, String message, JSObject exceptionObj, JSRealm realm) {
         return createCapture(type, message, exceptionObj, realm, getStackTraceLimit(realm), Undefined.instance, false);
     }
 
-    public static JSException create(JSErrorType type, String message, JSDynamicObject exceptionObj, JSRealm realm) {
+    public static JSException create(JSErrorType type, String message, JSObject exceptionObj, JSRealm realm) {
         return create(type, message, (Node) null, exceptionObj, realm);
     }
 
     @TruffleBoundary
-    public static JSException create(JSErrorType type, String message, Node originatingNode, JSDynamicObject exceptionObj, JSRealm realm) {
+    public static JSException create(JSErrorType type, String message, Node originatingNode, JSObject exceptionObj, JSRealm realm) {
         return fillInStackTrace(new JSException(type, message, originatingNode, exceptionObj, realm, getStackTraceLimit(realm)), false);
     }
 
@@ -170,8 +171,14 @@ public final class JSException extends GraalJSException {
     @Override
     @TruffleBoundary
     public String getMessage() {
+        String name = type.name();
         String message = getRawMessage();
-        return (message == null || message.isEmpty()) ? type.name() : type.name() + ": " + message;
+        var errorObj = getErrorObjectLazy();
+        if (errorObj != null) {
+            name = getErrorNameSafe(errorObj, name);
+            message = getErrorMessageSafe(errorObj, message);
+        }
+        return concatErrorNameAndMessage(name, message);
     }
 
     public String getRawMessage() {
@@ -183,18 +190,18 @@ public final class JSException extends GraalJSException {
     }
 
     @Override
-    public JSDynamicObject getErrorObjectLazy() {
+    public JSObject getErrorObjectLazy() {
         return exceptionObj;
     }
 
-    public void setErrorObject(JSDynamicObject exceptionObj) {
+    public void setErrorObject(JSObject exceptionObj) {
         this.exceptionObj = exceptionObj;
     }
 
     @TruffleBoundary
     @Override
     public Object getErrorObject() {
-        JSDynamicObject jserror = exceptionObj;
+        JSObject jserror = exceptionObj;
         if (jserror == null) {
             String message = getRawMessage();
             exceptionObj = jserror = JSError.createFromJSException(this, this.realm, (message == null) ? "" : message);

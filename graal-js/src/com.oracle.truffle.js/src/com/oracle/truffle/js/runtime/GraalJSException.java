@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -543,6 +543,31 @@ public abstract class GraalJSException extends AbstractTruffleException {
         return JSRuntime.toDisplayString(this, allowSideEffects);
     }
 
+    /**
+     * Builds the display message from the error name (required) and message (optional).
+     */
+    protected static String concatErrorNameAndMessage(String name, String message) {
+        assert name != null;
+        return (message == null || message.isEmpty()) ? name : name + ": " + message;
+    }
+
+    protected static String getErrorNameSafe(JSObject errorObj, String name) {
+        // Try error.name first, error.constructor.name second.
+        Object nameValue = JSRuntime.getDataProperty(errorObj, JSError.NAME);
+        if (nameValue instanceof TruffleString nameStr && !nameStr.isEmpty() && !nameStr.equals(Strings.UC_ERROR)) {
+            return Strings.toJavaString(nameStr);
+        }
+        return Strings.toJavaString(JSRuntime.getConstructorName(errorObj, Strings.fromJavaString(name)));
+    }
+
+    protected static String getErrorMessageSafe(JSObject errorObj, String message) {
+        Object messageValue = JSRuntime.getDataProperty(errorObj, JSError.MESSAGE);
+        if (messageValue instanceof TruffleString messageStr && !messageStr.isEmpty()) {
+            return Strings.toJavaString(messageStr);
+        }
+        return message;
+    }
+
     @ImportStatic({JSConfig.class})
     @ExportMessage
     public static final class IsIdenticalOrUndefined {
@@ -672,8 +697,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
                 if (thisObject == JSFunction.CONSTRUCT) {
                     return getFunctionName();
                 } else if (!JSRuntime.isNullOrUndefined(thisObject) && !global) {
-                    if (JSDynamicObject.isJSDynamicObject(thisObject)) {
-                        return JSRuntime.getConstructorName((JSDynamicObject) thisObject);
+                    if (thisObject instanceof JSObject receiver) {
+                        return JSRuntime.getConstructorName(receiver);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
                         return JSRuntime.getPrimitiveConstructorName(thisObject);
                     }

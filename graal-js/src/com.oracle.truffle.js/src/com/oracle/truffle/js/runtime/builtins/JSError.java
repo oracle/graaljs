@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -441,23 +440,6 @@ public final class JSError extends JSNonProxy {
 
     public static boolean isJSError(Object obj) {
         return obj instanceof JSErrorObject;
-    }
-
-    public static Object getPropertyWithoutSideEffect(JSDynamicObject obj, Object key) {
-        assert JSRuntime.isPropertyKey(key);
-        Object value = JSDynamicObject.getOrNull(obj, key);
-        if (value == null) {
-            if (!JSProxy.isJSProxy(obj)) {
-                return getPropertyWithoutSideEffect(JSObject.getPrototype(obj), key);
-            }
-            return null;
-        } else if (value instanceof Accessor) {
-            return "{Accessor}";
-        } else if (value instanceof PropertyProxy) {
-            return null;
-        } else {
-            return value;
-        }
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2422,10 +2422,14 @@ public final class JSRuntime {
         }
     }
 
+    public static TruffleString getConstructorName(JSObject receiver) {
+        return getConstructorName(receiver, null);
+    }
+
     /**
      * Carefully try getting the constructor name, must not throw.
      */
-    public static TruffleString getConstructorName(JSDynamicObject receiver) {
+    public static TruffleString getConstructorName(JSObject receiver, TruffleString defaultName) {
         // Try @@toStringTag first
         Object toStringTag = getDataProperty(receiver, Symbol.SYMBOL_TO_STRING_TAG);
         if (toStringTag instanceof TruffleString str) {
@@ -2433,18 +2437,21 @@ public final class JSRuntime {
         }
 
         // Try function name of prototype.constructor
-        if (!isProxy(receiver)) {
+        if (!isProxyLike(receiver)) {
             JSDynamicObject prototype = JSObject.getPrototype(receiver);
             if (prototype != Null.instance) {
                 Object constructor = getDataProperty(prototype, JSObject.CONSTRUCTOR);
-                if (JSFunction.isJSFunction(constructor)) {
-                    return JSFunction.getName((JSFunctionObject) constructor);
+                if (constructor instanceof JSObject constructorObj) {
+                    Object name = getDataProperty(constructorObj, Strings.NAME);
+                    if (name instanceof TruffleString nameStr && !nameStr.isEmpty() && !nameStr.equals(Strings.UC_OBJECT)) {
+                        return nameStr;
+                    }
                 }
             }
         }
 
         // As a last resort, use class name
-        return JSObject.getClassName(receiver);
+        return defaultName != null ? defaultName : JSObject.getClassName(receiver);
     }
 
     public static TruffleString getPrimitiveConstructorName(Object primitive) {
@@ -2466,7 +2473,7 @@ public final class JSRuntime {
     public static Object getDataProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         JSDynamicObject current = thisObj;
-        while (current != Null.instance && current != null && !isProxy(current)) {
+        while (current != Null.instance && current != null && !isProxyLike(current)) {
             PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
             if (desc != null) {
                 if (desc.isDataDescriptor()) {
@@ -2480,7 +2487,7 @@ public final class JSRuntime {
         return null;
     }
 
-    private static boolean isProxy(JSDynamicObject receiver) {
+    private static boolean isProxyLike(JSDynamicObject receiver) {
         return JSProxy.isJSProxy(receiver) || JSAdapter.isJSAdapter(receiver);
     }
 
