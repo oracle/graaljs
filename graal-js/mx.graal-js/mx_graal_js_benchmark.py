@@ -30,10 +30,36 @@ import mx, mx_benchmark, mx_graal_js, mx_sdk_vm
 from mx_benchmark import GuestVm
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
+from mx_sdk_benchmark import GraalVm
 
 from os.path import join
 
 _suite = mx.suite('graal-js')
+
+
+class StandaloneHostVm(GraalVm):
+    def __init__(self, host_vm_name: str, host_vm_config_name: str, standalone_dist_name: str, launcher_name: str, extra_launcher_args=None):
+        self._standalone_dist_name = standalone_dist_name
+        self._launcher_name = launcher_name
+        super().__init__(host_vm_name, host_vm_config_name, extra_java_args=None, extra_launcher_args=extra_launcher_args)
+
+    def post_process_command_line_args(self, suiteArgs):
+        return suiteArgs
+
+    def home(self):
+        return mx.dependency(self._standalone_dist_name).get_output()
+
+    def generate_java_command(self, args):
+        return [join(self.home(), 'bin', self._launcher_name)] + args
+
+    def dimensions(self, cwd, args, code, out):
+        return {
+            'host-vm': 'graalvm-ee' if mx_graal_js.is_ee() else 'graalvm-ce'
+        }
+
+    def extract_vm_info(self, args=None):
+        pass
+
 
 class GraalJsVm(GuestVm):
     def __init__(self, config_name, options, host_vm=None):
@@ -91,6 +117,25 @@ def register_js_vms():
             mx_js_benchmarks.add_vm(GraalJsVm(config_name, options), _suite, priority)
         mx_benchmark.js_vm_registry.add_vm(GraalJsVm(config_name, options), _suite, priority)
 
+    for (host_vm_name, host_vm_config_name, standalone_dist_name, launcher_name, launcher_args, priority) in add_vm_config_variants([
+        ('js-standalone', 'jvm', 'graal-js:GRAALJS_JVM_STANDALONE', 'js', [], 10),
+        ('js-standalone', 'native', 'graal-js:GRAALJS_NATIVE_STANDALONE', 'js', [], 10),
+    ]):
+        vm = StandaloneHostVm(host_vm_name, host_vm_config_name, standalone_dist_name, launcher_name, launcher_args)
+        mx_benchmark.java_vm_registry.add_vm(vm, _suite, priority)
+
+def add_vm_config_variants(host_vm_configs):
+    return [
+        (host_vm_name, host_vm_config_name + suffix, standalone_dist_name, launcher_name, launcher_args + extra_launcher_args, 0 if suffix else priority)
+        for (suffix, extra_launcher_args) in [
+            ('', []),
+            ('-no-truffle-compilation', ['--experimental-options', '--engine.Compilation=false']),
+            ('-3-compiler-threads', ['--engine.CompilerThreads=3']),
+            ('-no-splitting', ['--experimental-options', '--engine.Splitting=false']),
+            ('-no-comp-oops', ['--vm.XX:-UseCompressedOops']),
+        ]
+        for (host_vm_name, host_vm_config_name, standalone_dist_name, launcher_name, launcher_args, priority) in host_vm_configs
+    ]
 
 class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
     def name(self):
