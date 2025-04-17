@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -767,12 +767,9 @@ public:
         }
     }
 
-    static void SetMode(int mode, bool polyglot) {
+    static void SetMode(int mode) {
         if (mode != kModeDefault) {
             GraalIsolate::mode = mode;
-        }
-        if (polyglot) {
-            GraalIsolate::polyglot = true;
         }
     }
 
@@ -863,7 +860,6 @@ private:
     static int argc;
     static char** argv;
     static int mode;
-    static bool polyglot;
     static bool use_classpath_env_var;
     friend v8::V8;
 

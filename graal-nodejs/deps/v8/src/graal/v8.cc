@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1237,7 +1237,6 @@ namespace v8 {
         bool show_help = false;
         bool use_jvm = false;
         bool use_native = false;
-        bool use_polyglot = false;
         bool show_jvm_warning = false;
         bool show_native_warning = false;
         std::string vm_args;
@@ -1297,8 +1296,6 @@ namespace v8 {
             } else {
                 if (!strcmp(arg, "--help")) {
                     show_help = true;
-                } else if (!strcmp(arg, "--polyglot")) {
-                    use_polyglot = true;
                 }
                 argv[++unprocessed] = arg;
             }
@@ -1324,7 +1321,7 @@ namespace v8 {
             GraalIsolate::SetEnv("NODE_JVM_OPTIONS", vm_args.c_str());
         }
 
-        GraalIsolate::SetMode(use_jvm ? GraalIsolate::kModeJVM : (use_native ? GraalIsolate::kModeNative : GraalIsolate::kModeDefault), use_polyglot);
+        GraalIsolate::SetMode(use_jvm ? GraalIsolate::kModeJVM : (use_native ? GraalIsolate::kModeNative : GraalIsolate::kModeDefault));
         GraalIsolate::SetFlags(unprocessed, argv + 1);
         if (remove_flags) {
             // claim that we understood and processed all command line options

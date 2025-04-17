@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,23 +88,17 @@
 
 #ifdef __APPLE__
 #define LIBNODESVM_NAME    "libgraal-nodejs.dylib"
-#define LIBPOLYGLOT_NAME   "libpolyglot.dylib"
 #define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
-#define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.dylib"
 // libjli.dylib has moved in JDK 12, see https://bugs.openjdk.java.net/browse/JDK-8210931
 #define LIBJLI_RELPATH     "/lib/libjli.dylib"
 #elif defined(_WIN32)
 #define LIBNODESVM_NAME    "graal-nodejs.dll"
-#define LIBPOLYGLOT_NAME   "polyglot.dll"
 #define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\" LIBNODESVM_NAME
-#define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
 #define LIBNODESVM_NAME    "libgraal-nodejs.so"
-#define LIBPOLYGLOT_NAME   "libpolyglot.so"
 #define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
-#define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
 #endif
 
@@ -311,7 +305,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         jdk_path = graalvm_home;
         SetEnv("JAVA_HOME", jdk_path.c_str());
 
-        jvmlib_path = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
+        jvmlib_path = graalvm_home + LIBNODESVM_RELPATH;
 
         if (mode == kModeNative || (mode == kModeDefault && file_exists(jvmlib_path))) {
             SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
@@ -375,9 +369,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     }
 
     if (!file_exists(jvmlib_path)) {
-        if (is_graalvm && polyglot) {
-            fprintf(stderr, "Cannot find %s. Rebuild the polyglot library with `gu rebuild-images libpolyglot`, specify JAVA_HOME so that $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
-        } else if (mode == kModeNative) {
+        if (mode == kModeNative) {
             fprintf(stderr, "Cannot find %s. Specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str());
         } else if (mode == kModeJVM) {
             fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so that $JAVA_HOME%s exists.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
@@ -1444,7 +1436,6 @@ v8::Local<v8::Value> GraalIsolate::CorrectReturnValue(v8::internal::Address valu
 int GraalIsolate::argc = 0;
 char** GraalIsolate::argv = nullptr;
 int GraalIsolate::mode = GraalIsolate::kModeDefault;
-bool GraalIsolate::polyglot = false;
 bool GraalIsolate::use_classpath_env_var = false;
 
 void GraalIsolate::SetPromiseHook(v8::PromiseHook promise_hook) {
