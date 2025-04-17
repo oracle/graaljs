@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -105,10 +105,10 @@ class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
 add_bm_suite(JMHDistGraalJsBenchmarkSuite())
 
 # --env ce-js-bench
-ce_components = ['cmp', 'gvm', 'icu4j', 'js', 'jsl', 'jss', 'lg', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm', 'tflsm', 'xz']
+ce_components = ['cmp', 'gvm', 'lg', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm', 'tflsm']
 
 # --env ee-js-bench
-ee_components = ['cmp', 'cmpee', 'gvm', 'icu4j', 'js', 'jsl', 'jss', 'lg', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm', 'tflsm', 'xz']
+ee_components = ['cmp', 'cmpee', 'gvm', 'lg', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm', 'tflsm']
 # svmeegc is only available on linux
 if not mx.is_linux():
     ee_components.remove('svmeegc')

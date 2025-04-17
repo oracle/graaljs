@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -70,11 +70,11 @@ def register_nodejs_vms():
         mx_nodejs_benchmarks.add_vm(GraalNodeJsVm('default', []), _suite, 10)
 
 # --env ce-nodejs-bench
-ce_components = ['cmp', 'gvm', 'icu4j', 'js', 'jsl', 'jss', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm', 'tflsm', 'xz']
+ce_components = ['cmp', 'gvm', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm', 'tflsm']
 
 
 # --env ee-nodejs-bench
-ee_components = ['cmp', 'cmpee', 'gvm', 'icu4j', 'js', 'jsl', 'jss', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm', 'tflsm', 'xz']
+ee_components = ['cmp', 'cmpee', 'gvm', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm', 'tflsm']
 # svmeegc is only available on linux
 if not mx.is_linux():
     ee_components.remove('svmeegc')
