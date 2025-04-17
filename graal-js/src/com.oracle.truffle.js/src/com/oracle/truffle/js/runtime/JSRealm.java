@@ -918,11 +918,7 @@ public class JSRealm {
         this.abstractModuleSourcePrototype = ctor.getPrototype();
 
         if (context.getLanguageOptions().webAssembly()) {
-            if (!isWasmAvailable()) {
-                String msg = "WebAssembly API enabled but wasm language cannot be accessed! Did you forget to set the --polyglot flag?";
-                throw new IllegalStateException(msg);
-            }
-            LanguageInfo wasmLanguageInfo = truffleLanguageEnv.getInternalLanguages().get("wasm");
+            LanguageInfo wasmLanguageInfo = ensureWasmLanguageAvailable();
             truffleLanguageEnv.initializeLanguage(wasmLanguageInfo);
             Object wasmObject = truffleLanguageEnv.importSymbol("WebAssembly");
 
@@ -3083,8 +3079,17 @@ public class JSRealm {
         return commonJSRequireCache;
     }
 
-    private boolean isWasmAvailable() {
-        return truffleLanguageEnv.isPolyglotBindingsAccessAllowed() && truffleLanguageEnv.getInternalLanguages().get("wasm") != null;
+    private LanguageInfo ensureWasmLanguageAvailable() {
+        LanguageInfo wasmLanguageInfo = truffleLanguageEnv.getInternalLanguages().get("wasm");
+        if (wasmLanguageInfo == null || !truffleLanguageEnv.isPolyglotBindingsAccessAllowed()) {
+            throw new IllegalStateException("""
+                            WebAssembly API enabled but "wasm" language cannot be accessed! \
+                            Make sure the "wasm" language is found on the module path and one of the permitted languages when creating the Context, \
+                            and that both polyglot eval and bindings access are allowed for "js" and "wasm" \
+                            using `contextBuilder.allowPolyglotAccess(PolyglotAccess.ALL)` or more restricted PolyglotAccess.\
+                            """);
+        }
+        return wasmLanguageInfo;
     }
 
     public Object getWASMModuleInstantiate() {
