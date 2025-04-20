@@ -27,6 +27,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
+import re
 import shutil
 import tarfile
 import tempfile
@@ -93,7 +94,7 @@ def _graal_js_gate_runner(args, tasks):
             with open(os.devnull, 'w') as devnull:
                 js(['--help'], out=devnull)
 
-    webassemblyTestSuite = 'com.oracle.truffle.js.test.suite.WebAssemblySimpleTestSuite'
+    webassemblyTestSuite = re.escape('com.oracle.truffle.js.test.wasm.')
     with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
             noWebAssemblyTestSuite = '^(?!' + webassemblyTestSuite  + ')'
