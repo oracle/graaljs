@@ -2796,7 +2796,8 @@ public final class TemporalUtil {
         return parseTimeZoneOffsetNs(rec);
     }
 
-    private static long parseTimeZoneOffsetNs(JSTemporalParserRecord rec) {
+    @TruffleBoundary
+    public static long parseTimeZoneOffsetNs(JSTemporalParserRecord rec) {
         long nanoseconds;
         if (rec.getOffsetFraction() == null) {
             nanoseconds = 0;

@@ -194,8 +194,6 @@ import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
@@ -284,6 +282,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
@@ -314,6 +313,7 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.util.TemporalParser;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -1437,17 +1437,48 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalZonedDateTime(JSDynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
-                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached JSToBigIntNode toBigIntNode,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
             BigInt ns = toBigIntNode.executeBigInteger(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(ns)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            TruffleString timeZone = toTimeZoneIdentifier.execute(timeZoneLike);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            if (!(timeZoneLike instanceof TruffleString)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(timeZoneLike);
+            }
+
+            JSTemporalParserRecord timeZoneParse = new TemporalParser((TruffleString) timeZoneLike).parseTimeZoneIdentifier();
+            if (timeZoneParse == null) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+            }
+
+            TruffleString timeZone;
+            if (timeZoneParse.getTimeZoneIANAName() == null) {
+                timeZone = TemporalUtil.formatTimeZoneOffsetString(TemporalUtil.parseTimeZoneOffsetNs(timeZoneParse));
+            } else {
+                var identifierRecord = TemporalUtil.getAvailableNamedTimeZoneIdentifier(timeZoneParse.getTimeZoneIANAName());
+                if (identifierRecord == null) {
+                    errorBranch.enter(this);
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+                timeZone = identifierRecord.getFirst();
+            }
+
+            TruffleString calendar;
+            if (calendarLike == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarLike instanceof TruffleString calendarTS) {
+                String calendarJLS = toJavaString.execute(calendarTS);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarLike);
+            }
 
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
