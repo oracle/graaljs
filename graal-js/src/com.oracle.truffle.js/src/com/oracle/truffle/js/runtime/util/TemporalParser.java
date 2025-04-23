@@ -117,7 +117,6 @@ public final class TemporalParser {
     private TruffleString timeZoneIANAName;
     private TruffleString timeZoneUTCOffsetName;
     private TruffleString timeZoneNumericUTCOffset;
-    private TruffleString timeZoneEtcName;
     private TruffleString utcDesignator;
 
     private TruffleString offsetSign;
@@ -469,7 +468,7 @@ public final class TemporalParser {
         try {
             // TODO MinuteSecond has 59 seconds, TimeSecond has 60 seconds
             return new JSTemporalParserRecord(utcDesignator != null, prepare(year, Long.MAX_VALUE, true), prepare(month, 12), prepare(day, 31), prepare(hour, 23), prepare(minute, 59),
-                            prepare(second, 60), fraction, offsetSign, prepare(offsetHour, 23), prepare(offsetMinute, 59), prepare(offsetSecond, 59), offsetFraction, timeZoneIANAName, timeZoneEtcName,
+                            prepare(second, 60), fraction, offsetSign, prepare(offsetHour, 23), prepare(offsetMinute, 59), prepare(offsetSecond, 59), offsetFraction, timeZoneIANAName,
                             timeZoneUTCOffsetName, calendar, timeZoneNumericUTCOffset);
         } catch (Exception ex) {
             return null;
@@ -516,7 +515,6 @@ public final class TemporalParser {
         timeZoneIANAName = null;
         timeZoneUTCOffsetName = null;
         timeZoneNumericUTCOffset = null;
-        timeZoneEtcName = null;
         utcDesignator = null;
 
         offsetSign = null;
@@ -718,10 +716,8 @@ public final class TemporalParser {
         Matcher matcher = createMatch(patternTimeZoneAnnotation, rest);
         if (matcher.matches()) {
             TruffleString content = group(rest, matcher, 2);
-            // content could be TimeZoneIANAName, Etc/GMT, or TimeZOneUTCOffsetName
-            if (Strings.startsWith(content, Strings.UC_ETC)) {
-                timeZoneEtcName = content;
-            } else if (isSign(Strings.charAt(content, 0))) {
+            // content could be UTCOffset or TimeZoneIANAName
+            if (isSign(Strings.charAt(content, 0))) {
                 timeZoneUTCOffsetName = content;
             } else {
                 assert isTZLeadingChar(Strings.charAt(content, 0));

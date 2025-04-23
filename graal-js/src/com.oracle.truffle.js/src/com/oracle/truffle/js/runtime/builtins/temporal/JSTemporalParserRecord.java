@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,6 @@ public final class JSTemporalParserRecord {
 
     private final TruffleString calendar;
     private final TruffleString timeZoneIANAName;
-    private final TruffleString timeZoneEtcName;
     private final TruffleString timeZoneUTCOffsetName;
     private final TruffleString timeZoneNumericUTCOffset;
 
@@ -69,8 +68,7 @@ public final class JSTemporalParserRecord {
     private final TruffleString offsetFraction;
 
     public JSTemporalParserRecord(boolean z, long year, long month, long day, long hour, long minute, long second, TruffleString fraction, TruffleString offsetSign, long offsetHour,
-                    long offsetMinute, long offsetSecond, TruffleString offsetFraction, TruffleString timeZoneIANAName, TruffleString timeZoneEtcName, TruffleString timeZoneUTCOffsetName,
-                    TruffleString calendar,
+                    long offsetMinute, long offsetSecond, TruffleString offsetFraction, TruffleString timeZoneIANAName, TruffleString timeZoneUTCOffsetName, TruffleString calendar,
                     TruffleString timeZoneNumericUTCOffset) {
         this.z = z;
 
@@ -91,7 +89,6 @@ public final class JSTemporalParserRecord {
 
         this.calendar = calendar;
         this.timeZoneIANAName = timeZoneIANAName;
-        this.timeZoneEtcName = timeZoneEtcName;
         this.timeZoneUTCOffsetName = timeZoneUTCOffsetName;
     }
 
@@ -127,19 +124,12 @@ public final class JSTemporalParserRecord {
         return timeZoneUTCOffsetName;
     }
 
-    public TruffleString getTimeZoneEtcName() {
-        return timeZoneEtcName;
-    }
-
     public TruffleString getTimeZoneANYName() {
         if (timeZoneIANAName != null) {
             return timeZoneIANAName;
         }
         if (timeZoneUTCOffsetName != null) {
             return timeZoneUTCOffsetName;
-        }
-        if (timeZoneEtcName != null) {
-            return timeZoneEtcName;
         }
         return null;
     }
