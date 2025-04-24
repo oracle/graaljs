@@ -168,7 +168,6 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
         # Assert for enter/return parity of ProbeNode (if assertions are enabled only)
         if next((arg.startswith('-e') for arg in reversed(vmArgs) if arg in ['-ea', '-da', '-enableassertions', '-disableassertions']), False):
             vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
-        vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
         vmArgs += ['--enable-native-access=org.graalvm.truffle']
         vmArgs = mx_truffle.enable_sun_misc_unsafe(vmArgs)
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']

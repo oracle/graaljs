@@ -379,8 +379,6 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
             mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]),
                          '-Dpolyglot.engine.WarnInterpreterOnly=false',
-                         # The snapshot tool breaks the polyglot encapsulation
-                         '-Dpolyglotimpl.DisableClassPathIsolation=true',
                     mx.distribution(snapshotToolDistribution).mainClass,
                     '--binary', '--wrapped', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
