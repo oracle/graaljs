@@ -472,7 +472,6 @@ def _prepare_build_env(build_env=None):
 def setupNodeEnvironment(args, add_graal_vm_args=True):
     args = args if args else []
     mode, vmArgs, progArgs, standalone = _parseArgs(args)
-    setLibraryPath()
 
     _prepare_build_env()
     if _is_windows:
@@ -498,6 +497,8 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 
         mx.warn(f"Could not find {standalone} nodejs standalone. Falling back to default `mx node` command.\n" +
                 "You may need to build the standalone distribution(s) and dynamically import '/substratevm,/vm,/wasm' (e.g., using `mx --env svm node`).")
+
+    setLibraryPath()
 
     if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None and _prepare_svm_env():
         return mode, vmArgs, progArgs, nodeExe
