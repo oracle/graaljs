@@ -124,17 +124,7 @@ public final class JSTemporalParserRecord {
         return timeZoneUTCOffsetName;
     }
 
-    public TruffleString getTimeZoneANYName() {
-        if (timeZoneIANAName != null) {
-            return timeZoneIANAName;
-        }
-        if (timeZoneUTCOffsetName != null) {
-            return timeZoneUTCOffsetName;
-        }
-        return null;
-    }
-
-    public TruffleString getTimeZoneIdentifier() {
+    public TruffleString getTimeZoneAnnotation() {
         if (timeZoneIANAName != null) {
             return timeZoneIANAName;
         }

@@ -606,7 +606,7 @@ public final class TemporalUtil {
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
 
-        JSTemporalTimeZoneRecord timeZoneResult = JSTemporalTimeZoneRecord.create(rec.getZ(), rec.getTimeZoneNumericUTCOffset(), rec.getTimeZoneIdentifier());
+        JSTemporalTimeZoneRecord timeZoneResult = JSTemporalTimeZoneRecord.create(rec.getZ(), rec.getTimeZoneNumericUTCOffset(), rec.getTimeZoneAnnotation());
         return new ParseISODateTimeResult(y, m, d, h, min, s, ms, mus, ns, rec.getCalendar(), timeZoneResult);
     }
 
@@ -2828,8 +2828,8 @@ public final class TemporalUtil {
         if (rec == null) {
             rec = parser.parseISODateTime();
             if (rec != null) {
-                if (rec.getTimeZoneANYName() != null) {
-                    rec = new TemporalParser(rec.getTimeZoneANYName()).parseTimeZoneIdentifier();
+                if (rec.getTimeZoneAnnotation() != null) {
+                    rec = new TemporalParser(rec.getTimeZoneAnnotation()).parseTimeZoneIdentifier();
                 } else if (rec.getZ()) {
                     return JSTemporalTimeZoneRecord.create(true, null, TemporalConstants.UTC);
                 } else if (rec.getTimeZoneNumericUTCOffset() != null) {
