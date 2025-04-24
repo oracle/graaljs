@@ -426,9 +426,9 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
 
 def setLibraryPath():
     if _current_os == 'windows':
-        library_path = join(_java_home(), 'bin')
+        library_path = join(_java_home(forBuild=True), 'bin')
     else:
-        library_path = join(_java_home(), 'lib')
+        library_path = join(_java_home(forBuild=True), 'lib')
 
     if not exists(library_path):
         return
@@ -505,7 +505,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
         mx.warn("Running on the JVM. If you want to run on SubstrateVM, you need to dynamically import '/substratevm,/vm,/wasm' (e.g., using `mx --env svm node`).")
 
-    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs + get_jdk().java_args):
+    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs + get_jdk(forBuild=True).java_args):
         vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
     node_jvm_mp = (os.environ['NODE_JVM_MODULE_PATH'] + pathsep) if 'NODE_JVM_MODULE_PATH' in os.environ else ''
@@ -514,7 +514,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:INSIGHT_HEAP'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
         + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
     _setEnvVar('NODE_JVM_MODULE_PATH', node_mp)
-    _setEnvVar('JAVA_HOME', _java_home())  # when running with the Graal compiler, setting `$JAVA_HOME` to the GraalJDK should be done after calling `mx.classpath()`, which resets `$JAVA_HOME` to the value of the `--java-home` mx cmd line argument
+    _setEnvVar('JAVA_HOME', _java_home(forBuild=True))  # when running with the Graal compiler, setting `$JAVA_HOME` to the GraalJDK should be done after calling `mx.classpath()`, which resets `$JAVA_HOME` to the value of the `--java-home` mx cmd line argument
 
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))
