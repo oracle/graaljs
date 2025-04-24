@@ -606,7 +606,7 @@ public final class TemporalUtil {
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
 
-        JSTemporalTimeZoneRecord timeZoneResult = JSTemporalTimeZoneRecord.create(rec.getZ(), rec.getTimeZoneUTCOffsetName(), rec.getTimeZoneIdentifier());
+        JSTemporalTimeZoneRecord timeZoneResult = JSTemporalTimeZoneRecord.create(rec.getZ(), rec.getTimeZoneNumericUTCOffset(), rec.getTimeZoneIdentifier());
         return new ParseISODateTimeResult(y, m, d, h, min, s, ms, mus, ns, rec.getCalendar(), timeZoneResult);
     }
 
@@ -2821,44 +2821,29 @@ public final class TemporalUtil {
         return sign * (((hours * 60 + minutes) * 60 + seconds) * 1_000_000_000L + nanoseconds);
     }
 
-    public static JSTemporalTimeZoneRecord parseTemporalTimeZoneString(TruffleString string) {
-        return parseTemporalTimeZoneString(string, false);
-    }
-
     @TruffleBoundary
-    private static JSTemporalTimeZoneRecord parseTemporalTimeZoneString(TruffleString string, boolean offsetRequired) {
+    public static JSTemporalTimeZoneRecord parseTemporalTimeZoneString(TruffleString string) {
         TemporalParser parser = new TemporalParser(string);
-        JSTemporalParserRecord rec;
-        if (offsetRequired) {
+        JSTemporalParserRecord rec = parser.parseTimeZoneIdentifier();
+        if (rec == null) {
             rec = parser.parseISODateTime();
-        } else {
-            rec = parser.parseTimeZoneIdentifier();
-            if (rec == null) {
-                rec = parser.parseISODateTime();
-                if (rec != null) {
-                    if (rec.getTimeZoneANYName() != null) {
-                        rec = new TemporalParser(rec.getTimeZoneANYName()).parseTimeZoneIdentifier();
-                    } else if (rec.getTimeZoneNumericUTCOffset() != null) {
-                        rec = (new TemporalParser(rec.getTimeZoneNumericUTCOffset())).parseTimeZoneIdentifier();
-                    } else if (!rec.getZ()) {
-                        rec = null;
-                    }
+            if (rec != null) {
+                if (rec.getTimeZoneANYName() != null) {
+                    rec = new TemporalParser(rec.getTimeZoneANYName()).parseTimeZoneIdentifier();
+                } else if (rec.getZ()) {
+                    return JSTemporalTimeZoneRecord.create(true, null, TemporalConstants.UTC);
+                } else if (rec.getTimeZoneNumericUTCOffset() != null) {
+                    rec = (new TemporalParser(rec.getTimeZoneNumericUTCOffset())).parseTimeZoneIdentifier();
+                } else {
+                    rec = null;
                 }
             }
         }
         if (rec == null) {
             throw Errors.createRangeError("TemporalTimeZoneString expected");
         }
-        if (offsetRequired) {
-            if (rec.getOffsetHour() == Long.MIN_VALUE && !rec.getZ()) {
-                throw TemporalErrors.createRangeErrorTimeZoneOffsetExpected();
-            }
-        }
         TruffleString name = rec.getTimeZoneIANAName();
         TruffleString offsetString = rec.getTimeZoneNumericUTCOffset();
-        if (rec.getZ()) {
-            return JSTemporalTimeZoneRecord.create(true, null, name);
-        }
         return JSTemporalTimeZoneRecord.create(false, offsetString, name);
     }
 
@@ -2990,11 +2975,16 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static BigInt parseTemporalInstant(TruffleString string) {
         ParseISODateTimeResult result = parseTemporalInstantString(string);
-        TruffleString offsetString = result.getTimeZoneResult().getOffsetString();
-        assert (offsetString != null);
+        JSTemporalTimeZoneRecord timeZoneRec = result.getTimeZoneResult();
+        assert timeZoneRec.isZ() != (timeZoneRec.getOffsetString() != null);
+        long offsetNanoseconds;
+        if (timeZoneRec.isZ()) {
+            offsetNanoseconds = 0;
+        } else {
+            offsetNanoseconds = parseTimeZoneOffsetString(timeZoneRec.getOffsetString());
+        }
         BigInt utc = getUTCEpochNanoseconds(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
                         result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
-        long offsetNanoseconds = parseTimeZoneOffsetString(offsetString);
         BigInt instant = utc.subtract(BigInt.valueOf(offsetNanoseconds));
         if (!isValidEpochNanoseconds(instant)) {
             throw TemporalErrors.createRangeErrorInvalidNanoseconds();
@@ -3007,13 +2997,7 @@ public final class TemporalUtil {
         try {
             JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalInstantString();
             ParseISODateTimeResult result = parseISODateTimeIntl(string, rec);
-            JSTemporalTimeZoneRecord timeZoneResult = parseTemporalTimeZoneString(string, true);
-            TruffleString offsetString = timeZoneResult.getOffsetString();
-            if (timeZoneResult.isZ()) {
-                offsetString = TemporalConstants.OFFSET_ZERO;
-            }
-            assert offsetString != null;
-            return result.withTimeZoneResult(JSTemporalTimeZoneRecord.create(timeZoneResult.isZ(), offsetString, timeZoneResult.getName()));
+            return result;
         } catch (Exception ex) {
             throw Errors.createRangeError("Instant cannot be parsed");
         }

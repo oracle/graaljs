@@ -653,7 +653,6 @@ public final class TemporalParser {
     private boolean tryParseUTCDesignator() {
         if (Strings.startsWith(rest, Strings.UC_Z) || Strings.startsWith(rest, Strings.Z)) {
             move(1);
-            this.timeZoneIANAName = TemporalConstants.UTC; // TODO is this correct?
             this.utcDesignator = Strings.Z;
 
             return true;
