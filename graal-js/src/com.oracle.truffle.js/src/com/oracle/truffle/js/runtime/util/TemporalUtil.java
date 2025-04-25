@@ -3087,7 +3087,11 @@ public final class TemporalUtil {
         }
         if (offsetBehaviour == OffsetBehaviour.EXACT || OffsetOption.USE == offsetOption) {
             BigInt epochNanoseconds = getUTCEpochNanoseconds(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
-            return epochNanoseconds.subtract(BigInt.valueOf((long) offsetNs));
+            epochNanoseconds = epochNanoseconds.subtract(BigInt.valueOf((long) offsetNs));
+            if (!TemporalUtil.isValidEpochNanoseconds(epochNanoseconds)) {
+                throw TemporalErrors.createRangeErrorInvalidNanoseconds();
+            }
+            return epochNanoseconds;
         }
         assert offsetBehaviour == OffsetBehaviour.OPTION;
         assert OffsetOption.PREFER == offsetOption || OffsetOption.REJECT == offsetOption;
