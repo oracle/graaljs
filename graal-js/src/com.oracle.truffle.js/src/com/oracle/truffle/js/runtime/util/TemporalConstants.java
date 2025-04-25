@@ -102,7 +102,7 @@ public final class TemporalConstants {
     public static final TruffleString CONSTRAIN = Strings.constant("constrain");
     public static final TruffleString REJECT = Strings.REJECT;
     public static final TruffleString PREFER = Strings.constant("prefer");
-    public static final TruffleString USE = Strings.constant("ure");
+    public static final TruffleString USE = Strings.constant("use");
     public static final TruffleString IGNORE = Strings.constant("ignore");
     public static final TruffleString OVERFLOW = Strings.constant("overflow");
     public static final TruffleString COMPATIBLE = Strings.constant("compatible");
