@@ -637,7 +637,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 this, errorBranch);
             }
 
-            BigInt epochNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
+            BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
             return JSTemporalZonedDateTime.create(getContext(), realm, epochNs, timeZone, td.getCalendar());
         }
 

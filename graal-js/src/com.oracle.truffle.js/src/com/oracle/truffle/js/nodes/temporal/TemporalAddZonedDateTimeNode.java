@@ -110,7 +110,7 @@ public abstract class TemporalAddZonedDateTimeNode extends JavaScriptBaseNode {
         JSTemporalPlainDateTimeObject intermediateDateTime = JSTemporalPlainDateTime.create(ctx, realm, addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
                         temporalDateTime.getHour(), temporalDateTime.getMinute(), temporalDateTime.getSecond(),
                         temporalDateTime.getMillisecond(), temporalDateTime.getMicrosecond(), temporalDateTime.getNanosecond(), calendar);
-        BigInt intermediateNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, intermediateDateTime, Disambiguation.COMPATIBLE);
+        BigInt intermediateNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, intermediateDateTime, Disambiguation.COMPATIBLE);
         return TemporalUtil.addInstant(intermediateNs, norm);
     }
 }

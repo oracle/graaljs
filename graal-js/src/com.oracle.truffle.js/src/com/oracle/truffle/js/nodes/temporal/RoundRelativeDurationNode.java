@@ -190,11 +190,11 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
             var startDateTime = JSTemporalPlainDateTime.create(ctx, realm, start.getYear(), start.getMonth(), start.getDay(),
                             start.getHour(), start.getMinute(), start.getSecond(), start.getMillisecond(), start.getMicrosecond(), start.getNanosecond(),
                             calendar, this, errorBranch);
-            startEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
+            startEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
             var endDateTime = JSTemporalPlainDateTime.create(ctx, realm, end.getYear(), end.getMonth(), end.getDay(),
                             end.getHour(), end.getMinute(), end.getSecond(), end.getMillisecond(), end.getMicrosecond(), end.getNanosecond(),
                             calendar, this, errorBranch);
-            endEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
+            endEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
         }
         if (startEpochNs.compareTo(endEpochNs) == 0) {
             throw Errors.createRangeError("custom calendar method returned an illegal result");
@@ -262,8 +262,8 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
         var endDateTime = JSTemporalPlainDateTime.create(ctx, realm, endDate.year(), endDate.month(), endDate.day(),
                         start.getHour(), start.getMinute(), start.getSecond(), start.getMillisecond(), start.getMicrosecond(), start.getNanosecond(),
                         calendar, this, errorBranch);
-        BigInt startEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
-        BigInt endEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
+        BigInt startEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
+        BigInt endEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
 
         BigInt daySpan = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(endEpochNs, startEpochNs);
         assert TemporalUtil.normalizedTimeDurationSign(daySpan) == sign;
@@ -360,7 +360,7 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
                 var endDateTime = JSTemporalPlainDateTime.create(ctx, realm, end.getYear(), end.getMonth(), end.getDay(),
                                 end.getHour(), end.getMinute(), end.getSecond(), end.getMillisecond(), end.getMicrosecond(), end.getNanosecond(),
                                 calendar, this, errorBranch);
-                endEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
+                endEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
             }
             BigInt beyondEnd = nudgedEpochNs.subtract(endEpochNs);
             int beyondEndSign = beyondEnd.signum();

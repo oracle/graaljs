@@ -762,7 +762,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
 
-            BigInt epochNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), getRealm(), timeZone, dateTime, disambiguation);
+            BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(getContext(), getRealm(), timeZone, dateTime, disambiguation);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), epochNs, timeZone, dateTime.getCalendar());
         }
 

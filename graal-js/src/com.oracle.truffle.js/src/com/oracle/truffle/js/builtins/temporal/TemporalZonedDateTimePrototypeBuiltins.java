@@ -402,8 +402,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainDateTimeObject tomorrow = JSTemporalPlainDateTime.create(getContext(), realm,
                             tomorrowFields.year(), tomorrowFields.month(), tomorrowFields.day(),
                             0, 0, 0, 0, 0, 0, isoCalendar, this, errorBranch);
-            BigInt todayNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, today, Disambiguation.COMPATIBLE);
-            BigInt tomorrowNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, tomorrow, Disambiguation.COMPATIBLE);
+            BigInt todayNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, today, Disambiguation.COMPATIBLE);
+            BigInt tomorrowNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, tomorrow, Disambiguation.COMPATIBLE);
             BigInt diffNs = tomorrowNs.subtract(todayNs);
             return diffNs.divide(BigInt.valueOf(36_000_000_000_000L));
         }
@@ -636,7 +636,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainDateTimeObject resultPlainDateTime = JSTemporalPlainDateTime.create(getContext(), realm, plainDateTime.getYear(), plainDateTime.getMonth(), plainDateTime.getDay(),
                             plainTime.getHour(), plainTime.getMinute(), plainTime.getSecond(), plainTime.getMillisecond(), plainTime.getMicrosecond(), plainTime.getNanosecond(), calendar,
                             this, errorBranch);
-            BigInt epochNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, resultPlainDateTime, Disambiguation.COMPATIBLE);
+            BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, resultPlainDateTime, Disambiguation.COMPATIBLE);
             return JSTemporalZonedDateTime.create(getContext(), realm, epochNs, timeZone, calendar);
         }
 
@@ -842,7 +842,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             TruffleString isoCalendar = TemporalConstants.ISO8601;
             JSTemporalPlainDateTimeObject dtStart = JSTemporalPlainDateTime.create(getContext(), realm,
                             tdt.getYear(), tdt.getMonth(), tdt.getDay(), 0, 0, 0, 0, 0, 0, isoCalendar, this, errorBranch);
-            BigInt startNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, dtStart, Disambiguation.COMPATIBLE);
+            BigInt startNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, dtStart, Disambiguation.COMPATIBLE);
             JSTemporalInstantObject instantStart = JSTemporalInstant.create(getContext(), realm, startNs);
             BigInt endNs = TemporalUtil.addDaysToZonedDateTime(getContext(), realm, instantStart, dtStart, timeZone, 1).epochNanoseconds();
             BigInt dayLengthNs = endNs.subtract(startNs);
@@ -909,7 +909,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainDateTimeObject dt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
             JSTemporalPlainDateTimeObject startDateTime = JSTemporalPlainDateTime.create(getContext(), realm,
                             dt.getYear(), dt.getMonth(), dt.getDay(), 0, 0, 0, 0, 0, 0, calendar, this, errorBranch);
-            BigInt startNs = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
+            BigInt startNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
             return JSTemporalZonedDateTime.create(getContext(), realm, startNs, timeZone, calendar);
         }
 

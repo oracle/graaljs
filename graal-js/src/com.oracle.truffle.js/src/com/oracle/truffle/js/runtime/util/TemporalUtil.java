@@ -2148,7 +2148,7 @@ public final class TemporalUtil {
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                         dateTime.getCalendar());
 
-        BigInt result = builtinTimeZoneGetInstantFor(ctx, realm, timeZone, dateTimeResult, Disambiguation.COMPATIBLE);
+        BigInt result = getEpochNanosecondsFor(ctx, realm, timeZone, dateTimeResult, Disambiguation.COMPATIBLE);
         return new AddDaysToZonedDateTimeResult(result, instant, dateTimeResult);
     }
 
@@ -3004,10 +3004,10 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInt builtinTimeZoneGetInstantFor(JSContext ctx, JSRealm realm, TruffleString timeZone, JSTemporalPlainDateTimeObject dateTime,
+    public static BigInt getEpochNanosecondsFor(JSContext ctx, JSRealm realm, TruffleString timeZone, JSTemporalPlainDateTimeObject isoDateTime,
                     Disambiguation disambiguation) {
-        List<BigInt> possibleInstants = getPossibleEpochNanoseconds(timeZone, dateTime);
-        return disambiguatePossibleEpochNanoseconds(ctx, realm, possibleInstants, timeZone, dateTime, disambiguation);
+        List<BigInt> possibleEpochNs = getPossibleEpochNanoseconds(timeZone, isoDateTime);
+        return disambiguatePossibleEpochNanoseconds(ctx, realm, possibleEpochNs, timeZone, isoDateTime, disambiguation);
     }
 
     @TruffleBoundary
@@ -3082,7 +3082,7 @@ public final class TemporalUtil {
                     MatchBehaviour matchBehaviour) {
         JSTemporalPlainDateTimeObject dateTime = JSTemporalPlainDateTime.create(ctx, realm, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, ISO8601);
         if (offsetBehaviour == OffsetBehaviour.WALL || OffsetOption.IGNORE == offsetOption) {
-            return builtinTimeZoneGetInstantFor(ctx, realm, timeZone, dateTime, disambiguation);
+            return getEpochNanosecondsFor(ctx, realm, timeZone, dateTime, disambiguation);
         }
         if (offsetBehaviour == OffsetBehaviour.EXACT || OffsetOption.USE == offsetOption) {
             var balanced = balanceISODateTime(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond - offsetNanoseconds);
