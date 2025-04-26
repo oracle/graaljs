@@ -668,14 +668,9 @@ public final class TemporalParser {
             offsetMinute = group(rest, matcher, 4);
             offsetSecond = group(rest, matcher, 5);
             offsetFraction = group(rest, matcher, 6);
-            timeZoneNumericUTCOffset = Strings.substring(context, rest, matcher.start(1), matcher.end(3) != -1 ? matcher.end(3) : Strings.length(rest));
-
-            if (offsetHour == null) {
-                return false;
-            }
-
-            // differentiate between "-08" and "-08:00" here!
-            move(offsetMinute != null ? matcher.end(3) : matcher.end(2));
+            int end = offsetMinute != null ? matcher.end(3) : matcher.end(2);
+            timeZoneNumericUTCOffset = Strings.substring(context, rest, matcher.start(1), end);
+            move(end);
             return true;
         }
 
