@@ -3078,16 +3078,17 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static BigInt interpretISODateTimeOffset(JSContext ctx, JSRealm realm, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
-                    int nanosecond, OffsetBehaviour offsetBehaviour, Object offsetNanosecondsParam, TruffleString timeZone, Disambiguation disambiguation, OffsetOption offsetOption,
+                    int nanosecond, OffsetBehaviour offsetBehaviour, long offsetNanoseconds, TruffleString timeZone, Disambiguation disambiguation, OffsetOption offsetOption,
                     MatchBehaviour matchBehaviour) {
-        double offsetNs = (offsetNanosecondsParam == null || offsetNanosecondsParam == Undefined.instance) ? Double.NaN : ((Number) offsetNanosecondsParam).doubleValue();
         JSTemporalPlainDateTimeObject dateTime = JSTemporalPlainDateTime.create(ctx, realm, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, ISO8601);
         if (offsetBehaviour == OffsetBehaviour.WALL || OffsetOption.IGNORE == offsetOption) {
             return builtinTimeZoneGetInstantFor(ctx, realm, timeZone, dateTime, disambiguation);
         }
         if (offsetBehaviour == OffsetBehaviour.EXACT || OffsetOption.USE == offsetOption) {
-            BigInt epochNanoseconds = getUTCEpochNanoseconds(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
-            epochNanoseconds = epochNanoseconds.subtract(BigInt.valueOf((long) offsetNs));
+            var balanced = balanceISODateTime(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond - offsetNanoseconds);
+            checkISODaysRange(balanced.getYear(), balanced.getMonth(), balanced.getDay());
+            BigInt epochNanoseconds = getUTCEpochNanoseconds(balanced.getYear(), balanced.getMonth(), balanced.getDay(), balanced.getHour(), balanced.getMinute(), balanced.getSecond(),
+                            balanced.getMillisecond(), balanced.getMicrosecond(), balanced.getNanosecond());
             if (!TemporalUtil.isValidEpochNanoseconds(epochNanoseconds)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
@@ -3095,15 +3096,16 @@ public final class TemporalUtil {
         }
         assert offsetBehaviour == OffsetBehaviour.OPTION;
         assert OffsetOption.PREFER == offsetOption || OffsetOption.REJECT == offsetOption;
+        BigInt utcEpochNanoseconds = getUTCEpochNanoseconds(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
         List<BigInt> possibleEpochNanoseconds = getPossibleEpochNanoseconds(timeZone, dateTime);
         for (BigInt candidate : possibleEpochNanoseconds) {
-            long candidateNanoseconds = getOffsetNanosecondsFor(timeZone, candidate);
-            if (candidateNanoseconds == offsetNs) {
+            long candidateOffset = utcEpochNanoseconds.subtract(candidate).longValueExact();
+            if (candidateOffset == offsetNanoseconds) {
                 return candidate;
             }
             if (matchBehaviour == MatchBehaviour.MATCH_MINUTES) {
-                long roundedCandidateNanoseconds = dtol(roundNumberToIncrement(candidateNanoseconds, 60_000_000_000L, RoundingMode.HALF_EXPAND));
-                if (roundedCandidateNanoseconds == offsetNs) {
+                long roundedCandidateNanoseconds = dtol(roundNumberToIncrement(candidateOffset, 60_000_000_000L, RoundingMode.HALF_EXPAND));
+                if (roundedCandidateNanoseconds == offsetNanoseconds) {
                     return candidate;
                 }
             }
@@ -3111,7 +3113,7 @@ public final class TemporalUtil {
         if (OffsetOption.REJECT == offsetOption) {
             throw Errors.createRangeError("cannot interpret DateTime offset");
         }
-        return builtinTimeZoneGetInstantFor(ctx, realm, timeZone, dateTime, disambiguation);
+        return disambiguatePossibleEpochNanoseconds(ctx, realm, possibleEpochNanoseconds, timeZone, dateTime, disambiguation);
     }
 
     public static boolean timeZoneEquals(Object one, Object two, ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier) {
