@@ -136,7 +136,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, overflow, dateFromFieldsNode);
         } else if (item instanceof TruffleString string) {
-            ParseISODateTimeResult resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
+            ParseISODateTimeResult resultZDT = TemporalUtil.parseTemporalDateTimeString(true, string);
             result = resultZDT;
             TruffleString timeZoneName = resultZDT.getTimeZoneResult().getName();
             assert timeZoneName != null;

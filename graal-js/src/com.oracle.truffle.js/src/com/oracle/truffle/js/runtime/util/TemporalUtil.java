@@ -519,16 +519,13 @@ public final class TemporalUtil {
         if (!(new TemporalParser(isoString)).isTemporalDateTimeString()) {
             throw TemporalErrors.createRangeErrorInvalidRelativeToString();
         }
-        return parseISODateTime(isoString, false, false);
+        return parseISODateTime(isoString, false);
     }
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalMonthDayString(TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalMonthDayString();
         if (rec != null) {
-            if (rec.getZ()) {
-                throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
-            }
             if (rec.getYear() == 0 && Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
@@ -548,16 +545,13 @@ public final class TemporalUtil {
     }
 
     private static ParseISODateTimeResult parseISODateTime(TruffleString string) {
-        return parseISODateTime(string, false, false);
+        return parseISODateTime(string, false);
     }
 
     @TruffleBoundary
-    private static ParseISODateTimeResult parseISODateTime(TruffleString string, boolean failWithUTCDesignator, boolean timeExpected) {
+    private static ParseISODateTimeResult parseISODateTime(TruffleString string, boolean timeExpected) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseISODateTime();
         if (rec != null) {
-            if (failWithUTCDesignator && rec.getZ()) {
-                throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
-            }
             if (timeExpected && (rec.getHour() == Long.MIN_VALUE)) {
                 throw Errors.createRangeError("cannot parse the ISO date time string");
             }
@@ -1152,21 +1146,17 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSTemporalDateTimeRecord parseTemporalDateTimeString(TruffleString string) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseAnnotatedDateTime(false);
+    public static ParseISODateTimeResult parseTemporalDateTimeString(boolean zoned, TruffleString string) {
+        JSTemporalParserRecord rec = (new TemporalParser(string)).parseAnnotatedDateTime(zoned, false);
         if (rec == null) {
             throw Errors.createRangeError("cannot parse the date string");
         }
-        if (rec.getZ()) {
-            throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
-        }
-        JSTemporalDateTimeRecord result = parseISODateTime(string, true, false);
-        return result;
+        return parseISODateTime(string, false);
     }
 
     @TruffleBoundary
     public static JSTemporalDateTimeRecord parseTemporalDateString(TruffleString string) {
-        JSTemporalDateTimeRecord rec = parseTemporalDateTimeString(string);
+        JSTemporalDateTimeRecord rec = parseTemporalDateTimeString(false, string);
         return JSTemporalDateTimeRecord.createCalendar(rec.getYear(), rec.getMonth(), rec.getDay(), 0, 0, 0, 0, 0, 0, rec.getCalendar());
     }
 
@@ -1174,9 +1164,6 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord parseTemporalTimeString(TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalTimeString();
         if (rec != null) {
-            if (rec.getZ()) {
-                throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
-            }
             JSTemporalDateTimeRecord result = parseISODateTimeIntl(string, rec);
             if (result.hasCalendar()) {
                 return JSTemporalDateTimeRecord.createCalendar(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
@@ -2888,9 +2875,6 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord parseTemporalYearMonthString(TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseYearMonth();
         if (rec != null) {
-            if (rec.getZ()) {
-                throw TemporalErrors.createRangeErrorUnexpectedUTCDesignator();
-            }
             if (rec.getYear() == 0 && Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
@@ -2958,18 +2942,6 @@ public final class TemporalUtil {
         TruffleString m = toZeroPaddedDecimalString(minutes, 2);
 
         return Strings.concatAll(sign, h, Strings.COLON, m);
-    }
-
-    @TruffleBoundary
-    public static ParseISODateTimeResult parseTemporalZonedDateTimeString(TruffleString string) {
-        if (!(new TemporalParser(string)).isTemporalZonedDateTimeString()) {
-            throw Errors.createRangeError("cannot be parsed as TemporalZonedDateTimeString");
-        }
-        try {
-            return parseISODateTime(string);
-        } catch (Exception ex) {
-            throw Errors.createRangeError("cannot be parsed as TemporalZonedDateTimeString");
-        }
     }
 
     @TruffleBoundary

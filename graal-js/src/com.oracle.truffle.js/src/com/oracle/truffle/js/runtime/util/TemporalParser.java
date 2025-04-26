@@ -135,7 +135,7 @@ public final class TemporalParser {
 
         // TemporalDateTimeString => AnnotatedDateTime
         // TemporalTimeString => AnnotatedDateTime OR AnnotatedTime
-        rec = parseAnnotatedDateTime(false);
+        rec = parseAnnotatedDateTime(true, false);
         if (rec != null) {
             return rec;
         }
@@ -187,7 +187,7 @@ public final class TemporalParser {
             return rec;
         }
 
-        return parseAnnotatedDateTime(true);
+        return parseAnnotatedDateTime(false, true);
     }
 
     private JSTemporalParserRecord parseAnnotatedTime() {
@@ -196,7 +196,7 @@ public final class TemporalParser {
         int start = pos;
         boolean hasTimeDesignator = tryParseTimeDesignator();
         if (tryParseTimeSpec()) {
-            tryParseDateTimeUTCOffset();
+            tryParseDateTimeUTCOffset(false);
             if (!hasTimeDesignator) {
                 int length = pos - start;
                 TruffleString timeDateTimeUTCOffset = Strings.lazySubstring(input, start, length);
@@ -218,9 +218,9 @@ public final class TemporalParser {
         return null;
     }
 
-    public JSTemporalParserRecord parseAnnotatedDateTime(boolean timeRequired) {
+    public JSTemporalParserRecord parseAnnotatedDateTime(boolean zoned, boolean timeRequired) {
         reset();
-        if (tryParseDateTime(timeRequired)) {
+        if (tryParseDateTime(zoned, timeRequired)) {
             tryParseTimeZoneAnnotation();
             if (parseAnnotations() && atEnd()) {
                 return result();
@@ -229,18 +229,18 @@ public final class TemporalParser {
         return null;
     }
 
-    private boolean tryParseDateTime(boolean timeRequired) {
+    private boolean tryParseDateTime(boolean zoned, boolean timeRequired) {
         if (!parseDate()) {
             return false;
         }
-
-        // optional
-        if (parseTimeSpecSeparator()) {
-            tryParseDateTimeUTCOffset();
-            return true;
-        } else {
+        if (!tryParseDateTimeSeparator()) {
             return !timeRequired;
         }
+        if (!tryParseTimeSpec()) {
+            return false; // DateTimeSeparator without Time
+        }
+        tryParseDateTimeUTCOffset(zoned);
+        return true;
     }
 
     private boolean parseTimeSpecSeparator() {
@@ -270,7 +270,7 @@ public final class TemporalParser {
         }
 
         // AnnotatedDateTime
-        rec = parseAnnotatedDateTime(false);
+        rec = parseAnnotatedDateTime(false, false);
         if (rec != null) {
             return rec;
         }
@@ -293,7 +293,7 @@ public final class TemporalParser {
         reset();
 
         // DateSpecMonthDay or DateTime
-        if (tryParseDateSpecMonthDay() || tryParseDateTime(false)) {
+        if (tryParseDateSpecMonthDay() || tryParseDateTime(false, false)) {
             // optional TimeZoneAnnotation
             tryParseTimeZoneAnnotation();
             // optional Annotations
@@ -366,7 +366,7 @@ public final class TemporalParser {
         }
 
         // AnnotatedDateTime
-        rec = parseAnnotatedDateTime(false);
+        rec = parseAnnotatedDateTime(true, false);
         if (rec != null) {
             return rec;
         }
@@ -396,7 +396,7 @@ public final class TemporalParser {
         reset();
         if (parseDate()) {
             if (parseTimeSpecSeparator()) {
-                if (tryParseDateTimeUTCOffset()) {
+                if (tryParseDateTimeUTCOffset(true)) {
                     tryParseTimeZoneAnnotation();
                     if (parseAnnotations() && atEnd()) {
                         return result();
@@ -437,7 +437,7 @@ public final class TemporalParser {
 
     public boolean isTemporalDateTimeString() {
         reset();
-        JSTemporalParserRecord rec = parseAnnotatedDateTime(false);
+        JSTemporalParserRecord rec = parseAnnotatedDateTime(true, false);
         if (rec != null) {
             return true;
         }
@@ -445,7 +445,7 @@ public final class TemporalParser {
     }
 
     private boolean tryParseTimeZoneNameRequired() {
-        tryParseDateTimeUTCOffset(); // optional
+        tryParseDateTimeUTCOffset(true); // optional
 
         if (tryParseTimeZoneAnnotation()) {
             return true;
@@ -638,12 +638,12 @@ public final class TemporalParser {
         return true;
     }
 
-    private boolean tryParseDateTimeUTCOffset() {
-        if (tryParseTimeZoneNumericUTCOffset()) {
+    private boolean tryParseDateTimeUTCOffset(boolean zoned) {
+        if (zoned && tryParseUTCDesignator()) {
             return true;
         }
 
-        if (tryParseUTCDesignator()) {
+        if (tryParseTimeZoneNumericUTCOffset()) {
             return true;
         }
 
