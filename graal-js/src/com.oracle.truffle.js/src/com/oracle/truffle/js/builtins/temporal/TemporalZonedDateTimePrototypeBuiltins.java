@@ -405,7 +405,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             BigInt todayNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, today, Disambiguation.COMPATIBLE);
             BigInt tomorrowNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, tomorrow, Disambiguation.COMPATIBLE);
             BigInt diffNs = tomorrowNs.subtract(todayNs);
-            return diffNs.divide(BigInt.valueOf(36_000_000_000_000L));
+            return diffNs.divide(TemporalUtil.BI_NS_PER_HOUR).doubleValue();
         }
 
         private Object getterCalendarDetails(JSTemporalZonedDateTimeObject zdt) {
