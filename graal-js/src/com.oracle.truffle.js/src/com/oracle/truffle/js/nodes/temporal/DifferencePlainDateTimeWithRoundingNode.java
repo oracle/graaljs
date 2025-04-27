@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -53,6 +56,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDurationWithTotalRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
@@ -76,8 +80,10 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
                     JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
                     TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode,
+                    @Bind Node node,
                     @Cached DifferenceISODateTimeNode differenceISODateTime,
-                    @Cached RoundRelativeDurationNode roundRelativeDuration) {
+                    @Cached RoundRelativeDurationNode roundRelativeDuration,
+                    @Cached InlinedBranchProfile errorBranch) {
         int y1 = plainDate1.getYear();
         int mon1 = plainDate1.getMonth();
         int d1 = plainDate1.getDay();
@@ -85,6 +91,11 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
                         y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1,
                         y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2) == 0) {
             return new TemporalDurationWithTotalRecord(JSTemporalDurationRecord.createZero(), 0);
+        }
+
+        if (!TemporalUtil.isoDateTimeWithinLimits(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1) || !TemporalUtil.isoDateTimeWithinLimits(y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2)) {
+            errorBranch.enter(node);
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
 
         NormalizedDurationRecord diff = differenceISODateTime.execute(
