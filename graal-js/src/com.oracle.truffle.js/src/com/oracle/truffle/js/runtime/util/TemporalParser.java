@@ -79,7 +79,7 @@ public final class TemporalParser {
     // TimeZoneAnnotation
     // [!?(?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)]
     private static final String patternTimeZoneAnnotation = "(\\[!?((?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*))\\])";
-    private static final String patternTimeZoneNumericUTCOffset = "^([+\\-])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
+    private static final String patternTimeZoneNumericUTCOffset = "^([-+])([01][0-9]|2[0-3])(:?([0-5][0-9])(?::?([0-5][0-9]|60)(?:[.,]([0-9]{1,9}))?)?)?";
     private static final String patternDateSpecYearMonth = "^([0-9]{4}|[+-][0-9]{6})-?(0[1-9]|1[0-2])";
     private static final String patternDateSpecMonthDay = "^(?:--)?(0[1-9]|1[012])-?(0[1-9]|[12][0-9]|3[01])";
     private static final String patternTimeZoneIANANameComponent = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
