@@ -516,10 +516,15 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static ParseISODateTimeResult parseTemporalRelativeToString(TruffleString isoString) {
-        if (!(new TemporalParser(isoString)).isTemporalDateTimeString()) {
+        TemporalParser parser = new TemporalParser(isoString);
+        JSTemporalParserRecord rec = parser.parseAnnotatedDateTime(true, false);
+        if (rec == null) {
+            rec = parser.parseAnnotatedDateTime(false, false);
+        }
+        if (rec == null) {
             throw TemporalErrors.createRangeErrorInvalidRelativeToString();
         }
-        return parseISODateTime(isoString, false);
+        return parseISODateTimeIntl(isoString, rec);
     }
 
     @TruffleBoundary
@@ -542,22 +547,6 @@ public final class TemporalUtil {
             return JSTemporalDateTimeRecord.createCalendar(y, m, d, 0, 0, 0, 0, 0, 0, rec.getCalendar());
         }
         throw Errors.createRangeError("cannot parse MonthDay");
-    }
-
-    private static ParseISODateTimeResult parseISODateTime(TruffleString string) {
-        return parseISODateTime(string, false);
-    }
-
-    @TruffleBoundary
-    private static ParseISODateTimeResult parseISODateTime(TruffleString string, boolean timeExpected) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseISODateTime();
-        if (rec != null) {
-            if (timeExpected && (rec.getHour() == Long.MIN_VALUE)) {
-                throw Errors.createRangeError("cannot parse the ISO date time string");
-            }
-            return parseISODateTimeIntl(string, rec);
-        }
-        throw Errors.createRangeError("cannot parse the ISO date time string");
     }
 
     private static ParseISODateTimeResult parseISODateTimeIntl(TruffleString string, JSTemporalParserRecord rec) {
@@ -1151,7 +1140,7 @@ public final class TemporalUtil {
         if (rec == null) {
             throw Errors.createRangeError("cannot parse the date string");
         }
-        return parseISODateTime(string, false);
+        return parseISODateTimeIntl(string, rec);
     }
 
     @TruffleBoundary
@@ -2813,7 +2802,24 @@ public final class TemporalUtil {
         TemporalParser parser = new TemporalParser(string);
         JSTemporalParserRecord rec = parser.parseTimeZoneIdentifier();
         if (rec == null) {
-            rec = parser.parseISODateTime();
+            // TemporalDateTimeString[+Zoned]
+            rec = parser.parseAnnotatedDateTime(true, false);
+            if (rec == null) {
+                // TemporalDateTimeString[~Zoned]
+                rec = parser.parseAnnotatedDateTime(false, false);
+            }
+            if (rec == null) {
+                rec = parser.parseTemporalInstantString();
+            }
+            if (rec == null) {
+                rec = parser.parseTemporalTimeString();
+            }
+            if (rec == null) {
+                rec = parser.parseTemporalMonthDayString();
+            }
+            if (rec == null) {
+                rec = parser.parseYearMonth();
+            }
             if (rec != null) {
                 if (rec.getTimeZoneAnnotation() != null) {
                     rec = new TemporalParser(rec.getTimeZoneAnnotation()).parseTimeZoneIdentifier();

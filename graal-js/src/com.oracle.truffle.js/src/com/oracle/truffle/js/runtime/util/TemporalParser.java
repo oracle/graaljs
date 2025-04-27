@@ -130,49 +130,6 @@ public final class TemporalParser {
         this.input = input;
     }
 
-    public JSTemporalParserRecord parseISODateTime() {
-        JSTemporalParserRecord rec;
-
-        // TemporalDateTimeString => AnnotatedDateTime
-        // TemporalTimeString => AnnotatedDateTime OR AnnotatedTime
-        rec = parseAnnotatedDateTime(true, false);
-        if (rec != null) {
-            return rec;
-        }
-
-        rec = parseAnnotatedTime();
-        if (rec != null) {
-            return rec;
-        }
-
-        // TemporalYearMonthString => DateSpecYearMonth OR CalendarDateTime (above already!)
-        rec = parseAnnotatedYearMonth();
-        if (rec != null) {
-            return rec;
-        }
-
-        // TemporalMonthDayString
-        rec = parseTemporalMonthDayString();
-        if (rec != null) {
-            return rec;
-        }
-
-        // TemporalInstantString
-        rec = parseTemporalInstantString();
-        if (rec != null) {
-            return rec;
-        }
-
-        // TemporalZonedDateTimeString => Date TimeSpecSeparator(opt) TimeZoneNameRequired
-        // Calendar(opt)
-        rec = parseZonedDateTimeString();
-        if (rec != null) {
-            return rec;
-        }
-
-        return null;
-    }
-
     private boolean tryParseTimeDesignator() {
         if (Strings.startsWith(rest, UC_T) || Strings.startsWith(rest, T)) {
             move(1);
@@ -435,11 +392,6 @@ public final class TemporalParser {
 
     public boolean isTemporalZonedDateTimeString() {
         return parseZonedDateTimeString() != null;
-    }
-
-    public boolean isTemporalDateTimeString() {
-        reset();
-        return (parseAnnotatedDateTime(true, false) != null || parseAnnotatedDateTime(false, false) != null);
     }
 
     private boolean tryParseTimeZoneNameRequired() {
