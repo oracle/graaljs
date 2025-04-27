@@ -221,7 +221,9 @@ public final class TemporalParser {
     public JSTemporalParserRecord parseAnnotatedDateTime(boolean zoned, boolean timeRequired) {
         reset();
         if (tryParseDateTime(zoned, timeRequired)) {
-            tryParseTimeZoneAnnotation();
+            if (!tryParseTimeZoneAnnotation() && zoned) {
+                return null;
+            }
             if (parseAnnotations() && atEnd()) {
                 return result();
             }
@@ -437,11 +439,7 @@ public final class TemporalParser {
 
     public boolean isTemporalDateTimeString() {
         reset();
-        JSTemporalParserRecord rec = parseAnnotatedDateTime(true, false);
-        if (rec != null) {
-            return true;
-        }
-        return false;
+        return (parseAnnotatedDateTime(true, false) != null || parseAnnotatedDateTime(false, false) != null);
     }
 
     private boolean tryParseTimeZoneNameRequired() {
