@@ -3074,6 +3074,7 @@ public final class TemporalUtil {
         }
         assert offsetBehaviour == OffsetBehaviour.OPTION;
         assert OffsetOption.PREFER == offsetOption || OffsetOption.REJECT == offsetOption;
+        checkISODaysRange(year, month, day);
         BigInt utcEpochNanoseconds = getUTCEpochNanoseconds(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
         List<BigInt> possibleEpochNanoseconds = getPossibleEpochNanoseconds(timeZone, dateTime);
         for (BigInt candidate : possibleEpochNanoseconds) {
