@@ -171,6 +171,7 @@ public final class TemporalUtil {
 
     private static final Function<Object, Object> toIntegerWithTruncation = TemporalUtil::toIntegerWithTruncation;
     private static final Function<Object, Object> toMonthCode = TemporalUtil::toMonthCode;
+    private static final Function<Object, Object> toOffsetString = TemporalUtil::toOffsetString;
     private static final Function<Object, Object> toPositiveInteger = TemporalUtil::toPositiveInteger;
     private static final Function<Object, Object> toString = JSRuntime::toString;
 
@@ -197,7 +198,7 @@ public final class TemporalUtil {
                     Map.entry(MILLISECOND, toIntegerWithTruncation),
                     Map.entry(MICROSECOND, toIntegerWithTruncation),
                     Map.entry(NANOSECOND, toIntegerWithTruncation),
-                    Map.entry(OFFSET, toString),
+                    Map.entry(OFFSET, toOffsetString),
                     Map.entry(ERA, toString),
                     Map.entry(ERA_YEAR, toIntegerWithTruncation));
 
@@ -3476,6 +3477,16 @@ public final class TemporalUtil {
             ms--;
         }
         return ms;
+    }
+
+    public static TruffleString toOffsetString(Object argument) {
+        Object offset = JSRuntime.toPrimitive(argument, JSToPrimitiveNode.Hint.String);
+        if (offset instanceof TruffleString offsetTS) {
+            parseTimeZoneOffsetString(offsetTS);
+            return offsetTS;
+        } else {
+            throw Errors.createTypeErrorNotAString(offset);
+        }
     }
 
 }
