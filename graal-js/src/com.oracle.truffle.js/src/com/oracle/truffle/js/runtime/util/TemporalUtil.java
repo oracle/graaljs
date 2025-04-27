@@ -108,7 +108,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -3202,39 +3201,29 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static OptionalLong getIANATimeZoneNextTransition(BigInt nanoseconds, TruffleString identifier) {
-        try {
-            BigInt[] sec = nanoseconds.divideAndRemainder(BI_NS_PER_SECOND);
-            Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
-            ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
-            ZoneRules zoneRule = zoneId.getRules();
-            ZoneOffsetTransition nextTransition = zoneRule.nextTransition(instant);
-            if (nextTransition == null) {
-                return OptionalLong.empty();
-            }
-            return OptionalLong.of(nextTransition.toEpochSecond() * 1_000_000_000L);
-        } catch (Exception ex) {
-            assert false;
-            return OptionalLong.of(Long.MIN_VALUE);
+    public static BigInt getIANATimeZoneNextTransition(TruffleString timeZoneIdentifier, BigInt epochNanoseconds) {
+        BigInt[] sec = epochNanoseconds.divideAndRemainder(BI_NS_PER_SECOND);
+        Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
+        ZoneId zoneId = ZoneId.of(Strings.toJavaString(timeZoneIdentifier));
+        ZoneRules zoneRule = zoneId.getRules();
+        ZoneOffsetTransition nextTransition = zoneRule.nextTransition(instant);
+        if (nextTransition == null) {
+            return null;
         }
+        return BigInt.valueOf(nextTransition.toEpochSecond()).multiply(BI_NS_PER_SECOND);
     }
 
     @TruffleBoundary
-    public static OptionalLong getIANATimeZonePreviousTransition(BigInt nanoseconds, TruffleString identifier) {
-        try {
-            BigInt[] sec = nanoseconds.divideAndRemainder(BI_NS_PER_SECOND);
-            Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
-            ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
-            ZoneRules zoneRule = zoneId.getRules();
-            ZoneOffsetTransition previousTransition = zoneRule.previousTransition(instant);
-            if (previousTransition == null) {
-                return OptionalLong.empty();
-            }
-            return OptionalLong.of(previousTransition.toEpochSecond() * 1_000_000_000L);
-        } catch (Exception ex) {
-            assert false;
-            return OptionalLong.empty();
+    public static BigInt getIANATimeZonePreviousTransition(TruffleString timeZoneIdentifier, BigInt epochNanoseconds) {
+        BigInt[] sec = epochNanoseconds.divideAndRemainder(BI_NS_PER_SECOND);
+        Instant instant = Instant.ofEpochSecond(sec[0].longValue(), sec[1].longValue());
+        ZoneId zoneId = ZoneId.of(Strings.toJavaString(timeZoneIdentifier));
+        ZoneRules zoneRule = zoneId.getRules();
+        ZoneOffsetTransition previousTransition = zoneRule.previousTransition(instant);
+        if (previousTransition == null) {
+            return null;
         }
+        return BigInt.valueOf(previousTransition.toEpochSecond()).multiply(BI_NS_PER_SECOND);
     }
 
     @TruffleBoundary

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -62,6 +63,7 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeAddSubNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeEqualsNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeGetTimeZoneTransitionNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeRoundNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeStartOfDayNodeGen;
@@ -80,6 +82,8 @@ import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBui
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
+import com.oracle.truffle.js.nodes.intl.GetStringOptionNode;
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
@@ -123,7 +127,9 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -191,6 +197,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         toJSON(0),
         valueOf(0),
         startOfDay(0),
+        getTimeZoneTransition(1),
         toInstant(0),
         toPlainDate(0),
         toPlainTime(0),
@@ -278,6 +285,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 return JSTemporalZonedDateTimeEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case startOfDay:
                 return JSTemporalZonedDateTimeStartOfDayNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case getTimeZoneTransition:
+                return JSTemporalZonedDateTimeGetTimeZoneTransitionNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toInstant:
                 return JSTemporalZonedDateTimeToInstantNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case toPlainDate:
@@ -915,6 +924,66 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization(guards = "!isJSTemporalZonedDateTime(thisObj)")
         static Object invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalZonedDateTimeExpected();
+        }
+    }
+
+    @ImportStatic(IntlUtil.class)
+    public abstract static class JSTemporalZonedDateTimeGetTimeZoneTransition extends JSTemporalBuiltinOperation {
+        private static final List<String> DIRECTION_OPTION_VALUES = List.of(IntlUtil.NEXT, IntlUtil.PREVIOUS);
+
+        protected JSTemporalZonedDateTimeGetTimeZoneTransition(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getTimeZoneTransition(JSTemporalZonedDateTimeObject zonedDateTime, Object param,
+                        @Bind Node node,
+                        @Cached("create(getContext(), KEY_DIRECTION)") CreateDataPropertyNode createDirectionProperty,
+                        @Cached("create(getContext())") GetOptionsObjectNode getOptionsObject,
+                        @Cached("createDirectionGetter()") GetStringOptionNode getDirection,
+                        @Cached InlinedBranchProfile errorBranch) {
+            Object directionParam = param;
+            TruffleString timeZone = zonedDateTime.getTimeZone();
+            if (directionParam == Undefined.instance) {
+                errorBranch.enter(node);
+                throw Errors.createTypeError("Direction not specified");
+            }
+            if (directionParam instanceof TruffleString paramString) {
+                directionParam = JSOrdinary.createWithNullPrototype(getContext());
+                createDirectionProperty.executeVoid(directionParam, paramString);
+            } else {
+                directionParam = getOptionsObject.execute(directionParam);
+            }
+            String direction = getDirection.executeValue(directionParam);
+            if (direction == null) { // direction is required
+                errorBranch.enter(node);
+                throw Errors.createRangeError("Invalid direction");
+            }
+            if (TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZone)) {
+                return Null.instance;
+            }
+            BigInt transition;
+            if (IntlUtil.NEXT.equals(direction)) {
+                transition = TemporalUtil.getIANATimeZoneNextTransition(timeZone, zonedDateTime.getNanoseconds());
+            } else {
+                assert IntlUtil.PREVIOUS.equals(direction);
+                transition = TemporalUtil.getIANATimeZonePreviousTransition(timeZone, zonedDateTime.getNanoseconds());
+            }
+            if (transition == null) {
+                return Null.instance;
+            }
+            return JSTemporalZonedDateTime.create(getContext(), getRealm(), transition, timeZone, zonedDateTime.getCalendar());
+        }
+
+        @NeverDefault
+        protected GetStringOptionNode createDirectionGetter() {
+            return GetStringOptionNode.create(getContext(), IntlUtil.KEY_DIRECTION, DIRECTION_OPTION_VALUES, null);
+        }
+
+        @Specialization(guards = "!isJSTemporalZonedDateTime(thisObj)")
+        @SuppressWarnings("unused")
+        static Object invalidReceiver(Object thisObj, Object directionParam) {
             throw TemporalErrors.createTypeErrorTemporalZonedDateTimeExpected();
         }
     }
