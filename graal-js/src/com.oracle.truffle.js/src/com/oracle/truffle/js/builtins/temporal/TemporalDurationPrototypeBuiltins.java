@@ -539,6 +539,10 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (maximum != null) {
                 TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, false, node, errorBranch);
             }
+            if (roundingIncrement > 1 && largestUnit != smallestUnit && smallestUnit.isDateUnit()) {
+                errorBranch.enter(node);
+                throw Errors.createRangeError("For calendar units with roundingIncrement > 1, use largestUnit = smallestUnit");
+            }
 
             boolean roundingGranularityIsNoop = smallestUnit == Unit.NANOSECOND && roundingIncrement == 1;
             boolean calendarUnitsPresent = duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0;
