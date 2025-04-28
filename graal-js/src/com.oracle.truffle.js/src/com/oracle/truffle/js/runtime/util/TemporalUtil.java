@@ -2133,19 +2133,6 @@ public final class TemporalUtil {
         return BigInt.fromBigInteger(new BigDecimal(d).toBigInteger());
     }
 
-    @TruffleBoundary
-    public static BigInt totalDurationNanoseconds(double days, double hours, double minutes, double seconds, double milliseconds,
-                    double microseconds, double nanoseconds) {
-        BigInt d = dtobi(days).multiply(BI_24);
-        BigInt h = dtobi(hours).add(d);
-        BigInt min = dtobi(minutes).add(h.multiply(BI_60));
-        BigInt s = dtobi(seconds).add(min.multiply(BI_60));
-        BigInt ms = dtobi(milliseconds).add(s.multiply(BI_1000));
-        BigInt us = dtobi(microseconds).add(ms.multiply(BI_1000));
-        BigInt ns = dtobi(nanoseconds).add(us.multiply(BI_1000));
-        return ns;
-    }
-
     /**
      * {@return normalized time duration consisting of whole seconds, and subseconds expressed in
      * nanoseconds}.
