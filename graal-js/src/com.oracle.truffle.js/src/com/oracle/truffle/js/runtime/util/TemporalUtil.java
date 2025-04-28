@@ -2291,7 +2291,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static TimeRecord roundTime(int hours, int minutes, int seconds, int milliseconds, int microseconds,
-                    int nanoseconds, int increment, Unit unit, RoundingMode roundingMode, Long dayLengthNsParam) {
+                    int nanoseconds, int increment, Unit unit, RoundingMode roundingMode) {
         double quantity;
         long unitLength;
         if (unit == Unit.DAY || unit == Unit.HOUR) {
@@ -2437,8 +2437,7 @@ public final class TemporalUtil {
     // when used with Duration, double is necessary
     // e.g. from Temporal.PlainTime.prototype.add(duration);
     public static TimeRecord addTimeDouble(int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
-                    double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds,
-                    Node node, InlinedBranchProfile errorBranch) {
+                    double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
         var qr = JSRuntime.toBigInteger(nanoseconds).add(BigInteger.valueOf(nanosecond)).divideAndRemainder(BI_1000.bigIntegerValue());
         int ns = qr[1].intValue();
         if (ns < 0) {
@@ -2491,8 +2490,8 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalDurationRecord roundISODateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
-                    int nanosecond, int increment, Unit unit, RoundingMode roundingMode, Long dayLength) {
-        TimeRecord rt = roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
+                    int nanosecond, int increment, Unit unit, RoundingMode roundingMode) {
+        TimeRecord rt = roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode);
         ISODateRecord br = balanceISODate(year, month, day + dtoi(rt.days()));
         return JSTemporalDurationRecord.create(br.year(), br.month(), br.day(),
                         rt.hour(), rt.minute(), rt.second(), rt.millisecond(), rt.microsecond(), rt.nanosecond());
@@ -3007,7 +3006,7 @@ public final class TemporalUtil {
         if (Disambiguation.EARLIER == disambiguation) {
             TimeRecord earlierTime = addTimeDouble(
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
-                            0, 0, 0, 0, 0, -nanoseconds, null, InlinedBranchProfile.getUncached());
+                            0, 0, 0, 0, 0, -nanoseconds);
             ISODateRecord earlierDate = addISODate(
                             dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                             0, 0, 0, dtoi(earlierTime.days()), Overflow.CONSTRAIN);
@@ -3024,7 +3023,7 @@ public final class TemporalUtil {
         assert Disambiguation.LATER == disambiguation || Disambiguation.COMPATIBLE == disambiguation;
         TimeRecord laterTime = addTimeDouble(
                         dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
-                        0, 0, 0, 0, 0, nanoseconds, null, InlinedBranchProfile.getUncached());
+                        0, 0, 0, 0, 0, nanoseconds);
         ISODateRecord laterDate = addISODate(
                         dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                         0, 0, 0, dtoi(laterTime.days()), Overflow.CONSTRAIN);

@@ -491,8 +491,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             dt.getYear(), dt.getMonth(), dt.getDay(),
                             dt.getHour(), dt.getMinute(), dt.getSecond(),
                             dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(),
-                            precision.getIncrement(), precision.getUnit(), roundingMode,
-                            null);
+                            precision.getIncrement(), precision.getUnit(), roundingMode);
 
             if (!TemporalUtil.isoDateTimeWithinLimits((int) result.getYears(), (int) result.getMonths(), (int) result.getDays(), (int) result.getHours(), (int) result.getMinutes(),
                             (int) result.getSeconds(), (int) result.getMilliseconds(), (int) result.getMicroseconds(), (int) result.getNanoseconds())) {
@@ -693,7 +692,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                                 dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), dt.getCalendar(), this, errorBranch);
             }
             JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(dt.getYear(), dt.getMonth(), dt.getDay(), dt.getHour(), dt.getMinute(), dt.getSecond(),
-                            dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
+                            dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), roundingIncrement, smallestUnit, roundingMode);
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             dtoi(result.getYears()), dtoi(result.getMonths()), dtoi(result.getDays()),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()),
