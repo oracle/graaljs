@@ -138,7 +138,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                 calendar = TemporalConstants.ISO8601;
             } else {
                 String calendarJLS = toJavaString.execute(calendar);
-                calendar = Strings.fromJavaString(IntlUtil.canonicalizeCalendar(calendarJLS));
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
             }
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, temporalGetOptionNode);
