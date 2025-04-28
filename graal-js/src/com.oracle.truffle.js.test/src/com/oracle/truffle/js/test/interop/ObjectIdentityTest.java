@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ import com.oracle.truffle.js.test.TestHelper;
 import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
 import com.oracle.truffle.js.test.polyglot.ForeignNull;
 
-public class ObjectIdentityTest {
+public class ObjectIdentityTest extends ParameterizedInteropLibraryTest {
 
     @Test
     public void proxyObjectIdentity() {
@@ -141,9 +141,13 @@ public class ObjectIdentityTest {
             Object value2 = ForeignBoxedObject.createNew(42);
             Object value3 = ForeignBoxedObject.createNew(43);
 
+            InteropLibrary interopVal1 = createInteropLibrary(value1);
+            InteropLibrary interopVal2 = createInteropLibrary(value2);
+
             // Numbers have no identity.
-            assertFalse(InteropLibrary.getUncached().isIdentical(value1, value1, InteropLibrary.getUncached()));
-            assertFalse(InteropLibrary.getUncached().isIdentical(value1, value2, InteropLibrary.getUncached()));
+            assertFalse(interopVal1.isIdentical(value1, value1, interopVal1));
+            assertFalse(interopVal1.isIdentical(value1, value2, interopVal2));
+            assertFalse(interopVal2.isIdentical(value2, value1, interopVal1));
 
             Value equals = context.eval(ID, "(function(a, b){return a == b;})");
             Value identical = context.eval(ID, "(function(a, b){return a === b;})");
@@ -165,13 +169,16 @@ public class ObjectIdentityTest {
 
     @Test
     public void testJSObjectIdentity() {
-        InteropLibrary interop = InteropLibrary.getUncached();
         try (TestHelper testHelper = new TestHelper()) {
             Object jsobj1 = testHelper.runNoPolyglot("({})");
             Object jsobj2 = testHelper.runNoPolyglot("({})");
 
-            assertTrue(interop.isIdentical(jsobj1, jsobj1, interop));
-            assertFalse(interop.isIdentical(jsobj1, jsobj2, interop));
+            InteropLibrary interopObj1 = createInteropLibrary(jsobj1);
+            InteropLibrary interopObj2 = createInteropLibrary(jsobj2);
+
+            assertTrue(interopObj1.isIdentical(jsobj1, jsobj1, interopObj1));
+            assertFalse(interopObj1.isIdentical(jsobj1, jsobj2, interopObj2));
+            assertFalse(interopObj2.isIdentical(jsobj2, jsobj1, interopObj1));
         }
     }
 
@@ -192,7 +199,6 @@ public class ObjectIdentityTest {
 
     @Test
     public void testInteropFunctionIdentity() {
-        InteropLibrary interop = InteropLibrary.getUncached();
         try (TestHelper testHelper = new TestHelper()) {
             testHelper.getPolyglotContext().enter();
 
@@ -200,9 +206,13 @@ public class ObjectIdentityTest {
             Object jsobj = testHelper.runNoPolyglot("({})");
             ExportValueNode exportValueNode = ExportValueNode.getUncached();
             Object interopBoundFunction = exportValueNode.execute(jsfun, jsobj, true);
+
+            InteropLibrary interopJsFun = createInteropLibrary(jsfun);
+            InteropLibrary interopBound = createInteropLibrary(interopBoundFunction);
+
             assertTrue(interopBoundFunction.getClass().getName(), interopBoundFunction instanceof InteropBoundFunction);
-            assertTrue(interop.isIdentical(interopBoundFunction, jsfun, interop));
-            assertTrue(interop.isIdentical(jsfun, interopBoundFunction, interop));
+            assertTrue(interopBound.isIdentical(interopBoundFunction, jsfun, interopJsFun));
+            assertTrue(interopJsFun.isIdentical(jsfun, interopBoundFunction, interopBound));
 
             testHelper.getPolyglotContext().leave();
         }
@@ -210,7 +220,6 @@ public class ObjectIdentityTest {
 
     @Test
     public void testThrownIdentitylessValue() {
-        InteropLibrary interop = InteropLibrary.getUncached();
         try (TestHelper testHelper = new TestHelper()) {
             testHelper.getPolyglotContext().enter();
 
@@ -224,9 +233,19 @@ public class ObjectIdentityTest {
                 value = ex.getErrorObject();
                 ex1 = ex;
             }
-            assertFalse(interop.hasIdentity(value));
-            assertFalse(interop.isIdentical(ex1, value, interop));
-            assertFalse(interop.isIdentical(value, ex1, interop));
+            Object jsobj = testHelper.runNoPolyglot("({})");
+
+            InteropLibrary interopVal = createInteropLibrary(value);
+            InteropLibrary interopEx1 = createInteropLibrary(ex1);
+            InteropLibrary interopObj = createInteropLibrary(jsobj);
+
+            assertFalse(interopVal.hasIdentity(value));
+            assertTrue(interopObj.hasIdentity(jsobj));
+            assertFalse(interopEx1.isIdentical(ex1, jsobj, interopObj));
+            assertFalse(interopObj.isIdentical(jsobj, ex1, interopEx1));
+            assertFalse(interopEx1.isIdentical(ex1, value, interopVal));
+            assertFalse(interopVal.isIdentical(value, ex1, interopEx1));
+
             try {
                 testHelper.runNoPolyglot("throw 42;");
                 fail("should have thrown");
@@ -234,13 +253,17 @@ public class ObjectIdentityTest {
                 ex2 = ex;
                 assertSame(value, ex.getErrorObject());
             }
+
+            InteropLibrary interopEx2 = createInteropLibrary(ex2);
+
             assertNotSame(ex1, ex2);
-            assertFalse(interop.isIdentical(ex2, value, interop));
-            assertFalse(interop.isIdentical(value, ex2, interop));
-            assertFalse(interop.isIdentical(ex1, ex2, interop));
+            assertFalse(interopEx2.isIdentical(ex2, value, interopVal));
+            assertFalse(interopVal.isIdentical(value, ex2, interopEx2));
+            assertFalse(interopEx1.isIdentical(ex1, ex2, interopEx2));
 
             Object jserror = testHelper.runNoPolyglot("try { throw new Error('expected'); } catch (e) { e }");
-            assertFalse(interop.isIdentical(jserror, ex1, interop));
+            InteropLibrary interopErr = createInteropLibrary(jserror);
+            assertFalse(interopErr.isIdentical(jserror, ex1, interopEx1));
 
             testHelper.getPolyglotContext().leave();
         }
@@ -248,7 +271,6 @@ public class ObjectIdentityTest {
 
     @Test
     public void testOneIdentityTwoExceptions() {
-        InteropLibrary interop = InteropLibrary.getUncached();
         try (TestHelper testHelper = new TestHelper()) {
             testHelper.getPolyglotContext().enter();
 
@@ -262,9 +284,14 @@ public class ObjectIdentityTest {
                 value = ex.getErrorObject();
                 ex1 = ex;
             }
-            assertTrue(interop.hasIdentity(value));
-            assertTrue(interop.isIdentical(ex1, value, interop));
-            assertTrue(interop.isIdentical(value, ex1, interop));
+
+            InteropLibrary interopVal = createInteropLibrary(value);
+            InteropLibrary interopEx1 = createInteropLibrary(ex1);
+
+            assertTrue(interopVal.hasIdentity(value));
+            assertTrue(interopEx1.isIdentical(ex1, value, interopVal));
+            assertTrue(interopVal.isIdentical(value, ex1, interopEx1));
+
             try {
                 testHelper.runNoPolyglot("throw null;");
                 fail("should have thrown");
@@ -272,13 +299,17 @@ public class ObjectIdentityTest {
                 ex2 = ex;
                 assertSame(value, ex.getErrorObject());
             }
+
+            InteropLibrary interopEx2 = createInteropLibrary(ex2);
+
             assertNotSame(ex1, ex2);
-            assertTrue(interop.isIdentical(ex2, value, interop));
-            assertTrue(interop.isIdentical(value, ex2, interop));
-            assertTrue(interop.isIdentical(ex1, ex2, interop));
+            assertTrue(interopEx2.isIdentical(ex2, value, interopVal));
+            assertTrue(interopVal.isIdentical(value, ex2, interopEx2));
+            assertTrue(interopEx1.isIdentical(ex1, ex2, interopEx2));
 
             Object jserror = testHelper.runNoPolyglot("try { throw new Error('expected'); } catch (e) { e }");
-            assertFalse(interop.isIdentical(jserror, ex1, interop));
+            InteropLibrary interopErr = createInteropLibrary(jserror);
+            assertFalse(interopErr.isIdentical(jserror, ex1, interopEx1));
 
             testHelper.getPolyglotContext().leave();
         }
@@ -286,7 +317,6 @@ public class ObjectIdentityTest {
 
     @Test
     public void testIdentityPreservingWrapper() {
-        InteropLibrary interop = InteropLibrary.getUncached();
         try (TestHelper testHelper = new TestHelper()) {
             testHelper.getPolyglotContext().enter();
 
@@ -301,10 +331,14 @@ public class ObjectIdentityTest {
             assertNull(err.getErrorObjectLazy());
 
             Object wrapper = new IdentityPreservingWrapper(err);
-            assertTrue(interop.isIdentical(err, wrapper, interop));
-            assertTrue(interop.hasIdentity(err));
-            assertTrue(interop.isIdentical(wrapper, err, interop));
-            assertTrue(interop.hasIdentity(wrapper));
+
+            InteropLibrary interopErr = createInteropLibrary(err);
+            InteropLibrary interopWrapper = createInteropLibrary(wrapper);
+
+            assertTrue(interopErr.isIdentical(err, wrapper, interopWrapper));
+            assertTrue(interopErr.hasIdentity(err));
+            assertTrue(interopWrapper.isIdentical(wrapper, err, interopErr));
+            assertTrue(interopWrapper.hasIdentity(wrapper));
 
             testHelper.getPolyglotContext().leave();
         }
