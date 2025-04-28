@@ -313,7 +313,6 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
-import com.oracle.truffle.js.runtime.util.TemporalParser;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -1451,7 +1450,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw Errors.createTypeErrorNotAString(timeZoneLike);
             }
 
-            JSTemporalParserRecord timeZoneParse = new TemporalParser((TruffleString) timeZoneLike).parseTimeZoneIdentifier();
+            JSTemporalParserRecord timeZoneParse = TemporalUtil.parseTemporalTimeZoneIdentifier((TruffleString) timeZoneLike);
             if (timeZoneParse == null) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidTimeZoneString();

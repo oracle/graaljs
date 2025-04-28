@@ -202,14 +202,13 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
 
         BigInt numerator = destEpochNs.subtract(startEpochNs);
         BigInt denominator = endEpochNs.subtract(startEpochNs);
-        BigDecimal progress = new BigDecimal(numerator.bigIntegerValue()).divide(new BigDecimal(denominator.bigIntegerValue()), MathContext.DECIMAL128);
-        BigDecimal total = new BigDecimal(r1).add(progress.multiply(new BigDecimal(increment * sign)));
+        double total = computeTotal(r1, numerator, denominator, increment, sign);
 
         boolean isNegative = sign < 0;
         UnsignedRoundingMode unsignedRoundingMode = TemporalUtil.getUnsignedRoundingMode(roundingMode, isNegative);
 
         double roundedUnit;
-        if (BigDecimal.ONE.equals(progress)) {
+        if (numerator.equals(denominator)) {
             roundedUnit = Math.abs(r2);
         } else {
             // ApplyUnsignedRoundingMode(abs(total), abs(r1), abs(r2), unsignedRoundingMode)
@@ -229,20 +228,13 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
             nudgedEpochNs = startEpochNs;
         }
 
-        return new DurationNudgeResultRecord(resultDuration, total.doubleValue(), nudgedEpochNs, didExpandCalendarUnit);
+        return new DurationNudgeResultRecord(resultDuration, total, nudgedEpochNs, didExpandCalendarUnit);
     }
 
     @TruffleBoundary
-    private static double computeTotal(double r1, int increment, int sign, BigInt numerator, BigInt denominator) {
-        /*
-         * The following two steps cannot be implemented directly using floating-point arithmetic.
-         * This division can be implemented as if constructing Normalized Time Duration Records for
-         * the denominator and numerator of total and performing one division operation with a
-         * floating-point result.
-         */
+    private static double computeTotal(double r1, BigInt numerator, BigInt denominator, int increment, int sign) {
         BigDecimal progress = new BigDecimal(numerator.bigIntegerValue()).divide(new BigDecimal(denominator.bigIntegerValue()), MathContext.DECIMAL128);
-        BigDecimal total = new BigDecimal(r1).add(progress.multiply(new BigDecimal(increment * sign)));
-        return total.doubleValue();
+        return new BigDecimal(r1).add(progress.multiply(new BigDecimal(increment * sign))).doubleValue();
     }
 
     private DurationNudgeResultRecord nudgeToZonedTime(int sign, NormalizedDurationRecord duration, ISODateTimeRecord dateTime, TruffleString calendar,

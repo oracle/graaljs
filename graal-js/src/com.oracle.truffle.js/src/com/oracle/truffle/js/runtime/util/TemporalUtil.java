@@ -2436,6 +2436,7 @@ public final class TemporalUtil {
 
     // when used with Duration, double is necessary
     // e.g. from Temporal.PlainTime.prototype.add(duration);
+    @TruffleBoundary
     public static TimeRecord addTimeDouble(int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
                     double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
         var qr = JSRuntime.toBigInteger(nanoseconds).add(BigInteger.valueOf(nanosecond)).divideAndRemainder(BI_1000.bigIntegerValue());
@@ -2781,6 +2782,11 @@ public final class TemporalUtil {
         long seconds = rec.getOffsetSecond() == Long.MIN_VALUE ? 0 : rec.getOffsetSecond();
 
         return sign * (((hours * 60 + minutes) * 60 + seconds) * 1_000_000_000L + nanoseconds);
+    }
+
+    @TruffleBoundary
+    public static JSTemporalParserRecord parseTemporalTimeZoneIdentifier(TruffleString string) {
+        return new TemporalParser(string).parseTimeZoneIdentifier();
     }
 
     @TruffleBoundary
@@ -3452,6 +3458,7 @@ public final class TemporalUtil {
         }
     }
 
+    @TruffleBoundary
     public static double nanosToMillis(BigInt nanos) {
         BigInteger[] qr = nanos.bigIntegerValue().divideAndRemainder(BI_NS_PER_MS.bigIntegerValue());
         double ms = qr[0].doubleValue();
