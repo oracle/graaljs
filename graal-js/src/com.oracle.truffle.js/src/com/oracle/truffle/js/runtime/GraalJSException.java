@@ -50,6 +50,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -66,6 +67,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode.PromiseAllMarkerRootNode;
 import com.oracle.truffle.js.nodes.promise.PromiseReactionJobNode.PromiseReactionJobRootNode;
@@ -568,7 +570,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         return message;
     }
 
-    @ImportStatic({JSConfig.class})
+    @ImportStatic({JSConfig.class, JSGuards.class})
     @ExportMessage
     public static final class IsIdenticalOrUndefined {
         @Specialization
@@ -595,13 +597,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
             }
         }
 
-        @Specialization
-        public static TriState doJSObject(GraalJSException receiver, JSDynamicObject other) {
-            Object thisObj = receiver.getErrorObjectLazy();
-            if (thisObj == null) {
-                // Cannot be identical since this is lazily allocated Error.
-                return TriState.FALSE;
-            }
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"thisObj == null || isJSDynamicObject(thisObj)"})
+        public static TriState doJSObject(GraalJSException receiver, JSDynamicObject other,
+                        @Bind("receiver.getErrorObjectLazy()") Object thisObj) {
+            // If thisObj is null, the Error object is lazily allocated and cannot be identical.
             return TriState.valueOf(thisObj == other);
         }
 
