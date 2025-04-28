@@ -3011,6 +3011,30 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
+    "filePath" : "mjsunit/temporal/instant-constructor.js",
+    "status" : "FAIL",
+    "comment" : "Uses built-ins that do not exist anymore"
+  }, {
+    "filePath" : "mjsunit/temporal/instant-from-epoch-microseconds.js",
+    "status" : "FAIL",
+    "comment" : "Uses built-ins that do not exist anymore"
+  }, {
+    "filePath" : "mjsunit/temporal/instant-from-epoch-seconds.js",
+    "status" : "FAIL",
+    "comment" : "Uses built-ins that do not exist anymore"
+  }, {
+    "filePath" : "mjsunit/temporal/instant-to-json.js",
+    "status" : "FAIL",
+    "comment" : "Uses built-ins that do not exist anymore"
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-add.js",
+    "status" : "FAIL",
+    "comment" : "Uses built-ins that do not exist anymore"
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-constructor.js",
+    "status" : "FAIL",
+    "comment" : "Uses built-ins that do not exist anymore"
+  }, {
     "filePath" : "mjsunit/temporal/plain-date-from.js",
     "status" : "FAIL",
     "comment" : "Obsolete/off-spec test."
@@ -3054,6 +3078,10 @@
     "filePath" : "mjsunit/temporal/plain-date-get-inLeapYear.js",
     "status" : "FAIL",
     "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-iso-fields.js",
+    "status" : "FAIL",
+    "comment" : "Uses built-ins that do not exist anymore"
   }, {
     "filePath" : "mjsunit/temporal/plain-date-get-month.js",
     "status" : "FAIL",
@@ -3178,6 +3206,10 @@
     "filePath" : "mjsunit/temporal/plain-date-time-subtract.js",
     "status" : "FAIL",
     "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-to-plain-date.js",
+    "status" : "FAIL",
+    "comment" : "Uses built-ins that do not exist anymore"
   }, {
     "filePath" : "mjsunit/temporal/plain-date-time-to-plain-month-day.js",
     "status" : "FAIL",
