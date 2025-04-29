@@ -8,6 +8,14 @@
     ]
   },
   {
+    "name" : "com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader",
+    "methods" : [
+      { "name" : "uriToURL",
+        "justification" : "URI to URL conversion without URLStreamHandler. Only privileged call with URLStreamHandler."
+      }
+    ]
+  },
+  {
     "name" : "com.oracle.truffle.js.runtime.util.DebugJSAgent",
     "methods" : [
       { "name" : "terminate",
