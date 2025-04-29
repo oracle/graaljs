@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -211,7 +211,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 minutesPair = parseDurationIntlWithFraction(string, matcher, 8);
                 secondsPair = parseDurationIntlWithFraction(string, matcher, 9);
 
-                hoursMV = TemporalUtil.toIntegerOrInfinity(hoursPair.getFirst()).doubleValue();
+                hoursMV = TemporalUtil.toIntegerWithTruncation(hoursPair.getFirst()).doubleValue();
                 fHours = hoursPair.getSecond();
 
                 minutes = minutesPair.getFirst();
@@ -228,9 +228,9 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 assert !Strings.contains(fHours, '.');
                 TruffleString fHoursDigits = fHours; // substring(1) handled above
                 int fHoursScale = Strings.length(fHoursDigits);
-                minutesMV = new BigDecimal(TemporalUtil.toIntegerOrInfinity(fHoursDigits).doubleValue()).multiply(TemporalUtil.BD_60).scaleByPowerOfTen(-fHoursScale);
+                minutesMV = new BigDecimal(TemporalUtil.toIntegerWithTruncation(fHoursDigits).doubleValue()).multiply(TemporalUtil.BD_60).scaleByPowerOfTen(-fHoursScale);
             } else {
-                minutesMV = new BigDecimal(TemporalUtil.toIntegerOrInfinity(minutes).doubleValue());
+                minutesMV = new BigDecimal(TemporalUtil.toIntegerWithTruncation(minutes).doubleValue());
             }
             if (!empty(fMinutes)) {
                 if (!empty(seconds) || !empty(fSeconds)) {
@@ -239,9 +239,9 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 assert !Strings.contains(fMinutes, '.');
                 TruffleString fMinutesDigits = fMinutes; // substring(1) handled above
                 int fMinutesScale = Strings.length(fMinutesDigits);
-                secondsMV = new BigDecimal(TemporalUtil.toIntegerOrInfinity(fMinutesDigits).doubleValue()).multiply(TemporalUtil.BD_60).scaleByPowerOfTen(-fMinutesScale);
+                secondsMV = new BigDecimal(TemporalUtil.toIntegerWithTruncation(fMinutesDigits).doubleValue()).multiply(TemporalUtil.BD_60).scaleByPowerOfTen(-fMinutesScale);
             } else if (!empty(seconds)) {
-                secondsMV = new BigDecimal(TemporalUtil.toIntegerOrInfinity(seconds).doubleValue());
+                secondsMV = new BigDecimal(TemporalUtil.toIntegerWithTruncation(seconds).doubleValue());
             } else {
                 secondsMV = minutesMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_60);
             }
@@ -250,7 +250,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 assert !Strings.contains(fSeconds, '.'); // substring(1) handled above
                 TruffleString fSecondsDigits = fSeconds;
                 int fSecondsScale = Strings.length(fSecondsDigits);
-                millisecondsMV = TemporalUtil.BD_1000.multiply(BigDecimal.valueOf(TemporalUtil.toIntegerOrInfinity(fSecondsDigits).longValue())).divide(
+                millisecondsMV = TemporalUtil.BD_1000.multiply(BigDecimal.valueOf(TemporalUtil.toIntegerWithTruncation(fSecondsDigits).longValue())).divide(
                                 TemporalUtil.BD_10.pow(fSecondsScale));
             } else {
                 millisecondsMV = secondsMV.remainder(BigDecimal.ONE, TemporalUtil.mc_20_floor).multiply(TemporalUtil.BD_1000, TemporalUtil.mc_20_floor);

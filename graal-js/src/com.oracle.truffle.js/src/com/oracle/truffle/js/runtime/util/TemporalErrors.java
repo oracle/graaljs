@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -245,11 +245,6 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createTypeErrorObjectExpected() {
         return Errors.createTypeError("Object expected");
-    }
-
-    @TruffleBoundary
-    public static JSException createRangeErrorUnexpectedUTCDesignator() {
-        return Errors.createRangeError("UTCDesignator Z not allowed");
     }
 
     @TruffleBoundary

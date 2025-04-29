@@ -124,7 +124,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, overflow, dateFromFieldsNode);
         } else if (item instanceof TruffleString string) {
-            result = TemporalUtil.parseTemporalDateTimeString(string);
+            result = TemporalUtil.parseTemporalDateTimeString(false, string);
             assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
             assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
             calendar = result.getCalendar();

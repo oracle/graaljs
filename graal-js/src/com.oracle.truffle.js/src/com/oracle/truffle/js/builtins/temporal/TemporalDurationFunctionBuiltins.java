@@ -185,13 +185,13 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                 days1 = one.getDays();
                 days2 = two.getDays();
             }
-            BigInt ns1 = TemporalUtil.totalDurationNanoseconds(days1,
-                            one.getHours(), one.getMinutes(), one.getSeconds(),
+            BigInt timeDuration1 = TemporalUtil.normalizeTimeDuration(one.getHours(), one.getMinutes(), one.getSeconds(),
                             one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds());
-            BigInt ns2 = TemporalUtil.totalDurationNanoseconds(days2,
-                            two.getHours(), two.getMinutes(), two.getSeconds(),
+            timeDuration1 = TemporalUtil.add24HourDaysToNormalizedTimeDuration(timeDuration1, days1);
+            BigInt timeDuration2 = TemporalUtil.normalizeTimeDuration(two.getHours(), two.getMinutes(), two.getSeconds(),
                             two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
-            return ns1.compareTo(ns2);
+            timeDuration2 = TemporalUtil.add24HourDaysToNormalizedTimeDuration(timeDuration2, days2);
+            return timeDuration1.compareTo(timeDuration2);
         }
     }
 

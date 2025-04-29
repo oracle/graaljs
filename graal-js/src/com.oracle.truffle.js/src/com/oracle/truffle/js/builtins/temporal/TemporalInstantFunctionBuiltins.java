@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,9 +70,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
 
     public enum TemporalInstantFunction implements BuiltinEnum<TemporalInstantFunction> {
         from(1),
-        fromEpochSeconds(1),
         fromEpochMilliseconds(1),
-        fromEpochMicroseconds(1),
         fromEpochNanoseconds(1),
         compare(2);
 
@@ -93,12 +91,8 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         switch (builtinEnum) {
             case from:
                 return JSTemporalInstantFromNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case fromEpochSeconds:
-                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, TemporalUtil.BI_NS_PER_SECOND, true, args().fixedArgs(1).createArgumentNodes(context));
             case fromEpochMilliseconds:
                 return JSTemporalInstantFromEpochNodeGen.create(context, builtin, TemporalUtil.BI_NS_PER_MS, true, args().fixedArgs(1).createArgumentNodes(context));
-            case fromEpochMicroseconds:
-                return JSTemporalInstantFromEpochNodeGen.create(context, builtin, TemporalUtil.BI_1000, false, args().fixedArgs(1).createArgumentNodes(context));
             case fromEpochNanoseconds:
                 return JSTemporalInstantFromEpochNodeGen.create(context, builtin, BigInt.ONE, false, args().fixedArgs(1).createArgumentNodes(context));
             case compare:

@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -66,6 +67,8 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -82,16 +85,19 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     public abstract JSTemporalPlainMonthDayObject execute(Object item, Object optParam);
 
     @Specialization
-    public JSTemporalPlainMonthDayObject toTemporalMonthDay(Object item, Object options,
+    public JSTemporalPlainMonthDayObject iso8601CalendarProfile(Object item, Object options,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
-                    @Cached InlinedConditionProfile returnPlainMonthDay,
+                    @Cached InlinedConditionProfile iso8601CalendarProfile,
                     @Cached InlinedConditionProfile getCalendarPath,
                     @Cached IsObjectNode isObjectNode,
                     @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsObject,
                     @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                     @Cached TemporalGetOptionNode temporalGetOptionNode,
-                    @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode) {
+                    @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaString,
+                    @Cached TruffleString.FromJavaStringNode fromJavaString,
+                    @Cached TruffleString.EqualNode stringEqual) {
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
@@ -103,6 +109,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                 return JSTemporalPlainMonthDay.create(ctx, realm,
                                 pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear(), this, errorBranch);
             }
+            // GetTemporalCalendarIdentifierWithISODefault
             TruffleString calendar;
             if (getCalendarPath.profile(this, JSTemporalPlainDate.isJSTemporalPlainDate(itemObj) ||
                             JSTemporalPlainDateTime.isJSTemporalPlainDateTime(itemObj) ||
@@ -112,7 +119,11 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                 calendar = ((JSTemporalCalendarHolder) itemObj).getCalendar();
             } else {
                 Object calendarLike = getCalendar(itemObj);
-                calendar = toCalendarSlotValue.execute(calendarLike);
+                if (calendarLike == Undefined.instance) {
+                    calendar = TemporalConstants.ISO8601;
+                } else {
+                    calendar = toCalendarSlotValue.execute(calendarLike);
+                }
             }
 
             List<TruffleString> fieldNames = TemporalUtil.listDMMCY;
@@ -125,13 +136,13 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
             TruffleString calendar = result.getCalendar();
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
-            }
-            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
-                throw Errors.createRangeError("built-in calendar expected");
+            } else {
+                String calendarJLS = toJavaString.execute(calendar);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
             }
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, temporalGetOptionNode);
-            if (returnPlainMonthDay.profile(this, result.getYear() == Integer.MIN_VALUE)) {
+            if (iso8601CalendarProfile.profile(this, Strings.equals(stringEqual, calendar, TemporalConstants.ISO8601))) {
                 int referenceISOYear = 1972;
                 return JSTemporalPlainMonthDay.create(ctx, realm, result.getMonth(), result.getDay(), calendar, referenceISOYear, this, errorBranch);
             }

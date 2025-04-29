@@ -539,6 +539,10 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (maximum != null) {
                 TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, false, node, errorBranch);
             }
+            if (roundingIncrement > 1 && largestUnit != smallestUnit && smallestUnit.isDateUnit()) {
+                errorBranch.enter(node);
+                throw Errors.createRangeError("For calendar units with roundingIncrement > 1, use largestUnit = smallestUnit");
+            }
 
             boolean roundingGranularityIsNoop = smallestUnit == Unit.NANOSECOND && roundingIncrement == 1;
             boolean calendarUnitsPresent = duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0;
@@ -811,6 +815,11 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 var time = TemporalUtil.balanceTimeDuration(norm, TemporalUtil.largerOfTwoTemporalUnits(largestUnit, Unit.SECOND));
                 result = JSTemporalDurationRecord.createWeeks(duration.getYears(), duration.getMonths(), duration.getWeeks(),
                                 duration.getDays() + time.days(), time.hours(), time.minutes(), time.seconds(), time.milliseconds(), time.microseconds(), time.nanoseconds());
+                if (!TemporalUtil.isValidDuration(result.getYears(), result.getMonths(), result.getWeeks(),
+                                result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds())) {
+                    errorBranch.enter(this);
+                    throw TemporalErrors.createTypeErrorDurationOutsideRange();
+                }
             } else {
                 result = JSTemporalDurationRecord.create(duration);
             }

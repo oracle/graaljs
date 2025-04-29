@@ -190,30 +190,35 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
             var startDateTime = JSTemporalPlainDateTime.create(ctx, realm, start.getYear(), start.getMonth(), start.getDay(),
                             start.getHour(), start.getMinute(), start.getSecond(), start.getMillisecond(), start.getMicrosecond(), start.getNanosecond(),
                             calendar, this, errorBranch);
-            startEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
+            startEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
             var endDateTime = JSTemporalPlainDateTime.create(ctx, realm, end.getYear(), end.getMonth(), end.getDay(),
                             end.getHour(), end.getMinute(), end.getSecond(), end.getMillisecond(), end.getMicrosecond(), end.getNanosecond(),
                             calendar, this, errorBranch);
-            endEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
+            endEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
         }
         if (startEpochNs.compareTo(endEpochNs) == 0) {
             throw Errors.createRangeError("custom calendar method returned an illegal result");
         }
-        boolean isNegative = sign < 0;
-        UnsignedRoundingMode unsignedRoundingMode = TemporalUtil.getUnsignedRoundingMode(roundingMode, isNegative);
 
         BigInt numerator = destEpochNs.subtract(startEpochNs);
         BigInt denominator = endEpochNs.subtract(startEpochNs);
-        double total = computeTotal(r1, increment, sign, numerator, denominator);
-        // Let roundedUnit be ApplyUnsignedRoundingMode(total, r1, r2, unsignedRoundingMode).
-        double roundedUnit = TemporalUtil.applyUnsignedRoundingMode(numerator, denominator, r1, r2, unsignedRoundingMode);
-        // Possible spec bug: roundedSign = (roundedUnit - total < 0 ? -1 : 1).
-        int roundedSign = Double.compare(roundedUnit - total, 0);
+        double total = computeTotal(r1, numerator, denominator, increment, sign);
+
+        boolean isNegative = sign < 0;
+        UnsignedRoundingMode unsignedRoundingMode = TemporalUtil.getUnsignedRoundingMode(roundingMode, isNegative);
+
+        double roundedUnit;
+        if (numerator.equals(denominator)) {
+            roundedUnit = Math.abs(r2);
+        } else {
+            // ApplyUnsignedRoundingMode(abs(total), abs(r1), abs(r2), unsignedRoundingMode)
+            roundedUnit = TemporalUtil.applyUnsignedRoundingMode(numerator.abs(), denominator.abs(), Math.abs(r1), Math.abs(r2), unsignedRoundingMode);
+        }
 
         boolean didExpandCalendarUnit;
         NormalizedDurationRecord resultDuration;
         BigInt nudgedEpochNs;
-        if (roundedSign == sign) {
+        if (roundedUnit == Math.abs(r2)) {
             didExpandCalendarUnit = true;
             resultDuration = endDuration;
             nudgedEpochNs = endEpochNs;
@@ -222,20 +227,14 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
             resultDuration = startDuration;
             nudgedEpochNs = startEpochNs;
         }
+
         return new DurationNudgeResultRecord(resultDuration, total, nudgedEpochNs, didExpandCalendarUnit);
     }
 
     @TruffleBoundary
-    private static double computeTotal(double r1, int increment, int sign, BigInt numerator, BigInt denominator) {
-        /*
-         * The following two steps cannot be implemented directly using floating-point arithmetic.
-         * This division can be implemented as if constructing Normalized Time Duration Records for
-         * the denominator and numerator of total and performing one division operation with a
-         * floating-point result.
-         */
+    private static double computeTotal(double r1, BigInt numerator, BigInt denominator, int increment, int sign) {
         BigDecimal progress = new BigDecimal(numerator.bigIntegerValue()).divide(new BigDecimal(denominator.bigIntegerValue()), MathContext.DECIMAL128);
-        BigDecimal total = new BigDecimal(r1).add(progress.multiply(new BigDecimal(increment * sign)));
-        return total.doubleValue();
+        return new BigDecimal(r1).add(progress.multiply(new BigDecimal(increment * sign))).doubleValue();
     }
 
     private DurationNudgeResultRecord nudgeToZonedTime(int sign, NormalizedDurationRecord duration, ISODateTimeRecord dateTime, TruffleString calendar,
@@ -255,8 +254,8 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
         var endDateTime = JSTemporalPlainDateTime.create(ctx, realm, endDate.year(), endDate.month(), endDate.day(),
                         start.getHour(), start.getMinute(), start.getSecond(), start.getMillisecond(), start.getMicrosecond(), start.getNanosecond(),
                         calendar, this, errorBranch);
-        BigInt startEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
-        BigInt endEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
+        BigInt startEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
+        BigInt endEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
 
         BigInt daySpan = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(endEpochNs, startEpochNs);
         assert TemporalUtil.normalizedTimeDurationSign(daySpan) == sign;
@@ -353,7 +352,7 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
                 var endDateTime = JSTemporalPlainDateTime.create(ctx, realm, end.getYear(), end.getMonth(), end.getDay(),
                                 end.getHour(), end.getMinute(), end.getSecond(), end.getMillisecond(), end.getMicrosecond(), end.getNanosecond(),
                                 calendar, this, errorBranch);
-                endEpochNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
+                endEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, endDateTime, Disambiguation.COMPATIBLE);
             }
             BigInt beyondEnd = nudgedEpochNs.subtract(endEpochNs);
             int beyondEndSign = beyondEnd.signum();

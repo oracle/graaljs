@@ -66,7 +66,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeUntilSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeWithNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerWithTruncationNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
@@ -242,8 +242,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
                             temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
                             sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
-                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds(),
-                            this, errorBranch);
+                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
             assert TemporalUtil.isValidTime(result.hour(), result.minute(), result.second(), result.millisecond(), result.microsecond(), result.nanosecond());
             return JSTemporalPlainTime.create(getContext(), getRealm(),
                             result.hour(), result.minute(), result.second(), result.millisecond(), result.microsecond(), result.nanosecond(),
@@ -266,7 +265,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected JSTemporalPlainTimeObject with(JSTemporalPlainTimeObject temporalTime, Object temporalTimeLike, Object options,
                         @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntThrows,
+                        @Cached JSToIntegerWithTruncationNode toIntegerWithTruncation,
                         @Cached JSToIntegerAsIntNode toInt,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -276,7 +275,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
-            JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(temporalTimeLike, toIntThrows, getContext());
+            JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(temporalTimeLike, toIntegerWithTruncation, getContext());
             int hour;
             int minute;
             int second;
@@ -410,7 +409,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, false, this, errorBranch);
             TimeRecord result = TemporalUtil.roundTime(temporalTime.getHour(), temporalTime.getMinute(),
                             temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
-                            temporalTime.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
+                            temporalTime.getNanosecond(), roundingIncrement, smallestUnit, roundingMode);
             return JSTemporalPlainTime.create(getContext(), getRealm(),
                             result.hour(), result.minute(), result.second(), result.millisecond(), result.microsecond(), result.nanosecond(),
                             this, errorBranch);
@@ -500,8 +499,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
             TimeRecord roundResult = TemporalUtil.roundTime(temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
                             temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
-                            precision.getIncrement(), precision.getUnit(), roundingMode,
-                            null);
+                            precision.getIncrement(), precision.getUnit(), roundingMode);
             return JSTemporalPlainTime.temporalTimeToString(
                             roundResult.hour(), roundResult.minute(), roundResult.second(), roundResult.millisecond(), roundResult.microsecond(), roundResult.nanosecond(),
                             precision.getPrecision());

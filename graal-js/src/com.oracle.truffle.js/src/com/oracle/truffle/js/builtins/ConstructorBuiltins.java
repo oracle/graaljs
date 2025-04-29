@@ -170,7 +170,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerWithTruncationNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -194,8 +194,6 @@ import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
@@ -284,6 +282,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
@@ -308,9 +307,11 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -1152,16 +1153,30 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalPlainDate(JSDynamicObject newTarget, Object isoYear, Object isoMonth,
                         Object isoDay, Object calendarLike,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
+                        @Cached JSToIntegerWithTruncationNode toIntegerNode,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
-            final int y = toIntegerNode.executeIntOrThrow(isoYear);
-            final int m = toIntegerNode.executeIntOrThrow(isoMonth);
-            final int d = toIntegerNode.executeIntOrThrow(isoDay);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            double y = toIntegerNode.executeDouble(isoYear);
+            double m = toIntegerNode.executeDouble(isoMonth);
+            double d = toIntegerNode.executeDouble(isoDay);
+            TruffleString calendar;
+            if (calendarLike == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarLike instanceof TruffleString calendarTS) {
+                String calendarJLS = toJavaString.execute(calendarTS);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarLike);
+            }
+            if (!TemporalUtil.isValidISODate(y, m, d)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+            }
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSTemporalPlainDate.create(getContext(), realm, proto, y, m, d, calendar, this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), realm, proto, (int) y, (int) m, (int) d, calendar, this, errorBranch);
         }
 
         @Override
@@ -1181,13 +1196,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode) {
-            final int hour = toIntegerNode.executeIntOrThrow(hourObj);
-            final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
-            final int second = toIntegerNode.executeIntOrThrow(secondObj);
-            final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
-            final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
-            final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
+                        @Cached JSToIntegerWithTruncationNode toIntegerNode) {
+            final int hour = (hourObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(hourObj);
+            final int minute = (minuteObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(minuteObj);
+            final int second = (secondObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(secondObj);
+            final int millisecond = (millisecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(millisecondObject);
+            final int microsecond = (microsecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(microsecondObject);
+            final int nanosecond = (nanosecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(nanosecondObject);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainTime.create(getContext(), realm, proto,
@@ -1210,24 +1225,46 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainDateTime(JSDynamicObject newTarget, Object yearObj, Object monthObj, Object dayObj, Object hourObj, Object minuteObj,
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject, Object calendarLike,
-                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
+                        @Cached JSToIntegerWithTruncationNode toIntegerNode,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
-            final int year = toIntegerNode.executeIntOrThrow(yearObj);
-            final int month = toIntegerNode.executeIntOrThrow(monthObj);
-            final int day = toIntegerNode.executeIntOrThrow(dayObj);
+            int isoYear = toIntegerNode.executeIntOrThrow(yearObj);
+            int isoMonth = toIntegerNode.executeIntOrThrow(monthObj);
+            int isoDay = toIntegerNode.executeIntOrThrow(dayObj);
 
-            final int hour = toIntegerNode.executeIntOrThrow(hourObj);
-            final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
-            final int second = toIntegerNode.executeIntOrThrow(secondObj);
-            final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
-            final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
-            final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            int hour = (hourObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(hourObj);
+            int minute = (minuteObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(minuteObj);
+            int second = (secondObj == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(secondObj);
+            int millisecond = (millisecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(millisecondObject);
+            int microsecond = (microsecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(microsecondObject);
+            int nanosecond = (nanosecondObject == Undefined.instance) ? 0 : toIntegerNode.executeIntOrThrow(nanosecondObject);
+
+            TruffleString calendar;
+            if (calendarLike == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarLike instanceof TruffleString calendarTS) {
+                String calendarJLS = toJavaString.execute(calendarTS);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarLike);
+            }
+
+            if (!TemporalUtil.isValidISODate(isoYear, isoMonth, isoDay)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+            }
+
+            if (!TemporalUtil.isValidTime(hour, minute, second, millisecond, microsecond, nanosecond)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+            }
+
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainDateTime.create(getContext(), realm, proto,
-                            year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, this, errorBranch);
+                            isoYear, isoMonth, isoDay, hour, minute, second, millisecond, microsecond, nanosecond, calendar, this, errorBranch);
         }
 
         @Override
@@ -1280,17 +1317,31 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainYearMonth(JSDynamicObject newTarget, Object isoYear,
                         Object isoMonth, Object calendarLike, Object refISODay,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached JSToIntegerThrowOnInfinityNode toInteger,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue) {
+                        @Cached JSToIntegerWithTruncationNode toInteger,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString) {
 
             Object referenceISODay = refISODay;
-            if (referenceISODay == Undefined.instance || referenceISODay == null) {
+            if (referenceISODay == Undefined.instance) {
                 referenceISODay = 1;
             }
             int y = toInteger.executeIntOrThrow(isoYear);
             int m = toInteger.executeIntOrThrow(isoMonth);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar;
+            if (calendarLike == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarLike instanceof TruffleString calendarTS) {
+                String calendarJLS = toJavaString.execute(calendarTS);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarLike);
+            }
             int ref = toInteger.executeIntOrThrow(referenceISODay);
+            if (!TemporalUtil.isValidISODate(y, m, ref)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
+            }
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSTemporalPlainYearMonth.create(getContext(), realm, proto, y, m, calendar, ref, this, errorBranch);
@@ -1310,21 +1361,40 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalPlainMonthDay(JSDynamicObject newTarget, Object isoMonth,
-                        Object isoDay, Object calendarLike, Object refISOYear,
+                        Object isoDay, Object calendarParam, Object referenceISOYear,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached JSToIntegerThrowOnInfinityNode toInt,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue) {
-            Object referenceISOYear = refISOYear;
-            if (referenceISOYear == Undefined.instance || referenceISOYear == null) {
-                referenceISOYear = 1972;
-            }
+                        @Cached JSToIntegerWithTruncationNode toInt,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString) {
             int m = toInt.executeIntOrThrow(isoMonth);
             int d = toInt.executeIntOrThrow(isoDay);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
-            int ref = toInt.executeIntOrThrow(referenceISOYear); // non-spec
+
+            TruffleString calendar;
+            if (calendarParam == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarParam instanceof TruffleString calendarTS) {
+                String calendarJLS = IntlUtil.canonicalizeCalendar(toJavaString.execute(calendarTS));
+                calendar = Strings.fromJavaString(fromJavaString, calendarJLS);
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarParam);
+            }
+
+            int y;
+            if (referenceISOYear == Undefined.instance) {
+                y = 1972;
+            } else {
+                y = toInt.executeIntOrThrow(referenceISOYear);
+            }
+
+            if (!TemporalUtil.isValidISODate(y, m, d)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
+            }
+
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSTemporalPlainMonthDay.create(getContext(), realm, proto, m, d, calendar, ref, this, errorBranch);
+            return JSTemporalPlainMonthDay.create(getContext(), realm, proto, m, d, calendar, y, this, errorBranch);
         }
 
         @Override
@@ -1366,17 +1436,48 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalZonedDateTime(JSDynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
-                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
-                        @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached JSToBigIntNode toBigIntNode,
+                        @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
             BigInt ns = toBigIntNode.executeBigInteger(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(ns)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            TruffleString timeZone = toTimeZoneIdentifier.execute(timeZoneLike);
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            if (!(timeZoneLike instanceof TruffleString)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(timeZoneLike);
+            }
+
+            JSTemporalParserRecord timeZoneParse = TemporalUtil.parseTemporalTimeZoneIdentifier((TruffleString) timeZoneLike);
+            if (timeZoneParse == null) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+            }
+
+            TruffleString timeZone;
+            if (timeZoneParse.getTimeZoneIANAName() == null) {
+                timeZone = TemporalUtil.formatTimeZoneOffsetString(TemporalUtil.parseTimeZoneOffsetNs(timeZoneParse));
+            } else {
+                var identifierRecord = TemporalUtil.getAvailableNamedTimeZoneIdentifier(timeZoneParse.getTimeZoneIANAName());
+                if (identifierRecord == null) {
+                    errorBranch.enter(this);
+                    throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+                }
+                timeZone = identifierRecord.getFirst();
+            }
+
+            TruffleString calendar;
+            if (calendarLike == Undefined.instance) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (calendarLike instanceof TruffleString calendarTS) {
+                String calendarJLS = toJavaString.execute(calendarTS);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAString(calendarLike);
+            }
 
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);

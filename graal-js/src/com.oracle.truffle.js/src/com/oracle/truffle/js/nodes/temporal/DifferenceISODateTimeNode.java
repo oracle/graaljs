@@ -76,27 +76,27 @@ public abstract class DifferenceISODateTimeNode extends JavaScriptBaseNode {
                     int y1, int mon1, int d1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
                     TruffleString calendar, Unit largestUnit,
-                    @Cached TemporalDifferenceDateNode differenceDate) {
+                    @Cached InlinedBranchProfile errorBranch) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
 
         BigInt timeDuration = TemporalUtil.differenceTime(h1, min1, s1, ms1, mus1, ns1, h2, min2, s2, ms2, mus2, ns2);
         int timeSign = TemporalUtil.normalizedTimeDurationSign(timeDuration);
-        int dateSign = TemporalUtil.compareISODate(y2, mon2, d2, y1, mon1, d1);
+        int dateSign = TemporalUtil.compareISODate(y1, mon1, d1, y2, mon2, d2);
 
-        ISODateRecord adjustedDate = TemporalUtil.createISODateRecord(y1, mon1, d1);
-        if (timeSign == -dateSign) {
-            adjustedDate = TemporalUtil.balanceISODate(adjustedDate.year(), adjustedDate.month(), adjustedDate.day() - timeSign);
+        ISODateRecord adjustedDate = TemporalUtil.createISODateRecord(y2, mon2, d2);
+        if (timeSign == dateSign) {
+            adjustedDate = TemporalUtil.balanceISODate(adjustedDate.year(), adjustedDate.month(), adjustedDate.day() + timeSign);
             timeDuration = TemporalUtil.add24HourDaysToNormalizedTimeDuration(timeDuration, -timeSign);
         }
 
-        var date1 = JSTemporalPlainDate.create(ctx, realm, adjustedDate.year(), adjustedDate.month(), adjustedDate.day(), calendar, null,
-                        InlinedBranchProfile.getUncached());
-        var date2 = JSTemporalPlainDate.create(ctx, realm, y2, mon2, d2, calendar, null, InlinedBranchProfile.getUncached());
-
         Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.DAY, largestUnit);
 
-        JSTemporalDurationObject dateDifference = differenceDate.execute(calendar, date1, date2, dateLargestUnit);
+        var date1 = JSTemporalPlainDate.create(ctx, realm, y1, mon1, d1, calendar, this, errorBranch);
+        var date2 = JSTemporalPlainDate.create(ctx, realm, adjustedDate.year(), adjustedDate.month(), adjustedDate.day(), calendar, this,
+                        errorBranch);
+
+        JSTemporalDurationObject dateDifference = TemporalUtil.calendarDateUntil(ctx, realm, calendar, date1, date2, largestUnit, this, errorBranch);
         double days = dateDifference.getDays();
         if (largestUnit != dateLargestUnit) {
             timeDuration = TemporalUtil.add24HourDaysToNormalizedTimeDuration(timeDuration, days);

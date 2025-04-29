@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,10 +56,10 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * This implements ToIntegerThrowOnInfinity (via Temporal proposal).
+ * This implements ToIntegerWithTruncation (via Temporal proposal).
  */
 @ImportStatic(JSGuards.class)
-public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode {
+public abstract class JSToIntegerWithTruncationNode extends JavaScriptBaseNode {
 
     private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile isIntProfile = BranchProfile.create();
@@ -105,8 +105,8 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     }
 
     @NeverDefault
-    public static JSToIntegerThrowOnInfinityNode create() {
-        return JSToIntegerThrowOnInfinityNodeGen.create();
+    public static JSToIntegerWithTruncationNode create() {
+        return JSToIntegerWithTruncationNodeGen.create();
     }
 
     @Specialization
@@ -130,15 +130,16 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     }
 
     @Specialization
-    protected long doDoubleInfinite(double value) {
-        if (Double.isNaN(value) || value == 0d) {
-            return 0;
-        }
+    protected double doDouble(double value) {
         if (Double.isInfinite(value)) {
             errorBranch.enter();
-            throw Errors.createRangeError("infinity not allowed");
+            throw Errors.createRangeError("infinity cannot be converted to integer");
         }
-        return (long) value;
+        if (Double.isNaN(value)) {
+            errorBranch.enter();
+            throw Errors.createRangeError("NaN cannot be converted to integer");
+        }
+        return JSRuntime.truncateDouble(value);
     }
 
     @Specialization(guards = "isJSNull(value)")
@@ -148,7 +149,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
 
     @Specialization(guards = "isUndefined(value)")
     protected static int doUndefined(@SuppressWarnings("unused") Object value) {
-        return 0;
+        throw Errors.createRangeError("undefined cannot be converted to integer");
     }
 
     @Specialization
@@ -163,15 +164,15 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
 
     @Specialization
     protected Number doString(TruffleString value,
-                    @Shared @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
+                    @Shared @Cached JSToIntegerWithTruncationNode toIntegerWithTruncation,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return (Number) toIntOrInf.execute(stringToNumberNode.execute(value));
+        return (Number) toIntegerWithTruncation.execute(stringToNumberNode.execute(value));
     }
 
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)")
     protected Number doJSOrForeignObject(Object value,
-                    @Shared @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
+                    @Shared @Cached JSToIntegerWithTruncationNode toIntegerWithTruncation,
                     @Cached JSToNumberNode toNumberNode) {
-        return (Number) toIntOrInf.execute(toNumberNode.executeNumber(value));
+        return (Number) toIntegerWithTruncation.execute(toNumberNode.executeNumber(value));
     }
 }

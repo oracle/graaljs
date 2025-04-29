@@ -113,7 +113,7 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
                             intermediateDate.year(), intermediateDate.month(), intermediateDate.day(),
                             startDateTime.getHour(), startDateTime.getMinute(), startDateTime.getSecond(),
                             startDateTime.getMillisecond(), startDateTime.getMicrosecond(), startDateTime.getNanosecond(), calendar);
-            BigInt intermediateNs = TemporalUtil.builtinTimeZoneGetInstantFor(ctx, realm, timeZone, intermediateDateTime, Disambiguation.COMPATIBLE);
+            BigInt intermediateNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, intermediateDateTime, Disambiguation.COMPATIBLE);
             norm = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(ns2, intermediateNs);
             int timeSign = TemporalUtil.normalizedTimeDurationSign(norm);
             if (sign != -timeSign) {

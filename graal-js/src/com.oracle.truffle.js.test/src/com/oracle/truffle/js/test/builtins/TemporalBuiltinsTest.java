@@ -545,7 +545,7 @@ public class TemporalBuiltinsTest extends JSTest {
                 ctx.enter();
                 ctx.initialize(ID);
                 TemporalParser parser = new TemporalParser(Strings.fromJavaString("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]"));
-                JSTemporalParserRecord rec = parser.parseISODateTime();
+                JSTemporalParserRecord rec = parser.parseTemporalInstantString();
                 assertEquals(2019, rec.getYear());
                 assertEquals(11, rec.getMonth());
                 assertEquals(18, rec.getDay());
@@ -685,7 +685,7 @@ public class TemporalBuiltinsTest extends JSTest {
                         "pt.hour === 8 && pt.minute === 44 && pt.second === 15 && pt.millisecond === 321;";
         testTrue(code);
 
-        testFail("Temporal.PlainTime.from('08:44:15.321 ');", "cannot parse the ISO date time string");
+        testFail("Temporal.PlainTime.from('08:44:15.321 ');", "cannot parse");
     }
 
     // test the different branches of TimeSpecWithOptionalTimeZoneNotAmbiguous

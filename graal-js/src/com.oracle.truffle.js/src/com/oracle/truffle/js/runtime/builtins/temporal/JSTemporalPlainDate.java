@@ -48,13 +48,11 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -64,9 +62,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -139,85 +135,6 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSTemporalPlainDateObject(shape, proto, year, month, day, calendar), realm, proto);
         return factory.trackAllocation(newObj);
-    }
-
-    @TruffleBoundary
-    public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, Unit largestUnit) {
-        assert largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY;
-        if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
-            int sign = -TemporalUtil.compareISODate(y1, m1, d1, y2, m2, d2);
-            if (sign == 0) {
-                return toRecordWeeksPlural(0, 0, 0, 0);
-            }
-            ISODateRecord start = new ISODateRecord(y1, m1, d1);
-            ISODateRecord end = new ISODateRecord(y2, m2, d2);
-            int years = end.year() - start.year();
-            ISODateRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, Overflow.CONSTRAIN);
-            int midSign = -TemporalUtil.compareISODate(mid.year(), mid.month(), mid.day(), y2, m2, d2);
-            if (midSign == 0) {
-                if (largestUnit == Unit.YEAR) {
-                    return toRecordWeeksPlural(years, 0, 0, 0);
-                } else {
-                    return toRecordWeeksPlural(0, years * 12, 0, 0); // sic!
-                }
-            }
-            int months = end.month() - start.month();
-            if (midSign != sign) {
-                years = years - sign;
-                months = months + (sign * 12);
-            }
-            mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, Overflow.CONSTRAIN);
-            midSign = -TemporalUtil.compareISODate(mid.year(), mid.month(), mid.day(), y2, m2, d2);
-            if (midSign == 0) {
-                if (largestUnit == Unit.YEAR) {
-                    return toRecordPlural(years, months, 0);
-                } else {
-                    return toRecordWeeksPlural(0, months + (years * 12), 0, 0); // sic!
-                }
-            }
-            if (midSign != sign) {
-                months = months - sign;
-                if (months == -sign) {
-                    years = years - sign;
-                    months = 11 * sign;
-                }
-                mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, Overflow.CONSTRAIN);
-                midSign = -TemporalUtil.compareISODate(mid.year(), mid.month(), mid.day(), y2, m2, d2);
-            }
-            int days = 0;
-            if (mid.month() == end.month() && mid.year() == end.year()) {
-                days = end.day() - mid.day();
-            } else if (sign < 0) {
-                days = -mid.day() - (TemporalUtil.isoDaysInMonth(end.year(), end.month()) - end.day());
-            } else {
-                days = end.day() + (TemporalUtil.isoDaysInMonth(mid.year(), mid.month()) - mid.day());
-            }
-            if (largestUnit == Unit.MONTH) {
-                months = months + (years * 12);
-                years = 0;
-            }
-            return toRecordWeeksPlural(years, months, 0, days);
-        }
-        if (largestUnit == Unit.DAY || largestUnit == Unit.WEEK) {
-            double epochDays1 = JSDate.makeDay(y1, m1 - 1, d1);
-            double epochDays2 = JSDate.makeDay(y2, m2 - 1, d2);
-            int days = TemporalUtil.dtoi(epochDays2 - epochDays1);
-            int weeks = 0;
-            if (largestUnit == Unit.WEEK) {
-                weeks = (int) TemporalUtil.roundTowardsZero(days / 7.0);
-                days = days % 7;
-            }
-            return toRecordWeeksPlural(0, 0, weeks, days);
-        }
-        throw Errors.shouldNotReachHereUnexpectedValue(largestUnit);
-    }
-
-    private static JSTemporalDurationRecord toRecordPlural(long year, long month, long day) {
-        return JSTemporalDurationRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
-    }
-
-    private static JSTemporalDurationRecord toRecordWeeksPlural(long year, long month, long weeks, long day) {
-        return JSTemporalDurationRecord.createWeeks(year, month, weeks, day, 0, 0, 0, 0, 0, 0);
     }
 
     @TruffleBoundary

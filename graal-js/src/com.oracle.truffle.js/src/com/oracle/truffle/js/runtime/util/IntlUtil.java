@@ -195,12 +195,14 @@ public final class IntlUtil {
     public static final String NARROW_SYMBOL = "narrowSymbol";
     public static final String NEGATIVE = "negative";
     public static final String NEVER = "never";
+    public static final String NEXT = "next";
     public static final String NONE = "none";
     public static final String NOTATION = "notation";
     public static final String NUMERIC = "numeric";
     public static final String NUMBERING_SYSTEM = "numberingSystem";
     public static final String ORDINAL = "ordinal";
     public static final String PERCENT = "percent";
+    public static final String PREVIOUS = "previous";
     public static final String PLURAL_CATEGORIES = "pluralCategories";
     public static final String PLUS_SIGN = "plusSign";
     public static final String QUARTER = "quarter";
@@ -891,6 +893,15 @@ public final class IntlUtil {
         String[] calendars = availableCalendars(ULocale.ROOT, false);
         Arrays.sort(calendars);
         return calendars;
+    }
+
+    @TruffleBoundary
+    public static String canonicalizeCalendar(String id) {
+        String lcID = id.toLowerCase(Locale.ROOT);
+        if (Arrays.binarySearch(availableCalendars(), lcID) < 0) {
+            throw Errors.createRangeErrorInvalidCalendar(id);
+        }
+        return normalizeCAType(lcID);
     }
 
     // The returned collations are supposed to be "lower case String values conforming to the
