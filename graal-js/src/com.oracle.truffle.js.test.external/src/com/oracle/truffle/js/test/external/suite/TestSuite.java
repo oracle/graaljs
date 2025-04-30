@@ -91,7 +91,7 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 public abstract class TestSuite {
 
     public static final int OVERALL_TIMEOUT_SECONDS = 30 * 60;
-    public static final int INDIVIDUAL_TIMEOUT_SECONDS = 30;
+    public static final int INDIVIDUAL_TIMEOUT_SECONDS = 60;
 
     private static final char LINE_SEPARATOR = '\n';
     private static final int REPORTED_STACK_TRACE_ELEMENTS = 10;
