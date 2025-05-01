@@ -1385,23 +1385,30 @@ public final class TemporalUtil {
         return JSTemporalPlainDate.create(context, realm, result.year(), result.month(), result.day(), calendar, node, errorBranch);
     }
 
+    // This method implements CalendarDateUntil() operation. Unfortunately,
+    // the algorithm used by the specification is very slow. So, we use
+    // an optimized version of this algorithm (i.e. we use slightly different
+    // steps than the specification).
     public static JSTemporalDurationObject calendarDateUntil(JSContext context, JSRealm realm, @SuppressWarnings("unused") TruffleString calendar, JSTemporalPlainDateObject one,
                     JSTemporalPlainDateObject two, Unit largestUnit, Node node, InlinedBranchProfile errorBranch) {
         int sign = -compareISODate(one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay());
         if (sign == 0) {
             return JSTemporalDuration.createTemporalDuration(context, realm, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
         }
+
         int years = 0;
-        if (largestUnit == Unit.YEAR) {
-            int candidateYears = sign;
+        int months = 0;
+        ISODateRecord intermediate;
+        if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
+            int candidateYears = two.getYear() - one.getYear();
+            if (candidateYears != 0) {
+                candidateYears -= sign;
+            }
             while (!isoDateSurpasses(sign, one.getYear() + candidateYears, one.getMonth(), one.getDay(), two)) {
                 years = candidateYears;
                 candidateYears += sign;
             }
-        }
-        int months = 0;
-        ISODateRecord intermediate;
-        if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
+
             int candidateMonths = sign;
             intermediate = balanceISOYearMonth(one.getYear() + years, one.getMonth() + candidateMonths);
             while (!isoDateSurpasses(sign, intermediate.year(), intermediate.month(), one.getDay(), two)) {
@@ -1409,27 +1416,22 @@ public final class TemporalUtil {
                 candidateMonths += sign;
                 intermediate = balanceISOYearMonth(intermediate.year(), intermediate.month() + sign);
             }
+            if (largestUnit == Unit.MONTH) {
+                months += 12 * years;
+                years = 0;
+            }
         }
+
         intermediate = balanceISOYearMonth(one.getYear() + years, one.getMonth() + months);
         ISODateRecord constrained = regulateISODate(intermediate.year(), intermediate.month(), one.getDay(), Overflow.CONSTRAIN);
         int weeks = 0;
+        int days = (int) (JSDate.isoDateToEpochDays(two.getYear(), two.getMonth() - 1, two.getDay()) - JSDate.isoDateToEpochDays(constrained.year(), constrained.month() - 1, constrained.day()));
+
         if (largestUnit == Unit.WEEK) {
-            int candidateWeeks = sign;
-            intermediate = balanceISODate(constrained.year(), constrained.month(), constrained.day() + 7 * candidateWeeks);
-            while (!isoDateSurpasses(sign, intermediate.year(), intermediate.month(), intermediate.day(), two)) {
-                weeks = candidateWeeks;
-                candidateWeeks += sign;
-                intermediate = balanceISODate(intermediate.year(), intermediate.month(), intermediate.day() + 7 * sign);
-            }
+            weeks = days / 7;
+            days %= 7;
         }
-        int days = 0;
-        int candidateDays = sign;
-        intermediate = balanceISODate(constrained.year(), constrained.month(), constrained.day() + 7 * weeks + candidateDays);
-        while (!isoDateSurpasses(sign, intermediate.year(), intermediate.month(), intermediate.day(), two)) {
-            days = candidateDays;
-            candidateDays += sign;
-            intermediate = balanceISODate(intermediate.year(), intermediate.month(), intermediate.day() + sign);
-        }
+
         return JSTemporalDuration.createTemporalDuration(context, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, node, errorBranch);
     }
 
