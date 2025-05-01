@@ -404,13 +404,12 @@ public final class JSGuards {
         return JavaPackage.isJavaPackage(target);
     }
 
-<<<<<<< HEAD
     public static boolean isJavaArray(Object value) {
         return value != null && value.getClass().isArray();
-=======
+    }
+
     public static boolean isSafeInteger(Object target) {
         return target instanceof SafeInteger;
->>>>>>> 809ef7762e3 (ExportValueNode.doTruffleObject() should exclude SafeIntegers.)
     }
 
     public static boolean isBigInt(Object target) {
