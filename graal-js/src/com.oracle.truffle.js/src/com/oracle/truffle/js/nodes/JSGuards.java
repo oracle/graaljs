@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -413,13 +413,12 @@ public final class JSGuards {
         return JavaPackage.isJavaPackage(target);
     }
 
-<<<<<<< HEAD
     public static boolean isJavaArray(Object value) {
         return value != null && value.getClass().isArray();
-=======
+    }
+
     public static boolean isSafeInteger(Object target) {
         return target instanceof SafeInteger;
->>>>>>> 809ef7762e3 (ExportValueNode.doTruffleObject() should exclude SafeIntegers.)
     }
 
     public static boolean isBigInt(Object target) {
