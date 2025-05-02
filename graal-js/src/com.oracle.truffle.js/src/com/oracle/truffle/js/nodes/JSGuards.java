@@ -46,6 +46,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArgumentsArray;
@@ -401,6 +402,10 @@ public final class JSGuards {
 
     public static boolean isJavaPackage(Object target) {
         return JavaPackage.isJavaPackage(target);
+    }
+
+    public static boolean isSafeInteger(Object target) {
+        return target instanceof SafeInteger;
     }
 
     public static boolean isBigInt(Object target) {
