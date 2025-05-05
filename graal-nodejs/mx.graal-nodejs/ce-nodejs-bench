@@ -1,4 +1,4 @@
-DYNAMIC_IMPORTS=/vm,/substratevm
-COMPONENTS=cmp,gvm,lg,njs,svm,svmt,tflm,tflsm
+DYNAMIC_IMPORTS=/vm,/substratevm,/wasm
+COMPONENTS=cmp,gvm,lg,svm,svmt,tflm,tflsm
 NATIVE_IMAGES=lib:graal-nodejs,lib:jvmcicompiler
-DISABLE_INSTALLABLES=rgx,icu4j
+DISABLE_INSTALLABLES=True

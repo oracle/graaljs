@@ -8,7 +8,7 @@ local cicommon = import '../ci/common.jsonnet';
     suite_prefix:: 'nodejs', # for build job names
     components+: ['nodejs'],
     // increase default timelimit on windows and darwin-amd64
-    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '2:00:00' else '1:00:00',
+    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '2:00:00' else '1:10:00',
     defined_in: std.thisFile,
   },
 
@@ -34,7 +34,7 @@ local cicommon = import '../ci/common.jsonnet';
   local build = {
     run+: [
       // build only if no artifact is being used to avoid rebuilding
-      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac', '--dependencies', std.join(',', self.build_dependencies)],
+      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac'] + (if self.build_dependencies == [] then [] else ['--dependencies', std.join(',', self.build_dependencies)]),
     ],
   },
 
@@ -51,13 +51,13 @@ local cicommon = import '../ci/common.jsonnet';
       ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
       # standalone smoke tests
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=jvm']],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALNODEJS_JVM_STANDALONE']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
       # maven-downloader smoke test
       ['VERBOSE_GRAALVM_LAUNCHERS=true', '${STANDALONE_HOME}/bin/node-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
     ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then ([
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALNODEJS_NATIVE_STANDALONE']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
     ] + if 'os' in super && super.os == 'windows' then [] else [
@@ -91,7 +91,7 @@ local cicommon = import '../ci/common.jsonnet';
   local auxEngineCache = {
     graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'standalone-home', 'nodejs'], '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'paths', '--output', 'GRAALNODEJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
     ],
     timelimit: '1:00:00',
   },

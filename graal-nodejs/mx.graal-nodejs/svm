@@ -1,2 +1,2 @@
-DYNAMIC_IMPORTS=/vm,/substratevm
+DYNAMIC_IMPORTS=/vm,/substratevm,/wasm
 NATIVE_IMAGES=lib:graal-nodejs

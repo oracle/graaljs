@@ -1,6 +1,6 @@
 
 suite = {
-  "mxversion" : "7.27.0",
+  "mxversion" : "7.45.0",
   "name" : "graal-nodejs",
   "versionConflictResolution" : "latest",
 
@@ -80,6 +80,7 @@ suite = {
         }
       },
     },
+
     "com.oracle.truffle.trufflenode" : {
       "subDir" : "mx.graal-nodejs",
       "sourceDirs" : ["src"],
@@ -96,6 +97,7 @@ suite = {
       "checkstyleVersion" : "10.21.0",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
+
     "com.oracle.truffle.trufflenode.test" : {
       "subDir" : "mx.graal-nodejs",
       "sourceDirs" : ["src"],
@@ -108,6 +110,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
+
     "coremodules" : {
       "buildDependencies" : [
         "graal-js:TRUFFLE_JS_SNAPSHOT_TOOL",
@@ -115,6 +118,31 @@ suite = {
       "class" : "PreparsedCoreModulesProject",
       "prefix" : "",
       "outputDir" : "out/coremodules",
+    },
+
+    "graalnodejs_licenses": {
+      "class": "StandaloneLicenses",
+      "community_license_file": "LICENSE_GRAAL_NODEJS",
+      "community_3rd_party_license_file": "LICENSE",
+    },
+
+    "libgraal-nodejs": {
+      "class": "NativeImageLibraryProject",
+      "dependencies": [
+        "GRAALNODEJS_STANDALONE_DEPENDENCIES",
+      ],
+      "build_args": [
+        # Also set in AbstractLanguageLauncher but better to be explicit
+        "-R:+EnableSignalHandling",
+        "-R:+InstallSegfaultHandler",
+        # From mx_graal_nodejs.py
+        "-Dgraalvm.libpolyglot=true",  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
+        # From mx.graal-nodejs/native-image.properties
+        "-Dpolyglot.image-build-time.PreinitializeContexts=js",
+        # Configure home
+        "-Dorg.graalvm.launcher.relative.js.home=..",
+      ],
+      "dynamicBuildArgs": "libgraalnodejs_build_args",
     },
   },
 
@@ -137,8 +165,10 @@ suite = {
         "sdk:JLINE3",
       ],
       "description" : "Graal Node.js",
-      "maven" : False
+      "maven" : False,
+      "useModulePath": True,
     },
+
     "TRUFFLENODE_GRAALVM_SUPPORT" : {
       "native" : True,
       "platformDependent" : True,
@@ -175,6 +205,7 @@ suite = {
         }
       }
     },
+
     "TRUFFLENODE_GRAALVM_LICENSES" : {
       "fileListPurpose": 'native-image-resources',
       "native" : True,
@@ -185,6 +216,101 @@ suite = {
         "THIRD_PARTY_LICENSE_GRAALNODEJS.txt" : "file:LICENSE",
       },
     },
+
+    "GRAALNODEJS_STANDALONE_DEPENDENCIES": {
+      "description": "Graal.nodejs standalone dependencies",
+      "class": "DynamicPOMDistribution",
+      "distDependencies": [
+        "graal-nodejs:TRUFFLENODE",
+        "sdk:TOOLS_FOR_STANDALONE",
+      ],
+      "dynamicDistDependencies": "graalnodejs_standalone_deps",
+      "maven": False,
+    },
+
+    "GRAALNODEJS_STANDALONE_COMMON": {
+      "description": "Common layout for Native and JVM standalones",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "extracted-dependency:TRUFFLENODE_GRAALVM_SUPPORT",
+          "dependency:graalnodejs_licenses/*",
+        ],
+        "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
+      },
+    },
+
+    "GRAALNODEJS_NATIVE_STANDALONE": {
+      "description": "Graal.nodejs Native standalone",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "dependency:GRAALNODEJS_STANDALONE_COMMON/*",
+        ],
+        "lib/<lib:graal-nodejs>": "dependency:libgraal-nodejs",
+      },
+    },
+
+    "GRAALNODEJS_JVM_STANDALONE": {
+      "description": "Graal.nodejs JVM standalone",
+      "type": "dir",
+      "platformDependent": True,
+      "platforms": "local",
+      "layout": {
+        "./": [
+          "dependency:GRAALNODEJS_STANDALONE_COMMON/*",
+        ],
+        "jvm/": {
+          "source_type": "dependency",
+          "dependency": "sdk:STANDALONE_JAVA_HOME",
+          "path": "*",
+          "exclude": [
+            # Native Image-related
+            "bin/native-image*",
+            "lib/static",
+            "lib/svm",
+            "lib/<lib:native-image-agent>",
+            "lib/<lib:native-image-diagnostics-agent>",
+            # Unnecessary and big
+            "lib/src.zip",
+            "jmods",
+          ],
+        },
+        "jvmlibs/": [
+          "extracted-dependency:truffle:TRUFFLE_ATTACH_GRAALVM_SUPPORT",
+        ],
+        "modules/": [
+          {
+            "source_type": "classpath-dependencies",
+            "dependencies": [
+              "GRAALNODEJS_STANDALONE_DEPENDENCIES",
+              "sdk:MAVEN_DOWNLOADER",
+            ],
+          },
+        ],
+      },
+    },
+
+    "GRAALNODEJS_NATIVE_STANDALONE_RELEASE_ARCHIVE": {
+        "class": "DeliverableStandaloneArchive",
+        "platformDependent": True,
+        "standalone_dist": "GRAALNODEJS_NATIVE_STANDALONE",
+        "community_archive_name": "graalnodejs-community",
+        "enterprise_archive_name": "graalnodejs",
+    },
+
+    "GRAALNODEJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
+        "class": "DeliverableStandaloneArchive",
+        "platformDependent": True,
+        "standalone_dist": "GRAALNODEJS_JVM_STANDALONE",
+        "community_archive_name": "graalnodejs-community-jvm",
+        "enterprise_archive_name": "graalnodejs-jvm",
+    },
+
     "TRUFFLENODE_TEST" : {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.trufflenode.test",

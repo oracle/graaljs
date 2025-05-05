@@ -1,4 +1,4 @@
-DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,substratevm-enterprise-gcs
-COMPONENTS=cmpee,gvm,lg,js,svmee,svmeegc,svmte,tfle,tflm,tflsm
+DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,substratevm-enterprise-gcs,/wasm
+COMPONENTS=cmpee,gvm,lg,svmee,svmeegc,svmte,tfle,tflm,tflsm
 NATIVE_IMAGES=lib:jsvm,lib:jvmcicompiler
-DISABLE_INSTALLABLES=rgx,icu4j
+DISABLE_INSTALLABLES=True

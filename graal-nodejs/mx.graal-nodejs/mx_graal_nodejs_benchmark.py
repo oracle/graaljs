@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 
 import mx, mx_benchmark, mx_graal_nodejs, mx_sdk_vm
 from mx_benchmark import GuestVm
+from mx_graal_js_benchmark import StandaloneHostVm, add_vm_config_variants
 
 _suite = mx.suite('graal-nodejs')
 
@@ -66,15 +67,21 @@ class GraalNodeJsVm(GuestVm):
 def register_nodejs_vms():
     if mx.suite('nodejs-benchmarks', fatalIfMissing=False):
         import mx_nodejs_benchmarks
-        _suite = mx.suite('graal-nodejs')
         mx_nodejs_benchmarks.add_vm(GraalNodeJsVm('default', []), _suite, 10)
 
+    for (host_vm_name, host_vm_config_name, standalone_dist_name, launcher_name, launcher_args, priority) in add_vm_config_variants([
+        ('nodejs-standalone', 'jvm', 'graal-nodejs:GRAALNODEJS_JVM_STANDALONE', 'node', [], 10),
+        ('nodejs-standalone', 'native', 'graal-nodejs:GRAALNODEJS_NATIVE_STANDALONE', 'node', [], 10),
+    ]):
+        vm = StandaloneHostVm(host_vm_name, host_vm_config_name, standalone_dist_name, launcher_name, launcher_args)
+        mx_benchmark.java_vm_registry.add_vm(vm, _suite, priority)
+
 # --env ce-nodejs-bench
-ce_components = ['cmp', 'gvm', 'icu4j', 'js', 'jsl', 'jss', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm', 'tflsm', 'xz']
+ce_components = ['cmp', 'gvm', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm', 'tflsm']
 
 
 # --env ee-nodejs-bench
-ee_components = ['cmp', 'cmpee', 'gvm', 'icu4j', 'js', 'jsl', 'jss', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm', 'tflsm', 'xz']
+ee_components = ['cmp', 'cmpee', 'gvm', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm', 'tflsm']
 # svmeegc is only available on linux
 if not mx.is_linux():
     ee_components.remove('svmeegc')
