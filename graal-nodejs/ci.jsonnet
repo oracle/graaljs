@@ -61,9 +61,10 @@ local cicommon = import '../ci/common.jsonnet';
   },
 
   local gateCoverage = {
+    suiteimports+:: ['wasm', 'tools'],
     coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacoco-format', 'lcov', '--jacocout', 'coverage'],
     run+: [
-      ['mx', '--dynamicimports', '/tools,/wasm', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle', '--strict-mode', '--tags', 'build,coverage'] + self.coverage_gate_args,
+      ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle', '--strict-mode', '--tags', 'build,coverage'] + self.coverage_gate_args,
     ],
     teardown+: [
       ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
@@ -174,7 +175,9 @@ local cicommon = import '../ci/common.jsonnet';
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
+    # Note: weekly coverage is sync'ed with the graal repo (while ondemand is not).
     graalNodeJs + common.weekly    + gateCoverage                                                                                  + {name: 'coverage'},
+    graalNodeJs + common.ondemand  + gateCoverage                                                                                  + {name: 'coverage'},
 
   ], platforms=[ci.mainGatePlatform]),
 

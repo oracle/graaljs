@@ -29,6 +29,7 @@
 import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tempfile
 
 import mx_graal_nodejs_benchmark
+import mx_truffle
 
 from mx import TimeStampFile
 from mx_gate import Task
@@ -448,6 +449,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 
     node_jvm_mp = (os.environ['NODE_JVM_MODULE_PATH'] + pathsep) if 'NODE_JVM_MODULE_PATH' in os.environ else ''
     node_mp = node_jvm_mp + mx.classpath(['TRUFFLENODE']
+        + mx_truffle.resolve_truffle_dist_names()
         + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
         + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
     _setEnvVar('NODE_JVM_MODULE_PATH', node_mp)
