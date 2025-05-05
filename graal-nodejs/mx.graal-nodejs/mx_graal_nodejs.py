@@ -36,7 +36,7 @@ from mx import TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
-from mx_graal_js import get_jdk, is_wasm_available
+from mx_graal_js import get_jdk, is_wasm_available, is_ee
 
 # re-export custom mx project classes, so they can be used from suite.py
 from mx_sdk_vm_ng import StandaloneLicenses, NativeImageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
@@ -671,9 +671,6 @@ def mx_post_parse_cmd_line(args):
 
 def has_suite(name):
     return mx.suite(name, fatalIfMissing=False)
-
-def is_ee():
-    return has_suite('graal-enterprise')
 
 def graalnodejs_standalone_deps():
     deps = mx_truffle.resolve_truffle_dist_names()

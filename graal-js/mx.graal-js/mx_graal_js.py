@@ -541,7 +541,7 @@ def has_suite(name):
     return mx.suite(name, fatalIfMissing=False)
 
 def is_ee():
-    return has_suite('graal-enterprise')
+    return has_suite('truffle-enterprise')
 
 def graaljs_standalone_deps():
     deps = mx_truffle.resolve_truffle_dist_names()
