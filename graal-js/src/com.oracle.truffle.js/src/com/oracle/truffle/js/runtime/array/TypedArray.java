@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArra
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -120,10 +121,10 @@ public abstract class TypedArray extends ScriptArray {
         } else {
             JSArrayBufferObject arrayBuffer = typedArray.getArrayBuffer();
             int byteLength = switch (bufferType) {
-                case BUFFER_TYPE_INTEROP -> ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
-                case BUFFER_TYPE_ARRAY -> arrayBuffer.getByteLength();
-                case BUFFER_TYPE_DIRECT -> arrayBuffer.getByteLength();
-                case BUFFER_TYPE_SHARED -> ((JSArrayBufferObject.Shared) arrayBuffer).getByteLength();
+                case BUFFER_TYPE_INTEROP -> CompilerDirectives.castExact(arrayBuffer, JSArrayBufferObject.Interop.class).getByteLength();
+                case BUFFER_TYPE_ARRAY -> CompilerDirectives.castExact(arrayBuffer, JSArrayBufferObject.Heap.class).getByteLength();
+                case BUFFER_TYPE_DIRECT -> CompilerDirectives.castExact(arrayBuffer, JSArrayBufferObject.Direct.class).getByteLength();
+                case BUFFER_TYPE_SHARED -> CompilerDirectives.castExact(arrayBuffer, JSArrayBufferObject.Shared.class).getByteLength();
                 default -> throw Errors.shouldNotReachHereUnexpectedValue(bufferType);
             };
             return (byteLength - getOffset(object)) >> bytesPerElementShift;
