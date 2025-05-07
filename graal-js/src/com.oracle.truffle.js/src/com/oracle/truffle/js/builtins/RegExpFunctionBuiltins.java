@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,7 @@ public class RegExpFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RegEx
 
         @Override
         public int getECMAScriptVersion() {
-            return JSConfig.StagingECMAScriptVersion;
+            return JSConfig.ECMAScript2025;
         }
 
         @Override
