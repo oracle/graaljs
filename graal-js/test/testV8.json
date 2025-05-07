@@ -35,20 +35,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl/duration-format/format-basic-digital.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "status" : "PASS",
-    "comment" : "Intl.DurationFormat"
-  }, {
-    "filePath" : "intl/duration-format/format-digital-longdigits.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "status" : "PASS",
-    "comment" : "Intl.DurationFormat"
-  }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
   }, {
@@ -536,7 +522,7 @@
   }, {
     "filePath" : "mjsunit/es6/proxies-json.js",
     "ecmaVersion" : {
-      "minVersion" : 16
+      "minVersion" : 17
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
@@ -704,14 +690,14 @@
   }, {
     "filePath" : "mjsunit/harmony/json-parse-with-source-snapshot.js",
     "ecmaVersion" : {
-      "minVersion" : 16
+      "minVersion" : 17
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
   }, {
     "filePath" : "mjsunit/harmony/json-parse-with-source.js",
     "ecmaVersion" : {
-      "minVersion" : 16
+      "minVersion" : 17
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
@@ -750,14 +736,14 @@
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-crbug-1422812.js",
     "ecmaVersion" : {
-      "minVersion" : 16
+      "minVersion" : 17
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-crbug-1423310.js",
     "ecmaVersion" : {
-      "minVersion" : 16
+      "minVersion" : 17
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
@@ -3418,13 +3404,6 @@
     "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-array-methods.js",
     "status" : "SKIP",
     "comment" : "Long running test"
-  }, {
-    "filePath" : "mjsunit/typedarray-helpers.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "status" : "PASS",
-    "comment" : "Uses Float16Array"
   }, {
     "filePath" : "mjsunit/typedarray-resizablearraybuffer-array-methods.js",
     "status" : "SKIP",
