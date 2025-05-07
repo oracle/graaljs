@@ -314,32 +314,11 @@ public class Test262Runnable extends TestRunnable {
         if (flags.contains(CAN_BLOCK_IS_FALSE_FLAG)) {
             extraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
         }
-        if (features.contains("error-cause")) {
-            extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
-        }
-        if (features.contains("import-attributes")) {
-            extraOptions.put(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true");
-        }
-        if (features.contains("import-assertions")) {
-            extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
-        }
-        if (features.contains("json-modules")) {
-            extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
-        }
         if (features.contains("Temporal")) {
             extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
         }
         if (features.contains("ShadowRealm")) {
             extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
-        }
-        if (features.contains("regexp-v-flag")) {
-            extraOptions.put(JSContextOptions.REGEXP_UNICODE_SETS_NAME, "true");
-        }
-        if (features.contains("iterator-helpers")) {
-            extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        }
-        if (features.contains("set-methods")) {
-            extraOptions.put(JSContextOptions.NEW_SET_METHODS_NAME, "true");
         }
         if (features.contains("source-phase-imports")) {
             extraOptions.put(JSContextOptions.SOURCE_PHASE_IMPORTS_NAME, "true");
