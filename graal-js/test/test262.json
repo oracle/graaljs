@@ -3035,7 +3035,7 @@
   }, {
     "filePath" : "staging/sm/JSON/parse-with-source.js",
     "ecmaVersion" : {
-      "minVersion" : 16
+      "minVersion" : 17
     },
     "comment" : "requires json-parse-with-source"
   }, {
@@ -3057,12 +3057,6 @@
       "AARCH64" : "FAIL"
     },
     "comment" : "The test expects more than the specification. Namely, it expects Math.exp(1) === Math.E, which we fail to satisfy on aarch64"
-  }, {
-    "filePath" : "staging/sm/Math/f16round.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires Float16Array"
   }, {
     "filePath" : "staging/sm/RegExp/match-local-tolength-recompilation.js",
     "status" : "FAIL",
@@ -3099,48 +3093,6 @@
     "filePath" : "staging/sm/regress/regress-586482-4.js",
     "status" : "FAIL",
     "comment" : "Test of non-standard 'caller' property"
-  }, {
-    "filePath" : "staging/sm/Set/difference.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires set-methods"
-  }, {
-    "filePath" : "staging/sm/Set/intersection.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires set-methods"
-  }, {
-    "filePath" : "staging/sm/Set/is-disjoint-from.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires set-methods"
-  }, {
-    "filePath" : "staging/sm/Set/is-subset-of.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires set-methods"
-  }, {
-    "filePath" : "staging/sm/Set/is-superset-of.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires set-methods"
-  }, {
-    "filePath" : "staging/sm/Set/symmetric-difference.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires set-methods"
-  }, {
-    "filePath" : "staging/sm/Set/union.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires set-methods"
   }, {
     "filePath" : "staging/sm/statements/arrow-function-in-for-statement-head.js",
     "status" : "FAIL",
@@ -3212,26 +3164,8 @@
   }, {
     "filePath" : "staging/sm/TypedArray/prototype-constructor-identity.js",
     "ecmaVersion" : {
-      "minVersion" : 16
+      "minVersion" : 17
     },
     "comment" : "expects uint8array-base64 to be enabled"
-  }, {
-    "filePath" : "staging/sm/TypedArray/sort-negative-nan.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires Float16Array"
-  }, {
-    "filePath" : "staging/sm/TypedArray/sort_small.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires Float16Array"
-  }, {
-    "filePath" : "staging/sm/TypedArray/toString.js",
-    "ecmaVersion" : {
-      "minVersion" : 16
-    },
-    "comment" : "requires Float16Array"
   } ]
 }

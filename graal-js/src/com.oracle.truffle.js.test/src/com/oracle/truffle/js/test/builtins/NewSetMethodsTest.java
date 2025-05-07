@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,15 +62,8 @@ public class NewSetMethodsTest {
     }
 
     @Test
-    public void testNotAvailableByDefault() {
+    public void testNotAvailable() {
         String code = String.format("var set1 = %s; set1.union(set1)", createSetString(1, 2, 3, 4));
-
-        try (Context context = JSTest.newContextBuilder().build()) {
-            context.eval(JavaScriptLanguage.ID, code);
-            Assert.fail("Should fail with default flags.");
-        } catch (PolyglotException ex) {
-            assertTrue(ex.getMessage().contains("union is not a function"));
-        }
 
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NEW_SET_METHODS_NAME, "false").build()) {
             context.eval(JavaScriptLanguage.ID, code);

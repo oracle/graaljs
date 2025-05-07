@@ -69,21 +69,11 @@ import com.oracle.truffle.js.test.external.suite.TestSuite;
 public class TestV8Runnable extends TestRunnable {
     private static final String ALLOW_NATIVES_SYNTAX = "--allow-natives-syntax";
     private static final String ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING = "--allow-natives-for-differential-fuzzing";
-    private static final String HARMONY_ERROR_CAUSE = "--harmony-error-cause";
-    private static final String HARMONY_IMPORT_ASSERTIONS = "--harmony-import-assertions";
-    private static final String HARMONY_IMPORT_ATTRIBUTES = "--harmony-import-attributes";
-    private static final String HARMONY_ITERATOR_HELPERS = "--harmony-iterator-helpers";
-    private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
-    private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
-    private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
-    private static final String HARMONY_SET_METHODS = "--harmony-set-methods";
     private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
-    private static final String HARMONY_REGEXP_UNICODE_SETS = "--harmony-regexp-unicode-sets";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_EXPERIMENTAL_SIMD = "--no-experimental-wasm-simd";
-    private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
     private static final String EXPERIMENTAL_WASM_MEMORY64 = "--experimental-wasm-memory64";
     private static final String EXPERIMENTAL_WASM_MULTIMEMORY = "--experimental-wasm-multi-memory";
 
@@ -182,37 +172,14 @@ public class TestV8Runnable extends TestRunnable {
         if (flags.contains(ALLOW_NATIVES_SYNTAX) || flags.contains(ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING)) {
             extraOptions.put(JSContextOptions.V8_INTRINSICS_NAME, "true");
         }
-        if (flags.contains(HARMONY_PUBLIC_FIELDS) || flags.contains(HARMONY_PRIVATE_FIELDS) || flags.contains(HARMONY_PRIVATE_METHODS)) {
-            extraOptions.put(JSContextOptions.CLASS_FIELDS_NAME, "true");
-        }
         if (flags.contains(NO_ASYNC_STACK_TRACES)) {
             extraOptions.put(JSContextOptions.ASYNC_STACK_TRACES_NAME, "false");
-        }
-        if (flags.contains(NO_HARMONY_REGEXP_MATCH_INDICES)) {
-            extraOptions.put(JSContextOptions.REGEXP_MATCH_INDICES_NAME, "false");
-        }
-        if (flags.contains(HARMONY_ERROR_CAUSE)) {
-            extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
-        }
-        if (flags.contains(HARMONY_IMPORT_ASSERTIONS) || flags.contains(HARMONY_IMPORT_ATTRIBUTES)) {
-            extraOptions.put(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true");
-            extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
-            extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
-        }
-        if (flags.contains(HARMONY_ITERATOR_HELPERS)) {
-            extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        }
-        if (flags.contains(HARMONY_SET_METHODS)) {
-            extraOptions.put(JSContextOptions.NEW_SET_METHODS_NAME, "true");
         }
         if (flags.contains(HARMONY_TEMPORAL)) {
             extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
         }
         if (flags.contains(HARMONY_SHADOW_REALM)) {
             extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
-        }
-        if (flags.contains(HARMONY_REGEXP_UNICODE_SETS)) {
-            extraOptions.put(JSContextOptions.REGEXP_UNICODE_SETS_NAME, "true");
         }
 
         if (supported) {

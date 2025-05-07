@@ -6,7 +6,8 @@ Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
 ## Version 25.0.0
-* Implemented the [`Intl.DurationFormat`](https://github.com/tc39/proposal-intl-duration-format) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* ECMAScript 2025 mode/features enabled by default.
+* Implemented the [`Intl.DurationFormat`](https://github.com/tc39/proposal-intl-duration-format) proposal.
 * Made option `js.text-encoding` stable and allowed in `SandboxPolicy.CONSTRAINED`.
 * Implemented the [`import defer`](https://github.com/tc39/proposal-defer-import-eval) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
