@@ -59,6 +59,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSEngine;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import static com.oracle.truffle.js.runtime.JSContextOptions.ModuleLoaderFactoryMode.HANDLER;
 
 public final class CommonJSResolution {
 
