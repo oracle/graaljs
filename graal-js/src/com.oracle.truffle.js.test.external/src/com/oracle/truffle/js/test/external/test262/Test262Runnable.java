@@ -281,17 +281,13 @@ public class Test262Runnable extends TestRunnable {
                     "Atomics.pause",
                     "Error.isError",
                     "FinalizationRegistry.prototype.cleanupSome",
-                    "Float16Array",
-                    "Intl.DurationFormat",
                     "Intl.Locale-info",
                     "Math.sumPrecise",
-                    "RegExp.escape",
                     "ShadowRealm",
                     "decorators",
                     "import-defer",
                     "iterator-sequencing",
                     "json-parse-with-source",
-                    "promise-try",
                     "uint8array-base64",
     });
 
