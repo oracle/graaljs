@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -333,7 +333,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     }
 
     static final TypedArrayFactory[] FACTORIES_ALL = TypedArrayFactory.values();
-    static final TypedArrayFactory[] FACTORIES_DEFAULT = Arrays.copyOf(FACTORIES_ALL, Float16Array.ordinal());
-    static final TypedArrayFactory[] FACTORIES_NO_BIGINT = Arrays.copyOf(FACTORIES_ALL, BigInt64Array.ordinal());
+    static final TypedArrayFactory[] FACTORIES_PRE_FLOAT16 = Arrays.copyOf(FACTORIES_ALL, Float16Array.ordinal());
+    static final TypedArrayFactory[] FACTORIES_PRE_BIGINT = Arrays.copyOf(FACTORIES_ALL, BigInt64Array.ordinal());
 
 }

@@ -298,11 +298,11 @@ public abstract class TypedArray extends ScriptArray {
 
     public static TypedArrayFactory[] factories(JSContext context) {
         if (!context.getLanguageOptions().bigInt()) {
-            return TypedArrayFactory.FACTORIES_NO_BIGINT;
-        } else if (context.getEcmaScriptVersion() == JSConfig.StagingECMAScriptVersion) {
-            return TypedArrayFactory.FACTORIES_ALL;
+            return TypedArrayFactory.FACTORIES_PRE_BIGINT;
+        } else if (context.getEcmaScriptVersion() <= JSConfig.ECMAScript2024) {
+            return TypedArrayFactory.FACTORIES_PRE_FLOAT16;
         } else {
-            return TypedArrayFactory.FACTORIES_DEFAULT;
+            return TypedArrayFactory.FACTORIES_ALL;
         }
     }
 
