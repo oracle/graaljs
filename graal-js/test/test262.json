@@ -2044,6 +2044,10 @@
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-formatting.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-not-overlapping-options.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
@@ -2102,16 +2106,16 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "intl402/Intl/supportedValuesOf/timeZones-include-non-continental.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/language-tags-canonicalized.js",
     "status" : "PASS",
     "statusOverrides" : {
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
-  }, {
-    "filePath" : "intl402/NumberFormat/currency-digits-nonstandard-notation.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test, see https://github.com/tc39/test262/issues/4349"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
     "status" : "PASS",
@@ -2127,6 +2131,10 @@
     "filePath" : "intl402/Temporal/Duration/prototype/total/relativeto-infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/dateStyle.js",
     "status" : "FAIL",
@@ -2180,6 +2188,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/remapping-era.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/equals/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2199,6 +2211,10 @@
     "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/calendar-mismatch.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/dateStyle.js",
     "status" : "FAIL",
@@ -2320,6 +2336,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/dateStyle.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
@@ -2404,6 +2424,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/from/constrain-to-leap-day.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/from/fields-missing-properties.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
@@ -2436,6 +2460,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/dateStyle.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
@@ -2447,6 +2475,10 @@
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/lone-options-accepted.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/options-conflict.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/options-undefined.js",
     "status" : "FAIL",
@@ -2492,6 +2524,10 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/timeStyle-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2536,6 +2572,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/remapping-era.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/add/options-undefined.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2564,6 +2604,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/dateStyle-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/dateStyle.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-04-12"
@@ -2575,6 +2619,10 @@
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/lone-options-accepted.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/options-conflict.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/options-undefined.js",
     "status" : "FAIL",
@@ -2664,9 +2712,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/canonicalize-utc-timezone.js",
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/canonicalize-timezone.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-03-13"
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -2703,6 +2751,10 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/calendar-mismatch.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/dateStyle.js",
     "status" : "FAIL",
@@ -2794,22 +2846,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "language/import/import-defer/deferred-namespace-object/exotic-object-behavior.js",
-    "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/issues/4416"
-  }, {
-    "filePath" : "language/import/import-defer/errors/get-self-while-defer-evaluating/main.js",
-    "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/issues/4416"
-  }, {
-    "filePath" : "language/import/import-defer/errors/module-throws/defer-import-after-evaluation.js",
-    "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/issues/4416"
-  }, {
-    "filePath" : "language/import/import-defer/evaluation-top-level-await/flattening-order/main.js",
-    "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/issues/4416"
-  }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -2873,9 +2909,13 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months.js",
+    "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months-chinese.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months-hebrew.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/date-time-format.js",
     "status" : "FAIL",
@@ -2901,9 +2941,25 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
-    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars.js",
+    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-civil.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-01-15"
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-rgsa.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-tbla.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-umalqura.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/japanese-before-era.js",
     "status" : "FAIL",
@@ -2917,9 +2973,81 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars.js",
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-buddhist.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-chinese.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-coptic.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-dangi.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-ethioaa.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-ethiopic.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-gregory.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-hebrew.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-indian.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-civil.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-rgsa.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-tbla.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-umalqura.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamicc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-iso8601.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-japanese.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-persian.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-roc.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/persian-calendar.js",
     "status" : "FAIL",
@@ -3010,10 +3138,6 @@
     "comment" : "Expects a particular error message"
   }, {
     "filePath" : "staging/sm/Function/constructor-binding.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Function/function-bind.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
