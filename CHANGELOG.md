@@ -10,6 +10,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implemented the [`Intl.DurationFormat`](https://github.com/tc39/proposal-intl-duration-format) proposal.
 * Made option `js.text-encoding` stable and allowed in `SandboxPolicy.CONSTRAINED`.
 * Implemented the [`import defer`](https://github.com/tc39/proposal-defer-import-eval) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [`Upsert`](https://github.com/tc39/proposal-upsert) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
 ## Version 24.2.0
 * Updated Node.js to version 22.13.1.

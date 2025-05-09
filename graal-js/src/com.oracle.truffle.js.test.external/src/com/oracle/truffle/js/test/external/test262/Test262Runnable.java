@@ -269,6 +269,7 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
                     "u180e",
                     "uint8array-base64",
+                    "upsert",
                     "well-formed-json-stringify",
     });
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
@@ -289,6 +290,7 @@ public class Test262Runnable extends TestRunnable {
                     "iterator-sequencing",
                     "json-parse-with-source",
                     "uint8array-base64",
+                    "upsert",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
