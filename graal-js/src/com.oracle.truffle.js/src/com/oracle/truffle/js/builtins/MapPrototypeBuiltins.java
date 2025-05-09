@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -62,6 +63,8 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapForEachNo
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapGetNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapHasNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapSetNodeGen;
+import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetOrInsertNodeGen;
+import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetOrInsertComputedNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -109,7 +112,10 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         keys(0),
         values(0),
         entries(0),
-        size(0);
+        size(0),
+
+        getOrInsert(2),
+        getOrInsertComputed(2);
 
         private final int length;
 
@@ -126,6 +132,15 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         public boolean isGetter() {
             return this == size;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            return switch (this) {
+                case getOrInsert, getOrInsertComputed -> JSConfig.StagingECMAScriptVersion;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
+        }
+
     }
 
     @Override
@@ -151,6 +166,10 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 return CreateMapIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
             case size:
                 return MapGetSizeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case getOrInsert:
+                return MapGetOrInsertNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case getOrInsertComputed:
+                return MapGetOrInsertComputedNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -523,4 +542,118 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             throw Errors.createTypeErrorMapExpected();
         }
     }
+
+    // Used for the defaultValue of readHashValueOrDefault. We need it to differ
+    // from all other valid values (and truffle wants it to be a valid interop value).
+    static final TruffleObject DEFAULT_VALUE = new TruffleObject() {
+    };
+
+    /**
+     * Implementation of the Map.prototype.getOrInsert().
+     */
+    @ImportStatic({JSConfig.class})
+    public abstract static class MapGetOrInsertNode extends JSMapOperation {
+
+        public MapGetOrInsertNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object doMap(JSMapObject thisObj, Object key, Object value) {
+            Object normalizedKey = normalize(key);
+            Object result = JSMap.getInternalMap(thisObj).getOrInsert(normalizedKey, value);
+            return JSRuntime.nullToUndefined(result);
+        }
+
+        @InliningCutoff
+        @Specialization(guards = {"isForeignHash(thisObj, mapLib)"})
+        protected Object doForeignMap(Object thisObj, Object key, Object value,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
+                        @Cached ImportValueNode importValue,
+                        @Cached ExportValueNode exportValueNode) {
+            Object normalizedKey = normalize(key);
+            try {
+                Object result = mapLib.readHashValueOrDefault(thisObj, normalizedKey, DEFAULT_VALUE);
+                if (result == DEFAULT_VALUE) {
+                    result = exportValueNode.execute(value);
+                    mapLib.writeHashEntry(thisObj, normalizedKey, result);
+                }
+                return importValue.executeWithTarget(result);
+            } catch (UnsupportedMessageException | UnknownKeyException | UnsupportedTypeException ex) {
+                throw Errors.createTypeErrorInteropException(thisObj, ex, "getOrInsert", this);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
+        protected static Object notMap(Object thisObj, Object key, Object value,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
+            throw Errors.createTypeErrorMapExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Map.prototype.getOrInsertComputed().
+     */
+    @ImportStatic({JSConfig.class})
+    public abstract static class MapGetOrInsertComputedNode extends JSMapOperation {
+
+        public MapGetOrInsertComputedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object doMap(JSMapObject thisObj, Object key, Object callbackfn,
+                        @Shared @Cached IsCallableNode isCallable,
+                        @Shared @Cached("createCall()") JSFunctionCallNode callNode,
+                        @Shared @Cached InlinedBranchProfile errorBranch) {
+            if (!isCallable.executeBoolean(callbackfn)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            Object normalizedKey = normalize(key);
+            JSHashMap internalMap = JSMap.getInternalMap(thisObj);
+            Object value = internalMap.get(normalizedKey);
+            if (value == null) {
+                value = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, callbackfn, normalizedKey));
+                internalMap.put(normalizedKey, value);
+            }
+            return JSRuntime.nullToUndefined(value);
+        }
+
+        @InliningCutoff
+        @Specialization(guards = {"isForeignHash(thisObj, mapLib)"})
+        protected Object doForeignMap(Object thisObj, Object key, Object callbackfn,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
+                        @Cached ImportValueNode importValue,
+                        @Cached ExportValueNode exportValueNode,
+                        @Shared @Cached IsCallableNode isCallable,
+                        @Shared @Cached("createCall()") JSFunctionCallNode callNode,
+                        @Shared @Cached InlinedBranchProfile errorBranch) {
+            if (!isCallable.executeBoolean(callbackfn)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            Object normalizedKey = normalize(key);
+            try {
+                Object result = mapLib.readHashValueOrDefault(thisObj, normalizedKey, DEFAULT_VALUE);
+                if (result == DEFAULT_VALUE) {
+                    Object value = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, callbackfn, normalizedKey));
+                    result = exportValueNode.execute(value);
+                    mapLib.writeHashEntry(thisObj, normalizedKey, result);
+                }
+                return importValue.executeWithTarget(result);
+            } catch (UnsupportedMessageException | UnknownKeyException | UnsupportedTypeException ex) {
+                throw Errors.createTypeErrorInteropException(thisObj, ex, "getOrInsertComputed", this);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
+        protected static Object notMap(Object thisObj, Object key, Object callbackfn,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
+            throw Errors.createTypeErrorMapExpected();
+        }
+    }
+
 }
