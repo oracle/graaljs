@@ -1,4 +1,5 @@
-DYNAMIC_IMPORTS=/vm,/substratevm,/wasm
-COMPONENTS=cmp,gvm,lg,svm,svmt,tflm,tflsm
+DYNAMIC_IMPORTS=/substratevm,/wasm
+COMPONENTS=lg,svm,tflsm
 NATIVE_IMAGES=lib:jsvm,lib:jvmcicompiler
-DISABLE_INSTALLABLES=True
+DISABLE_INSTALLABLES=true
+GRAALVM_SKIP_ARCHIVE=true
