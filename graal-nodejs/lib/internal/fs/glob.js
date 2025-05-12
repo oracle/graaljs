@@ -2,12 +2,14 @@
 
 const {
   ArrayFrom,
+  ArrayIsArray,
   ArrayPrototypeAt,
   ArrayPrototypeFlatMap,
   ArrayPrototypeMap,
   ArrayPrototypePop,
   ArrayPrototypePush,
   ArrayPrototypeSome,
+  Promise,
   PromisePrototypeThen,
   SafeMap,
   SafeSet,
@@ -24,12 +26,18 @@ const {
   isMacOS,
 } = require('internal/util');
 const {
-  validateFunction,
   validateObject,
   validateString,
   validateStringArray,
 } = require('internal/validators');
 const { DirentFromStats } = require('internal/fs/utils');
+const {
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+  },
+  hideStackFrames,
+} = require('internal/errors');
+const assert = require('internal/assert');
 
 let minimatch;
 function lazyMinimatch() {
@@ -63,6 +71,45 @@ function getDirentSync(path) {
   return new DirentFromStats(basename(path), stat, dirname(path));
 }
 
+/**
+ * @callback validateStringArrayOrFunction
+ * @param {*} value
+ * @param {string} name
+ */
+const validateStringArrayOrFunction = hideStackFrames((value, name) => {
+  if (ArrayIsArray(value)) {
+    for (let i = 0; i < value.length; ++i) {
+      if (typeof value[i] !== 'string') {
+        throw new ERR_INVALID_ARG_TYPE(`${name}[${i}]`, 'string', value[i]);
+      }
+    }
+    return;
+  }
+  if (typeof value !== 'function') {
+    throw new ERR_INVALID_ARG_TYPE(name, ['string[]', 'function'], value);
+  }
+});
+
+/**
+ * @param {string} pattern
+ * @param {options} options
+ * @returns {Minimatch}
+ */
+function createMatcher(pattern, options = kEmptyObject) {
+  const opts = {
+    __proto__: null,
+    nocase: isWindows || isMacOS,
+    windowsPathsNoEscape: true,
+    nonegate: true,
+    nocomment: true,
+    optimizationLevel: 2,
+    platform: process.platform,
+    nocaseMagicOnly: true,
+    ...options,
+  };
+  return new (lazyMinimatch().Minimatch)(pattern, opts);
+}
+
 class Cache {
   #cache = new SafeMap();
   #statsCache = new SafeMap();
@@ -79,7 +126,8 @@ class Cache {
   }
   statSync(path) {
     const cached = this.#statsCache.get(path);
-    if (cached) {
+    // Do not return a promise from a sync function.
+    if (cached && !(cached instanceof Promise)) {
       return cached;
     }
     const val = getDirentSync(path);
@@ -188,24 +236,56 @@ class Pattern {
   }
 }
 
+class ResultSet extends SafeSet {
+  #root = '.';
+  #isExcluded = () => false;
+  constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
+
+  setup(root, isExcludedFn) {
+    this.#root = root;
+    this.#isExcluded = isExcludedFn;
+  }
+
+  add(value) {
+    if (this.#isExcluded(resolve(this.#root, value))) {
+      return false;
+    }
+    super.add(value);
+    return true;
+  }
+}
+
 class Glob {
   #root;
   #exclude;
   #cache = new Cache();
-  #results = new SafeSet();
+  #results = new ResultSet();
   #queue = [];
   #subpatterns = new SafeMap();
   #patterns;
   #withFileTypes;
+  #isExcluded = () => false;
   constructor(pattern, options = kEmptyObject) {
     validateObject(options, 'options');
     const { exclude, cwd, withFileTypes } = options;
-    if (exclude != null) {
-      validateFunction(exclude, 'options.exclude');
-    }
     this.#root = cwd ?? '.';
-    this.#exclude = exclude;
     this.#withFileTypes = !!withFileTypes;
+    if (exclude != null) {
+      validateStringArrayOrFunction(exclude, 'options.exclude');
+      if (ArrayIsArray(exclude)) {
+        assert(typeof this.#root === 'string');
+        // Convert the path part of exclude patterns to absolute paths for
+        // consistent comparison before instantiating matchers.
+        const matchers = exclude
+          .map((pattern) => resolve(this.#root, pattern))
+          .map((pattern) => createMatcher(pattern));
+        this.#isExcluded = (value) =>
+          matchers.some((matcher) => matcher.match(value));
+        this.#results.setup(this.#root, this.#isExcluded);
+      } else {
+        this.#exclude = exclude;
+      }
+    }
     let patterns;
     if (typeof pattern === 'object') {
       validateStringArray(pattern, 'patterns');
@@ -214,17 +294,7 @@ class Glob {
       validateString(pattern, 'patterns');
       patterns = [pattern];
     }
-    this.matchers = ArrayPrototypeMap(patterns, (pattern) => new (lazyMinimatch().Minimatch)(pattern, {
-      __proto__: null,
-      nocase: isWindows || isMacOS,
-      windowsPathsNoEscape: true,
-      nonegate: true,
-      nocomment: true,
-      optimizationLevel: 2,
-      platform: process.platform,
-      nocaseMagicOnly: true,
-    }));
-
+    this.matchers = ArrayPrototypeMap(patterns, (pattern) => createMatcher(pattern));
     this.#patterns = ArrayPrototypeFlatMap(this.matchers, (matcher) => ArrayPrototypeMap(matcher.set,
                                                                                          (pattern, i) => new Pattern(
                                                                                            pattern,
@@ -255,6 +325,31 @@ class Glob {
     );
   }
   #addSubpattern(path, pattern) {
+    if (this.#isExcluded(path)) {
+      return;
+    }
+    const fullpath = resolve(this.#root, path);
+
+    // If path is a directory, add trailing slash and test patterns again.
+    // TODO(Trott): Would running #isExcluded() first and checking isDirectory() only
+    // if it matches be more performant in the typical use case? #isExcluded()
+    // is often ()=>false which is about as optimizable as a function gets.
+    if (this.#cache.statSync(fullpath).isDirectory() && this.#isExcluded(`${fullpath}/`)) {
+      return;
+    }
+
+    if (this.#exclude) {
+      if (this.#withFileTypes) {
+        const stat = this.#cache.statSync(path);
+        if (stat !== null) {
+          if (this.#exclude(stat)) {
+            return;
+          }
+        }
+      } else if (this.#exclude(path)) {
+        return;
+      }
+    }
     if (!this.#subpatterns.has(path)) {
       this.#subpatterns.set(path, [pattern]);
     } else {
@@ -273,6 +368,9 @@ class Glob {
     const isLast = pattern.isLast(isDirectory);
     const isFirst = pattern.isFirst();
 
+    if (this.#isExcluded(fullpath)) {
+      return;
+    }
     if (isFirst && isWindows && typeof pattern.at(0) === 'string' && StringPrototypeEndsWith(pattern.at(0), ':')) {
       // Absolute path, go to root
       this.#addSubpattern(`${pattern.at(0)}\\`, pattern.child(new SafeSet().add(1)));
@@ -461,6 +559,9 @@ class Glob {
     const isLast = pattern.isLast(isDirectory);
     const isFirst = pattern.isFirst();
 
+    if (this.#isExcluded(fullpath)) {
+      return;
+    }
     if (isFirst && isWindows && typeof pattern.at(0) === 'string' && StringPrototypeEndsWith(pattern.at(0), ':')) {
       // Absolute path, go to root
       this.#addSubpattern(`${pattern.at(0)}\\`, pattern.child(new SafeSet().add(1)));
@@ -489,8 +590,9 @@ class Glob {
       if (stat && (p || isDirectory)) {
         const result = join(path, p);
         if (!this.#results.has(result)) {
-          this.#results.add(result);
-          yield this.#withFileTypes ? stat : result;
+          if (this.#results.add(result)) {
+            yield this.#withFileTypes ? stat : result;
+          }
         }
       }
       if (pattern.indexes.size === 1 && pattern.indexes.has(last)) {
@@ -501,8 +603,9 @@ class Glob {
       // If pattern ends with **, add to results
       // if path is ".", add it only if pattern starts with "." or pattern is exactly "**"
       if (!this.#results.has(path)) {
-        this.#results.add(path);
-        yield this.#withFileTypes ? stat : path;
+        if (this.#results.add(path)) {
+          yield this.#withFileTypes ? stat : path;
+        }
       }
     }
 
@@ -551,8 +654,9 @@ class Glob {
           } else if (!fromSymlink && index === last) {
             // If ** is last, add to results
             if (!this.#results.has(entryPath)) {
-              this.#results.add(entryPath);
-              yield this.#withFileTypes ? entry : entryPath;
+              if (this.#results.add(entryPath)) {
+                yield this.#withFileTypes ? entry : entryPath;
+              }
             }
           }
 
@@ -562,8 +666,9 @@ class Glob {
           if (nextMatches && nextIndex === last && !isLast) {
             // If next pattern is the last one, add to results
             if (!this.#results.has(entryPath)) {
-              this.#results.add(entryPath);
-              yield this.#withFileTypes ? entry : entryPath;
+              if (this.#results.add(entryPath)) {
+                yield this.#withFileTypes ? entry : entryPath;
+              }
             }
           } else if (nextMatches && entry.isDirectory()) {
             // Pattern matched, meaning two patterns forward
@@ -598,15 +703,17 @@ class Glob {
               if (!this.#cache.seen(path, pattern, nextIndex)) {
                 this.#cache.add(path, pattern.child(new SafeSet().add(nextIndex)));
                 if (!this.#results.has(path)) {
-                  this.#results.add(path);
-                  yield this.#withFileTypes ? this.#cache.statSync(fullpath) : path;
+                  if (this.#results.add(path)) {
+                    yield this.#withFileTypes ? this.#cache.statSync(fullpath) : path;
+                  }
                 }
               }
               if (!this.#cache.seen(path, pattern, nextIndex) || !this.#cache.seen(parent, pattern, nextIndex)) {
                 this.#cache.add(parent, pattern.child(new SafeSet().add(nextIndex)));
                 if (!this.#results.has(parent)) {
-                  this.#results.add(parent);
-                  yield this.#withFileTypes ? this.#cache.statSync(join(this.#root, parent)) : parent;
+                  if (this.#results.add(parent)) {
+                    yield this.#withFileTypes ? this.#cache.statSync(join(this.#root, parent)) : parent;
+                  }
                 }
               }
             }
@@ -621,8 +728,9 @@ class Glob {
             // If current pattern is ".", proceed to test next pattern
             if (nextIndex === last) {
               if (!this.#results.has(entryPath)) {
-                this.#results.add(entryPath);
-                yield this.#withFileTypes ? entry : entryPath;
+                if (this.#results.add(entryPath)) {
+                  yield this.#withFileTypes ? entry : entryPath;
+                }
               }
             } else {
               subPatterns.add(nextIndex + 1);
@@ -634,8 +742,9 @@ class Glob {
           // add next pattern to potential patterns, or to results if it's the last pattern
           if (index === last) {
             if (!this.#results.has(entryPath)) {
-              this.#results.add(entryPath);
-              yield this.#withFileTypes ? entry : entryPath;
+              if (this.#results.add(entryPath)) {
+                yield this.#withFileTypes ? entry : entryPath;
+              }
             }
           } else if (entry.isDirectory()) {
             subPatterns.add(nextIndex);

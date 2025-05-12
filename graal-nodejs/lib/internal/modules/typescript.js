@@ -1,6 +1,9 @@
 'use strict';
 
 const {
+  ObjectPrototypeHasOwnProperty,
+} = primordials;
+const {
   validateBoolean,
   validateOneOf,
   validateObject,
@@ -14,9 +17,11 @@ const { assertTypeScript,
 const {
   ERR_INVALID_TYPESCRIPT_SYNTAX,
   ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING,
+  ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX,
 } = require('internal/errors').codes;
 const { getOptionValue } = require('internal/options');
 const assert = require('internal/assert');
+const { Buffer } = require('buffer');
 
 /**
  * The TypeScript parsing mode, either 'strip-only' or 'transform'.
@@ -48,7 +53,21 @@ function parseTypeScript(source, options) {
   try {
     return parse(source, options);
   } catch (error) {
-    throw new ERR_INVALID_TYPESCRIPT_SYNTAX(error);
+    /**
+     * Amaro v0.3.0 (from SWC v1.10.7) throws an object with `message` and `code` properties.
+     * It allows us to distinguish between invalid syntax and unsupported syntax.
+     */
+    switch (error?.code) {
+      case 'UnsupportedSyntax':
+        throw new ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX(error.message);
+      case 'InvalidSyntax':
+        throw new ERR_INVALID_TYPESCRIPT_SYNTAX(error.message);
+      default:
+        // SWC may throw strings when something goes wrong.
+        if (typeof error === 'string') { assert.fail(error); }
+        assert(error != null && ObjectPrototypeHasOwnProperty(error, 'message'));
+        assert.fail(error.message);
+    }
   }
 }
 
@@ -112,9 +131,13 @@ function processTypeScriptCode(code, options) {
  * It is used by internal loaders.
  * @param {string} source TypeScript code to parse.
  * @param {string} filename The filename of the source code.
+ * @param {boolean} emitWarning Whether to emit a warning.
  * @returns {TransformOutput} The stripped TypeScript code.
  */
-function stripTypeScriptModuleTypes(source, filename) {
+function stripTypeScriptModuleTypes(source, filename, emitWarning = true) {
+  if (emitWarning) {
+    emitExperimentalWarning('Type Stripping');
+  }
   assert(typeof source === 'string');
   if (isUnderNodeModules(filename)) {
     throw new ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING(filename);
@@ -134,9 +157,10 @@ function stripTypeScriptModuleTypes(source, filename) {
  * @returns {string} The code with the source map attached.
  */
 function addSourceMap(code, sourceMap) {
-  // TODO(@marco-ippolito) When Buffer.transcode supports utf8 to
-  // base64 transformation, we should change this line.
-  const base64SourceMap = internalBinding('buffer').btoa(sourceMap);
+  // The base64 encoding should be https://datatracker.ietf.org/doc/html/rfc4648#section-4,
+  // not base64url https://datatracker.ietf.org/doc/html/rfc4648#section-5. See data url
+  // spec https://tools.ietf.org/html/rfc2397#section-2.
+  const base64SourceMap = Buffer.from(sourceMap).toString('base64');
   return `${code}\n\n//# sourceMappingURL=data:application/json;base64,${base64SourceMap}`;
 }
 

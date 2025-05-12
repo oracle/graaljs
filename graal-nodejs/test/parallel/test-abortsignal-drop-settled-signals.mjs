@@ -16,7 +16,7 @@ function makeSubsequentCalls(limit, done, holdReferences = false) {
       // This setImmediate is necessary to ensure that in the last iteration the remaining signal is GCed (if not
       // retained)
       setImmediate(() => {
-        global.gc();
+        globalThis.gc();
         done(ac.signal, dependantSymbol);
       });
       return;
@@ -50,7 +50,7 @@ function runShortLivedSourceSignal(limit, done) {
 
   function run(iteration) {
     if (iteration > limit) {
-      global.gc();
+      globalThis.gc();
       done(signalRefs);
       return;
     }
@@ -74,9 +74,9 @@ function runWithOrphanListeners(limit, done) {
     const ac = new AbortController();
     if (iteration > limit) {
       setImmediate(() => {
-        global.gc();
+        globalThis.gc();
         setImmediate(() => {
-          global.gc();
+          globalThis.gc();
 
           done(composedSignalRefs);
         });
@@ -134,25 +134,30 @@ it('does not prevent source signal from being GCed if it is short-lived', (t, do
 
 it('drops settled dependant signals when signal is composite', (t, done) => {
   const controllers = Array.from({ length: 2 }, () => new AbortController());
-  const composedSignal1 = AbortSignal.any([controllers[0].signal]);
-  const composedSignalRef = new WeakRef(AbortSignal.any([composedSignal1, controllers[1].signal]));
+
+  // Using WeakRefs to avoid this test to retain information that will make the test fail
+  const composedSignal1 = new WeakRef(AbortSignal.any([controllers[0].signal]));
+  const composedSignalRef = new WeakRef(AbortSignal.any([composedSignal1.deref(), controllers[1].signal]));
 
   const kDependantSignals = Object.getOwnPropertySymbols(controllers[0].signal).find(
     (s) => s.toString() === 'Symbol(kDependantSignals)'
   );
 
+  t.assert.strictEqual(controllers[0].signal[kDependantSignals].size, 2);
+  t.assert.strictEqual(controllers[1].signal[kDependantSignals].size, 1);
+
   setImmediate(() => {
-    global.gc({ execution: 'async' }).then(() => {
-      t.assert.strictEqual(composedSignalRef.deref(), undefined);
-      t.assert.strictEqual(controllers[0].signal[kDependantSignals].size, 2);
-      t.assert.strictEqual(controllers[1].signal[kDependantSignals].size, 1);
+    globalThis.gc({ execution: 'async' }).then(async () => {
+      await gcUntil('all signals are GCed', () => {
+        const totalDependantSignals = Math.max(
+          controllers[0].signal[kDependantSignals].size,
+          controllers[1].signal[kDependantSignals].size
+        );
 
-      setImmediate(() => {
-        t.assert.strictEqual(controllers[0].signal[kDependantSignals].size, 0);
-        t.assert.strictEqual(controllers[1].signal[kDependantSignals].size, 0);
-
-        done();
+        return composedSignalRef.deref() === undefined && totalDependantSignals === 0;
       });
+
+      done();
     });
   });
 });

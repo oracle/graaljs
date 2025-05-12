@@ -37,6 +37,7 @@ using v8::HandleScope;
 using v8::Integer;
 using v8::Isolate;
 using v8::Local;
+using v8::LocalVector;
 using v8::MaybeLocal;
 using v8::NewStringType;
 using v8::Number;
@@ -724,13 +725,14 @@ MaybeLocal<Object> Http2SessionPerformanceEntryTraits::GetDetails(
   SET(stream_average_duration_string, stream_average_duration)
   SET(stream_count_string, stream_count)
 
-  if (!obj->Set(
-          env->context(),
-          env->type_string(),
-          OneByteString(
-              env->isolate(),
-              (entry.details.session_type == NGHTTP2_SESSION_SERVER)
-                  ? "server" : "client")).IsJust()) {
+  if (!obj->Set(env->context(),
+                env->type_string(),
+                FIXED_ONE_BYTE_STRING(
+                    env->isolate(),
+                    (entry.details.session_type == NGHTTP2_SESSION_SERVER)
+                        ? "server"
+                        : "client"))
+           .IsJust()) {
     return MaybeLocal<Object>();
   }
 
@@ -1631,7 +1633,7 @@ void Http2Session::HandleOriginFrame(const nghttp2_frame* frame) {
   nghttp2_ext_origin* origin = static_cast<nghttp2_ext_origin*>(ext.payload);
 
   size_t nov = origin->nov;
-  std::vector<Local<Value>> origin_v(nov);
+  LocalVector<Value> origin_v(isolate, nov);
 
   for (size_t i = 0; i < nov; ++i) {
     const nghttp2_origin_entry& entry = origin->ov[i];
