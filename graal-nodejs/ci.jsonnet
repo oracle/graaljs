@@ -55,7 +55,9 @@ local cicommon = import '../ci/common.jsonnet';
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
       # maven-downloader smoke test
-      ['VERBOSE_GRAALVM_LAUNCHERS=true', '${STANDALONE_HOME}/bin/node-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
+      ['set-export', 'VERBOSE_GRAALVM_LAUNCHERS', 'true'],
+      ['${STANDALONE_HOME}/bin/node-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
+      ['unset', 'VERBOSE_GRAALVM_LAUNCHERS'],
     ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then ([
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALNODEJS_NATIVE_STANDALONE']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
