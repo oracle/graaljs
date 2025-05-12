@@ -3986,6 +3986,11 @@ namespace v8 {
         return nullptr;
     }
 
+    cppgc::HeapStatistics CppHeap::CollectStatistics(cppgc::HeapStatistics::DetailLevel detail_level) {
+        TRACE
+        return cppgc::HeapStatistics();
+    }
+
     WrapperDescriptor CppHeap::wrapper_descriptor() const {
         TRACE
         return WrapperDescriptor(0,0,0);
