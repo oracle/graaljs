@@ -22,11 +22,13 @@ local targets = {
   postMerge::   {targets+: ['post-merge'], targetName:: 'postmerge'},
   daily::       {targets+: ['daily'], targetName:: 'daily'},
   weekly::      {targets+: ['weekly'], targetName:: 'weekly'},
+  monthly::     {targets+: ['monthly'], targetName:: 'monthly'},
   ondemand::    {targets+: ['ondemand'], targetName:: 'ondemand'},
 
   bench::         self.postMerge + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
   dailyBench::    self.daily     + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
   weeklyBench::   self.weekly    + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  monthlyBench::  self.monthly   + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
   ondemandBench:: self.ondemand  + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
 };
 
