@@ -39,11 +39,11 @@ local ci = import '../ci.jsonnet';
   },
 
   local nativeImageSmokeTest = checkoutJsBenchmarks + {
-    suiteimports+:: ['vm', 'substratevm', 'wasm'],
+    suiteimports+:: ['substratevm', 'wasm'],
     nativeimages+:: ['lib:jsvm', 'lib:jvmcicompiler'],
     extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
-      ['mx', 'build'],
+      ['mx', 'build', '--dependencies=GRAALVM,GRAALJS_JVM_STANDALONE,GRAALJS_NATIVE_STANDALONE'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
@@ -59,7 +59,7 @@ local ci = import '../ci.jsonnet';
       # maven-downloader smoke test
       ['VERBOSE_GRAALVM_LAUNCHERS=true', '${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
     ],
-    timelimit: '30:00',
+    timelimit: '45:00',
   },
 
   local mavenDeployDryRun = {
