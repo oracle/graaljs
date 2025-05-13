@@ -104,7 +104,7 @@ local ci = import '../ci.jsonnet';
 
   local interopJmhBenchmarks = common.buildCompiler + {
     run+: [
-        ['mx', '--dynamicimports', '/compiler', '--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', 'js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS', '--', '-Dpolyglot.engine.TraceCompilation=true'],
+        ['mx', '--dynamicimports', '/compiler', '--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', 'js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS', '--', '--jvm=server', '-Dpolyglot.engine.TraceCompilation=true'],
         ['bench-uploader.py', 'bench-results.json'],
     ],
   },
