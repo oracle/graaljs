@@ -26,7 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_sdk_vm_ng, mx_graal_js, os, tempfile
 import mx_util
 
 import mx_graal_nodejs_benchmark
@@ -459,7 +459,8 @@ def _prepare_build_env(build_env=None):
     # GR-59703: Migrate sun.misc.* usages.
     for flags_var in ('CXXFLAGS', 'CFLAGS'):
         other_flags = env.get(flags_var)
-        _setEnvVar(flags_var, f"-DJAVA_FEATURE_VERSION={mx.get_jdk(tag='default').version.parts[0]}{' ' + other_flags if other_flags else ''}", env)
+        java_version = mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version().parts[0]
+        _setEnvVar(flags_var, f"-DJAVA_FEATURE_VERSION={java_version}{' ' + other_flags if other_flags else ''}", env)
 
     if _current_os == 'darwin' and _current_arch == 'amd64':
         min_version = env.get('MACOSX_DEPLOYMENT_TARGET')
