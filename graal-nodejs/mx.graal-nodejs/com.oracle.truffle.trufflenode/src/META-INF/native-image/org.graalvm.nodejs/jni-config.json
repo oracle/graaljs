@@ -181,6 +181,7 @@
       { "name": "objectSetIndex" },
       { "name": "objectSetIntegrityLevel" },
       { "name": "objectSetInternalField" },
+      { "name": "objectSetLazyDataProperty" },
       { "name": "objectSetPrivate" },
       { "name": "objectSetPrototype" },
       { "name": "objectSlowGetAlignedPointerFromInternalField" },

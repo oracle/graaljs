@@ -815,6 +815,17 @@ namespace v8 {
         return Just(reinterpret_cast<GraalObject*> (this)->Set(key, value));
     }
 
+    Maybe<bool> Object::SetLazyDataProperty(
+            Local<Context> context,
+            Local<Name> name,
+            AccessorNameGetterCallback getter,
+            Local<Value> data,
+            PropertyAttribute attributes,
+            SideEffectType getter_side_effect_type,
+            SideEffectType setter_side_effect_type) {
+        return reinterpret_cast<GraalObject*> (this)->SetLazyDataProperty(context, name, getter, data, attributes, getter_side_effect_type, setter_side_effect_type);
+    }
+
     void* Object::SlowGetAlignedPointerFromInternalField(int index) {
         return reinterpret_cast<GraalObject*> (this)->SlowGetAlignedPointerFromInternalField(index);
     }
