@@ -135,6 +135,7 @@ enum GraalAccessMethod {
     object_set,
     object_set_index,
     object_set_private,
+    object_set_lazy_data_property,
     object_force_set,
     object_get,
     object_get_index,

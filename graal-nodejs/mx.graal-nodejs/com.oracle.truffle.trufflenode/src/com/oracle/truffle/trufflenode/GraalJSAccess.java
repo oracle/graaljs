@@ -263,6 +263,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -1024,6 +1025,42 @@ public final class GraalJSAccess {
         JSDynamicObject setter = instantiateAccessorFunction(realm, accessorFunctions.getSecond(), dynamicObject, accessor);
         JSObjectUtil.defineAccessorProperty(context, dynamicObject, accessor.getName(), getter, setter, flags);
         return true;
+    }
+
+    public boolean objectSetLazyDataProperty(Object object, Object key, long getterPtr, Object data, int attributes) {
+        int flags = propertyAttributes(attributes);
+        PropertyProxy proxy = new LazyDataProperty(key, getterPtr, data, flags);
+        JSObjectUtil.defineProxyProperty((JSDynamicObject) object, key, proxy, flags);
+        return true;
+    }
+
+    static class LazyDataProperty extends PropertyProxy {
+        private final Object key;
+        private final long getterPtr;
+        private final Object data;
+        private final int flags;
+
+        LazyDataProperty(Object key, long getterPtr, Object data, int flags) {
+            this.key = key;
+            this.getterPtr = getterPtr;
+            this.data = data;
+            this.flags = flags;
+        }
+
+        @Override
+        @TruffleBoundary
+        public Object get(JSDynamicObject store) {
+            Object result = NativeAccess.executeAccessorGetter(getterPtr, store, key, new Object[]{store}, data);
+            set(store, result);
+            return result;
+        }
+
+        @Override
+        public boolean set(JSDynamicObject store, Object value) {
+            JSObjectUtil.defineDataProperty(store, key, value, flags);
+            return true;
+        }
+
     }
 
     private JSDynamicObject instantiateAccessorFunction(JSRealm realm, JSFunctionData functionData, JSDynamicObject holder, Accessor accessor) {

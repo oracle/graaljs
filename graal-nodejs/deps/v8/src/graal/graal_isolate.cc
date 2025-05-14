@@ -748,6 +748,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::object_set, "objectSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_set_index, "objectSetIndex", "(Ljava/lang/Object;ILjava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_set_private, "objectSetPrivate", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::object_set_lazy_data_property, "objectSetLazyDataProperty", "(Ljava/lang/Object;Ljava/lang/Object;JLjava/lang/Object;I)Z")
     ACCESS_METHOD(GraalAccessMethod::object_force_set, "objectForceSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)Z")
     ACCESS_METHOD(GraalAccessMethod::object_get, "objectGet", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_get_index, "objectGetIndex", "(Ljava/lang/Object;I)Ljava/lang/Object;")

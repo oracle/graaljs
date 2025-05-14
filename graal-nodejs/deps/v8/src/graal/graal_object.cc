@@ -384,3 +384,25 @@ bool GraalObject::IsConstructor() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_is_constructor, Boolean, GetJavaObject());
     return result;
 }
+
+v8::Maybe<bool> GraalObject::SetLazyDataProperty(
+        v8::Local<v8::Context> context,
+        v8::Local<v8::Name> name,
+        v8::AccessorNameGetterCallback getter,
+        v8::Local<v8::Value> data,
+        v8::PropertyAttribute attributes,
+        v8::SideEffectType getter_side_effect_type,
+        v8::SideEffectType setter_side_effect_type) {
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_key = reinterpret_cast<GraalValue*> (*name)->GetJavaObject();
+    jlong java_getter = (jlong) getter;
+    jobject java_data;
+    if (data.IsEmpty()) {
+        java_data = graal_isolate->GetUndefined()->GetJavaObject();
+    } else {
+        java_data = reinterpret_cast<GraalValue*> (*data)->GetJavaObject();
+    }
+    jint java_attribs = attributes;
+    JNI_CALL(jboolean, result, graal_isolate, GraalAccessMethod::object_set_lazy_data_property, Boolean, GetJavaObject(), java_key, java_getter, java_data, java_attribs);
+    return v8::Just((bool) result);
+}
