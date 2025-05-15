@@ -36,7 +36,7 @@ test('Worker eval module typescript with --input-type=commonjs-typescript', asyn
 
   const [err] = await once(w, 'error');
   assert.strictEqual(err.name, 'SyntaxError');
-  assert.match(err.message, /Cannot use import statement outside a module/);
+  assert.match(err.message, /Cannot use import statement outside a module|Expected an operand but found import/);
 });
 
 test('Worker eval module typescript with --input-type=module', async () => {
@@ -44,7 +44,7 @@ test('Worker eval module typescript with --input-type=module', async () => {
                                                                ...flags] });
   const [err] = await once(w, 'error');
   assert.strictEqual(err.name, 'SyntaxError');
-  assert.match(err.message, /Missing initializer in const declaration/);
+  assert.match(err.message, /Missing initializer in const declaration|Missing assignment to constant/);
 });
 
 test('Worker eval commonjs typescript without input-type', async () => {
