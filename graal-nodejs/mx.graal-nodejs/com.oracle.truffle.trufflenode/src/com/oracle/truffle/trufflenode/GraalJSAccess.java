@@ -247,6 +247,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -3924,8 +3925,11 @@ public final class GraalJSAccess {
     }
 
     public boolean moduleIsGraphAsync(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
-        return record.hasTLA() || record.isAsyncEvaluation();
+        if (!(module instanceof CyclicModuleRecord record)) {
+            // synthetic modules are never async
+            return false;
+        }
+        return record.isAsyncEvaluation() || record.hasTLA() || (record.getStatus() == CyclicModuleRecord.Status.Linked && !record.isReadyForSyncExecution());
     }
 
     public boolean moduleIsSourceTextModule(Object module) {
