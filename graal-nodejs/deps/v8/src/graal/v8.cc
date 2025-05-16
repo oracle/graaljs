@@ -140,8 +140,8 @@ namespace v8 {
             reinterpret_cast<GraalIsolate*> (isolate)->SaveReturnValue(value);
         }
 
-        template<> v8::Local<v8::Value> CorrectReturnValue<v8::Local<v8::Value>>(v8::Isolate* isolate, v8::internal::Address value) {
-            return reinterpret_cast<GraalIsolate*> (isolate)->CorrectReturnValue(value);
+        v8::Value* CorrectReturnValue(v8::Isolate* isolate, v8::internal::Address value) {
+            return *(reinterpret_cast<GraalIsolate*> (isolate)->CorrectReturnValue(value));
         }
 
         namespace wasm {

@@ -63,7 +63,13 @@ typedef _jobject *jobject;
 #endif // BUILDING_V8_SHARED
 
 #else  // _WIN32
+
+#ifdef BUILDING_V8_SHARED
+# define V8_EXPORT __attribute__ ((visibility("default")))
+#else
 # define V8_EXPORT
+#endif // BUILDING_V8_SHARED
+
 #endif // _WIN32
 
 class V8_EXPORT GraalHandleContent {
