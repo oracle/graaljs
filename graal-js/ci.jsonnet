@@ -110,7 +110,7 @@ local ci = import '../ci.jsonnet';
   },
 
   local auxEngineCache = {
-    suiteimports+:: ['vm', 'substratevm', 'tools'],
+    suiteimports+:: ['substratevm', 'tools'],
     nativeimages+:: ['lib:jsvm'],
     graalvmtests:: '../../graalvm-tests',
     run+: [
