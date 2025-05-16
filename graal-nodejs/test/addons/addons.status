@@ -12,6 +12,9 @@ cppgc-object/test: SKIP
 # Unstable test (even on the original Node.js): https://github.com/nodejs/node/issues/34410
 register-signal-handler/test: SKIP
 
+# WebAssembly is not enabled by default
+repl-domain-abort/test: FAIL
+
 [$arch==arm]
 # https://github.com/nodejs/node/issues/30786
 openssl-binding/test: PASS,FLAKY
