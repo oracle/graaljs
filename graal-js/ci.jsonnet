@@ -44,16 +44,16 @@ local ci = import '../ci.jsonnet';
     extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
       ['mx', 'build', '--dependencies=GRAALVM,GRAALJS_JVM_STANDALONE,GRAALJS_NATIVE_STANDALONE'],
-      ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
+      ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', '--no-warning', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${GRAALVM_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       # standalone smoke tests
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE']],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE']],
       ['${STANDALONE_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       ['${STANDALONE_HOME}/bin/js', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
       ['${STANDALONE_HOME}/bin/js', '--vm.Xss16m', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/misc/havlak.js', '--show-warmup'],
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_JVM_STANDALONE']],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_JVM_STANDALONE']],
       ['${STANDALONE_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       ['${STANDALONE_HOME}/bin/js', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
@@ -119,7 +119,7 @@ local ci = import '../ci.jsonnet';
     graalvmtests:: '../../graalvm-tests',
     run+: [
       ['mx', 'build'],
-      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
     ],
     timelimit: '1:00:00',
   },
