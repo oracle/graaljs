@@ -22,6 +22,7 @@ local cicommon = import '../ci/common.jsonnet';
     artifact:: if enabled then 'nodejs' else '',
     suiteimports+:: if enabled then ['substratevm', 'tools'] else [],
     nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [],
+    build_dependencies+:: (if enabled then ['GRAALNODEJS_NATIVE_STANDALONE'] else []) + ['GRAALNODEJS_JVM_STANDALONE'],
     build_standalones:: true,
   },
 
@@ -47,9 +48,6 @@ local cicommon = import '../ci/common.jsonnet';
 
   local gateVmSmokeTest = {
     run+: [
-      ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', '--no-warning', 'graalvm-home']],
-      ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
-      ['${GRAALVM_HOME}/bin/npm', '--version'],
       # standalone smoke tests
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALNODEJS_JVM_STANDALONE']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],

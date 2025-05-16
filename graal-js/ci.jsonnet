@@ -43,11 +43,13 @@ local ci = import '../ci.jsonnet';
     nativeimages+:: ['lib:jsvm', 'lib:jvmcicompiler'],
     extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
-      ['mx', 'build', '--dependencies=GRAALVM,GRAALJS_JVM_STANDALONE,GRAALJS_NATIVE_STANDALONE'],
-      ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', '--no-warning', 'graalvm-home']],
+      # build legacy graalvm component without native image
+      ['mx', '--native-images=', 'build', '--dependencies=GRAALVM'],
+      ['set-export', 'GRAALVM_HOME', ['mx', '--native-images=', '--quiet', '--no-warning', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${GRAALVM_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       # standalone smoke tests
+      ['mx', 'build', '--dependencies=GRAALJS_JVM_STANDALONE,GRAALJS_NATIVE_STANDALONE'],
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE']],
       ['${STANDALONE_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
@@ -118,7 +120,7 @@ local ci = import '../ci.jsonnet';
     nativeimages+:: ['lib:jsvm'],
     graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['mx', 'build'],
+      ['mx', 'build', '--dependencies=GRAALJS_NATIVE_STANDALONE'],
       ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
     ],
     timelimit: '1:00:00',
