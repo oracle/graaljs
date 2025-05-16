@@ -48,7 +48,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       ['git', '-C', self.graalvmtests, 'checkout', '75b6a9e16ebbfd8b9b0a24e4be7c4378e3281204'],
     ] else [],
     using_artifact:: false,
-    build_standalones:: false,
+    build_standalones:: std.length(std.filter(function(dep) std.endsWith(dep, "_STANDALONE"), self.build_dependencies)) > 0,
     build_dependencies:: [],
     setup+: self.graalvm.setup,
     run+: []
