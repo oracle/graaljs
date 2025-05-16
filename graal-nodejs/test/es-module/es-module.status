@@ -19,6 +19,7 @@ test-esm-loader-side-effect          : FAIL
 # Missing detection of unsettled top-level-await
 test-esm-detect-ambiguous            : FAIL
 test-esm-tla-unfinished              : FAIL
+test-require-module-tla-print-execution: FAIL
 
 # WebAssembly is not enabled
 test-esm-extensionless-esm-and-wasm  : FAIL
