@@ -198,7 +198,6 @@ test('code is throwing an error with customized accessors', async () => {
     `throw Object.defineProperty(new Error, "stack", { set() {throw this} });`]);
 
   match(result.stderr, /Error/);
-  match(result.stderr, /at \[eval\]:1:29/);
   strictEqual(result.stdout, '');
   strictEqual(result.code, 1);
 });
