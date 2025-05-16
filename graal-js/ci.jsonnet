@@ -137,7 +137,8 @@ local ci = import '../ci.jsonnet';
   ], platforms=ci.styleGatePlatforms, defaultTarget=common.gate),
 
   // Builds that should run on all supported platforms
-  local testingBuilds = generateBuilds([
+
+  local testingBuilds = local bs = [
     graalJs + gateTags('default')                                                                    + ce + {name: 'default-ce'} +
       promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.linux_aarch64, common.jdklatest + common.windows_amd64]),
     graalJs + gateTags('default')                                                                    + ee + {name: 'default-ee'} +
@@ -174,7 +175,16 @@ local ci = import '../ci.jsonnet';
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
       excludePlatforms([common.darwin_amd64]),   # Too slow
-  ], defaultTarget=common.weekly),
+  ];
+    generateBuilds(bs, platforms=ci.jdklatestPlatforms, defaultTarget=common.weekly) +
+    # jobs that depend on neither compiler nor substratevm should still run on jdk21
+    generateBuilds([b + {suiteimports:: std.setDiff(std.set(b.suiteimports), std.set(['compiler', 'substratevm']))} for b in bs
+      if std.setInter(std.set(b.suiteimports), std.set(['compiler', 'substratevm'])) == []],
+      platforms=ci.jdk21Platforms, defaultTarget=common.weekly) +
+    # build and test standalones using jdk-latest + bootstrap graalvm jdk21
+    generateBuilds([b for b in bs
+      if std.count(['native-image-smoke-test', 'aux-engine-cache'], b.name) > 0],
+      platforms=ci.jdk21unchainedPlatforms, defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
