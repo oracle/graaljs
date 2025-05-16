@@ -157,6 +157,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -261,6 +262,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
@@ -1165,6 +1167,7 @@ public final class GraalJSAccess {
             JSDynamicObject dynamicObject = (JSDynamicObject) object;
             do {
                 JSClass jsclass = JSObject.getJSClass(dynamicObject);
+                boolean ordinaryGetOwnProperty = jsclass.usesOrdinaryGetOwnProperty();
                 Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
                 for (Object key : ownKeys) {
                     Object keyToStore = key;
@@ -1187,10 +1190,18 @@ public final class GraalJSAccess {
                             continue;
                         }
                     }
-                    PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
-                    if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
-                                    (writableOnly && (desc == null || !desc.getWritable()))) {
-                        continue;
+                    if (ordinaryGetOwnProperty) {
+                        Property prop = dynamicObject.getShape().getProperty(key);
+                        if ((enumerableOnly && (prop == null || !JSProperty.isEnumerable(prop))) || (configurableOnly && (prop == null || !JSProperty.isConfigurable(prop))) ||
+                                        (writableOnly && (prop == null || !JSProperty.isWritable(prop)))) {
+                            continue;
+                        }
+                    } else {
+                        PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
+                        if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
+                                        (writableOnly && (desc == null || !desc.getWritable()))) {
+                            continue;
+                        }
                     }
                     keys.add(keyToStore);
                 }
