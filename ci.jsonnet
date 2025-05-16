@@ -139,12 +139,18 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       {
         name: artifactName,
         dir: "../",
-        patterns: [
-          "graal/sdk/mxbuild/" + os + '-' + arch + "/GRAAL*",
-          "*/*/mxbuild/jdk*",
-          "*/mxbuild",
-          "*/graal-nodejs/out", # js/graal-nodejs/out
-        ] + (if build.build_standalones then [
+        patterns: (if std.length(build.build_dependencies) == 0 || std.count(build.build_dependencies, "GRAALVM") > 0 then [
+          # GRAAL{VM,JDK_?E}_*_JAVA??
+          "graal/sdk/mxbuild/" + os + '-' + arch + "/GRAAL*JAVA??",
+        ] else []) +
+        (if build.suite_prefix == "nodejs" then [
+           # {js,main}/graal-nodejs/out/{Release,Debug}/node
+          "*/graal-nodejs/out/*/node*",
+          "*/graal-nodejs/out/headers",
+        ] + if os == 'windows' then [] else [
+          "*/graal-nodejs/out/lib",
+        ] else []) +
+        (if build.build_standalones then [
           "*/*/mxbuild/" + os + '-' + arch + "/GRAAL*JS*_STANDALONE",
         ] else []),
       },
