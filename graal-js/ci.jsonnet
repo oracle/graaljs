@@ -52,10 +52,12 @@ local ci = import '../ci.jsonnet';
       ['${STANDALONE_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       ['${STANDALONE_HOME}/bin/js', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
+      ['${STANDALONE_HOME}/bin/js', '--vm.Xss16m', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/misc/havlak.js', '--show-warmup'],
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_JVM_STANDALONE']],
       ['${STANDALONE_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${STANDALONE_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       ['${STANDALONE_HOME}/bin/js', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
+      ['${STANDALONE_HOME}/bin/js', '--vm.Xss16m', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/misc/havlak.js', '--show-warmup'],
       # maven-downloader smoke test
       ['set-export', 'VERBOSE_GRAALVM_LAUNCHERS', 'true'],
       ['${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
