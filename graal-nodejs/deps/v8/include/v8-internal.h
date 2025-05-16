@@ -24,6 +24,7 @@ class Array;
 class Context;
 class Data;
 class Isolate;
+class Value;
 
 namespace internal {
 
@@ -1399,8 +1400,8 @@ class HandleHelper final {
 V8_EXPORT void VerifyHandleIsNonEmpty(bool is_empty);
 
 // graal-node.js extensions
-void SaveReturnValue(v8::Isolate* isolate, double value);
-template <typename T> T CorrectReturnValue(v8::Isolate* isolate, Address value);
+V8_EXPORT void SaveReturnValue(v8::Isolate* isolate, double value);
+V8_EXPORT v8::Value* CorrectReturnValue(v8::Isolate* isolate, Address value);
 
 }  // namespace internal
 }  // namespace v8
