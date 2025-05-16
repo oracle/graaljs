@@ -32,10 +32,10 @@ test-errors-systemerror: FAIL
 test-fs-write-buffer-large: FAIL
 # Invalid regular expression flags versus Invalid flags supplied to RegExp constructor ...
 test-runner-string-to-regexp: FAIL
-# ports is not iterable versus 0 is not iterable
-test-worker-message-event: FAIL
 # Unexpected number versus expected BindingIdentifier or BindingPattern
 test-node-output-vm: FAIL
+# several messages
+test-node-output-eval: FAIL
 
 # Different stack-traces (for example, different column numbers)
 test-node-output-errors: FAIL
@@ -85,7 +85,9 @@ test-https-agent-unref-socket: SKIP
 
 # --experimental-network-inspection
 test-inspector-emit-protocol-event: FAIL
-test-inspector-network-domain: FAIL
+test-inspector-network-arbitrary-data: FAIL
+test-inspector-network-fetch: FAIL
+test-inspector-network-http: FAIL
 
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
@@ -147,8 +149,8 @@ test-vm-set-property-proxy: SKIP
 
 # WebAssembly is not enabled by default
 test-abortsignal-cloneable: FAIL
-test-blocklist-clone: FAIL
 test-blob: FAIL
+test-blocklist-clone: FAIL
 test-crypto-x509: FAIL
 test-debugger-invalid-json: FAIL
 test-diagnostics-channel-module-import: FAIL
@@ -162,6 +164,45 @@ test-messageevent-brandcheck: FAIL
 test-messaging-marktransfermode: FAIL
 test-perf-hooks-histogram: FAIL
 test-process-get-builtin: FAIL
+test-repl-colors: FAIL
+test-repl-context: FAIL
+test-repl-definecommand: FAIL
+test-repl-empty: FAIL
+test-repl-domain: FAIL
+test-repl-end-emits-exit: FAIL
+test-repl-editor: FAIL
+test-repl-eval: FAIL
+test-repl-function-definition-edge-case: FAIL
+test-repl-load-multiline-no-trailing-newline: FAIL
+test-repl-mode: FAIL
+test-repl-load-multiline: FAIL
+test-repl-multiline: FAIL
+test-repl-no-terminal: FAIL
+test-repl-null: FAIL
+test-repl-null-thrown: FAIL
+test-repl-options: FAIL
+test-repl-pretty-stack-custom-writer: FAIL
+test-repl-preview-without-inspector: FAIL
+test-repl-programmatic-history: FAIL
+test-repl-recoverable: FAIL
+test-repl-require-cache: FAIL
+test-repl-require: FAIL
+test-repl-reset-event: FAIL
+test-repl-save-load: FAIL
+test-repl-tab: FAIL
+test-repl-syntax-error-stack: FAIL
+test-repl-setprompt: FAIL
+test-repl-tab-complete-crash: FAIL
+test-repl-tab-complete-no-warn: FAIL
+test-repl-throw-null-or-undefined: FAIL
+test-repl-tab-complete-on-editor-mode: FAIL
+test-repl-uncaught-exception: FAIL
+test-repl-uncaught-exception-async: FAIL
+test-repl-uncaught-exception-evalcallback: FAIL
+test-repl-tab-complete-import: FAIL
+test-repl-underscore: FAIL
+test-repl-use-global: FAIL
+test-repl-tab-complete: FAIL
 test-runner-cli: FAIL
 test-socketaddress: FAIL
 test-structuredClone-global: FAIL
@@ -173,6 +214,8 @@ test-webstream-structured-clone-no-leftovers: FAIL
 test-whatwg-webstreams-transfer: FAIL
 test-worker-broadcastchannel-wpt: FAIL
 test-worker-broadcastchannel: FAIL
+test-worker-eval-typescript: FAIL
+test-worker-message-event: FAIL
 test-worker-message-mark-as-uncloneable: FAIL
 test-worker-message-port: FAIL
 test-worker-message-port-transfer-self: FAIL
