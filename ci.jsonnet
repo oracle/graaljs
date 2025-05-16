@@ -90,23 +90,19 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   ce:: {defs:: $.defs, graalvm:: self.defs.ce},
   ee:: {defs:: $.defs, graalvm:: self.defs.ee},
 
-  supportedPlatforms:: [
-    common.jdk21 + common.linux_amd64,
-    common.jdk21 + common.linux_aarch64,
-    common.jdk21 + common.darwin_aarch64,
-    common.jdk21 + common.windows_amd64,
+  jdklatestPlatforms:: [
     common.jdklatest + common.linux_amd64,
     common.jdklatest + common.linux_aarch64,
     common.jdklatest + common.darwin_amd64,
     common.jdklatest + common.darwin_aarch64,
     common.jdklatest + common.windows_amd64,
   ],
+  supportedPlatforms:: $.jdklatestPlatforms,
   mainGatePlatform:: common.jdklatest + common.linux_amd64,
   styleGatePlatforms:: [
     common.jdk21 + common.linux_amd64,
     common.jdklatest + common.linux_amd64,
   ],
-  jdklatestPlatforms:: [p for p in $.supportedPlatforms if p.jdk_name == 'jdk-latest'],
 
   local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
     assert prefix != '' && edition != '' && jdk != '' && os != '' && arch != '';
