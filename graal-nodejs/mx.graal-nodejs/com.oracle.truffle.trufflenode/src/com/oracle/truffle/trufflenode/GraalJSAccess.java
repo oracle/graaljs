@@ -3951,7 +3951,7 @@ public final class GraalJSAccess {
             // synthetic modules are never async
             return false;
         }
-        return record.hasTLA() || record.isAsyncEvaluation();
+        return record.isAsyncEvaluation() || record.hasTLA() || (record.getStatus() == CyclicModuleRecord.Status.Linked && !record.isReadyForSyncExecution());
     }
 
     public boolean moduleIsSourceTextModule(Object module) {
