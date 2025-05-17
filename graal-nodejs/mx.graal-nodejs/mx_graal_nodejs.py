@@ -677,10 +677,13 @@ def graalnodejs_standalone_deps():
 
 def libgraalnodejs_build_args():
     if is_nativeimage_ee() and not mx.is_windows():
-        return [
+        image_build_args = [
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
         ]
+        if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+            image_build_args = ['-H:+UnlockExperimentalVMOptions', *image_build_args, '-H:-UnlockExperimentalVMOptions']
+        return image_build_args
     else:
         return []
 
