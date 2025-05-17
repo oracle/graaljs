@@ -26,6 +26,15 @@
 
 namespace node {
 
+using ncrypto::BignumPointer;
+using ncrypto::BIOPointer;
+using ncrypto::CryptoErrorList;
+#ifndef OPENSSL_NO_ENGINE
+using ncrypto::EnginePointer;
+#endif  // !OPENSSL_NO_ENGINE
+using ncrypto::EVPKeyCtxPointer;
+using ncrypto::SSLCtxPointer;
+using ncrypto::SSLPointer;
 using v8::ArrayBuffer;
 using v8::BackingStore;
 using v8::BigInt;
@@ -36,6 +45,7 @@ using v8::HandleScope;
 using v8::Isolate;
 using v8::JustVoid;
 using v8::Local;
+using v8::LocalVector;
 using v8::Maybe;
 using v8::MaybeLocal;
 using v8::NewStringType;
@@ -161,7 +171,7 @@ void InitCryptoOnce() {
   sk_SSL_COMP_zero(SSL_COMP_get_compression_methods());
 
 #ifndef OPENSSL_NO_ENGINE
-  ncrypto::EnginePointer::initEnginesOnce();
+  EnginePointer::initEnginesOnce();
 #endif  // !OPENSSL_NO_ENGINE
 }
 
@@ -180,7 +190,7 @@ void SetFipsCrypto(const FunctionCallbackInfo<Value>& args) {
   CHECK(env->owns_process_state());
   bool enable = args[0]->BooleanValue(env->isolate());
 
-  ncrypto::CryptoErrorList errors;
+  CryptoErrorList errors;
   if (!ncrypto::setFipsEnabled(enable, &errors)) {
     Local<Value> exception;
     if (cryptoErrorListToException(env, errors).ToLocal(&exception)) {
@@ -193,6 +203,27 @@ void TestFipsCrypto(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Mutex::ScopedLock lock(per_process::cli_options_mutex);
   Mutex::ScopedLock fips_lock(fips_mutex);
   args.GetReturnValue().Set(ncrypto::testFipsEnabled() ? 1 : 0);
+}
+
+void GetOpenSSLSecLevelCrypto(const FunctionCallbackInfo<Value>& args) {
+  // for BoringSSL assume the same as the default
+  int sec_level = OPENSSL_TLS_SECURITY_LEVEL;
+#ifndef OPENSSL_IS_BORINGSSL
+  Environment* env = Environment::GetCurrent(args);
+
+  auto ctx = SSLCtxPointer::New();
+  if (!ctx) {
+    return ThrowCryptoError(env, ERR_get_error(), "SSL_CTX_new");
+  }
+
+  auto ssl = SSLPointer::New(ctx);
+  if (!ssl) {
+    return ThrowCryptoError(env, ERR_get_error(), "SSL_new");
+  }
+
+  sec_level = SSL_get_security_level(ssl);
+#endif  // OPENSSL_IS_BORINGSSL
+  args.GetReturnValue().Set(sec_level);
 }
 
 void CryptoErrorStore::Capture() {
@@ -209,8 +240,8 @@ bool CryptoErrorStore::Empty() const {
   return errors_.empty();
 }
 
-MaybeLocal<Value> cryptoErrorListToException(
-    Environment* env, const ncrypto::CryptoErrorList& errors) {
+MaybeLocal<Value> cryptoErrorListToException(Environment* env,
+                                             const CryptoErrorList& errors) {
   // The CryptoErrorList contains a listing of zero or more errors.
   // If there are no errors, it is likely a bug but we will return
   // an error anyway.
@@ -236,7 +267,8 @@ MaybeLocal<Value> cryptoErrorListToException(
   if (errors.size() > 1) {
     CHECK(exception->IsObject());
     Local<Object> exception_obj = exception.As<Object>();
-    std::vector<Local<Value>> stack(errors.size() - 1);
+    LocalVector<Value> stack(env->isolate());
+    stack.reserve(errors.size() - 1);
 
     // Iterate over all but the last error in the list.
     auto current = errors.begin();
@@ -252,11 +284,11 @@ MaybeLocal<Value> cryptoErrorListToException(
     }
 
     Local<v8::Array> stackArray =
-        v8::Array::New(env->isolate(), &stack[0], stack.size());
+        v8::Array::New(env->isolate(), stack.data(), stack.size());
 
-    if (!exception_obj
-             ->Set(env->context(), env->openssl_error_stack(), stackArray)
-             .IsNothing()) {
+    if (exception_obj
+            ->Set(env->context(), env->openssl_error_stack(), stackArray)
+            .IsNothing()) {
       return {};
     }
   }
@@ -585,7 +617,7 @@ void SetEngine(const FunctionCallbackInfo<Value>& args) {
   // If the engine name is not known, calling setAsDefault on the
   // empty engine pointer will be non-op that always returns false.
   args.GetReturnValue().Set(
-      ncrypto::EnginePointer::getEngineByName(engine_id.ToStringView())
+      EnginePointer::getEngineByName(engine_id.ToStringView())
           .setAsDefault(flags));
 }
 #endif  // !OPENSSL_NO_ENGINE
@@ -595,7 +627,7 @@ MaybeLocal<Value> EncodeBignum(
     const BIGNUM* bn,
     int size,
     Local<Value>* error) {
-  auto buf = ncrypto::BignumPointer::EncodePadded(bn, size);
+  auto buf = BignumPointer::EncodePadded(bn, size);
   CHECK_EQ(buf.size(), static_cast<size_t>(size));
   return StringBytes::Encode(env->isolate(),
                              reinterpret_cast<const char*>(buf.get()),
@@ -696,6 +728,9 @@ void Initialize(Environment* env, Local<Object> target) {
 
   SetMethod(context, target, "secureBuffer", SecureBuffer);
   SetMethod(context, target, "secureHeapUsed", SecureHeapUsed);
+
+  SetMethodNoSideEffect(
+      context, target, "getOpenSSLSecLevelCrypto", GetOpenSSLSecLevelCrypto);
 }
 void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 #ifndef OPENSSL_NO_ENGINE
@@ -707,6 +742,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(TestFipsCrypto);
   registry->Register(SecureBuffer);
   registry->Register(SecureHeapUsed);
+  registry->Register(GetOpenSSLSecLevelCrypto);
 }
 
 }  // namespace Util

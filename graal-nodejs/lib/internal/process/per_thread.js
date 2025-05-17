@@ -13,8 +13,10 @@ const {
   ArrayPrototypeSplice,
   BigUint64Array,
   Float64Array,
+  FunctionPrototypeCall,
   NumberMAX_SAFE_INTEGER,
   ObjectDefineProperty,
+  ObjectEntries,
   ObjectFreeze,
   ReflectApply,
   RegExpPrototypeExec,
@@ -23,9 +25,11 @@ const {
   SetPrototypeEntries,
   SetPrototypeValues,
   StringPrototypeEndsWith,
+  StringPrototypeIncludes,
   StringPrototypeReplace,
   StringPrototypeSlice,
   Symbol,
+  SymbolFor,
   SymbolIterator,
 } = primordials;
 
@@ -33,18 +37,25 @@ const {
   ErrnoException,
   codes: {
     ERR_ASSERTION,
+    ERR_FEATURE_UNAVAILABLE_ON_PLATFORM,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_OUT_OF_RANGE,
     ERR_UNKNOWN_SIGNAL,
+    ERR_WORKER_UNSUPPORTED_OPERATION,
   },
 } = require('internal/errors');
+const { emitExperimentalWarning } = require('internal/util');
 const format = require('internal/util/inspect').format;
 const {
   validateArray,
   validateNumber,
   validateObject,
+  validateString,
 } = require('internal/validators');
+
+const dc = require('diagnostics_channel');
+const execveDiagnosticChannel = dc.channel('process.execve');
 
 const constants = internalBinding('constants').os.signals;
 
@@ -103,6 +114,7 @@ function wrapProcessMethods(binding) {
     rss,
     resourceUsage: _resourceUsage,
     loadEnvFile: _loadEnvFile,
+    execve: _execve,
   } = binding;
 
   function _rawDebug(...args) {
@@ -225,6 +237,55 @@ function wrapProcessMethods(binding) {
     return true;
   }
 
+  function execve(execPath, args, env) {
+    emitExperimentalWarning('process.execve');
+
+    const { isMainThread } = require('internal/worker');
+
+    if (!isMainThread) {
+      throw new ERR_WORKER_UNSUPPORTED_OPERATION('Calling process.execve');
+    } else if (process.platform === 'win32') {
+      throw new ERR_FEATURE_UNAVAILABLE_ON_PLATFORM('process.execve');
+    }
+
+    validateString(execPath, 'execPath');
+    validateArray(args, 'args');
+
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      if (typeof arg !== 'string' || StringPrototypeIncludes(arg, '\u0000')) {
+        throw new ERR_INVALID_ARG_VALUE(`args[${i}]`, arg, 'must be a string without null bytes');
+      }
+    }
+
+    const envArray = [];
+    if (env !== undefined) {
+      validateObject(env, 'env');
+
+      for (const { 0: key, 1: value } of ObjectEntries(env)) {
+        if (
+          typeof key !== 'string' ||
+          typeof value !== 'string' ||
+          StringPrototypeIncludes(key, '\u0000') ||
+          StringPrototypeIncludes(value, '\u0000')
+        ) {
+          throw new ERR_INVALID_ARG_VALUE(
+            'env', env, 'must be an object with string keys and values without null bytes',
+          );
+        } else {
+          ArrayPrototypePush(envArray, `${key}=${value}`);
+        }
+      }
+    }
+
+    if (execveDiagnosticChannel.hasSubscribers) {
+      execveDiagnosticChannel.publish({ execPath, args, env: envArray });
+    }
+
+    // Perform the system call
+    _execve(execPath, args, envArray);
+  }
+
   const resourceValues = new Float64Array(16);
   function resourceUsage() {
     _resourceUsage(resourceValues);
@@ -269,6 +330,7 @@ function wrapProcessMethods(binding) {
     memoryUsage,
     kill,
     exit,
+    execve,
     loadEnvFile,
   };
 }
@@ -422,6 +484,20 @@ function toggleTraceCategoryState(asyncHooksEnabled) {
 
 const { arch, platform, version } = process;
 
+let refSymbol;
+function ref(maybeRefable) {
+  if (maybeRefable == null) return;
+  const fn = maybeRefable[refSymbol ??= SymbolFor('nodejs.ref')] || maybeRefable.ref;
+  if (typeof fn === 'function') FunctionPrototypeCall(fn, maybeRefable);
+}
+
+let unrefSymbol;
+function unref(maybeRefable) {
+  if (maybeRefable == null) return;
+  const fn = maybeRefable[unrefSymbol ??= SymbolFor('nodejs.unref')] || maybeRefable.unref;
+  if (typeof fn === 'function') FunctionPrototypeCall(fn, maybeRefable);
+}
+
 module.exports = {
   toggleTraceCategoryState,
   assert,
@@ -432,4 +508,6 @@ module.exports = {
   arch,
   platform,
   version,
+  ref,
+  unref,
 };

@@ -1,8 +1,9 @@
 // Flags: --experimental-test-module-mocks --experimental-require-module
 'use strict';
 const common = require('../common');
+const { isMainThread } = require('worker_threads');
 
-if (!common.isMainThread) {
+if (!isMainThread) {
   common.skip('registering customization hooks in Workers does not work');
 }
 
@@ -656,7 +657,7 @@ test('should throw ERR_ACCESS_DENIED when permission model is enabled', async (t
   const cwd = fixtures.path('test-runner');
   const fixture = fixtures.path('test-runner', 'mock-nm.js');
   const args = [
-    '--experimental-permission',
+    '--permission',
     '--allow-fs-read=*',
     '--experimental-test-module-mocks',
     fixture,
@@ -674,7 +675,7 @@ test('should work when --allow-worker is passed and permission model is enabled'
   const cwd = fixtures.path('test-runner');
   const fixture = fixtures.path('test-runner', 'mock-nm.js');
   const args = [
-    '--experimental-permission',
+    '--permission',
     '--allow-fs-read=*',
     '--allow-worker',
     '--experimental-test-module-mocks',

@@ -157,6 +157,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -261,8 +262,10 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -1026,6 +1029,42 @@ public final class GraalJSAccess {
         return true;
     }
 
+    public boolean objectSetLazyDataProperty(Object object, Object key, long getterPtr, Object data, int attributes) {
+        int flags = propertyAttributes(attributes);
+        PropertyProxy proxy = new LazyDataProperty(key, getterPtr, data, flags);
+        JSObjectUtil.defineProxyProperty((JSDynamicObject) object, key, proxy, flags);
+        return true;
+    }
+
+    static class LazyDataProperty extends PropertyProxy {
+        private final Object key;
+        private final long getterPtr;
+        private final Object data;
+        private final int flags;
+
+        LazyDataProperty(Object key, long getterPtr, Object data, int flags) {
+            this.key = key;
+            this.getterPtr = getterPtr;
+            this.data = data;
+            this.flags = flags;
+        }
+
+        @Override
+        @TruffleBoundary
+        public Object get(JSDynamicObject store) {
+            Object result = NativeAccess.executeAccessorGetter(getterPtr, store, key, new Object[]{store}, data);
+            set(store, result);
+            return result;
+        }
+
+        @Override
+        public boolean set(JSDynamicObject store, Object value) {
+            JSObjectUtil.defineDataProperty(store, key, value, flags);
+            return true;
+        }
+
+    }
+
     private JSDynamicObject instantiateAccessorFunction(JSRealm realm, JSFunctionData functionData, JSDynamicObject holder, Accessor accessor) {
         if (functionData == null) {
             return null;
@@ -1128,6 +1167,7 @@ public final class GraalJSAccess {
             JSDynamicObject dynamicObject = (JSDynamicObject) object;
             do {
                 JSClass jsclass = JSObject.getJSClass(dynamicObject);
+                boolean ordinaryGetOwnProperty = jsclass.usesOrdinaryGetOwnProperty();
                 Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
                 for (Object key : ownKeys) {
                     Object keyToStore = key;
@@ -1150,10 +1190,18 @@ public final class GraalJSAccess {
                             continue;
                         }
                     }
-                    PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
-                    if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
-                                    (writableOnly && (desc == null || !desc.getWritable()))) {
-                        continue;
+                    if (ordinaryGetOwnProperty) {
+                        Property prop = dynamicObject.getShape().getProperty(key);
+                        if ((enumerableOnly && (prop == null || !JSProperty.isEnumerable(prop))) || (configurableOnly && (prop == null || !JSProperty.isConfigurable(prop))) ||
+                                        (writableOnly && (prop == null || !JSProperty.isWritable(prop)))) {
+                            continue;
+                        }
+                    } else {
+                        PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
+                        if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
+                                        (writableOnly && (desc == null || !desc.getWritable()))) {
+                            continue;
+                        }
                     }
                     keys.add(keyToStore);
                 }
@@ -3903,7 +3951,7 @@ public final class GraalJSAccess {
             // synthetic modules are never async
             return false;
         }
-        return record.hasTLA() || record.isAsyncEvaluation();
+        return record.isAsyncEvaluation() || record.hasTLA() || (record.getStatus() == CyclicModuleRecord.Status.Linked && !record.isReadyForSyncExecution());
     }
 
     public boolean moduleIsSourceTextModule(Object module) {

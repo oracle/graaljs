@@ -1,23 +1,26 @@
 'use strict';
 
 const {
-  Array,
-  ArrayPrototypeFill,
   ArrayPrototypePush,
-  ArrayPrototypeSlice,
+  Int32Array,
   StringPrototypeEndsWith,
 } = primordials;
 
 const colors = require('internal/util/colors');
 
 const kNopLinesToCollapse = 5;
+const kOperations = {
+  DELETE: -1,
+  NOP: 0,
+  INSERT: 1,
+};
 
 function areLinesEqual(actual, expected, checkCommaDisparity) {
   if (actual === expected) {
     return true;
   }
   if (checkCommaDisparity) {
-    return `${actual},` === expected || actual === `${expected},`;
+    return (actual + ',') === expected || actual === (expected + ',');
   }
   return false;
 }
@@ -26,31 +29,31 @@ function myersDiff(actual, expected, checkCommaDisparity = false) {
   const actualLength = actual.length;
   const expectedLength = expected.length;
   const max = actualLength + expectedLength;
-  const v = ArrayPrototypeFill(Array(2 * max + 1), 0);
-
+  const v = new Int32Array(2 * max + 1);
   const trace = [];
 
   for (let diffLevel = 0; diffLevel <= max; diffLevel++) {
-    const newTrace = ArrayPrototypeSlice(v);
-    ArrayPrototypePush(trace, newTrace);
+    ArrayPrototypePush(trace, new Int32Array(v)); // Clone the current state of `v`
 
     for (let diagonalIndex = -diffLevel; diagonalIndex <= diffLevel; diagonalIndex += 2) {
-      let x;
-      if (diagonalIndex === -diffLevel ||
-        (diagonalIndex !== diffLevel && v[diagonalIndex - 1 + max] < v[diagonalIndex + 1 + max])) {
-        x = v[diagonalIndex + 1 + max];
-      } else {
-        x = v[diagonalIndex - 1 + max] + 1;
-      }
-
+      const offset = diagonalIndex + max;
+      const previousOffset = v[offset - 1];
+      const nextOffset = v[offset + 1];
+      let x = diagonalIndex === -diffLevel || (diagonalIndex !== diffLevel && previousOffset < nextOffset) ?
+        nextOffset :
+        previousOffset + 1;
       let y = x - diagonalIndex;
 
-      while (x < actualLength && y < expectedLength && areLinesEqual(actual[x], expected[y], checkCommaDisparity)) {
+      while (
+        x < actualLength &&
+        y < expectedLength &&
+        areLinesEqual(actual[x], expected[y], checkCommaDisparity)
+      ) {
         x++;
         y++;
       }
 
-      v[diagonalIndex + max] = x;
+      v[offset] = x;
 
       if (x >= actualLength && y >= expectedLength) {
         return backtrack(trace, actual, expected, checkCommaDisparity);
@@ -71,10 +74,13 @@ function backtrack(trace, actual, expected, checkCommaDisparity) {
   for (let diffLevel = trace.length - 1; diffLevel >= 0; diffLevel--) {
     const v = trace[diffLevel];
     const diagonalIndex = x - y;
-    let prevDiagonalIndex;
+    const offset = diagonalIndex + max;
 
-    if (diagonalIndex === -diffLevel ||
-      (diagonalIndex !== diffLevel && v[diagonalIndex - 1 + max] < v[diagonalIndex + 1 + max])) {
+    let prevDiagonalIndex;
+    if (
+      diagonalIndex === -diffLevel ||
+      (diagonalIndex !== diffLevel && v[offset - 1] < v[offset + 1])
+    ) {
       prevDiagonalIndex = diagonalIndex + 1;
     } else {
       prevDiagonalIndex = diagonalIndex - 1;
@@ -84,20 +90,18 @@ function backtrack(trace, actual, expected, checkCommaDisparity) {
     const prevY = prevX - prevDiagonalIndex;
 
     while (x > prevX && y > prevY) {
-      const value = !checkCommaDisparity ||
-        StringPrototypeEndsWith(actual[x - 1], ',') ? actual[x - 1] : expected[y - 1];
-      ArrayPrototypePush(result, { __proto__: null, type: 'nop', value });
+      const actualItem = actual[x - 1];
+      const value = checkCommaDisparity && !StringPrototypeEndsWith(actualItem, ',') ? expected[y - 1] : actualItem;
+      ArrayPrototypePush(result, [ kOperations.NOP, value ]);
       x--;
       y--;
     }
 
     if (diffLevel > 0) {
       if (x > prevX) {
-        ArrayPrototypePush(result, { __proto__: null, type: 'insert', value: actual[x - 1] });
-        x--;
+        ArrayPrototypePush(result, [ kOperations.INSERT, actual[--x] ]);
       } else {
-        ArrayPrototypePush(result, { __proto__: null, type: 'delete', value: expected[y - 1] });
-        y--;
+        ArrayPrototypePush(result, [ kOperations.DELETE, expected[--y] ]);
       }
     }
   }
@@ -109,49 +113,54 @@ function printSimpleMyersDiff(diff) {
   let message = '';
 
   for (let diffIdx = diff.length - 1; diffIdx >= 0; diffIdx--) {
-    const { type, value } = diff[diffIdx];
-    if (type === 'insert') {
-      message += `${colors.green}${value}${colors.white}`;
-    } else if (type === 'delete') {
-      message += `${colors.red}${value}${colors.white}`;
-    } else {
-      message += `${colors.white}${value}${colors.white}`;
+    const { 0: operation, 1: value } = diff[diffIdx];
+    let color = colors.white;
+
+    if (operation === kOperations.INSERT) {
+      color = colors.green;
+    } else if (operation === kOperations.DELETE) {
+      color = colors.red;
     }
+
+    message += `${color}${value}${colors.white}`;
   }
 
   return `\n${message}`;
 }
 
-function printMyersDiff(diff, simple = false) {
+function printMyersDiff(diff, operator) {
   let message = '';
   let skipped = false;
   let nopCount = 0;
 
   for (let diffIdx = diff.length - 1; diffIdx >= 0; diffIdx--) {
-    const { type, value } = diff[diffIdx];
-    const previousType = (diffIdx < (diff.length - 1)) ? diff[diffIdx + 1].type : null;
-    const typeChanged = previousType && (type !== previousType);
+    const { 0: operation, 1: value } = diff[diffIdx];
+    const previousOperation = diffIdx < diff.length - 1 ? diff[diffIdx + 1][0] : null;
 
-    if (typeChanged && previousType === 'nop') {
-      // Avoid grouping if only one line would have been grouped otherwise
+    // Avoid grouping if only one line would have been grouped otherwise
+    if (previousOperation === kOperations.NOP && operation !== previousOperation) {
       if (nopCount === kNopLinesToCollapse + 1) {
-        message += `${colors.white}  ${diff[diffIdx + 1].value}\n`;
+        message += `${colors.white}  ${diff[diffIdx + 1][1]}\n`;
       } else if (nopCount === kNopLinesToCollapse + 2) {
-        message += `${colors.white}  ${diff[diffIdx + 2].value}\n`;
-        message += `${colors.white}  ${diff[diffIdx + 1].value}\n`;
-      } if (nopCount >= (kNopLinesToCollapse + 3)) {
+        message += `${colors.white}  ${diff[diffIdx + 2][1]}\n`;
+        message += `${colors.white}  ${diff[diffIdx + 1][1]}\n`;
+      } else if (nopCount >= kNopLinesToCollapse + 3) {
         message += `${colors.blue}...${colors.white}\n`;
-        message += `${colors.white}  ${diff[diffIdx + 1].value}\n`;
+        message += `${colors.white}  ${diff[diffIdx + 1][1]}\n`;
         skipped = true;
       }
       nopCount = 0;
     }
 
-    if (type === 'insert') {
-      message += `${colors.green}+${colors.white} ${value}\n`;
-    } else if (type === 'delete') {
+    if (operation === kOperations.INSERT) {
+      if (operator === 'partialDeepStrictEqual') {
+        message += `${colors.gray}${colors.hasColors ? ' ' : '+'} ${value}${colors.white}\n`;
+      } else {
+        message += `${colors.green}+${colors.white} ${value}\n`;
+      }
+    } else if (operation === kOperations.DELETE) {
       message += `${colors.red}-${colors.white} ${value}\n`;
-    } else if (type === 'nop') {
+    } else if (operation === kOperations.NOP) {
       if (nopCount < kNopLinesToCollapse) {
         message += `${colors.white}  ${value}\n`;
       }

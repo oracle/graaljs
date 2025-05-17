@@ -1120,6 +1120,43 @@ While the diagnostics\_channel API is now considered stable, the built-in
 channels currently available are not. Each channel must be declared stable
 independently.
 
+#### Console
+
+`console.log`
+
+* `args` {any\[]}
+
+Emitted when `console.log()` is called. Receives and array of the arguments
+passed to `console.log()`.
+
+`console.info`
+
+* `args` {any\[]}
+
+Emitted when `console.info()` is called. Receives and array of the arguments
+passed to `console.info()`.
+
+`console.debug`
+
+* `args` {any\[]}
+
+Emitted when `console.debug()` is called. Receives and array of the arguments
+passed to `console.debug()`.
+
+`console.warn`
+
+* `args` {any\[]}
+
+Emitted when `console.warn()` is called. Receives and array of the arguments
+passed to `console.warn()`.
+
+`console.error`
+
+* `args` {any\[]}
+
+Emitted when `console.error()` is called. Receives and array of the arguments
+passed to `console.error()`.
+
 #### HTTP
 
 `http.client.request.created`
@@ -1281,6 +1318,14 @@ added: v16.18.0
 
 Emitted when a new process is created.
 
+`execve`
+
+* `execPath` {string}
+* `args` {string\[]}
+* `env` {string\[]}
+
+Emitted when [`process.execve()`][] is invoked.
+
 #### Worker Thread
 
 <!-- YAML
@@ -1310,5 +1355,6 @@ Emitted when a new thread is created.
 [`end` event]: #endevent
 [`error` event]: #errorevent
 [`net.Server.listen()`]: net.md#serverlisten
+[`process.execve()`]: process.md#processexecvefile-args-env
 [`start` event]: #startevent
 [context loss]: async_context.md#troubleshooting-context-loss

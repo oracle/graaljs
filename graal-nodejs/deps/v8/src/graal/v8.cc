@@ -140,8 +140,8 @@ namespace v8 {
             reinterpret_cast<GraalIsolate*> (isolate)->SaveReturnValue(value);
         }
 
-        template<> v8::Local<v8::Value> CorrectReturnValue<v8::Local<v8::Value>>(v8::Isolate* isolate, v8::internal::Address value) {
-            return reinterpret_cast<GraalIsolate*> (isolate)->CorrectReturnValue(value);
+        v8::Value* CorrectReturnValue(v8::Isolate* isolate, v8::internal::Address value) {
+            return *(reinterpret_cast<GraalIsolate*> (isolate)->CorrectReturnValue(value));
         }
 
         namespace wasm {
@@ -813,6 +813,17 @@ namespace v8 {
 
     Maybe<bool> Object::Set(Local<Context> context, Local<Value> key, Local<Value> value) {
         return Just(reinterpret_cast<GraalObject*> (this)->Set(key, value));
+    }
+
+    Maybe<bool> Object::SetLazyDataProperty(
+            Local<Context> context,
+            Local<Name> name,
+            AccessorNameGetterCallback getter,
+            Local<Value> data,
+            PropertyAttribute attributes,
+            SideEffectType getter_side_effect_type,
+            SideEffectType setter_side_effect_type) {
+        return reinterpret_cast<GraalObject*> (this)->SetLazyDataProperty(context, name, getter, data, attributes, getter_side_effect_type, setter_side_effect_type);
     }
 
     void* Object::SlowGetAlignedPointerFromInternalField(int index) {
@@ -3984,6 +3995,11 @@ namespace v8 {
     std::unique_ptr<CppHeap> CppHeap::Create(v8::Platform* platform, const CppHeapCreateParams& params) {
         TRACE
         return nullptr;
+    }
+
+    cppgc::HeapStatistics CppHeap::CollectStatistics(cppgc::HeapStatistics::DetailLevel detail_level) {
+        TRACE
+        return cppgc::HeapStatistics();
     }
 
     WrapperDescriptor CppHeap::wrapper_descriptor() const {

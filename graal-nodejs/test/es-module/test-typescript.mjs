@@ -1,4 +1,4 @@
-import { skip, spawnPromisified, isWindows } from '../common/index.mjs';
+import { skip, spawnPromisified } from '../common/index.mjs';
 import * as fixtures from '../common/fixtures.mjs';
 import { match, strictEqual } from 'node:assert';
 import { test } from 'node:test';
@@ -359,10 +359,7 @@ test('execute a JavaScript file importing a cjs TypeScript file', async () => {
   strictEqual(result.code, 0);
 });
 
-// TODO(marco-ippolito) Due to a bug in SWC, the TypeScript loader
-// does not work on Windows arm64. This test should be re-enabled
-// when https://github.com/nodejs/node/issues/54645 is fixed
-test('execute a TypeScript test mocking module', { skip: isWindows && process.arch === 'arm64' }, async () => {
+test('execute a TypeScript test mocking module', async () => {
   const result = await spawnPromisified(process.execPath, [
     '--test',
     '--experimental-test-module-mocks',
@@ -409,6 +406,43 @@ test('expect error when executing a TypeScript file with generics', async () => 
     result.stderr,
     /TypeScript parameter property is not supported in strip-only mode/
   );
+  strictEqual(result.stdout, '');
+  strictEqual(result.code, 1);
+});
+
+test('execute a TypeScript loader and a .ts file', async () => {
+  const result = await spawnPromisified(process.execPath, [
+    '--experimental-strip-types',
+    '--no-warnings',
+    '--import',
+    fixtures.fileURL('typescript/ts/test-loader.ts'),
+    fixtures.path('typescript/ts/test-typescript.ts'),
+  ]);
+  strictEqual(result.stderr, '');
+  match(result.stdout, /Hello, TypeScript!/);
+  strictEqual(result.code, 0);
+});
+
+test('execute a TypeScript loader and a .js file', async () => {
+  const result = await spawnPromisified(process.execPath, [
+    '--experimental-strip-types',
+    '--no-warnings',
+    '--import',
+    fixtures.fileURL('typescript/ts/test-loader.ts'),
+    fixtures.path('typescript/ts/test-simple.js'),
+  ]);
+  strictEqual(result.stderr, '');
+  match(result.stdout, /Hello, TypeScript!/);
+  strictEqual(result.code, 0);
+});
+
+test('execute invalid TypeScript syntax', async () => {
+  const result = await spawnPromisified(process.execPath, [
+    '--experimental-strip-types',
+    fixtures.path('typescript/ts/test-invalid-syntax.ts'),
+  ]);
+
+  match(result.stderr, /ERR_INVALID_TYPESCRIPT_SYNTAX/);
   strictEqual(result.stdout, '');
   strictEqual(result.code, 1);
 });
