@@ -31,6 +31,7 @@ from mx_benchmark import GuestVm
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
 from mx_sdk_benchmark import GraalVm
+from mx_sdk_vm_ng import is_enterprise
 
 from os.path import join
 
@@ -54,7 +55,7 @@ class StandaloneHostVm(GraalVm):
 
     def dimensions(self, cwd, args, code, out):
         return {
-            'host-vm': 'graalvm-ee' if mx_graal_js.is_ee() else 'graalvm-ce'
+            'host-vm': 'graalvm-ee' if is_enterprise() else 'graalvm-ce'
         }
 
     def extract_vm_info(self, args=None):

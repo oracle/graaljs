@@ -36,7 +36,8 @@ from mx import TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
-from mx_graal_js import get_jdk, is_wasm_available, is_ee
+from mx_graal_js import get_jdk, is_wasm_available
+from mx_sdk_vm_ng import is_nativeimage_ee
 
 # re-export custom mx project classes, so they can be used from suite.py
 from mx_sdk_vm_ng import StandaloneLicenses, NativeImageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
@@ -675,7 +676,7 @@ def graalnodejs_standalone_deps():
     return deps
 
 def libgraalnodejs_build_args():
-    if is_ee() and not mx.is_windows():
+    if is_nativeimage_ee() and not mx.is_windows():
         return [
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
