@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 24.2.2
+* Updated Node.js to version 22.15.1.
+
 ## Version 24.2.1
 * Made option `js.text-encoding` stable and allowed in `SandboxPolicy.CONSTRAINED`.
 
