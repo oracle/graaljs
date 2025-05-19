@@ -167,8 +167,12 @@ typedef void *(*ngtcp2_realloc)(void *ptr, size_t size, void *user_data);
  *     }
  *
  *     void conn_new() {
- *       ngtcp2_mem mem = {NULL, my_malloc_cb, my_free_cb, my_calloc_cb,
- *                         my_realloc_cb};
+ *       ngtcp2_mem mem = {
+ *         .malloc = my_malloc_cb,
+ *         .free = my_free_cb,
+ *         .calloc = my_calloc_cb,
+ *         .realloc = my_realloc_cb,
+ *       };
  *
  *       ...
  *     }
@@ -1471,7 +1475,9 @@ typedef struct ngtcp2_transport_params {
   uint64_t max_udp_payload_size;
   /**
    * :member:`active_connection_id_limit` is the maximum number of
-   * Connection ID that sender can store.
+   * Connection ID that sender can store.  If specified, it must be in
+   * the range of [:macro:`NGTCP2_DEFAULT_ACTIVE_CONNECTION_ID_LIMIT`,
+   * 8], inclusive.
    */
   uint64_t active_connection_id_limit;
   /**

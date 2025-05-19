@@ -89,6 +89,7 @@
   V(cached_data_rejected_string, "cachedDataRejected")                         \
   V(cached_data_string, "cachedData")                                          \
   V(cache_key_string, "cacheKey")                                              \
+  V(cert_usage_string, "certUsage")                                            \
   V(change_string, "change")                                                   \
   V(changes_string, "changes")                                                 \
   V(channel_string, "channel")                                                 \
@@ -99,6 +100,7 @@
     "transferList")                                                            \
   V(clone_untransferable_str, "Found invalid value in transferList.")          \
   V(code_string, "code")                                                       \
+  V(column_number_string, "columnNumber")                                      \
   V(column_string, "column")                                                   \
   V(commonjs_string, "commonjs")                                               \
   V(config_string, "config")                                                   \
@@ -132,6 +134,7 @@
   V(dns_ptr_string, "PTR")                                                     \
   V(dns_soa_string, "SOA")                                                     \
   V(dns_srv_string, "SRV")                                                     \
+  V(dns_tlsa_string, "TLSA")                                                   \
   V(dns_txt_string, "TXT")                                                     \
   V(done_string, "done")                                                       \
   V(duration_string, "duration")                                               \
@@ -144,10 +147,13 @@
   V(entry_type_string, "entryType")                                            \
   V(env_pairs_string, "envPairs")                                              \
   V(env_var_settings_string, "envVarSettings")                                 \
+  V(err_sqlite_error_string, "ERR_SQLITE_ERROR")                               \
+  V(errcode_string, "errcode")                                                 \
   V(errno_string, "errno")                                                     \
   V(error_string, "error")                                                     \
-  V(events, "events")                                                          \
+  V(errstr_string, "errstr")                                                   \
   V(events_waiting, "eventsWaiting")                                           \
+  V(events, "events")                                                          \
   V(exchange_string, "exchange")                                               \
   V(expire_string, "expire")                                                   \
   V(exponent_string, "exponent")                                               \
@@ -182,6 +188,8 @@
   V(homedir_string, "homedir")                                                 \
   V(host_string, "host")                                                       \
   V(hostmaster_string, "hostmaster")                                           \
+  V(hostname_string, "hostname")                                               \
+  V(href_string, "href")                                                       \
   V(http_1_1_string, "http/1.1")                                               \
   V(id_string, "id")                                                           \
   V(identity_string, "identity")                                               \
@@ -225,6 +233,7 @@
   V(line_number_string, "lineNumber")                                          \
   V(loop_count, "loopCount")                                                   \
   V(mac_string, "mac")                                                         \
+  V(match_string, "match")                                                     \
   V(max_buffer_string, "maxBuffer")                                            \
   V(max_concurrent_streams_string, "maxConcurrentStreams")                     \
   V(message_port_constructor_string, "MessagePort")                            \
@@ -291,6 +300,7 @@
   V(priority_string, "priority")                                               \
   V(process_string, "process")                                                 \
   V(promise_string, "promise")                                                 \
+  V(protocol_string, "protocol")                                               \
   V(prototype_string, "prototype")                                             \
   V(psk_string, "psk")                                                         \
   V(pubkey_string, "pubkey")                                                   \
@@ -317,7 +327,9 @@
   V(salt_length_string, "saltLength")                                          \
   V(scheme_string, "scheme")                                                   \
   V(scopeid_string, "scopeid")                                                 \
+  V(script_id_string, "scriptId")                                              \
   V(script_name_string, "scriptName")                                          \
+  V(selector_string, "selector")                                               \
   V(serial_number_string, "serialNumber")                                      \
   V(serial_string, "serial")                                                   \
   V(servername_string, "servername")                                           \

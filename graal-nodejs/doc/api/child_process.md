@@ -138,7 +138,7 @@ exec('my.bat', (err, stdout, stderr) => {
 });
 
 // Script with spaces in the filename:
-const bat = spawn('"my script.cmd"', ['a', 'b'], { shell: true });
+const bat = spawn('"my script.cmd" a b', { shell: true });
 // or:
 exec('"my script.cmd" a b', (err, stdout, stderr) => {
   // ...
@@ -158,7 +158,7 @@ exec('my.bat', (err, stdout, stderr) => {
 });
 
 // Script with spaces in the filename:
-const bat = spawn('"my script.cmd"', ['a', 'b'], { shell: true });
+const bat = spawn('"my script.cmd" a b', { shell: true });
 // or:
 exec('"my script.cmd" a b', (err, stdout, stderr) => {
   // ...
@@ -349,6 +349,10 @@ controller.abort();
 added: v0.1.91
 changes:
   - version:
+      - v22.15.0
+    pr-url: https://github.com/nodejs/node/pull/57389
+    description: Passing `args` when `shell` is set to `true` is deprecated.
+  - version:
       - v16.4.0
       - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
@@ -536,7 +540,7 @@ changes:
 * `options` {Object}
   * `cwd` {string|URL} Current working directory of the child process.
   * `detached` {boolean} Prepare child process to run independently of its
-    parent process. Specific behavior depends on the platform, see
+    parent process. Specific behavior depends on the platform (see
     [`options.detached`][]).
   * `env` {Object} Environment key-value pairs. **Default:** `process.env`.
   * `execPath` {string} Executable used to create the child process.
@@ -642,6 +646,10 @@ if (process.argv[2] === 'child') {
 added: v0.1.90
 changes:
   - version:
+      - v22.15.0
+    pr-url: https://github.com/nodejs/node/pull/57389
+    description: Passing `args` when `shell` is set to `true` is deprecated.
+  - version:
       - v16.4.0
       - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
@@ -688,7 +696,7 @@ changes:
   * `stdio` {Array|string} Child's stdio configuration (see
     [`options.stdio`][`stdio`]).
   * `detached` {boolean} Prepare child process to run independently of
-    its parent process. Specific behavior depends on the platform, see
+    its parent process. Specific behavior depends on the platform (see
     [`options.detached`][]).
   * `uid` {number} Sets the user identity of the process (see setuid(2)).
   * `gid` {number} Sets the group identity of the process (see setgid(2)).
