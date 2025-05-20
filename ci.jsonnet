@@ -104,6 +104,26 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     common.jdklatest + common.linux_amd64,
   ],
 
+  graalvm_jdk21:: common['graalvm-ee-21'],
+  jdk21unchained:: common.jdklatest + {
+    jdk:: 'jdk21',
+    downloads+: {
+      "BOOTSTRAP_GRAALVM": $.graalvm_jdk21.downloads['JAVA_HOME'],
+    },
+  },
+  jdk21Platforms:: [
+    $.graalvm_jdk21 + common.linux_amd64,
+    $.graalvm_jdk21 + common.linux_aarch64,
+    $.graalvm_jdk21 + common.darwin_aarch64,
+    $.graalvm_jdk21 + common.windows_amd64,
+  ],
+  jdk21unchainedPlatforms:: [
+    $.jdk21unchained + common.linux_amd64,
+    $.jdk21unchained + common.linux_aarch64,
+    $.jdk21unchained + common.darwin_aarch64,
+    $.jdk21unchained + common.windows_amd64,
+  ],
+
   local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
     assert prefix != '' && edition != '' && jdk != '' && os != '' && arch != '';
     local parts = [prefix, 'graalvm-' + edition, jdk, os, arch, suffix];
