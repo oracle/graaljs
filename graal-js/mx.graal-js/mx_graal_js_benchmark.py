@@ -31,6 +31,7 @@ from mx_benchmark import GuestVm
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
 from mx_sdk_benchmark import GraalVm
+from mx_sdk_vm_ng import is_enterprise
 
 from os.path import join
 
@@ -54,7 +55,7 @@ class StandaloneHostVm(GraalVm):
 
     def dimensions(self, cwd, args, code, out):
         return {
-            'host-vm': 'graalvm-ee' if mx_graal_js.is_ee() else 'graalvm-ce'
+            'host-vm': 'graalvm-ee' if is_enterprise() else 'graalvm-ce'
         }
 
     def extract_vm_info(self, args=None):
@@ -150,10 +151,10 @@ class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
 add_bm_suite(JMHDistGraalJsBenchmarkSuite())
 
 # --env ce-js-bench
-ce_components = ['cmp', 'gvm', 'lg', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm', 'tflsm']
+ce_components = ['cmp', 'lg', 'sdkc', 'sdkni', 'svm', 'svmsl', 'svmt', 'tflc', 'tflsm']
 
 # --env ee-js-bench
-ee_components = ['cmp', 'cmpee', 'gvm', 'lg', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm', 'tflsm']
+ee_components = ['cmp', 'cmpee', 'lg', 'sdkc', 'sdkni', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tflc', 'tflsm']
 # svmeegc is only available on linux
 if not mx.is_linux():
     ee_components.remove('svmeegc')

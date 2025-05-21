@@ -36,7 +36,8 @@ from mx import TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
-from mx_graal_js import get_jdk, is_wasm_available, is_ee
+from mx_graal_js import get_jdk, is_wasm_available
+from mx_sdk_vm_ng import is_nativeimage_ee
 
 # re-export custom mx project classes, so they can be used from suite.py
 from mx_sdk_vm_ng import StandaloneLicenses, NativeImageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
@@ -519,7 +520,6 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     if _is_windows:
         processDevkitRoot()
 
-    nodeExe = join(_suite.dir, 'out', mode, 'node')
     if standalone:
         standalone_dists = {
             'native': 'graal-nodejs:GRAALNODEJS_NATIVE_STANDALONE',
@@ -538,16 +538,15 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
                     return mode, vmArgs, progArgs, nodeExe
 
         mx.warn(f"Could not find {standalone} nodejs standalone. Falling back to default `mx node` command.\n" +
-                "You may need to build the standalone distribution(s) and dynamically import '/substratevm,/vm,/wasm' (e.g., using `mx --env svm node`).")
+                "You may need to build the standalone distribution(s) and dynamically import '/substratevm,/wasm' (e.g., using `mx --env svm node`).")
 
     setLibraryPath()
+    nodeExe = join(_suite.dir, 'out', mode, 'node')
 
-    if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None and _prepare_svm_env():
+    if mx.suite('substratevm', fatalIfMissing=False) is not None and _prepare_svm_env():
         return mode, vmArgs, progArgs, nodeExe
 
-    if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
-        mx.warn("Running on the JVM. If you want to run on SubstrateVM, you need to dynamically import '/substratevm,/vm,/wasm' (e.g., using `mx --env svm node`).")
-
+    # Running on the JVM.
     if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs + get_jdk(forBuild=True).java_args):
         vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
@@ -692,17 +691,14 @@ def _prepare_svm_env():
     else:
         mx.warn("Not running on native standalone since GRAALNODEJS_NATIVE_STANDALONE distribution is not available")
 
-        import mx_vm
-        if hasattr(mx_vm, 'graalvm_home'):
-            graalvm_home = mx_vm.graalvm_home()
-        else:
-            import mx_sdk_vm_impl
-            graalvm_home = mx_sdk_vm_impl.graalvm_home()
-
+        graalvm_home = mx_sdk_vm.graalvm_home()
         libgraal_nodejs = join(graalvm_home, 'languages', 'nodejs', 'lib', libgraal_nodejs_filename)
 
     if not exists(libgraal_nodejs):
-        mx.abort(f"Cannot find graal-nodejs library in '{libgraal_nodejs}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?")
+        mx.warn(f"Cannot find graal-nodejs library in '{libgraal_nodejs}'.\nDid you forget to build it (e.g., using 'mx --env svm build')? Running on the JVM.")
+        # fall back to the jvm
+        return False
+
     _setEnvVar('NODE_JVM_LIB', libgraal_nodejs)
     return True
 
@@ -721,11 +717,14 @@ def graalnodejs_standalone_deps():
     return deps
 
 def libgraalnodejs_build_args():
-    if is_ee() and not mx.is_windows():
-        return [
+    if is_nativeimage_ee() and not mx.is_windows():
+        image_build_args = [
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
         ]
+        if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+            image_build_args = ['-H:+UnlockExperimentalVMOptions', *image_build_args, '-H:-UnlockExperimentalVMOptions']
+        return image_build_args
     else:
         return []
 

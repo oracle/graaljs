@@ -20,8 +20,9 @@ local cicommon = import '../ci/common.jsonnet';
     // Avoid building native images on machines with very little RAM.
     capabilities+: if enabled && 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
     artifact:: if enabled then 'nodejs' else '',
-    suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else ['vm'],
+    suiteimports+:: if enabled then ['substratevm', 'tools'] else [],
     nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [],
+    build_dependencies+:: (if enabled then ['GRAALNODEJS_NATIVE_STANDALONE'] else []) + ['GRAALNODEJS_JVM_STANDALONE'],
     build_standalones:: true,
   },
 
@@ -47,17 +48,16 @@ local cicommon = import '../ci/common.jsonnet';
 
   local gateVmSmokeTest = {
     run+: [
-      ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
-      ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
-      ['${GRAALVM_HOME}/bin/npm', '--version'],
       # standalone smoke tests
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALNODEJS_JVM_STANDALONE']],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALNODEJS_JVM_STANDALONE']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
       # maven-downloader smoke test
-      ['VERBOSE_GRAALVM_LAUNCHERS=true', '${STANDALONE_HOME}/bin/node-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
+      ['set-export', 'VERBOSE_GRAALVM_LAUNCHERS', 'true'],
+      ['${STANDALONE_HOME}/bin/node-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
+      ['unset', 'VERBOSE_GRAALVM_LAUNCHERS'],
     ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then ([
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALNODEJS_NATIVE_STANDALONE']],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALNODEJS_NATIVE_STANDALONE']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
     ] + if 'os' in super && super.os == 'windows' then [] else [
@@ -91,7 +91,7 @@ local cicommon = import '../ci/common.jsonnet';
   local auxEngineCache = {
     graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'paths', '--output', 'GRAALNODEJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALNODEJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
     ],
     timelimit: '1:00:00',
   },

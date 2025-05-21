@@ -48,7 +48,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       ['git', '-C', self.graalvmtests, 'checkout', '75b6a9e16ebbfd8b9b0a24e4be7c4378e3281204'],
     ] else [],
     using_artifact:: false,
-    build_standalones:: false,
+    build_standalones:: std.length(std.filter(function(dep) std.endsWith(dep, "_STANDALONE"), self.build_dependencies)) > 0,
     build_dependencies:: [],
     setup+: self.graalvm.setup,
     run+: []
@@ -90,23 +90,39 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   ce:: {defs:: $.defs, graalvm:: self.defs.ce},
   ee:: {defs:: $.defs, graalvm:: self.defs.ee},
 
-  supportedPlatforms:: [
-    common.jdk21 + common.linux_amd64,
-    common.jdk21 + common.linux_aarch64,
-    common.jdk21 + common.darwin_aarch64,
-    common.jdk21 + common.windows_amd64,
+  jdklatestPlatforms:: [
     common.jdklatest + common.linux_amd64,
     common.jdklatest + common.linux_aarch64,
     common.jdklatest + common.darwin_amd64,
     common.jdklatest + common.darwin_aarch64,
     common.jdklatest + common.windows_amd64,
   ],
+  supportedPlatforms:: $.jdklatestPlatforms,
   mainGatePlatform:: common.jdklatest + common.linux_amd64,
   styleGatePlatforms:: [
     common.jdk21 + common.linux_amd64,
     common.jdklatest + common.linux_amd64,
   ],
-  jdklatestPlatforms:: [p for p in $.supportedPlatforms if p.jdk_name == 'jdk-latest'],
+
+  graalvm_jdk21:: common['graalvm-ee-21'],
+  jdk21unchained:: common.jdklatest + {
+    jdk:: 'jdk21',
+    downloads+: {
+      "BOOTSTRAP_GRAALVM": $.graalvm_jdk21.downloads['JAVA_HOME'],
+    },
+  },
+  jdk21Platforms:: [
+    $.graalvm_jdk21 + common.linux_amd64,
+    $.graalvm_jdk21 + common.linux_aarch64,
+    $.graalvm_jdk21 + common.darwin_aarch64,
+    $.graalvm_jdk21 + common.windows_amd64,
+  ],
+  jdk21unchainedPlatforms:: [
+    $.jdk21unchained + common.linux_amd64,
+    $.jdk21unchained + common.linux_aarch64,
+    $.jdk21unchained + common.darwin_aarch64,
+    $.jdk21unchained + common.windows_amd64,
+  ],
 
   local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
     assert prefix != '' && edition != '' && jdk != '' && os != '' && arch != '';
@@ -139,12 +155,18 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       {
         name: artifactName,
         dir: "../",
-        patterns: [
-          "graal/sdk/mxbuild/" + os + '-' + arch + "/GRAAL*",
-          "*/*/mxbuild/jdk*",
-          "*/mxbuild",
-          "*/graal-nodejs/out", # js/graal-nodejs/out
-        ] + (if build.build_standalones then [
+        patterns: (if std.length(build.build_dependencies) == 0 || std.count(build.build_dependencies, "GRAALVM") > 0 then [
+          # GRAAL{VM,JDK_?E}_*_JAVA??
+          "graal/sdk/mxbuild/" + os + '-' + arch + "/GRAAL*JAVA??",
+        ] else []) +
+        (if build.suite_prefix == "nodejs" then [
+           # {js,main}/graal-nodejs/out/{Release,Debug}/node
+          "*/graal-nodejs/out/*/node*",
+          "*/graal-nodejs/out/headers",
+        ] + if os == 'windows' then [] else [
+          "*/graal-nodejs/out/lib",
+        ] else []) +
+        (if build.build_standalones then [
           "*/*/mxbuild/" + os + '-' + arch + "/GRAAL*JS*_STANDALONE",
         ] else []),
       },

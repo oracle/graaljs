@@ -1,4 +1,5 @@
-DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,substratevm-enterprise-gcs,/wasm
-COMPONENTS=cmpee,gvm,lg,svmee,svmeegc,svmte,tfle,tflm,tflsm
+DYNAMIC_IMPORTS=/substratevm-enterprise,substratevm-enterprise-gcs,/truffle-enterprise,/wasm
+COMPONENTS=lg,svmee,tflsm,suite:substratevm-enterprise-gcs
 NATIVE_IMAGES=lib:jsvm,lib:jvmcicompiler
-DISABLE_INSTALLABLES=True
+DISABLE_INSTALLABLES=true
+GRAALVM_SKIP_ARCHIVE=true

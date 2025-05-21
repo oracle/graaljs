@@ -43,21 +43,30 @@ local ci = import '../ci.jsonnet';
     nativeimages+:: ['lib:jsvm', 'lib:jvmcicompiler'],
     extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
-      ['mx', 'build', '--dependencies=GRAALVM,GRAALJS_JVM_STANDALONE,GRAALJS_NATIVE_STANDALONE'],
-      ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
-      ['${GRAALVM_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
-      ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      # build legacy graalvm component without native image
+      ['mx', '--native-images=', 'build', '--dependencies=GRAALVM'],
+      ['set-export', 'GRAALVM_HOME', ['mx', '--native-images=', '--quiet', '--no-warning', 'graalvm-home']],
+      ['${GRAALVM_HOME}/bin/js', '--version:graalvm'],
+      ['${GRAALVM_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
+      ['${GRAALVM_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
       # standalone smoke tests
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE']],
-      ['${STANDALONE_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
-      ['${STANDALONE_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
-      ['${STANDALONE_HOME}/bin/js', '--experimental-options', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_JVM_STANDALONE']],
-      ['${STANDALONE_HOME}/bin/js', '--jvm', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
-      ['${STANDALONE_HOME}/bin/js', '--jvm', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
-      ['${STANDALONE_HOME}/bin/js', '--experimental-options', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
+      ['mx', 'build', '--dependencies=GRAALJS_JVM_STANDALONE,GRAALJS_NATIVE_STANDALONE'],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE']],
+      ['${STANDALONE_HOME}/bin/js', '--version:graalvm'],
+      ['${STANDALONE_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
+      ['${STANDALONE_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      ['${STANDALONE_HOME}/bin/js', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
+      ['${STANDALONE_HOME}/bin/js', '--vm.Xss16m', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/misc/havlak.js', '--show-warmup'],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_JVM_STANDALONE']],
+      ['${STANDALONE_HOME}/bin/js', '--version:graalvm'],
+      ['${STANDALONE_HOME}/bin/js', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
+      ['${STANDALONE_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      ['${STANDALONE_HOME}/bin/js', '--js.webassembly', '-e', 'new WebAssembly.Module(new Uint8Array([0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00]))'],
+      ['${STANDALONE_HOME}/bin/js', '--vm.Xss16m', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/misc/havlak.js', '--show-warmup'],
       # maven-downloader smoke test
-      ['VERBOSE_GRAALVM_LAUNCHERS=true', '${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
+      ['set-export', 'VERBOSE_GRAALVM_LAUNCHERS', 'true'],
+      ['${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
+      ['unset', 'VERBOSE_GRAALVM_LAUNCHERS'],
     ],
     timelimit: '45:00',
   },
@@ -110,12 +119,12 @@ local ci = import '../ci.jsonnet';
   },
 
   local auxEngineCache = {
-    suiteimports+:: ['vm', 'substratevm', 'tools'],
+    suiteimports+:: ['substratevm', 'tools'],
     nativeimages+:: ['lib:jsvm'],
     graalvmtests:: '../../graalvm-tests',
     run+: [
-      ['mx', 'build'],
-      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
+      ['mx', 'build', '--dependencies=GRAALJS_NATIVE_STANDALONE'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl'],
     ],
     timelimit: '1:00:00',
   },
@@ -133,7 +142,8 @@ local ci = import '../ci.jsonnet';
   ], platforms=ci.styleGatePlatforms, defaultTarget=common.gate),
 
   // Builds that should run on all supported platforms
-  local testingBuilds = generateBuilds([
+
+  local testingBuilds = local bs = [
     graalJs + gateTags('default')                                                                    + ce + {name: 'default-ce'} +
       promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.linux_aarch64, common.jdklatest + common.windows_amd64]),
     graalJs + gateTags('default')                                                                    + ee + {name: 'default-ee'} +
@@ -170,7 +180,16 @@ local ci = import '../ci.jsonnet';
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
       excludePlatforms([common.darwin_amd64]),   # Too slow
-  ], defaultTarget=common.weekly),
+  ];
+    generateBuilds(bs, platforms=ci.jdklatestPlatforms, defaultTarget=common.weekly) +
+    # jobs that depend on neither compiler nor substratevm should still run on jdk21
+    generateBuilds([b + {suiteimports:: std.setDiff(std.set(b.suiteimports), std.set(['compiler', 'substratevm']))} for b in bs
+      if std.setInter(std.set(b.suiteimports), std.set(['compiler', 'substratevm'])) == []],
+      platforms=ci.jdk21Platforms, defaultTarget=common.weekly) +
+    # build and test standalones using jdk-latest + bootstrap graalvm jdk21
+    generateBuilds([b for b in bs
+      if std.count(['native-image-smoke-test', 'aux-engine-cache'], b.name) > 0],
+      platforms=ci.jdk21unchainedPlatforms, defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([

@@ -582,6 +582,8 @@ suite = {
         "name" : "org.graalvm.js.fuzzillilauncher",
         "requires": [
           "org.graalvm.js.launcher",
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage",
           "org.graalvm.polyglot",
         ],
       },

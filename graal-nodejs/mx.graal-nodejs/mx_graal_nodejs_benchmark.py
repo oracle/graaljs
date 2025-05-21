@@ -77,11 +77,10 @@ def register_nodejs_vms():
         mx_benchmark.java_vm_registry.add_vm(vm, _suite, priority)
 
 # --env ce-nodejs-bench
-ce_components = ['cmp', 'gvm', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm', 'tflsm']
-
+ce_components = ['cmp', 'lg', 'sdkc', 'sdkni', 'svm', 'svmsl', 'svmt', 'tflc', 'tflsm']
 
 # --env ee-nodejs-bench
-ee_components = ['cmp', 'cmpee', 'gvm', 'lg', 'libpoly', 'njs', 'njsl', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'sjsvm', 'spolyglot', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm', 'tflsm']
+ee_components = ['cmp', 'cmpee', 'lg', 'sdkc', 'sdkni', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tflc', 'tflsm']
 # svmeegc is only available on linux
 if not mx.is_linux():
     ee_components.remove('svmeegc')

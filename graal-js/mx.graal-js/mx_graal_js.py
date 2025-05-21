@@ -41,6 +41,8 @@ from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
 
 import mx_unittest
 from mx_unittest import unittest
+import mx_sdk_vm_ng
+from mx_sdk_vm_ng import is_nativeimage_ee
 
 # re-export custom mx project classes, so they can be used from suite.py
 from mx_sdk_vm_ng import StandaloneLicenses, ThinLauncherProject, LanguageLibraryProject, DynamicPOMDistribution, DeliverableStandaloneArchive  # pylint: disable=unused-import
@@ -540,9 +542,6 @@ def is_wasm_available():
 def has_suite(name):
     return mx.suite(name, fatalIfMissing=False)
 
-def is_ee():
-    return has_suite('truffle-enterprise')
-
 def graaljs_standalone_deps():
     deps = mx_truffle.resolve_truffle_dist_names()
     if is_wasm_available():
@@ -550,11 +549,14 @@ def graaljs_standalone_deps():
     return deps
 
 def libjsvm_build_args():
-    if is_ee() and not mx.is_windows():
-        return [
+    if is_nativeimage_ee() and not mx.is_windows():
+        image_build_args = [
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
         ]
+        if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+            image_build_args = ['-H:+UnlockExperimentalVMOptions', *image_build_args, '-H:-UnlockExperimentalVMOptions']
+        return image_build_args
     else:
         return []
 
