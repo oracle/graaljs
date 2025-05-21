@@ -21,21 +21,6 @@ test-esm-detect-ambiguous            : FAIL
 test-esm-tla-unfinished              : FAIL
 test-require-module-tla-print-execution: FAIL
 
-# WebAssembly is not enabled
-test-esm-extensionless-esm-and-wasm  : FAIL
-test-esm-loader-entry-url            : FAIL
-test-esm-loader-http-imports         : FAIL
-test-esm-type-flag-loose-files       : FAIL
-test-esm-type-flag-package-scopes    : FAIL
-test-esm-wasm                        : FAIL
-test-wasm-memory-out-of-bound        : FAIL
-test-wasm-simple                     : FAIL
-test-wasm-web-api                    : FAIL
-test-typescript                      : FAIL
-test-typescript-eval                 : FAIL
-test-typescript-commonjs             : FAIL
-test-typescript-module               : FAIL
-
 # Unclassified
 test-require-module-tla              : SKIP
 
