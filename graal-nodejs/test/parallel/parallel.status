@@ -67,6 +67,10 @@ test-finalization-registry-shutdown: SKIP
 # Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
 test-fs-write: FAIL
 
+# loads inspector/promises that attempts to extend inspector.Session
+# (which is a foreign object when chromeinspector is used)
+test-process-get-builtin: SKIP
+
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint)
 test-http-same-map: FAIL
 test-v8-flags: FAIL
@@ -91,11 +95,13 @@ test-inspector-network-http: FAIL
 
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
+test-vm-codegen: FAIL
 
 # missing support for script.sourceMapURL
 test-module-strip-types: FAIL
 test-node-output-sourcemaps: FAIL
 test-source-map-cjs-require-cache: FAIL
+test-util-getcallsites: FAIL
 test-vm-source-map-url: FAIL
 
 # checks v8-specific asm-related warning
@@ -146,83 +152,6 @@ test-vm-context: FAIL
 # JS Proxy as vm context not handled well
 test-vm-proxy-failure-CP: FAIL
 test-vm-set-property-proxy: SKIP
-
-# WebAssembly is not enabled by default
-test-abortsignal-cloneable: FAIL
-test-blob: FAIL
-test-blocklist-clone: FAIL
-test-crypto-x509: FAIL
-test-debugger-invalid-json: FAIL
-test-diagnostics-channel-module-import: FAIL
-test-eventsource: FAIL
-test-fetch: FAIL
-test-fetch-disabled: FAIL
-test-fetch-mock: FAIL
-test-http-import-websocket: FAIL
-test-http-response-setheaders: FAIL
-test-messageevent-brandcheck: FAIL
-test-messaging-marktransfermode: FAIL
-test-perf-hooks-histogram: FAIL
-test-process-get-builtin: FAIL
-test-repl-colors: FAIL
-test-repl-context: FAIL
-test-repl-definecommand: FAIL
-test-repl-empty: FAIL
-test-repl-domain: FAIL
-test-repl-end-emits-exit: FAIL
-test-repl-editor: FAIL
-test-repl-eval: FAIL
-test-repl-function-definition-edge-case: FAIL
-test-repl-load-multiline-no-trailing-newline: FAIL
-test-repl-mode: FAIL
-test-repl-load-multiline: FAIL
-test-repl-multiline: FAIL
-test-repl-no-terminal: FAIL
-test-repl-null: FAIL
-test-repl-null-thrown: FAIL
-test-repl-options: FAIL
-test-repl-pretty-stack-custom-writer: FAIL
-test-repl-preview-without-inspector: FAIL
-test-repl-programmatic-history: FAIL
-test-repl-recoverable: FAIL
-test-repl-require-cache: FAIL
-test-repl-require: FAIL
-test-repl-reset-event: FAIL
-test-repl-save-load: FAIL
-test-repl-tab: FAIL
-test-repl-syntax-error-stack: FAIL
-test-repl-setprompt: FAIL
-test-repl-tab-complete-crash: FAIL
-test-repl-tab-complete-no-warn: FAIL
-test-repl-throw-null-or-undefined: FAIL
-test-repl-tab-complete-on-editor-mode: FAIL
-test-repl-uncaught-exception: FAIL
-test-repl-uncaught-exception-async: FAIL
-test-repl-uncaught-exception-evalcallback: FAIL
-test-repl-tab-complete-import: FAIL
-test-repl-underscore: FAIL
-test-repl-use-global: FAIL
-test-repl-tab-complete: FAIL
-test-runner-cli: FAIL
-test-socketaddress: FAIL
-test-structuredClone-global: FAIL
-test-util-getcallsites: FAIL
-test-vm-codegen: FAIL
-test-websocket: FAIL
-test-webstreams-clone-unref: FAIL
-test-webstream-structured-clone-no-leftovers: FAIL
-test-whatwg-webstreams-transfer: FAIL
-test-worker-broadcastchannel-wpt: FAIL
-test-worker-broadcastchannel: FAIL
-test-worker-eval-typescript: FAIL
-test-worker-message-event: FAIL
-test-worker-message-mark-as-uncloneable: FAIL
-test-worker-message-port: FAIL
-test-worker-message-port-transfer-self: FAIL
-test-worker-message-port-wasm-module: FAIL
-test-worker-message-port-wasm-threads: FAIL
-test-worker-messaging: FAIL
-test-worker-onmessage: SKIP
 
 # Custom MicrotaskQueue is not supported
 test-vm-timeout-escape-promise: FAIL
@@ -334,6 +263,7 @@ test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP
 test-worker-cleanexit-with-moduleload: SKIP
 test-worker-error-stack-getter-throws: FAIL
+test-worker-messaging: SKIP
 test-worker-messaging-errors-handler: SKIP
 test-worker-messaging-errors-timeout: SKIP
 test-worker-stack-overflow-stack-size: SKIP

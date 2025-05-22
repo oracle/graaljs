@@ -20,7 +20,7 @@ local cicommon = import '../ci/common.jsonnet';
     // Avoid building native images on machines with very little RAM.
     capabilities+: if enabled && 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
     artifact:: if enabled then 'nodejs' else '',
-    suiteimports+:: if enabled then ['substratevm', 'tools'] else [],
+    suiteimports+:: if enabled then ['substratevm', 'tools', 'wasm'] else [],
     nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [],
     build_dependencies+:: (if enabled then ['GRAALNODEJS_NATIVE_STANDALONE'] else []) + ['GRAALNODEJS_JVM_STANDALONE'],
     build_standalones:: true,

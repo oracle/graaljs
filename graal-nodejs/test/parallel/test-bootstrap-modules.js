@@ -111,6 +111,7 @@ expected.beforePreExec = new Set([
 
 expected.atRunTime = new Set([
   'Internal Binding worker',
+  'NativeModule internal/graal/wasm',
   'NativeModule internal/modules/run_main',
   'NativeModule internal/net',
   'NativeModule internal/dns/utils',
