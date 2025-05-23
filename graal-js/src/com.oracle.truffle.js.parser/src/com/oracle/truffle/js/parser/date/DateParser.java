@@ -746,7 +746,8 @@ public class DateParser {
     }
 
     private boolean isUTCDefaultTimezone(boolean dateOnly, boolean strict) {
-        return (strict || realm.getContext().getLanguageOptions().useUTCForLegacyDates()) && dateOnly;
+        return realm.getContext().isOptionNashornCompatibilityMode() ? strict :
+                (dateOnly && (strict || realm.getContext().getLanguageOptions().useUTCForLegacyDates()));
     }
 
     private static void addName(final String str, final int type, final int value) {
