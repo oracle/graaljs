@@ -42,7 +42,7 @@ class SignBase : public BaseObject {
   SET_SELF_SIZE(SignBase)
 
  protected:
-  EVPMDCtxPointer mdctx_;
+  ncrypto::EVPMDCtxPointer mdctx_;
 };
 
 class Sign : public SignBase {
@@ -60,7 +60,7 @@ class Sign : public SignBase {
       : error(err), signature(std::move(sig)) {}
   };
 
-  SignResult SignFinal(const EVPKeyPointer& pkey,
+  SignResult SignFinal(const ncrypto::EVPKeyPointer& pkey,
                        int padding,
                        const v8::Maybe<int>& saltlen,
                        DSASigEnc dsa_sig_enc);
@@ -81,7 +81,7 @@ class Verify : public SignBase {
   static void Initialize(Environment* env, v8::Local<v8::Object> target);
   static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
 
-  Error VerifyFinal(const EVPKeyPointer& key,
+  Error VerifyFinal(const ncrypto::EVPKeyPointer& key,
                     const ByteSource& sig,
                     int padding,
                     const v8::Maybe<int>& saltlen,
@@ -146,10 +146,10 @@ struct SignTraits final {
       unsigned int offset,
       SignConfiguration* params);
 
-  static bool DeriveBits(
-      Environment* env,
-      const SignConfiguration& params,
-      ByteSource* out);
+  static bool DeriveBits(Environment* env,
+                         const SignConfiguration& params,
+                         ByteSource* out,
+                         CryptoJobMode mode);
 
   static v8::MaybeLocal<v8::Value> EncodeOutput(Environment* env,
                                                 const SignConfiguration& params,

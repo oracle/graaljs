@@ -23,7 +23,7 @@
 #define SRC_NODE_VERSION_H_
 
 #define NODE_MAJOR_VERSION 22
-#define NODE_MINOR_VERSION 13
+#define NODE_MINOR_VERSION 15
 #define NODE_PATCH_VERSION 1
 
 #define NODE_VERSION_IS_LTS 1
@@ -100,7 +100,7 @@
 
 // The NAPI_VERSION supported by the runtime. This is the inclusive range of
 // versions which the Node.js binary being built supports.
-#define NODE_API_SUPPORTED_VERSION_MAX 9
+#define NODE_API_SUPPORTED_VERSION_MAX 10
 #define NODE_API_SUPPORTED_VERSION_MIN 1
 
 // Node API modules use NAPI_VERSION 8 by default if it is not explicitly

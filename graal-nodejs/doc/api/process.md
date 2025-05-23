@@ -1885,8 +1885,28 @@ A number which will be the process exit code, when the process either
 exits gracefully, or is exited via [`process.exit()`][] without specifying
 a code.
 
-Specifying a code to [`process.exit(code)`][`process.exit()`] will override any
-previous setting of `process.exitCode`.
+The value of `process.exitCode` can be updated by either assigning a value to
+`process.exitCode` or by passing an argument to [`process.exit()`][]:
+
+```console
+$ node -e 'process.exitCode = 9'; echo $?
+9
+$ node -e 'process.exit(42)'; echo $?
+42
+$ node -e 'process.exitCode = 9; process.exit(42)'; echo $?
+42
+```
+
+The value can also be set implicitly by Node.js when unrecoverable errors occur (e.g.
+such as the encountering of an unsettled top-level await). However explicit
+manipulations of the exit code always take precedence over implicit ones:
+
+```console
+$ node --input-type=module -e 'await new Promise(() => {})'; echo $?
+13
+$ node --input-type=module -e 'process.exitCode = 9; await new Promise(() => {})'; echo $?
+9
+```
 
 ## `process.features.cached_builtins`
 
@@ -2471,8 +2491,7 @@ if (process.getuid) {
 }
 ```
 
-This function is only available on POSIX platforms (i.e. not Windows or
-Android).
+This function not available on Windows.
 
 ## `process.hasUncaughtExceptionCaptureCallback()`
 
@@ -2993,34 +3012,40 @@ function definitelyAsync(arg, cb) {
 
 ### When to use `queueMicrotask()` vs. `process.nextTick()`
 
-The [`queueMicrotask()`][] API is an alternative to `process.nextTick()` that
-also defers execution of a function using the same microtask queue used to
-execute the then, catch, and finally handlers of resolved promises. Within
-Node.js, every time the "next tick queue" is drained, the microtask queue
+The [`queueMicrotask()`][] API is an alternative to `process.nextTick()` that instead of using the
+"next tick queue" defers execution of a function using the same microtask queue used to execute the
+then, catch, and finally handlers of resolved promises.
+
+Within Node.js, every time the "next tick queue" is drained, the microtask queue
 is drained immediately after.
+
+So in CJS modules `process.nextTick()` callbacks are always run before `queueMicrotask()` ones.
+However since ESM modules are processed already as part of the microtask queue, there
+`queueMicrotask()` callbacks are always exectued before `process.nextTick()` ones since Node.js
+is already in the process of draining the microtask queue.
 
 ```mjs
 import { nextTick } from 'node:process';
 
-Promise.resolve().then(() => console.log(2));
-queueMicrotask(() => console.log(3));
-nextTick(() => console.log(1));
+Promise.resolve().then(() => console.log('resolve'));
+queueMicrotask(() => console.log('microtask'));
+nextTick(() => console.log('nextTick'));
 // Output:
-// 1
-// 2
-// 3
+// resolve
+// microtask
+// nextTick
 ```
 
 ```cjs
 const { nextTick } = require('node:process');
 
-Promise.resolve().then(() => console.log(2));
-queueMicrotask(() => console.log(3));
-nextTick(() => console.log(1));
+Promise.resolve().then(() => console.log('resolve'));
+queueMicrotask(() => console.log('microtask'));
+nextTick(() => console.log('nextTick'));
 // Output:
-// 1
-// 2
-// 3
+// nextTick
+// resolve
+// microtask
 ```
 
 For _most_ userland use cases, the `queueMicrotask()` API provides a portable
@@ -3215,6 +3240,25 @@ const { ppid } = require('node:process');
 console.log(`The parent process is pid ${ppid}`);
 ```
 
+## `process.ref(maybeRefable)`
+
+<!-- YAML
+added: v22.14.0
+-->
+
+> Stability: 1 - Experimental
+
+* `maybeRefable` {any} An object that may be "refable".
+
+An object is "refable" if it implements the Node.js "Refable protocol".
+Specifically, this means that the object implements the `Symbol.for('nodejs.ref')`
+and `Symbol.for('nodejs.unref')` methods. "Ref'd" objects will keep the Node.js
+event loop alive, while "unref'd" objects will not. Historically, this was
+implemented by using `ref()` and `unref()` methods directly on the objects.
+This pattern, however, is being deprecated in favor of the "Refable protocol"
+in order to better support Web Platform API types whose APIs cannot be modified
+to add `ref()` and `unref()` methods but still need to support that behavior.
+
 ## `process.release`
 
 <!-- YAML
@@ -3268,6 +3312,33 @@ tarball.
 In custom builds from non-release versions of the source tree, only the
 `name` property may be present. The additional properties should not be
 relied upon to exist.
+
+## `process.execve(file[, args[, env]])`
+
+<!-- YAML
+added: v22.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `file` {string} The name or path of the executable file to run.
+* `args` {string\[]} List of string arguments. No argument can contain a null-byte (`\u0000`).
+* `env` {Object} Environment key-value pairs.
+  No key or value can contain a null-byte (`\u0000`).
+  **Default:** `process.env`.
+
+Replaces the current process with a new process.
+
+This is achieved by using the `execve` POSIX function and therefore no memory or other
+resources from the current process are preserved, except for the standard input,
+standard output and standard error file descriptor.
+
+All other resources are discarded by the system when the processes are swapped, without triggering
+any exit or close events and without running any cleanup handler.
+
+This function will never return, unless an error occurred.
+
+This function is only available on POSIX platforms (i.e. not Windows or Android).
 
 ## `process.report`
 
@@ -3949,7 +4020,7 @@ added:
   - v14.18.0
 -->
 
-> Stability: 1 - Experimental
+> Stability: 1 - Experimental: Use [`module.setSourceMapsSupport()`][] instead.
 
 * `val` {boolean}
 
@@ -3961,6 +4032,9 @@ It provides same features as launching Node.js process with commandline options
 
 Only source maps in JavaScript files that are loaded after source maps has been
 enabled will be parsed and loaded.
+
+This implies calling `module.setSourceMapsSupport()` with an option
+`{ nodeModules: true, generatedCode: true }`.
 
 ## `process.setUncaughtExceptionCaptureCallback(fn)`
 
@@ -3996,7 +4070,7 @@ added:
   - v18.19.0
 -->
 
-> Stability: 1 - Experimental
+> Stability: 1 - Experimental: Use [`module.getSourceMapsSupport()`][] instead.
 
 * {boolean}
 
@@ -4255,6 +4329,25 @@ console.log(
 
 In [`Worker`][] threads, `process.umask(mask)` will throw an exception.
 
+## `process.unref(maybeRefable)`
+
+<!-- YAML
+added: v22.14.0
+-->
+
+> Stability: 1 - Experimental
+
+* `maybeUnfefable` {any} An object that may be "unref'd".
+
+An object is "unrefable" if it implements the Node.js "Refable protocol".
+Specifically, this means that the object implements the `Symbol.for('nodejs.ref')`
+and `Symbol.for('nodejs.unref')` methods. "Ref'd" objects will keep the Node.js
+event loop alive, while "unref'd" objects will not. Historically, this was
+implemented by using `ref()` and `unref()` methods directly on the objects.
+This pattern, however, is being deprecated in favor of the "Refable protocol"
+in order to better support Web Platform API types whose APIs cannot be modified
+to add `ref()` and `unref()` methods but still need to support that behavior.
+
 ## `process.uptime()`
 
 <!-- YAML
@@ -4444,7 +4537,9 @@ cases:
 [`console.error()`]: console.md#consoleerrordata-args
 [`console.log()`]: console.md#consolelogdata-args
 [`domain`]: domain.md
+[`module.getSourceMapsSupport()`]: module.md#modulegetsourcemapssupport
 [`module.isBuiltin(id)`]: module.md#moduleisbuiltinmodulename
+[`module.setSourceMapsSupport()`]: module.md#modulesetsourcemapssupportenabled-options
 [`net.Server`]: net.md#class-netserver
 [`net.Socket`]: net.md#class-netsocket
 [`os.constants.dlopen`]: os.md#dlopen-constants

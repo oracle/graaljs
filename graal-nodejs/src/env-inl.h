@@ -376,6 +376,11 @@ inline ExitCode Environment::exit_code(const ExitCode default_code) const {
              : static_cast<ExitCode>(exit_info_[kExitCode]);
 }
 
+inline void Environment::set_exit_code(const ExitCode code) {
+  exit_info_[kExitCode] = static_cast<int>(code);
+  exit_info_[kHasExitCode] = 1;
+}
+
 inline AliasedInt32Array& Environment::exit_info() {
   return exit_info_;
 }
@@ -691,7 +696,8 @@ inline bool Environment::no_global_search_paths() const {
 }
 
 inline bool Environment::should_start_debug_signal_handler() const {
-  return (flags_ & EnvironmentFlags::kNoStartDebugSignalHandler) == 0;
+  return ((flags_ & EnvironmentFlags::kNoStartDebugSignalHandler) == 0) &&
+         !options_->disable_sigusr1;
 }
 
 inline bool Environment::no_browser_globals() const {

@@ -447,7 +447,7 @@ Isolate* ReturnValue<T>::GetIsolate() const {
 
 template <typename T>
 Local<Value> ReturnValue<T>::Get() const {
-  return internal::CorrectReturnValue<Local<Value>>(GetIsolate(), *value_);
+  return Local<Value>::New(GetIsolate(), internal::CorrectReturnValue(GetIsolate(), *value_));
 }
 
 template <typename T>

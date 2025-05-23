@@ -18,8 +18,6 @@ test-destroy-not-blocked: FAIL
 test-graph.pipe: FAIL,PASS
 
 [$system==linux]
-# https://github.com/nodejs/node/issues/54809
-test-writewrap: PASS, FLAKY
 
 [$system==macos]
 
