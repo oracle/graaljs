@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumberRange;
 import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberFormatter;
 import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberRangeFormatter;
 import org.graalvm.shadowed.com.ibm.icu.number.NumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.UnlocalizedNumberFormatter;
 import org.graalvm.shadowed.com.ibm.icu.text.PluralRules;
 import org.graalvm.shadowed.com.ibm.icu.text.PluralRules.PluralType;
 
@@ -150,6 +151,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         private LocalizedNumberRangeFormatter numberRangeFormatter;
 
         private String type;
+        private String notation;
         private PluralRules pluralRules;
         private final List<TruffleString> pluralCategories = new LinkedList<>();
 
@@ -157,6 +159,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result) {
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NOTATION, Strings.fromJavaString(notation), JSAttributes.getDefault());
             super.fillBasicResolvedOptions(result);
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_PLURAL_CATEGORIES, JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
             super.fillRoundingResolvedOptions(result);
@@ -177,8 +180,10 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         @TruffleBoundary
         public void initializeNumberFormatter() {
             super.initializeNumberFormatter();
-            numberFormatter = getUnlocalizedFormatter().locale(getJavaLocale());
-            numberRangeFormatter = NumberRangeFormatter.withLocale(getJavaLocale()).numberFormatterBoth(getUnlocalizedFormatter());
+            UnlocalizedNumberFormatter formatter = getUnlocalizedFormatter();
+            formatter = formatter.notation(JSNumberFormat.notationToICUNotation(notation, IntlUtil.LONG));
+            numberFormatter = formatter.locale(getJavaLocale());
+            numberRangeFormatter = NumberRangeFormatter.withLocale(getJavaLocale()).numberFormatterBoth(formatter);
         }
 
         public PluralRules getPluralRules() {
@@ -195,6 +200,10 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
 
         public void setType(String type) {
             this.type = type;
+        }
+
+        public void setNotation(String notation) {
+            this.notation = notation;
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
     private static final List<String> TYPE_OPTION_VALUES = List.of(IntlUtil.CARDINAL, IntlUtil.ORDINAL);
+    private static final List<String> NOTATION_OPTION_VALUES = List.of(IntlUtil.STANDARD, IntlUtil.SCIENTIFIC, IntlUtil.ENGINEERING, IntlUtil.COMPACT);
 
     private final JSContext context;
 
@@ -69,6 +70,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     @Child SetNumberFormatDigitOptionsNode setNumberFormatDigitOptions;
 
     @Child GetStringOptionNode getTypeOption;
+    @Child GetStringOptionNode getNotationOption;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializePluralRulesNode(JSContext context) {
@@ -77,6 +79,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
         this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE, TYPE_OPTION_VALUES, IntlUtil.CARDINAL);
+        this.getNotationOption = GetStringOptionNode.create(context, IntlUtil.KEY_NOTATION, NOTATION_OPTION_VALUES, IntlUtil.STANDARD);
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 
@@ -98,8 +101,10 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
             getLocaleMatcherOption.executeValue(options);
             String optType = getTypeOption.executeValue(options);
-
             state.setType(optType);
+
+            String notation = getNotationOption.executeValue(options);
+            state.setNotation(notation);
 
             state.resolveLocaleAndNumberingSystem(context, locales, null);
             setNumberFormatDigitOptions.execute(state, options, 0, 3, false);
