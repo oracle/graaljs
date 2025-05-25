@@ -2044,10 +2044,6 @@
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-formatting.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-not-overlapping-options.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
@@ -2055,6 +2051,26 @@
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaindate-formatting-datetime-style.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-25"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaindatetime-formatting-datetime-style.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-25"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plainmonthday-formatting-datetime-style.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-25"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaintime-formatting-datetime-style.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-25"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plainyearmonth-formatting-datetime-style.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-05-25"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-not-overlapping-options.js",
     "status" : "FAIL",
@@ -2123,6 +2139,14 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "intl402/PluralRules/prototype/constructor/notation.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test, compares strings and string objects using ==="
+  }, {
+    "filePath" : "intl402/PluralRules/prototype/select/notation.js",
+    "status" : "FAIL",
+    "comment" : "Expects suspicious results for 'sl' locale (not matching ICU results)"
   }, {
     "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -2256,10 +2280,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/weekOfYear/gregory-iso-weekofyear.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/weekOfYear/non-iso-week-of-year.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2283,10 +2303,6 @@
     "filePath" : "intl402/Temporal/PlainDate/prototype/withCalendar/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/yearOfWeek/gregory-iso-weekofyear.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/yearOfWeek/non-iso-week-of-year.js",
     "status" : "FAIL",
@@ -2388,10 +2404,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/weekOfYear/gregory-iso-weekofyear.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/weekOfYear/non-iso-week-of-year.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2403,10 +2415,6 @@
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/withCalendar/canonicalize-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/yearOfWeek/gregory-iso-weekofyear.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/yearOfWeek/non-iso-week-of-year.js",
     "status" : "FAIL",
@@ -2800,10 +2808,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/weekOfYear/gregory-iso-weekofyear.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/weekOfYear/non-iso-week-of-year.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2819,10 +2823,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withPlainTime/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/yearOfWeek/gregory-iso-weekofyear.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/yearOfWeek/non-iso-week-of-year.js",
     "status" : "FAIL",
