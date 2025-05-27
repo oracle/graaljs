@@ -199,7 +199,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         return factory.trackAllocation(newObj);
     }
 
-    private static Notation notationToICUNotation(String notation, String compactDisplay) {
+    static Notation notationToICUNotation(String notation, String compactDisplay) {
         Notation icuNotation;
         switch (notation) {
             case IntlUtil.STANDARD:
