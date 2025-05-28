@@ -376,6 +376,10 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath():
+    """
+    Adds $JAVA_HOME/lib to LD_LIBRARY_PATH or the OS equivalent thereof.
+    Ensures libjsig is found in single executable application (SEA) tests that copy the node executable to a temp dir.
+    """
     if _current_os == 'windows':
         library_path = join(_java_home(forBuild=True), 'bin')
     else:
@@ -384,10 +388,17 @@ def setLibraryPath():
     if not exists(library_path):
         return
 
-    if 'LD_LIBRARY_PATH' in os.environ:
-        library_path += pathsep + os.environ['LD_LIBRARY_PATH']
+    if _current_os == 'windows':
+        library_path_env_var = 'PATH'
+    elif _current_os == 'darwin':
+        library_path_env_var = 'DYLD_LIBRARY_PATH'
+    else:
+        library_path_env_var = 'LD_LIBRARY_PATH'
 
-    _setEnvVar('LD_LIBRARY_PATH', library_path)
+    if library_path_env_var in os.environ:
+        library_path += pathsep + os.environ[library_path_env_var]
+
+    _setEnvVar(library_path_env_var, library_path)
 
 def processDevkitRoot(env=None):
     assert _is_windows
