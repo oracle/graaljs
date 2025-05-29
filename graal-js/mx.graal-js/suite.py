@@ -877,6 +877,7 @@ suite = {
         "standalone_dist": "GRAALJS_NATIVE_STANDALONE",
         "community_archive_name": "graaljs-community",
         "enterprise_archive_name": "graaljs",
+        "language_id": "js",
     },
 
     "GRAALJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
@@ -885,6 +886,7 @@ suite = {
         "standalone_dist": "GRAALJS_JVM_STANDALONE",
         "community_archive_name": "graaljs-community-jvm",
         "enterprise_archive_name": "graaljs-jvm",
+        "language_id": "js",
     },
 
     "JS_INTEROP_MICRO_BENCHMARKS" : {
