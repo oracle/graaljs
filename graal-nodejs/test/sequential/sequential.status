@@ -48,6 +48,9 @@ test-child-process-pass-fd: SKIP
 test-worker-fshandles-error-on-termination: SKIP
 test-worker-fshandles-open-close-on-termination: SKIP
 
+# transient failure due to "unexpected output from openssl client" on windows
+test-tls-session-timeout: PASS,FAIL
+
 [$system==macos]
 # setrlimit to increase file descriptor limit failed, errno 22
 test-child-process-emfile: SKIP
