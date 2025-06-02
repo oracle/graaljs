@@ -303,6 +303,7 @@ suite = {
         "standalone_dist": "GRAALNODEJS_NATIVE_STANDALONE",
         "community_archive_name": "graalnodejs-community",
         "enterprise_archive_name": "graalnodejs",
+        "language_id": "nodejs",
     },
 
     "GRAALNODEJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
@@ -311,6 +312,7 @@ suite = {
         "standalone_dist": "GRAALNODEJS_JVM_STANDALONE",
         "community_archive_name": "graalnodejs-community-jvm",
         "enterprise_archive_name": "graalnodejs-jvm",
+        "language_id": "nodejs",
     },
 
     "TRUFFLENODE_TEST" : {
