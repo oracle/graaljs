@@ -45,6 +45,7 @@ import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -58,6 +59,10 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.js.api.ValueLibrary;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
@@ -69,6 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
  * The common base class for all JavaScript objects as well as {@code null} and {@code undefined}.
  */
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(ValueLibrary.class)
 public abstract sealed class JSDynamicObject extends DynamicObject implements TruffleObject permits JSObject, Nullish {
 
     protected JSDynamicObject(Shape shape) {
@@ -438,4 +444,32 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     public static JSSharedData getJSSharedData(JSDynamicObject obj) {
         return JSShape.getSharedData(obj.getShape());
     }
+
+    @ExportMessage
+    public static class ToString {
+        @Specialization
+        public static TruffleString toString(JSDynamicObject object,
+                        @Cached JSToStringNode toStringNode) {
+            return toStringNode.executeString(object);
+        }
+    }
+
+    @ExportMessage
+    public static class ToNumber {
+        @Specialization
+        public static Number toNumber(JSDynamicObject object,
+                        @Cached JSToNumberNode toNumberNode) {
+            return toNumberNode.executeNumber(object);
+        }
+    }
+
+    @ExportMessage
+    public static class ToBoolean {
+        @Specialization
+        public static boolean toBoolean(JSDynamicObject object,
+                        @Cached(inline = false) JSToBooleanNode toBooleanNode) {
+            return toBooleanNode.executeBoolean(object);
+        }
+    }
+
 }

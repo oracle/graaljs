@@ -477,6 +477,7 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.js",
         "exports" : [
+          "com.oracle.truffle.js.api",
           "com.oracle.truffle.js.lang to org.graalvm.truffle",
           "com.oracle.js.parser to org.graalvm.nodejs",
           "com.oracle.js.parser.ir to org.graalvm.nodejs",
