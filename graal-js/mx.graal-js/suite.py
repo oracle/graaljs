@@ -25,7 +25,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "69860d57908cd7b3691d6646687c1cecbe69f36b",
+           "version" : "aefacfb7d2d62c2254755922e85c2ee4c79530d5",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
@@ -533,16 +533,15 @@ suite = {
       "useModulePath": True,
     },
 
-    "JS_COMMUNITY": {
+    "JS_POM": {
       "type": "pom",
       "runtimeDependencies": [
         "GRAALJS",
         "truffle:TRUFFLE_RUNTIME",
       ],
-      "description":     "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency includes GraalJS dependencies and Truffle Community Edition.",
-      "descriptionGFTC": "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency includes GraalJS dependencies and Truffle.",
+      "description":     "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency includes GraalJS dependencies and Truffle.",
       "maven": {
-        "artifactId": "js-community",
+        "artifactId": "js",
         "tag": ["default", "public"],
       },
       "license": [
