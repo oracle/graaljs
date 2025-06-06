@@ -44,10 +44,12 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedIntValueProfile;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltinsFactory.ArrayIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -65,6 +67,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIteratorObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -111,29 +114,16 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = {"!isUndefined(array)"})
-        protected JSObject doArrayIterator(VirtualFrame frame, JSArrayIteratorObject iterator,
+        JSObject doArrayIterator(VirtualFrame frame, JSArrayIteratorObject iterator,
                         @Bind("iterator.getIteratedObject()") Object array,
-                        @Cached("create(getContext())") @Shared CreateIterResultObjectNode createIterResultObjectNode,
-                        @Cached("create(getContext())") JSGetLengthNode getLengthNode,
+                        @Shared @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
+                        @Cached ArrayIteratorGetLengthNode getLengthNode,
                         @Cached(inline = true) LongToIntOrDoubleNode toJSIndex,
-                        @Cached TypedArrayLengthNode typedArrayLengthNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedIntValueProfile iterationKindProfile,
-                        @Cached InlinedConditionProfile isTypedArrayProfile) {
+                        @Cached InlinedIntValueProfile iterationKindProfile) {
             long index = iterator.getNextIndex();
             int itemKind = iterationKindProfile.profile(this, iterator.getIterationKind());
-            long length;
-            if (isTypedArrayProfile.profile(this, JSArrayBufferView.isJSArrayBufferView(array))) {
-                JSTypedArrayObject typedArray = (JSTypedArrayObject) array;
-                if (JSArrayBufferView.isOutOfBounds(typedArray, getContext())) {
-                    errorBranch.enter(this);
-                    throw Errors.createTypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");
-                }
-                length = typedArrayLengthNode.execute(this, typedArray, getContext());
-            } else {
-                length = getLengthNode.executeLong(array);
-            }
+            long length = getLengthNode.execute(this, array, getJSContext());
 
             if (index >= length) {
                 iterator.setIteratedObject(Undefined.instance);
@@ -171,5 +161,34 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         static JSObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not an Array Iterator");
         }
+    }
+}
+
+@GenerateInline
+@GenerateCached(false)
+abstract class ArrayIteratorGetLengthNode extends Node {
+
+    abstract long execute(Node node, Object array, JSContext context);
+
+    @Specialization
+    static long doArray(JSArrayObject array, @SuppressWarnings("unused") JSContext context) {
+        return JSArray.arrayGetLength(array);
+    }
+
+    @Specialization
+    static long doTypedArray(Node node, JSTypedArrayObject typedArray, JSContext context,
+                    @Cached TypedArrayLengthNode typedArrayLengthNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        if (JSArrayBufferView.isOutOfBounds(typedArray, context)) {
+            errorBranch.enter(node);
+            throw Errors.createTypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");
+        }
+        return typedArrayLengthNode.execute(node, typedArray, context);
+    }
+
+    @Fallback
+    static long doArrayLike(Object array, @SuppressWarnings("unused") JSContext context,
+                    @Cached(value = "create(context)", inline = false) JSGetLengthNode getLengthNode) {
+        return getLengthNode.executeLong(array);
     }
 }
