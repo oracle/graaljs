@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.test.fetch;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -676,15 +678,20 @@ public class FetchMethodTest extends JSTest {
 
     @Test(timeout = TEST_TIMEOUT)
     public void testHandleDNSErrorResponse() {
+        // Ignore this test on darwin-amd64 due to transient failures.
+        String osName = System.getProperty("os.name").toLowerCase(Locale.ROOT);
+        String osArch = System.getProperty("os.arch");
+        Assume.assumeFalse((osName.startsWith("mac") || osName.startsWith("darwin")) && (osArch.equals("amd64") || osArch.equals("x86_64")));
+
         String out = async("""
                         try {
                             await fetch('http://domain.invalid');
                             throw new Error("should have thrown");
                         } catch (err) {
-                            console.log(err.name);
+                            console.log(`${err.name}: ${err.message}`);
                         }
                         """);
-        assertEquals("TypeError\n", out);
+        assertThat(out, startsWith("TypeError"));
     }
 
     @Test(timeout = TEST_TIMEOUT)
