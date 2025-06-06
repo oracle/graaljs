@@ -53,7 +53,7 @@ _suite = mx.suite('graal-js')
 TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
-TEST262_REV = "3316c0aaf676d657f5a6b33364fa7e579c78ac7f"
+TEST262_REV = "942e65f505e9d846c1b995750b5bce8c31d11fce"
 
 # Git repository of V8
 TESTV8_REPO = "https://" + "github.com/v8/v8.git"
