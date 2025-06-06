@@ -111,7 +111,8 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     private JSLocaleObject initializeLocaleUsingJString(JSLocaleObject localeObject, String tagArg, Object optionsArg) {
         try {
             Object options = coerceOptionsToObjectNode.execute(optionsArg);
-            String tag = applyOptionsToTag(tagArg, options);
+            String tag = IntlUtil.validateAndCanonicalizeLanguageTag(tagArg);
+            tag = updateLanguageId(tag, options);
             String optCalendar = getCalendarOption.executeValue(options);
             if (optCalendar != null) {
                 IntlUtil.validateUnicodeLocaleIdentifierType(optCalendar, errorBranch);
@@ -159,8 +160,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         throw Errors.createTypeError("Tag should be a string or an object.");
     }
 
-    private String applyOptionsToTag(String tag, Object options) {
-        String canonicalizedTag = IntlUtil.validateAndCanonicalizeLanguageTag(tag);
+    private String updateLanguageId(String tag, Object options) {
         String optLanguage = getLanguageOption.executeValue(options);
         if (optLanguage != null) {
             IntlUtil.ensureIsStructurallyValidLanguageSubtag(optLanguage);
@@ -183,7 +183,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
                 IntlUtil.ensureIsStructurallyValidVariantSubtag(variant);
             }
         }
-        return IntlUtil.validateAndCanonicalizeLanguageTag(applyOptionsToTag(canonicalizedTag, optLanguage, optScript, optRegion, optVariants));
+        return IntlUtil.validateAndCanonicalizeLanguageTag(updateLanguageId(tag, optLanguage, optScript, optRegion, optVariants));
     }
 
     @TruffleBoundary
@@ -193,7 +193,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static String applyOptionsToTag(String tag, String optLanguage, String optScript, String optRegion, String optVariants) {
+    private static String updateLanguageId(String tag, String optLanguage, String optScript, String optRegion, String optVariants) {
         Locale.Builder builder = new Locale.Builder().setLanguageTag(tag);
         if (optLanguage != null) {
             builder.setLanguage(optLanguage);
