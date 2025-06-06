@@ -248,6 +248,7 @@ public final class IntlUtil {
     public static final String USE_GROUPING = "useGrouping";
     public static final String VALUE = "value";
     public static final String VARIANT = "variant";
+    public static final String VARIANTS = "variants";
     public static final String WORD = "word";
     public static final String WEEKDAY = "weekday";
     public static final String WEEKEND = "weekend";
@@ -340,6 +341,7 @@ public final class IntlUtil {
     public static final TruffleString KEY_USAGE = Strings.constant(USAGE);
     public static final TruffleString KEY_USE_GROUPING = Strings.constant(USE_GROUPING);
     public static final TruffleString KEY_VALUE = Strings.VALUE;
+    public static final TruffleString KEY_VARIANTS = Strings.constant(VARIANTS);
     public static final TruffleString KEY_WEEKDAY = Strings.constant(WEEKDAY);
     public static final TruffleString KEY_WEEKEND = Strings.constant(WEEKEND);
     public static final TruffleString KEY_WEEKS = Strings.constant(WEEKS);
@@ -527,6 +529,12 @@ public final class IntlUtil {
     public static void ensureIsStructurallyValidLanguageSubtag(String region) {
         if (!UTS35Validator.isStructurallyValidLanguageSubtag(region)) {
             throw Errors.createRangeErrorInvalidLanguageSubtag(region);
+        }
+    }
+
+    public static void ensureIsStructurallyValidVariantSubtag(String variant) {
+        if (!UTS35Validator.isStructurallyValidVariantSubtag(variant)) {
+            throw Errors.createRangeErrorInvalidVariant(variant);
         }
     }
 

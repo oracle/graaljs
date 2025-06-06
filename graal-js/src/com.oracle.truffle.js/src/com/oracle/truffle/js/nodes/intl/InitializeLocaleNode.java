@@ -72,6 +72,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getLanguageOption;
     @Child GetStringOptionNode getScriptOption;
     @Child GetStringOptionNode getRegionOption;
+    @Child GetStringOptionNode getVariantsOption;
     @Child GetStringOptionNode getCalendarOption;
     @Child GetStringOptionNode getCollationOption;
     @Child GetStringOptionNode getFirstDayOfWeekOption;
@@ -86,6 +87,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         this.getLanguageOption = GetStringOptionNode.create(context, IntlUtil.KEY_LANGUAGE, null, null);
         this.getScriptOption = GetStringOptionNode.create(context, IntlUtil.KEY_SCRIPT, null, null);
         this.getRegionOption = GetStringOptionNode.create(context, IntlUtil.KEY_REGION, null, null);
+        this.getVariantsOption = GetStringOptionNode.create(context, IntlUtil.KEY_VARIANTS, null, null);
         this.getCalendarOption = GetStringOptionNode.create(context, IntlUtil.KEY_CALENDAR, null, null);
         this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.KEY_COLLATION, null, null);
         this.getFirstDayOfWeekOption = GetStringOptionNode.create(context, IntlUtil.KEY_FIRST_DAY_OF_WEEK, null, null);
@@ -171,11 +173,27 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         if (optRegion != null) {
             IntlUtil.ensureIsStructurallyValidRegionSubtag(optRegion);
         }
-        return IntlUtil.validateAndCanonicalizeLanguageTag(applyOptionsToTag(canonicalizedTag, optLanguage, optScript, optRegion));
+        String optVariants = getVariantsOption.executeValue(options);
+        if (optVariants != null) {
+            if (optVariants.isEmpty()) {
+                throw Errors.createRangeError("Empty 'variants' option");
+            }
+            String[] variantSubtags = lowerCaseAndSplitVariants(optVariants);
+            for (String variant : variantSubtags) {
+                IntlUtil.ensureIsStructurallyValidVariantSubtag(variant);
+            }
+        }
+        return IntlUtil.validateAndCanonicalizeLanguageTag(applyOptionsToTag(canonicalizedTag, optLanguage, optScript, optRegion, optVariants));
     }
 
     @TruffleBoundary
-    private static String applyOptionsToTag(String tag, String optLanguage, String optScript, String optRegion) {
+    private static String[] lowerCaseAndSplitVariants(String variants) {
+        String lowerVariants = variants.toLowerCase(Locale.ROOT);
+        return lowerVariants.split("-", -1);
+    }
+
+    @TruffleBoundary
+    private static String applyOptionsToTag(String tag, String optLanguage, String optScript, String optRegion, String optVariants) {
         Locale.Builder builder = new Locale.Builder().setLanguageTag(tag);
         if (optLanguage != null) {
             builder.setLanguage(optLanguage);
@@ -185,6 +203,9 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         }
         if (optRegion != null) {
             builder.setRegion(optRegion);
+        }
+        if (optVariants != null) {
+            builder.setVariant(optVariants);
         }
         return IntlUtil.maybeAppendMissingLanguageSubTag(builder.build().toLanguageTag());
     }
