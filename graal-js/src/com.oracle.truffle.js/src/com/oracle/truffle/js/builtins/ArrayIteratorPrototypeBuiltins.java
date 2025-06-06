@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedIntValueProfile;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltinsFactory.ArrayIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -107,24 +110,19 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             super(context, builtin);
         }
 
-        @Specialization
+        @Specialization(guards = {"!isUndefined(array)"})
         protected JSObject doArrayIterator(VirtualFrame frame, JSArrayIteratorObject iterator,
-                        @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
+                        @Bind("iterator.getIteratedObject()") Object array,
+                        @Cached("create(getContext())") @Shared CreateIterResultObjectNode createIterResultObjectNode,
                         @Cached("create(getContext())") JSGetLengthNode getLengthNode,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached(inline = true) LongToIntOrDoubleNode toJSIndex,
                         @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedBranchProfile useAfterCloseBranch,
+                        @Cached InlinedIntValueProfile iterationKindProfile,
                         @Cached InlinedConditionProfile isTypedArrayProfile) {
-            Object array = iterator.getIteratedObject();
-            if (array == Undefined.instance) {
-                useAfterCloseBranch.enter(this);
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-            }
-
             long index = iterator.getNextIndex();
-            int itemKind = iterator.getIterationKind();
+            int itemKind = iterationKindProfile.profile(this, iterator.getIterationKind());
             long length;
             if (isTypedArrayProfile.profile(this, JSArrayBufferView.isJSArrayBufferView(array))) {
                 JSTypedArrayObject typedArray = (JSTypedArrayObject) array;
@@ -143,24 +141,34 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             iterator.setNextIndex(index + 1);
-            if (itemKind == JSRuntime.ITERATION_KIND_KEY) {
-                return createIterResultObjectNode.execute(frame, toJSIndex.execute(this, index), false);
+            Object indexNumber = null;
+            if ((itemKind & JSRuntime.ITERATION_KIND_KEY) != 0) {
+                indexNumber = toJSIndex.execute(this, index);
             }
-
-            Object elementValue = readElementNode.executeWithTargetAndIndex(array, index);
             Object result;
-            if (itemKind == JSRuntime.ITERATION_KIND_VALUE) {
-                result = elementValue;
+            if (itemKind == JSRuntime.ITERATION_KIND_KEY) {
+                result = indexNumber;
             } else {
-                assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
-                result = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{toJSIndex.execute(this, index), elementValue});
+                Object elementValue = readElementNode.executeWithTargetAndIndex(array, index);
+                if (itemKind == JSRuntime.ITERATION_KIND_VALUE) {
+                    result = elementValue;
+                } else {
+                    assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE && indexNumber != null;
+                    result = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{indexNumber, elementValue});
+                }
             }
             return createIterResultObjectNode.execute(frame, result, false);
         }
 
+        @Specialization(guards = {"isUndefined(iterator.getIteratedObject())"})
+        static JSObject doArrayIteratorDetached(VirtualFrame frame, @SuppressWarnings("unused") JSArrayIteratorObject iterator,
+                        @Cached("create(getContext())") @Shared CreateIterResultObjectNode createIterResultObjectNode) {
+            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+        }
+
         @SuppressWarnings("unused")
         @Fallback
-        protected JSObject doIncompatibleReceiver(Object iterator) {
+        static JSObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not an Array Iterator");
         }
     }
