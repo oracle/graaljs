@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1257,20 +1257,22 @@ public final class ObjectLiteralNode extends JavaScriptNode {
 
     @Children private final ObjectLiteralMemberNode[] members;
     @Child private CreateObjectNode objectCreateNode;
+    @Child private JavaScriptNode prototypeExpression;
 
-    public ObjectLiteralNode(ObjectLiteralMemberNode[] members, CreateObjectNode objectCreateNode) {
+    private ObjectLiteralNode(ObjectLiteralMemberNode[] members, CreateObjectNode objectCreateNode, JavaScriptNode prototypeExpression) {
         this.members = members;
         this.objectCreateNode = objectCreateNode;
+        this.prototypeExpression = prototypeExpression;
     }
 
     public static ObjectLiteralNode create(JSContext context, ObjectLiteralMemberNode[] members) {
-        if (members.length > 0 && members[0] instanceof ObjectLiteralProtoMemberNode) {
+        if (members.length > 0 && members[0] instanceof ObjectLiteralProtoMemberNode protoMember) {
             return new ObjectLiteralNode(Arrays.copyOfRange(members, 1, members.length),
-                            CreateObjectNode.createOrdinaryWithPrototype(context, ((ObjectLiteralProtoMemberNode) members[0]).valueNode));
+                            CreateObjectNode.createOrdinaryWithPrototype(context), protoMember.valueNode);
         } else if (JSConfig.DictionaryObject && members.length > JSConfig.DictionaryObjectThreshold && onlyDataMembers(members)) {
             return createDictionaryObject(context, members);
         } else {
-            return new ObjectLiteralNode(members, CreateObjectNode.create(context));
+            return new ObjectLiteralNode(members, CreateObjectNode.create(context), null);
         }
     }
 
@@ -1289,13 +1291,14 @@ public final class ObjectLiteralNode extends JavaScriptNode {
             ObjectLiteralDataMemberNode member = (ObjectLiteralDataMemberNode) members[i];
             newMembers[i] = new DictionaryObjectDataMemberNode(member.name, member.isStatic, member.attributes, member.valueNode);
         }
-        return new ObjectLiteralNode(newMembers, CreateObjectNode.createDictionary(context));
+        return new ObjectLiteralNode(newMembers, CreateObjectNode.createDictionary(context), null);
     }
 
     @Override
     public JSObject execute(VirtualFrame frame) {
         JSRealm realm = getRealm();
-        JSObject ret = objectCreateNode.executeWithRealm(frame, realm);
+        Object proto = prototypeExpression == null ? realm.getObjectPrototype() : prototypeExpression.execute(frame);
+        JSObject ret = objectCreateNode.executeWithPrototype(realm, proto);
         return executeWithObject(frame, ret, realm);
     }
 
@@ -1314,6 +1317,6 @@ public final class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new ObjectLiteralNode(ObjectLiteralMemberNode.cloneUninitialized(members, materializedTags), objectCreateNode.copyUninitialized(materializedTags));
+        return new ObjectLiteralNode(ObjectLiteralMemberNode.cloneUninitialized(members, materializedTags), objectCreateNode, cloneUninitialized(prototypeExpression, materializedTags));
     }
 }
