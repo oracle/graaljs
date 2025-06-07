@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,7 @@ public class YieldNode extends AbstractYieldNode implements ResumableNode.WithIn
         int index = getStateAsInt(frame, stateSlot);
         if (index == 0) {
             Object value = expression.execute(frame);
-            JSDynamicObject iterNextObj = createIterResultObjectNode.execute(frame, value, false);
+            JSDynamicObject iterNextObj = createIterResultObjectNode.execute(value, false);
             setStateAsInt(frame, stateSlot, 1);
             return generatorYield(frame, iterNextObj);
         } else {

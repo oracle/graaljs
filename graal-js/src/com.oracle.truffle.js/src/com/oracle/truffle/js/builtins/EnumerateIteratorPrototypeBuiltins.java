@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -108,7 +107,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization
-        public JSDynamicObject next(VirtualFrame frame, Object target,
+        public JSDynamicObject next(Object target,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
                         @Cached ImportValueNode importValueNode,
@@ -123,12 +122,12 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
                     try {
                         Object nextValue = interop.getIteratorNextElement(iterator);
                         Object importedValue = importValueNode.executeWithTarget(nextValue);
-                        return createIterResultObjectNode.execute(frame, importedValue, false);
+                        return createIterResultObjectNode.execute(importedValue, false);
                     } catch (StopIterationException e) {
                         // fall through
                     }
                 }
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             } catch (UnsupportedMessageException e) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorInteropException(iterator, e, "next", null);

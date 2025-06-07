@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -64,18 +63,18 @@ public class AsyncGeneratorRejectNode extends JavaScriptBaseNode {
         return new AsyncGeneratorRejectNode();
     }
 
-    public Object execute(VirtualFrame frame, JSAsyncGeneratorObject generator, Object exception) {
-        performReject(frame, generator, exception);
+    public Object execute(JSAsyncGeneratorObject generator, Object exception) {
+        performReject(generator, exception);
         if (asyncGeneratorResumeNextNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.asyncGeneratorResumeNextNode = insert(AsyncGeneratorResumeNextNode.create(getLanguage().getJSContext()));
         }
-        asyncGeneratorResumeNextNode.execute(frame, generator);
+        asyncGeneratorResumeNextNode.execute(generator);
         return Undefined.instance;
     }
 
     @SuppressWarnings("unused")
-    public void performReject(VirtualFrame frame, JSAsyncGeneratorObject generator, Object exception) {
+    public void performReject(JSAsyncGeneratorObject generator, Object exception) {
         ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.pollFirst();

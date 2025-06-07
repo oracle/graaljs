@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -402,12 +402,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             protected final Object asyncGeneratorComplete(VirtualFrame frame, Completion.Type resultType, Object resultValue) {
                 var generator = getThis(frame);
-                asyncGeneratorOpNode.asyncGeneratorCompleteStepAndDrainQueue(frame, generator, resultType, resultValue);
+                asyncGeneratorOpNode.asyncGeneratorCompleteStepAndDrainQueue(generator, resultType, resultValue);
                 return Undefined.instance;
             }
 
-            protected final void asyncGeneratorCompleteStep(VirtualFrame frame, Completion.Type completionType, Object completionValue, boolean done, ArrayDeque<AsyncGeneratorRequest> queue) {
-                asyncGeneratorOpNode.asyncGeneratorCompleteStep(frame, completionType, completionValue, done, queue);
+            protected final void asyncGeneratorCompleteStep(Completion.Type completionType, Object completionValue, boolean done, ArrayDeque<AsyncGeneratorRequest> queue) {
+                asyncGeneratorOpNode.asyncGeneratorCompleteStep(completionType, completionValue, done, queue);
             }
         }
 
@@ -714,7 +714,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
             assert !queue.isEmpty();
             // Perform AsyncGeneratorCompleteStep
-            asyncGeneratorCompleteStep(frame, Completion.Type.Normal, value, false, queue);
+            asyncGeneratorCompleteStep(Completion.Type.Normal, value, false, queue);
 
             if (!queue.isEmpty()) {
                 // NOTE: Execution continues without suspending the generator.

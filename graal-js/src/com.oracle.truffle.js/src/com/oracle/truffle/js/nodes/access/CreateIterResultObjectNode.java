@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -77,5 +76,5 @@ public abstract class CreateIterResultObjectNode extends JavaScriptBaseNode {
         return iterResult;
     }
 
-    public abstract JSObject execute(VirtualFrame frame, Object value, boolean done);
+    public abstract JSObject execute(Object value, boolean done);
 }

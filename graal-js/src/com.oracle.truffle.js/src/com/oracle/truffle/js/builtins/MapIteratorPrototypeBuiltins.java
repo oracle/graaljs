@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltinsFactory.MapIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -106,14 +105,14 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected final JSObject doMapIterator(VirtualFrame frame, JSMapIteratorObject iterator,
+        protected final JSObject doMapIterator(JSMapIteratorObject iterator,
                         @Cached InlinedConditionProfile detachedProf,
                         @Cached InlinedConditionProfile doneProf,
                         @Cached InlinedConditionProfile iterKindKey,
                         @Cached InlinedConditionProfile iterKindValue) {
             Object map = iterator.getIteratedObject();
             if (detachedProf.profile(this, map == Undefined.instance)) {
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             }
 
             assert map instanceof JSMapObject;
@@ -122,7 +121,7 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
             if (doneProf.profile(this, !mapCursor.advance())) {
                 iterator.setIteratedObject(Undefined.instance);
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             }
 
             Object elementKey = mapCursor.getKey();
@@ -136,7 +135,7 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
                 result = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{elementKey, elementValue});
             }
-            return createIterResultObjectNode.execute(frame, result, false);
+            return createIterResultObjectNode.execute(result, false);
         }
 
         @SuppressWarnings("unused")

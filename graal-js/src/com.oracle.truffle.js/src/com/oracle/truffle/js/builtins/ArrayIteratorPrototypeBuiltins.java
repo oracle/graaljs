@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedIntValueProfile;
@@ -114,7 +113,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = {"!isUndefined(array)"})
-        JSObject doArrayIterator(VirtualFrame frame, JSArrayIteratorObject iterator,
+        JSObject doArrayIterator(JSArrayIteratorObject iterator,
                         @Bind("iterator.getIteratedObject()") Object array,
                         @Shared @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
@@ -127,7 +126,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             if (index >= length) {
                 iterator.setIteratedObject(Undefined.instance);
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             }
 
             iterator.setNextIndex(index + 1);
@@ -147,13 +146,13 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     result = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{indexNumber, elementValue});
                 }
             }
-            return createIterResultObjectNode.execute(frame, result, false);
+            return createIterResultObjectNode.execute(result, false);
         }
 
         @Specialization(guards = {"isUndefined(iterator.getIteratedObject())"})
-        static JSObject doArrayIteratorDetached(VirtualFrame frame, @SuppressWarnings("unused") JSArrayIteratorObject iterator,
+        static JSObject doArrayIteratorDetached(@SuppressWarnings("unused") JSArrayIteratorObject iterator,
                         @Cached("create(getContext())") @Shared CreateIterResultObjectNode createIterResultObjectNode) {
-            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+            return createIterResultObjectNode.execute(Undefined.instance, true);
         }
 
         @SuppressWarnings("unused")

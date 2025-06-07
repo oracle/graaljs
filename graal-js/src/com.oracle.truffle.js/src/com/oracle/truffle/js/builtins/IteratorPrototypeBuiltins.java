@@ -402,12 +402,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return iteratorValueNode.execute(next);
             }
 
-            protected final Object getNextValue(VirtualFrame frame, JSIteratorHelperObject thisObj, IteratorRecord iterated) {
+            protected final Object getNextValue(JSIteratorHelperObject thisObj, IteratorRecord iterated) {
                 Object next = iteratorStep(iterated);
                 if (next == Boolean.FALSE) {
-                    return createResultDone(frame, thisObj);
+                    return createResultDone(thisObj);
                 }
-                return createResultContinue(frame, thisObj, iteratorValue(next));
+                return createResultContinue(thisObj, iteratorValue(next));
             }
 
             protected static Object generatorYield(JSIteratorHelperObject thisObj, Object result) {
@@ -415,13 +415,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return result;
             }
 
-            protected final Object createResultContinue(VirtualFrame frame, JSIteratorHelperObject thisObj, Object value) {
-                return generatorYield(thisObj, createIterResultObjectNode.execute(frame, value, false));
+            protected final Object createResultContinue(JSIteratorHelperObject thisObj, Object value) {
+                return generatorYield(thisObj, createIterResultObjectNode.execute(value, false));
             }
 
-            protected final Object createResultDone(VirtualFrame frame, JSIteratorHelperObject thisObj) {
+            protected final Object createResultDone(JSIteratorHelperObject thisObj) {
                 thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             }
 
             @SuppressWarnings("unchecked")
@@ -535,11 +535,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Specialization
-            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
+            protected Object next(JSIteratorHelperObject thisObj) {
                 IteratorMapArgs args = getArgs(thisObj);
                 Object next = iteratorStep(args.iterated);
                 if (next == Boolean.FALSE) {
-                    return createResultDone(frame, thisObj);
+                    return createResultDone(thisObj);
                 }
 
                 Object value = iteratorValue(next);
@@ -551,7 +551,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     throw e;
                 }
                 args.counter++;
-                return createResultContinue(frame, thisObj, mapped);
+                return createResultContinue(thisObj, mapped);
             }
 
             @Override
@@ -610,12 +610,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Specialization
-            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
+            protected Object next(JSIteratorHelperObject thisObj) {
                 IteratorFilterArgs args = getArgs(thisObj);
                 while (true) {
                     Object next = iteratorStep(args.iterated);
                     if (next == Boolean.FALSE) {
-                        return createResultDone(frame, thisObj);
+                        return createResultDone(thisObj);
                     }
 
                     Object value = iteratorValue(next);
@@ -629,7 +629,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     }
                     args.counter++;
                     if (toBooleanNode.executeBoolean(selected)) {
-                        return createResultContinue(frame, thisObj, value);
+                        return createResultContinue(thisObj, value);
                     }
                 }
             }
@@ -711,18 +711,18 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Specialization
-            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
+            protected Object next(JSIteratorHelperObject thisObj) {
                 IteratorTakeArgs args = getArgs(thisObj);
                 double remaining = args.remaining;
 
                 if (remaining == 0) {
                     iteratorCloseNode.executeVoid(args.iterated.getIterator());
-                    return createResultDone(frame, thisObj);
+                    return createResultDone(thisObj);
                 } else if (finiteProfile.profile(remaining != Double.POSITIVE_INFINITY)) {
                     args.remaining = remaining - 1;
                 }
 
-                return getNextValue(frame, thisObj, args.iterated);
+                return getNextValue(thisObj, args.iterated);
             }
 
             @Override
@@ -800,7 +800,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             @SuppressFBWarnings(value = "FL_FLOATS_AS_LOOP_COUNTERS", justification = "intentional use of floating-point variable as loop counter")
             @Specialization
-            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
+            protected Object next(JSIteratorHelperObject thisObj) {
                 IteratorDropArgs args = getArgs(thisObj);
                 double remaining = args.remaining;
                 while (remaining > 0) {
@@ -809,11 +809,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     }
                     Object next = iteratorStep(args.iterated);
                     if (next == Boolean.FALSE) {
-                        return createResultDone(frame, thisObj);
+                        return createResultDone(thisObj);
                     }
                 }
 
-                return getNextValue(frame, thisObj, args.iterated);
+                return getNextValue(thisObj, args.iterated);
             }
 
             @Override
@@ -898,11 +898,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                             args.innerIterator = null;
                             continue;
                         }
-                        return createResultContinue(frame, thisObj, innerValue);
+                        return createResultContinue(thisObj, innerValue);
                     } else {
                         Object value = getNextValueNode.execute(frame, args.iterated);
                         if (value == null) {
-                            return createResultDone(frame, thisObj);
+                            return createResultDone(thisObj);
                         }
 
                         try {

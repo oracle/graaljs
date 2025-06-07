@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,10 @@
 package com.oracle.truffle.js.builtins.intl;
 
 import org.graalvm.shadowed.com.ibm.icu.text.BreakIterator;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorNextNodeGen;
@@ -105,7 +105,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected JSDynamicObject doSegmentIterator(VirtualFrame frame, JSSegmentIteratorObject iteratorObj,
+        protected JSDynamicObject doSegmentIterator(JSSegmentIteratorObject iteratorObj,
                         @Cached("create(getContext())") CreateSegmentDataObjectNode createNextValueNode) {
             JSSegmenter.IteratorState iterator = iteratorObj.getIteratorState();
             TruffleString iteratedString = iterator.getIteratedString();
@@ -122,7 +122,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
                 nextValue = createNextValueNode.execute(icuIterator, segmenterGranularity, iteratedString, startIndex, endIndex);
             }
 
-            return createIterResultObjectNode.execute(frame, nextValue, done);
+            return createIterResultObjectNode.execute(nextValue, done);
         }
 
         @Specialization(guards = "!isJSSegmentIterator(iterator)")

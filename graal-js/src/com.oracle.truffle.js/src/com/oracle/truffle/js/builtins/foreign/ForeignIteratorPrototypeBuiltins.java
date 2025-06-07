@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.foreign;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -104,7 +103,7 @@ public final class ForeignIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected JSObject next(VirtualFrame frame, Object target,
+        protected JSObject next(Object target,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached("create(getContext())") CreateIterResultObjectNode createIterResult,
                         @Cached ImportValueNode importValue,
@@ -134,7 +133,7 @@ public final class ForeignIteratorPrototypeBuiltins extends JSBuiltinsContainer.
                 }
             }
 
-            return createIterResult.execute(frame, nextValue, !hasNext);
+            return createIterResult.execute(nextValue, !hasNext);
         }
     }
 }

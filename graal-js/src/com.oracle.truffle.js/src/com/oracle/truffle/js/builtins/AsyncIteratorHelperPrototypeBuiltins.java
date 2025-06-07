@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -168,7 +167,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.callNode = JSFunctionCallNode.createCall();
         }
 
-        protected Object validateAndResume(VirtualFrame frame, Object thisObj) {
+        protected Object validateAndResume(Object thisObj) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             try {
                 // AsyncGeneratorValidate(generator, brand = "Async Iterator Helper")
@@ -176,7 +175,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 if (!(thisObj instanceof JSAsyncGeneratorObject generator) || generator.getGeneratorBrand() != GENERATOR_BRAND) {
                     throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
                 }
-                performNextOrReturn(frame, generator, promiseCapability);
+                performNextOrReturn(generator, promiseCapability);
             } catch (AbstractTruffleException ex) {
                 if (getErrorObjectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -188,7 +187,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return promiseCapability.getPromise();
         }
 
-        protected abstract void performNextOrReturn(VirtualFrame frame, JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability);
+        protected abstract void performNextOrReturn(JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability);
 
         protected final void performResumeNext(JSAsyncGeneratorObject iterator, Completion completion, JSFunction.AsyncGeneratorState state) {
             assert state == JSFunction.AsyncGeneratorState.SuspendedStart || state == JSFunction.AsyncGeneratorState.SuspendedYield : state;
@@ -213,12 +212,12 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization
         @Override
-        protected final Object validateAndResume(VirtualFrame frame, Object thisObj) {
-            return super.validateAndResume(frame, thisObj);
+        protected final Object validateAndResume(Object thisObj) {
+            return super.validateAndResume(thisObj);
         }
 
         @Override
-        protected final void performNextOrReturn(VirtualFrame frame, JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability) {
+        protected final void performNextOrReturn(JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability) {
             Completion completion = Completion.forReturn(Undefined.instance);
             // Perform AsyncGeneratorEnqueue(generator, completion, promiseCapability).
             ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
@@ -227,7 +226,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             JSFunction.AsyncGeneratorState state = generator.getAsyncGeneratorState();
             if (state == JSFunction.AsyncGeneratorState.SuspendedStart || state == JSFunction.AsyncGeneratorState.Completed) {
                 // Perform ! AsyncGeneratorAwaitReturn(generator).
-                asyncGeneratorAwaitReturnNode.executeAsyncGeneratorAwaitReturn(frame, generator, queue);
+                asyncGeneratorAwaitReturnNode.executeAsyncGeneratorAwaitReturn(generator, queue);
             } else if (state == JSFunction.AsyncGeneratorState.SuspendedYield) {
                 // Perform AsyncGeneratorResume(generator, completion).
                 performResumeNext(generator, completion, state);
@@ -251,15 +250,15 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization
         @Override
-        protected final Object validateAndResume(VirtualFrame frame, Object thisObj) {
-            return super.validateAndResume(frame, thisObj);
+        protected final Object validateAndResume(Object thisObj) {
+            return super.validateAndResume(thisObj);
         }
 
         @Override
-        protected final void performNextOrReturn(VirtualFrame frame, JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability) {
+        protected final void performNextOrReturn(JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability) {
             JSFunction.AsyncGeneratorState state = generator.getAsyncGeneratorState();
             if (state == JSFunction.AsyncGeneratorState.Completed) {
-                Object iteratorResult = createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                Object iteratorResult = createIterResultObjectNode.execute(Undefined.instance, true);
                 callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), iteratorResult));
             } else {
                 Completion completion = Completion.forNormal(Undefined.instance);

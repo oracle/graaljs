@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -127,7 +126,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization(guards = "isRegExpStringIterator(iterator)")
-        protected JSDynamicObject doRegExpStringIterator(VirtualFrame frame, JSDynamicObject iterator,
+        protected JSDynamicObject doRegExpStringIterator(JSDynamicObject iterator,
                         @Cached InlinedCountingConditionProfile noMatchProfile,
                         @Cached InlinedConditionProfile globalProfile,
                         @Cached AdvanceStringIndexNode advanceStringIndex,
@@ -139,7 +138,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
                 throw Errors.shouldNotReachHere();
             }
             if (done) {
-                return getCreateIterResultObjectNode().execute(frame, Undefined.instance, true);
+                return getCreateIterResultObjectNode().execute(Undefined.instance, true);
             }
 
             Object regex = getGetIteratingRegExpNode().getValue(iterator);
@@ -157,17 +156,17 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
             if (noMatchProfile.profile(this, match == Null.instance)) {
                 getSetDoneNode().setValueBoolean(iterator, true);
-                return getCreateIterResultObjectNode().execute(frame, Undefined.instance, true);
+                return getCreateIterResultObjectNode().execute(Undefined.instance, true);
             } else {
                 if (globalProfile.profile(this, global)) {
                     TruffleString matchStr = getToStringNode().executeString(read(match, 0));
                     if (Strings.isEmpty(matchStr)) {
                         advanceLastIndexAfterEmptyMatch(regex, string, fullUnicode, this, getToLengthNode(), advanceStringIndex, lastIndexNotIntBranch);
                     }
-                    return getCreateIterResultObjectNode().execute(frame, match, false);
+                    return getCreateIterResultObjectNode().execute(match, false);
                 } else {
                     getSetDoneNode().setValueBoolean(iterator, true);
-                    return getCreateIterResultObjectNode().execute(frame, match, false);
+                    return getCreateIterResultObjectNode().execute(match, false);
                 }
             }
         }
