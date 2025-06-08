@@ -178,6 +178,11 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         }
 
         @TruffleBoundary
+        public String getVariants() {
+            return locale.getVariant().replace('_', '-');
+        }
+
+        @TruffleBoundary
         public String maximize() {
             // ULocale.addLikelySubtags() tends to add "yes" type to Unicode extensions
             // => use this method to get language/script/region only.

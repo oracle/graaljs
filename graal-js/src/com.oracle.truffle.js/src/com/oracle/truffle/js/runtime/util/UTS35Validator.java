@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,6 +92,23 @@ public final class UTS35Validator {
             }
         }
         return true;
+    }
+
+    public static boolean isStructurallyValidVariantSubtag(String variant) {
+        // unicode_variant_subtag = (alphanum{5,8} | digit alphanum{3})
+        int length = variant.length();
+        if (length < 4 || length > 8) {
+            return false;
+        } else if (length == 4) {
+            return isDigit(variant.charAt(0)) && isAlphanum(variant.charAt(1)) && isAlphanum(variant.charAt(2)) && isAlphanum(variant.charAt(3));
+        } else {
+            for (int i = 0; i < length; i++) {
+                if (!isAlphanum(variant.charAt(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     public static boolean isStructurallyValidRegionSubtag(String region) {

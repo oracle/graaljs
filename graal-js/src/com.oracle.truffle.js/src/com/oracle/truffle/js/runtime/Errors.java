@@ -569,6 +569,10 @@ public final class Errors {
         return createRangeErrorFormat("Invalid language subtag: %s", null, language);
     }
 
+    public static JSException createRangeErrorInvalidVariant(String variant) {
+        return createRangeErrorFormat("Invalid variant subtag: %s", null, variant);
+    }
+
     public static JSException createRangeErrorInvalidRegion(String region) {
         return createRangeErrorFormat("Invalid region subtag: %s", null, region);
     }

@@ -74,6 +74,7 @@ import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLoca
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleNumericAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleRegionAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleScriptAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleVariantsAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleToStringNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -121,6 +122,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         language(0),
         script(0),
         region(0),
+        variants(0),
 
         getCalendars(0),
         getCollations(0),
@@ -143,7 +145,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public boolean isGetter() {
-            return baseName.ordinal() <= ordinal() && ordinal() <= region.ordinal();
+            return baseName.ordinal() <= ordinal() && ordinal() <= variants.ordinal();
         }
 
         @Override
@@ -186,6 +188,8 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSLocaleScriptAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case region:
                 return JSLocaleRegionAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case variants:
+                return JSLocaleVariantsAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case getCalendars:
                 return JSLocaleGetCalendarsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case getCollations:
@@ -476,6 +480,25 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         public Object doLocale(JSLocaleObject localeObject) {
             String region = localeObject.getInternalState().getRegion();
             return region.isEmpty() ? Undefined.instance : Strings.fromJavaString(region);
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+    }
+
+    public abstract static class JSLocaleVariantsAccessor extends JSBuiltinNode {
+
+        public JSLocaleVariantsAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public Object doLocale(JSLocaleObject localeObject) {
+            String variants = localeObject.getInternalState().getVariants();
+            return variants.isEmpty() ? Undefined.instance : Strings.fromJavaString(variants);
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
