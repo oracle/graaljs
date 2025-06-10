@@ -2172,25 +2172,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-06-05"
   }, {
-    "filePath" : "intl402/Temporal/Duration/compare/relativeto-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
     "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
     "filePath" : "intl402/Temporal/Duration/prototype/total/relativeto-infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/total/relativeto-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
   }, {
     "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
     "status" : "FAIL",
@@ -2419,18 +2407,6 @@
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toZonedDateTime/dst-disambiguation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toZonedDateTime/multiple-instants.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toZonedDateTime/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/until/canonicalize-calendar.js",
     "status" : "FAIL",
@@ -2700,10 +2676,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/compare/sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/construct-non-utc-non-iso.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2740,10 +2712,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/zoneddatetime-sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/iana-legacy-names.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2772,10 +2740,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/timezone-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2799,10 +2763,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/startOfDay/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
@@ -2859,10 +2819,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/until/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/until/sub-minute-offset.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/weekOfYear/non-iso-week-of-year.js",
     "status" : "FAIL",
@@ -3109,15 +3065,7 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-01-15"
   }, {
-    "filePath" : "staging/Intl402/Temporal/old/property-bags.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
     "filePath" : "staging/Intl402/Temporal/old/time-toLocaleString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/tzdb-string-parsing.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
@@ -3126,10 +3074,6 @@
     "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/zdt-round.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/zdt-with.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
