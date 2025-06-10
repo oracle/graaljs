@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
@@ -156,6 +157,12 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
+            if (offsetString != null) {
+                JSTemporalParserRecord rec = TemporalUtil.parseTimeZoneOffsetStringHelper(offsetString);
+                if (rec.getOffsetSecond() != Long.MIN_VALUE) {
+                    matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
+                }
+            }
             Object resolvedOptions = getOptionsObject.execute(options);
             disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
             offsetOption = TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);

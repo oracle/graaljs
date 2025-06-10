@@ -2753,8 +2753,13 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
+    public static JSTemporalParserRecord parseTimeZoneOffsetStringHelper(TruffleString string) {
+        return new TemporalParser(string).parseTimeZoneNumericUTCOffset();
+    }
+
+    @TruffleBoundary
     public static long parseTimeZoneOffsetString(TruffleString string) {
-        JSTemporalParserRecord rec = new TemporalParser(string).parseTimeZoneNumericUTCOffset();
+        JSTemporalParserRecord rec = parseTimeZoneOffsetStringHelper(string);
         if (rec == null) {
             throw Errors.createRangeError("TemporalTimeZoneNumericUTCOffset expected");
         }
