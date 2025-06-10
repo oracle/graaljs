@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
@@ -167,6 +168,12 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                 offsetBehaviour = TemporalUtil.OffsetBehaviour.WALL;
             }
             matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_MINUTES;
+            if (offsetString != null) {
+                JSTemporalParserRecord rec = TemporalUtil.parseTimeZoneOffsetStringHelper((TruffleString) offsetString);
+                if (rec.hasOffsetSecond()) {
+                    matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
+                }
+            }
             calendar = result.getCalendar();
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
