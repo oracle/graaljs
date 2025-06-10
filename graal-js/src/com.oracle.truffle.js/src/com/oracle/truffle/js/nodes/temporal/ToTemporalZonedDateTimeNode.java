@@ -159,7 +159,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
             if (offsetString != null) {
                 JSTemporalParserRecord rec = TemporalUtil.parseTimeZoneOffsetStringHelper(offsetString);
-                if (rec.getOffsetSecond() != Long.MIN_VALUE) {
+                if (rec.hasOffsetSecond()) {
                     matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
                 }
             }

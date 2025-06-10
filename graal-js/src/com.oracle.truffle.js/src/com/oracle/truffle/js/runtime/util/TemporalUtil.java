@@ -2784,9 +2784,9 @@ public final class TemporalUtil {
         TruffleString signS = rec.getOffsetSign();
         int sign = Strings.SYMBOL_MINUS.equals(signS) ? -1 : 1;
 
-        long hours = rec.getOffsetHour() == Long.MIN_VALUE ? 0 : rec.getOffsetHour();
-        long minutes = rec.getOffsetMinute() == Long.MIN_VALUE ? 0 : rec.getOffsetMinute();
-        long seconds = rec.getOffsetSecond() == Long.MIN_VALUE ? 0 : rec.getOffsetSecond();
+        long hours = rec.hasOffsetHour() ? rec.getOffsetHour() : 0;
+        long minutes = rec.hasOffsetMinute() ? rec.getOffsetMinute() : 0;
+        long seconds = rec.hasOffsetSecond() ? rec.getOffsetSecond() : 0;
 
         return sign * (((hours * 60 + minutes) * 60 + seconds) * 1_000_000_000L + nanoseconds);
     }

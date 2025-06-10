@@ -170,7 +170,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_MINUTES;
             if (offsetString != null) {
                 JSTemporalParserRecord rec = TemporalUtil.parseTimeZoneOffsetStringHelper((TruffleString) offsetString);
-                if (rec.getOffsetSecond() != Long.MIN_VALUE) {
+                if (rec.hasOffsetSecond()) {
                     matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
                 }
             }
