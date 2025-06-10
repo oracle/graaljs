@@ -97,10 +97,10 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
 import java.util.ArrayList;
@@ -3159,7 +3159,7 @@ public final class TemporalUtil {
             possibleEpochNanoseconds = List.of(epochNanoseconds);
         } else {
             checkISODaysRange(isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay());
-            possibleEpochNanoseconds = TemporalUtil.getIANATimeZoneEpochValue(timeZone, isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay(),
+            possibleEpochNanoseconds = TemporalUtil.getNamedTimeZoneEpochNanoseconds(timeZone, isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay(),
                             isoDateTime.getHour(), isoDateTime.getMinute(), isoDateTime.getSecond(), isoDateTime.getMillisecond(), isoDateTime.getMicrosecond(), isoDateTime.getNanosecond());
         }
         for (BigInt epochNanoseconds : possibleEpochNanoseconds) {
@@ -3177,15 +3177,18 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static List<BigInt> getIANATimeZoneEpochValue(TruffleString identifier, long isoYear, long isoMonth, long isoDay, long hours, long minutes, long seconds, long milliseconds,
+    public static List<BigInt> getNamedTimeZoneEpochNanoseconds(TruffleString identifier, long isoYear, long isoMonth, long isoDay, long hours, long minutes, long seconds, long milliseconds,
                     long microseconds,
                     long nanoseconds) {
         List<BigInt> list = new ArrayList<>();
         try {
             ZoneId zoneId = ZoneId.of(Strings.toJavaString(identifier));
             long fractions = milliseconds * 1_000_000L + microseconds * 1_000L + nanoseconds;
-            ZonedDateTime zdt = ZonedDateTime.of((int) isoYear, (int) isoMonth, (int) isoDay, (int) hours, (int) minutes, (int) seconds, (int) fractions, zoneId);
-            list.add(BigInt.valueOf(zdt.toEpochSecond()).multiply(BigInt.valueOf(1_000_000_000L)).add(BigInt.valueOf(fractions)));
+            LocalDateTime localTime = LocalDateTime.of((int) isoYear, (int) isoMonth, (int) isoDay, (int) hours, (int) minutes, (int) seconds, (int) fractions);
+            List<ZoneOffset> offsets = zoneId.getRules().getValidOffsets(localTime);
+            for (ZoneOffset offset : offsets) {
+                list.add(BigInt.valueOf(localTime.atOffset(offset).toEpochSecond()).multiply(BI_NS_PER_SECOND).add(BigInt.valueOf(fractions)));
+            }
         } catch (Exception ex) {
             assert false;
         }
