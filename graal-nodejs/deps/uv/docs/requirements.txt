@@ -19,7 +19,7 @@ MarkupSafe==2.1.2
 packaging==23.0
 Pygments==2.14.0
 pytz==2022.7.1
-requests==2.28.2
+requests==2.32.4
 six==1.16.0
 snowballstemmer==2.2.0
 soupsieve==2.4.1
