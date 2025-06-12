@@ -179,6 +179,14 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
 
         state.locale = builder.build().toLanguageTag();
 
+        if (kn != null) {
+            builder.setUnicodeLocaleKeyword("kn", kn ? "" : "false");
+        }
+
+        if (kf != null) {
+            builder.setUnicodeLocaleKeyword("kf", kf);
+        }
+
         if (searchUsage) {
             // "search" is not allowed in r.[[co]] but it must be set in the Locale
             // used by the Collator (so that the Collator uses "search" collation).
