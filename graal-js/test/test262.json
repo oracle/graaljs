@@ -2040,18 +2040,6 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "intl402/Collator/prototype/resolvedOptions/resolved-case-first-unicode-extensions-and-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
-    "filePath" : "intl402/Collator/prototype/resolvedOptions/resolved-collation-unicode-extensions-and-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
-    "filePath" : "intl402/Collator/prototype/resolvedOptions/resolved-numeric-unicode-extensions-and-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/numbering-system.js",
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
@@ -2120,18 +2108,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/resolved-calendar-unicode-extensions-and-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/resolved-numbering-system-unicode-extensions-and-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
-    "filePath" : "intl402/DurationFormat/prototype/resolvedOptions/resolved-numbering-system-unicode-extensions-and-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -2163,14 +2139,6 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/resolvedOptions/resolved-numbering-system-unicode-extensions-and-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
-  }, {
-    "filePath" : "intl402/RelativeTimeFormat/prototype/resolvedOptions/resolved-numbering-system-unicode-extensions-and-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-06-05"
   }, {
     "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-infinity-throws-rangeerror.js",
     "status" : "FAIL",
