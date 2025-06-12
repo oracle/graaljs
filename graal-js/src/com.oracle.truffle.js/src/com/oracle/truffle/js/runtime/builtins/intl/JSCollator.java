@@ -42,7 +42,9 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.text.Normalizer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import org.graalvm.shadowed.com.ibm.icu.text.Collator;
 import org.graalvm.shadowed.com.ibm.icu.text.RuleBasedCollator;
@@ -111,19 +113,22 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         Locale.Builder builder = new Locale.Builder().setLocale(strippedLocale);
 
         Boolean kn = optkn;
-        if (kn == null) {
-            String knType = selectedLocale.getUnicodeLocaleType("kn");
-            if ("".equals(knType) || "true".equals(knType)) {
-                kn = true;
-            } else if ("false".equals(knType)) {
-                kn = false;
-            }
-            if (kn != null) {
+        String knTypeStr = selectedLocale.getUnicodeLocaleType("kn");
+        Boolean knType = null;
+        if ("".equals(knTypeStr) || "true".equals(knTypeStr)) {
+            knType = true;
+        } else if ("false".equals(knTypeStr)) {
+            knType = false;
+        }
+        if (knType != null) {
+            // knType is a valid value
+            if (optkn == null || optkn.equals(knType)) {
                 // "BCP 47 Language Tag to Unicode BCP 47 Locale Identifier" algorithm
                 // used during CanonicalizeLanguageTag() operation requires the removal
                 // of "true" value of a unicode extension i.e. -u-kn-true should be converted to
                 // -u-kn.
-                String value = kn ? "" : "false";
+                String value = knType ? "" : "false";
+                kn = knType;
                 builder.setUnicodeLocaleKeyword("kn", value);
             }
         }
@@ -132,9 +137,10 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         }
 
         String kf = optkf;
-        if (kf == null) {
-            String kfType = selectedLocale.getUnicodeLocaleType("kf");
-            if ("upper".equals(kfType) || "lower".equals(kfType) || "false".equals(kfType)) {
+        String kfType = selectedLocale.getUnicodeLocaleType("kf");
+        if ("upper".equals(kfType) || "lower".equals(kfType) || "false".equals(kfType)) {
+            // kfType is a valid value
+            if (optkf == null || optkf.equals(kfType)) {
                 kf = kfType;
                 builder.setUnicodeLocaleKeyword("kf", kfType);
             }
@@ -143,33 +149,44 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
             state.caseFirst = kf;
         }
 
-        String collation = (optco == null) ? selectedLocale.getUnicodeLocaleType("co") : optco;
-        if (collation != null) {
-            String[] validCollations = IntlUtil.availableCollations(ULocale.forLocale(strippedLocale), false);
-            if (!Arrays.asList(validCollations).contains(collation)) {
-                collation = null;
-            }
+        List<String> validCollations = Arrays.asList(IntlUtil.availableCollations(ULocale.forLocale(strippedLocale), false));
+        String coType = selectedLocale.getUnicodeLocaleType("co");
+        if (!validCollations.contains(coType)) {
+            coType = null;
+        }
+        String coOption = optco;
+        if (!validCollations.contains(optco) || Objects.equals(coType, optco)) {
+            coOption = null;
+        }
+        String collation = null;
+        if (coOption == null && coType != null) {
+            collation = coType;
+            builder.setUnicodeLocaleKeyword("co", coType);
+        }
+        if (coOption != null) {
+            collation = coOption;
         }
 
         // "search" maps to -u-co-search, "sort" means the default behavior
         boolean searchUsage = IntlUtil.SEARCH.equals(usage);
         if (!searchUsage && collation != null) {
             state.collation = collation;
-            builder.setUnicodeLocaleKeyword("co", collation);
         }
 
         if (sensitivity != null) {
             state.sensitivity = sensitivity;
         }
 
-        Locale collatorLocale = builder.build();
-        state.locale = collatorLocale.toLanguageTag();
+        state.locale = builder.build().toLanguageTag();
 
-        // "search" is not allowed in r.[[co]] but it must be set in the Locale
-        // used by the Collator (so that the Collator uses "search" collation).
         if (searchUsage) {
-            collatorLocale = builder.setUnicodeLocaleKeyword("co", IntlUtil.SEARCH).build();
+            // "search" is not allowed in r.[[co]] but it must be set in the Locale
+            // used by the Collator (so that the Collator uses "search" collation).
+            builder.setUnicodeLocaleKeyword("co", IntlUtil.SEARCH);
+        } else if (collation != null) {
+            builder.setUnicodeLocaleKeyword("co", collation);
         }
+        Locale collatorLocale = builder.build();
 
         state.collator = Collator.getInstance(collatorLocale);
         state.collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
