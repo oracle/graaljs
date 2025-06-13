@@ -529,7 +529,7 @@ def run_javascript_basictests(js_binary):
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     if register_project and register_distribution:
         isolate_build_options = ['-H:+AuxiliaryEngineCache', '-H:ReservedAuxiliaryImageBytes=2145482548'] if not mx.is_windows() else []
-        meta_pom = [p for p in _suite.dists if p.name == 'JS_COMMUNITY'][0]
+        meta_pom = [p for p in _suite.dists if p.name == 'JS_POM'][0]
         mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'js',
                                         'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
                                         isolate_build_options=isolate_build_options)
