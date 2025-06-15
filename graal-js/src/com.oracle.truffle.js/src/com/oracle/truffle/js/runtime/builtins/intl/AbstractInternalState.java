@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Locale;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -67,16 +68,23 @@ public abstract class AbstractInternalState {
         builder.setLocale(strippedLocale);
 
         String nuType = selectedLocale.getUnicodeLocaleType("nu");
-        if ((nuType != null) && IntlUtil.isValidNumberingSystem(nuType) && (numberingSystemOpt == null || numberingSystemOpt.equals(nuType))) {
-            this.numberingSystem = nuType;
+        if (!IntlUtil.isValidNumberingSystem(nuType)) {
+            nuType = null;
+        }
+        String nuOpt = numberingSystemOpt;
+        if (!IntlUtil.isValidNumberingSystem(nuOpt) || Objects.equals(nuType, nuOpt)) {
+            nuOpt = null;
+        }
+        if (nuOpt == null && nuType != null) {
+            numberingSystem = nuType;
             builder.setUnicodeLocaleKeyword("nu", nuType);
         }
 
         this.locale = builder.build().toLanguageTag();
 
-        if (numberingSystemOpt != null && IntlUtil.isValidNumberingSystem(numberingSystemOpt)) {
-            this.numberingSystem = numberingSystemOpt;
-            builder.setUnicodeLocaleKeyword("nu", numberingSystemOpt);
+        if (nuOpt != null) {
+            numberingSystem = nuOpt;
+            builder.setUnicodeLocaleKeyword("nu", nuOpt);
         }
 
         this.javaLocale = builder.build();
