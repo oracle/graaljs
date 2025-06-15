@@ -167,8 +167,8 @@ public final class Options {
                         "no-concurrent-array-buffer-sweeping",
                         "no-freeze-flags-after-init",
                         "no-harmony-top-level-await",
-                        "nolazy",
-                        "nouse-idle-notification",
+                        "no-lazy",
+                        "no-use-idle-notification",
                         "rehash-snapshot",
                         "stack-size",
                         "trace-gc",
@@ -219,6 +219,9 @@ public final class Options {
                     }
                 }
                 String normalizedKey = key.replace('_', '-');
+                if (normalizedKey.startsWith("no") && !normalizedKey.startsWith("no-")) {
+                    normalizedKey = "no-" + normalizedKey.substring(2);
+                }
                 if (AUX_CACHE_OPTIONS.contains(normalizedKey)) {
                     auxEngineCacheMode = true;
                 }
