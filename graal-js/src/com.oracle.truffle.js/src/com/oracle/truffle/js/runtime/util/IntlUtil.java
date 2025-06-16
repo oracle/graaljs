@@ -905,11 +905,14 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String canonicalizeCalendar(String id) {
-        String lcID = id.toLowerCase(Locale.ROOT);
-        if (Arrays.binarySearch(availableCalendars(), lcID) < 0) {
+        // AvailableCalendars() in the spec contains aliases,
+        // but our availableCalendars() is normalized already
+        // => we must normalize before the search
+        String canonical = normalizeCAType(id.toLowerCase(Locale.ROOT));
+        if (Arrays.binarySearch(availableCalendars(), canonical) < 0) {
             throw Errors.createRangeErrorInvalidCalendar(id);
         }
-        return normalizeCAType(lcID);
+        return canonical;
     }
 
     // The returned collations are supposed to be "lower case String values conforming to the
