@@ -12,6 +12,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Made option `js.text-encoding` stable and allowed in `SandboxPolicy.CONSTRAINED`.
 * Implemented the [`import defer`](https://github.com/tc39/proposal-defer-import-eval) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Upsert`](https://github.com/tc39/proposal-upsert) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Enabled source phase imports from WebAssembly modules (`import source mod from "./mod.wasm"`) by default if the `js.webassembly` option is enabled and the `js.source-phase-imports` option is not explicitly set to `false`.
 
 ## Version 24.2.0
 * Updated Node.js to version 22.13.1.
