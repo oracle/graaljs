@@ -1131,14 +1131,6 @@ public final class TemporalUtil {
         return new ISODateRecord((int) yearPrepared, monthPrepared, 0);
     }
 
-    private static final Set<String> AVAILABLE_CALENDARS = Set.of("iso8601", "gregory", "japanese");
-
-    @TruffleBoundary
-    public static boolean isBuiltinCalendar(TruffleString id) {
-        String lowerCaseID = id.toJavaStringUncached().toLowerCase();
-        return AVAILABLE_CALENDARS.contains(lowerCaseID);
-    }
-
     @TruffleBoundary
     public static ParseISODateTimeResult parseTemporalDateTimeString(boolean zoned, TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseAnnotatedDateTime(zoned, false);
