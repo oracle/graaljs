@@ -902,15 +902,20 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static TruffleString parseTemporalCalendarString(TruffleString string) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseCalendarString();
-        if (rec == null) {
+        TemporalParser parser = new TemporalParser(string);
+        JSTemporalParserRecord rec = parser.parseCalendarString();
+        if (rec != null) {
+            TruffleString calendar = rec.getCalendar();
+            if (calendar == null) {
+                return ISO8601;
+            }
+            return calendar;
+        }
+        if (parser.parseAnnotationValue()) {
+            return string;
+        } else {
             throw Errors.createRangeError("cannot parse Calendar");
         }
-        TruffleString id = rec.getCalendar();
-        if (id == null) {
-            return ISO8601;
-        }
-        return id;
     }
 
     public static double toPositiveInteger(Object value) {

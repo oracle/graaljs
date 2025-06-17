@@ -62,7 +62,6 @@ public final class TemporalParser {
 
     private static final String patternDate = "^([+\\-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTime = "^([01][0-9]|2[0-3])(:?([0-5][0-9])(?::?([0-5][0-9]|60)(?:[.,]([0-9]{1,9}))?)?)?";
-    private static final String patternCalendarName = "^(\\w*)$";
     // Hour 0[0-9]|1[0-9]|2[0-3]
     // MinuteSecond [0-5][0-9]
     // TimeSeparator :?
@@ -91,6 +90,7 @@ public final class TemporalParser {
     // AnnotationValue [A-Za-z0-9]+(?:-[A-Za-z0-9]+)*
     // AnnotationCriticalFlag !
     // Annotation \[(!?)([a-z_][0-9a-z_-]*)=([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\]
+    private static final String patternAnnotationValue = "[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*";
     private static final String patternAnnotation = "(\\[(!?)([a-z_][0-9a-z_-]*)=([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\\])";
 
     private final JSContext context;
@@ -308,12 +308,18 @@ public final class TemporalParser {
         return null;
     }
 
-    // production TemporalCalendarString
     public JSTemporalParserRecord parseCalendarString() {
+        reset();
         JSTemporalParserRecord rec;
 
-        // CalendarName
-        rec = parseCalendarName();
+        // TemporalDateTimeString[+Zoned]
+        rec = parseAnnotatedDateTime(true, false);
+        if (rec != null) {
+            return rec;
+        }
+
+        // TemporalDateTimeString[~Zoned]
+        rec = parseAnnotatedDateTime(false, false);
         if (rec != null) {
             return rec;
         }
@@ -324,20 +330,8 @@ public final class TemporalParser {
             return rec;
         }
 
-        // AnnotatedDateTime
-        rec = parseAnnotatedDateTime(true, false);
-        if (rec != null) {
-            return rec;
-        }
-
-        // AnnotatedTime
-        rec = parseAnnotatedTime();
-        if (rec != null) {
-            return rec;
-        }
-
-        // AnnotatedYearMonth
-        rec = parseAnnotatedYearMonth();
+        // TemporalTimeString
+        rec = parseTemporalTimeString();
         if (rec != null) {
             return rec;
         }
@@ -348,7 +342,19 @@ public final class TemporalParser {
             return rec;
         }
 
+        // TemporalYearMonthString
+        rec = parseYearMonth();
+        if (rec != null) {
+            return rec;
+        }
+
         return null;
+    }
+
+    public boolean parseAnnotationValue() {
+        reset();
+        Matcher matcher = createMatch(patternAnnotationValue, rest);
+        return matcher.matches();
     }
 
     public JSTemporalParserRecord parseTemporalInstantString() {
@@ -362,15 +368,6 @@ public final class TemporalParser {
                     }
                 }
             }
-        }
-        return null;
-    }
-
-    private JSTemporalParserRecord parseCalendarName() {
-        // CalendarName
-        reset();
-        if (tryParseCalendarName()) {
-            return result();
         }
         return null;
     }
@@ -398,17 +395,6 @@ public final class TemporalParser {
         tryParseDateTimeUTCOffset(true); // optional
 
         if (tryParseTimeZoneAnnotation()) {
-            return true;
-        }
-        return false;
-    }
-
-    private boolean tryParseCalendarName() {
-        Matcher matcher = createMatch(patternCalendarName, rest);
-        if (matcher.matches()) {
-            this.calendar = group(rest, matcher, 1);
-
-            move(matcher.end(1));
             return true;
         }
         return false;
