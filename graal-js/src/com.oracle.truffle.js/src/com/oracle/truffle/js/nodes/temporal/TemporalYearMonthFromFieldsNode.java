@@ -64,12 +64,11 @@ public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode
     public abstract JSTemporalPlainYearMonthObject execute(TruffleString calendar, JSDynamicObject fields, TemporalUtil.Overflow overflow);
 
     @Specialization
-    protected JSTemporalPlainYearMonthObject yearMonthFromFields(TruffleString calendar, JSDynamicObject fieldsParam, TemporalUtil.Overflow overflow,
+    protected JSTemporalPlainYearMonthObject yearMonthFromFields(TruffleString calendar, JSDynamicObject fields, TemporalUtil.Overflow overflow,
                     @Cached JSToIntegerOrInfinityNode toIntegerOrInfinity,
                     @Cached InlinedBranchProfile errorBranch) {
         JSContext context = getJSContext();
-        JSDynamicObject fields = TemporalUtil.prepareTemporalFields(context, fieldsParam, TemporalUtil.listMMCY, TemporalUtil.listY);
-        TemporalUtil.isoResolveMonth(context, fields, toIntegerOrInfinity);
+        TemporalUtil.calendarResolveFields(context, calendar, fields, TemporalUtil.CalendarResolveFieldsType.YEAR_MONTH, toIntegerOrInfinity);
         ISODateRecord result = TemporalUtil.isoYearMonthFromFields(fields, overflow);
         return JSTemporalPlainYearMonth.create(getJSContext(), getRealm(),
                         result.year(), result.month(), calendar, result.day(), this, errorBranch);

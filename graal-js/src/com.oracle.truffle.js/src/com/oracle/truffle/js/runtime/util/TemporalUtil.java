@@ -1277,7 +1277,7 @@ public final class TemporalUtil {
         throw Errors.shouldNotReachHereUnexpectedValue(result);
     }
 
-    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(TruffleString calendar, Object fields, Overflow overflow,
+    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(TruffleString calendar, JSDynamicObject fields, Overflow overflow,
                     TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         JSTemporalPlainDateObject date = dateFromFieldsNode.execute(calendar, fields, overflow);
@@ -3262,9 +3262,27 @@ public final class TemporalUtil {
         return true;
     }
 
+    public enum CalendarResolveFieldsType {
+        DATE,
+        YEAR_MONTH,
+        MONTH_DAY
+    }
+
     // 12.1.38
     @TruffleBoundary
-    public static void isoResolveMonth(JSContext ctx, JSDynamicObject fields, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
+    public static void calendarResolveFields(JSContext ctx, TruffleString calendar, JSDynamicObject fields, CalendarResolveFieldsType type, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
+        if (type != CalendarResolveFieldsType.MONTH_DAY) {
+            Object year = JSObject.get(fields, YEAR);
+            if (year == Undefined.instance) {
+                throw Errors.createTypeError("No year present.");
+            }
+        }
+        if (type != CalendarResolveFieldsType.YEAR_MONTH) {
+            Object day = JSObject.get(fields, DAY);
+            if (day == Undefined.instance) {
+                throw Errors.createTypeError("No day present.");
+            }
+        }
         Object month = JSObject.get(fields, MONTH);
         Object monthCode = JSObject.get(fields, MONTH_CODE);
         if (monthCode == Undefined.instance) {

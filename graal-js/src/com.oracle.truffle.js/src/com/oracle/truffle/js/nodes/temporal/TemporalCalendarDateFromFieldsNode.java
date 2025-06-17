@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -61,15 +61,14 @@ public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseN
     protected TemporalCalendarDateFromFieldsNode() {
     }
 
-    public abstract JSTemporalPlainDateObject execute(TruffleString calendar, Object fields, TemporalUtil.Overflow overflow);
+    public abstract JSTemporalPlainDateObject execute(TruffleString calendar, JSDynamicObject fields, TemporalUtil.Overflow overflow);
 
     @Specialization
-    public JSTemporalPlainDateObject calendarDateFromFields(TruffleString calendar, Object fieldsParam, TemporalUtil.Overflow overflow,
+    public JSTemporalPlainDateObject calendarDateFromFields(TruffleString calendar, JSDynamicObject fields, TemporalUtil.Overflow overflow,
                     @Cached JSToIntegerOrInfinityNode toIntegerOrInfinity,
                     @Cached InlinedBranchProfile errorBranch) {
         JSContext context = getJSContext();
-        JSObject fields = TemporalUtil.prepareTemporalFields(context, fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listYD);
-        TemporalUtil.isoResolveMonth(context, fields, toIntegerOrInfinity);
+        TemporalUtil.calendarResolveFields(context, calendar, fields, TemporalUtil.CalendarResolveFieldsType.DATE, toIntegerOrInfinity);
         ISODateRecord result = TemporalUtil.isoDateFromFields(fields, overflow);
 
         return JSTemporalPlainDate.create(context, getRealm(), result.year(), result.month(), result.day(), calendar, this, errorBranch);
