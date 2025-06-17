@@ -51,12 +51,13 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -77,7 +78,9 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached GetTemporalCalendarIdentifierWithISODefaultNode getCalendarWithISODefault,
-                    @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode) {
+                    @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaString,
+                    @Cached TruffleString.FromJavaStringNode fromJavaString) {
         Object options = optionsParam;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             if (item instanceof JSTemporalPlainYearMonthObject yearMonth) {
@@ -96,10 +99,9 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
             TruffleString calendar = result.getCalendar();
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
-            }
-            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            } else {
+                String calendarJLS = toJavaString.execute(calendar);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
             }
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);

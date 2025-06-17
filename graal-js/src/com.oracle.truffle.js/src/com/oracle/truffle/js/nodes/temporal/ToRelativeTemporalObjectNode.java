@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -71,8 +72,8 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -110,7 +111,9 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
-                    @Cached GetTemporalCalendarIdentifierWithISODefaultNode getTemporalCalendarWithISODefaultNode) {
+                    @Cached GetTemporalCalendarIdentifierWithISODefaultNode getTemporalCalendarWithISODefaultNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaString,
+                    @Cached TruffleString.FromJavaStringNode fromJavaString) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(this, value == Undefined.instance)) {
             return none();
@@ -177,10 +180,9 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             calendar = result.getCalendar();
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
-            }
-            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            } else {
+                String calendarJLS = toJavaString.execute(calendar);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
             }
         } else {
             errorBranch.enter(this);
