@@ -110,7 +110,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
-                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarWithISODefaultNode) {
+                    @Cached GetTemporalCalendarIdentifierWithISODefaultNode getTemporalCalendarWithISODefaultNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(this, value == Undefined.instance)) {
             return none();

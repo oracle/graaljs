@@ -78,7 +78,6 @@ import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalYearMonthFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
@@ -380,10 +379,10 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected final JSTemporalPlainDateObject withCalendar(JSTemporalPlainDateObject date, Object calendarParam,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
+        protected final JSTemporalPlainDateObject withCalendar(JSTemporalPlainDateObject date, Object calendarLike,
+                        @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached InlinedBranchProfile errorBranch) {
-            TruffleString calendar = toCalendarSlotValue.execute(calendarParam);
+            TruffleString calendar = toCalendarIdentifier.executeString(calendarLike);
             return JSTemporalPlainDate.create(getContext(), getRealm(), date.getYear(), date.getMonth(), date.getDay(), calendar, this, errorBranch);
         }
 

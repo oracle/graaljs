@@ -85,7 +85,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached IsObjectNode isObjectNode,
                     @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsNode,
-                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarNode,
+                    @Cached GetTemporalCalendarIdentifierWithISODefaultNode getTemporalCalendarNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord result;

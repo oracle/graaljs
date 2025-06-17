@@ -86,7 +86,6 @@ import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
@@ -808,9 +807,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         final JSTemporalPlainDateTimeObject withCalendar(JSTemporalPlainDateTimeObject temporalDateTime, Object calendarLike,
-                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
+                        @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
                         @Cached InlinedBranchProfile errorBranch) {
-            TruffleString calendar = toCalendarSlotValue.execute(calendarLike);
+            TruffleString calendar = toCalendarIdentifier.executeString(calendarLike);
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
                             temporalDateTime.getHour(), temporalDateTime.getMinute(), temporalDateTime.getSecond(),

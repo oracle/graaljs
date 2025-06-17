@@ -95,7 +95,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
-                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
+                    @Cached GetTemporalCalendarIdentifierWithISODefaultNode getCalendarWithISODefault,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
@@ -117,7 +117,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 return JSTemporalZonedDateTime.create(ctx, realm, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
 
-            calendar = getCalendarSlotValueWithISODefault.execute(item);
+            calendar = getCalendarWithISODefault.execute(item);
 
             List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
             addFieldNames(fieldNames);

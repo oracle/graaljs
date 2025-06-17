@@ -91,7 +91,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsObject,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
+                    @Cached GetTemporalCalendarIdentifierWithISODefaultNode getCalendarWithISODefault,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
@@ -116,7 +116,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                 var dt = (JSTemporalPlainDateTimeObject) item;
                 return JSTemporalPlainDate.create(ctx, realm, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar(), this, errorBranch);
             }
-            TruffleString calendar = getCalendarSlotValueWithISODefault.execute(item);
+            TruffleString calendar = getCalendarWithISODefault.execute(item);
             List<TruffleString> fieldNames = TemporalUtil.listDMMCY;
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
