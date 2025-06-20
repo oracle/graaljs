@@ -2133,8 +2133,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode desugarForInOrOfBody(ForNode forNode, JavaScriptNode iterator, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         assert forNode.isForInOrOf();
         VarRef iteratorVar = environment.createTempVar();
-        JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
         VarRef nextResultVar = environment.createTempVar();
+        JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
         JavaScriptNode iteratorNext = factory.createIteratorNext(iteratorVar.createReadNode());
         // nextResult = IteratorNext(iterator)
         // while(!(done = IteratorComplete(nextResult)))
@@ -2144,18 +2144,24 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsPerIterationScope(forNode) ? newPerIterationEnvironment(lc.getCurrentBlock().getScope()) : environment)) {
             // var nextValue = IteratorValue(nextResult);
+            // iterator.[[Done]] = false;
+            // nextBinding := nextValueTmp;
+            // nextResult = nextValue = undefined; // clear no longer needed temp frame slots
+            // <for:body>
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             VarRef nextValueVar = environment.createTempVar();
             VarRef iteratorVar2 = environment.findTempVar(iteratorVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(nextResult);
             JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
-            JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
+            JavaScriptNode nextBindingInit = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
+            JavaScriptNode clearTempSlots = nextResultVar2.createWriteNode(nextValueVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE)));
             JavaScriptNode body = transform(forNode.getBody());
             wrappedBody = blockEnv.wrapBlockScope(createBlock(
                             writeNextValue,
                             factory.createIteratorSetDone(iteratorVar2.createReadNode(), factory.createConstantBoolean(false)),
-                            writeNext,
+                            nextBindingInit,
+                            clearTempSlots,
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
@@ -2181,10 +2187,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode desugarForAwaitOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         assert forNode.isForAwaitOf();
-        JavaScriptNode getIterator = factory.createGetAsyncIterator(modify);
         VarRef iteratorVar = environment.createTempVar();
-        JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
         VarRef nextResultVar = environment.createTempVar();
+        JavaScriptNode getIterator = factory.createGetAsyncIterator(modify);
+        JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
 
         currentFunction().addAwait();
         JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
@@ -2201,18 +2207,24 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsPerIterationScope(forNode) ? newPerIterationEnvironment(lc.getCurrentBlock().getScope()) : environment)) {
             // var nextValue = IteratorValue(nextResult);
+            // iterator.[[Done]] = false;
+            // nextBinding := nextValueTmp;
+            // nextResult = nextValue = undefined; // clear no longer needed temp frame slots
+            // <for:body>
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             VarRef nextValueVar = environment.createTempVar();
             VarRef iteratorVar2 = environment.findTempVar(iteratorVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(nextResult);
             JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
-            JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
+            JavaScriptNode nextBindingInit = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
+            JavaScriptNode clearTempSlots = nextResultVar2.createWriteNode(nextValueVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE)));
             JavaScriptNode body = transform(forNode.getBody());
             wrappedBody = blockEnv.wrapBlockScope(createBlock(
                             writeNextValue,
                             factory.createIteratorSetDone(iteratorVar2.createReadNode(), factory.createConstantBoolean(false)),
-                            writeNext,
+                            nextBindingInit,
+                            clearTempSlots,
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
