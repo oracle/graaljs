@@ -140,6 +140,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 
 public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalZonedDateTimePrototypeBuiltins.TemporalZonedDateTimePrototype> {
 
@@ -345,6 +346,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected Object zonedDateTimeGetter(JSTemporalZonedDateTimeObject zdt,
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached InlinedConditionProfile isoCalendarProfile,
                         @Cached InlinedBranchProfile errorBranch) {
             switch (property) {
                 case era:
@@ -368,7 +371,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case daysInYear:
                 case monthsInYear:
                 case inLeapYear:
-                    return getterCalendarDetails(zdt);
+                    return getterCalendarDetails(zdt, equalNode, isoCalendarProfile);
 
                 case hoursInDay:
                     return getterHoursInDay(zdt, errorBranch);
@@ -416,25 +419,32 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             return diffNs.divide(TemporalUtil.BI_NS_PER_HOUR).doubleValue();
         }
 
-        private Object getterCalendarDetails(JSTemporalZonedDateTimeObject zdt) {
+        private Object getterCalendarDetails(JSTemporalZonedDateTimeObject zdt,
+                        TruffleString.EqualNode equalNode,
+                        InlinedConditionProfile isoCalendarProfile) {
             TruffleString timeZone = zdt.getTimeZone();
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zdt.getNanoseconds());
             TruffleString calendar = zdt.getCalendar();
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
+            boolean isoCalendar = isoCalendarProfile.profile(this, Strings.equals(equalNode, TemporalConstants.ISO8601, calendar));
+            Calendar cal = null;
+            if (!isoCalendar) {
+                cal = IntlUtil.getCalendar(calendar, tdt.getYear(), tdt.getMonth(), tdt.getDay());
+            }
             switch (property) {
                 case era:
                     return Undefined.instance;
                 case eraYear:
                     return Undefined.instance;
                 case year:
-                    return tdt.getYear();
+                    return isoCalendar ? tdt.getYear() : IntlUtil.getCalendarField(cal, Calendar.YEAR);
                 case month:
-                    return tdt.getMonth();
+                    return isoCalendar ? tdt.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.MONTH) + 1);
                 case monthCode:
-                    return TemporalUtil.buildISOMonthCode(tdt.getMonth());
+                    return isoCalendar ? TemporalUtil.buildISOMonthCode(tdt.getMonth()) : Strings.fromJavaString(IntlUtil.getTemporalMonthCode(cal));
                 case day:
-                    return tdt.getDay();
+                    return isoCalendar ? tdt.getDay() : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_MONTH);
                 case hour:
                     return tdt.getHour();
                 case minute:
@@ -448,23 +458,23 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case nanosecond:
                     return tdt.getNanosecond();
                 case dayOfWeek:
-                    return TemporalUtil.toISODayOfWeek(tdt.getYear(), tdt.getMonth(), tdt.getDay());
+                    return isoCalendar ? TemporalUtil.toISODayOfWeek(tdt.getYear(), tdt.getMonth(), tdt.getDay()) : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_WEEK);
                 case dayOfYear:
-                    return TemporalUtil.toISODayOfYear(tdt.getYear(), tdt.getMonth(), tdt.getDay());
+                    return isoCalendar ? TemporalUtil.toISODayOfYear(tdt.getYear(), tdt.getMonth(), tdt.getDay()) : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_YEAR);
                 case weekOfYear:
-                    return TemporalUtil.weekOfToISOWeekOfYear(tdt.getYear(), tdt.getMonth(), tdt.getDay());
+                    return isoCalendar ? TemporalUtil.weekOfToISOWeekOfYear(tdt.getYear(), tdt.getMonth(), tdt.getDay()) : Undefined.instance;
                 case yearOfWeek:
-                    return TemporalUtil.yearOfToISOWeekOfYear(tdt.getYear(), tdt.getMonth(), tdt.getDay());
+                    return isoCalendar ? TemporalUtil.yearOfToISOWeekOfYear(tdt.getYear(), tdt.getMonth(), tdt.getDay()) : Undefined.instance;
                 case daysInWeek:
-                    return 7;
+                    return isoCalendar ? 7 : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_WEEK);
                 case daysInMonth:
-                    return TemporalUtil.isoDaysInMonth(tdt.getYear(), tdt.getMonth());
+                    return isoCalendar ? TemporalUtil.isoDaysInMonth(tdt.getYear(), tdt.getMonth()) : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_MONTH);
                 case daysInYear:
-                    return TemporalUtil.isoDaysInYear(tdt.getYear());
+                    return isoCalendar ? TemporalUtil.isoDaysInYear(tdt.getYear()) : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_YEAR);
                 case monthsInYear:
-                    return 12;
+                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.MONTH) + 1);
                 case inLeapYear:
-                    return JSDate.isLeapYear(tdt.getYear());
+                    return isoCalendar ? JSDate.isLeapYear(tdt.getYear()) : IntlUtil.isLeapYear(cal);
             }
             throw Errors.shouldNotReachHere();
         }

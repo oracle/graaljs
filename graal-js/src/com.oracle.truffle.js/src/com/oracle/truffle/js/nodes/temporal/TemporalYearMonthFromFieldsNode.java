@@ -41,21 +41,25 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Implementation of the Temporal yearMonthFromFields() operation.
  */
+@ImportStatic(TemporalConstants.class)
 public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode {
 
     protected TemporalYearMonthFromFieldsNode() {
@@ -66,10 +70,12 @@ public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode
     @Specialization
     protected JSTemporalPlainYearMonthObject yearMonthFromFields(TruffleString calendar, JSDynamicObject fields, TemporalUtil.Overflow overflow,
                     @Cached JSToIntegerOrInfinityNode toIntegerOrInfinity,
+                    @Cached("create(DAY, false, getJSContext(), false)") PropertySetNode setDay,
                     @Cached InlinedBranchProfile errorBranch) {
         JSContext context = getJSContext();
-        TemporalUtil.calendarResolveFields(context, calendar, fields, TemporalUtil.CalendarResolveFieldsType.YEAR_MONTH, toIntegerOrInfinity);
-        ISODateRecord result = TemporalUtil.isoYearMonthFromFields(fields, overflow);
+        TemporalUtil.calendarResolveFields(context, calendar, fields, TemporalUtil.FieldsType.YEAR_MONTH, toIntegerOrInfinity);
+        setDay.setValue(fields, 1);
+        ISODateRecord result = TemporalUtil.calendarDateToISO(calendar, fields, overflow);
         return JSTemporalPlainYearMonth.create(getJSContext(), getRealm(),
                         result.year(), result.month(), calendar, result.day(), this, errorBranch);
     }

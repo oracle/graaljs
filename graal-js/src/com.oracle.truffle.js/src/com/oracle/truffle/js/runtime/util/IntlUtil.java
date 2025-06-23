@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -1030,6 +1031,43 @@ public final class IntlUtil {
             source = IntlUtil.SHARED;
         }
         return source;
+    }
+
+    @TruffleBoundary
+    public static Calendar getCalendar(TruffleString calendarID) {
+        return Calendar.getInstance(TimeZone.GMT_ZONE, new ULocale("und-u-ca-" + calendarID));
+    }
+
+    @TruffleBoundary
+    public static Calendar getCalendar(TruffleString calendarID, int year, int month, int day) {
+        Calendar cal = getCalendar(calendarID);
+        cal.setTimeInMillis(JSDate.MS_PER_DAY * JSDate.isoDateToEpochDays(year, month - 1, day));
+        return cal;
+    }
+
+    @TruffleBoundary
+    public static boolean hasLeapYears(Calendar cal) {
+        return cal.getMaximum(Calendar.DAY_OF_YEAR) != cal.getMinimum(Calendar.DAY_OF_YEAR);
+    }
+
+    @TruffleBoundary
+    public static boolean isLeapYear(Calendar cal) {
+        return cal.inTemporalLeapYear();
+    }
+
+    @TruffleBoundary
+    public static int getCalendarField(Calendar cal, int field) {
+        return cal.get(field);
+    }
+
+    @TruffleBoundary
+    public static int getCalendarFieldMax(Calendar cal, int field) {
+        return cal.getActualMaximum(field);
+    }
+
+    @TruffleBoundary
+    public static String getTemporalMonthCode(Calendar cal) {
+        return cal.getTemporalMonthCode();
     }
 
 }

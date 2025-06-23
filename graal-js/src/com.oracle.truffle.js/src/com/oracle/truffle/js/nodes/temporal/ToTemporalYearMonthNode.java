@@ -51,13 +51,16 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -104,10 +107,15 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                 calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
             }
             Object resolvedOptions = getOptionsObject.execute(options);
-            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
-            JSDynamicObject result2 = JSTemporalPlainYearMonth.create(getLanguage().getJSContext(), getRealm(),
-                            result.getYear(), result.getMonth(), calendar, result.getDay(), this, errorBranch);
-            return yearMonthFromFieldsNode.execute(calendar, result2, overflow);
+            TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
+            ISODateRecord isoDate = TemporalUtil.createISODateRecord(result.getYear(), result.getMonth(), result.getDay());
+            JSContext ctx = getLanguage().getJSContext();
+            if (!TemporalUtil.isoYearMonthWithinLimits(isoDate.year(), isoDate.month())) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
+            }
+            JSDynamicObject result2 = TemporalUtil.isoDateToFields(ctx, calendar, isoDate, TemporalUtil.FieldsType.YEAR_MONTH);
+            return yearMonthFromFieldsNode.execute(calendar, result2, TemporalUtil.Overflow.CONSTRAIN);
         } else {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAString(item);

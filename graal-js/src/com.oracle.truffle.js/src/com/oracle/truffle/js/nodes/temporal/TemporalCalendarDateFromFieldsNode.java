@@ -68,8 +68,8 @@ public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseN
                     @Cached JSToIntegerOrInfinityNode toIntegerOrInfinity,
                     @Cached InlinedBranchProfile errorBranch) {
         JSContext context = getJSContext();
-        TemporalUtil.calendarResolveFields(context, calendar, fields, TemporalUtil.CalendarResolveFieldsType.DATE, toIntegerOrInfinity);
-        ISODateRecord result = TemporalUtil.isoDateFromFields(fields, overflow);
+        TemporalUtil.calendarResolveFields(context, calendar, fields, TemporalUtil.FieldsType.DATE, toIntegerOrInfinity);
+        ISODateRecord result = TemporalUtil.calendarDateToISO(calendar, fields, overflow);
 
         return JSTemporalPlainDate.create(context, getRealm(), result.year(), result.month(), result.day(), calendar, this, errorBranch);
     }

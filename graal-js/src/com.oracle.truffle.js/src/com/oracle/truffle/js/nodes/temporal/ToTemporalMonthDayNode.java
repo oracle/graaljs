@@ -40,11 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -52,26 +49,25 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Implementation of ToTemporalMonthDay() operation.
  */
 public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
-
-    @Child private PropertyGetNode getCalendarNode;
 
     protected ToTemporalMonthDayNode() {
     }
@@ -118,24 +114,22 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                 calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
             }
             Object resolvedOptions = getOptionsObject.execute(options);
-            TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, temporalGetOptionNode);
+            TemporalUtil.getTemporalOverflowOption(resolvedOptions, temporalGetOptionNode);
             if (iso8601CalendarProfile.profile(this, Strings.equals(stringEqual, calendar, TemporalConstants.ISO8601))) {
                 int referenceISOYear = 1972;
                 return JSTemporalPlainMonthDay.create(ctx, realm, result.getMonth(), result.getDay(), calendar, referenceISOYear, this, errorBranch);
             }
-            JSDynamicObject result2 = JSTemporalPlainMonthDay.create(ctx, realm, result.getMonth(), result.getDay(), calendar, result.getYear(), this, errorBranch);
-            return monthDayFromFieldsNode.execute(calendar, result2, overflow);
+            ISODateRecord isoDate = TemporalUtil.createISODateRecord(result.getYear(), result.getMonth(), result.getDay());
+            if (!TemporalUtil.isoDateWithinLimits(isoDate.year(), isoDate.month(), isoDate.day())) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
+            }
+            JSDynamicObject result2 = TemporalUtil.isoDateToFields(ctx, calendar, isoDate, TemporalUtil.FieldsType.MONTH_DAY);
+            return monthDayFromFieldsNode.execute(calendar, result2, TemporalUtil.Overflow.CONSTRAIN);
         } else {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAString(item);
         }
     }
 
-    private Object getCalendar(JSDynamicObject obj) {
-        if (getCalendarNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarNode = insert(PropertyGetNode.create(CALENDAR, getLanguage().getJSContext()));
-        }
-        return getCalendarNode.getValue(obj);
-    }
 }
