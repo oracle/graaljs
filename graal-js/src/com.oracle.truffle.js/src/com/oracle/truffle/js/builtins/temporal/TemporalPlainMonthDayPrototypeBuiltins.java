@@ -66,15 +66,19 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalMonthDayNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 
 public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainMonthDayPrototypeBuiltins.TemporalPlainMonthDayPrototype> {
 
@@ -170,12 +174,20 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected Object monthDayGetter(JSTemporalPlainMonthDayObject plainMD) {
+        protected Object monthDayGetter(JSTemporalPlainMonthDayObject plainMD,
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached InlinedConditionProfile isoCalendarProfile) {
+            TruffleString calendar = plainMD.getCalendar();
+            boolean isoCalendar = isoCalendarProfile.profile(this, Strings.equals(equalNode, TemporalConstants.ISO8601, calendar));
+            Calendar cal = null;
+            if (!isoCalendar) {
+                cal = IntlUtil.getCalendar(calendar, plainMD.getYear(), plainMD.getMonth(), plainMD.getDay());
+            }
             switch (property) {
                 case day:
-                    return plainMD.getDay();
+                    return isoCalendar ? plainMD.getDay() : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_MONTH);
                 case monthCode:
-                    return TemporalUtil.buildISOMonthCode(plainMD.getMonth());
+                    return isoCalendar ? TemporalUtil.buildISOMonthCode(plainMD.getMonth()) : Strings.fromJavaString(IntlUtil.getTemporalMonthCode(cal));
             }
             throw Errors.shouldNotReachHere();
         }

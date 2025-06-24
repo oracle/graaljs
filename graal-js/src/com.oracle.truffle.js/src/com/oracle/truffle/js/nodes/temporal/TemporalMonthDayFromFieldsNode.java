@@ -64,13 +64,12 @@ public abstract class TemporalMonthDayFromFieldsNode extends JavaScriptBaseNode 
     public abstract JSTemporalPlainMonthDayObject execute(TruffleString calendar, JSDynamicObject fields, TemporalUtil.Overflow overflow);
 
     @Specialization
-    protected JSTemporalPlainMonthDayObject monthDayFromFields(TruffleString calendar, JSDynamicObject fieldsParam, TemporalUtil.Overflow overflow,
+    protected JSTemporalPlainMonthDayObject monthDayFromFields(TruffleString calendar, JSDynamicObject fields, TemporalUtil.Overflow overflow,
                     @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                     @Cached InlinedBranchProfile errorBranch) {
         JSContext context = getJSContext();
-        JSDynamicObject fields = TemporalUtil.prepareTemporalFields(context, fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listD);
-        TemporalUtil.isoResolveMonth(context, fields, toIntOrInfinityNode);
-        ISODateRecord result = TemporalUtil.isoMonthDayFromFields(fields, overflow);
+        TemporalUtil.calendarResolveFields(context, calendar, fields, TemporalUtil.FieldsType.MONTH_DAY, toIntOrInfinityNode);
+        ISODateRecord result = TemporalUtil.calendarMonthDayToISOReferenceDate(calendar, fields, overflow);
         return JSTemporalPlainMonthDay.create(context, getRealm(),
                         result.month(), result.day(), calendar, result.year(), this, errorBranch);
     }

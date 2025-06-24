@@ -108,7 +108,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -165,6 +164,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 
 public final class TemporalUtil {
 
@@ -534,6 +534,9 @@ public final class TemporalUtil {
             if (rec.getYear() == 0 && Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
+            if (rec.getCalendar() != null && rec.getYear() == Long.MIN_VALUE && !"iso8601".equalsIgnoreCase(rec.getCalendar().toJavaStringUncached())) {
+                throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
+            }
 
             int y = rec.getYear() == Long.MIN_VALUE ? Integer.MIN_VALUE : ltoi(rec.getYear());
             int m = rec.getMonth() == Long.MIN_VALUE ? 1 : ltoi(rec.getMonth());
@@ -902,15 +905,20 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static TruffleString parseTemporalCalendarString(TruffleString string) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseCalendarString();
-        if (rec == null) {
+        TemporalParser parser = new TemporalParser(string);
+        JSTemporalParserRecord rec = parser.parseCalendarString();
+        if (rec != null) {
+            TruffleString calendar = rec.getCalendar();
+            if (calendar == null) {
+                return ISO8601;
+            }
+            return calendar;
+        }
+        if (parser.parseAnnotationValue()) {
+            return string;
+        } else {
             throw Errors.createRangeError("cannot parse Calendar");
         }
-        TruffleString id = rec.getCalendar();
-        if (id == null) {
-            return ISO8601;
-        }
-        return id;
     }
 
     public static double toPositiveInteger(Object value) {
@@ -1126,14 +1134,6 @@ public final class TemporalUtil {
         return new ISODateRecord((int) yearPrepared, monthPrepared, 0);
     }
 
-    private static final Set<String> AVAILABLE_CALENDARS = Set.of("iso8601", "gregory", "japanese");
-
-    @TruffleBoundary
-    public static boolean isBuiltinCalendar(TruffleString id) {
-        String lowerCaseID = id.toJavaStringUncached().toLowerCase();
-        return AVAILABLE_CALENDARS.contains(lowerCaseID);
-    }
-
     @TruffleBoundary
     public static ParseISODateTimeResult parseTemporalDateTimeString(boolean zoned, TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseAnnotatedDateTime(zoned, false);
@@ -1272,7 +1272,7 @@ public final class TemporalUtil {
         throw Errors.shouldNotReachHereUnexpectedValue(result);
     }
 
-    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(TruffleString calendar, Object fields, Overflow overflow,
+    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(TruffleString calendar, JSDynamicObject fields, Overflow overflow,
                     TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         JSTemporalPlainDateObject date = dateFromFieldsNode.execute(calendar, fields, overflow);
@@ -2883,7 +2883,7 @@ public final class TemporalUtil {
             if (rec.getYear() == 0 && Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();
             }
-            if (rec.getCalendar() != null && !"iso8601".equalsIgnoreCase(rec.getCalendar().toJavaStringUncached())) {
+            if (rec.getCalendar() != null && rec.getDay() == Long.MIN_VALUE && !"iso8601".equalsIgnoreCase(rec.getCalendar().toJavaStringUncached())) {
                 throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
             }
 
@@ -3257,9 +3257,70 @@ public final class TemporalUtil {
         return true;
     }
 
+    public enum FieldsType {
+        DATE,
+        YEAR_MONTH,
+        MONTH_DAY
+    }
+
+    @TruffleBoundary
+    public static JSObject isoDateToFields(JSContext ctx, TruffleString calendar, ISODateRecord isoDate, FieldsType type) {
+        JSObject fields = JSOrdinary.createWithNullPrototype(ctx);
+        JSObject calendarDate = calendarISOToDate(ctx, calendar, isoDate);
+        JSObject.set(fields, MONTH_CODE, JSObject.get(calendarDate, MONTH_CODE));
+        if (type != FieldsType.YEAR_MONTH) {
+            JSObject.set(fields, DAY, JSObject.get(calendarDate, DAY));
+        }
+        if (type != FieldsType.MONTH_DAY) {
+            JSObject.set(fields, YEAR, JSObject.get(calendarDate, YEAR));
+        }
+        return fields;
+    }
+
+    @TruffleBoundary
+    public static JSObject calendarISOToDate(JSContext ctx, TruffleString calendar, ISODateRecord isoDate) {
+        JSObject record = JSOrdinary.createWithNullPrototype(ctx);
+        if (ISO8601.equals(calendar)) {
+            JSObject.set(record, YEAR, isoDate.year());
+            JSObject.set(record, MONTH, isoDate.month());
+            JSObject.set(record, DAY, isoDate.day());
+            JSObject.set(record, MONTH_CODE, TemporalUtil.buildISOMonthCode(isoDate.month()));
+        } else {
+            Calendar cal = IntlUtil.getCalendar(calendar);
+            cal.setTimeInMillis(JSDate.MS_PER_DAY * JSDate.isoDateToEpochDays(isoDate.year(), isoDate.month() - 1, isoDate.day()));
+            JSObject.set(record, YEAR, cal.get(Calendar.YEAR));
+            JSObject.set(record, MONTH, cal.get(Calendar.MONTH) + 1);
+            JSObject.set(record, DAY, cal.get(Calendar.DAY_OF_MONTH));
+            JSObject.set(record, MONTH_CODE, TemporalUtil.buildISOMonthCode(cal.get(Calendar.MONTH) + 1));
+        }
+        return record;
+    }
+
     // 12.1.38
     @TruffleBoundary
-    public static void isoResolveMonth(JSContext ctx, JSDynamicObject fields, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
+    public static void calendarResolveFields(JSContext ctx, TruffleString calendar, JSDynamicObject fields, FieldsType type, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
+        boolean hasLeapYears;
+        int monthCount;
+        if (ISO8601.equals(calendar)) {
+            hasLeapYears = false;
+            monthCount = 12;
+        } else {
+            Calendar cal = IntlUtil.getCalendar(calendar);
+            hasLeapYears = IntlUtil.hasLeapYears(cal);
+            monthCount = cal.getMaximum(Calendar.MONTH) + 1;
+        }
+        if (type != FieldsType.MONTH_DAY) {
+            Object year = JSObject.get(fields, YEAR);
+            if (year == Undefined.instance) {
+                throw Errors.createTypeError("No year present.");
+            }
+        }
+        if (type != FieldsType.YEAR_MONTH) {
+            Object day = JSObject.get(fields, DAY);
+            if (day == Undefined.instance) {
+                throw Errors.createTypeError("No day present.");
+            }
+        }
         Object month = JSObject.get(fields, MONTH);
         Object monthCode = JSObject.get(fields, MONTH_CODE);
         if (monthCode == Undefined.instance) {
@@ -3269,16 +3330,19 @@ public final class TemporalUtil {
             return;
         }
         int monthLength = Strings.length((TruffleString) monthCode);
-        if (monthLength != 3) {
-            throw Errors.createRangeError("Month code should be in 3 character code.");
+        if (monthLength < 3 || 4 < monthLength || (monthLength == 4 && !hasLeapYears)) {
+            throw Errors.createRangeError("Invalid month code length");
         }
         if (Strings.charAt((TruffleString) monthCode, 0) != 'M') {
             throw Errors.createRangeError("Month code should start with 'M'");
         }
-        TruffleString monthCodeDigits = Strings.substring(ctx, (TruffleString) monthCode, 1);
+        if (monthLength == 4 && Strings.charAt((TruffleString) monthCode, 3) != 'L') {
+            throw Errors.createRangeError("Code of a leap month should end with 'L'");
+        }
+        TruffleString monthCodeDigits = Strings.substring(ctx, (TruffleString) monthCode, 1, 2);
         double monthCodeInteger = JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(monthCodeDigits));
 
-        if (Double.isNaN(monthCodeInteger) || monthCodeInteger < 1 || monthCodeInteger > 12) {
+        if (Double.isNaN(monthCodeInteger) || monthCodeInteger < 1 || monthCount < monthCodeInteger) {
             throw Errors.createRangeErrorFormat("Invalid month code: %s", null, monthCode);
         }
 
@@ -3290,12 +3354,21 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static ISODateRecord isoDateFromFields(JSDynamicObject fields, Overflow overflow) {
+    public static ISODateRecord calendarDateToISO(TruffleString calendar, JSDynamicObject fields, Overflow overflow) {
         Number year = (Number) JSObject.get(fields, YEAR);
         Number month = (Number) JSObject.get(fields, MONTH);
         Number day = (Number) JSObject.get(fields, DAY);
-        return regulateISODate(dtoi(JSRuntime.doubleValue(year)), dtoi(JSRuntime.doubleValue(month)),
-                        dtoi(JSRuntime.doubleValue(day)), overflow);
+        if (ISO8601.equals(calendar)) {
+            return regulateISODate(dtoi(JSRuntime.doubleValue(year)), dtoi(JSRuntime.doubleValue(month)),
+                            dtoi(JSRuntime.doubleValue(day)), overflow);
+        } else {
+            Calendar cal = IntlUtil.getCalendar(calendar);
+            cal.set(Calendar.YEAR, year.intValue());
+            cal.set(Calendar.MONTH, month.intValue() - 1);
+            cal.set(Calendar.DAY_OF_MONTH, day.intValue());
+            long ms = cal.getTimeInMillis();
+            return createISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
+        }
     }
 
     @TruffleBoundary
@@ -3308,20 +3381,87 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static ISODateRecord isoMonthDayFromFields(JSDynamicObject fields, Overflow overflow) {
+    public static ISODateRecord calendarMonthDayToISOReferenceDate(TruffleString calendar, JSDynamicObject fields, Overflow overflow) {
         Number month = (Number) JSObject.get(fields, MONTH);
         Number day = (Number) JSObject.get(fields, DAY);
         Object year = JSObject.get(fields, YEAR);
-        int referenceISOYear = 1972;
-        int yearForRegulateISODate;
-        if (year == Undefined.instance) {
-            yearForRegulateISODate = referenceISOYear;
+        if (ISO8601.equals(calendar)) {
+            int referenceISOYear = 1972;
+            int yearForRegulateISODate;
+            if (year == Undefined.instance) {
+                yearForRegulateISODate = referenceISOYear;
+            } else {
+                yearForRegulateISODate = dtoi(JSRuntime.doubleValue((Number) year));
+            }
+            ISODateRecord result = regulateISODate(yearForRegulateISODate, dtoi(JSRuntime.doubleValue(month)),
+                            dtoi(JSRuntime.doubleValue(day)), overflow);
+            return new ISODateRecord(referenceISOYear, result.month(), result.day());
         } else {
-            yearForRegulateISODate = dtoi(JSRuntime.doubleValue((Number) year));
+            Calendar cal = IntlUtil.getCalendar(calendar);
+
+            int d = day.intValue();
+            int m = month.intValue() - 1;
+
+            Object monthCodeValue = JSObject.get(fields, MONTH_CODE);
+            String monthCode;
+            if (monthCodeValue == Undefined.instance) {
+                monthCode = String.format(Locale.ROOT, "M%02d", m + 1);
+            } else {
+                TruffleString monthCodeTS = (TruffleString) monthCodeValue;
+                monthCode = Strings.toJavaString(monthCodeTS);
+            }
+            boolean isLeapMonth = (monthCode.length() == 4);
+            boolean hasLeapYears = IntlUtil.hasLeapYears(cal);
+            if (isLeapMonth && !hasLeapYears) {
+                throw TemporalErrors.createRangeErrorDateOutsideRange();
+            }
+
+            int mMax = cal.getMaximum(Calendar.MONTH);
+            if (m > mMax) {
+                if (overflow == Overflow.CONSTRAIN) {
+                    m = mMax;
+                } else {
+                    throw TemporalErrors.createRangeErrorDateOutsideRange();
+                }
+            }
+
+            long msUpperBound = JSDate.isoDateToEpochDays(1972, 11, 31) * JSDate.MS_PER_DAY;
+            cal.setTimeInMillis(msUpperBound);
+            long ms;
+            while (true) {
+                boolean isLeapYear = cal.inTemporalLeapYear();
+                if (isLeapYear || !isLeapMonth) {
+                    try {
+                        cal.setTemporalMonthCode(monthCode);
+                    } catch (IllegalArgumentException iaex) {
+                        throw TemporalErrors.createRangeErrorDateOutsideRange();
+                    }
+                    if (monthCode.equals(cal.getTemporalMonthCode())) {
+                        int dMax = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+                        if (d > dMax) {
+                            if (overflow == Overflow.CONSTRAIN) {
+                                d = dMax;
+                            } else {
+                                throw TemporalErrors.createRangeErrorDateOutsideRange();
+                            }
+                        }
+
+                        cal.set(Calendar.DAY_OF_MONTH, d);
+                        ms = cal.getTimeInMillis();
+                        if (ms <= msUpperBound) {
+                            break;
+                        }
+                    } else {
+                        // No month with monthCode in this year
+                        if (isLeapYear == isLeapMonth) {
+                            throw TemporalErrors.createRangeErrorDateOutsideRange();
+                        }
+                    }
+                }
+                cal.set(Calendar.YEAR, cal.get(Calendar.YEAR) - 1);
+            }
+            return new ISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
         }
-        ISODateRecord result = regulateISODate(yearForRegulateISODate, dtoi(JSRuntime.doubleValue(month)),
-                        dtoi(JSRuntime.doubleValue(day)), overflow);
-        return new ISODateRecord(referenceISOYear, result.month(), result.day());
     }
 
     // TODO ultimately, dtoi should probably throw instead of having an assertion

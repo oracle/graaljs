@@ -80,6 +80,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
@@ -94,11 +95,13 @@ import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 
 public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainYearMonthPrototypeBuiltins.TemporalPlainYearMonthPrototype> {
 
@@ -202,26 +205,34 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected Object dateGetter(JSTemporalPlainYearMonthObject temporalYM) {
+        protected Object dateGetter(JSTemporalPlainYearMonthObject temporalYM,
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached InlinedConditionProfile isoCalendarProfile) {
+            TruffleString calendar = temporalYM.getCalendar();
+            boolean isoCalendar = isoCalendarProfile.profile(this, Strings.equals(equalNode, TemporalConstants.ISO8601, calendar));
+            Calendar cal = null;
+            if (!isoCalendar) {
+                cal = IntlUtil.getCalendar(calendar, temporalYM.getYear(), temporalYM.getMonth(), temporalYM.getDay());
+            }
             switch (property) {
                 case era:
                     return Undefined.instance;
                 case eraYear:
                     return Undefined.instance;
                 case year:
-                    return temporalYM.getYear();
+                    return isoCalendar ? temporalYM.getYear() : IntlUtil.getCalendarField(cal, Calendar.YEAR);
                 case month:
-                    return temporalYM.getMonth();
+                    return isoCalendar ? temporalYM.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.MONTH) + 1);
                 case monthCode:
-                    return TemporalUtil.buildISOMonthCode(temporalYM.getMonth());
+                    return isoCalendar ? TemporalUtil.buildISOMonthCode(temporalYM.getMonth()) : Strings.fromJavaString(IntlUtil.getTemporalMonthCode(cal));
                 case daysInYear:
-                    return TemporalUtil.isoDaysInYear(temporalYM.getYear());
+                    return isoCalendar ? TemporalUtil.isoDaysInYear(temporalYM.getYear()) : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_YEAR);
                 case daysInMonth:
-                    return TemporalUtil.isoDaysInMonth(temporalYM.getYear(), temporalYM.getMonth());
+                    return isoCalendar ? TemporalUtil.isoDaysInMonth(temporalYM.getYear(), temporalYM.getMonth()) : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_MONTH);
                 case monthsInYear:
-                    return 12;
+                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.MONTH) + 1);
                 case inLeapYear:
-                    return JSDate.isLeapYear(temporalYM.getYear());
+                    return isoCalendar ? JSDate.isLeapYear(temporalYM.getYear()) : IntlUtil.isLeapYear(cal);
             }
             throw Errors.shouldNotReachHere();
         }

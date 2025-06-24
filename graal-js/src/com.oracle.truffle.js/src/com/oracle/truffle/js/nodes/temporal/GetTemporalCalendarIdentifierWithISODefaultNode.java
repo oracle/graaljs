@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,69 +41,46 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import java.util.Locale;
 
 /**
- * Implementation of ToTemporalCalendarSlotValue() operation.
+ * Implementation of GetTemporalCalendarIdentifierWithISODefault() operation.
  */
-public abstract class ToTemporalCalendarSlotValueNode extends JavaScriptBaseNode {
-    private final TruffleString defaultValue;
+@ImportStatic(TemporalConstants.class)
+public abstract class GetTemporalCalendarIdentifierWithISODefaultNode extends JavaScriptBaseNode {
 
-    protected ToTemporalCalendarSlotValueNode(TruffleString defaultValue) {
-        this.defaultValue = defaultValue;
+    protected GetTemporalCalendarIdentifierWithISODefaultNode() {
     }
 
     @NeverDefault
-    public static ToTemporalCalendarSlotValueNode create() {
-        return createWithDefault(null);
+    public static GetTemporalCalendarIdentifierWithISODefaultNode create() {
+        return GetTemporalCalendarIdentifierWithISODefaultNodeGen.create();
     }
 
-    @NeverDefault
-    public static ToTemporalCalendarSlotValueNode createWithISO8601() {
-        return createWithDefault(TemporalConstants.ISO8601);
-    }
-
-    @NeverDefault
-    public static ToTemporalCalendarSlotValueNode createWithDefault(TruffleString defaultValue) {
-        return ToTemporalCalendarSlotValueNodeGen.create(defaultValue);
-    }
-
-    public abstract TruffleString execute(Object temporalCalendarLike);
+    public abstract TruffleString execute(Object item);
 
     @Specialization
-    public TruffleString toTemporalCalendarSlotValue(Object temporalCalendarLike,
-                    @Cached IsObjectNode isObjectNode,
-                    @Cached TruffleString.FromJavaStringNode fromJavaString,
-                    @Cached TruffleString.ToJavaStringNode toJavaString) {
-        if (defaultValue != null && temporalCalendarLike == Undefined.instance) {
-            return defaultValue;
+    protected TruffleString doJSTemporalCalendarHolder(JSTemporalCalendarHolder item) {
+        return item.getCalendar();
+    }
+
+    @Specialization(guards = "!isJSTemporalCalendarHolder(item)")
+    protected TruffleString doOther(Object item,
+                    @Cached("create(CALENDAR, getJSContext())") PropertyGetNode getCalendar,
+                    @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier) {
+        Object calendarLike = getCalendar.getValue(item);
+        if (calendarLike == Undefined.instance) {
+            return TemporalConstants.ISO8601;
         }
-        if (isObjectNode.executeBoolean(temporalCalendarLike)) {
-            if (temporalCalendarLike instanceof JSTemporalCalendarHolder calendarHolder) {
-                return calendarHolder.getCalendar();
-            }
-            throw TemporalErrors.createTypeErrorTemporalCalendarExpected();
-        }
-        if (!(temporalCalendarLike instanceof TruffleString)) {
-            throw Errors.createTypeErrorNotAString(temporalCalendarLike);
-        }
-        TruffleString identifier = TemporalUtil.parseTemporalCalendarString((TruffleString) temporalCalendarLike);
-        if (!TemporalUtil.isBuiltinCalendar(identifier)) {
-            throw TemporalErrors.createRangeErrorCalendarUnknown();
-        }
-        return fromJavaString.execute(Strings.javaStringToLowerCase(toJavaString.execute(identifier), Locale.US), TruffleString.Encoding.UTF_16);
+        return toCalendarIdentifier.executeString(calendarLike);
     }
 
 }
