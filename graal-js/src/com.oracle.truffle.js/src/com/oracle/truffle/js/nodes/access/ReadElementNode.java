@@ -584,32 +584,26 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         abstract Object executeJSObjectGet(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, boolean indexIsLong);
 
-        @InliningCutoff
         protected final Object executeJSObjectGet(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             return executeJSObjectGet(target, index, receiver, defaultValue, root, false);
         }
 
-        @InliningCutoff
         protected final Object executeJSObjectGet(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             return executeJSObjectGet(target, index, receiver, defaultValue, root, true);
         }
 
-        @InliningCutoff
         protected final int executeJSObjectGetInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
             return executeJSObjectGetInt(target, index, receiver, defaultValue, root, false);
         }
 
-        @InliningCutoff
         protected final int executeJSObjectGetInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
             return executeJSObjectGetInt(target, index, receiver, defaultValue, root, true);
         }
 
-        @InliningCutoff
         protected final double executeJSObjectGetDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
             return executeJSObjectGetDouble(target, index, receiver, defaultValue, root, false);
         }
 
-        @InliningCutoff
         protected final double executeJSObjectGetDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
             return executeJSObjectGetDouble(target, index, receiver, defaultValue, root, true);
         }
