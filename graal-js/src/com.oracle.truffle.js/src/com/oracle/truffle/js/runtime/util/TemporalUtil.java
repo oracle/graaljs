@@ -234,9 +234,12 @@ public final class TemporalUtil {
     public static final List<TruffleString> listYD = List.of(YEAR, DAY);
     public static final List<TruffleString> listY = List.of(YEAR);
     public static final List<TruffleString> listD = List.of(DAY);
+    public static final List<TruffleString> listTimeUnits = List.of(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
+    public static final List<TruffleString> listTimeUnitsOffset = List.of(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, OFFSET);
+    public static final List<TruffleString> listTimeUnitsOffsetTZ = List.of(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, OFFSET, TIME_ZONE);
 
     private static final List<TruffleString> singularDateUnits = List.of(YEAR, MONTH, WEEK, DAY);
-    private static final List<TruffleString> singularTimeUnits = List.of(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
+    private static final List<TruffleString> singularTimeUnits = listTimeUnits;
     private static final List<TruffleString> singularDateTimeUnits = List.of(YEAR, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
     private static final List<TruffleString> singularYearMonthUnits = List.of(YEAR, MONTH);
     public static final Map<TruffleString, Unit> unitMappingDate = createUnitMapping(singularDateUnits);
@@ -931,44 +934,40 @@ public final class TemporalUtil {
 
     // 13.52
     @TruffleBoundary
-    public static JSObject prepareTemporalFields(JSContext ctx, Object fields, List<TruffleString> fieldNames, List<TruffleString> requiredFields) {
-        boolean duplicateBehaviourThrow = true;
+    public static JSObject prepareTemporalFields(JSContext ctx, TruffleString calendar, Object fields, List<TruffleString> calendarFieldNames, List<TruffleString> nonCalendarFieldNames,
+                    List<TruffleString> requiredFields) {
+        List<TruffleString> fieldNames = calendarFieldNames;
+        if (!nonCalendarFieldNames.isEmpty()) {
+            fieldNames = new ArrayList<>(fieldNames);
+            fieldNames.addAll(nonCalendarFieldNames);
+        }
+        List<TruffleString> extraFieldNames = calendarExtraFields(calendar, calendarFieldNames);
+        if (!extraFieldNames.isEmpty()) {
+            fieldNames = new ArrayList<>(fieldNames);
+            fieldNames.addAll(extraFieldNames);
+        }
+
         JSObject result = JSOrdinary.createWithNullPrototype(ctx);
         boolean any = false;
-        List<TruffleString> sortedFieldNames = new ArrayList<>(fieldNames);
-        sortedFieldNames.sort(Strings::compareTo);
+        List<TruffleString> sortedPropertyNames = new ArrayList<>(fieldNames);
+        sortedPropertyNames.sort(Strings::compareTo);
 
-        TruffleString previousProperty = null;
-        for (TruffleString property : sortedFieldNames) {
-            if (JSObject.CONSTRUCTOR.equals(property) || JSObject.PROTO.equals(property)) {
-                throw Errors.createRangeErrorFormat("Invalid field: %s", null, property);
-            }
-            if (property.equals(previousProperty)) {
-                if (duplicateBehaviourThrow) {
-                    throw Errors.createRangeErrorFormat("Duplicate field: %s", null, property);
-                } else {
-                    continue;
-                }
-            }
-            previousProperty = property;
-
+        for (TruffleString property : sortedPropertyNames) {
             Object value = JSRuntime.get(fields, property);
             if (value == Undefined.instance) {
                 if (requiredFields != null) {
                     if (requiredFields.contains(property)) {
                         throw TemporalErrors.createTypeErrorPropertyRequired(property);
                     } else {
-                        if (temporalFieldDefaults.containsKey(property)) {
-                            value = temporalFieldDefaults.get(property);
-                        }
+                        assert temporalFieldDefaults.containsKey(property);
+                        value = temporalFieldDefaults.get(property);
                     }
                 }
             } else {
                 any = true;
-                if (temporalFieldConversion.containsKey(property)) {
-                    Function<Object, Object> conversion = temporalFieldConversion.get(property);
-                    value = conversion.apply(value);
-                }
+                assert temporalFieldConversion.containsKey(property);
+                Function<Object, Object> conversion = temporalFieldConversion.get(property);
+                value = conversion.apply(value);
             }
             createDataPropertyOrThrow(ctx, result, property, value);
         }
@@ -978,6 +977,11 @@ public final class TemporalUtil {
             throw Errors.createTypeError("No relevant field provided");
         }
         return result;
+    }
+
+    @TruffleBoundary
+    public static List<TruffleString> calendarExtraFields(TruffleString calendar, List<TruffleString> calendarFieldNames) {
+        return listEmpty;
     }
 
     public record ISOYearMonthRecord(int year, int month) {

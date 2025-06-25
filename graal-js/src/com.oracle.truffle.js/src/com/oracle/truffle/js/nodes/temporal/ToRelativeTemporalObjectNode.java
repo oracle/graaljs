@@ -44,9 +44,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.OFFSET;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.RELATIVE_TO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -57,7 +54,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -140,17 +136,13 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
 
             calendar = getTemporalCalendarWithISODefaultNode.execute(value);
-
-            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
-            addFieldNames(fieldNames);
-
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, value, fieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, calendar, value, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffsetTZ, TemporalUtil.listEmpty);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, TemporalUtil.Overflow.CONSTRAIN, dateFromFieldsNode);
-            offsetString = getOffsetNode.getValue(fields);
             Object timeZoneTemp = getTimeZoneNode.getValue(fields);
             if (timeZoneTemp != Undefined.instance) {
-                timeZone = toTimeZoneIdentifier.execute(timeZoneTemp);
+                timeZone = (TruffleString) timeZoneTemp;
             }
+            offsetString = getOffsetNode.getValue(fields);
             if (offsetString == Undefined.instance) {
                 offsetBehaviour = TemporalUtil.OffsetBehaviour.WALL;
             }
@@ -202,18 +194,6 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             return zonedDateTime(JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar));
         }
         return plainDate(JSTemporalPlainDate.create(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch));
-    }
-
-    @TruffleBoundary
-    private static void addFieldNames(List<TruffleString> fieldNames) {
-        fieldNames.add(TemporalConstants.HOUR);
-        fieldNames.add(TemporalConstants.MICROSECOND);
-        fieldNames.add(TemporalConstants.MILLISECOND);
-        fieldNames.add(TemporalConstants.MINUTE);
-        fieldNames.add(TemporalConstants.NANOSECOND);
-        fieldNames.add(TemporalConstants.OFFSET);
-        fieldNames.add(TemporalConstants.SECOND);
-        fieldNames.add(TemporalConstants.TIME_ZONE);
     }
 
     private static Result none() {

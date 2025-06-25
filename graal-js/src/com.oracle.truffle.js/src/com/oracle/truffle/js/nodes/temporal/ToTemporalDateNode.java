@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.List;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -120,8 +118,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                 return JSTemporalPlainDate.create(ctx, realm, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar(), this, errorBranch);
             }
             TruffleString calendar = getCalendarWithISODefault.execute(item);
-            List<TruffleString> fieldNames = TemporalUtil.listDMMCY;
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             return dateFromFieldsNode.execute(calendar, fields, overflow);

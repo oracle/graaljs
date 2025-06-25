@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.temporal;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 
 import java.util.EnumSet;
-import java.util.List;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -364,13 +363,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
+            JSContext ctx = getContext();
             TruffleString calendar = temporalDate.getCalendar();
-
-            List<TruffleString> fieldNames = TemporalUtil.listDMMCY;
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
-            JSDynamicObject partialDate = TemporalUtil.prepareTemporalFields(getContext(), temporalDateLike, fieldNames, null);
-            fields = TemporalUtil.calendarMergeFields(getContext(), calendar, fields, partialDate);
-            fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.isoDateToFields(ctx, calendar, temporalDate.isoDate(), TemporalUtil.FieldsType.DATE);
+            JSDynamicObject partialDate = TemporalUtil.prepareTemporalFields(ctx, calendar, temporalDateLike, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, null);
+            fields = TemporalUtil.calendarMergeFields(ctx, calendar, fields, partialDate);
             JSDynamicObject resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             return dateFromFieldsNode.execute(calendar, fields, overflow);
@@ -539,8 +536,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected final JSTemporalPlainYearMonthObject toPlainYearMonth(JSTemporalPlainDateObject temporalDate,
                         @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode) {
             TruffleString calendar = temporalDate.getCalendar();
-            List<TruffleString> fieldNames = TemporalUtil.listMCY;
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.isoDateToFields(getContext(), calendar, temporalDate.isoDate(), TemporalUtil.FieldsType.DATE);
             return yearMonthFromFieldsNode.execute(calendar, fields, TemporalUtil.Overflow.CONSTRAIN);
         }
 
@@ -561,8 +557,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected final JSTemporalPlainMonthDayObject toPlainMonthDay(JSTemporalPlainDateObject temporalDate,
                         @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode) {
             TruffleString calendar = temporalDate.getCalendar();
-            List<TruffleString> fieldNames = TemporalUtil.listDMC;
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.isoDateToFields(getContext(), calendar, temporalDate.isoDate(), TemporalUtil.FieldsType.DATE);
             return monthDayFromFieldsNode.execute(calendar, fields, TemporalUtil.Overflow.CONSTRAIN);
         }
 

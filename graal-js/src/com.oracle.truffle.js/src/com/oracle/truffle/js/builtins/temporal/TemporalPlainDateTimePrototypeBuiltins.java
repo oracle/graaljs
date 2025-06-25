@@ -46,9 +46,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 
 import java.util.EnumSet;
-import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -91,7 +89,6 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -569,10 +566,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
+            JSContext ctx = getContext();
             TruffleString calendar = dateTime.getCalendar();
-
-            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), dateTime, fieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.isoDateToFields(ctx, calendar, dateTime.isoDate(), TemporalUtil.FieldsType.DATE);
 
             createHourDataPropertyNode.executeVoid(fields, dateTime.getHour());
             createMinuteDataPropertyNode.executeVoid(fields, dateTime.getMinute());
@@ -581,17 +577,14 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             createMicrosecondDataPropertyNode.executeVoid(fields, dateTime.getMicrosecond());
             createNanosecondDataPropertyNode.executeVoid(fields, dateTime.getNanosecond());
 
-            addFieldNames(fieldNames);
-
-            JSObject partialDateTime = TemporalUtil.prepareTemporalFields(getContext(), temporalDateTimeLike, fieldNames, null);
-            fields = TemporalUtil.calendarMergeFields(getContext(), calendar, fields, partialDateTime);
-            fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
+            JSObject partialDateTime = TemporalUtil.prepareTemporalFields(ctx, calendar, temporalDateTimeLike, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnits, null);
+            fields = TemporalUtil.calendarMergeFields(ctx, calendar, fields, partialDateTime);
             Object resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             JSTemporalDateTimeRecord result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, overflow, dateFromFieldsNode);
             assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
             assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
-            return JSTemporalPlainDateTime.create(getContext(), getRealm(),
+            return JSTemporalPlainDateTime.create(ctx, getRealm(),
                             result.getYear(), result.getMonth(), result.getDay(),
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), calendar,
                             node, errorBranch);
@@ -601,16 +594,6 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization(guards = "!isJSTemporalPlainDateTime(thisObj)")
         static JSTemporalPlainDateTimeObject invalidReceiver(Object thisObj, Object temporalDateTimeLike, Object optParam) {
             throw TemporalErrors.createTypeErrorTemporalPlainDateTimeExpected();
-        }
-
-        @TruffleBoundary
-        private static void addFieldNames(List<TruffleString> fieldNames) {
-            fieldNames.add(TemporalConstants.HOUR);
-            fieldNames.add(TemporalConstants.MICROSECOND);
-            fieldNames.add(TemporalConstants.MILLISECOND);
-            fieldNames.add(TemporalConstants.MINUTE);
-            fieldNames.add(TemporalConstants.NANOSECOND);
-            fieldNames.add(TemporalConstants.SECOND);
         }
 
     }
