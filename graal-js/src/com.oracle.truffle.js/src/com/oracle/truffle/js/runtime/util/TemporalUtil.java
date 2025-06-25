@@ -3298,7 +3298,7 @@ public final class TemporalUtil {
             JSObject.set(record, YEAR, cal.get(Calendar.YEAR));
             JSObject.set(record, MONTH, cal.get(Calendar.MONTH) + 1);
             JSObject.set(record, DAY, cal.get(Calendar.DAY_OF_MONTH));
-            JSObject.set(record, MONTH_CODE, TemporalUtil.buildISOMonthCode(cal.get(Calendar.MONTH) + 1));
+            JSObject.set(record, MONTH_CODE, Strings.fromJavaString(cal.getTemporalMonthCode()));
         }
         return record;
     }
