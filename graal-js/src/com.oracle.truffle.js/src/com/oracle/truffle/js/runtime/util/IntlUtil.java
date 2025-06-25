@@ -1070,4 +1070,10 @@ public final class IntlUtil {
         return cal.getTemporalMonthCode();
     }
 
+    @TruffleBoundary
+    public static boolean calendarSupportsEra(TruffleString calendarID) {
+        Calendar cal = getCalendar(calendarID);
+        return (cal.getMaximum(Calendar.ERA) != cal.getMinimum(Calendar.ERA));
+    }
+
 }

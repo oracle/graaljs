@@ -984,6 +984,9 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static List<TruffleString> calendarExtraFields(TruffleString calendar, List<TruffleString> calendarFieldNames) {
+        if (!ISO8601.equals(calendar) && calendarFieldNames.contains(YEAR) && IntlUtil.calendarSupportsEra(calendar)) {
+            return List.of(ERA, ERA_YEAR);
+        }
         return listEmpty;
     }
 
