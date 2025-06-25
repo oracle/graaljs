@@ -173,6 +173,7 @@ public final class TemporalUtil {
     private static final Function<Object, Object> toOffsetString = TemporalUtil::toOffsetString;
     private static final Function<Object, Object> toPositiveInteger = TemporalUtil::toPositiveInteger;
     private static final Function<Object, Object> toString = JSRuntime::toString;
+    private static final Function<Object, Object> toTemporalTimeZoneIdentifier = TemporalUtil::toTemporalTimeZoneIdentifier;
 
     public static final Map<TruffleString, TruffleString> singularToPlural = Map.ofEntries(
                     Map.entry(YEAR, YEARS),
@@ -198,6 +199,7 @@ public final class TemporalUtil {
                     Map.entry(MICROSECOND, toIntegerWithTruncation),
                     Map.entry(NANOSECOND, toIntegerWithTruncation),
                     Map.entry(OFFSET, toOffsetString),
+                    Map.entry(TIME_ZONE, toTemporalTimeZoneIdentifier),
                     Map.entry(ERA, toString),
                     Map.entry(ERA_YEAR, toIntegerWithTruncation));
 
@@ -223,6 +225,7 @@ public final class TemporalUtil {
                     Map.entry(MICROSECONDS, 0),
                     Map.entry(NANOSECONDS, 0),
                     Map.entry(OFFSET, Undefined.instance),
+                    Map.entry(TIME_ZONE, Undefined.instance),
                     Map.entry(ERA, Undefined.instance),
                     Map.entry(ERA_YEAR, Undefined.instance));
 
@@ -3630,6 +3633,10 @@ public final class TemporalUtil {
         } else {
             throw Errors.createTypeErrorNotAString(offset);
         }
+    }
+
+    public static TruffleString toTemporalTimeZoneIdentifier(Object argument) {
+        return ToTemporalTimeZoneIdentifierNode.getUncached().execute(argument);
     }
 
 }
