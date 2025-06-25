@@ -91,7 +91,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                 return JSTemporalPlainYearMonth.create(ctx, getRealm(), yearMonth.getYear(), yearMonth.getMonth(), yearMonth.getCalendar(), yearMonth.getDay(), this, errorBranch);
             }
             TruffleString calendar = getCalendarWithISODefault.execute(item);
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, calendar, item, TemporalUtil.listMMCY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listMMCY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             return yearMonthFromFieldsNode.execute(calendar, fields, overflow);

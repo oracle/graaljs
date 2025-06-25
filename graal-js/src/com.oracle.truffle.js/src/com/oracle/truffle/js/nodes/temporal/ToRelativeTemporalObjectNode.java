@@ -136,7 +136,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
 
             calendar = getTemporalCalendarWithISODefaultNode.execute(value);
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, calendar, value, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffsetTZ, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, value, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffsetTZ, TemporalUtil.listEmpty);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, TemporalUtil.Overflow.CONSTRAIN, dateFromFieldsNode);
             Object timeZoneTemp = getTimeZoneNode.getValue(fields);
             if (timeZoneTemp != Undefined.instance) {

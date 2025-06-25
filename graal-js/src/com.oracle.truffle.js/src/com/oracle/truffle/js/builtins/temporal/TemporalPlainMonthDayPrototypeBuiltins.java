@@ -256,7 +256,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             JSContext ctx = getContext();
             TruffleString calendar = monthDay.getCalendar();
             JSDynamicObject fields = TemporalUtil.isoDateToFields(ctx, calendar, monthDay.isoDate(), TemporalUtil.FieldsType.MONTH_DAY);
-            JSDynamicObject inputFields = TemporalUtil.prepareTemporalFields(ctx, calendar, item, TemporalUtil.listY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
+            JSDynamicObject inputFields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
             JSDynamicObject mergedFields = TemporalUtil.calendarMergeFields(ctx, calendar, fields, inputFields);
             return dateFromFieldsNode.execute(calendar, mergedFields, TemporalUtil.Overflow.CONSTRAIN);
         }
@@ -289,7 +289,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             JSContext ctx = getContext();
             TruffleString calendar = monthDay.getCalendar();
             JSDynamicObject fields = TemporalUtil.isoDateToFields(ctx, calendar, monthDay.isoDate(), TemporalUtil.FieldsType.MONTH_DAY);
-            JSDynamicObject partialMonthDay = TemporalUtil.prepareTemporalFields(ctx, calendar, temporalMonthDayLike, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, null);
+            JSDynamicObject partialMonthDay = TemporalUtil.prepareCalendarFields(ctx, calendar, temporalMonthDayLike, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, null);
             fields = TemporalUtil.calendarMergeFields(ctx, calendar, fields, partialMonthDay);
             Object resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);

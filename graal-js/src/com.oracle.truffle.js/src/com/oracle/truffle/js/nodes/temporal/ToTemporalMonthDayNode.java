@@ -96,7 +96,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                                 pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear(), this, errorBranch);
             }
             TruffleString calendar = getTemporalCalendar.execute(item);
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, temporalGetOptionNode);
             return monthDayFromFieldsNode.execute(calendar, fields, overflow);

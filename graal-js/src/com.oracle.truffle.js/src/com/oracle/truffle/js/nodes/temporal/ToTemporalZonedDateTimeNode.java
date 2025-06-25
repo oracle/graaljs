@@ -117,7 +117,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             }
 
             calendar = getCalendarWithISODefault.execute(item);
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffsetTZ, TemporalUtil.listTimeZone);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffsetTZ, TemporalUtil.listTimeZone);
             timeZone = (TruffleString) JSObject.get(fields, TIME_ZONE);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
             if (offsetStringObj == Undefined.instance) {

@@ -935,9 +935,8 @@ public final class TemporalUtil {
         return result;
     }
 
-    // 13.52
     @TruffleBoundary
-    public static JSObject prepareTemporalFields(JSContext ctx, TruffleString calendar, Object fields, List<TruffleString> calendarFieldNames, List<TruffleString> nonCalendarFieldNames,
+    public static JSObject prepareCalendarFields(JSContext ctx, TruffleString calendar, Object fields, List<TruffleString> calendarFieldNames, List<TruffleString> nonCalendarFieldNames,
                     List<TruffleString> requiredFields) {
         List<TruffleString> fieldNames = calendarFieldNames;
         if (!nonCalendarFieldNames.isEmpty()) {

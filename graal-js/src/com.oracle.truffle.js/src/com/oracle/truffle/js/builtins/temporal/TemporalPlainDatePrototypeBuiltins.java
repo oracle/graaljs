@@ -366,7 +366,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSContext ctx = getContext();
             TruffleString calendar = temporalDate.getCalendar();
             JSDynamicObject fields = TemporalUtil.isoDateToFields(ctx, calendar, temporalDate.isoDate(), TemporalUtil.FieldsType.DATE);
-            JSDynamicObject partialDate = TemporalUtil.prepareTemporalFields(ctx, calendar, temporalDateLike, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, null);
+            JSDynamicObject partialDate = TemporalUtil.prepareCalendarFields(ctx, calendar, temporalDateLike, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, null);
             fields = TemporalUtil.calendarMergeFields(ctx, calendar, fields, partialDate);
             JSDynamicObject resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);

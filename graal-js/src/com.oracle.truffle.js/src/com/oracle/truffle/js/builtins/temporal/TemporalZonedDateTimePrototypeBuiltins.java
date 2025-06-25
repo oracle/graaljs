@@ -588,7 +588,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             createNanosecondDataPropertyNode.executeVoid(fields, isoDateTime.getNanosecond());
             createOffsetDataPropertyNode.executeVoid(fields, TemporalUtil.formatISOTimeZoneOffsetString(offsetNanoseconds));
 
-            JSDynamicObject partialZonedDateTime = TemporalUtil.prepareTemporalFields(ctx, calendar, temporalZonedDateTimeLike, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffset, null);
+            JSDynamicObject partialZonedDateTime = TemporalUtil.prepareCalendarFields(ctx, calendar, temporalZonedDateTimeLike, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffset, null);
             fields = TemporalUtil.calendarMergeFields(ctx, calendar, fields, partialZonedDateTime);
 
             JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);

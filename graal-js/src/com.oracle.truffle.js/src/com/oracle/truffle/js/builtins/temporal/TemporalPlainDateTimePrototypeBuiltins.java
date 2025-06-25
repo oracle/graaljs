@@ -577,7 +577,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             createMicrosecondDataPropertyNode.executeVoid(fields, dateTime.getMicrosecond());
             createNanosecondDataPropertyNode.executeVoid(fields, dateTime.getNanosecond());
 
-            JSObject partialDateTime = TemporalUtil.prepareTemporalFields(ctx, calendar, temporalDateTimeLike, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnits, null);
+            JSObject partialDateTime = TemporalUtil.prepareCalendarFields(ctx, calendar, temporalDateTimeLike, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnits, null);
             fields = TemporalUtil.calendarMergeFields(ctx, calendar, fields, partialDateTime);
             Object resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
