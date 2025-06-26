@@ -566,6 +566,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private IsArrayNode isArrayNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private JSObjectReadElementNonArrayTypeCacheNode nonArrayCaseNode;
+        @Child private TruffleString.FromLongNode fromLongNode;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
 
         JSObjectReadElementTypeCacheNode() {
@@ -636,15 +637,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected int doLongIndexAsInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, @SuppressWarnings("unused") boolean indexIsLong,
                         @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile arrayIndexIf,
-                        @Cached TruffleString.FromLongNode fromLong) throws UnexpectedResultException {
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
             if (arrayIf.profile(this, isArray(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
                     return arrayDispatch.executeArrayGetInt(this, targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
-                    return JSTypesGen.expectInteger(getProperty(targetObject, Strings.fromLong(fromLong, index), receiver, defaultValue));
+                    return JSTypesGen.expectInteger(getProperty(targetObject, stringFromLong(index), receiver, defaultValue));
                 }
             } else {
                 return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
@@ -655,15 +655,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double doLongIndexAsDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, @SuppressWarnings("unused") boolean indexIsLong,
                         @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile arrayIndexIf,
-                        @Cached TruffleString.FromLongNode fromLong) throws UnexpectedResultException {
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
             if (arrayIf.profile(this, isArray(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
                     return arrayDispatch.executeArrayGetDouble(this, targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
-                    return JSTypesGen.expectDouble(getProperty(targetObject, Strings.fromLong(fromLong, index), receiver, defaultValue));
+                    return JSTypesGen.expectDouble(getProperty(targetObject, stringFromLong(index), receiver, defaultValue));
                 }
             } else {
                 return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
@@ -674,15 +673,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object doLongIndex(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, @SuppressWarnings("unused") boolean indexIsLong,
                         @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile arrayIndexIf,
-                        @Cached TruffleString.FromLongNode fromLong) {
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) {
             JSDynamicObject targetObject = (JSDynamicObject) target;
             if (arrayIf.profile(this, isArray(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
                     return arrayDispatch.executeArrayGet(this, targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
-                    return getProperty(targetObject, Strings.fromLong(fromLong, index), receiver, defaultValue);
+                    return getProperty(targetObject, stringFromLong(index), receiver, defaultValue);
                 }
             } else {
                 return readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root);
@@ -762,6 +760,20 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 nonArrayCaseNode = insert(new JSObjectReadElementNonArrayTypeCacheNode());
             }
             return nonArrayCaseNode;
+        }
+
+        @InliningCutoff
+        private TruffleString stringFromLong(long index) {
+            var fromLong = fromLongNode;
+            if (fromLong == null) {
+                fromLong = initFromLongNode();
+            }
+            return Strings.fromLong(fromLong, index);
+        }
+
+        private TruffleString.FromLongNode initFromLongNode() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return fromLongNode = insert(TruffleString.FromLongNode.create());
         }
     }
 
