@@ -3300,7 +3300,9 @@ public final class TemporalUtil {
         boolean hasLeapYears;
         int monthCount;
         boolean supportsEras;
-        if (ISO8601.equals(calendar)) {
+        boolean seenYearInfo = false;
+        boolean isoCalendar = ISO8601.equals(calendar);
+        if (isoCalendar) {
             hasLeapYears = false;
             monthCount = 12;
             supportsEras = false;
@@ -3340,19 +3342,25 @@ public final class TemporalUtil {
                                 throw Errors.createRangeError("Year is not consistent with era and eraYear.");
                             }
                         }
+                        seenYearInfo = true;
                     } else { // both era and eraYear unset
-                        if (year == Undefined.instance && type != FieldsType.MONTH_DAY) {
-                            throw Errors.createTypeError("Neither year nor era and eraYear set.");
+                        if (year == Undefined.instance) {
+                            if (type != FieldsType.MONTH_DAY) {
+                                throw Errors.createTypeError("Neither year nor era and eraYear set.");
+                            }
+                        } else {
+                            seenYearInfo = true;
                         }
                     }
                 }
             }
         }
-        if (!supportsEras && type != FieldsType.MONTH_DAY) {
+        if (!seenYearInfo) {
             Object year = JSObject.get(fields, YEAR);
-            if (year == Undefined.instance) {
-                throw Errors.createTypeError("No year present.");
-            }
+            seenYearInfo = (year != Undefined.instance);
+        }
+        if (type != FieldsType.MONTH_DAY && !seenYearInfo) {
+            throw Errors.createTypeError("No year present.");
         }
         if (type != FieldsType.YEAR_MONTH) {
             Object day = JSObject.get(fields, DAY);
@@ -3363,6 +3371,9 @@ public final class TemporalUtil {
         Object month = JSObject.get(fields, MONTH);
         Object monthCode = JSObject.get(fields, MONTH_CODE);
         if (monthCode == Undefined.instance) {
+            if (!isoCalendar && type == FieldsType.MONTH_DAY && !seenYearInfo) {
+                throw Errors.createTypeError("No year or month code present.");
+            }
             if (month == Undefined.instance) {
                 throw Errors.createTypeError("No month or month code present.");
             }
