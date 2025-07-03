@@ -2140,14 +2140,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/round/relativeto-infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Duration/prototype/total/relativeto-infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
@@ -2173,34 +2165,6 @@
     "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/compare/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/canonicalize-era-codes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/one-of-era-erayear-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/remapping-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/equals/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/since/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
@@ -2240,49 +2204,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
   }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/until/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/until/until-across-lunisolar-leap-months.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/with/cross-era-boundary.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-03-10"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/with/gregorian-mutually-exclusive-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/with/japanese-mutually-exclusive-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/with/non-iso-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/compare/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/from/canonicalize-era-codes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/from/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/equals/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/since/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/calendar-mismatch.js",
     "status" : "FAIL",
@@ -2320,38 +2244,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/until/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/with/non-iso-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/from/constrain-to-leap-day.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/from/fields-missing-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/from/fields-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/from/fields-underspecified.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/from/reference-year-1972.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/equals/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/calendar-mismatch.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
@@ -2384,14 +2276,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toPlainDate/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/with/fields-missing-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
     "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/default-does-not-include-date-and-time-zone-name.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
@@ -2419,50 +2303,6 @@
     "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/timeStyle-undefined.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/compare/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/argument-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-02-23"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/canonicalize-era-codes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/one-of-era-erayear-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-chinese.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-gregory.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-hebrew.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/remapping-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/equals/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/since/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/calendar-mismatch.js",
     "status" : "FAIL",
@@ -2496,22 +2336,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/until/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/with/minimum-valid-year-month.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-12-04"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/with/non-iso-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/compare/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/construct-non-utc-non-iso.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2520,10 +2344,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/canonicalize-era-codes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
@@ -2531,10 +2351,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/from/etc-timezone.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/timezone-case-insensitive.js",
     "status" : "FAIL",
@@ -2560,10 +2376,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
   }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/timezone-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2579,10 +2391,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/round/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/startOfDay/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
@@ -2631,14 +2439,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/time-zone-canonicalized.js",
     "status" : "FAIL",
     "comment" : "Obsolete test: expects canonical timezones to be observable."
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/until/infinity-throws-rangeerror.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/with/non-iso-calendar-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withPlainTime/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
@@ -2746,10 +2546,6 @@
     "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/hebrew-leap-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/indian-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
@@ -3018,10 +2814,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/Temporal/PlainDate/from-constrain-japanese.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/Temporal/PlainDate/from-hebrew-keviah.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
@@ -3034,25 +2826,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/Temporal/PlainMonthDay/from-chinese-leap-month-common.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/Temporal/PlainMonthDay/from-chinese-leap-month-uncommon.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Temporal/PlainMonthDay/from-chinese.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Temporal/PlainMonthDay/from-coptic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Temporal/PlainMonthDay/from-gregory.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "status" : "SKIP",
+    "comment" : "ICU4J seems unable to find some uncommon leap months"
   }, {
     "filePath" : "staging/sm/Temporal/ZonedDateTime/zones-and-links.js",
     "status" : "FAIL",
