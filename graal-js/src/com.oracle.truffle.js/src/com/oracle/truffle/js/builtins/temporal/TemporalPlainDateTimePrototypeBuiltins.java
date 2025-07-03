@@ -305,9 +305,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             }
             switch (property) {
                 case era:
-                    return Undefined.instance;
+                    return isoCalendar ? Undefined.instance : IntlUtil.getEra(cal);
                 case eraYear:
-                    return Undefined.instance;
+                    return isoCalendar ? Undefined.instance : IntlUtil.getEraYear(cal);
                 case hour:
                     return temporalDT.getHour();
                 case minute:
@@ -321,9 +321,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case nanosecond:
                     return temporalDT.getNanosecond();
                 case year:
-                    return isoCalendar ? temporalDT.getYear() : IntlUtil.getCalendarField(cal, Calendar.YEAR);
+                    return isoCalendar ? temporalDT.getYear() : IntlUtil.getCalendarField(cal, Calendar.EXTENDED_YEAR);
                 case month:
-                    return isoCalendar ? temporalDT.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.MONTH) + 1);
+                    return isoCalendar ? temporalDT.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.ORDINAL_MONTH) + 1);
                 case day:
                     return isoCalendar ? temporalDT.getDay() : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_MONTH);
                 case dayOfWeek:
@@ -343,7 +343,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case daysInYear:
                     return isoCalendar ? TemporalUtil.isoDaysInYear(temporalDT.getYear()) : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_YEAR);
                 case monthsInYear:
-                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.MONTH) + 1);
+                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.ORDINAL_MONTH) + 1);
                 case inLeapYear:
                     return isoCalendar ? JSDate.isLeapYear(temporalDT.getYear()) : IntlUtil.isLeapYear(cal);
 

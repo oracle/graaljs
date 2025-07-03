@@ -432,13 +432,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             }
             switch (property) {
                 case era:
-                    return Undefined.instance;
+                    return isoCalendar ? Undefined.instance : IntlUtil.getEra(cal);
                 case eraYear:
-                    return Undefined.instance;
+                    return isoCalendar ? Undefined.instance : IntlUtil.getEraYear(cal);
                 case year:
-                    return isoCalendar ? tdt.getYear() : IntlUtil.getCalendarField(cal, Calendar.YEAR);
+                    return isoCalendar ? tdt.getYear() : IntlUtil.getCalendarField(cal, Calendar.EXTENDED_YEAR);
                 case month:
-                    return isoCalendar ? tdt.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.MONTH) + 1);
+                    return isoCalendar ? tdt.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.ORDINAL_MONTH) + 1);
                 case monthCode:
                     return isoCalendar ? TemporalUtil.buildISOMonthCode(tdt.getMonth()) : Strings.fromJavaString(IntlUtil.getTemporalMonthCode(cal));
                 case day:
@@ -470,7 +470,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case daysInYear:
                     return isoCalendar ? TemporalUtil.isoDaysInYear(tdt.getYear()) : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_YEAR);
                 case monthsInYear:
-                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.MONTH) + 1);
+                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.ORDINAL_MONTH) + 1);
                 case inLeapYear:
                     return isoCalendar ? JSDate.isLeapYear(tdt.getYear()) : IntlUtil.isLeapYear(cal);
             }

@@ -215,13 +215,13 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             }
             switch (property) {
                 case era:
-                    return Undefined.instance;
+                    return isoCalendar ? Undefined.instance : IntlUtil.getEra(cal);
                 case eraYear:
-                    return Undefined.instance;
+                    return isoCalendar ? Undefined.instance : IntlUtil.getEraYear(cal);
                 case year:
-                    return isoCalendar ? temporalYM.getYear() : IntlUtil.getCalendarField(cal, Calendar.YEAR);
+                    return isoCalendar ? temporalYM.getYear() : IntlUtil.getCalendarField(cal, Calendar.EXTENDED_YEAR);
                 case month:
-                    return isoCalendar ? temporalYM.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.MONTH) + 1);
+                    return isoCalendar ? temporalYM.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.ORDINAL_MONTH) + 1);
                 case monthCode:
                     return isoCalendar ? TemporalUtil.buildISOMonthCode(temporalYM.getMonth()) : Strings.fromJavaString(IntlUtil.getTemporalMonthCode(cal));
                 case daysInYear:
@@ -229,7 +229,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 case daysInMonth:
                     return isoCalendar ? TemporalUtil.isoDaysInMonth(temporalYM.getYear(), temporalYM.getMonth()) : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_MONTH);
                 case monthsInYear:
-                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.MONTH) + 1);
+                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.ORDINAL_MONTH) + 1);
                 case inLeapYear:
                     return isoCalendar ? JSDate.isLeapYear(temporalYM.getYear()) : IntlUtil.isLeapYear(cal);
             }

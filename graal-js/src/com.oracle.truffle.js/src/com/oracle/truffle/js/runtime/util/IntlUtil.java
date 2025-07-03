@@ -44,6 +44,7 @@ import java.time.ZoneId;
 import java.time.zone.ZoneRulesProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.IllformedLocaleException;
 import java.util.List;
@@ -61,6 +62,9 @@ import org.graalvm.shadowed.com.ibm.icu.text.CurrencyMetaInfo;
 import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
+import org.graalvm.shadowed.com.ibm.icu.util.ChineseCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.JapaneseCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 
@@ -74,6 +78,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  *
@@ -350,6 +355,21 @@ public final class IntlUtil {
     public static final TruffleString KEY_YEAR = Strings.YEAR;
     public static final TruffleString KEY_YEARS = Strings.constant(YEARS);
     public static final TruffleString KEY_YEARS_DISPLAY = Strings.constant(YEARS_DISPLAY);
+
+    // Calendar-related constants
+    public static final TruffleString GREGORY = Strings.constant("gregory");
+    public static final TruffleString GREGORY_INVERSE = Strings.constant("gregory-inverse");
+    public static final TruffleString AD = Strings.constant("ad");
+    public static final TruffleString BC = Strings.constant("bc");
+    public static final TruffleString CE = Strings.constant("ce");
+    public static final TruffleString BCE = Strings.constant("bce");
+    public static final TruffleString REIWA = Strings.constant("reiwa");
+    public static final TruffleString HEISEI = Strings.constant("heisei");
+    public static final TruffleString SHOWA = Strings.constant("showa");
+    public static final TruffleString TAISHO = Strings.constant("taisho");
+    public static final TruffleString MEIJI = Strings.constant("meiji");
+    public static final TruffleString JAPANESE = Strings.constant("japanese");
+    public static final TruffleString JAPANESE_INVERSE = Strings.constant("japanese-inverse");
 
     // https://tc39.es/ecma402/#table-sanctioned-simple-unit-identifiers
     private static final Set<String> SANCTIONED_SIMPLE_UNIT_IDENTIFIERS = Set.of(new String[]{
@@ -1035,7 +1055,13 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static Calendar getCalendar(TruffleString calendarID) {
-        return Calendar.getInstance(TimeZone.GMT_ZONE, new ULocale("und-u-ca-" + calendarID));
+        Calendar cal = Calendar.getInstance(TimeZone.GMT_ZONE, new ULocale("und-u-ca-" + calendarID));
+        if (cal instanceof GregorianCalendar gCal) {
+            // Ensure that Gregorian calendar is used for all dates.
+            // Julian calendar is used for dates before 1582 otherwise.
+            gCal.setGregorianChange(new Date(Long.MIN_VALUE));
+        }
+        return cal;
     }
 
     @TruffleBoundary
@@ -1073,7 +1099,79 @@ public final class IntlUtil {
     @TruffleBoundary
     public static boolean calendarSupportsEra(TruffleString calendarID) {
         Calendar cal = getCalendar(calendarID);
-        return (cal.getMaximum(Calendar.ERA) != cal.getMinimum(Calendar.ERA));
+        return calendarSupportsEra(cal);
+    }
+
+    @TruffleBoundary
+    public static boolean calendarSupportsEra(Calendar cal) {
+        return (cal.getMaximum(Calendar.ERA) != cal.getMinimum(Calendar.ERA) && !(cal instanceof ChineseCalendar));
+    }
+
+    @TruffleBoundary
+    public static Object getEraYear(Calendar cal) {
+        return calendarSupportsEra(cal) ? cal.get(Calendar.YEAR) : Undefined.instance;
+    }
+
+    @TruffleBoundary
+    public static Object getEra(Calendar cal) {
+        return calendarSupportsEra(cal) ? getEraAsString(cal) : Undefined.instance;
+    }
+
+    @TruffleBoundary
+    private static TruffleString getEraAsString(Calendar cal) {
+        int era = cal.get(Calendar.ERA);
+        if (cal instanceof JapaneseCalendar) {
+            if (era == JapaneseCalendar.REIWA) {
+                return REIWA;
+            } else if (era == JapaneseCalendar.HEISEI) {
+                return HEISEI;
+            } else if (era == JapaneseCalendar.SHOWA) {
+                return SHOWA;
+            } else if (era == JapaneseCalendar.TAISHO) {
+                return TAISHO;
+            } else if (era == JapaneseCalendar.MEIJI) {
+                return MEIJI;
+            } else if (era == GregorianCalendar.AD) {
+                return JAPANESE;
+            } else if (era == GregorianCalendar.BC) {
+                return JAPANESE_INVERSE;
+            }
+        } else if (cal instanceof GregorianCalendar) {
+            if (era == GregorianCalendar.AD) {
+                return GREGORY;
+            } else {
+                return GREGORY_INVERSE;
+            }
+        }
+        return Strings.UNKNOWN;
+    }
+
+    @TruffleBoundary
+    public static Integer canonicalizeEraInCalendar(Calendar cal, TruffleString era) {
+        if (cal instanceof JapaneseCalendar) {
+            if (Strings.equals(REIWA, era)) {
+                return JapaneseCalendar.REIWA;
+            } else if (Strings.equals(HEISEI, era)) {
+                return JapaneseCalendar.HEISEI;
+            } else if (Strings.equals(SHOWA, era)) {
+                return JapaneseCalendar.SHOWA;
+            } else if (Strings.equals(TAISHO, era)) {
+                return JapaneseCalendar.TAISHO;
+            } else if (Strings.equals(MEIJI, era)) {
+                return JapaneseCalendar.MEIJI;
+            } else if (Strings.equals(JAPANESE, era) || Strings.equals(GREGORY, era) || Strings.equals(AD, era) || Strings.equals(CE, era)) {
+                return GregorianCalendar.AD;
+            } else if (Strings.equals(JAPANESE_INVERSE, era) || Strings.equals(GREGORY_INVERSE, era) || Strings.equals(BC, era) || Strings.equals(BCE, era)) {
+                return GregorianCalendar.BC;
+            }
+        } else if (cal instanceof GregorianCalendar) {
+            if (Strings.equals(GREGORY, era) || Strings.equals(AD, era) || Strings.equals(CE, era)) {
+                return GregorianCalendar.AD;
+            } else if (Strings.equals(GREGORY_INVERSE, era) || Strings.equals(BC, era) || Strings.equals(BCE, era)) {
+                return GregorianCalendar.BC;
+            }
+        }
+        return null;
     }
 
 }

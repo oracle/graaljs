@@ -110,6 +110,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
+import org.graalvm.shadowed.com.ibm.icu.util.HebrewCalendar;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -164,7 +168,6 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 
 public final class TemporalUtil {
 
@@ -957,13 +960,13 @@ public final class TemporalUtil {
         for (TruffleString property : sortedPropertyNames) {
             Object value = JSRuntime.get(fields, property);
             if (value == Undefined.instance) {
-                if (requiredFields != null) {
-                    if (requiredFields.contains(property)) {
-                        throw TemporalErrors.createTypeErrorPropertyRequired(property);
-                    } else {
-                        assert temporalFieldDefaults.containsKey(property);
-                        value = temporalFieldDefaults.get(property);
-                    }
+                if (requiredFields == null) {
+                    continue;
+                } else if (requiredFields.contains(property)) {
+                    throw TemporalErrors.createTypeErrorPropertyRequired(property);
+                } else {
+                    assert temporalFieldDefaults.containsKey(property);
+                    value = temporalFieldDefaults.get(property);
                 }
             } else {
                 any = true;
@@ -1651,66 +1654,48 @@ public final class TemporalUtil {
         return Boundaries.equals(toCalendarIdentifier.executeString(one), toCalendarIdentifier.executeString(two));
     }
 
-    public static JSDynamicObject calendarMergeFields(JSContext ctx, @SuppressWarnings("unused") TruffleString calendar, JSDynamicObject fields, JSDynamicObject additionalFields) {
-        return defaultMergeFields(ctx, fields, additionalFields);
-    }
-
     @TruffleBoundary
-    public static JSDynamicObject defaultMergeFields(JSContext ctx, JSDynamicObject fields, JSDynamicObject additionalFields) {
+    public static JSDynamicObject calendarMergeFields(JSContext ctx, TruffleString calendar, JSDynamicObject fields, JSDynamicObject additionalFields) {
+        List<Object> additionalKeys = calendarFieldKeysPresent(additionalFields);
+        EconomicSet<Object> overriddenKeys = calendarFieldKeysToIgnore(calendar, additionalKeys);
         JSDynamicObject merged = JSOrdinary.createWithNullPrototype(ctx);
-        List<Object> originalKeys = JSObject.ownPropertyKeys(fields);
-        for (Object nextKey : originalKeys) {
-            if (!MONTH.equals(nextKey) && !MONTH_CODE.equals(nextKey)) {
-                Object propValue = JSObject.get(fields, nextKey);
-                if (propValue != Undefined.instance) {
-                    createDataPropertyOrThrow(ctx, merged, nextKey, propValue);
-                }
+        List<Object> fieldKeys = calendarFieldKeysPresent(fields);
+        for (Object key : fieldKeys) {
+            if (!overriddenKeys.contains(key)) {
+                Object propValue = JSObject.get(fields, key);
+                createDataPropertyOrThrow(ctx, merged, key, propValue);
             }
         }
-        boolean hasMonthOrMonthCode = false;
-        List<Object> newKeys = JSObject.ownPropertyKeys(additionalFields);
-        for (Object nextKey : newKeys) {
-            Object propValue = JSObject.get(additionalFields, nextKey);
-            if (propValue != Undefined.instance) {
-                createDataPropertyOrThrow(ctx, merged, nextKey, propValue);
-                if (MONTH.equals(nextKey) || MONTH_CODE.equals(nextKey)) {
-                    hasMonthOrMonthCode = true;
-                }
-            }
-        }
-        // TODO this is wrong. See PlainMonthYear.with({year:....});
-        // this(=fields) has a month, but the additionalFields (=argument) does not
-        // so we don't take the value from this (exception in for loop from above),
-        // but we HAVE copied Undefined into additionalFields (so it is there, but empty).
-        // if (!newKeys.contains(MONTH) && !newKeys.contains(MONTH_CODE)) {
-        if (!hasMonthOrMonthCode) {
-            Object month = JSObject.get(fields, MONTH);
-            if (month != Undefined.instance) {
-                createDataPropertyOrThrow(ctx, merged, MONTH, month);
-            }
-            Object monthCode = JSObject.get(fields, MONTH_CODE);
-            if (monthCode != Undefined.instance) {
-                createDataPropertyOrThrow(ctx, merged, MONTH_CODE, monthCode);
-            }
-
+        for (Object key : additionalKeys) {
+            Object propValue = JSObject.get(additionalFields, key);
+            createDataPropertyOrThrow(ctx, merged, key, propValue);
         }
         return merged;
     }
 
-    public static void createDataPropertyOrThrow(JSContext ctx, JSDynamicObject obj, Object key, Object value) {
-        JSObjectUtil.defineDataProperty(ctx, obj, key, value, JSAttributes.configurableEnumerableWritable());
+    private static List<Object> calendarFieldKeysPresent(JSDynamicObject fields) {
+        return JSObject.ownPropertyKeys(fields);
     }
 
-    @TruffleBoundary
-    public static List<TruffleString> listJoinRemoveDuplicates(List<TruffleString> first, List<TruffleString> second) {
-        List<TruffleString> newList = new ArrayList<>(first.size() + second.size());
-        newList.addAll(first);
-        for (TruffleString elem : second) {
-            if (!first.contains(elem)) {
-                newList.add(elem);
+    private static EconomicSet<Object> calendarFieldKeysToIgnore(@SuppressWarnings("unused") TruffleString calendar, List<Object> keys) {
+        EconomicSet<Object> ignoredKeys = EconomicSet.create();
+        for (Object key : keys) {
+            if (MONTH.equals(key) || MONTH_CODE.equals(key)) {
+                ignoredKeys.add(MONTH);
+                ignoredKeys.add(MONTH_CODE);
+            } else if (YEAR.equals(key) || ERA.equals(key) || ERA_YEAR.equals(key)) {
+                ignoredKeys.add(YEAR);
+                ignoredKeys.add(ERA);
+                ignoredKeys.add(ERA_YEAR);
+            } else {
+                ignoredKeys.add(key);
             }
         }
-        return newList;
+        return ignoredKeys;
+    }
+
+    public static void createDataPropertyOrThrow(JSContext ctx, JSDynamicObject obj, Object key, Object value) {
+        JSObjectUtil.defineDataProperty(ctx, obj, key, value, JSAttributes.configurableEnumerableWritable());
     }
 
     public static Unit largerOfTwoTemporalUnits(Unit a, Unit b) {
@@ -3297,8 +3282,12 @@ public final class TemporalUtil {
         } else {
             Calendar cal = IntlUtil.getCalendar(calendar);
             cal.setTimeInMillis(JSDate.MS_PER_DAY * JSDate.isoDateToEpochDays(isoDate.year(), isoDate.month() - 1, isoDate.day()));
-            JSObject.set(record, YEAR, cal.get(Calendar.YEAR));
-            JSObject.set(record, MONTH, cal.get(Calendar.MONTH) + 1);
+            JSObject.set(record, YEAR, cal.get(Calendar.EXTENDED_YEAR));
+            if (IntlUtil.calendarSupportsEra(cal)) {
+                JSObject.set(record, ERA, IntlUtil.getEra(cal));
+                JSObject.set(record, ERA_YEAR, IntlUtil.getEraYear(cal));
+            }
+            JSObject.set(record, MONTH, cal.get(Calendar.ORDINAL_MONTH) + 1);
             JSObject.set(record, DAY, cal.get(Calendar.DAY_OF_MONTH));
             JSObject.set(record, MONTH_CODE, Strings.fromJavaString(cal.getTemporalMonthCode()));
         }
@@ -3310,15 +3299,56 @@ public final class TemporalUtil {
     public static void calendarResolveFields(JSContext ctx, TruffleString calendar, JSDynamicObject fields, FieldsType type, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
         boolean hasLeapYears;
         int monthCount;
+        boolean supportsEras;
         if (ISO8601.equals(calendar)) {
             hasLeapYears = false;
             monthCount = 12;
+            supportsEras = false;
         } else {
             Calendar cal = IntlUtil.getCalendar(calendar);
             hasLeapYears = IntlUtil.hasLeapYears(cal);
-            monthCount = cal.getMaximum(Calendar.MONTH) + 1;
+            monthCount = cal.getMaximum(Calendar.ORDINAL_MONTH) + 1;
+            supportsEras = IntlUtil.calendarSupportsEra(cal);
+
+            if (supportsEras) {
+                Object era = JSObject.get(fields, ERA);
+                Object eraYear = JSObject.get(fields, ERA_YEAR);
+                boolean eraSet = (era != Undefined.instance);
+                boolean eraYearSet = (eraYear != Undefined.instance);
+
+                if (eraSet != eraYearSet) {
+                    throw Errors.createTypeError("Both era and eraYear should be set (or none of them).");
+                } else {
+                    Object year = JSObject.get(fields, YEAR);
+                    if (eraSet) { // both era and eraYear set
+                        Integer canonicalEra = IntlUtil.canonicalizeEraInCalendar(cal, (TruffleString) era);
+                        if (canonicalEra == null) {
+                            throw Errors.createTypeError("Invalid era");
+                        }
+                        if (year != Undefined.instance) {
+                            // year should be consistent with era and eraYear
+                            cal.setTimeInMillis(0);
+                            cal.set(Calendar.ERA, canonicalEra);
+                            cal.set(Calendar.YEAR, ((Number) eraYear).intValue());
+                            long eraYearMS = cal.getTimeInMillis();
+
+                            cal.setTimeInMillis(0);
+                            cal.set(Calendar.EXTENDED_YEAR, ((Number) year).intValue());
+                            long yearMS = cal.getTimeInMillis();
+
+                            if (yearMS != eraYearMS) {
+                                throw Errors.createTypeError("Year is not consistent with era and eraYear.");
+                            }
+                        }
+                    } else { // both era and eraYear unset
+                        if (year == Undefined.instance && type != FieldsType.MONTH_DAY) {
+                            throw Errors.createTypeError("Neither year nor era and eraYear set.");
+                        }
+                    }
+                }
+            }
         }
-        if (type != FieldsType.MONTH_DAY) {
+        if (!supportsEras && type != FieldsType.MONTH_DAY) {
             Object year = JSObject.get(fields, YEAR);
             if (year == Undefined.instance) {
                 throw Errors.createTypeError("No year present.");
@@ -3364,17 +3394,71 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static ISODateRecord calendarDateToISO(TruffleString calendar, JSDynamicObject fields, Overflow overflow) {
-        Number year = (Number) JSObject.get(fields, YEAR);
-        Number month = (Number) JSObject.get(fields, MONTH);
-        Number day = (Number) JSObject.get(fields, DAY);
+        Object yearObject = JSObject.get(fields, YEAR);
+        int month = ((Number) JSObject.get(fields, MONTH)).intValue();
+        int day = ((Number) JSObject.get(fields, DAY)).intValue();
         if (ISO8601.equals(calendar)) {
-            return regulateISODate(dtoi(JSRuntime.doubleValue(year)), dtoi(JSRuntime.doubleValue(month)),
-                            dtoi(JSRuntime.doubleValue(day)), overflow);
+            int year = ((Number) yearObject).intValue();
+            return regulateISODate(year, month, day, overflow);
         } else {
             Calendar cal = IntlUtil.getCalendar(calendar);
-            cal.set(Calendar.YEAR, year.intValue());
-            cal.set(Calendar.MONTH, month.intValue() - 1);
-            cal.set(Calendar.DAY_OF_MONTH, day.intValue());
+            cal.setTimeInMillis(0);
+            if (yearObject == Undefined.instance) {
+                Object eraObject = JSObject.get(fields, ERA);
+                if (eraObject != Undefined.instance) {
+                    TruffleString era = (TruffleString) JSObject.get(fields, ERA);
+                    cal.set(Calendar.ERA, IntlUtil.canonicalizeEraInCalendar(cal, era));
+                    int eraYear = ((Number) JSObject.get(fields, ERA_YEAR)).intValue();
+                    cal.set(Calendar.YEAR, eraYear);
+                }
+            } else {
+                int year = ((Number) yearObject).intValue();
+                cal.set(Calendar.EXTENDED_YEAR, year);
+            }
+            Object monthCode = JSObject.get(fields, MONTH_CODE);
+            if (monthCode == Undefined.instance) {
+                int newValue = month - 1;
+                int maxMonth = cal.getActualMaximum(Calendar.ORDINAL_MONTH);
+                if (newValue > maxMonth) {
+                    if (overflow == Overflow.REJECT) {
+                        throw Errors.createRangeError("Invalid month");
+                    } else {
+                        assert overflow == Overflow.CONSTRAIN;
+                        newValue = maxMonth;
+                    }
+                }
+                // Workaround for Hebrew calendar's behaviour for plain
+                // cal.set(Calendar.ORDINAL_MONTH, newValue);
+                int oldValue = cal.get(Calendar.ORDINAL_MONTH);
+                cal.roll(Calendar.ORDINAL_MONTH, newValue - oldValue);
+            } else {
+                int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
+                String monthCodeStr = monthCode.toString();
+                cal.setTemporalMonthCode(monthCodeStr);
+                if (!monthCodeStr.equals(cal.getTemporalMonthCode())) {
+                    // monthCode does not exist in extendedYear
+                    if (overflow == Overflow.REJECT) {
+                        throw Errors.createRangeError("Invalid monthCode");
+                    } else if (monthCodeStr.length() == 4) { // is leap month
+                        assert overflow == Overflow.CONSTRAIN;
+                        // leap month does not exist in extendedYear
+                        // => constrain to non-leap month
+                        String nonLeapMonthCode;
+                        if (cal instanceof HebrewCalendar && "M05L".equals(monthCodeStr)) {
+                            nonLeapMonthCode = "M06";
+                        } else {
+                            nonLeapMonthCode = monthCodeStr.substring(0, 3);
+                        }
+                        // the setting of non existing leap month could have
+                        // rolled the year to the next one => restore the original value
+                        if (extendedYear != cal.get(Calendar.EXTENDED_YEAR)) {
+                            cal.set(Calendar.EXTENDED_YEAR, extendedYear);
+                        }
+                        cal.setTemporalMonthCode(nonLeapMonthCode);
+                    }
+                }
+            }
+            cal.set(Calendar.DAY_OF_MONTH, day);
             long ms = cal.getTimeInMillis();
             return createISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
         }
@@ -3425,7 +3509,7 @@ public final class TemporalUtil {
                 throw TemporalErrors.createRangeErrorDateOutsideRange();
             }
 
-            int mMax = cal.getMaximum(Calendar.MONTH);
+            int mMax = cal.getMaximum(Calendar.ORDINAL_MONTH);
             if (m > mMax) {
                 if (overflow == Overflow.CONSTRAIN) {
                     m = mMax;
@@ -3467,7 +3551,7 @@ public final class TemporalUtil {
                         }
                     }
                 }
-                cal.set(Calendar.YEAR, cal.get(Calendar.YEAR) - 1);
+                cal.set(Calendar.EXTENDED_YEAR, cal.get(Calendar.EXTENDED_YEAR) - 1);
             }
             return new ISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
         }
