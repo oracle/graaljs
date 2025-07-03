@@ -3337,7 +3337,7 @@ public final class TemporalUtil {
                             long yearMS = cal.getTimeInMillis();
 
                             if (yearMS != eraYearMS) {
-                                throw Errors.createTypeError("Year is not consistent with era and eraYear.");
+                                throw Errors.createRangeError("Year is not consistent with era and eraYear.");
                             }
                         }
                     } else { // both era and eraYear unset
