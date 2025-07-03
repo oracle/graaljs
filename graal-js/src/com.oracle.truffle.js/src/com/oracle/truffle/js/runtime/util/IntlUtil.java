@@ -64,7 +64,11 @@ import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 import org.graalvm.shadowed.com.ibm.icu.util.ChineseCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.HebrewCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.IndianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.IslamicCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.JapaneseCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.PersianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 
@@ -1172,6 +1176,44 @@ public final class IntlUtil {
             }
         }
         return null;
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("deprecation")
+    static int maxDayInMonth(Calendar cal, String monthCode) {
+        // various irregularities
+        if (cal instanceof GregorianCalendar) {
+            if ("M02".equals(monthCode)) {
+                return 29; // gregory, buddhist, japanese, roc
+            }
+        } else if (cal instanceof ChineseCalendar) {
+            return ("M09L".equals(monthCode) || "M11L".equals(monthCode)) ? 29 : 30;
+        } else if (cal instanceof HebrewCalendar) {
+            if ("M02".equals(monthCode) || "M03".equals(monthCode)) {
+                return 30;
+            }
+        } else if (cal instanceof IslamicCalendar iCal) {
+            if (iCal.isCivil() || iCal.getCalculationType() == IslamicCalendar.CalculationType.ISLAMIC_TBLA) {
+                if ("M12".equals(monthCode)) {
+                    return 30;
+                }
+            } else {
+                return 30;
+            }
+        } else if (cal instanceof PersianCalendar) {
+            if ("M12".equals(monthCode)) {
+                return 30;
+            }
+        } else if (cal instanceof IndianCalendar) {
+            if ("M01".equals(monthCode)) {
+                return 31;
+            }
+        } else if (monthCode.equals("M13")) {
+            return 6; // coptic, ethioaa, ethiopic
+        }
+        // regular month
+        cal.setTemporalMonthCode(monthCode);
+        return cal.getActualMaximum(Calendar.DAY_OF_MONTH);
     }
 
 }

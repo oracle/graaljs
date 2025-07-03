@@ -3491,24 +3491,9 @@ public final class TemporalUtil {
             return new ISODateRecord(referenceISOYear, result.month(), result.day());
         } else {
             Calendar cal = IntlUtil.getCalendar(calendar);
+            cal.setTimeInMillis(0);
 
-            int d = day.intValue();
             int m = month.intValue() - 1;
-
-            Object monthCodeValue = JSObject.get(fields, MONTH_CODE);
-            String monthCode;
-            if (monthCodeValue == Undefined.instance) {
-                monthCode = String.format(Locale.ROOT, "M%02d", m + 1);
-            } else {
-                TruffleString monthCodeTS = (TruffleString) monthCodeValue;
-                monthCode = Strings.toJavaString(monthCodeTS);
-            }
-            boolean isLeapMonth = (monthCode.length() == 4);
-            boolean hasLeapYears = IntlUtil.hasLeapYears(cal);
-            if (isLeapMonth && !hasLeapYears) {
-                throw TemporalErrors.createRangeErrorDateOutsideRange();
-            }
-
             int mMax = cal.getMaximum(Calendar.ORDINAL_MONTH);
             if (m > mMax) {
                 if (overflow == Overflow.CONSTRAIN) {
@@ -3518,36 +3503,63 @@ public final class TemporalUtil {
                 }
             }
 
+            Object monthCodeValue = JSObject.get(fields, MONTH_CODE);
+            String monthCode;
+            if (monthCodeValue == Undefined.instance) {
+                monthCode = String.format(Locale.ROOT, "M%02d", m + 1);
+            } else {
+                TruffleString monthCodeTS = (TruffleString) monthCodeValue;
+                monthCode = Strings.toJavaString(monthCodeTS);
+            }
+            try {
+                cal.setTemporalMonthCode(monthCode);
+            } catch (IllegalArgumentException iaex) {
+                throw TemporalErrors.createRangeErrorDateOutsideRange();
+            }
+
+            int d = day.intValue();
+            int dMax = IntlUtil.maxDayInMonth(cal, monthCode);
+            if (d > dMax) {
+                if (overflow == Overflow.CONSTRAIN) {
+                    d = dMax;
+                } else {
+                    throw TemporalErrors.createRangeErrorDateOutsideRange();
+                }
+            }
+
+            if (year != Undefined.instance) {
+                // check month/restrict day according to the provided year
+                cal.set(Calendar.YEAR, ((Number) year).intValue());
+                cal.setTemporalMonthCode(monthCode);
+                if (monthCode.equals(cal.getTemporalMonthCode())) {
+                    dMax = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+                    if (d > dMax) {
+                        if (overflow == Overflow.CONSTRAIN) {
+                            d = dMax;
+                        } else {
+                            // no day d in this month
+                            throw TemporalErrors.createRangeErrorDateOutsideRange();
+                        }
+                    }
+                } else if (overflow == Overflow.REJECT) {
+                    // no month with monthCode in the provided year
+                    throw TemporalErrors.createRangeErrorDateOutsideRange();
+                }
+            }
+
             long msUpperBound = JSDate.isoDateToEpochDays(1972, 11, 31) * JSDate.MS_PER_DAY;
             cal.setTimeInMillis(msUpperBound);
+            cal.set(Calendar.DAY_OF_MONTH, 1);
             long ms;
             while (true) {
-                boolean isLeapYear = cal.inTemporalLeapYear();
-                if (isLeapYear || !isLeapMonth) {
-                    try {
-                        cal.setTemporalMonthCode(monthCode);
-                    } catch (IllegalArgumentException iaex) {
-                        throw TemporalErrors.createRangeErrorDateOutsideRange();
-                    }
-                    if (monthCode.equals(cal.getTemporalMonthCode())) {
-                        int dMax = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
-                        if (d > dMax) {
-                            if (overflow == Overflow.CONSTRAIN) {
-                                d = dMax;
-                            } else {
-                                throw TemporalErrors.createRangeErrorDateOutsideRange();
-                            }
-                        }
-
+                cal.setTemporalMonthCode(monthCode);
+                if (monthCode.equals(cal.getTemporalMonthCode())) {
+                    dMax = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+                    if (d <= dMax) {
                         cal.set(Calendar.DAY_OF_MONTH, d);
                         ms = cal.getTimeInMillis();
                         if (ms <= msUpperBound) {
                             break;
-                        }
-                    } else {
-                        // No month with monthCode in this year
-                        if (isLeapYear == isLeapMonth) {
-                            throw TemporalErrors.createRangeErrorDateOutsideRange();
                         }
                     }
                 }
