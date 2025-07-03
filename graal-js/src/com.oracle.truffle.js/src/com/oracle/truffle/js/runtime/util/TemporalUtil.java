@@ -3469,6 +3469,14 @@ public final class TemporalUtil {
                     }
                 }
             }
+            int maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+            if (maxDay < day) {
+                if (overflow == Overflow.REJECT) {
+                    throw Errors.createRangeError("Invalid day");
+                } else {
+                    day = maxDay;
+                }
+            }
             cal.set(Calendar.DAY_OF_MONTH, day);
             long ms = cal.getTimeInMillis();
             return createISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
