@@ -44,9 +44,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.OFFSET;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -56,7 +53,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -121,13 +117,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             }
 
             calendar = getCalendarWithISODefault.execute(item);
-
-            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
-            addFieldNames(fieldNames);
-
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listTimeZone);
-            Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
-            timeZone = toTimeZoneIdentifier.execute(timeZoneObj);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffsetTZ, TemporalUtil.listTimeZone);
+            timeZone = (TruffleString) JSObject.get(fields, TIME_ZONE);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
             if (offsetStringObj == Undefined.instance) {
                 offsetBehaviour = OffsetBehaviour.WALL;
@@ -181,18 +172,6 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offsetOption,
                         matchBehaviour);
         return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
-    }
-
-    @TruffleBoundary
-    private static void addFieldNames(List<TruffleString> fieldNames) {
-        fieldNames.add(TemporalConstants.HOUR);
-        fieldNames.add(TemporalConstants.MICROSECOND);
-        fieldNames.add(TemporalConstants.MILLISECOND);
-        fieldNames.add(TemporalConstants.MINUTE);
-        fieldNames.add(TemporalConstants.NANOSECOND);
-        fieldNames.add(TemporalConstants.OFFSET);
-        fieldNames.add(TemporalConstants.SECOND);
-        fieldNames.add(TemporalConstants.TIME_ZONE);
     }
 
 }

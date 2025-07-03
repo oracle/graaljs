@@ -70,6 +70,10 @@ public final class JSTemporalPlainYearMonthObject extends JSTemporalCalendarHold
         return isoDay;
     }
 
+    public ISODateRecord isoDate() {
+        return new ISODateRecord(isoYear, isoMonth, isoDay);
+    }
+
     @Override
     public TruffleString getClassName() {
         return JSTemporalPlainYearMonth.TO_STRING_TAG;

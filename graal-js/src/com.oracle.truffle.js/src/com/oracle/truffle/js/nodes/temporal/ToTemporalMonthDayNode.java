@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.List;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -90,17 +88,15 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
-            JSDynamicObject itemObj = (JSDynamicObject) item;
-            if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(itemObj)) {
+            if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
                 Object resolvedOptions = getOptionsObject.execute(options);
                 TemporalUtil.getTemporalOverflowOption(resolvedOptions, temporalGetOptionNode);
-                JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) itemObj;
+                JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) item;
                 return JSTemporalPlainMonthDay.create(ctx, realm,
                                 pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear(), this, errorBranch);
             }
-            TruffleString calendar = getTemporalCalendar.execute(itemObj);
-            List<TruffleString> fieldNames = TemporalUtil.listDMMCY;
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
+            TruffleString calendar = getTemporalCalendar.execute(item);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, temporalGetOptionNode);
             return monthDayFromFieldsNode.execute(calendar, fields, overflow);

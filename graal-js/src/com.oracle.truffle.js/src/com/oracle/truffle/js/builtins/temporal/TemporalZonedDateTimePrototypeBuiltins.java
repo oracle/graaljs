@@ -49,7 +49,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -99,7 +98,6 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -434,13 +432,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             }
             switch (property) {
                 case era:
-                    return Undefined.instance;
+                    return isoCalendar ? Undefined.instance : IntlUtil.getEra(cal);
                 case eraYear:
-                    return Undefined.instance;
+                    return isoCalendar ? Undefined.instance : IntlUtil.getEraYear(cal);
                 case year:
-                    return isoCalendar ? tdt.getYear() : IntlUtil.getCalendarField(cal, Calendar.YEAR);
+                    return isoCalendar ? tdt.getYear() : IntlUtil.getCalendarField(cal, Calendar.EXTENDED_YEAR);
                 case month:
-                    return isoCalendar ? tdt.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.MONTH) + 1);
+                    return isoCalendar ? tdt.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.ORDINAL_MONTH) + 1);
                 case monthCode:
                     return isoCalendar ? TemporalUtil.buildISOMonthCode(tdt.getMonth()) : Strings.fromJavaString(IntlUtil.getTemporalMonthCode(cal));
                 case day:
@@ -472,7 +470,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case daysInYear:
                     return isoCalendar ? TemporalUtil.isoDaysInYear(tdt.getYear()) : IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_YEAR);
                 case monthsInYear:
-                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.MONTH) + 1);
+                    return isoCalendar ? 12 : (IntlUtil.getCalendarFieldMax(cal, Calendar.ORDINAL_MONTH) + 1);
                 case inLeapYear:
                     return isoCalendar ? JSDate.isLeapYear(tdt.getYear()) : IntlUtil.isLeapYear(cal);
             }
@@ -574,27 +572,24 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             BigInt epochNs = zonedDateTime.getNanoseconds();
             TruffleString timeZone = zonedDateTime.getTimeZone();
             TruffleString calendar = zonedDateTime.getCalendar();
-
-            JSRealm realm = getRealm();
-            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
             long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(timeZone, epochNs);
-            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, instant, calendar, offsetNanoseconds);
-            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), dateTime, fieldNames, TemporalUtil.listEmpty);
 
-            createHourDataPropertyNode.executeVoid(fields, dateTime.getHour());
-            createMinuteDataPropertyNode.executeVoid(fields, dateTime.getMinute());
-            createSecondDataPropertyNode.executeVoid(fields, dateTime.getSecond());
-            createMillisecondDataPropertyNode.executeVoid(fields, dateTime.getMillisecond());
-            createMicrosecondDataPropertyNode.executeVoid(fields, dateTime.getMicrosecond());
-            createNanosecondDataPropertyNode.executeVoid(fields, dateTime.getNanosecond());
+            JSContext ctx = getContext();
+            JSRealm realm = getRealm();
+            JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, realm, zonedDateTime.getNanoseconds());
+            JSTemporalPlainDateTimeObject isoDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, instant, calendar, offsetNanoseconds);
+
+            JSDynamicObject fields = TemporalUtil.isoDateToFields(ctx, calendar, isoDateTime.isoDate(), TemporalUtil.FieldsType.DATE);
+            createHourDataPropertyNode.executeVoid(fields, isoDateTime.getHour());
+            createMinuteDataPropertyNode.executeVoid(fields, isoDateTime.getMinute());
+            createSecondDataPropertyNode.executeVoid(fields, isoDateTime.getSecond());
+            createMillisecondDataPropertyNode.executeVoid(fields, isoDateTime.getMillisecond());
+            createMicrosecondDataPropertyNode.executeVoid(fields, isoDateTime.getMicrosecond());
+            createNanosecondDataPropertyNode.executeVoid(fields, isoDateTime.getNanosecond());
             createOffsetDataPropertyNode.executeVoid(fields, TemporalUtil.formatISOTimeZoneOffsetString(offsetNanoseconds));
 
-            addFieldNames(fieldNames);
-
-            JSDynamicObject partialZonedDateTime = TemporalUtil.prepareTemporalFields(getContext(), temporalZonedDateTimeLike, fieldNames, null);
-            fields = TemporalUtil.calendarMergeFields(getContext(), calendar, fields, partialZonedDateTime);
-            fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listOffset);
+            JSDynamicObject partialZonedDateTime = TemporalUtil.prepareCalendarFields(ctx, calendar, temporalZonedDateTimeLike, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffset, null);
+            fields = TemporalUtil.calendarMergeFields(ctx, calendar, fields, partialZonedDateTime);
 
             JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
@@ -604,28 +599,17 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Object offsetString = JSObject.get(fields, OFFSET);
             long newOffsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString((TruffleString) offsetString);
 
-            BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(getContext(), realm, dateTimeResult.getYear(), dateTimeResult.getMonth(), dateTimeResult.getDay(),
+            BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, dateTimeResult.getYear(), dateTimeResult.getMonth(), dateTimeResult.getDay(),
                             dateTimeResult.getHour(), dateTimeResult.getMinute(), dateTimeResult.getSecond(),
                             dateTimeResult.getMillisecond(), dateTimeResult.getMicrosecond(), dateTimeResult.getNanosecond(), OffsetBehaviour.OPTION,
                             newOffsetNanoseconds, timeZone, disambiguation, offset, MatchBehaviour.MATCH_EXACTLY);
-            return JSTemporalZonedDateTime.create(getContext(), realm, epochNanoseconds, timeZone, calendar);
+            return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSTemporalZonedDateTime(thisObj)")
         static Object invalidReceiver(Object thisObj, Object temporalZonedDateTimeLike, Object optionsParam) {
             throw TemporalErrors.createTypeErrorTemporalZonedDateTimeExpected();
-        }
-
-        @TruffleBoundary
-        private static void addFieldNames(List<TruffleString> fieldNames) {
-            fieldNames.add(TemporalConstants.HOUR);
-            fieldNames.add(TemporalConstants.MICROSECOND);
-            fieldNames.add(TemporalConstants.MILLISECOND);
-            fieldNames.add(TemporalConstants.MINUTE);
-            fieldNames.add(TemporalConstants.NANOSECOND);
-            fieldNames.add(TemporalConstants.OFFSET);
-            fieldNames.add(TemporalConstants.SECOND);
         }
 
     }

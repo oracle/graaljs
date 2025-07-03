@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -51,7 +48,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -118,11 +114,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                 return JSTemporalPlainDateTime.create(ctx, realm, date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar(), this, errorBranch);
             }
             calendar = getTemporalCalendarNode.execute(item);
-
-            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
-            addFieldNames(fieldNames);
-
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnits, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsNode.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, overflow, dateFromFieldsNode);
@@ -147,16 +139,6 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                         result.getYear(), result.getMonth(), result.getDay(),
                         result.getHour(), result.getMinute(), result.getSecond(),
                         result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), calendar, this, errorBranch);
-    }
-
-    @TruffleBoundary
-    private static void addFieldNames(List<TruffleString> fieldNames) {
-        fieldNames.add(TemporalConstants.HOUR);
-        fieldNames.add(TemporalConstants.MICROSECOND);
-        fieldNames.add(TemporalConstants.MILLISECOND);
-        fieldNames.add(TemporalConstants.MINUTE);
-        fieldNames.add(TemporalConstants.NANOSECOND);
-        fieldNames.add(TemporalConstants.SECOND);
     }
 
 }
