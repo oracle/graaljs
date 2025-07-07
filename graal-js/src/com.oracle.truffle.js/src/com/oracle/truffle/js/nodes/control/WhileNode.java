@@ -53,7 +53,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
@@ -137,35 +136,15 @@ public final class WhileNode extends StatementNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
+        if (hasMaterializationTag(materializedTags) &&
+                        loop.getRepeatingNode() instanceof AbstractRepeatingNode repeatingNode &&
+                        repeatingNode.materializationNeeded()) {
             // The repeating node should not have a wrapper, because it has no source section
-            if (loop.getRepeatingNode() instanceof AbstractRepeatingNode repeatingNode) {
-                JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class, materializedTags);
-                JavaScriptNode conditionNode = repeatingNode.conditionNode == null ? null
-                                : JSTaggedExecutionNode.createForInput(repeatingNode.conditionNode, ControlFlowBranchTag.class,
-                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()), materializedTags);
-                if (bodyNode == repeatingNode.bodyNode && conditionNode == repeatingNode.conditionNode) {
-                    return this;
-                }
-                if (bodyNode == repeatingNode.bodyNode) {
-                    bodyNode = cloneUninitialized(repeatingNode.bodyNode, materializedTags);
-                }
-                if (conditionNode == repeatingNode.conditionNode) {
-                    conditionNode = cloneUninitialized(repeatingNode.conditionNode, materializedTags);
-                }
-                transferSourceSection(this, bodyNode);
-                WhileNode materialized;
-                if (repeatingNode instanceof DoWhileRepeatingNode) {
-                    materialized = new WhileNode(new DoWhileRepeatingNode(conditionNode, bodyNode), loopType);
-                } else if (repeatingNode instanceof ForOfRepeatingNode forOf) {
-                    materialized = new WhileNode(new ForOfRepeatingNode(forOf.nextResultNode, bodyNode, forOf.writeNextValueNode), loopType);
-                } else {
-                    assert repeatingNode instanceof WhileDoRepeatingNode;
-                    materialized = new WhileNode(new WhileDoRepeatingNode(conditionNode, bodyNode), loopType);
-                }
-                transferSourceSectionAndTags(this, materialized);
-                return materialized;
-            }
+            AbstractRepeatingNode materializedLoop = repeatingNode.materializeInstrumentableNodes(materializedTags);
+            transferSourceSectionAndTags(this, materializedLoop.bodyNode);
+            WhileNode materialized = new WhileNode(materializedLoop, loopType);
+            transferSourceSectionAndTags(this, materialized);
+            return materialized;
         }
         return this;
     }
@@ -232,6 +211,14 @@ public final class WhileNode extends StatementNode {
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new DoWhileRepeatingNode(cloneUninitialized(conditionNode, materializedTags), cloneUninitialized(bodyNode, materializedTags));
         }
+
+        @Override
+        public AbstractRepeatingNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (!materializationNeeded()) {
+                return this;
+            }
+            return new DoWhileRepeatingNode(materializeCondition(materializedTags), materializeBody(materializedTags));
+        }
     }
 
     /** while(condition) {body}. */
@@ -268,6 +255,14 @@ public final class WhileNode extends StatementNode {
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new WhileDoRepeatingNode(cloneUninitialized(conditionNode, materializedTags), cloneUninitialized(bodyNode, materializedTags));
+        }
+
+        @Override
+        public AbstractRepeatingNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (!materializationNeeded()) {
+                return this;
+            }
+            return new WhileDoRepeatingNode(materializeCondition(materializedTags), materializeBody(materializedTags));
         }
     }
 
@@ -335,6 +330,16 @@ public final class WhileNode extends StatementNode {
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new ForOfRepeatingNode(cloneUninitialized(nextResultNode, materializedTags),
                             cloneUninitialized(bodyNode, materializedTags),
+                            cloneUninitialized(writeNextValueNode, materializedTags));
+        }
+
+        @Override
+        public AbstractRepeatingNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (!materializationNeeded()) {
+                return this;
+            }
+            return new ForOfRepeatingNode(cloneUninitialized(nextResultNode, materializedTags),
+                            materializeBody(materializedTags),
                             cloneUninitialized(writeNextValueNode, materializedTags));
         }
     }
