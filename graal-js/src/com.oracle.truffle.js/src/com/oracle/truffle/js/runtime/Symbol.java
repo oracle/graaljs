@@ -130,6 +130,10 @@ public final class Symbol implements TruffleObject {
      * excluded from the with environment bindings of the associated object.
      */
     public static final Symbol SYMBOL_UNSCOPABLES = Symbol.createWellKnown(Strings.constant("Symbol.unscopables"));
+    /**
+     * todo-lw: doc
+     */
+    public static final Symbol SYMBOL_CUSTOM_MATCHER = Symbol.createWellKnown(Strings.constant("Symbol.customMatcher"));
 
     /**
      * [[Description]] of Symbol if it is a String value, {@code null} otherwise ([[Description]] is

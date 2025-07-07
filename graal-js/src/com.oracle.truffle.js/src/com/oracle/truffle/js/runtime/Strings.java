@@ -263,6 +263,7 @@ public final class Strings {
     public static final TruffleString TO_SORTED = constant("toSorted");
     public static final TruffleString TO_SPLICED = constant("toSpliced");
     public static final TruffleString TO_TEMPORAL_INSTANT = constant("toTemporalInstant");
+    public static final TruffleString CUSTOM_MATCHER = constant("customMatcher");
 
     public static final TruffleString UC_ARRAY = constant("Array");
     public static final TruffleString UC_OBJECT = constant("Object");
