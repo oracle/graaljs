@@ -119,7 +119,9 @@ import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorUnaryNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
+import com.oracle.truffle.js.nodes.access.IteratorToArrayNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -151,6 +153,7 @@ import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SuspendNode;
+import com.oracle.truffle.js.nodes.extractor.InvokeCustomMatcherOrThrowNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -2846,7 +2849,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
                 // fall through
             case IDENT:
-                assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
+                // todo-lw: call node :(
+                if (lhsExpression instanceof CallNode) {
+                    assignedNode = transformAssignmentExtractor((CallNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
+                } else {
+                    assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
+                }
                 break;
             case LBRACKET:
                 // target[element]
@@ -2891,40 +2899,38 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 rhs = checkMutableBinding(rhs, scopeVar.getName());
             }
             return scopeVar.createWriteNode(rhs);
+        } else if (isLogicalOp(binaryOp)) {
+            assert !convertLHSToNumeric && !returnOldValue && assignedValue != null;
+            if (constAssignment) {
+                rhs = checkMutableBinding(rhs, scopeVar.getName());
+            }
+            JavaScriptNode readNode = tagExpression(scopeVar.createReadNode(), identNode);
+            JavaScriptNode writeNode = scopeVar.createWriteNode(rhs);
+            return factory.createBinary(context, binaryOp, readNode, writeNode);
         } else {
-            if (isLogicalOp(binaryOp)) {
-                assert !convertLHSToNumeric && !returnOldValue && assignedValue != null;
-                if (constAssignment) {
-                    rhs = checkMutableBinding(rhs, scopeVar.getName());
-                }
-                JavaScriptNode readNode = tagExpression(scopeVar.createReadNode(), identNode);
-                JavaScriptNode writeNode = scopeVar.createWriteNode(rhs);
-                return factory.createBinary(context, binaryOp, readNode, writeNode);
+            // e.g.: lhs *= rhs => lhs = lhs * rhs
+            // If lhs is a side-effecting getter that deletes lhs, we must not throw a
+            // ReferenceError at the lhs assignment since the lhs reference is already resolved.
+            // We also need to ensure that HasBinding is idempotent or evaluated at most once.
+            Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> pair = scopeVar.createCompoundAssignNode();
+            JavaScriptNode readNode = tagExpression(pair.getFirst().get(), identNode);
+            if (convertLHSToNumeric) {
+                readNode = factory.createToNumericOperand(readNode);
+            }
+            VarRef prevValueTemp = null;
+            if (returnOldValue) {
+                prevValueTemp = environment.createTempVar();
+                readNode = prevValueTemp.createWriteNode(readNode);
+            }
+            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, rhs), identNode);
+            if (constAssignment) {
+                binOpNode = checkMutableBinding(binOpNode, scopeVar.getName());
+            }
+            JavaScriptNode writeNode = pair.getSecond().apply(binOpNode);
+            if (returnOldValue) {
+                return factory.createDual(context, writeNode, prevValueTemp.createReadNode());
             } else {
-                // e.g.: lhs *= rhs => lhs = lhs * rhs
-                // If lhs is a side-effecting getter that deletes lhs, we must not throw a
-                // ReferenceError at the lhs assignment since the lhs reference is already resolved.
-                // We also need to ensure that HasBinding is idempotent or evaluated at most once.
-                Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> pair = scopeVar.createCompoundAssignNode();
-                JavaScriptNode readNode = tagExpression(pair.getFirst().get(), identNode);
-                if (convertLHSToNumeric) {
-                    readNode = factory.createToNumericOperand(readNode);
-                }
-                VarRef prevValueTemp = null;
-                if (returnOldValue) {
-                    prevValueTemp = environment.createTempVar();
-                    readNode = prevValueTemp.createWriteNode(readNode);
-                }
-                JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, rhs), identNode);
-                if (constAssignment) {
-                    binOpNode = checkMutableBinding(binOpNode, scopeVar.getName());
-                }
-                JavaScriptNode writeNode = pair.getSecond().apply(binOpNode);
-                if (returnOldValue) {
-                    return factory.createDual(context, writeNode, prevValueTemp.createReadNode());
-                } else {
-                    return writeNode;
-                }
+                return writeNode;
             }
         }
     }
@@ -3054,14 +3060,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode transformDestructuringArrayAssignment(Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment) {
-        LiteralNode.ArrayLiteralNode arrayLiteralNode = (LiteralNode.ArrayLiteralNode) lhsExpression;
-        List<Expression> elementExpressions = arrayLiteralNode.getElementExpressions();
-        JavaScriptNode[] initElements = javaScriptNodeArray(elementExpressions.size());
-        VarRef iteratorTempVar = environment.createTempVar();
         VarRef valueTempVar = environment.createTempVar();
         JavaScriptNode initValue = valueTempVar.createWriteNode(assignedValue);
-        // By default, we use the hint to track the type of iterator.
         JavaScriptNode getIterator = factory.createGetIterator(initValue);
+        LiteralNode.ArrayLiteralNode arrayLiteralNode = (LiteralNode.ArrayLiteralNode) lhsExpression;
+        List<Expression> elementExpressions = arrayLiteralNode.getElementExpressions();
+
+        return this.transformDestructuringArrayAssignment(elementExpressions, getIterator, valueTempVar, initializationAssignment);
+    }
+
+    private JavaScriptNode transformDestructuringArrayAssignment(List<Expression> elementExpressions, JavaScriptNode getIterator, VarRef valueTempVar, boolean initializationAssignment) {
+        JavaScriptNode[] initElements = javaScriptNodeArray(elementExpressions.size());
+        VarRef iteratorTempVar = environment.createTempVar();
+        // By default, we use the hint to track the type of iterator.
         JavaScriptNode initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
 
         for (int i = 0; i < elementExpressions.size(); i++) {
@@ -3083,7 +3094,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (init != null) {
                 rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
             }
-            if (lhsExpr != null && lhsExpr.isTokenType(TokenType.SPREAD_ARRAY)) {
+            // todo-lw: this change is kind of sus
+            if (lhsExpr != null && (lhsExpr.isTokenType(TokenType.SPREAD_ARRAY) || lhsExpr.isTokenType(TokenType.SPREAD_ARGUMENT))) {
                 rhsNode = factory.createIteratorToArray(context, iteratorTempVar.createReadNode());
                 lhsExpr = ((UnaryNode) lhsExpr).getExpression();
             }
@@ -3095,6 +3107,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         JavaScriptNode closeIfNotDone = factory.createIteratorCloseIfNotDone(context, createBlock(initElements), iteratorTempVar.createReadNode());
         return factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempVar.createReadNode());
+    }
+
+    private JavaScriptNode transformAssignmentExtractor(CallNode fakeCallNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertToNumeric, boolean initializationAssignment) {
+        // todo-lw: call node :(
+
+        final var functionExpr = fakeCallNode.getFunction();
+        final var function = transform(functionExpr);
+
+        var receiver = function;
+        if (functionExpr instanceof AccessNode) {
+            final AccessNode accessNode = (AccessNode) functionExpr;
+            receiver = transform(accessNode.getBase());
+        }
+
+        final var invokeCustomMatcherOrThrowNode = InvokeCustomMatcherOrThrowNode.create(context, function, assignedValue, receiver);
+
+        final var args = fakeCallNode.getArgs();
+        VarRef valueTempVar = environment.createTempVar();
+        return this.transformDestructuringArrayAssignment(args, invokeCustomMatcherOrThrowNode, valueTempVar, initializationAssignment);
     }
 
     private JavaScriptNode transformDestructuringObjectAssignment(Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment) {
