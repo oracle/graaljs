@@ -2130,49 +2130,83 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return desugarForInOrOfBody(forNode, getIterator, jumpTarget);
     }
 
+    private JavaScriptNode desugarForAwaitOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
+        assert forNode.isForAwaitOf();
+        JavaScriptNode getIterator = factory.createGetAsyncIterator(modify);
+        return desugarForInOrOfBody(forNode, getIterator, jumpTarget);
+    }
+
+    /**
+     * Desugars a for in/of/await-of loop body.
+     *
+     * <code>
+     * <pre>
+     * var iterator = ForIn/OfHeadEvaluation();
+     * break: while (true) {
+     *     var nextResult = IteratorNext(iterator);
+     *     var done = IteratorComplete(nextResult);
+     *     var nextValue = IteratorValue(nextResult);
+     *     if (done) break;
+     *     continue: {{ // per-iteration scope
+     *         let [[binding]];
+     *         try {
+     *             [[binding]] := nextValue, nextValue = undefined;
+     *             [[for:body]];
+     *         } catch (e) {
+     *             IteratorClose(iterator, e);
+     *         }
+     *     }}
+     * }
+     * </pre>
+     * </code>
+     */
     private JavaScriptNode desugarForInOrOfBody(ForNode forNode, JavaScriptNode iterator, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         assert forNode.isForInOrOf();
         VarRef iteratorVar = environment.createTempVar();
         VarRef nextResultVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
-        JavaScriptNode iteratorNext = factory.createIteratorNext(iteratorVar.createReadNode());
-        // nextResult = IteratorNext(iterator)
-        // while(!(done = IteratorComplete(nextResult)))
-        JavaScriptNode condition = factory.createDual(context,
-                        factory.createIteratorSetDone(iteratorVar.createReadNode(), factory.createConstantBoolean(true)),
-                        factory.createUnary(UnaryOperation.NOT, factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
+
+        JavaScriptNode iteratorNext;
+        if (forNode.isForAwaitOf()) {
+            // nextResult = Await(IteratorNext(iterator))
+            iteratorNext = awaitAsyncIteratorNext(iteratorVar.createReadNode());
+        } else {
+            // nextResult = IteratorNext(iterator)
+            iteratorNext = factory.createIteratorNext(iteratorVar.createReadNode());
+        }
+
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsPerIterationScope(forNode) ? newPerIterationEnvironment(lc.getCurrentBlock().getScope()) : environment)) {
-            // var nextValue = IteratorValue(nextResult);
-            // iterator.[[Done]] = false;
-            // nextBinding := nextValueTmp;
-            // nextResult = nextValue = undefined; // clear no longer needed temp frame slots
-            // <for:body>
-            VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
-            VarRef nextValueVar = environment.createTempVar();
-            VarRef iteratorVar2 = environment.findTempVar(iteratorVar.getFrameSlot());
-            JavaScriptNode nextResult = nextResultVar2.createReadNode();
-            JavaScriptNode nextValue = factory.createIteratorValue(nextResult);
-            JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
-            JavaScriptNode nextBindingInit = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
-            JavaScriptNode clearTempSlots = nextResultVar2.createWriteNode(nextValueVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE)));
+            VarRef nextValueVarInner = environment.findTempVar(nextResultVar.getFrameSlot());
+            JavaScriptNode nextValue = nextValueVarInner.createReadNode();
+            JavaScriptNode nextBindingInit = tagStatement(desugarForHeadAssignment(forNode, nextValue), forNode);
+            JavaScriptNode clearTempSlot = nextValueVarInner.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
             JavaScriptNode body = transform(forNode.getBody());
             wrappedBody = blockEnv.wrapBlockScope(createBlock(
-                            writeNextValue,
-                            factory.createIteratorSetDone(iteratorVar2.createReadNode(), factory.createConstantBoolean(false)),
-                            nextBindingInit,
-                            clearTempSlots,
+                            factory.createTryFinally(nextBindingInit, clearTempSlot),
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
-        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, wrappedBody);
+
+        if (forNode.isForAwaitOf()) {
+            wrappedBody = wrapAsyncIteratorClose(wrappedBody, iteratorVar.createReadNode());
+        } else {
+            wrappedBody = factory.createIteratorCloseWrapper(context, wrappedBody, iteratorVar.createReadNode(), false);
+        }
+
+        RepeatingNode repeatingNode = factory.createForOfRepeatingNode(iteratorNext, wrappedBody,
+                        (JSWriteFrameSlotNode) nextResultVar.createWriteNode(null));
         LoopNode loopNode = factory.createLoopNode(repeatingNode);
-        JavaScriptNode whileNode = forNode.isForOf() ? factory.createDesugaredForOf(loopNode) : factory.createDesugaredForIn(loopNode);
-        JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode());
-        JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
-        wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
+        JavaScriptNode whileNode = forNode.isForOf()
+                        ? forNode.isForAwaitOf()
+                                        ? factory.createDesugaredForAwaitOf(loopNode)
+                                        : factory.createDesugaredForOf(loopNode)
+                        : factory.createDesugaredForIn(loopNode);
         ensureHasSourceSection(whileNode, forNode);
-        return createBlock(iteratorInit, wrappedWhile);
+
+        JavaScriptNode wrappedWhile = jumpTarget.wrapBreakTargetNode(whileNode);
+        JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
+        return createBlock(iteratorInit, factory.createTryFinally(wrappedWhile, resetIterator));
     }
 
     private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next) {
@@ -2185,60 +2219,24 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private JavaScriptNode desugarForAwaitOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
-        assert forNode.isForAwaitOf();
-        VarRef iteratorVar = environment.createTempVar();
-        VarRef nextResultVar = environment.createTempVar();
-        JavaScriptNode getIterator = factory.createGetAsyncIterator(modify);
-        JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
-
+    private JavaScriptNode awaitAsyncIteratorNext(JavaScriptNode iterator) {
         currentFunction().addAwait();
-        JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
-        JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
         JSFrameDescriptor functionFrameDesc = environment.getFunctionFrameDescriptor();
-        JSFrameSlot stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
-        JavaScriptNode iteratorNext = factory.createAsyncIteratorNext(context, stateSlot, iteratorVar.createReadNode(),
+        var iterNextStateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Int);
+        var asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
+        var asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
+        return factory.createAsyncIteratorNext(context, iterNextStateSlot, iterator,
                         asyncContextNode, asyncResultNode);
-        // nextResult = Await(IteratorNext(iterator))
-        // while(!(done = IteratorComplete(nextResult)))
-        JavaScriptNode condition = factory.createDual(context,
-                        factory.createIteratorSetDone(iteratorVar.createReadNode(), factory.createConstantBoolean(true)),
-                        factory.createUnary(UnaryOperation.NOT, factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
-        JavaScriptNode wrappedBody;
-        try (EnvironmentCloseable blockEnv = new EnvironmentCloseable(needsPerIterationScope(forNode) ? newPerIterationEnvironment(lc.getCurrentBlock().getScope()) : environment)) {
-            // var nextValue = IteratorValue(nextResult);
-            // iterator.[[Done]] = false;
-            // nextBinding := nextValueTmp;
-            // nextResult = nextValue = undefined; // clear no longer needed temp frame slots
-            // <for:body>
-            VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
-            VarRef nextValueVar = environment.createTempVar();
-            VarRef iteratorVar2 = environment.findTempVar(iteratorVar.getFrameSlot());
-            JavaScriptNode nextResult = nextResultVar2.createReadNode();
-            JavaScriptNode nextValue = factory.createIteratorValue(nextResult);
-            JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
-            JavaScriptNode nextBindingInit = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
-            JavaScriptNode clearTempSlots = nextResultVar2.createWriteNode(nextValueVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE)));
-            JavaScriptNode body = transform(forNode.getBody());
-            wrappedBody = blockEnv.wrapBlockScope(createBlock(
-                            writeNextValue,
-                            factory.createIteratorSetDone(iteratorVar2.createReadNode(), factory.createConstantBoolean(false)),
-                            nextBindingInit,
-                            clearTempSlots,
-                            body));
-        }
-        wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
-        RepeatingNode repeatingNode = factory.createWhileDoRepeatingNode(condition, wrappedBody);
-        LoopNode loopNode = factory.createLoopNode(repeatingNode);
-        JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(loopNode);
+    }
+
+    private JavaScriptNode wrapAsyncIteratorClose(JavaScriptNode body, JavaScriptNode iterator) {
         currentFunction().addAwait();
-        stateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
-        JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, stateSlot, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(),
+        JSFrameDescriptor functionFrameDesc = environment.getFunctionFrameDescriptor();
+        var iterCloseStateSlot = addGeneratorStateSlot(functionFrameDesc, FrameSlotKind.Object);
+        var asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
+        var asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
+        return factory.createAsyncIteratorCloseWrapper(context, iterCloseStateSlot, body, iterator,
                         asyncContextNode, asyncResultNode);
-        JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
-        wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
-        ensureHasSourceSection(whileNode, forNode);
-        return createBlock(iteratorInit, wrappedWhile);
     }
 
     private boolean needsPerIterationScope(ForNode forNode) {
@@ -3105,7 +3103,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 initElements[i] = rhsNode;
             }
         }
-        JavaScriptNode closeIfNotDone = factory.createIteratorCloseIfNotDone(context, createBlock(initElements), iteratorTempVar.createReadNode());
+        JavaScriptNode closeIfNotDone = factory.createIteratorCloseWrapper(context, createBlock(initElements), iteratorTempVar.createReadNode(), true);
         return factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempVar.createReadNode());
     }
 

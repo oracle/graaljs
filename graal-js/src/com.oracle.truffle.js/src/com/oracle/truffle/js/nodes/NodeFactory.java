@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -535,6 +535,10 @@ public class NodeFactory {
 
     public JavaScriptNode createDesugaredForAwaitOf(LoopNode loopNode) {
         return WhileNode.createDesugaredForAwaitOf(loopNode);
+    }
+
+    public RepeatingNode createForOfRepeatingNode(JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
+        return WhileNode.createForOfRepeatingNode(nextResultNode, body, writeNextValueNode);
     }
 
     public RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode,
@@ -1111,9 +1115,9 @@ public class NodeFactory {
         return IteratorIsDoneNode.create(iterator);
     }
 
-    public JavaScriptNode createAsyncIteratorNext(JSContext context, JSFrameSlot stateSlot, JavaScriptNode createReadNode,
+    public JavaScriptNode createAsyncIteratorNext(JSContext context, JSFrameSlot stateSlot, JavaScriptNode iterator,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        return AsyncIteratorNextNode.create(context, stateSlot.getIndex(), createReadNode, asyncContextNode, asyncResultNode);
+        return AsyncIteratorNextNode.create(context, stateSlot.getIndex(), iterator, asyncContextNode, asyncResultNode);
     }
 
     public JavaScriptNode createIteratorValue(JavaScriptNode iterator) {
@@ -1125,8 +1129,8 @@ public class NodeFactory {
         return AsyncIteratorCloseWrapperNode.create(context, stateSlot.getIndex(), loopNode, iterator, asyncContextNode, asyncResultNode);
     }
 
-    public JavaScriptNode createIteratorCloseIfNotDone(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
-        return IteratorCloseWrapperNode.create(context, block, iterator);
+    public JavaScriptNode createIteratorCloseWrapper(JSContext context, JavaScriptNode block, JavaScriptNode iterator, boolean arrayDestructuring) {
+        return IteratorCloseWrapperNode.create(context, block, iterator, arrayDestructuring);
     }
 
     public IteratorToArrayNode createIteratorToArray(JSContext context, JavaScriptNode iterator) {

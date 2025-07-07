@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,9 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
+import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
@@ -114,6 +117,11 @@ public final class WhileNode extends StatementNode {
         return new WhileNode(loopNode, ControlFlowRootTag.Type.DoWhileIteration);
     }
 
+    public static RepeatingNode createForOfRepeatingNode(JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
+        JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
+        return new ForOfRepeatingNode(nextResultNode, nonVoidBody, writeNextValueNode);
+    }
+
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == ControlFlowRootTag.class) {
@@ -131,10 +139,10 @@ public final class WhileNode extends StatementNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
             // The repeating node should not have a wrapper, because it has no source section
-            if (loop.getRepeatingNode() instanceof AbstractRepeatingNode) {
-                AbstractRepeatingNode repeatingNode = (AbstractRepeatingNode) loop.getRepeatingNode();
+            if (loop.getRepeatingNode() instanceof AbstractRepeatingNode repeatingNode) {
                 JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class, materializedTags);
-                JavaScriptNode conditionNode = JSTaggedExecutionNode.createForInput(repeatingNode.conditionNode, ControlFlowBranchTag.class,
+                JavaScriptNode conditionNode = repeatingNode.conditionNode == null ? null
+                                : JSTaggedExecutionNode.createForInput(repeatingNode.conditionNode, ControlFlowBranchTag.class,
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()), materializedTags);
                 if (bodyNode == repeatingNode.bodyNode && conditionNode == repeatingNode.conditionNode) {
                     return this;
@@ -149,6 +157,8 @@ public final class WhileNode extends StatementNode {
                 WhileNode materialized;
                 if (repeatingNode instanceof DoWhileRepeatingNode) {
                     materialized = new WhileNode(new DoWhileRepeatingNode(conditionNode, bodyNode), loopType);
+                } else if (repeatingNode instanceof ForOfRepeatingNode forOf) {
+                    materialized = new WhileNode(new ForOfRepeatingNode(forOf.nextResultNode, bodyNode, forOf.writeNextValueNode), loopType);
                 } else {
                     assert repeatingNode instanceof WhileDoRepeatingNode;
                     materialized = new WhileNode(new WhileDoRepeatingNode(conditionNode, bodyNode), loopType);
@@ -202,7 +212,6 @@ public final class WhileNode extends StatementNode {
         public boolean executeRepeating(VirtualFrame frame) {
             executeBody(frame);
             return executeCondition(frame);
-
         }
 
         @Override
@@ -259,6 +268,74 @@ public final class WhileNode extends StatementNode {
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new WhileDoRepeatingNode(cloneUninitialized(conditionNode, materializedTags), cloneUninitialized(bodyNode, materializedTags));
+        }
+    }
+
+    /**
+     * For-in/of/await-of loop.
+     */
+    static final class ForOfRepeatingNode extends AbstractRepeatingNode implements ResumableNode.WithIntState {
+
+        @Child JavaScriptNode nextResultNode;
+        @Child JSWriteFrameSlotNode writeNextValueNode;
+        @Child IteratorCompleteNode iteratorCompleteNode = IteratorCompleteNode.create();
+        @Child IteratorValueNode iteratorValueNode = IteratorValueNode.create();
+
+        ForOfRepeatingNode(JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
+            super(null, body);
+            this.nextResultNode = nextResultNode;
+            this.writeNextValueNode = writeNextValueNode;
+        }
+
+        private Object executeNextResult(VirtualFrame frame) {
+            return nextResultNode.execute(frame);
+        }
+
+        @Override
+        public boolean executeRepeating(VirtualFrame frame) {
+            Object nextResult = executeNextResult(frame);
+            boolean done = iteratorCompleteNode.execute(nextResult);
+            Object nextValue = iteratorValueNode.execute(nextResult);
+            if (done) {
+                return false;
+            }
+            writeNextValueNode.executeWrite(frame, nextValue);
+            try {
+                executeBody(frame);
+            } finally {
+                writeNextValueNode.executeWrite(frame, Undefined.instance);
+            }
+            return true;
+        }
+
+        @Override
+        public Object resume(VirtualFrame frame, int stateSlot) {
+            int state = getStateAsIntAndReset(frame, stateSlot);
+            if (state == 0) {
+                Object nextResult = executeNextResult(frame);
+                boolean done = iteratorCompleteNode.execute(nextResult);
+                Object nextValue = iteratorValueNode.execute(nextResult);
+                if (done) {
+                    return false;
+                }
+                writeNextValueNode.executeWrite(frame, nextValue);
+            }
+            try {
+                executeBody(frame);
+            } catch (YieldException e) {
+                setStateAsInt(frame, stateSlot, 1);
+                throw e;
+            } finally {
+                writeNextValueNode.executeWrite(frame, Undefined.instance);
+            }
+            return true;
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ForOfRepeatingNode(cloneUninitialized(nextResultNode, materializedTags),
+                            cloneUninitialized(bodyNode, materializedTags),
+                            cloneUninitialized(writeNextValueNode, materializedTags));
         }
     }
 }
