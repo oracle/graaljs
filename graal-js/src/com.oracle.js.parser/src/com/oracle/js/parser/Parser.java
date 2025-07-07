@@ -1046,7 +1046,7 @@ public class Parser extends AbstractParser {
                         throw invalidLHSError(lhs);
                     }
                     break;
-                } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
+                } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && (isDestructuringLhs(lhs) || isExtractorLhs(lhs)) && (inPatternPosition || !lhs.isParenthesized())) {
                     verifyDestructuringAssignmentPattern(lhs, CONTEXT_ASSIGNMENT_TARGET);
                     break;
                 } else if (!(isWebCompatAssignmentTargetType(lhs) && (opType == ASSIGN || opType.isAssignmentOperator()))) {
@@ -1069,6 +1069,11 @@ public class Parser extends AbstractParser {
             return ES6_DESTRUCTURING && isES6();
         }
         return false;
+    }
+
+    private boolean isExtractorLhs(Expression lhs) {
+        // todo-lw: call node :(
+        return lhs instanceof CallNode;
     }
 
     private void verifyDestructuringAssignmentPattern(Expression pattern, String contextString) {
@@ -1103,6 +1108,26 @@ public class Parser extends AbstractParser {
             public boolean enterIndexNode(IndexNode indexNode) {
                 if (indexNode.isOptional()) {
                     throw error(AbstractParser.message(MSG_INVALID_LVALUE), indexNode.getToken());
+                }
+                return false;
+            }
+
+            @Override
+            public boolean enterCallNode(CallNode callNode) {
+                if (callNode.isParenthesized()) {
+                    throw error(AbstractParser.message(MSG_INVALID_LVALUE), callNode.getToken());
+                }
+                // todo-lw: surely there is a better way to do this
+                for (final var arg : callNode.getArgs()) {
+                    if (arg instanceof IdentNode) {
+                        enterIdentNode((IdentNode) arg);
+                    } else if (arg instanceof LiteralNode<?>) {
+                        enterLiteralNode((LiteralNode<?>) arg);
+                    } else if (arg instanceof ObjectNode) {
+                        enterObjectNode((ObjectNode) arg);
+                    } else {
+                        enterDefault(arg);
+                    }
                 }
                 return false;
             }
@@ -2479,9 +2504,12 @@ public class Parser extends AbstractParser {
             final int varLine = line;
             final long varToken = Token.recast(token, varType);
 
-            // Get name of var.
-            final Expression binding = bindingIdentifierOrPattern(yield, await, CONTEXT_VARIABLE_NAME);
-            final boolean isDestructuring = !(binding instanceof IdentNode);
+            // Get left hand side.
+            // todo-lw: conditionalExpression feels way too broad here, but binding also uses it so idk
+            final Expression binding = conditionalExpression(true, yield, await, CoverExpressionError.DENY);
+
+            final boolean isExtracting = binding instanceof CallNode;
+            final boolean isDestructuring = !(binding instanceof IdentNode) && !isExtracting;
             if (isDestructuring) {
                 final int finalVarFlags = varFlags | VarNode.IS_DESTRUCTURING;
                 verifyDestructuringBindingPattern(binding, new Consumer<IdentNode>() {
@@ -2529,7 +2557,7 @@ public class Parser extends AbstractParser {
                 // else, if we are in a for loop, delay checking until we know the kind of loop
             }
 
-            if (!isDestructuring) {
+            if (!isDestructuring && !isExtracting) {
                 assert init != null || varType != CONST || !isStatement;
                 final IdentNode ident = (IdentNode) binding;
                 if (varType != VAR && ident.getName().equals(LET.getName())) {
@@ -2836,6 +2864,26 @@ public class Parser extends AbstractParser {
                     throw error("Expected a valid binding identifier", identNode.getToken());
                 }
                 identifierCallback.accept(identNode);
+                return false;
+            }
+
+            // todo-lw: this is duplicate code
+            @Override
+            public boolean enterCallNode(CallNode callNode) {
+                if (callNode.isParenthesized()) {
+                    throw error(AbstractParser.message(MSG_INVALID_LVALUE), callNode.getToken());
+                }
+                for (final var arg : callNode.getArgs()) {
+                    if (arg instanceof IdentNode) {
+                        enterIdentNode((IdentNode) arg);
+                    } else if (arg instanceof LiteralNode<?>) {
+                        enterLiteralNode((LiteralNode<?>) arg);
+                    } else if (arg instanceof ObjectNode) {
+                        enterObjectNode((ObjectNode) arg);
+                    } else {
+                        enterDefault(arg);
+                    }
+                }
                 return false;
             }
 
