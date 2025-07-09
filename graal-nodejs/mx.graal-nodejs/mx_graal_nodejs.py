@@ -686,6 +686,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 '--language:nodejs',
                 '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
                 *(['--language:wasm'] if is_wasm_available() else []),
+                # Disable JLine FFM provider at native image build time (node launcher does not use jline)
+                "-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true",
             ],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
