@@ -588,12 +588,21 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 *(['wasm:WASM'] if is_wasm_available() else [])
             ],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
-            build_args=[],
+            build_args=[
+                # Uncomment to disable JLine FFM provider at native image build time
+                # '-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true',
+                '--enable-native-access=org.graalvm.shadowed.jline',
+            ],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
             ] if not mx.is_windows() else [],
             language='js',
+            default_vm_args=[
+                '--vm.-enable-native-access=org.graalvm.shadowed.jline',
+            ],
+            # Force launcher and jline on ImageModulePath (needed for --enable-native-access=org.graalvm.shadowed.jline)
+            use_modules='image',
         )
     ],
     stability="supported",

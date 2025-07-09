@@ -455,6 +455,9 @@ suite = {
         "truffle.attach.library": "../jvmlibs/<lib:truffleattach>",
       },
       "liblang_relpath": "../lib/<lib:jsvm>",
+      "default_vm_args": [
+        "--vm.-enable-native-access=org.graalvm.shadowed.jline",
+      ],
     },
 
     "libjsvm": {
@@ -467,6 +470,9 @@ suite = {
         "-Dpolyglot.image-build-time.PreinitializeContexts=js",
         # Configure launcher
         "-Dorg.graalvm.launcher.class=com.oracle.truffle.js.shell.JSLauncher",
+        # uncomment to disable JLine FFM provider at native image build time
+        #"-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true",
+        "--enable-native-access=org.graalvm.shadowed.jline",
       ],
       "dynamicBuildArgs": "libjsvm_build_args",
     },
