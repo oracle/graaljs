@@ -95,6 +95,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "spotbugs" : "true",
+      "spotbugsIgnoresGenerated" : True,
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.21.0",
       "workingSets" : "Truffle,JavaScript,NodeJS",
