@@ -1140,6 +1140,10 @@ namespace v8 {
         return (void*) result;
     }
 
+    void api_internal::AnnotateStrongRetainer(internal::Address* location, const char* label) {
+        TRACE
+    }
+
     bool V8::Dispose() {
         TRACE
         return false;

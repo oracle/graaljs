@@ -531,7 +531,7 @@ P* PersistentBase<T>::ClearWeak() {
 
 template <class T>
 void PersistentBase<T>::AnnotateStrongRetainer(const char* label) {
-  api_internal::AnnotateStrongRetainer(this->slot(), label);
+  api_internal::AnnotateStrongRetainer(reinterpret_cast<internal::Address*>(ptr()), label);
 }
 
 template <class T>
