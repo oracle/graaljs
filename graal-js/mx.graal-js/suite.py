@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-  "mxversion" : "7.45.0",
+  "mxversion" : "7.58.0",
 
   "name" : "graal-js",
 
