@@ -12,7 +12,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 
   overlay: if useOverlay then overlay else no_overlay,
 
-  specVersion: "3",
+  specVersion: "7",
 
   tierConfig: {
     "tier1": "gate",
