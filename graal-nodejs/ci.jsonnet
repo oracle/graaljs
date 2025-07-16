@@ -145,36 +145,37 @@ local cicommon = import '../ci/common.jsonnet';
   local defaultToTarget = ci.defaultToTarget,
   local includePlatforms = ci.includePlatforms,
   local excludePlatforms = ci.excludePlatforms,
-  local gateOnMain = ci.gateOnMain,
+  local tier1 = ci.promoteToTier1(),
+  local tier2 = ci.promoteToTier2(),
 
   // Style gates
   local styleBuilds = generateBuilds([
-    graalNodeJs + common.gateStyleFullBuild                                                                                        + {name: 'style-fullbuild'}
-  ], platforms=ci.styleGatePlatforms, defaultTarget=common.gate),
+    graalNodeJs + common.gateStyleFullBuild                                                                           + tier2      + {name: 'style-fullbuild'}
+  ], platforms=ci.styleGatePlatforms, defaultTarget=common.tier3),
 
   // Builds that should run on all supported platforms
   local testingBuilds = generateBuilds([
     graalNodeJs          + build            + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'default'} +
-      promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.linux_aarch64, common.jdklatest + common.darwin_aarch64, common.jdklatest + common.windows_amd64]) +
+      promoteToTarget(common.tier3, ci.tier3Platforms) +
       promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
 
     graalNodeJs + vm_env + build            + gateVmSmokeTest                                                                 + ce + {name: 'graalvm-ce'} +
-      promoteToTarget(common.gate, [ci.mainGatePlatform]) +
-      promoteToTarget(common.gate, [common.jdklatest + common.darwin_aarch64, common.jdklatest + common.windows_amd64]) +
+      promoteToTarget(common.tier3, [common.jdklatest + common.linux_amd64, common.jdklatest + common.darwin_aarch64, common.jdklatest + common.windows_amd64]) +
       promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
     graalNodeJs + vm_env + build            + gateVmSmokeTest                                                                 + ee + {name: 'graalvm-ee'} +
-      promoteToTarget(common.gate, [ci.mainGatePlatform]),
+      promoteToTarget(common.tier3, [ci.mainGatePlatform]),
 
-    graalNodeJs + vm_env + build            + auxEngineCache                                                                  + ee + {name: 'aux-engine-cache'} + gateOnMain +
+    graalNodeJs + vm_env + build            + auxEngineCache                                                                  + ee + {name: 'aux-engine-cache'} +
+      promoteToTarget(common.tier3, [ci.mainGatePlatform]) +
       excludePlatforms([common.windows_amd64, common.darwin_amd64]), # unsupported on windows, too slow on darwin-amd64
   ] +
   // mx makeinnodeenv requires Visual Studio build tools on Windows.
-  [gateOnMain + excludePlatforms([common.windows_amd64]) + b for b in [
+  [promoteToTarget(common.tier3, [ci.mainGatePlatform]) + excludePlatforms([common.windows_amd64]) + b for b in [
     graalNodeJs          + buildAddons      + testNode('addons',        max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'addons'},
     graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'node-api'},
     graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'js-native-api'},
   ]] +
-  [gateOnMain + promoteToTarget(common.gate, [common.jdklatest + common.windows_amd64]) + b for b in [
+  [promoteToTarget(common.tier3, [common.jdklatest + common.linux_amd64, common.jdklatest + common.windows_amd64]) + b for b in [
     graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'async-hooks'},
     graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'es-module'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
@@ -182,7 +183,7 @@ local cicommon = import '../ci/common.jsonnet';
       excludePlatforms([common.darwin_amd64]), # times out on darwin-amd64
   ]] +
   # too slow on darwin-amd64
-  [gateOnMain + excludePlatforms([common.darwin_amd64]) + b for b in [
+  [promoteToTarget(common.tier3, [ci.mainGatePlatform]) + excludePlatforms([common.darwin_amd64]) + b for b in [
     graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='4G')                               + {name: 'parallel-1'},
     graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='4G')                               + {name: 'parallel-2'},
     graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='4G')                               + {name: 'parallel-3'},

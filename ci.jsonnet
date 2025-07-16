@@ -14,6 +14,13 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 
   specVersion: "3",
 
+  tierConfig: {
+    "tier1": "gate",
+    "tier2": "gate",
+    "tier3": "gate",
+    "tier4": "post-merge",
+  },
+
   builds: graalJs.builds + graalNodeJs.builds,
 
   // Set this flag to false to switch off the use of artifacts (pipelined builds).
@@ -89,6 +96,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 
   ce:: {defs:: $.defs, graalvm:: self.defs.ce},
   ee:: {defs:: $.defs, graalvm:: self.defs.ee},
+  local targets = common.targets,
 
   jdklatestPlatforms:: [
     common.jdklatest + common.linux_amd64,
@@ -103,6 +111,18 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     common.jdk21 + common.linux_amd64,
     common.jdklatest + common.linux_amd64,
   ],
+
+  tier1Platforms:: [common.jdklatest + common.linux_amd64],
+  tier2Platforms:: [common.jdklatest + common.linux_amd64],
+  tier3Platforms:: [
+    common.jdklatest + common.linux_amd64,
+    common.jdklatest + common.linux_aarch64,
+    common.jdklatest + common.darwin_aarch64,
+    common.jdklatest + common.windows_amd64,
+  ],
+
+  promoteToTier1(platforms=$.tier1Platforms):: $.promoteToTarget(targets.tier1, platforms),
+  promoteToTier2(platforms=$.tier2Platforms):: $.promoteToTarget(targets.tier2, platforms),
 
   graalvm_jdk21:: common['graalvm-ee-21'],
   jdk21unchained:: common.jdklatest + {
@@ -295,8 +315,6 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     },
   includePlatforms(platformSelector):: filterPlatforms(platformSelector),
   excludePlatforms(platformSelector):: filterPlatforms(makePlatformPredicate(exclude=platformSelector)),
-
-  gateOnMain:: self.promoteToTarget(common.gate, [self.mainGatePlatform]),
 
   local flattenArrayRec(arr) =
     if std.isArray(arr) then
