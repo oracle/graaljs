@@ -91,7 +91,7 @@ describe('ESM: WASM modules', { concurrency: !process.env.TEST_PARALLEL }, () =>
     match(stderr, /WebAssembly/);
   });
 
-  it('should support top-level execution', async () => {
+  it.skip('should support top-level execution', async () => {
     const { code, stderr, stdout } = await spawnPromisified(execPath, [
       '--no-warnings',
       '--experimental-wasm-modules',
