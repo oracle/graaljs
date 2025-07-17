@@ -21,8 +21,8 @@ test-write-heapsnapshot-options: FAIL
 
 # single executable app (needs WebAssembly)
 test-single-executable-application: PASS
-test-single-executable-application-assets: FAIL
-test-single-executable-application-assets-raw: FAIL
+test-single-executable-application-assets: PASS
+test-single-executable-application-assets-raw: PASS
 test-single-executable-application-disable-experimental-sea-warning: PASS
 test-single-executable-application-empty: FAIL
 test-single-executable-application-snapshot: FAIL

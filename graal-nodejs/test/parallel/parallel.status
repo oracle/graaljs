@@ -43,6 +43,9 @@ test-node-output-errors: FAIL
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
 
+# Cannot allocate typed array of length 4294967315
+test-buffer-tostring-4gb: FAIL
+
 # Tests the content of Node.js original help (--help option).
 # We print a different help message.
 test-cli-node-print-help: FAIL
@@ -71,8 +74,11 @@ test-fs-write: FAIL
 # (which is a foreign object when chromeinspector is used)
 test-process-get-builtin: SKIP
 
-# uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint)
+# uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint, %PrepareFunctionForOptimization)
 test-http-same-map: FAIL
+test-os-fast: FAIL
+test-timers-now: FAIL
+test-util-types: FAIL
 test-v8-flags: FAIL
 
 # heapsnapshot/heapdump/EmbedderGraph is not supported
@@ -86,12 +92,6 @@ test-worker-heap-snapshot: SKIP
 
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
-
-# --experimental-network-inspection
-test-inspector-emit-protocol-event: FAIL
-test-inspector-network-arbitrary-data: FAIL
-test-inspector-network-fetch: FAIL
-test-inspector-network-http: FAIL
 
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
