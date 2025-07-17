@@ -1812,7 +1812,7 @@ public final class GraalJSAccess {
             return null;
         } else {
             Source source = sourceSection.getSource();
-            return source.getName();
+            return Strings.fromJavaString(source.getName());
         }
     }
 
