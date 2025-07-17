@@ -124,6 +124,8 @@ function prepareExecution(options) {
   initializeSourceMapsHandlers();
   initializeDeprecations();
 
+  initializeConfigFileSupport();
+
   require('internal/dns/utils').initializeDns();
 
   setupSymbolDisposePolyfill();
@@ -397,6 +399,13 @@ function setupSQLite() {
 
   const { BuiltinModule } = require('internal/bootstrap/realm');
   BuiltinModule.allowRequireByUsers('sqlite');
+}
+
+function initializeConfigFileSupport() {
+  if (getOptionValue('--experimental-default-config-file') ||
+      getOptionValue('--experimental-config-file')) {
+    emitExperimentalWarning('--experimental-config-file');
+  }
 }
 
 function setupWebStorage() {

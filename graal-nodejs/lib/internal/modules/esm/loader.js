@@ -378,7 +378,7 @@ class ModuleLoader {
         throw new ERR_REQUIRE_ASYNC_MODULE(filename, parentFilename);
       }
       const status = job.module.getStatus();
-      debug('Module status', filename, status);
+      debug('Module status', job, status);
       if (status === kEvaluated) {
         return { wrap: job.module, namespace: job.module.getNamespaceSync(filename, parentFilename) };
       } else if (status === kInstantiated) {
@@ -408,8 +408,8 @@ class ModuleLoader {
       if (parentFilename) {
         message += ` (from ${parentFilename})`;
       }
-      message += 'A cycle involving require(esm) is disallowed to maintain ';
-      message += 'invariants madated by the ECMAScript specification';
+      message += ' A cycle involving require(esm) is not allowed to maintain ';
+      message += 'invariants mandated by the ECMAScript specification. ';
       message += 'Try making at least part of the dependency in the graph lazily loaded.';
       throw new ERR_REQUIRE_CYCLE_MODULE(message);
 

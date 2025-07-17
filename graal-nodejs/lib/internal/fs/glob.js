@@ -38,6 +38,7 @@ const {
   hideStackFrames,
 } = require('internal/errors');
 const assert = require('internal/assert');
+const { toPathIfFileURL } = require('internal/url');
 
 let minimatch;
 function lazyMinimatch() {
@@ -268,7 +269,7 @@ class Glob {
   constructor(pattern, options = kEmptyObject) {
     validateObject(options, 'options');
     const { exclude, cwd, withFileTypes } = options;
-    this.#root = cwd ?? '.';
+    this.#root = toPathIfFileURL(cwd) ?? '.';
     this.#withFileTypes = !!withFileTypes;
     if (exclude != null) {
       validateStringArrayOrFunction(exclude, 'options.exclude');
@@ -331,10 +332,7 @@ class Glob {
     const fullpath = resolve(this.#root, path);
 
     // If path is a directory, add trailing slash and test patterns again.
-    // TODO(Trott): Would running #isExcluded() first and checking isDirectory() only
-    // if it matches be more performant in the typical use case? #isExcluded()
-    // is often ()=>false which is about as optimizable as a function gets.
-    if (this.#cache.statSync(fullpath).isDirectory() && this.#isExcluded(`${fullpath}/`)) {
+    if (this.#isExcluded(`${fullpath}/`) && this.#cache.statSync(fullpath).isDirectory()) {
       return;
     }
 

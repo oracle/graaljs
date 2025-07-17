@@ -474,7 +474,7 @@ function initializeCJS() {
 //   -> a.<ext>
 //   -> a/index.<ext>
 
-let _readPackage = packageJsonReader.readPackage;
+let _readPackage = (requestPath) => packageJsonReader.read(path.resolve(requestPath, 'package.json'));
 ObjectDefineProperty(Module, '_readPackage', {
   __proto__: null,
   get() { return _readPackage; },
@@ -1636,9 +1636,9 @@ function wrapSafe(filename, content, cjsModuleInstance, format) {
     );
 
     // Cache the source map for the module if present.
-    const { sourceMapURL } = script;
+    const { sourceMapURL, sourceURL } = script;
     if (sourceMapURL) {
-      maybeCacheSourceMap(filename, content, cjsModuleInstance, false, undefined, sourceMapURL);
+      maybeCacheSourceMap(filename, content, cjsModuleInstance, false, sourceURL, sourceMapURL);
     }
 
     return {
@@ -1663,7 +1663,7 @@ function wrapSafe(filename, content, cjsModuleInstance, format) {
 
   // Cache the source map for the module if present.
   if (result.sourceMapURL) {
-    maybeCacheSourceMap(filename, content, cjsModuleInstance, false, undefined, result.sourceMapURL);
+    maybeCacheSourceMap(filename, content, cjsModuleInstance, false, result.sourceURL, result.sourceMapURL);
   }
 
   return result;
