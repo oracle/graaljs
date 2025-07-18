@@ -1186,30 +1186,34 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     /**
-     * Does the given map relate to any of the cached maps by upcasting? If so, obsolete the
-     * downcast map.
+     * Tries to merge the object's shape with any related shape in the cache to a more general shape
+     * that has the same properties but can store the values of both shapes. For example, a shape
+     * {@code {x: int}} could be merged with, and obsoleted by, a shape {@code {x: Object}}.
      *
-     * @param cacheShape The new map to check against
-     * @return true if a map was obsoleted
+     * @param objShape the new shape that would be inserted into the cache
+     * @return true if a shape was obsoleted
      */
-    protected static <T extends CacheNode<T>> boolean tryMergeShapes(Shape cacheShape, T head) {
-        assert cacheShape.isValid();
-        boolean result = false;
-
+    protected static <T extends CacheNode<T>> boolean tryMergeShapes(Shape objShape, T head) {
+        if (!objShape.isValid()) {
+            return false;
+        }
+        boolean merged = false;
         for (T cur = head; cur != null; cur = cur.getNext()) {
             if (cur.receiverCheck == null) {
                 continue;
             }
             Shape other = cur.receiverCheck.getShape();
-            if (cacheShape != other && other != null && other.isValid()) {
-                assert cacheShape.isValid();
-                result |= cacheShape.tryMerge(other) != null;
-                if (!cacheShape.isValid()) {
-                    break;
+            if (objShape != other && other != null && other.isValid()) {
+                Shape mergedShape = objShape.tryMerge(other);
+                if (mergedShape != null) {
+                    merged = true;
+                    if (!objShape.isValid()) {
+                        break;
+                    }
                 }
             }
         }
-        return result;
+        return merged;
     }
 
     protected void checkForUnstableAssumption(T head, Object thisObj) {
