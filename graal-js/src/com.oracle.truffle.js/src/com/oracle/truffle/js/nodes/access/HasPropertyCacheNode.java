@@ -91,10 +91,9 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @ExplodeLoop
     public boolean hasProperty(Object thisObj) {
-        HasCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericHasPropertyCacheNode) {
-                return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
+        for (HasCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericHasPropertyCacheNode generic) {
+                return generic.hasProperty(thisObj, this);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
@@ -107,7 +106,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -118,12 +117,12 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             }
             if (guard) {
                 if (!isSimpleShapeCheck && !receiverCheck.isValid()) {
-                    break;
+                    continue;
                 }
                 return c.hasProperty(castObj, this);
             }
         }
-        deoptimize(c);
+        deoptimize();
         return hasPropertyAndSpecialize(thisObj);
     }
 

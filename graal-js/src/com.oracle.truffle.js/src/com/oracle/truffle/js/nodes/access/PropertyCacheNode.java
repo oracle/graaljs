@@ -1108,8 +1108,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                         (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance);
     }
 
-    protected final void deoptimize(CacheNode<?> stop) {
-        if (CompilerDirectives.inCompiledCode() && stop != null) {
+    protected final void deoptimize() {
+        if (CompilerDirectives.inCompiledCode()) {
             /*
              * If the invalidation assumption is initialized, we have previously retried the cache.
              * Do not invalidate code here, since we might just re-shape the object (which does not
