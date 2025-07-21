@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanUnaryNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.runtime.JSInterruptedExecutionException;
 
 abstract class AbstractRepeatingNode extends JavaScriptNode implements RepeatingNode, ResumableNode {
@@ -55,7 +60,7 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
     @Child protected JavaScriptNode bodyNode;
 
     AbstractRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
-        this.conditionNode = JSToBooleanUnaryNode.create(condition);
+        this.conditionNode = condition == null ? null : JSToBooleanUnaryNode.create(condition);
         this.bodyNode = body;
     }
 
@@ -82,15 +87,34 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
         return executeRepeating(frame);
     }
 
-    public static boolean materializationNeeded(RepeatingNode repeatingNode) {
-        if (!(repeatingNode instanceof AbstractRepeatingNode)) {
-            // Other repeating nodes e.g. Generators are not instrumentable yet.
-            return false;
-        }
-        assert repeatingNode instanceof AbstractRepeatingNode;
+    protected boolean materializationNeeded() {
         // If we are using tagged nodes, this node is already materialized.
-        JavaScriptNode rnBodyNode = ((AbstractRepeatingNode) repeatingNode).bodyNode;
-        return !JSNodeUtil.isTaggedNode(rnBodyNode);
+        return !JSNodeUtil.isTaggedNode(bodyNode);
     }
 
+    @Override
+    public abstract AbstractRepeatingNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags);
+
+    protected final JavaScriptNode materializeBody(Set<Class<? extends Tag>> materializedTags) {
+        if (JSNodeUtil.isTaggedNode(bodyNode)) {
+            return bodyNode;
+        }
+        JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, JSTags.ControlFlowBlockTag.class, materializedTags);
+        if (newBody == bodyNode) {
+            newBody = cloneUninitialized(bodyNode, materializedTags);
+        }
+        return newBody;
+    }
+
+    protected final JavaScriptNode materializeCondition(Set<Class<? extends Tag>> materializedTags) {
+        if (conditionNode == null || JSNodeUtil.isTaggedNode(conditionNode)) {
+            return conditionNode;
+        }
+        JavaScriptNode newCondition = JSTaggedExecutionNode.createForInput(conditionNode, JSTags.ControlFlowBranchTag.class,
+                        JSTags.createNodeObjectDescriptor("type", JSTags.ControlFlowBranchTag.Type.Condition.name()), materializedTags);
+        if (newCondition == conditionNode) {
+            newCondition = cloneUninitialized(conditionNode, materializedTags);
+        }
+        return newCondition;
+    }
 }
