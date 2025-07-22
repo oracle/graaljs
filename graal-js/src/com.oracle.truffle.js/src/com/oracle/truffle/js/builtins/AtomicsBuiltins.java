@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,7 +117,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -1155,7 +1155,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 t = Math.max(q, 0);
             }
 
-            JSAgent agent = getRealm().getAgent();
+            JSRealm realm = getRealm();
+            JSAgent agent = realm.getAgent();
             if (!isAsync && !agent.canBlock()) {
                 errorBranch.enter();
                 throw createTypeErrorUnsupported();
@@ -1163,12 +1164,12 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
 
             PromiseCapabilityRecord promiseCapability = null;
-            JSDynamicObject resultObject = null;
+            JSObject resultObject = null;
 
             if (isAsyncProfile.profile(isAsync)) {
                 getContext().signalAsyncWaiterRecordUsage();
                 promiseCapability = newPromiseCapability();
-                resultObject = ordinaryObjectCreate(frame);
+                resultObject = ordinaryObjectCreate(realm);
             }
 
             wl.enterCriticalSection();
@@ -1238,12 +1239,12 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return newPromiseCapabilityNode.executeDefault();
         }
 
-        private JSDynamicObject ordinaryObjectCreate(VirtualFrame frame) {
+        private JSObject ordinaryObjectCreate(JSRealm realm) {
             if (objectCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 objectCreateNode = insert(CreateObjectNode.create(getContext()));
             }
-            return objectCreateNode.execute(frame);
+            return objectCreateNode.execute(realm);
         }
     }
 

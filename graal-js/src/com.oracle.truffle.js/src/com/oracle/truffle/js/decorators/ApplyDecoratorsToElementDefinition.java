@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.DecorationState;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -68,7 +70,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 @ImportStatic({Strings.class})
-public abstract class ApplyDecoratorsToElementDefinition extends Node {
+public abstract class ApplyDecoratorsToElementDefinition extends JavaScriptBaseNode {
 
     protected final JSContext context;
     @Child CreateDecoratorContextObjectNode createDecoratorContextNode;
@@ -98,9 +100,10 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Shared @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Shared @Cached InlinedBranchProfile errorBranch) {
+        JSRealm realm = getRealm();
         for (Object decorator : record.getDecorators()) {
             Object value = Undefined.instance;
-            Object newValue = executeDecoratorWithContext(frame, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
+            Object newValue = executeDecoratorWithContext(frame, realm, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
             if (isCallableNode.executeBoolean(newValue)) {
                 record.addInitializer(newValue);
             } else {
@@ -116,9 +119,10 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Shared @Cached InlinedBranchProfile errorBranch,
                     @Shared @Cached SetFunctionNameNode setFunctionName) {
+        JSRealm realm = getRealm();
         for (Object decorator : record.getDecorators()) {
             Object value = record.getValue();
-            Object newValue = executeDecoratorWithContext(frame, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
+            Object newValue = executeDecoratorWithContext(frame, realm, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
             if (isCallableNode.executeBoolean(newValue)) {
                 setFunctionName.execute(newValue, record.getKey());
                 record.setValue(newValue);
@@ -137,10 +141,11 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Shared @Cached InlinedBranchProfile errorBranch,
                     @Shared @Cached SetFunctionNameNode setFunctionName) {
+        JSRealm realm = getRealm();
         for (Object decorator : record.getDecorators()) {
             boolean isGetter = record.isGetter();
             Object value = isGetter ? record.getGetter() : record.getSetter();
-            Object newValue = executeDecoratorWithContext(frame, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
+            Object newValue = executeDecoratorWithContext(frame, realm, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
             if (isCallableNode.executeBoolean(newValue)) {
                 setFunctionName.execute(newValue, record.getKey(), isGetter ? Strings.GET : Strings.SET);
                 if (isGetter) {
@@ -169,11 +174,12 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Cached("create(context, SET)") CreateDataPropertyNode createSetDataPropertyNode,
                     @Cached IsObjectNode isObjectNode,
                     @Shared @Cached InlinedBranchProfile errorBranch) {
+        JSRealm realm = getRealm();
         for (Object decorator : record.getDecorators()) {
-            JSObject value = createObjectNode.execute(frame);
+            JSObject value = createObjectNode.execute(realm);
             createGetDataPropertyNode.executeVoid(value, Strings.GET, record.getGetter());
             createSetDataPropertyNode.executeVoid(value, Strings.SET, record.getSetter());
-            Object newValue = executeDecoratorWithContext(frame, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
+            Object newValue = executeDecoratorWithContext(frame, realm, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
             if (isObjectNode.executeBoolean(newValue)) {
                 Object newGetter = getGetterNode.getValue(newValue);
                 if (isCallableNode.executeBoolean(newGetter)) {
@@ -200,10 +206,10 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         record.cleanDecorator();
     }
 
-    private static Object executeDecoratorWithContext(VirtualFrame frame, ClassElementDefinitionRecord record, Object value, SimpleArrayList<Object> extraInitializers, Object decorator,
+    private static Object executeDecoratorWithContext(VirtualFrame frame, JSRealm realm, ClassElementDefinitionRecord record, Object value, SimpleArrayList<Object> extraInitializers, Object decorator,
                     CreateDecoratorContextObjectNode createDecoratorContextNode, JSFunctionCallNode callNode) {
         DecorationState state = new DecorationState();
-        JSObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
+        JSObject decoratorContext = createDecoratorContextNode.executeContext(frame, realm, record, extraInitializers, state);
         Object newValue = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, value, decoratorContext));
         state.finished = true;
         return newValue;

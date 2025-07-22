@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -112,7 +111,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        protected final JSObject next(VirtualFrame frame, JSForInIteratorObject state,
+        protected final JSObject next(JSForInIteratorObject state,
                         @Cached InlinedConditionProfile valuesProfile,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedBranchProfile growProfile,
@@ -133,7 +132,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     assert JSGuards.isString(nextValue);
                 }
             }
-            return createIterResultObjectNode.execute(frame, nextValue, done);
+            return createIterResultObjectNode.execute(nextValue, done);
         }
 
         private Object findNext(JSForInIteratorObject state,

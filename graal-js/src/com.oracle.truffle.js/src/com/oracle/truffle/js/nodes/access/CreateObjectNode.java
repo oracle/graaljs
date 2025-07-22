@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,17 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.CreateObjectNodeFactory.CreateObjectWithCachedPrototypeNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -87,28 +80,24 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
     @NeverDefault
     public static CreateObjectWithPrototypeNode createOrdinaryWithPrototype(JSContext context) {
-        return createWithPrototype(context, null, JSOrdinary.INSTANCE);
+        return createWithPrototype(context, JSOrdinary.INSTANCE);
     }
 
-    public static CreateObjectWithPrototypeNode createOrdinaryWithPrototype(JSContext context, JavaScriptNode prototypeExpression) {
-        return createWithPrototype(context, prototypeExpression, JSOrdinary.INSTANCE);
+    @NeverDefault
+    public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JSClass jsclass) {
+        return CreateObjectWithPrototypeNode.create(context, jsclass);
     }
 
-    public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
-        return CreateObjectWithCachedPrototypeNode.create(context, prototypeExpression, jsclass);
-    }
-
+    @NeverDefault
     static CreateObjectNode createDictionary(JSContext context) {
         return new CreateDictionaryObjectNode(context);
     }
 
-    public JSObject execute(VirtualFrame frame) {
-        return executeWithRealm(frame, getRealm());
+    public final JSObject execute(JSRealm realm) {
+        return executeWithPrototype(realm, realm.getObjectPrototype());
     }
 
-    public abstract JSObject executeWithRealm(VirtualFrame frame, JSRealm realm);
-
-    protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
+    public abstract JSObject executeWithPrototype(JSRealm realm, Object proto);
 
     public boolean seenArrayPrototype() {
         return false;
@@ -120,49 +109,33 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public JSObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+        public JSObject executeWithPrototype(JSRealm realm, Object proto) {
+            assert proto == realm.getObjectPrototype() : proto;
             return JSOrdinary.create(context, realm);
-        }
-
-        @Override
-        protected CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new CreateOrdinaryObjectNode(context);
         }
     }
 
     public abstract static class CreateObjectWithPrototypeNode extends CreateObjectNode {
-        @Child @Executed protected JavaScriptNode prototypeExpression;
-
-        protected CreateObjectWithPrototypeNode(JSContext context, JavaScriptNode prototypeExpression) {
-            super(context);
-            this.prototypeExpression = prototypeExpression;
-        }
-
-        public abstract JSObject execute(JSDynamicObject prototype);
-
-        @Override
-        public final JSObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
-            return execute(frame);
-        }
-
-        @Override
-        protected abstract CreateObjectWithPrototypeNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
-    }
-
-    protected abstract static class CreateObjectWithCachedPrototypeNode extends CreateObjectWithPrototypeNode {
         protected final JSClass jsclass;
 
         @Child private DynamicObjectLibrary protoFlagsNode;
         @CompilationFinal private boolean seenArrayPrototype;
 
-        protected CreateObjectWithCachedPrototypeNode(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
-            super(context, prototypeExpression);
+        protected CreateObjectWithPrototypeNode(JSContext context, JSClass jsclass) {
+            super(context);
             this.jsclass = jsclass;
             assert isOrdinaryObject() || isPromiseObject();
         }
 
-        protected static CreateObjectWithPrototypeNode create(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
-            return CreateObjectWithCachedPrototypeNodeGen.create(context, prototypeExpression, jsclass);
+        public abstract JSObject execute(Object prototype);
+
+        @Override
+        public final JSObject executeWithPrototype(JSRealm realm, Object proto) {
+            return execute(proto);
+        }
+
+        protected static CreateObjectWithPrototypeNode create(JSContext context, JSClass jsclass) {
+            return CreateObjectNodeFactory.CreateObjectWithPrototypeNodeGen.create(context, jsclass);
         }
 
         @Specialization(guards = {"!context.isMultiContext()", "isValidPrototype(cachedPrototype)", "prototype == cachedPrototype"}, limit = "1")
@@ -250,11 +223,6 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         public boolean seenArrayPrototype() {
             return seenArrayPrototype;
         }
-
-        @Override
-        protected CreateObjectWithPrototypeNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return create(context, JavaScriptNode.cloneUninitialized(prototypeExpression, materializedTags), jsclass);
-        }
     }
 
     private static class CreateDictionaryObjectNode extends CreateObjectNode {
@@ -263,13 +231,9 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public JSObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+        public JSObject executeWithPrototype(JSRealm realm, Object proto) {
+            assert proto == realm.getObjectPrototype() : proto;
             return JSDictionary.create(context, realm);
-        }
-
-        @Override
-        protected CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new CreateDictionaryObjectNode(context);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,13 +86,13 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
         return getErrorObjectNode.execute(ex);
     }
 
-    public final void executeAsyncGeneratorAwaitReturn(VirtualFrame frame, JSAsyncGeneratorObject generator, ArrayDeque<AsyncGeneratorRequest> queue) {
+    public final void executeAsyncGeneratorAwaitReturn(JSAsyncGeneratorObject generator, ArrayDeque<AsyncGeneratorRequest> queue) {
         generator.setAsyncGeneratorState(AsyncGeneratorState.AwaitingReturn);
         try {
             asyncGeneratorAwaitReturn(generator, queue);
         } catch (AbstractTruffleException ex) {
             // PromiseResolve has thrown an error
-            asyncGeneratorRejectBrokenPromise(frame, generator, ex, queue);
+            asyncGeneratorRejectBrokenPromise(generator, ex, queue);
         }
     }
 
@@ -119,10 +119,10 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
         return (JSPromiseObject) promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
     }
 
-    protected final void asyncGeneratorRejectBrokenPromise(VirtualFrame frame, JSAsyncGeneratorObject generator, AbstractTruffleException exception, ArrayDeque<AsyncGeneratorRequest> queue) {
+    protected final void asyncGeneratorRejectBrokenPromise(JSAsyncGeneratorObject generator, AbstractTruffleException exception, ArrayDeque<AsyncGeneratorRequest> queue) {
         generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.Completed);
         Object error = getErrorObject(exception);
-        asyncGeneratorCompleteStep(frame, Completion.Type.Throw, error, true, queue);
+        asyncGeneratorCompleteStep(Completion.Type.Throw, error, true, queue);
     }
 
     private JSFunctionObject createAsyncGeneratorReturnProcessorFulfilledFunction(Object generator) {
@@ -154,7 +154,7 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
             public Object execute(VirtualFrame frame) {
                 var generator = getThis(frame);
                 Object result = valueNode.execute(frame);
-                asyncGeneratorOpNode.asyncGeneratorCompleteStepAndDrainQueue(frame, generator, completionType, result);
+                asyncGeneratorOpNode.asyncGeneratorCompleteStepAndDrainQueue(generator, completionType, result);
                 return Undefined.instance;
             }
         }

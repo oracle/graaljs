@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -123,7 +122,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = {"thisObj.getGeneratorState() == SuspendedStart"})
-        public Object suspendedStart(VirtualFrame frame, JSIteratorHelperObject thisObj,
+        public Object suspendedStart(JSIteratorHelperObject thisObj,
                         @Cached("create(getContext())") @Shared IteratorCloseNode outerIteratorCloseNode) {
             thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
             var args = thisObj.getIteratorArgs();
@@ -131,11 +130,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (outerIterator != null) {
                 outerIteratorCloseNode.executeVoid(outerIterator.getIterator());
             }
-            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+            return createIterResultObjectNode.execute(Undefined.instance, true);
         }
 
         @Specialization(guards = {"thisObj.getGeneratorState() == SuspendedYield"})
-        public Object suspendedYield(VirtualFrame frame, JSIteratorHelperObject thisObj,
+        public Object suspendedYield(JSIteratorHelperObject thisObj,
                         @Cached("create(getContext())") @Shared IteratorCloseNode outerIteratorCloseNode,
                         @Cached("create(getContext())") @Exclusive IteratorCloseNode innerIteratorCloseNode) {
             thisObj.setGeneratorState(JSFunction.GeneratorState.Executing);
@@ -170,12 +169,12 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             } finally {
                 thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
             }
-            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+            return createIterResultObjectNode.execute(Undefined.instance, true);
         }
 
         @Specialization(guards = {"thisObj.getGeneratorState() == Completed"})
-        public Object completed(VirtualFrame frame, @SuppressWarnings("unused") JSIteratorHelperObject thisObj) {
-            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+        public Object completed(@SuppressWarnings("unused") JSIteratorHelperObject thisObj) {
+            return createIterResultObjectNode.execute(Undefined.instance, true);
         }
 
         @Specialization(guards = "!isJSIteratorHelper(thisObj)")
@@ -196,7 +195,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        public Object next(VirtualFrame frame, JSIteratorHelperObject thisObj,
+        public Object next(JSIteratorHelperObject thisObj,
                         @Cached InlinedBranchProfile executingProfile,
                         @Cached InlinedBranchProfile completedProfile) {
             var state = thisObj.getGeneratorState();
@@ -210,7 +209,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     createIterResultObjectNode = insert(CreateIterResultObjectNode.create(getContext()));
                 }
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             }
 
             thisObj.setGeneratorState(JSFunction.GeneratorState.Executing);

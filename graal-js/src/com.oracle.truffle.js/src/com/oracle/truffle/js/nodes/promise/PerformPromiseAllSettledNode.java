@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -109,7 +111,7 @@ public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 ResolveElementArgs args = (ResolveElementArgs) getArgs.getValue(functionObject);
                 if (args.alreadyCalled) {
                     return Undefined.instance;
@@ -117,14 +119,15 @@ public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode
                 args.alreadyCalled = true;
                 Object value = valueNode.execute(frame);
 
-                JSDynamicObject obj = objectCreateNode.execute(frame);
+                JSRealm realm = getRealm();
+                JSObject obj = objectCreateNode.execute(realm);
                 createStatusPropertyNode.executeVoid(obj, Strings.FULFILLED);
                 createValuePropertyNode.executeVoid(obj, value);
 
                 args.values.set(args.index, obj);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    JSDynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
+                    var valuesArray = JSArray.createConstantObjectArray(context, realm, args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;
@@ -144,7 +147,7 @@ public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 ResolveElementArgs args = (ResolveElementArgs) getArgs.getValue(functionObject);
                 if (args.alreadyCalled) {
                     return Undefined.instance;
@@ -152,14 +155,15 @@ public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode
                 args.alreadyCalled = true;
                 Object value = valueNode.execute(frame);
 
-                JSDynamicObject obj = objectCreateNode.execute(frame);
+                JSRealm realm = getRealm();
+                JSObject obj = objectCreateNode.execute(realm);
                 createStatusPropertyNode.executeVoid(obj, Strings.REJECTED);
                 createReasonPropertyNode.executeVoid(obj, value);
 
                 args.values.set(args.index, obj);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    JSDynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
+                    var valuesArray = JSArray.createConstantObjectArray(context, realm, args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;

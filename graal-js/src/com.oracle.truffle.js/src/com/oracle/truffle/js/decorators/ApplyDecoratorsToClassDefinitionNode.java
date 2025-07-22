@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,21 @@
  */
 package com.oracle.truffle.js.decorators;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.DecorationState;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-public class ApplyDecoratorsToClassDefinitionNode extends Node {
+public class ApplyDecoratorsToClassDefinitionNode extends JavaScriptBaseNode {
 
     @Child private JSFunctionCallNode callNode;
     @Child private IsCallableNode isCallableNode;
@@ -73,11 +73,12 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
     }
 
     @ExplodeLoop
-    public Object executeDecorators(VirtualFrame frame, Object className, JSObject constructor, Object[] decorators, SimpleArrayList<Object> extraInitializers) {
+    public Object executeDecorators(Object className, JSObject constructor, Object[] decorators, SimpleArrayList<Object> extraInitializers) {
         Object classDef = constructor;
+        JSRealm realm = getRealm();
         for (Object decorator : decorators) {
             DecorationState state = new DecorationState();
-            JSObject contextObj = createDecoratorContextObject.evaluateClass(frame, className, extraInitializers, state);
+            JSObject contextObj = createDecoratorContextObject.evaluateClass(realm, className, extraInitializers, state);
             Object newDef = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, classDef, contextObj));
             state.finished = true;
             if (isCallableNode.executeBoolean(newDef)) {

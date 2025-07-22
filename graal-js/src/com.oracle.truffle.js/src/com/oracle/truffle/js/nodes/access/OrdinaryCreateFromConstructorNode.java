@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 
 public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
@@ -57,7 +58,7 @@ public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
 
     protected OrdinaryCreateFromConstructorNode(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, JSDynamicObject> intrinsicDefaultProto, JSClass jsclass) {
         this.getPrototypeFromConstructorNode = GetPrototypeFromConstructorNode.create(context, constructorNode, intrinsicDefaultProto);
-        this.createObjectNode = CreateObjectNode.createWithPrototype(context, null, jsclass);
+        this.createObjectNode = CreateObjectNode.createWithPrototype(context, jsclass);
     }
 
     private OrdinaryCreateFromConstructorNode(GetPrototypeFromConstructorNode getPrototypeFromConstructorNode, CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode) {
@@ -70,17 +71,17 @@ public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
     }
 
     @Override
-    public JSDynamicObject execute(VirtualFrame frame) {
+    public JSObject execute(VirtualFrame frame) {
         JSDynamicObject proto = getPrototypeFromConstructorNode.execute(frame);
         return executeWithPrototype(proto);
     }
 
-    public JSDynamicObject executeWithConstructor(JSDynamicObject constructor) {
+    public JSObject executeWithConstructor(JSDynamicObject constructor) {
         JSDynamicObject proto = getPrototypeFromConstructorNode.executeWithConstructor(constructor);
         return executeWithPrototype(proto);
     }
 
-    private JSDynamicObject executeWithPrototype(JSDynamicObject proto) {
+    private JSObject executeWithPrototype(JSDynamicObject proto) {
         return createObjectNode.execute(proto);
     }
 
@@ -91,6 +92,6 @@ public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new OrdinaryCreateFromConstructorNode(cloneUninitialized(getPrototypeFromConstructorNode, materializedTags), createObjectNode.copyUninitialized(materializedTags));
+        return new OrdinaryCreateFromConstructorNode(cloneUninitialized(getPrototypeFromConstructorNode, materializedTags), createObjectNode);
     }
 }
