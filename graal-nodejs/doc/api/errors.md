@@ -4,22 +4,27 @@
 
 <!--type=misc-->
 
-Applications running in Node.js will generally experience four categories of
-errors:
+Applications running in Node.js will generally experience the following
+categories of errors:
 
 * Standard JavaScript errors such as {EvalError}, {SyntaxError}, {RangeError},
   {ReferenceError}, {TypeError}, and {URIError}.
+* Standard `DOMException`s.
 * System errors triggered by underlying operating system constraints such
   as attempting to open a file that does not exist or attempting to send data
   over a closed socket.
-* User-specified errors triggered by application code.
 * `AssertionError`s are a special class of error that can be triggered when
   Node.js detects an exceptional logic violation that should never occur. These
   are raised typically by the `node:assert` module.
+* User-specified errors triggered by application code.
 
 All JavaScript and system errors raised by Node.js inherit from, or are
 instances of, the standard JavaScript {Error} class and are guaranteed
 to provide _at least_ the properties available on that class.
+
+The [`error.message`][] property of errors raised by Node.js may be changed in
+any versions. Use [`error.code`][] to identify an error instead. For a
+`DOMException`, use [`domException.name`][] to identify its type.
 
 ## Error propagation and interception
 
@@ -1804,8 +1809,6 @@ time.
 
 ### `ERR_INPUT_TYPE_NOT_ALLOWED`
 
-> Stability: 1 - Experimental
-
 The `--input-type` flag was used to attempt to execute a file. This flag can
 only be used with input via `--eval`, `--print`, or `STDIN`.
 
@@ -2382,6 +2385,16 @@ added: v15.0.0
 
 An operation failed. This is typically used to signal the general failure
 of an asynchronous operation.
+
+<a id="ERR_OPTIONS_BEFORE_BOOTSTRAPPING"></a>
+
+### `ERR_OPTIONS_BEFORE_BOOTSTRAPPING`
+
+<!-- YAML
+added: v22.16.0
+-->
+
+An attempt was made to get options before the bootstrapping was completed.
 
 <a id="ERR_OUT_OF_RANGE"></a>
 
@@ -2963,6 +2976,15 @@ category.
 The `node:trace_events` module could not be loaded because Node.js was compiled
 with the `--without-v8-platform` flag.
 
+<a id="ERR_TRAILING_JUNK_AFTER_STREAM_END"></a>
+
+### `ERR_TRAILING_JUNK_AFTER_STREAM_END`
+
+Trailing junk found after the end of the compressed stream.
+This error is thrown when extra, unexpected data is detected
+after the end of a compressed stream (for example, in zlib
+or gzip decompression).
+
 <a id="ERR_TRANSFORM_ALREADY_TRANSFORMING"></a>
 
 ### `ERR_TRANSFORM_ALREADY_TRANSFORMING`
@@ -3035,16 +3057,12 @@ An invalid or unknown encoding option was passed to an API.
 
 ### `ERR_UNKNOWN_FILE_EXTENSION`
 
-> Stability: 1 - Experimental
-
 An attempt was made to load a module with an unknown or unsupported file
 extension.
 
 <a id="ERR_UNKNOWN_MODULE_FORMAT"></a>
 
 ### `ERR_UNKNOWN_MODULE_FORMAT`
-
-> Stability: 1 - Experimental
 
 An attempt was made to load a module with an unknown or unsupported format.
 
@@ -3120,8 +3138,6 @@ transformation with [type-stripping][].
 <a id="ERR_USE_AFTER_CLOSE"></a>
 
 ### `ERR_USE_AFTER_CLOSE`
-
-> Stability: 1 - Experimental
 
 An attempt was made to use something that was already closed.
 
@@ -4233,7 +4249,10 @@ An error occurred trying to allocate memory. This should never happen.
 [`dgram.createSocket()`]: dgram.md#dgramcreatesocketoptions-callback
 [`dgram.disconnect()`]: dgram.md#socketdisconnect
 [`dgram.remoteAddress()`]: dgram.md#socketremoteaddress
+[`domException.name`]: https://developer.mozilla.org/en-US/docs/Web/API/DOMException/name
 [`errno`(3) man page]: https://man7.org/linux/man-pages/man3/errno.3.html
+[`error.code`]: #errorcode
+[`error.message`]: #errormessage
 [`fs.Dir`]: fs.md#class-fsdir
 [`fs.cp()`]: fs.md#fscpsrc-dest-options-callback
 [`fs.readFileSync`]: fs.md#fsreadfilesyncpath-options

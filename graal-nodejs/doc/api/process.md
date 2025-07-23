@@ -578,6 +578,10 @@ address such failures, a non-operational
 `resource.loaded`, which would prevent the `'unhandledRejection'` event from
 being emitted.
 
+If an `'unhandledRejection'` event is emitted but not handled it will
+be raised as an uncaught exception. This alongside other behaviors of
+`'unhandledRejection'` events can changed via the [`--unhandled-rejections`][] flag.
+
 ### Event: `'warning'`
 
 <!-- YAML
@@ -972,6 +976,24 @@ $ bash -c 'exec -a customArgv0 ./node'
 'customArgv0'
 ```
 
+## `process.availableMemory()`
+
+<!-- YAML
+added: v22.0.0
+changes:
+  - version: v22.16.0
+    pr-url: https://github.com/nodejs/node/pull/57765
+    description: Change stability index for this feature from Experimental to Stable.
+-->
+
+* {number}
+
+Gets the amount of free memory that is still available to the process
+(in bytes).
+
+See [`uv_get_available_memory`][uv_get_available_memory] for more
+information.
+
 ## `process.channel`
 
 <!-- YAML
@@ -1126,12 +1148,13 @@ added:
   - v19.6.0
   - v18.15.0
 changes:
+  - version: v22.16.0
+    pr-url: https://github.com/nodejs/node/pull/57765
+    description: Change stability index for this feature from Experimental to Stable.
   - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/52039
     description: Aligned return value with `uv_get_constrained_memory`.
 -->
-
-> Stability: 1 - Experimental
 
 * {number}
 
@@ -1140,22 +1163,6 @@ limits imposed by the OS. If there is no such constraint, or the constraint
 is unknown, `0` is returned.
 
 See [`uv_get_constrained_memory`][uv_get_constrained_memory] for more
-information.
-
-## `process.availableMemory()`
-
-<!-- YAML
-added: v22.0.0
--->
-
-> Stability: 1 - Experimental
-
-* {number}
-
-Gets the amount of free memory that is still available to the process
-(in bytes).
-
-See [`uv_get_available_memory`][uv_get_available_memory] for more
 information.
 
 ## `process.cpuUsage([previousValue])`
@@ -1759,6 +1766,33 @@ that started the Node.js process. Symbolic links, if any, are resolved.
 '/usr/local/bin/node'
 ```
 
+## `process.execve(file[, args[, env]])`
+
+<!-- YAML
+added: v22.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* `file` {string} The name or path of the executable file to run.
+* `args` {string\[]} List of string arguments. No argument can contain a null-byte (`\u0000`).
+* `env` {Object} Environment key-value pairs.
+  No key or value can contain a null-byte (`\u0000`).
+  **Default:** `process.env`.
+
+Replaces the current process with a new process.
+
+This is achieved by using the `execve` POSIX function and therefore no memory or other
+resources from the current process are preserved, except for the standard input,
+standard output and standard error file descriptor.
+
+All other resources are discarded by the system when the processes are swapped, without triggering
+any exit or close events and without running any cleanup handler.
+
+This function will never return, unless an error occurred.
+
+This function is not available on Windows or IBM i.
+
 ## `process.exit([code])`
 
 <!-- YAML
@@ -2271,9 +2305,11 @@ setup();
 added:
   - v17.3.0
   - v16.14.0
+changes:
+  - version: v22.16.0
+    pr-url: https://github.com/nodejs/node/pull/57765
+    description: Change stability index for this feature from Experimental to Stable.
 -->
-
-> Stability: 1 - Experimental
 
 * Returns: {string\[]}
 
@@ -3313,33 +3349,6 @@ In custom builds from non-release versions of the source tree, only the
 `name` property may be present. The additional properties should not be
 relied upon to exist.
 
-## `process.execve(file[, args[, env]])`
-
-<!-- YAML
-added: v22.15.0
--->
-
-> Stability: 1 - Experimental
-
-* `file` {string} The name or path of the executable file to run.
-* `args` {string\[]} List of string arguments. No argument can contain a null-byte (`\u0000`).
-* `env` {Object} Environment key-value pairs.
-  No key or value can contain a null-byte (`\u0000`).
-  **Default:** `process.env`.
-
-Replaces the current process with a new process.
-
-This is achieved by using the `execve` POSIX function and therefore no memory or other
-resources from the current process are preserved, except for the standard input,
-standard output and standard error file descriptor.
-
-All other resources are discarded by the system when the processes are swapped, without triggering
-any exit or close events and without running any cleanup handler.
-
-This function will never return, unless an error occurred.
-
-This function is only available on POSIX platforms (i.e. not Windows or Android).
-
 ## `process.report`
 
 <!-- YAML
@@ -4024,7 +4033,7 @@ added:
 
 * `val` {boolean}
 
-This function enables or disables the [Source Map v3][Source Map] support for
+This function enables or disables the [Source Map][] support for
 stack traces.
 
 It provides same features as launching Node.js process with commandline options
@@ -4075,7 +4084,7 @@ added:
 * {boolean}
 
 The `process.sourceMapsEnabled` property returns whether the
-[Source Map v3][Source Map] support for stack traces is enabled.
+[Source Map][] support for stack traces is enabled.
 
 ## `process.stderr`
 
@@ -4514,7 +4523,7 @@ cases:
 [Permission Model]: permissions.md#permission-model
 [Readable]: stream.md#readable-streams
 [Signal Events]: #signal-events
-[Source Map]: https://sourcemaps.info/spec.html
+[Source Map]: https://tc39.es/ecma426/
 [Stream compatibility]: stream.md#compatibility-with-older-nodejs-versions
 [TTY]: tty.md#tty
 [Writable]: stream.md#writable-streams

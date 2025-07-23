@@ -180,7 +180,7 @@ out/Makefile: config.gypi common.gypi common_node.gypi node.gyp \
 	tools/v8_gypfiles/toolchain.gypi \
 	tools/v8_gypfiles/features.gypi \
 	tools/v8_gypfiles/inspector.gypi tools/v8_gypfiles/v8.gyp
-	$(PYTHON) tools/gyp_node.py -f make
+	$(PYTHON) tools/gyp_node.py -f make -Dpython=$(PYTHON)
 
 # node_version.h is listed because the N-API version is taken from there
 # and included in config.gypi
@@ -243,7 +243,7 @@ coverage-clean: ## Remove coverage artifacts.
 	$(RM) -r node_modules
 	$(RM) -r gcovr
 	$(RM) -r coverage/tmp
-	@if [ -d "out/Release/obj.target" ]; then \
+	@if [ -d "out/$(BUILDTYPE)/obj.target" ]; then \
 		$(FIND) out/$(BUILDTYPE)/obj.target \( -name "*.gcda" -o -name "*.gcno" \) \
 			-type f | xargs $(RM); \
 	fi
@@ -270,7 +270,7 @@ coverage-build-js: ## Build JavaScript coverage files.
 
 .PHONY: coverage-test
 coverage-test: coverage-build ## Run the tests and generate a coverage report.
-	@if [ -d "out/Release/obj.target" ]; then \
+	@if [ -d "out/$(BUILDTYPE)/obj.target" ]; then \
 		$(FIND) out/$(BUILDTYPE)/obj.target -name "*.gcda" -type f | xargs $(RM); \
 	fi
 	-NODE_V8_COVERAGE=coverage/tmp \
@@ -514,16 +514,24 @@ SQLITE_BINDING_SOURCES := \
 	$(wildcard test/sqlite/*/*.c)
 
 # Implicitly depends on $(NODE_EXE), see the build-sqlite-tests rule for rationale.
+ifndef NOSQLITE
 test/sqlite/.buildstamp: $(ADDONS_PREREQS) \
 	$(SQLITE_BINDING_GYPS) $(SQLITE_BINDING_SOURCES)
 	@$(call run_build_addons,"$$PWD/test/sqlite",$@)
+else
+test/sqlite/.buildstamp:
+endif
 
 .PHONY: build-sqlite-tests
+ifndef NOSQLITE
 # .buildstamp needs $(NODE_EXE) but cannot depend on it
 # directly because it calls make recursively.  The parent make cannot know
 # if the subprocess touched anything so it pessimistically assumes that
 # .buildstamp is out of date and need a rebuild.
 build-sqlite-tests: | $(NODE_EXE) test/sqlite/.buildstamp ## Build SQLite tests.
+else
+build-sqlite-tests:
+endif
 
 .PHONY: clear-stalled
 clear-stalled: ## Clear any stalled processes.
@@ -812,6 +820,7 @@ doc: $(NODE_EXE) doc-only ## Build Node.js, and then build the documentation wit
 
 out/doc:
 	mkdir -p $@
+	cp doc/node-config-schema.json $@
 
 # If it's a source tarball, doc/api already contains the generated docs.
 # Just copy everything under doc/api over.

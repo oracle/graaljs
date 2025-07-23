@@ -4,7 +4,7 @@ const {
   ArrayPrototypePush,
   ArrayPrototypeShift,
   FunctionPrototypeBind,
-  ObjectDefineProperty,
+  ObjectDefineProperties,
   PromiseReject,
   SymbolAsyncIterator,
 } = primordials;
@@ -21,7 +21,12 @@ const {
 } = require('internal/errors');
 
 const { FSReqCallback } = binding;
-const internalUtil = require('internal/util');
+const {
+  assignFunctionName,
+  promisify,
+  SymbolAsyncDispose,
+  SymbolDispose,
+} = require('internal/util');
 const {
   getDirent,
   getOptions,
@@ -40,9 +45,8 @@ class Dir {
   #options;
   #readPromisified;
   #closePromisified;
-  // Either `null` or an Array of pending operations (= functions to be called
-  // once the current operation is done).
   #operationQueue = null;
+  #handlerQueue = [];
 
   constructor(handle, path, options) {
     if (handle == null) throw new ERR_MISSING_ARGS('handle');
@@ -58,17 +62,44 @@ class Dir {
     validateUint32(this.#options.bufferSize, 'options.bufferSize', true);
 
     this.#readPromisified = FunctionPrototypeBind(
-      internalUtil.promisify(this.#readImpl), this, false);
+      promisify(this.#readImpl), this, false);
     this.#closePromisified = FunctionPrototypeBind(
-      internalUtil.promisify(this.close), this);
+      promisify(this.close), this);
   }
 
   get path() {
     return this.#path;
   }
 
+  #processHandlerQueue() {
+    while (this.#handlerQueue.length > 0) {
+      const handler = ArrayPrototypeShift(this.#handlerQueue);
+      const { handle, path } = handler;
+
+      const result = handle.read(
+        this.#options.encoding,
+        this.#options.bufferSize,
+      );
+
+      if (result !== null) {
+        this.processReadResult(path, result);
+        if (result.length > 0) {
+          ArrayPrototypePush(this.#handlerQueue, handler);
+        }
+      } else {
+        handle.close();
+      }
+
+      if (this.#bufferedEntries.length > 0) {
+        break;
+      }
+    }
+
+    return this.#bufferedEntries.length > 0;
+  }
+
   read(callback) {
-    return this.#readImpl(true, callback);
+    return arguments.length === 0 ? this.#readPromisified() : this.#readImpl(true, callback);
   }
 
   #readImpl(maybeSync, callback) {
@@ -89,7 +120,7 @@ class Dir {
       return;
     }
 
-    if (this.#bufferedEntries.length > 0) {
+    if (this.#processHandlerQueue()) {
       try {
         const dirent = ArrayPrototypeShift(this.#bufferedEntries);
 
@@ -159,25 +190,11 @@ class Dir {
       this.#options.encoding,
     );
 
-    // Terminate early, since it's already thrown.
     if (handle === undefined) {
       return;
     }
 
-    // Fully read the directory and buffer the entries.
-    // This is a naive solution and for very large sub-directories
-    // it can even block the event loop. Essentially, `bufferSize` is
-    // not respected for recursive mode. This is a known limitation.
-    // Issue to fix: https://github.com/nodejs/node/issues/55764
-    let result;
-    while ((result = handle.read(
-      this.#options.encoding,
-      this.#options.bufferSize,
-    ))) {
-      this.processReadResult(path, result);
-    }
-
-    handle.close();
+    ArrayPrototypePush(this.#handlerQueue, { handle, path });
   }
 
   readSync() {
@@ -189,7 +206,7 @@ class Dir {
       throw new ERR_DIR_CONCURRENT_OPERATION();
     }
 
-    if (this.#bufferedEntries.length > 0) {
+    if (this.#processHandlerQueue()) {
       const dirent = ArrayPrototypeShift(this.#bufferedEntries);
       if (this.#options.recursive && dirent.isDirectory()) {
         this.readSyncRecursive(dirent);
@@ -216,7 +233,6 @@ class Dir {
   }
 
   close(callback) {
-    // Promise
     if (callback === undefined) {
       if (this.#closed === true) {
         return PromiseReject(new ERR_DIR_CLOSED());
@@ -224,7 +240,6 @@ class Dir {
       return this.#closePromisified();
     }
 
-    // callback
     validateFunction(callback, 'callback');
 
     if (this.#closed === true) {
@@ -237,6 +252,11 @@ class Dir {
         this.close(callback);
       });
       return;
+    }
+
+    while (this.#handlerQueue.length > 0) {
+      const handler = ArrayPrototypeShift(this.#handlerQueue);
+      handler.handle.close();
     }
 
     this.#closed = true;
@@ -252,6 +272,11 @@ class Dir {
 
     if (this.#operationQueue !== null) {
       throw new ERR_DIR_CONCURRENT_OPERATION();
+    }
+
+    while (this.#handlerQueue.length > 0) {
+      const handler = ArrayPrototypeShift(this.#handlerQueue);
+      handler.handle.close();
     }
 
     this.#closed = true;
@@ -273,12 +298,31 @@ class Dir {
   }
 }
 
-ObjectDefineProperty(Dir.prototype, SymbolAsyncIterator, {
-  __proto__: null,
-  value: Dir.prototype.entries,
+const nonEnumerableDescriptor = {
   enumerable: false,
   writable: true,
   configurable: true,
+};
+ObjectDefineProperties(Dir.prototype, {
+  [SymbolDispose]: {
+    __proto__: null,
+    ...nonEnumerableDescriptor,
+    value: assignFunctionName(SymbolDispose, function() {
+      this.closeSync();
+    }),
+  },
+  [SymbolAsyncDispose]: {
+    __proto__: null,
+    ...nonEnumerableDescriptor,
+    value: assignFunctionName(SymbolAsyncDispose, function() {
+      this.close();
+    }),
+  },
+  [SymbolAsyncIterator]: {
+    __proto__: null,
+    ...nonEnumerableDescriptor,
+    value: Dir.prototype.entries,
+  },
 });
 
 function opendir(path, options, callback) {

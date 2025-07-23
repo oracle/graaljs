@@ -351,7 +351,7 @@ function closePendingHandle(target) {
 }
 
 
-ChildProcess.prototype.spawn = function(options) {
+ChildProcess.prototype.spawn = function spawn(options) {
   let i = 0;
 
   validateObject(options, 'options');
@@ -493,7 +493,7 @@ function onSpawnNT(self) {
 }
 
 
-ChildProcess.prototype.kill = function(sig) {
+ChildProcess.prototype.kill = function kill(sig) {
 
   const signal = sig === 0 ? sig :
     convertToValidSignal(sig === undefined ? 'SIGTERM' : sig);
@@ -527,12 +527,12 @@ ChildProcess.prototype[SymbolDispose] = function() {
 };
 
 
-ChildProcess.prototype.ref = function() {
+ChildProcess.prototype.ref = function ref() {
   if (this._handle) this._handle.ref();
 };
 
 
-ChildProcess.prototype.unref = function() {
+ChildProcess.prototype.unref = function unref() {
   if (this._handle) this._handle.unref();
 };
 
