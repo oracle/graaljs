@@ -213,10 +213,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected int getValueInt(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertyGetNode) {
-                return c.getValueInt(thisObj, receiver, this, false);
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericPropertyGetNode generic) {
+                return generic.getValueInt(thisObj, receiver, this, false);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
@@ -225,11 +224,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
-                    if (expectedObj == null) {
-                        break;
-                    } else {
-                        continue;
-                    }
+                    continue;
                 } else {
                     guard = true;
                     castObj = expectedObj;
@@ -242,7 +237,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -253,12 +248,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             if (guard) {
                 if ((!isSimpleShapeCheck && !receiverCheck.isValid())) {
-                    break;
+                    continue;
                 }
                 return c.getValueInt(castObj, receiver, this, guard);
             }
         }
-        deoptimize(c);
+        deoptimize();
         return getValueIntAndSpecialize(thisObj, receiver);
     }
 
@@ -270,10 +265,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected double getValueDouble(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertyGetNode) {
-                return c.getValueDouble(thisObj, receiver, this, false);
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericPropertyGetNode generic) {
+                return generic.getValueDouble(thisObj, receiver, this, false);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
@@ -282,11 +276,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
-                    if (expectedObj == null) {
-                        break;
-                    } else {
-                        continue;
-                    }
+                    continue;
                 } else {
                     guard = true;
                     castObj = expectedObj;
@@ -299,7 +289,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -310,12 +300,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             if (guard) {
                 if ((!isSimpleShapeCheck && !receiverCheck.isValid())) {
-                    break;
+                    continue;
                 }
                 return c.getValueDouble(castObj, receiver, this, guard);
             }
         }
-        deoptimize(c);
+        deoptimize();
         return getValueDoubleAndSpecialize(thisObj, receiver);
     }
 
@@ -327,10 +317,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected boolean getValueBoolean(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertyGetNode) {
-                return c.getValueBoolean(thisObj, receiver, this, false);
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericPropertyGetNode generic) {
+                return generic.getValueBoolean(thisObj, receiver, this, false);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
@@ -339,11 +328,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
-                    if (expectedObj == null) {
-                        break;
-                    } else {
-                        continue;
-                    }
+                    continue;
                 } else {
                     guard = true;
                     castObj = expectedObj;
@@ -356,7 +341,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -367,12 +352,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             if (guard) {
                 if ((!isSimpleShapeCheck && !receiverCheck.isValid())) {
-                    break;
+                    continue;
                 }
                 return c.getValueBoolean(castObj, receiver, this, guard);
             }
         }
-        deoptimize(c);
+        deoptimize();
         return getValueBooleanAndSpecialize(thisObj, receiver);
     }
 
@@ -384,10 +369,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue) {
-        GetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertyGetNode) {
-                return ((GenericPropertyGetNode) c).getValue(thisObj, receiver, defaultValue, this, false);
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericPropertyGetNode generic) {
+                return generic.getValue(thisObj, receiver, defaultValue, this, false);
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
@@ -396,11 +380,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
-                    if (expectedObj == null) {
-                        break;
-                    } else {
-                        continue;
-                    }
+                    continue;
                 } else {
                     guard = true;
                     castObj = expectedObj;
@@ -413,7 +393,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -424,12 +404,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             if (guard) {
                 if ((!isSimpleShapeCheck && !receiverCheck.isValid())) {
-                    break;
+                    continue;
                 }
                 return c.getValue(castObj, receiver, defaultValue, this, guard);
             }
         }
-        deoptimize(c);
+        deoptimize();
         return getValueAndSpecialize(thisObj, receiver, defaultValue);
     }
 
