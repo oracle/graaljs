@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -69,22 +68,22 @@ public class AsyncGeneratorResolveNode extends JavaScriptBaseNode {
         return new AsyncGeneratorResolveNode(context);
     }
 
-    public Object execute(VirtualFrame frame, JSAsyncGeneratorObject generator, Object value, boolean done) {
-        performResolve(frame, generator, value, done);
+    public Object execute(JSAsyncGeneratorObject generator, Object value, boolean done) {
+        performResolve(generator, value, done);
         if (asyncGeneratorResumeNextNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.asyncGeneratorResumeNextNode = insert(AsyncGeneratorResumeNextNode.create(getLanguage().getJSContext()));
         }
-        asyncGeneratorResumeNextNode.execute(frame, generator);
+        asyncGeneratorResumeNextNode.execute(generator);
         return Undefined.instance;
     }
 
-    public void performResolve(VirtualFrame frame, JSAsyncGeneratorObject generator, Object value, boolean done) {
+    public void performResolve(JSAsyncGeneratorObject generator, Object value, boolean done) {
         ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.pollFirst();
         PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
-        JSDynamicObject iteratorResult = createIterResultObjectNode.execute(frame, value, done);
+        JSDynamicObject iteratorResult = createIterResultObjectNode.execute(value, done);
         Object resolve = promiseCapability.getResolve();
         callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, iteratorResult));
     }

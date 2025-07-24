@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,9 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -68,12 +68,13 @@ public abstract class CreateIterResultObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected JSObject doCreateIterResultObject(VirtualFrame frame, Object value, boolean done) {
-        JSObject iterResult = createObjectNode.execute(frame);
+    protected JSObject doCreateIterResultObject(Object value, boolean done) {
+        JSRealm realm = getRealm();
+        JSObject iterResult = createObjectNode.execute(realm);
         createValuePropertyNode.executeVoid(iterResult, value);
         createDonePropertyNode.executeVoid(iterResult, done);
         return iterResult;
     }
 
-    public abstract JSObject execute(VirtualFrame frame, Object value, boolean done);
+    public abstract JSObject execute(Object value, boolean done);
 }

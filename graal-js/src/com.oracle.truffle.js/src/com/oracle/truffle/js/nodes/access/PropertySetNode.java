@@ -163,10 +163,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @ExplodeLoop
     protected void setValue(Object thisObj, Object value, Object receiver) {
-        SetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertySetNode) {
-                ((GenericPropertySetNode) c).setValue(thisObj, value, receiver, this, false);
+        for (SetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericPropertySetNode generic) {
+                generic.setValue(thisObj, value, receiver, this, false);
                 return;
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
@@ -180,7 +179,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -191,14 +190,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             if (guard) {
                 if (!isSimpleShapeCheck && !receiverCheck.isValid()) {
-                    break;
+                    continue;
                 }
                 if (c.setValue(castObj, value, receiver, this, guard)) {
                     return;
                 }
             }
         }
-        deoptimize(c);
+        deoptimize();
         setValueAndSpecialize(thisObj, value, receiver);
     }
 
@@ -210,10 +209,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @ExplodeLoop
     protected void setValueInt(Object thisObj, int value, Object receiver) {
-        SetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertySetNode) {
-                ((GenericPropertySetNode) c).setValueInt(thisObj, value, receiver, this, false);
+        for (SetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericPropertySetNode generic) {
+                generic.setValueInt(thisObj, value, receiver, this, false);
                 return;
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
@@ -227,7 +225,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -238,14 +236,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             if (guard) {
                 if (!isSimpleShapeCheck && !receiverCheck.isValid()) {
-                    break;
+                    continue;
                 }
                 if (c.setValueInt(castObj, value, receiver, this, guard)) {
                     return;
                 }
             }
         }
-        deoptimize(c);
+        deoptimize();
         setValueIntAndSpecialize(thisObj, value, receiver);
     }
 
@@ -257,10 +255,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @ExplodeLoop
     protected void setValueDouble(Object thisObj, double value, Object receiver) {
-        SetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertySetNode) {
-                ((GenericPropertySetNode) c).setValueDouble(thisObj, value, receiver, this, false);
+        for (SetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericPropertySetNode generic) {
+                generic.setValueDouble(thisObj, value, receiver, this, false);
                 return;
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
@@ -274,7 +271,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -285,14 +282,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             if (guard) {
                 if (!isSimpleShapeCheck && !receiverCheck.isValid()) {
-                    break;
+                    continue;
                 }
                 if (c.setValueDouble(castObj, value, receiver, this, guard)) {
                     return;
                 }
             }
         }
-        deoptimize(c);
+        deoptimize();
         setValueDoubleAndSpecialize(thisObj, value, receiver);
     }
 
@@ -304,10 +301,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @ExplodeLoop
     protected void setValueBoolean(Object thisObj, boolean value, Object receiver) {
-        SetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertySetNode) {
-                ((GenericPropertySetNode) c).setValueBoolean(thisObj, value, receiver, this, false);
+        for (SetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c instanceof GenericPropertySetNode generic) {
+                generic.setValueBoolean(thisObj, value, receiver, this, false);
                 return;
             }
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
@@ -321,7 +317,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     guard = shape.check(jsobj);
                     castObj = jsobj;
                     if (!shape.getValidAssumption().isValid()) {
-                        break;
+                        continue;
                     }
                 } else {
                     continue;
@@ -332,14 +328,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             if (guard) {
                 if (!isSimpleShapeCheck && !receiverCheck.isValid()) {
-                    break;
+                    continue;
                 }
                 if (c.setValueBoolean(castObj, value, receiver, this, guard)) {
                     return;
                 }
             }
         }
-        deoptimize(c);
+        deoptimize();
         setValueBooleanAndSpecialize(thisObj, value, receiver);
     }
 

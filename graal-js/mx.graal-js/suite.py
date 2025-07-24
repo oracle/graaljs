@@ -25,7 +25,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "ed067f1f7c575a638991d34bcab15f895a4b26b7",
+           "version" : "6a816eeb44abca4eb200b5e18db6f64dbd6d44fa",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
@@ -455,6 +455,9 @@ suite = {
         "truffle.attach.library": "../jvmlibs/<lib:truffleattach>",
       },
       "liblang_relpath": "../lib/<lib:jsvm>",
+      "default_vm_args": [
+        "--vm.-enable-native-access=org.graalvm.shadowed.jline",
+      ],
     },
 
     "libjsvm": {
@@ -467,6 +470,9 @@ suite = {
         "-Dpolyglot.image-build-time.PreinitializeContexts=js",
         # Configure launcher
         "-Dorg.graalvm.launcher.class=com.oracle.truffle.js.shell.JSLauncher",
+        # uncomment to disable JLine FFM provider at native image build time
+        #"-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true",
+        "--enable-native-access=org.graalvm.shadowed.jline",
       ],
       "dynamicBuildArgs": "libjsvm_build_args",
     },
@@ -477,6 +483,7 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.js",
         "exports" : [
+          "com.oracle.truffle.js.api",
           "com.oracle.truffle.js.lang to org.graalvm.truffle",
           "com.oracle.js.parser to org.graalvm.nodejs",
           "com.oracle.js.parser.ir to org.graalvm.nodejs",
@@ -532,16 +539,15 @@ suite = {
       "useModulePath": True,
     },
 
-    "JS_COMMUNITY": {
+    "JS_POM": {
       "type": "pom",
       "runtimeDependencies": [
         "GRAALJS",
         "truffle:TRUFFLE_RUNTIME",
       ],
-      "description":     "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency includes GraalJS dependencies and Truffle Community Edition.",
-      "descriptionGFTC": "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency includes GraalJS dependencies and Truffle.",
+      "description":     "GraalJS, a high-performance embeddable JavaScript runtime for Java. This POM dependency includes GraalJS dependencies and Truffle.",
       "maven": {
-        "artifactId": "js-community",
+        "artifactId": "js",
         "tag": ["default", "public"],
       },
       "license": [
@@ -877,6 +883,7 @@ suite = {
         "standalone_dist": "GRAALJS_NATIVE_STANDALONE",
         "community_archive_name": "graaljs-community",
         "enterprise_archive_name": "graaljs",
+        "language_id": "js",
     },
 
     "GRAALJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
@@ -885,6 +892,7 @@ suite = {
         "standalone_dist": "GRAALJS_JVM_STANDALONE",
         "community_archive_name": "graaljs-community-jvm",
         "enterprise_archive_name": "graaljs-jvm",
+        "language_id": "js",
     },
 
     "JS_INTEROP_MICRO_BENCHMARKS" : {

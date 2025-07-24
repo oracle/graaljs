@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,20 +147,20 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                     try {
                         Object result = functionBody.execute(generatorFrame);
                         generatorObject.setAsyncGeneratorState(AsyncGeneratorState.Completed);
-                        asyncGeneratorResolveNode.performResolve(frame, generatorObject, result, true);
+                        asyncGeneratorResolveNode.performResolve(generatorObject, result, true);
                     } catch (YieldException e) {
                         if (e.isYield()) {
                             generatorObject.setAsyncGeneratorState(AsyncGeneratorState.SuspendedYield);
-                            asyncGeneratorResolveNode.performResolve(frame, generatorObject, e.getResult(), false);
+                            asyncGeneratorResolveNode.performResolve(generatorObject, e.getResult(), false);
                         } else {
                             assert e.isAwait();
                             return Undefined.instance;
                         }
                     } catch (AbstractTruffleException e) {
-                        asyncGeneratorReject(generatorFrame, generatorObject, e);
+                        asyncGeneratorReject(generatorObject, e);
                     }
                     // AsyncGeneratorResolve/AsyncGeneratorReject => AsyncGeneratorResumeNext
-                    Object nextCompletion = asyncGeneratorResumeNextNode.execute(generatorFrame, generatorObject);
+                    Object nextCompletion = asyncGeneratorResumeNextNode.execute(generatorObject);
                     if (nextCompletion instanceof Completion) {
                         completion = (Completion) nextCompletion;
                         continue; // tail call from AsyncGeneratorResumeNext
@@ -175,7 +175,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             }
         }
 
-        private void asyncGeneratorReject(VirtualFrame generatorFrame, JSAsyncGeneratorObject generatorObject, AbstractTruffleException ex) {
+        private void asyncGeneratorReject(JSAsyncGeneratorObject generatorObject, AbstractTruffleException ex) {
             if (getErrorObjectNode == null || asyncGeneratorRejectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
@@ -183,7 +183,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             }
             generatorObject.setAsyncGeneratorState(AsyncGeneratorState.Completed);
             Object reason = getErrorObjectNode.execute(ex);
-            asyncGeneratorRejectNode.performReject(generatorFrame, generatorObject, reason);
+            asyncGeneratorRejectNode.performReject(generatorObject, reason);
         }
 
         @Override

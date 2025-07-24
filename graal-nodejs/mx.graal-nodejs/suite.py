@@ -143,6 +143,8 @@ suite = {
         "-Dpolyglot.image-build-time.PreinitializeContexts=js",
         # Configure home
         "-Dorg.graalvm.launcher.relative.js.home=..",
+        # Disable JLine FFM provider at native image build time (node launcher does not use jline)
+        "-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true",
       ],
       "dynamicBuildArgs": "libgraalnodejs_build_args",
     },
@@ -303,6 +305,7 @@ suite = {
         "standalone_dist": "GRAALNODEJS_NATIVE_STANDALONE",
         "community_archive_name": "graalnodejs-community",
         "enterprise_archive_name": "graalnodejs",
+        "language_id": "nodejs",
     },
 
     "GRAALNODEJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
@@ -311,6 +314,7 @@ suite = {
         "standalone_dist": "GRAALNODEJS_JVM_STANDALONE",
         "community_archive_name": "graalnodejs-community-jvm",
         "enterprise_archive_name": "graalnodejs-jvm",
+        "language_id": "nodejs",
     },
 
     "TRUFFLENODE_TEST" : {

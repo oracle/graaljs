@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -181,13 +180,13 @@ public final class WrapForValidAsyncIteratorPrototypeBuiltins extends JSBuiltins
         }
 
         @Specialization
-        protected JSDynamicObject performReturn(VirtualFrame frame, JSWrapForValidAsyncIteratorObject thisObj) {
+        protected JSDynamicObject performReturn(JSWrapForValidAsyncIteratorObject thisObj) {
             JSRealm realm = getRealm();
             try {
                 Object returnMethod = getReturnNode.executeWithTarget(thisObj.getIterated().getIterator());
                 if (returnMethod == Undefined.instance) {
                     PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(realm.getPromiseConstructor());
-                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(frame, Undefined.instance, true)));
+                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(Undefined.instance, true)));
                     return promiseCapability.getPromise();
                 } else {
                     Object result = returnMethodCallNode.executeCall(JSArguments.createZeroArg(thisObj.getIterated().getIterator(), returnMethod));

@@ -1140,6 +1140,10 @@ namespace v8 {
         return (void*) result;
     }
 
+    void api_internal::AnnotateStrongRetainer(internal::Address* location, const char* label) {
+        TRACE
+    }
+
     bool V8::Dispose() {
         TRACE
         return false;
@@ -1926,7 +1930,21 @@ namespace v8 {
         return Undefined(v8_isolate);
     }
 
+    Local<Value> UnboundScript::GetSourceURL() {
+        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalUnboundScript*> (this)->Isolate();
+        Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate);
+        return Undefined(v8_isolate);
+    }
+
     Local<Value> UnboundModuleScript::GetSourceMappingURL() {
+        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalUnboundScript*> (this)->Isolate();
+        Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate);
+        return Undefined(v8_isolate);
+    }
+
+    Local<Value> UnboundModuleScript::GetSourceURL() {
         TRACE
         GraalIsolate* graal_isolate = reinterpret_cast<GraalUnboundScript*> (this)->Isolate();
         Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate);
@@ -4095,6 +4113,13 @@ namespace v8 {
 
     Maybe<bool> v8::ValueSerializer::Delegate::IsHostObject(Isolate* isolate, Local<Object> object) {
         return Just(false);
+    }
+
+    std::string SourceLocation::ToString() const {
+        if (!file_) {
+            return {};
+        }
+        return std::string(function_) + "@" + file_ + ":" + std::to_string(line_);
     }
 
     void Array::CheckCast(v8::Value* obj) {}

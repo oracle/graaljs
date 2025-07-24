@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.List;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -53,6 +51,7 @@ import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -63,8 +62,8 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -91,8 +90,10 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached("create(getJSContext())") GetOptionsObjectNode getOptionsObject,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
-                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+                    @Cached GetTemporalCalendarIdentifierWithISODefaultNode getCalendarWithISODefault,
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaString,
+                    @Cached TruffleString.FromJavaStringNode fromJavaString) {
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(itemParam))) {
@@ -116,9 +117,8 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                 var dt = (JSTemporalPlainDateTimeObject) item;
                 return JSTemporalPlainDate.create(ctx, realm, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar(), this, errorBranch);
             }
-            TruffleString calendar = getCalendarSlotValueWithISODefault.execute(item);
-            List<TruffleString> fieldNames = TemporalUtil.listDMMCY;
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
+            TruffleString calendar = getCalendarWithISODefault.execute(item);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listEmpty, TemporalUtil.listEmpty);
             Object resolvedOptions = getOptionsObject.execute(options);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             return dateFromFieldsNode.execute(calendar, fields, overflow);
@@ -128,9 +128,9 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
             TruffleString calendar = result.getCalendar();
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
-            } else if (!TemporalUtil.isBuiltinCalendar(calendar)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            } else {
+                String calendarJLS = toJavaString.execute(calendar);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
             }
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             return JSTemporalPlainDate.create(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorArgs;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorFromGeneratorNode;
@@ -197,7 +196,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization
-        protected final Object next(VirtualFrame frame, JSIteratorHelperObject thisObj,
+        protected final Object next(JSIteratorHelperObject thisObj,
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached IteratorNextNode iteratorNextNode,
                         @Cached IteratorCompleteNode iteratorCompleteNode,
@@ -227,7 +226,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                     // Note: Abrupt completion is handled by IteratorHelperReturnNode.
                 }
             }
-            return createResultDone(frame, thisObj);
+            return createResultDone(thisObj);
         }
 
         @Override

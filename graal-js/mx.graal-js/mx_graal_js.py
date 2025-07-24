@@ -53,7 +53,7 @@ _suite = mx.suite('graal-js')
 TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
-TEST262_REV = "3316c0aaf676d657f5a6b33364fa7e579c78ac7f"
+TEST262_REV = "942e65f505e9d846c1b995750b5bce8c31d11fce"
 
 # Git repository of V8
 TESTV8_REPO = "https://" + "github.com/v8/v8.git"
@@ -529,7 +529,7 @@ def run_javascript_basictests(js_binary):
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     if register_project and register_distribution:
         isolate_build_options = ['-H:+AuxiliaryEngineCache', '-H:ReservedAuxiliaryImageBytes=2145482548'] if not mx.is_windows() else []
-        meta_pom = [p for p in _suite.dists if p.name == 'JS_COMMUNITY'][0]
+        meta_pom = [p for p in _suite.dists if p.name == 'JS_POM'][0]
         mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'js',
                                         'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
                                         isolate_build_options=isolate_build_options)
@@ -539,11 +539,9 @@ def is_wasm_available():
 
 # Functions called from suite.py
 
-def has_suite(name):
-    return mx.suite(name, fatalIfMissing=False)
-
 def graaljs_standalone_deps():
-    deps = mx_truffle.resolve_truffle_dist_names()
+    include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
+    deps = mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
     if is_wasm_available():
         deps += ['wasm:WASM']
     return deps
@@ -554,6 +552,7 @@ def libjsvm_build_args():
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
         ]
+        # GR-64948: On GraalVM 21 some Native Image stable options are incorrectly detected as experimental
         if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
             image_build_args = ['-H:+UnlockExperimentalVMOptions', *image_build_args, '-H:-UnlockExperimentalVMOptions']
         return image_build_args
@@ -564,15 +563,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.js',
     short_name='js',
-    standalone_dir_name='graaljs-community-<version>-<graalvm_os>-<arch>',
-    standalone_dir_name_enterprise='graaljs-<version>-<graalvm_os>-<arch>',
-    standalone_dependencies={
-        'GraalVM license files': ('', ['GRAALVM-README.md']),
-        'Graal.js license files': ('', []),
-    },
-    standalone_dependencies_enterprise={
-        'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
-    },
     license_files=[],
     third_party_license_files=[],
     dependencies=[
@@ -598,16 +588,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 *(['wasm:WASM'] if is_wasm_available() else [])
             ],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
-            build_args=[],
+            build_args=[
+                # Uncomment to disable JLine FFM provider at native image build time
+                # '-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true',
+                '--enable-native-access=org.graalvm.shadowed.jline',
+            ],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
             ] if not mx.is_windows() else [],
             language='js',
+            default_vm_args=[
+                '--vm.-enable-native-access=org.graalvm.shadowed.jline',
+            ],
+            # Force launcher and jline on ImageModulePath (needed for --enable-native-access=org.graalvm.shadowed.jline)
+            use_modules='image',
         )
     ],
-    boot_jars=[],
-    installable=True,
     stability="supported",
 ))
 
@@ -624,7 +621,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'graal-js:GRAALJS_GRAALVM_LICENSES',
     ],
     priority=5,
-    installable=True,
     stability="supported",
 ))
 
@@ -640,7 +636,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     support_distributions=[],
     library_configs=[],
     boot_jars=[],
-    installable=True,
     stability="supported",
 ))
 

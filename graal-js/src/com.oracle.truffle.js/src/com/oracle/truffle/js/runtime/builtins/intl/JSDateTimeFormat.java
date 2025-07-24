@@ -204,28 +204,41 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         String caType = IntlUtil.normalizeCAType(selectedLocale.getUnicodeLocaleType("ca"));
+        if (!isValidCAType(strippedLocale, caType)) {
+            caType = null;
+        }
         String normCalendarOpt = IntlUtil.normalizeCAType(calendarOpt);
-        if (caType != null && (normCalendarOpt == null || normCalendarOpt.equals(caType)) && isValidCAType(strippedLocale, caType)) {
+        if (!isValidCAType(strippedLocale, normCalendarOpt) || Objects.equals(caType, normCalendarOpt)) {
+            normCalendarOpt = null;
+        }
+        if (normCalendarOpt == null && caType != null) {
             state.calendar = caType;
             builder.setUnicodeLocaleKeyword("ca", caType);
         }
 
         String nuType = selectedLocale.getUnicodeLocaleType("nu");
-        if ((nuType != null) && IntlUtil.isValidNumberingSystem(nuType) && (numberingSystemOpt == null || numberingSystemOpt.equals(nuType))) {
+        if (!IntlUtil.isValidNumberingSystem(nuType)) {
+            nuType = null;
+        }
+        String nuOpt = numberingSystemOpt;
+        if (!IntlUtil.isValidNumberingSystem(nuOpt) || Objects.equals(nuType, nuOpt)) {
+            nuOpt = null;
+        }
+        if (nuOpt == null && nuType != null) {
             state.numberingSystem = nuType;
             builder.setUnicodeLocaleKeyword("nu", nuType);
         }
 
         state.locale = builder.build().toLanguageTag();
 
-        if (normCalendarOpt != null && isValidCAType(strippedLocale, normCalendarOpt)) {
+        if (normCalendarOpt != null) {
             state.calendar = normCalendarOpt;
             builder.setUnicodeLocaleKeyword("ca", normCalendarOpt);
         }
 
-        if (numberingSystemOpt != null && IntlUtil.isValidNumberingSystem(numberingSystemOpt)) {
-            state.numberingSystem = numberingSystemOpt;
-            builder.setUnicodeLocaleKeyword("nu", numberingSystemOpt);
+        if (nuOpt != null) {
+            state.numberingSystem = nuOpt;
+            builder.setUnicodeLocaleKeyword("nu", nuOpt);
         }
 
         Locale javaLocale = builder.build();

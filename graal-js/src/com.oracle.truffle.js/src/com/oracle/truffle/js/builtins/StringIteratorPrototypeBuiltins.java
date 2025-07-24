@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltinsFactory.StringIteratorNextNodeGen;
@@ -106,12 +105,12 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected final JSObject doStringIterator(VirtualFrame frame, JSStringIteratorObject iterator,
+        protected final JSObject doStringIterator(JSStringIteratorObject iterator,
                         @Cached TruffleString.FromCodePointNode fromCodePointNode,
                         @Cached TruffleString.SubstringByteIndexNode substringNode) {
             TruffleString string = iterator.getIteratedString();
             if (string == null) {
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             }
 
             int index = iterator.getNextIndex();
@@ -119,7 +118,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
 
             if (index >= length) {
                 iterator.setIteratedString(null);
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             }
 
             char first = Strings.charAt(stringReadNode, string, index);
@@ -130,7 +129,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
                 result = Strings.fromCodePoint(fromCodePointNode, first);
             }
             iterator.setNextIndex(index + Strings.length(result));
-            return createIterResultObjectNode.execute(frame, result, false);
+            return createIterResultObjectNode.execute(result, false);
         }
 
         @SuppressWarnings("unused")

@@ -44,6 +44,7 @@ import java.time.ZoneId;
 import java.time.zone.ZoneRulesProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.IllformedLocaleException;
 import java.util.List;
@@ -61,6 +62,13 @@ import org.graalvm.shadowed.com.ibm.icu.text.CurrencyMetaInfo;
 import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
+import org.graalvm.shadowed.com.ibm.icu.util.ChineseCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.HebrewCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.IndianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.IslamicCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.JapaneseCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.PersianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 
@@ -71,8 +79,10 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  *
@@ -248,6 +258,7 @@ public final class IntlUtil {
     public static final String USE_GROUPING = "useGrouping";
     public static final String VALUE = "value";
     public static final String VARIANT = "variant";
+    public static final String VARIANTS = "variants";
     public static final String WORD = "word";
     public static final String WEEKDAY = "weekday";
     public static final String WEEKEND = "weekend";
@@ -340,6 +351,7 @@ public final class IntlUtil {
     public static final TruffleString KEY_USAGE = Strings.constant(USAGE);
     public static final TruffleString KEY_USE_GROUPING = Strings.constant(USE_GROUPING);
     public static final TruffleString KEY_VALUE = Strings.VALUE;
+    public static final TruffleString KEY_VARIANTS = Strings.constant(VARIANTS);
     public static final TruffleString KEY_WEEKDAY = Strings.constant(WEEKDAY);
     public static final TruffleString KEY_WEEKEND = Strings.constant(WEEKEND);
     public static final TruffleString KEY_WEEKS = Strings.constant(WEEKS);
@@ -347,6 +359,21 @@ public final class IntlUtil {
     public static final TruffleString KEY_YEAR = Strings.YEAR;
     public static final TruffleString KEY_YEARS = Strings.constant(YEARS);
     public static final TruffleString KEY_YEARS_DISPLAY = Strings.constant(YEARS_DISPLAY);
+
+    // Calendar-related constants
+    public static final TruffleString GREGORY = Strings.constant("gregory");
+    public static final TruffleString GREGORY_INVERSE = Strings.constant("gregory-inverse");
+    public static final TruffleString AD = Strings.constant("ad");
+    public static final TruffleString BC = Strings.constant("bc");
+    public static final TruffleString CE = Strings.constant("ce");
+    public static final TruffleString BCE = Strings.constant("bce");
+    public static final TruffleString REIWA = Strings.constant("reiwa");
+    public static final TruffleString HEISEI = Strings.constant("heisei");
+    public static final TruffleString SHOWA = Strings.constant("showa");
+    public static final TruffleString TAISHO = Strings.constant("taisho");
+    public static final TruffleString MEIJI = Strings.constant("meiji");
+    public static final TruffleString JAPANESE = Strings.constant("japanese");
+    public static final TruffleString JAPANESE_INVERSE = Strings.constant("japanese-inverse");
 
     // https://tc39.es/ecma402/#table-sanctioned-simple-unit-identifiers
     private static final Set<String> SANCTIONED_SIMPLE_UNIT_IDENTIFIERS = Set.of(new String[]{
@@ -527,6 +554,12 @@ public final class IntlUtil {
     public static void ensureIsStructurallyValidLanguageSubtag(String region) {
         if (!UTS35Validator.isStructurallyValidLanguageSubtag(region)) {
             throw Errors.createRangeErrorInvalidLanguageSubtag(region);
+        }
+    }
+
+    public static void ensureIsStructurallyValidVariantSubtag(String variant) {
+        if (!UTS35Validator.isStructurallyValidVariantSubtag(variant)) {
+            throw Errors.createRangeErrorInvalidVariant(variant);
         }
     }
 
@@ -897,11 +930,14 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String canonicalizeCalendar(String id) {
-        String lcID = id.toLowerCase(Locale.ROOT);
-        if (Arrays.binarySearch(availableCalendars(), lcID) < 0) {
+        // AvailableCalendars() in the spec contains aliases,
+        // but our availableCalendars() is normalized already
+        // => we must normalize before the search
+        String canonical = normalizeCAType(id.toLowerCase(Locale.ROOT));
+        if (Arrays.binarySearch(availableCalendars(), canonical) < 0) {
             throw Errors.createRangeErrorInvalidCalendar(id);
         }
-        return normalizeCAType(lcID);
+        return canonical;
     }
 
     // The returned collations are supposed to be "lower case String values conforming to the
@@ -1019,6 +1055,165 @@ public final class IntlUtil {
             source = IntlUtil.SHARED;
         }
         return source;
+    }
+
+    @TruffleBoundary
+    public static Calendar getCalendar(TruffleString calendarID) {
+        Calendar cal = Calendar.getInstance(TimeZone.GMT_ZONE, new ULocale("und-u-ca-" + calendarID));
+        if (cal instanceof GregorianCalendar gCal) {
+            // Ensure that Gregorian calendar is used for all dates.
+            // Julian calendar is used for dates before 1582 otherwise.
+            gCal.setGregorianChange(new Date(Long.MIN_VALUE));
+        }
+        return cal;
+    }
+
+    @TruffleBoundary
+    public static Calendar getCalendar(TruffleString calendarID, int year, int month, int day) {
+        Calendar cal = getCalendar(calendarID);
+        cal.setTimeInMillis(JSDate.MS_PER_DAY * JSDate.isoDateToEpochDays(year, month - 1, day));
+        return cal;
+    }
+
+    @TruffleBoundary
+    public static boolean hasLeapYears(Calendar cal) {
+        return cal.getMaximum(Calendar.DAY_OF_YEAR) != cal.getMinimum(Calendar.DAY_OF_YEAR);
+    }
+
+    @TruffleBoundary
+    public static boolean isLeapYear(Calendar cal) {
+        return cal.inTemporalLeapYear();
+    }
+
+    @TruffleBoundary
+    public static int getCalendarField(Calendar cal, int field) {
+        return cal.get(field);
+    }
+
+    @TruffleBoundary
+    public static int getCalendarFieldMax(Calendar cal, int field) {
+        return cal.getActualMaximum(field);
+    }
+
+    @TruffleBoundary
+    public static String getTemporalMonthCode(Calendar cal) {
+        return cal.getTemporalMonthCode();
+    }
+
+    @TruffleBoundary
+    public static boolean calendarSupportsEra(TruffleString calendarID) {
+        Calendar cal = getCalendar(calendarID);
+        return calendarSupportsEra(cal);
+    }
+
+    @TruffleBoundary
+    public static boolean calendarSupportsEra(Calendar cal) {
+        return (cal.getMaximum(Calendar.ERA) != cal.getMinimum(Calendar.ERA) && !(cal instanceof ChineseCalendar));
+    }
+
+    @TruffleBoundary
+    public static Object getEraYear(Calendar cal) {
+        return calendarSupportsEra(cal) ? cal.get(Calendar.YEAR) : Undefined.instance;
+    }
+
+    @TruffleBoundary
+    public static Object getEra(Calendar cal) {
+        return calendarSupportsEra(cal) ? getEraAsString(cal) : Undefined.instance;
+    }
+
+    @TruffleBoundary
+    private static TruffleString getEraAsString(Calendar cal) {
+        int era = cal.get(Calendar.ERA);
+        if (cal instanceof JapaneseCalendar) {
+            if (era == JapaneseCalendar.REIWA) {
+                return REIWA;
+            } else if (era == JapaneseCalendar.HEISEI) {
+                return HEISEI;
+            } else if (era == JapaneseCalendar.SHOWA) {
+                return SHOWA;
+            } else if (era == JapaneseCalendar.TAISHO) {
+                return TAISHO;
+            } else if (era == JapaneseCalendar.MEIJI) {
+                return MEIJI;
+            } else if (era == GregorianCalendar.AD) {
+                return JAPANESE;
+            } else if (era == GregorianCalendar.BC) {
+                return JAPANESE_INVERSE;
+            }
+        } else if (cal instanceof GregorianCalendar) {
+            if (era == GregorianCalendar.AD) {
+                return GREGORY;
+            } else {
+                return GREGORY_INVERSE;
+            }
+        }
+        return Strings.UNKNOWN;
+    }
+
+    @TruffleBoundary
+    public static Integer canonicalizeEraInCalendar(Calendar cal, TruffleString era) {
+        if (cal instanceof JapaneseCalendar) {
+            if (Strings.equals(REIWA, era)) {
+                return JapaneseCalendar.REIWA;
+            } else if (Strings.equals(HEISEI, era)) {
+                return JapaneseCalendar.HEISEI;
+            } else if (Strings.equals(SHOWA, era)) {
+                return JapaneseCalendar.SHOWA;
+            } else if (Strings.equals(TAISHO, era)) {
+                return JapaneseCalendar.TAISHO;
+            } else if (Strings.equals(MEIJI, era)) {
+                return JapaneseCalendar.MEIJI;
+            } else if (Strings.equals(JAPANESE, era) || Strings.equals(GREGORY, era) || Strings.equals(AD, era) || Strings.equals(CE, era)) {
+                return GregorianCalendar.AD;
+            } else if (Strings.equals(JAPANESE_INVERSE, era) || Strings.equals(GREGORY_INVERSE, era) || Strings.equals(BC, era) || Strings.equals(BCE, era)) {
+                return GregorianCalendar.BC;
+            }
+        } else if (cal instanceof GregorianCalendar) {
+            if (Strings.equals(GREGORY, era) || Strings.equals(AD, era) || Strings.equals(CE, era)) {
+                return GregorianCalendar.AD;
+            } else if (Strings.equals(GREGORY_INVERSE, era) || Strings.equals(BC, era) || Strings.equals(BCE, era)) {
+                return GregorianCalendar.BC;
+            }
+        }
+        return null;
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("deprecation")
+    static int maxDayInMonth(Calendar cal, String monthCode) {
+        // various irregularities
+        if (cal instanceof GregorianCalendar) {
+            if ("M02".equals(monthCode)) {
+                return 29; // gregory, buddhist, japanese, roc
+            }
+        } else if (cal instanceof ChineseCalendar) {
+            return ("M09L".equals(monthCode) || "M11L".equals(monthCode)) ? 29 : 30;
+        } else if (cal instanceof HebrewCalendar) {
+            if ("M02".equals(monthCode) || "M03".equals(monthCode)) {
+                return 30;
+            }
+        } else if (cal instanceof IslamicCalendar iCal) {
+            if (iCal.isCivil() || iCal.getCalculationType() == IslamicCalendar.CalculationType.ISLAMIC_TBLA) {
+                if ("M12".equals(monthCode)) {
+                    return 30;
+                }
+            } else {
+                return 30;
+            }
+        } else if (cal instanceof PersianCalendar) {
+            if ("M12".equals(monthCode)) {
+                return 30;
+            }
+        } else if (cal instanceof IndianCalendar) {
+            if ("M01".equals(monthCode)) {
+                return 31;
+            }
+        } else if (monthCode.equals("M13")) {
+            return 6; // coptic, ethioaa, ethiopic
+        }
+        // regular month
+        cal.setTemporalMonthCode(monthCode);
+        return cal.getActualMaximum(Calendar.DAY_OF_MONTH);
     }
 
 }

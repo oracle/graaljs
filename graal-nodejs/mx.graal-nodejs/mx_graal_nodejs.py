@@ -376,6 +376,10 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath():
+    """
+    Adds $JAVA_HOME/lib to LD_LIBRARY_PATH or the OS equivalent thereof.
+    Ensures libjsig is found in single executable application (SEA) tests that copy the node executable to a temp dir.
+    """
     if _current_os == 'windows':
         library_path = join(_java_home(forBuild=True), 'bin')
     else:
@@ -384,10 +388,17 @@ def setLibraryPath():
     if not exists(library_path):
         return
 
-    if 'LD_LIBRARY_PATH' in os.environ:
-        library_path += pathsep + os.environ['LD_LIBRARY_PATH']
+    if _current_os == 'windows':
+        library_path_env_var = 'PATH'
+    elif _current_os == 'darwin':
+        library_path_env_var = 'DYLD_LIBRARY_PATH'
+    else:
+        library_path_env_var = 'LD_LIBRARY_PATH'
 
-    _setEnvVar('LD_LIBRARY_PATH', library_path)
+    if library_path_env_var in os.environ:
+        library_path += pathsep + os.environ[library_path_env_var]
+
+    _setEnvVar(library_path_env_var, library_path)
 
 def processDevkitRoot(env=None):
     assert _is_windows
@@ -616,11 +627,9 @@ def mx_post_parse_cmd_line(args):
 
 # Functions called from suite.py
 
-def has_suite(name):
-    return mx.suite(name, fatalIfMissing=False)
-
 def graalnodejs_standalone_deps():
-    deps = mx_truffle.resolve_truffle_dist_names()
+    include_truffle_runtime = not mx.env_var_to_bool("EXCLUDE_TRUFFLE_RUNTIME")
+    deps = mx_truffle.resolve_truffle_dist_names(use_optimized_runtime=include_truffle_runtime)
     if is_wasm_available():
         deps += ['wasm:WASM']
     return deps
@@ -631,6 +640,7 @@ def libgraalnodejs_build_args():
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
         ]
+        # GR-64948: On GraalVM 21 some Native Image stable options are incorrectly detected as experimental
         if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
             image_build_args = ['-H:+UnlockExperimentalVMOptions', *image_build_args, '-H:-UnlockExperimentalVMOptions']
         return image_build_args
@@ -676,6 +686,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 '--language:nodejs',
                 '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
                 *(['--language:wasm'] if is_wasm_available() else []),
+                # Disable JLine FFM provider at native image build time (node launcher does not use jline)
+                "-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true",
             ],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
@@ -685,16 +697,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         ),
     ],
     has_polyglot_lib_entrypoints=True,
-    standalone_dir_name='graalnodejs-community-<version>-<graalvm_os>-<arch>',
-    standalone_dir_name_enterprise='graalnodejs-<version>-<graalvm_os>-<arch>',
-    standalone_dependencies={
-        'GraalVM license files': ('', ['GRAALVM-README.md']),
-        'Graal.nodejs license files': ('', []),
-    },
-    standalone_dependencies_enterprise={
-        'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
-    },
-    installable=True,
     stability="supported",
 ))
 
@@ -711,7 +713,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES',
     ],
     priority=5,
-    installable=True,
     stability="supported",
 ))
 

@@ -307,7 +307,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         }
 
         SimpleArrayList<Object> classExtraInitializers = SimpleArrayList.createEmpty();
-        Object newConstructor = applyDecoratorsToClassDefinition(frame, getClassName(), constructor, decorators, classExtraInitializers);
+        Object newConstructor = applyDecoratorsToClassDefinition(getClassName(), constructor, decorators, classExtraInitializers);
 
         if (writeClassBindingNode != null) {
             writeClassBindingNode.executeWrite(frame, newConstructor);
@@ -421,7 +421,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         return decorators;
     }
 
-    private Object applyDecoratorsToClassDefinition(VirtualFrame frame, Object name, JSObject constructor, Object[] decorators, SimpleArrayList<Object> classExtraInitializers) {
+    private Object applyDecoratorsToClassDefinition(Object name, JSObject constructor, Object[] decorators, SimpleArrayList<Object> classExtraInitializers) {
         if (this.classDecorators.length == 0) {
             return constructor;
         }
@@ -429,7 +429,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             CompilerDirectives.transferToInterpreterAndInvalidate();
             decorateClassDefinition = insert(ApplyDecoratorsToClassDefinitionNode.create(context));
         }
-        return decorateClassDefinition.executeDecorators(frame, name, constructor, decorators, classExtraInitializers);
+        return decorateClassDefinition.executeDecorators(name, constructor, decorators, classExtraInitializers);
     }
 
     @ExplodeLoop

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -74,7 +73,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         return new AsyncGeneratorEnqueueNode(context);
     }
 
-    public Object execute(VirtualFrame frame, Object generator, Completion completion) {
+    public Object execute(Object generator, Completion completion) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         if (!(generator instanceof JSAsyncGeneratorObject asyncGeneratorObject) || asyncGeneratorObject.hasGeneratorBrand()) {
             enterErrorBranch();
@@ -86,7 +85,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         Boundaries.queueAdd(queue, request);
         AsyncGeneratorState state = asyncGeneratorObject.getAsyncGeneratorState();
         if (notExecutingProf.profile(state != AsyncGeneratorState.Executing)) {
-            asyncGeneratorResumeNextNode.execute(frame, asyncGeneratorObject);
+            asyncGeneratorResumeNextNode.execute(asyncGeneratorObject);
         }
         return promiseCapability.getPromise();
     }

@@ -328,9 +328,7 @@ MaybeLocal<Object> New(Isolate* isolate,
       if (actual < length) {
         std::unique_ptr<BackingStore> old_store = std::move(store);
         store = ArrayBuffer::NewBackingStore(isolate, actual);
-        memcpy(static_cast<char*>(store->Data()),
-               static_cast<char*>(old_store->Data()),
-               actual);
+        memcpy(store->Data(), old_store->Data(), actual);
       }
       Local<ArrayBuffer> buf = ArrayBuffer::New(isolate, std::move(store));
       Local<Object> obj;
@@ -736,11 +734,11 @@ void StringWrite(const FunctionCallbackInfo<Value>& args) {
 }
 
 void SlowByteLengthUtf8(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
   CHECK(args[0]->IsString());
 
   // Fast case: avoid StringBytes on UTF8 string. Jump to v8.
-  args.GetReturnValue().Set(args[0].As<String>()->Utf8Length(env->isolate()));
+  args.GetReturnValue().Set(
+      args[0].As<String>()->Utf8Length(args.GetIsolate()));
 }
 
 uint32_t FastByteLengthUtf8(Local<Value> receiver,
@@ -1261,20 +1259,6 @@ void GetZeroFillToggle(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(Uint32Array::New(ab, 0, 1));
 }
 
-void DetachArrayBuffer(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-  if (args[0]->IsArrayBuffer()) {
-    Local<ArrayBuffer> buf = args[0].As<ArrayBuffer>();
-    if (buf->IsDetachable()) {
-      std::shared_ptr<BackingStore> store = buf->GetBackingStore();
-      if (buf->Detach(Local<Value>()).IsNothing()) {
-        return;
-      }
-      args.GetReturnValue().Set(ArrayBuffer::New(env->isolate(), store));
-    }
-  }
-}
-
 static void Btoa(const FunctionCallbackInfo<Value>& args) {
   CHECK_EQ(args.Length(), 1);
   Environment* env = Environment::GetCurrent(args);
@@ -1457,9 +1441,9 @@ uint32_t WriteOneByteString(const char* src,
     return 0;
   }
 
-  if (encoding == UTF8) {
+  if constexpr (encoding == UTF8) {
     return simdutf::convert_latin1_to_utf8_safe(src, src_len, dst, dst_len);
-  } else if (encoding == LATIN1 || encoding == ASCII) {
+  } else if constexpr (encoding == LATIN1 || encoding == ASCII) {
     const auto size = std::min(src_len, dst_len);
     memcpy(dst, src, size);
     return size;
@@ -1528,11 +1512,11 @@ uint32_t FastWriteString(Local<Value> receiver,
       std::min<uint32_t>(dst.length() - offset, max_length));
 }
 
-static v8::CFunction fast_write_string_ascii(
+static const v8::CFunction fast_write_string_ascii(
     v8::CFunction::Make(FastWriteString<ASCII>));
-static v8::CFunction fast_write_string_latin1(
+static const v8::CFunction fast_write_string_latin1(
     v8::CFunction::Make(FastWriteString<LATIN1>));
-static v8::CFunction fast_write_string_utf8(
+static const v8::CFunction fast_write_string_utf8(
     v8::CFunction::Make(FastWriteString<UTF8>));
 
 void Initialize(Local<Object> target,
@@ -1564,7 +1548,6 @@ void Initialize(Local<Object> target,
                             &fast_index_of_number);
   SetMethodNoSideEffect(context, target, "indexOfString", IndexOfString);
 
-  SetMethod(context, target, "detachArrayBuffer", DetachArrayBuffer);
   SetMethod(context, target, "copyArrayBuffer", CopyArrayBuffer);
 
   SetMethod(context, target, "swap16", Swap16);
@@ -1674,7 +1657,6 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(StringWrite<UTF8>);
   registry->Register(GetZeroFillToggle);
 
-  registry->Register(DetachArrayBuffer);
   registry->Register(CopyArrayBuffer);
 
   registry->Register(Atob);

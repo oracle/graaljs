@@ -154,12 +154,24 @@ public final class JSTemporalParserRecord {
         return offsetHour;
     }
 
+    public boolean hasOffsetHour() {
+        return (offsetHour != Long.MIN_VALUE);
+    }
+
     public long getOffsetMinute() {
         return offsetMinute;
     }
 
+    public boolean hasOffsetMinute() {
+        return (offsetMinute != Long.MIN_VALUE);
+    }
+
     public long getOffsetSecond() {
         return offsetSecond;
+    }
+
+    public boolean hasOffsetSecond() {
+        return (offsetSecond != Long.MIN_VALUE);
     }
 
     public TruffleString getOffsetFraction() {

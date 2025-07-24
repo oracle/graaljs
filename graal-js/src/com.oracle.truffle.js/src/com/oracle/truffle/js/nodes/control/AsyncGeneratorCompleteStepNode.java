@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.ArrayDeque;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -64,20 +63,20 @@ public class AsyncGeneratorCompleteStepNode extends JavaScriptBaseNode {
         this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
     }
 
-    public final void asyncGeneratorCompleteStep(VirtualFrame frame, Completion.Type completionType, Object completionValue, boolean done, ArrayDeque<AsyncGeneratorRequest> queue) {
+    public final void asyncGeneratorCompleteStep(Completion.Type completionType, Object completionValue, boolean done, ArrayDeque<AsyncGeneratorRequest> queue) {
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.pollFirst();
         PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
         if (completionType == Completion.Type.Normal) {
-            asyncGeneratorCompleteStepNormal(frame, completionValue, done, promiseCapability);
+            asyncGeneratorCompleteStepNormal(completionValue, done, promiseCapability);
         } else {
             assert completionType == Completion.Type.Throw;
             asyncGeneratorCompleteStepThrow(completionValue, promiseCapability);
         }
     }
 
-    private void asyncGeneratorCompleteStepNormal(VirtualFrame frame, Object value, boolean done, PromiseCapabilityRecord promiseCapability) {
-        JSDynamicObject iterResult = createIterResultObjectNode.execute(frame, value, done);
+    private void asyncGeneratorCompleteStepNormal(Object value, boolean done, PromiseCapabilityRecord promiseCapability) {
+        JSDynamicObject iterResult = createIterResultObjectNode.execute(value, done);
         callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), iterResult));
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -126,13 +125,13 @@ public final class WrapForValidIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization
-        protected Object doReturn(VirtualFrame frame, JSWrapForValidIteratorObject thisObj,
+        protected Object doReturn(JSWrapForValidIteratorObject thisObj,
                         @Cached("create(getContext(), RETURN)") GetMethodNode getReturnNode,
                         @Cached("createCall()") JSFunctionCallNode methodCallNode,
                         @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode) {
             Object returnMethod = getReturnNode.executeWithTarget(thisObj.getIterated().getIterator());
             if (returnMethod == Undefined.instance) {
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                return createIterResultObjectNode.execute(Undefined.instance, true);
             } else {
                 return methodCallNode.executeCall(JSArguments.createZeroArg(thisObj.getIterated().getIterator(), returnMethod));
             }

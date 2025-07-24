@@ -76,6 +76,10 @@ public final class JSTemporalPlainDateObject extends JSTemporalCalendarHolder {
         return day;
     }
 
+    public ISODateRecord isoDate() {
+        return new ISODateRecord(year, month, day);
+    }
+
     @ExportMessage
     @SuppressWarnings("static-method")
     boolean isDate() {

@@ -44,9 +44,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.OFFSET;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -56,19 +53,20 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.MatchBehaviour;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
@@ -94,8 +92,10 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
-                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
-                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+                    @Cached GetTemporalCalendarIdentifierWithISODefaultNode getCalendarWithISODefault,
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaString,
+                    @Cached TruffleString.FromJavaStringNode fromJavaString) {
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
         TruffleString timeZone;
@@ -116,14 +116,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 return JSTemporalZonedDateTime.create(ctx, realm, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
 
-            calendar = getCalendarSlotValueWithISODefault.execute(item);
-
-            List<TruffleString> fieldNames = Boundaries.listEditableCopy(TemporalUtil.listDMMCY);
-            addFieldNames(fieldNames);
-
-            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listTimeZone);
-            Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
-            timeZone = toTimeZoneIdentifier.execute(timeZoneObj);
+            calendar = getCalendarWithISODefault.execute(item);
+            JSDynamicObject fields = TemporalUtil.prepareCalendarFields(ctx, calendar, item, TemporalUtil.listDMMCY, TemporalUtil.listTimeUnitsOffsetTZ, TemporalUtil.listTimeZone);
+            timeZone = (TruffleString) JSObject.get(fields, TIME_ZONE);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
             if (offsetStringObj == Undefined.instance) {
                 offsetBehaviour = OffsetBehaviour.WALL;
@@ -150,12 +145,17 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             calendar = result.getCalendar();
             if (calendar == null) {
                 calendar = TemporalConstants.ISO8601;
-            }
-            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            } else {
+                String calendarJLS = toJavaString.execute(calendar);
+                calendar = Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(calendarJLS));
             }
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
+            if (offsetString != null) {
+                JSTemporalParserRecord rec = TemporalUtil.parseTimeZoneOffsetStringHelper(offsetString);
+                if (rec.hasOffsetSecond()) {
+                    matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
+                }
+            }
             Object resolvedOptions = getOptionsObject.execute(options);
             disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
             offsetOption = TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
@@ -172,18 +172,6 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                         result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offsetOption,
                         matchBehaviour);
         return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
-    }
-
-    @TruffleBoundary
-    private static void addFieldNames(List<TruffleString> fieldNames) {
-        fieldNames.add(TemporalConstants.HOUR);
-        fieldNames.add(TemporalConstants.MICROSECOND);
-        fieldNames.add(TemporalConstants.MILLISECOND);
-        fieldNames.add(TemporalConstants.MINUTE);
-        fieldNames.add(TemporalConstants.NANOSECOND);
-        fieldNames.add(TemporalConstants.OFFSET);
-        fieldNames.add(TemporalConstants.SECOND);
-        fieldNames.add(TemporalConstants.TIME_ZONE);
     }
 
 }

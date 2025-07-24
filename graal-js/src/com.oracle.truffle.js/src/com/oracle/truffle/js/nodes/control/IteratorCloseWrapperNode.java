@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,20 +55,36 @@ import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
+/**
+ * Wrapper around a for-in/of loop or ArrayAssignmentPattern that performs IteratorClose on abrupt
+ * completion, and optionally on normal completion, too, if the iterator is not done.
+ *
+ * @see #arrayDestructuring
+ * @see AsyncIteratorCloseWrapperNode
+ */
 public abstract class IteratorCloseWrapperNode extends JavaScriptNode {
     @Child private JavaScriptNode blockNode;
     @Child private JavaScriptNode iteratorNode;
     @Child private IteratorCloseNode iteratorCloseNode;
     private final JSContext context;
+    /**
+     * If true, follow the semantics of DestructuringAssignmentEvaluation : ArrayAssignmentPattern,
+     * performing IteratorClose on any (abrupt and normal) completion if not iterator.[[Done]].
+     * <p>
+     * If false, follow the semantics of ForIn/OfBodyEvaluation, performing IteratorClose on abrupt
+     * completion (but never on normal completion), regardless of iterator.[[Done]].
+     */
+    private final boolean arrayDestructuring;
 
-    protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
+    protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator, boolean arrayDestructuring) {
         this.context = context;
         this.blockNode = block;
         this.iteratorNode = iterator;
+        this.arrayDestructuring = arrayDestructuring;
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
-        return IteratorCloseWrapperNodeGen.create(context, block, iterator);
+    public static JavaScriptNode create(JSContext context, JavaScriptNode block, JavaScriptNode iterator, boolean arrayDestructuring) {
+        return IteratorCloseWrapperNodeGen.create(context, block, iterator, arrayDestructuring);
     }
 
     @Specialization
@@ -84,21 +100,21 @@ public abstract class IteratorCloseWrapperNode extends JavaScriptNode {
         } catch (ControlFlowException e) {
             exitBranch.enter(this);
             IteratorRecord iteratorRecord = getIteratorRecord(frame);
-            if (!iteratorRecord.isDone()) {
+            if (!arrayDestructuring || !iteratorRecord.isDone()) {
                 iteratorClose().executeVoid(iteratorRecord.getIterator());
             }
             throw e;
         } catch (AbstractTruffleException e) {
             throwBranch.enter(this);
             IteratorRecord iteratorRecord = getIteratorRecord(frame);
-            if (!iteratorRecord.isDone()) {
+            if (!arrayDestructuring || !iteratorRecord.isDone()) {
                 iteratorClose().executeAbrupt(iteratorRecord.getIterator());
             }
             throw e;
         }
 
         IteratorRecord iteratorRecord = getIteratorRecord(frame);
-        if (!iteratorRecord.isDone()) {
+        if (arrayDestructuring && !iteratorRecord.isDone()) {
             notDoneBranch.enter(this);
             iteratorClose().executeVoid(iteratorRecord.getIterator());
         }
@@ -119,6 +135,6 @@ public abstract class IteratorCloseWrapperNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return IteratorCloseWrapperNodeGen.create(context, cloneUninitialized(blockNode, materializedTags), cloneUninitialized(iteratorNode, materializedTags));
+        return IteratorCloseWrapperNodeGen.create(context, cloneUninitialized(blockNode, materializedTags), cloneUninitialized(iteratorNode, materializedTags), arrayDestructuring);
     }
 }

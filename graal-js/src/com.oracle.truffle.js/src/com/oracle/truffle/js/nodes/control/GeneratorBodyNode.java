@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
 
             if (completionType == Completion.Type.Normal) {
                 if (GeneratorState.Completed.equals(generatorState)) {
-                    return createIterResultObject.execute(frame, Undefined.instance, true);
+                    return createIterResultObject.execute(Undefined.instance, true);
                 }
                 assert GeneratorState.SuspendedStart.equals(generatorState) || GeneratorState.SuspendedYield.equals(generatorState);
             } else {
@@ -114,7 +114,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                 }
                 if (GeneratorState.Completed.equals(generatorState)) {
                     if (returnOrExceptionProfile.profile(completion.isReturn())) {
-                        return createIterResultObject.execute(frame, completion.getValue(), true);
+                        return createIterResultObject.execute(completion.getValue(), true);
                     } else {
                         assert completion.isThrow();
                         throw UserScriptException.create(completion.getValue(), this, getLanguage().getJSContext().getLanguageOptions().stackTraceLimit());
@@ -131,7 +131,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
 
             try {
                 Object result = functionBody.execute(generatorFrame);
-                return createIterResultObject.execute(frame, result, true);
+                return createIterResultObject.execute(result, true);
             } catch (YieldException e) {
                 generatorState = GeneratorState.SuspendedYield;
                 return readYieldResult == null ? e.getResult() : readYieldResult.execute(generatorFrame);

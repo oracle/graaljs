@@ -628,9 +628,11 @@ console.log(JSON.stringify(myURLs));
 
 <!-- YAML
 added: v16.7.0
+changes:
+ - version: v22.17.0
+   pr-url: https://github.com/nodejs/node/pull/57513
+   description: Marking the API stable.
 -->
-
-> Stability: 1 - Experimental
 
 * `blob` {Blob}
 * Returns: {string}
@@ -664,9 +666,11 @@ to other workers or the main thread.
 
 <!-- YAML
 added: v16.7.0
+changes:
+ - version: v22.17.0
+   pr-url: https://github.com/nodejs/node/pull/57513
+   description: Marking the API stable.
 -->
-
-> Stability: 1 - Experimental
 
 * `id` {string} A `'blob:nodedata:...` URL string returned by a prior call to
   `URL.createObjectURL()`.
@@ -913,7 +917,7 @@ Returns an ES6 `Iterator` over each of the name-value pairs in the query.
 Each item of the iterator is a JavaScript `Array`. The first item of the `Array`
 is the `name`, the second item of the `Array` is the `value`.
 
-Alias for [`urlSearchParams[@@iterator]()`][`urlSearchParams@@iterator()`].
+Alias for [`urlSearchParams[Symbol.iterator]()`][`urlSearchParamsSymbol.iterator()`].
 
 #### `urlSearchParams.forEach(fn[, thisArg])`
 
@@ -1433,8 +1437,6 @@ changes:
     description: The Legacy URL API is deprecated. Use the WHATWG URL API.
 -->
 
-> Stability: 3 - Legacy: Use the WHATWG URL API instead.
-
 The legacy `urlObject` (`require('node:url').Url` or
 `import { Url } from 'node:url'`) is
 created and returned by the `url.parse()` function.
@@ -1561,8 +1563,6 @@ changes:
                  `slashes` option with no protocol is now also respected at all
                  times.
 -->
-
-> Stability: 3 - Legacy: Use the WHATWG URL API instead.
 
 * `urlObject` {Object|string} A URL object (as returned by `url.parse()` or
   constructed otherwise). If a string, it is converted to an object by passing
@@ -1724,8 +1724,6 @@ changes:
                  contains a hostname.
 -->
 
-> Stability: 3 - Legacy: Use the WHATWG URL API instead.
-
 * `from` {string} The base URL to use if `to` is a relative URL.
 * `to` {string} The target URL to resolve.
 
@@ -1840,7 +1838,7 @@ console.log(myURL.origin);
 [`url.toJSON()`]: #urltojson
 [`url.toString()`]: #urltostring
 [`urlSearchParams.entries()`]: #urlsearchparamsentries
-[`urlSearchParams@@iterator()`]: #urlsearchparamssymboliterator
+[`urlSearchParamsSymbol.iterator()`]: #urlsearchparamssymboliterator
 [converted to a string]: https://tc39.es/ecma262/#sec-tostring
 [examples of parsed URLs]: https://url.spec.whatwg.org/#example-url-parsing
 [host name spoofing]: https://hackerone.com/reports/678487

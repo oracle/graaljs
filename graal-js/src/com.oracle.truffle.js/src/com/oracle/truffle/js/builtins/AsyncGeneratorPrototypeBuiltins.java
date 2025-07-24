@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.builtins.AsyncGeneratorPrototypeBuiltinsFactory.AsyncGeneratorResumeNodeGen;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorEnqueueNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -111,9 +110,9 @@ public final class AsyncGeneratorPrototypeBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected Object resume(VirtualFrame frame, Object thisObj, Object value) {
+        protected Object resume(Object thisObj, Object value) {
             Completion completion = Completion.create(resumeType, value);
-            return enqueueNode.execute(frame, thisObj, completion);
+            return enqueueNode.execute(thisObj, completion);
         }
     }
 }

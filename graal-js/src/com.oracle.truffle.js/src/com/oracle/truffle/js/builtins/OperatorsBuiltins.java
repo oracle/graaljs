@@ -149,12 +149,13 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @Specialization
-        protected JSFunctionObject doOperators(VirtualFrame frame, Object table, Object... extraTables) {
-            JSDynamicObject prototype = createPrototypeNode.execute(frame);
+        protected JSFunctionObject doOperators(Object table, Object[] extraTables) {
+            JSRealm realm = getRealm();
+            JSObject prototype = createPrototypeNode.execute(realm);
             OperatorSet operatorSet = constructOperatorSetNode.execute(table, extraTables);
             JSFunctionData constructorFunctionData = getContext().getOrCreateBuiltinFunctionData(
                             JSContext.BuiltinFunctionKey.OperatorsConstructor, OperatorsNode::createConstructorImpl);
-            JSFunctionObject constructor = JSFunction.create(getRealm(), constructorFunctionData);
+            JSFunctionObject constructor = JSFunction.create(realm, constructorFunctionData);
             JSFunction.setClassPrototype(constructor, prototype);
             setConstructorNode.executeVoid(prototype, constructor);
             setOperatorDefinitionsNode.setValue(constructor, operatorSet);

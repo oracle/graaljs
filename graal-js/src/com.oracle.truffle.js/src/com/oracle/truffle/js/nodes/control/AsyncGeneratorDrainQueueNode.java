@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -60,16 +59,16 @@ public class AsyncGeneratorDrainQueueNode extends AsyncGeneratorAwaitReturnNode 
         return new AsyncGeneratorDrainQueueNode(context);
     }
 
-    public final void asyncGeneratorCompleteStepAndDrainQueue(VirtualFrame frame, JSAsyncGeneratorObject generator, Completion.Type resultType, Object resultValue) {
+    public final void asyncGeneratorCompleteStepAndDrainQueue(JSAsyncGeneratorObject generator, Completion.Type resultType, Object resultValue) {
         ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
         generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.Completed);
-        asyncGeneratorCompleteStep(frame, resultType, resultValue, true, queue);
+        asyncGeneratorCompleteStep(resultType, resultValue, true, queue);
         if (!queue.isEmpty()) {
-            asyncGeneratorDrainQueue(frame, generator, queue);
+            asyncGeneratorDrainQueue(generator, queue);
         }
     }
 
-    public final void asyncGeneratorDrainQueue(VirtualFrame frame, JSAsyncGeneratorObject generator, ArrayDeque<AsyncGeneratorRequest> queue) {
+    public final void asyncGeneratorDrainQueue(JSAsyncGeneratorObject generator, ArrayDeque<AsyncGeneratorRequest> queue) {
         assert generator.getAsyncGeneratorState() == JSFunction.AsyncGeneratorState.Completed : generator.getAsyncGeneratorState();
         while (!queue.isEmpty()) {
             AsyncGeneratorRequest next = queue.peekFirst();
@@ -80,10 +79,10 @@ public class AsyncGeneratorDrainQueueNode extends AsyncGeneratorAwaitReturnNode 
                     break;
                 } catch (AbstractTruffleException ex) {
                     // PromiseResolve has thrown an error
-                    asyncGeneratorRejectBrokenPromise(frame, generator, ex, queue);
+                    asyncGeneratorRejectBrokenPromise(generator, ex, queue);
                 }
             } else {
-                asyncGeneratorCompleteStep(frame, next.getCompletionType(), next.getCompletionValue(), true, queue);
+                asyncGeneratorCompleteStep(next.getCompletionType(), next.getCompletionValue(), true, queue);
             }
         }
     }

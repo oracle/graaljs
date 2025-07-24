@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,9 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * ES8 5.2 AsyncIteratorClose(iterator, completion).
+ * Wrapper around a for-await-of loop that performs AsyncIteratorClose on abrupt completion.
+ *
+ * @see IteratorCloseWrapperNode
  */
 public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements ResumableNode.WithObjectState {
 
@@ -75,7 +77,6 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
     private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
-    private final BranchProfile notDoneBranch = BranchProfile.create();
 
     protected AsyncIteratorCloseWrapperNode(JSContext context, int stateSlot, JavaScriptNode loopNode, JavaScriptNode iteratorNode,
                     JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
@@ -131,21 +132,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
                 }
                 throw e;
             }
-            IteratorRecord iteratorRecord = getIteratorRecord(frame);
-            if (iteratorRecord.isDone()) {
-                return result;
-            } else {
-                notDoneBranch.enter();
-                Object iterator = iteratorRecord.getIterator();
-                Object returnMethod = getReturnNode.executeWithTarget(iterator);
-                if (returnMethod != Undefined.instance) {
-                    innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                    completion = Completion.forNormal(result);
-                    break await;
-                } else {
-                    return result;
-                }
-            }
+            return result;
         }
         setState(frame, stateSlot, completion);
         return suspendAwait(frame, innerResult);

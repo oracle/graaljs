@@ -603,10 +603,10 @@ myEmitter.emit('event', 1, 2, 3, 4, 5);
 added: v6.0.0
 -->
 
-* Returns: {Array}
+* Returns: {string\[]|symbol\[]}
 
 Returns an array listing the events for which the emitter has registered
-listeners. The values in the array are strings or `Symbol`s.
+listeners.
 
 ```mjs
 import { EventEmitter } from 'node:events';
@@ -1832,9 +1832,11 @@ setMaxListeners(5, target, emitter);
 added:
  - v20.5.0
  - v18.18.0
+changes:
+ - version: v22.16.0
+   pr-url: https://github.com/nodejs/node/pull/57765
+   description: Change stability index for this feature from Experimental to Stable.
 -->
-
-> Stability: 1 - Experimental
 
 * `signal` {AbortSignal}
 * `listener` {Function|EventListener}
@@ -2439,8 +2441,6 @@ changes:
     description: No longer behind `--experimental-global-customevent` CLI flag.
 -->
 
-> Stability: 2 - Stable
-
 * Extends: {Event}
 
 The `CustomEvent` object is an adaptation of the [`CustomEvent` Web API][].
@@ -2457,8 +2457,6 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/52618
     description: CustomEvent is now stable.
 -->
-
-> Stability: 2 - Stable
 
 * Type: {any} Returns custom data passed when initializing.
 

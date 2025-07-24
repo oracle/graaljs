@@ -664,7 +664,10 @@ public final class JSContextOptions {
     @CompilationFinal private boolean jsonModules;
 
     public static final String SOURCE_PHASE_IMPORTS_NAME = JS_OPTION_PREFIX + "source-phase-imports";
-    @Option(name = SOURCE_PHASE_IMPORTS_NAME, category = OptionCategory.USER, help = "Enable source phase imports proposal") //
+    @Option(name = SOURCE_PHASE_IMPORTS_NAME, category = OptionCategory.USER, help = "" +
+                    "Enable source phase imports (`import source` and `import.source()`). " +
+                    "If this option is not set and " + WEBASSEMBLY_NAME + "=true, " +
+                    "source phase imports from WebAssembly modules are enabled by default.") //
     public static final OptionKey<Boolean> SOURCE_PHASE_IMPORTS = new OptionKey<>(false);
     @CompilationFinal private boolean sourcePhaseImports;
 
@@ -821,7 +824,7 @@ public final class JSContextOptions {
         this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES, JSConfig.ECMAScript2025);
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
         this.jsonModules = readBooleanOption(JSON_MODULES, JSConfig.ECMAScript2025);
-        this.sourcePhaseImports = readBooleanOption(SOURCE_PHASE_IMPORTS);
+        this.sourcePhaseImports = SOURCE_PHASE_IMPORTS.hasBeenSet(optionValues) ? readBooleanOption(SOURCE_PHASE_IMPORTS) : webAssembly;
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
         this.printNoNewline = readBooleanOption(PRINT_NO_NEWLINE);

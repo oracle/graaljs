@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -157,7 +157,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return CreateDecoratorContextObjectNodeGen.create(context, false, false, null, -1, -1, true);
     }
 
-    public abstract JSObject executeContext(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state);
+    public abstract JSObject executeContext(VirtualFrame frame, JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state);
 
     CreateDecoratorContextObjectNode(JSContext context, boolean isStatic, boolean isPrivate, ScopeFrameNode privateScopeNode, int privateMemberSlotIndex, int privateBrandSlotIndex, boolean classDef) {
         this.createObjectNode = CreateObjectNode.create(context);
@@ -183,8 +183,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         this.context = context;
     }
 
-    public final JSObject evaluateClass(VirtualFrame frame, Object className, Object initializers, DecorationState state) {
-        return createContextObject(frame, CLASS_KIND, className, initializers, state, null, null, true);
+    public final JSObject evaluateClass(JSRealm realm, Object className, Object initializers, DecorationState state) {
+        return createContextObject(realm, CLASS_KIND, className, initializers, state, null, null, true);
     }
 
     //
@@ -192,30 +192,30 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     //
 
     @Specialization(guards = {"!isPrivate", "record.isMethod()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
-    public JSObject doPublicMethodCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicMethodCached(JSRealm realm, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
                     @Cached("createPropertyGetterCached(cachedName, context)") JSFunctionData valueGetterFunctionData) {
-        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        return createContextObject(frame, cachedName, initializers, state, getter, null, METHOD_KIND);
+        JSObject getter = JSFunction.create(realm, valueGetterFunctionData);
+        return createContextObject(realm, cachedName, initializers, state, getter, null, METHOD_KIND);
     }
 
     @Specialization(guards = {"!isPrivate", "record.isMethod()"}, replaces = {"doPublicMethodCached"})
-    public JSObject doPublicMethodUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicMethodUncached(JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
                     @Cached("createGetterFromPropertyUncached(context)") @Shared JSFunctionData valueGetterFunctionData) {
         Object description = record.getKey();
-        JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
-        return createContextObject(frame, description, initializers, state, getter, null, METHOD_KIND);
+        JSObject getter = createFunctionWithElementRecordField(realm, record, valueGetterFunctionData, setElementRecord);
+        return createContextObject(realm, description, initializers, state, getter, null, METHOD_KIND);
     }
 
     @Specialization(guards = {"isPrivate", "record.isMethod()"})
-    public JSObject doPrivateMethod(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPrivateMethod(VirtualFrame frame, JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("getName(record.getKey())") Object description,
                     @Cached("createGetterForPrivateMethodOrAccessor()") @Exclusive JSFunctionData valueGetterFunctionData) {
         assert description.equals(getName(record.getKey()));
-        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame));
-        return createContextObject(frame, description, initializers, state, getter, null, METHOD_KIND);
+        JSObject getter = JSFunction.create(realm, valueGetterFunctionData, getScopeFrame(frame));
+        return createContextObject(realm, description, initializers, state, getter, null, METHOD_KIND);
     }
 
     //
@@ -223,75 +223,75 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     //
 
     @Specialization(guards = {"!isPrivate", "record.isField()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
-    public JSObject doPublicFieldCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicFieldCached(JSRealm realm, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
                     @Cached("createPropertyGetterCached(cachedName, context)") JSFunctionData valueGetterFunctionData,
                     @Cached("createPropertySetterCached(cachedName, context)") JSFunctionData valueSetterFunctionData) {
-        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
-        return createContextObject(frame, cachedName, initializers, state, getter, setter, FIELD_KIND);
+        JSObject getter = JSFunction.create(realm, valueGetterFunctionData);
+        JSObject setter = JSFunction.create(realm, valueSetterFunctionData);
+        return createContextObject(realm, cachedName, initializers, state, getter, setter, FIELD_KIND);
     }
 
     @Specialization(guards = {"!isPrivate", "record.isField()"}, replaces = "doPublicFieldCached")
-    public JSObject doPublicFieldUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicFieldUncached(JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
                     @Cached("createGetterFromPropertyUncached(context)") @Shared JSFunctionData valueGetterFunctionData,
                     @Cached("createSetterFromPropertyUncached(context)") @Shared JSFunctionData valueSetterFunctionData) {
         Object description = record.getKey();
-        JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
-        JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
-        return createContextObject(frame, description, initializers, state, getter, setter, FIELD_KIND);
+        JSObject getter = createFunctionWithElementRecordField(realm, record, valueGetterFunctionData, setElementRecord);
+        JSObject setter = createFunctionWithElementRecordField(realm, record, valueSetterFunctionData, setElementRecord);
+        return createContextObject(realm, description, initializers, state, getter, setter, FIELD_KIND);
     }
 
     @Specialization(guards = {"isPrivate", "record.isField()"})
-    public JSObject doPrivateField(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPrivateField(JSRealm realm, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("getName(record.getKey())") Object description,
                     @Cached("createSetHidden(BACKING_STORAGE_KEY, context)") PropertySetNode setStorageKeyNode,
                     @Cached("createPrivateFieldGetter(context)") JSFunctionData valueGetterFunctionData,
                     @Cached("createPrivateFieldSetter(context)") JSFunctionData valueSetterFunctionData) {
         assert description.equals(getName(record.getKey()));
-        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
+        JSObject getter = JSFunction.create(realm, valueGetterFunctionData);
         setStorageKeyNode.setValue(getter, record.getBackingStorageKey());
-        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
+        JSObject setter = JSFunction.create(realm, valueSetterFunctionData);
         setStorageKeyNode.setValue(setter, record.getBackingStorageKey());
-        return createContextObject(frame, description, initializers, state, getter, setter, FIELD_KIND);
+        return createContextObject(realm, description, initializers, state, getter, setter, FIELD_KIND);
     }
     //
     // ##### AutoAccessor
     //
 
     @Specialization(guards = {"!isPrivate", "record.isAutoAccessor()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
-    public JSObject doPublicAutoAccessorCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicAutoAccessorCached(JSRealm realm, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
                     @Cached("createPropertyGetterCached(cachedName, context)") JSFunctionData valueGetterFunctionData,
                     @Cached("createPropertySetterCached(cachedName, context)") JSFunctionData valueSetterFunctionData) {
-        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
-        return createContextObject(frame, cachedName, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
+        JSObject getter = JSFunction.create(realm, valueGetterFunctionData);
+        JSObject setter = JSFunction.create(realm, valueSetterFunctionData);
+        return createContextObject(realm, cachedName, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
     }
 
     @Specialization(guards = {"!isPrivate", "record.isAutoAccessor()"}, replaces = "doPublicAutoAccessorCached")
-    public JSObject doPublicAutoAccessor(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicAutoAccessor(JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
                     @Cached("createGetterFromPropertyUncached(context)") @Shared JSFunctionData valueGetterFunctionData,
                     @Cached("createSetterFromPropertyUncached(context)") @Shared JSFunctionData valueSetterFunctionData) {
         Object description = record.getKey();
-        JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
-        JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
-        return createContextObject(frame, description, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
+        JSObject getter = createFunctionWithElementRecordField(realm, record, valueGetterFunctionData, setElementRecord);
+        JSObject setter = createFunctionWithElementRecordField(realm, record, valueSetterFunctionData, setElementRecord);
+        return createContextObject(realm, description, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
     }
 
     @Specialization(guards = {"isPrivate", "record.isAutoAccessor()"})
-    public JSObject doPrivateAutoAccessor(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPrivateAutoAccessor(VirtualFrame frame, JSRealm realm, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("getName(record.getKey())") Object description,
                     @Cached("createGetterForPrivateMethodOrAccessor()") @Exclusive JSFunctionData valueGetterFunctionData,
                     @Cached("createSetterForPrivateAccessor()") @Exclusive JSFunctionData valueSetterFunctionData) {
         assert description.equals(getName(record.getKey()));
-        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame));
-        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData, getScopeFrame(frame));
-        return createContextObject(frame, description, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
+        JSObject getter = JSFunction.create(realm, valueGetterFunctionData, getScopeFrame(frame));
+        JSObject setter = JSFunction.create(realm, valueSetterFunctionData, getScopeFrame(frame));
+        return createContextObject(realm, description, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
     }
 
     //
@@ -299,30 +299,30 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     //
 
     @Specialization(guards = {"!isPrivate", "record.isGetter()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
-    public JSObject doPublicGetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicGetterCached(JSRealm realm, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
                     @Cached("createPropertyGetterCached(cachedName, context)") JSFunctionData valueGetterFunctionData) {
-        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        return createContextObject(frame, cachedName, initializers, state, getter, null, GETTER_KIND);
+        JSObject getter = JSFunction.create(realm, valueGetterFunctionData);
+        return createContextObject(realm, cachedName, initializers, state, getter, null, GETTER_KIND);
     }
 
     @Specialization(guards = {"!isPrivate", "record.isGetter()"}, replaces = "doPublicGetterCached")
-    public JSObject doPublicGetterUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicGetterUncached(JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
                     @Cached("createGetterFromPropertyUncached(context)") @Shared JSFunctionData valueGetterFunctionData) {
         Object name = record.getKey();
-        JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
-        return createContextObject(frame, name, initializers, state, getter, null, GETTER_KIND);
+        JSObject getter = createFunctionWithElementRecordField(realm, record, valueGetterFunctionData, setElementRecord);
+        return createContextObject(realm, name, initializers, state, getter, null, GETTER_KIND);
     }
 
     @Specialization(guards = {"isPrivate", "record.isGetter()"})
-    public JSObject doPrivateGetter(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPrivateGetter(VirtualFrame frame, JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("getName(record.getKey())") Object description,
                     @Cached("createGetterForPrivateMethodOrAccessor()") @Exclusive JSFunctionData valueGetterFunctionData) {
         assert description.equals(getName(record.getKey()));
-        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame));
-        return createContextObject(frame, description, initializers, state, getter, null, GETTER_KIND);
+        JSObject getter = JSFunction.create(realm, valueGetterFunctionData, getScopeFrame(frame));
+        return createContextObject(realm, description, initializers, state, getter, null, GETTER_KIND);
     }
 
     //
@@ -330,39 +330,39 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     //
 
     @Specialization(guards = {"!isPrivate", "record.isSetter()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
-    public JSObject doPublicSetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicSetterCached(JSRealm realm, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
                     @Cached("createPropertySetterCached(cachedName, context)") JSFunctionData valueSetterFunctionData) {
-        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
-        return createContextObject(frame, cachedName, initializers, state, null, setter, SETTER_KIND);
+        JSObject setter = JSFunction.create(realm, valueSetterFunctionData);
+        return createContextObject(realm, cachedName, initializers, state, null, setter, SETTER_KIND);
     }
 
     @Specialization(guards = {"!isPrivate", "record.isSetter()"}, replaces = "doPublicSetterCached")
-    public JSObject doPublicSetterUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPublicSetterUncached(JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
                     @Cached("createSetterFromPropertyUncached(context)") @Shared JSFunctionData valueSetterFunctionData) {
         Object name = record.getKey();
-        JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
-        return createContextObject(frame, name, initializers, state, null, setter, SETTER_KIND);
+        JSObject setter = createFunctionWithElementRecordField(realm, record, valueSetterFunctionData, setElementRecord);
+        return createContextObject(realm, name, initializers, state, null, setter, SETTER_KIND);
     }
 
     @Specialization(guards = {"isPrivate", "record.isSetter()"})
-    public JSObject doPrivateSetter(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+    public JSObject doPrivateSetter(VirtualFrame frame, JSRealm realm, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("getName(record.getKey())") Object description,
                     @Cached("createSetterForPrivateAccessor()") @Exclusive JSFunctionData valueSetterFunctionData) {
         assert description.equals(getName(record.getKey()));
-        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData, getScopeFrame(frame));
-        return createContextObject(frame, description, initializers, state, null, setter, SETTER_KIND);
+        JSObject setter = JSFunction.create(realm, valueSetterFunctionData, getScopeFrame(frame));
+        return createContextObject(realm, description, initializers, state, null, setter, SETTER_KIND);
     }
 
     //
     // ##### Common
     //
 
-    private JSObject createFunctionWithElementRecordField(ClassElementDefinitionRecord record, JSFunctionData functionData, PropertySetNode setElementRecord) {
+    private static JSObject createFunctionWithElementRecordField(JSRealm realm, ClassElementDefinitionRecord record, JSFunctionData functionData, PropertySetNode setElementRecord) {
         assert !record.isPrivate();
-        JSObject function = JSFunction.create(getRealm(), functionData);
+        JSObject function = JSFunction.create(realm, functionData);
         setElementRecord.setValue(function, record);
         return function;
     }
@@ -396,20 +396,20 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return addInitializerFunction;
     }
 
-    public JSObject createContextObject(VirtualFrame frame, Object name, Object initializers,
+    public JSObject createContextObject(JSRealm realm, Object name, Object initializers,
                     DecorationState state,
                     JSObject getter,
                     JSObject setter,
                     TruffleString kindName) {
-        return createContextObject(frame, kindName, name, initializers, state, getter, setter, false);
+        return createContextObject(realm, kindName, name, initializers, state, getter, setter, false);
     }
 
-    private JSObject createContextObject(VirtualFrame frame, TruffleString kindName, Object name, Object initializers, DecorationState state,
+    private JSObject createContextObject(JSRealm realm, TruffleString kindName, Object name, Object initializers, DecorationState state,
                     JSObject getter, JSObject setter, boolean isClass) {
-        JSObject contextObj = createObjectNode.execute(frame);
+        JSObject contextObj = createObjectNode.execute(realm);
         defineKind.executeVoid(contextObj, KIND, kindName);
         if (!isClass) {
-            JSObject accessObject = createObjectNode.execute(frame);
+            JSObject accessObject = createObjectNode.execute(realm);
             if (getter != null) {
                 defineGet.executeVoid(accessObject, Strings.GET, getter);
             }

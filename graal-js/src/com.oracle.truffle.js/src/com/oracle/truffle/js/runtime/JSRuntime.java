@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -2656,13 +2657,15 @@ public final class JSRuntime {
         throw (E) ex;
     }
 
-    public static GraalJSException getException(Object errorObject) {
+    public static AbstractTruffleException getException(Object errorObject) {
         return getException(errorObject, null);
     }
 
-    public static GraalJSException getException(Object errorObject, Node node) {
+    public static AbstractTruffleException getException(Object errorObject, Node node) {
         if (errorObject instanceof JSErrorObject jsErrorObject) {
             return JSError.getException(jsErrorObject);
+        } else if (errorObject instanceof AbstractTruffleException atex) {
+            return atex;
         } else {
             return UserScriptException.create(errorObject, node, JavaScriptLanguage.get(node).getJSContext().getLanguageOptions().stackTraceLimit());
         }

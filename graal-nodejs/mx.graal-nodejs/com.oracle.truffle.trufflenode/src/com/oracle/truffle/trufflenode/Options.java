@@ -147,9 +147,11 @@ public final class Options {
                         "enable-sharedarraybuffer-per-context",
                         "es-staging",
                         "experimental-modules",
+                        "experimental-network-inspection",
                         "expose-debug-as",
                         "expose-internals",
                         "expose-natives-as",
+                        "expose-wasm",
                         "gc-global",
                         "gc-interval",
                         "harmony",
@@ -161,14 +163,17 @@ public final class Options {
                         "harmony-shipping",
                         "harmony-weak-refs",
                         "jitless",
+                        "js-float16array",
                         "lazy",
                         "log-timer-events",
+                        "no-allow-natives-syntax",
+                        "no-compilation-cache",
                         "no-concurrent-array-buffer-freeing",
                         "no-concurrent-array-buffer-sweeping",
                         "no-freeze-flags-after-init",
                         "no-harmony-top-level-await",
-                        "nolazy",
-                        "nouse-idle-notification",
+                        "no-lazy",
+                        "no-use-idle-notification",
                         "rehash-snapshot",
                         "stack-size",
                         "trace-gc",
@@ -219,6 +224,9 @@ public final class Options {
                     }
                 }
                 String normalizedKey = key.replace('_', '-');
+                if (normalizedKey.startsWith("no") && !normalizedKey.startsWith("no-")) {
+                    normalizedKey = "no-" + normalizedKey.substring(2);
+                }
                 if (AUX_CACHE_OPTIONS.contains(normalizedKey)) {
                     auxEngineCacheMode = true;
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,13 +45,13 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Implementation of ToTemporalCalendarIdentifier() operation.
@@ -73,24 +73,25 @@ public abstract class ToTemporalCalendarIdentifierNode extends JavaScriptBaseNod
         return ToTemporalCalendarIdentifierNodeGen.getUncached();
     }
 
-    public abstract TruffleString executeString(Object calendarSlotValue);
+    public abstract TruffleString executeString(Object temporalCalendarLike);
 
     @Specialization
-    public TruffleString doString(TruffleString calendarSlotValue) {
-        return calendarSlotValue;
+    protected TruffleString doJSTemporalCalendarHolder(JSTemporalCalendarHolder temporalCalendarLike) {
+        return temporalCalendarLike.getCalendar();
     }
 
-    @Specialization(guards = "!isString(calendarSlotValue)")
-    public TruffleString doNonString(Object calendarSlotValue,
-                    @Cached(value = "create(ID_PROPERTY_NAME, getJSContext())", uncached = "getNullNode()") PropertyGetNode getIdNode,
-                    @Cached InlinedBranchProfile errorBranch) {
-        Object identifier = (getIdNode != null) ? getIdNode.getValue(calendarSlotValue) : JSRuntime.get(calendarSlotValue, Strings.ID_PROPERTY_NAME);
-        if (identifier instanceof TruffleString stringIdentifier) {
-            return stringIdentifier;
-        } else {
-            errorBranch.enter(this);
-            throw Errors.createTypeErrorNotAString(identifier);
-        }
+    @Specialization
+    public TruffleString doString(TruffleString temporalCalendarLike,
+                    @Cached TruffleString.ToJavaStringNode toJavaString,
+                    @Cached TruffleString.FromJavaStringNode fromJavaString) {
+        TruffleString identifier = TemporalUtil.parseTemporalCalendarString(temporalCalendarLike);
+        String identifierJLS = toJavaString.execute(identifier);
+        return Strings.fromJavaString(fromJavaString, IntlUtil.canonicalizeCalendar(identifierJLS));
+    }
+
+    @Specialization(guards = {"!isString(temporalCalendarLike)", "!isJSTemporalCalendarHolder(temporalCalendarLike)"})
+    public TruffleString doOther(Object temporalCalendarLike) {
+        throw Errors.createTypeErrorNotAString(temporalCalendarLike);
     }
 
 }
