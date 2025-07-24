@@ -635,17 +635,24 @@ def graalnodejs_standalone_deps():
     return deps
 
 def libgraalnodejs_build_args():
+    image_build_args = []
+    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+        image_build_args.extend([
+            '--exclude-config',
+            r'wasm\.jar',
+            r'META-INF/native-image/org\.graalvm\.wasm/wasm-language/native-image\.properties',
+            '--initialize-at-build-time=org.graalvm.wasm',
+            '-H:MaxRuntimeCompileMethods=2000',
+        ])
     if is_nativeimage_ee() and not mx.is_windows():
-        image_build_args = [
+        image_build_args.extend([
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
-        ]
+        ])
         # GR-64948: On GraalVM 21 some Native Image stable options are incorrectly detected as experimental
         if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
             image_build_args = ['-H:+UnlockExperimentalVMOptions', *image_build_args, '-H:-UnlockExperimentalVMOptions']
-        return image_build_args
-    else:
-        return []
+    return image_build_args
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
