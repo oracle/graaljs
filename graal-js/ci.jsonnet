@@ -134,41 +134,42 @@ local ci = import '../ci.jsonnet';
   local defaultToTarget = ci.defaultToTarget,
   local includePlatforms = ci.includePlatforms,
   local excludePlatforms = ci.excludePlatforms,
-  local gateOnMain = ci.gateOnMain,
+  local tier1 = ci.promoteToTier1(),
+  local tier2 = ci.promoteToTier2(),
+  local tier3 = ci.promoteToTarget(common.tier3, [ci.mainGatePlatform]),
 
   // Style gates
   local styleBuilds = generateBuilds([
-    graalJs + common.gateStyleFullBuild                                                                   + {name: 'style-fullbuild'}
-  ], platforms=ci.styleGatePlatforms, defaultTarget=common.gate),
+    graalJs + common.gateStyleFullBuild                                                      + tier1      + {name: 'style-fullbuild'}
+  ], platforms=ci.styleGatePlatforms, defaultTarget=common.tier3),
 
   // Builds that should run on all supported platforms
 
   local testingBuilds = local bs = [
-    graalJs + gateTags('default')                                                                    + ce + {name: 'default-ce'} +
-      promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.linux_aarch64, common.jdklatest + common.windows_amd64]),
-    graalJs + gateTags('default')                                                                    + ee + {name: 'default-ee'} +
-      promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.darwin_aarch64]) +
+    graalJs + gateTags('default')                                                            + tier2 + ce + {name: 'default-ce'} +
+      promoteToTarget(common.tier3, [common.jdklatest + common.linux_aarch64, common.jdklatest + common.windows_amd64]),
+    graalJs + gateTags('default')                                                            + tier2 + ee + {name: 'default-ee'} +
+      promoteToTarget(common.tier3, [common.jdklatest + common.darwin_aarch64]) +
       promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
 
-    graalJs + gateTags('noic')                                                                            + {name: 'noic'} + gateOnMain,
-    graalJs + gateTags('directbytebuffer')                                                                + {name: 'directbytebuffer'} + gateOnMain,
-    graalJs + gateTags('cloneuninitialized')                                                              + {name: 'cloneuninitialized'} + gateOnMain,
-    graalJs + gateTags('lazytranslation')                                                                 + {name: 'lazytranslation'} + gateOnMain,
-    graalJs + gateTags('shareengine')                                                                     + {name: 'shareengine'} + gateOnMain,
-    graalJs + gateTags('latestversion')                                                                   + {name: 'latestversion'} + gateOnMain,
-    graalJs + gateTags('instrument')                                                                      + {name: 'instrument'} + gateOnMain,
-    graalJs + gateTags('tck')                                                                             + {name: 'tck'} + gateOnMain +
+    graalJs + gateTags('noic')                                                               + tier3      + {name: 'noic'},
+    graalJs + gateTags('directbytebuffer')                                                   + tier3      + {name: 'directbytebuffer'},
+    graalJs + gateTags('cloneuninitialized')                                                 + tier3      + {name: 'cloneuninitialized'},
+    graalJs + gateTags('lazytranslation')                                                    + tier3      + {name: 'lazytranslation'},
+    graalJs + gateTags('shareengine')                                                        + tier3      + {name: 'shareengine'},
+    graalJs + gateTags('latestversion')                                                      + tier3      + {name: 'latestversion'},
+    graalJs + gateTags('instrument')                                                         + tier2      + {name: 'instrument'},
+    graalJs + gateTags('tck')                                                                + tier2      + {name: 'tck'} +
       excludePlatforms([common.darwin_amd64]), # Timeout/OOME
-    graalJs + webassemblyTest                                                                             + {name: 'webassembly'} + gateOnMain,
-    graalJs + nativeImageSmokeTest                                                                        + {name: 'native-image-smoke-test'} + gateOnMain,
-    graalJs + auxEngineCache                                                                         + ee + {name: 'aux-engine-cache'} + gateOnMain +
+    graalJs + webassemblyTest                                                                + tier2      + {name: 'webassembly'},
+    graalJs + nativeImageSmokeTest                                                           + tier2      + {name: 'native-image-smoke-test'},
+    graalJs + auxEngineCache                                                                 + tier2 + ee + {name: 'aux-engine-cache'} +
       excludePlatforms([common.windows_amd64, common.darwin_amd64]), # unsupported on windows, too slow on darwin-amd64
 
     // downstream graal gate
-    graalJs + downstreamGraal                                                                             + {name: 'downstream-graal'} +
-      promoteToTarget(common.gate, [ci.mainGatePlatform]) +
+    graalJs + downstreamGraal                                                                + tier2      + {name: 'downstream-graal'} +
       includePlatforms([ci.mainGatePlatform]),   # GR-62152: language permissions tool supports only linux
-    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'downstream-substratevm-enterprise'} + gateOnMain +
+    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}              + tier3      + {name: 'downstream-substratevm-enterprise'} +
       excludePlatforms([common.darwin_amd64]) + # Too slow
       excludePlatforms([common.linux_aarch64]), # Fails on Linux AArch64 with "Creation of the VM failed."
 
@@ -193,7 +194,7 @@ local ci = import '../ci.jsonnet';
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
-    graalJs + common.gate      + mavenDeployDryRun                                                        + {name: 'maven-dry-run'},
+    graalJs + common.tier3     + mavenDeployDryRun                                                        + {name: 'maven-dry-run'},
     # Note: weekly coverage is sync'ed with the graal repo (while ondemand is not).
     graalJs + common.weekly    + gateCoverage                                                             + {name: 'coverage'},
     graalJs + common.ondemand  + gateCoverage                                                             + {name: 'coverage'},

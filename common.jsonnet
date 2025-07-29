@@ -25,6 +25,11 @@ local targets = {
   monthly::     {targets+: ['monthly'], targetName:: 'monthly'},
   ondemand::    {targets+: ['ondemand'], targetName:: 'ondemand'},
 
+  tier1::       {targets+: ['tier1'], targetName:: 'gate'},
+  tier2::       {targets+: ['tier2'], targetName:: 'gate'},
+  tier3::       {targets+: ['tier3'], targetName:: 'gate'},
+  tier4::       {targets+: ['tier4'], targetName:: 'postmerge'},
+
   bench::         self.postMerge + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
   dailyBench::    self.daily     + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
   weeklyBench::   self.weekly    + {targets+: ['bench'], targetName:: super.targetName + "-bench"},

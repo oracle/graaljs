@@ -1,6 +1,6 @@
 
 suite = {
-  "mxversion" : "7.45.0",
+  "mxversion" : "7.58.0",
   "name" : "graal-nodejs",
   "version" : "26.0.0",
   "release" : False,
@@ -95,6 +95,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "spotbugs" : "true",
+      "spotbugsIgnoresGenerated" : True,
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.21.0",
       "workingSets" : "Truffle,JavaScript,NodeJS",
