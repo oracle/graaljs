@@ -254,7 +254,7 @@ public abstract class Node implements Cloneable {
         return token;
     }
 
-    // on change, we have to replace the entire list, that's we can't simple do ListIterator.set
+    // on change, we have to replace the entire list, that's we can't simply do ListIterator.set
     static <T extends Node> List<T> accept(final NodeVisitor<? extends LexicalContext> visitor, final List<T> list) {
         final int size = list.size();
         if (size == 0) {
