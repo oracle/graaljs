@@ -61,6 +61,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeRoundNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToJSONNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeUntilSinceNodeGen;
@@ -69,6 +70,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithTruncationNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
@@ -85,6 +87,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -179,8 +183,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             case toString:
                 return JSTemporalPlainTimeToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toLocaleString:
+                return context.isOptionIntl402()
+                                ? JSTemporalPlainTimeToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                : JSTemporalPlainTimeToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toJSON:
-                return JSTemporalPlainTimeToLocaleStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSTemporalPlainTimeToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return UnsupportedValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
@@ -512,16 +519,14 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    // 4.3.21
-    // 4.3.22
-    public abstract static class JSTemporalPlainTimeToLocaleString extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainTimeToJSON extends JSTemporalBuiltinOperation {
 
-        protected JSTemporalPlainTimeToLocaleString(JSContext context, JSBuiltin builtin) {
+        protected JSTemporalPlainTimeToJSON(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected static TruffleString toLocaleString(JSTemporalPlainTimeObject time) {
+        protected static TruffleString toJSON(JSTemporalPlainTimeObject time) {
             return JSTemporalPlainTime.temporalTimeToString(
                             time.getHour(), time.getMinute(), time.getSecond(),
                             time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(),
@@ -531,6 +536,27 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSTemporalPlainTime(thisObj)")
         protected static TruffleString invalidReceiver(Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalPlainTimeExpected();
+        }
+    }
+
+    public abstract static class JSTemporalPlainTimeToLocaleString extends JSTemporalBuiltinOperation {
+
+        protected JSTemporalPlainTimeToLocaleString(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public TruffleString toLocaleString(JSTemporalPlainTimeObject thisTime, Object locales, Object options,
+                        @Cached("createTimeTime(getContext())") InitializeDateTimeFormatNode initDateTimeFormatNode) {
+            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
+            initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
+            return JSDateTimeFormat.format(dateTimeFormatObj, thisTime);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSTemporalPlainTime(thisObj)")
+        protected static TruffleString invalidReceiver(Object thisObj, Object locales, Object options) {
             throw TemporalErrors.createTypeErrorTemporalPlainTimeExpected();
         }
     }

@@ -58,6 +58,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsF
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantRoundNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToJSONNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToZonedDateTimeISONodeGen;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsF
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
@@ -81,6 +83,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
@@ -162,8 +166,11 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             case toString:
                 return JSTemporalInstantToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toLocaleString:
+                return context.isOptionIntl402()
+                                ? JSTemporalInstantToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                : JSTemporalInstantToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toJSON:
-                return JSTemporalInstantToLocaleStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSTemporalInstantToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return UnsupportedValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toZonedDateTimeISO:
@@ -390,6 +397,25 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
     }
 
+    public abstract static class JSTemporalInstantToJSON extends JSTemporalBuiltinOperation {
+
+        protected JSTemporalInstantToJSON(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        protected TruffleString toJSON(JSTemporalInstantObject instant) {
+            return TemporalUtil.temporalInstantToString(instant, Undefined.instance, AUTO);
+        }
+
+        @Specialization(guards = "!isJSTemporalInstant(thisObj)")
+        @SuppressWarnings("unused")
+        protected static Object invalidReceiver(Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalInstantExpected();
+        }
+    }
+
     public abstract static class JSTemporalInstantToLocaleString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalInstantToLocaleString(JSContext context, JSBuiltin builtin) {
@@ -398,12 +424,16 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @SuppressWarnings("unused")
         @Specialization
-        protected TruffleString toLocaleString(JSTemporalInstantObject instant) {
-            return TemporalUtil.temporalInstantToString(instant, Undefined.instance, AUTO);
+        protected TruffleString toLocaleString(JSTemporalInstantObject instant, Object locales, Object options,
+                        @Cached("createAnyAll(getContext())") InitializeDateTimeFormatNode initDateTimeFormatNode) {
+            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
+            initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
+            return JSDateTimeFormat.format(dateTimeFormatObj, instant);
         }
 
+        @SuppressWarnings("unused")
         @Specialization(guards = "!isJSTemporalInstant(thisObj)")
-        protected static Object invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
+        protected static Object invalidReceiver(Object thisObj, Object locales, Object options) {
             throw TemporalErrors.createTypeErrorTemporalInstantExpected();
         }
     }

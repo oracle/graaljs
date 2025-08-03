@@ -56,6 +56,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBu
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthGetterNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToJSONNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToStringNodeGen;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBu
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
+import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.RoundRelativeDurationNode;
@@ -82,6 +84,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -186,8 +190,11 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             case toString:
                 return JSTemporalPlainYearMonthToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toLocaleString:
+                return context.isOptionIntl402()
+                                ? JSTemporalPlainYearMonthToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                : JSTemporalPlainYearMonthToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toJSON:
-                return JSTemporalPlainYearMonthToLocaleStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSTemporalPlainYearMonthToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return UnsupportedValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
@@ -285,6 +292,23 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
     }
 
+    public abstract static class JSTemporalPlainYearMonthToJSON extends JSTemporalBuiltinOperation {
+
+        protected JSTemporalPlainYearMonthToJSON(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected TruffleString toJSON(JSTemporalPlainYearMonthObject yearMonth) {
+            return JSTemporalPlainYearMonth.temporalYearMonthToString(yearMonth, ShowCalendar.AUTO);
+        }
+
+        @Specialization(guards = "!isJSTemporalYearMonth(thisObj)")
+        protected static Object invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
+        }
+    }
+
     public abstract static class JSTemporalPlainYearMonthToLocaleString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainYearMonthToLocaleString(JSContext context, JSBuiltin builtin) {
@@ -292,12 +316,16 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected TruffleString toLocaleString(JSTemporalPlainYearMonthObject yearMonth) {
-            return JSTemporalPlainYearMonth.temporalYearMonthToString(yearMonth, ShowCalendar.AUTO);
+        public TruffleString toLocaleString(JSTemporalPlainYearMonthObject thisTime, Object locales, Object options,
+                        @Cached("createDateDate(getContext())") InitializeDateTimeFormatNode initDateTimeFormatNode) {
+            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
+            initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
+            return JSDateTimeFormat.format(dateTimeFormatObj, thisTime);
         }
 
+        @SuppressWarnings("unused")
         @Specialization(guards = "!isJSTemporalYearMonth(thisObj)")
-        protected static Object invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
+        protected static Object invalidReceiver(Object thisObj, Object locales, Object options) {
             throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
         }
     }

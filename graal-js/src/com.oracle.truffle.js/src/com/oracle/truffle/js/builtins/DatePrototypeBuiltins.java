@@ -360,7 +360,7 @@ public final class DatePrototypeBuiltins {
 
         protected JSDateTimeFormatObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
             JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
-            initDateTimeFormatNode.executeInit(dateTimeFormatObj, locales, options);
+            initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
             return dateTimeFormatObj;
         }
     }
