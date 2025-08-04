@@ -78,25 +78,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     public static final List<String> TIME_ZONE_NAME_OPTION_VALUES_ES2022 = List.of(IntlUtil.SHORT, IntlUtil.LONG,
                     IntlUtil.SHORT_OFFSET, IntlUtil.LONG_OFFSET, IntlUtil.SHORT_GENERIC, IntlUtil.LONG_GENERIC);
 
-    public enum Required {
-        DATE,
-        TIME,
-        YEAR_MONTH,
-        MONTH_DAY,
-        ANY
-    }
-
-    public enum Defaults {
-        DATE,
-        TIME,
-        YEAR_MONTH,
-        MONTH_DAY,
-        ZONED_DATE_TIME,
-        ALL
-    }
-
-    private final Required required;
-    private final Defaults defaults;
+    private final JSDateTimeFormat.Required required;
+    private final JSDateTimeFormat.Defaults defaults;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
@@ -131,7 +114,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
     private final JSContext context;
 
-    protected InitializeDateTimeFormatNode(JSContext context, Required required, Defaults defaults) {
+    protected InitializeDateTimeFormatNode(JSContext context, JSDateTimeFormat.Required required, JSDateTimeFormat.Defaults defaults) {
 
         this.context = context;
 
@@ -173,23 +156,28 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
     public abstract JSDateTimeFormatObject executeInit(JSDateTimeFormatObject dateTimeFormatObj, Object locales, Object options, TruffleString toLocaleStringTimeZone);
 
-    public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, Required required, Defaults defaults) {
+    public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, JSDateTimeFormat.Required required, JSDateTimeFormat.Defaults defaults) {
         return InitializeDateTimeFormatNodeGen.create(context, required, defaults);
     }
 
     @NeverDefault
     public static InitializeDateTimeFormatNode createAnyAll(JSContext context) {
-        return createInitalizeDateTimeFormatNode(context, Required.ANY, Defaults.ALL);
+        return createInitalizeDateTimeFormatNode(context, JSDateTimeFormat.Required.ANY, JSDateTimeFormat.Defaults.ALL);
+    }
+
+    @NeverDefault
+    public static InitializeDateTimeFormatNode createAnyDate(JSContext context) {
+        return createInitalizeDateTimeFormatNode(context, JSDateTimeFormat.Required.ANY, JSDateTimeFormat.Defaults.DATE);
     }
 
     @NeverDefault
     public static InitializeDateTimeFormatNode createDateDate(JSContext context) {
-        return createInitalizeDateTimeFormatNode(context, Required.DATE, Defaults.DATE);
+        return createInitalizeDateTimeFormatNode(context, JSDateTimeFormat.Required.DATE, JSDateTimeFormat.Defaults.DATE);
     }
 
     @NeverDefault
     public static InitializeDateTimeFormatNode createTimeTime(JSContext context) {
-        return createInitalizeDateTimeFormatNode(context, Required.TIME, Defaults.TIME);
+        return createInitalizeDateTimeFormatNode(context, JSDateTimeFormat.Required.TIME, JSDateTimeFormat.Defaults.TIME);
     }
 
     @Specialization
@@ -243,7 +231,9 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             String timeStyleOpt = getTimeStyleOption.executeValue(options);
 
             if ((dateStyleOpt != null || timeStyleOpt != null)) {
-                if (hasExplicitFormatComponents || (required == Required.DATE && timeStyleOpt != null) || (required == Required.TIME && dateStyleOpt != null)) {
+                if (hasExplicitFormatComponents //
+                                || (required == JSDateTimeFormat.Required.DATE && timeStyleOpt != null) //
+                                || (required == JSDateTimeFormat.Required.TIME && dateStyleOpt != null)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("dateStyle and timeStyle options cannot be mixed with other date/time options");
                 }

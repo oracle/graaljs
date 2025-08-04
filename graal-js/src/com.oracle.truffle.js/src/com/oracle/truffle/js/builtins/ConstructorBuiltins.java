@@ -1957,8 +1957,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         public ConstructDateTimeFormatNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
-            initializeDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.ANY,
-                            InitializeDateTimeFormatNode.Defaults.DATE);
+            initializeDateTimeFormatNode = InitializeDateTimeFormatNode.createAnyDate(context);
         }
 
         @Specialization

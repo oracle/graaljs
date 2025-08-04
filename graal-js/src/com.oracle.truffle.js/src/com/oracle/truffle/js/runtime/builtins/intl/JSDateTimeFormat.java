@@ -70,7 +70,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -198,8 +197,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     String numberingSystemOpt,
                     String dateStyleOpt,
                     String timeStyleOpt,
-                    InitializeDateTimeFormatNode.Required required,
-                    InitializeDateTimeFormatNode.Defaults defaults,
+                    Required required,
+                    Defaults defaults,
                     TruffleString toLocaleStringTimeZone) {
         Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
         Locale strippedLocale = selectedLocale.stripExtensions();
@@ -312,20 +311,18 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale);
             state.temporalInstanceFormat = dateFormat;
         } else {
-            state.temporalPlainDateFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, InitializeDateTimeFormatNode.Required.DATE,
-                            InitializeDateTimeFormatNode.Defaults.DATE, false, anyPresent, patternGenerator, javaLocale, null);
-            state.temporalPlainYearMonthFormat = getDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, null, InitializeDateTimeFormatNode.Required.YEAR_MONTH,
-                            InitializeDateTimeFormatNode.Defaults.YEAR_MONTH, false, anyPresent, patternGenerator, javaLocale, null);
-            state.temporalPlainMonthDayFormat = getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, InitializeDateTimeFormatNode.Required.MONTH_DAY,
-                            InitializeDateTimeFormatNode.Defaults.MONTH_DAY, false, anyPresent, patternGenerator, javaLocale, null);
-            state.temporalPlainTimeFormat = getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
-                            InitializeDateTimeFormatNode.Required.TIME, InitializeDateTimeFormatNode.Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null);
+            state.temporalPlainDateFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false, anyPresent,
+                            patternGenerator, javaLocale, null);
+            state.temporalPlainYearMonthFormat = getDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, null, Required.YEAR_MONTH, Defaults.YEAR_MONTH, false,
+                            anyPresent, patternGenerator, javaLocale, null);
+            state.temporalPlainMonthDayFormat = getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.MONTH_DAY, Defaults.MONTH_DAY, false, anyPresent,
+                            patternGenerator, javaLocale, null);
+            state.temporalPlainTimeFormat = getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt, Required.TIME,
+                            Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null);
             state.temporalPlainDateTimeFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
-                            InitializeDateTimeFormatNode.Required.ANY, InitializeDateTimeFormatNode.Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null);
+                            Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null);
             state.temporalInstanceFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
-                            InitializeDateTimeFormatNode.Required.ANY,
-                            (toLocaleStringTimeZone == null) ? InitializeDateTimeFormatNode.Defaults.ALL : InitializeDateTimeFormatNode.Defaults.ZONED_DATE_TIME, true, anyPresent, patternGenerator,
-                            javaLocale, null);
+                            Required.ANY, (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME, true, anyPresent, patternGenerator, javaLocale, null);
         }
 
         String pattern = ((SimpleDateFormat) dateFormat).toPattern();
@@ -413,30 +410,30 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     String second,
                     int fractionalSecondDigits,
                     String tzName,
-                    InitializeDateTimeFormatNode.Required required,
-                    InitializeDateTimeFormatNode.Defaults defaults,
+                    Required required,
+                    Defaults defaults,
                     boolean inheritAll,
                     boolean anyPresent,
                     DateTimePatternGenerator patternGenerator,
                     Locale javaLocale,
                     InternalState state) {
         boolean needDefaults = true;
-        if (required == InitializeDateTimeFormatNode.Required.DATE || required == InitializeDateTimeFormatNode.Required.ANY) {
+        if (required == Required.DATE || required == Required.ANY) {
             if (weekday != null || year != null || month != null || day != null) {
                 needDefaults = false;
             }
         }
-        if (required == InitializeDateTimeFormatNode.Required.TIME || required == InitializeDateTimeFormatNode.Required.ANY) {
+        if (required == Required.TIME || required == Required.ANY) {
             if (dayPeriod != null || hour != null || minute != null || second != null || fractionalSecondDigits != 0) {
                 needDefaults = false;
             }
         }
-        if (required == InitializeDateTimeFormatNode.Required.YEAR_MONTH) {
+        if (required == Required.YEAR_MONTH) {
             if (year != null || month != null) {
                 needDefaults = false;
             }
         }
-        if (required == InitializeDateTimeFormatNode.Required.MONTH_DAY) {
+        if (required == Required.MONTH_DAY) {
             if (month != null || day != null) {
                 needDefaults = false;
             }
@@ -445,25 +442,25 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             if (anyPresent && !inheritAll) {
                 return null;
             }
-            if (defaults == InitializeDateTimeFormatNode.Defaults.DATE || defaults == InitializeDateTimeFormatNode.Defaults.ALL || defaults == InitializeDateTimeFormatNode.Defaults.ZONED_DATE_TIME) {
+            if (defaults == Defaults.DATE || defaults == Defaults.ALL || defaults == Defaults.ZONED_DATE_TIME) {
                 year = IntlUtil.NUMERIC;
                 month = IntlUtil.NUMERIC;
                 day = IntlUtil.NUMERIC;
             }
-            if (defaults == InitializeDateTimeFormatNode.Defaults.TIME || defaults == InitializeDateTimeFormatNode.Defaults.ALL || defaults == InitializeDateTimeFormatNode.Defaults.ZONED_DATE_TIME) {
+            if (defaults == Defaults.TIME || defaults == Defaults.ALL || defaults == Defaults.ZONED_DATE_TIME) {
                 hour = IntlUtil.NUMERIC;
                 minute = IntlUtil.NUMERIC;
                 second = IntlUtil.NUMERIC;
             }
-            if (defaults == InitializeDateTimeFormatNode.Defaults.YEAR_MONTH) {
+            if (defaults == Defaults.YEAR_MONTH) {
                 year = IntlUtil.NUMERIC;
                 month = IntlUtil.NUMERIC;
             }
-            if (defaults == InitializeDateTimeFormatNode.Defaults.MONTH_DAY) {
+            if (defaults == Defaults.MONTH_DAY) {
                 month = IntlUtil.NUMERIC;
                 day = IntlUtil.NUMERIC;
             }
-            if (defaults == InitializeDateTimeFormatNode.Defaults.ZONED_DATE_TIME && tzName == null) {
+            if (defaults == Defaults.ZONED_DATE_TIME && tzName == null) {
                 tzName = IntlUtil.SHORT;
             }
         }
@@ -1384,4 +1381,22 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getDateTimeFormatPrototype();
     }
+
+    public enum Required {
+        DATE,
+        TIME,
+        YEAR_MONTH,
+        MONTH_DAY,
+        ANY
+    }
+
+    public enum Defaults {
+        DATE,
+        TIME,
+        YEAR_MONTH,
+        MONTH_DAY,
+        ZONED_DATE_TIME,
+        ALL
+    }
+
 }
