@@ -392,6 +392,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             intervalFormat = DateIntervalFormat.getInstance(patchSkeletonToAvoidICU22202(skeleton), intervalFormatLocale);
         }
 
+        // workaround for an incorrect caching in DateIntervalFormat (ICU-12996):
+        // setDateIntervalInfo() invokes non-caching version of initializePattern()
+        intervalFormat.setDateIntervalInfo(intervalFormat.getDateIntervalInfo());
+
         intervalFormat.setTimeZone(dateFormat.getTimeZone());
         return intervalFormat;
     }
