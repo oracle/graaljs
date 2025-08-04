@@ -69,6 +69,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltins;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -86,6 +87,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
@@ -93,6 +95,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -334,14 +337,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         state.dateFormat = dateFormat;
-
-        Locale intervalFormatLocale = new Locale.Builder().setLocale(javaLocale).setUnicodeLocaleKeyword("hc", hc).build();
-        try {
-            state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, intervalFormatLocale);
-        } catch (IllegalArgumentException iaex) {
-            // workaround for ICU-22202
-            state.dateIntervalFormat = DateIntervalFormat.getInstance(patchSkeletonToAvoidICU22202(skeleton), intervalFormatLocale);
-        }
+        state.dateIntervalFormat = intervalFormatFrom(dateFormat, javaLocale, hc);
 
         if (state.calendar == null) {
             state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
@@ -381,6 +377,23 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
         state.timeZone = timeZoneId;
         state.initialized = true;
+    }
+
+    private static DateIntervalFormat intervalFormatFrom(DateFormat dateFormat, Locale javaLocale, String hc) {
+        String pattern = ((SimpleDateFormat) dateFormat).toPattern();
+        String skeleton = DateTimePatternGenerator.getInstance(javaLocale).getSkeleton(pattern);
+        Locale intervalFormatLocale = new Locale.Builder().setLocale(javaLocale).setUnicodeLocaleKeyword("hc", hc).build();
+
+        DateIntervalFormat intervalFormat;
+        try {
+            intervalFormat = DateIntervalFormat.getInstance(skeleton, intervalFormatLocale);
+        } catch (IllegalArgumentException iaex) {
+            // workaround for ICU-22202
+            intervalFormat = DateIntervalFormat.getInstance(patchSkeletonToAvoidICU22202(skeleton), intervalFormatLocale);
+        }
+
+        intervalFormat.setTimeZone(dateFormat.getTimeZone());
+        return intervalFormat;
     }
 
     private static DateFormat getDateTimeFormat(
@@ -1061,23 +1074,75 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
-    private static DateIntervalFormat.FormattedDateInterval formatRangeImpl(JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
+    private static DateIntervalFormat.FormattedDateInterval formatRangeImpl(JSDateTimeFormatObject dateTimeFormat, Object x, Object y) {
         InternalState state = dateTimeFormat.getInternalState();
-        DateFormat dateFormat = state.dateFormat;
+        double startDate;
+        double endDate;
+        if (isTemporalObject(x) || isTemporalObject(y)) {
+            if (!sameTemporalType(x, y)) {
+                throw Errors.createTypeError("Ends of the range should have the same type");
+            }
+        }
+        Pair<DateFormat, Double> xFormatRecord = handleDateTimeValue(dateTimeFormat, x);
+        Pair<DateFormat, Double> yFormatRecord = handleDateTimeValue(dateTimeFormat, y);
+        startDate = xFormatRecord.getSecond();
+        endDate = yFormatRecord.getSecond();
+        DateFormat dateFormat = xFormatRecord.getFirst();
+        DateIntervalFormat intervalFormat;
+        if (x instanceof Double) {
+            assert (y instanceof Double);
+            intervalFormat = state.dateIntervalFormat;
+        } else {
+            assert isTemporalObject(x) && isTemporalObject(y);
+            intervalFormat = intervalFormatFrom(dateFormat, dateFormat.getCalendar().getLocale(ULocale.ACTUAL_LOCALE).toLocale(), state.hourCycle);
+        }
+
         Calendar calendar = dateFormat.getCalendar();
         Calendar fromCalendar = ((Calendar) calendar.clone());
         Calendar toCalendar = ((Calendar) calendar.clone());
         fromCalendar.setTimeInMillis((long) startDate);
         toCalendar.setTimeInMillis((long) endDate);
-        return state.dateIntervalFormat.formatToValue(fromCalendar, toCalendar);
+        return intervalFormat.formatToValue(fromCalendar, toCalendar);
+    }
+
+    public static Object toDateTimeFormattable(Object value, JSToNumberNode toNumberNode) {
+        if (isTemporalObject(value)) {
+            return value;
+        } else {
+            return JSRuntime.toDouble(toNumberNode.execute(value));
+        }
+    }
+
+    public static boolean isTemporalObject(Object value) {
+        return (value instanceof JSTemporalCalendarHolder) || (value instanceof JSTemporalInstantObject);
+    }
+
+    public static boolean sameTemporalType(Object x, Object y) {
+        if (x instanceof JSTemporalPlainDateObject) {
+            return (y instanceof JSTemporalPlainDateObject);
+        } else if (x instanceof JSTemporalPlainTimeObject) {
+            return (y instanceof JSTemporalPlainTimeObject);
+        } else if (x instanceof JSTemporalPlainDateTimeObject) {
+            return (y instanceof JSTemporalPlainDateTimeObject);
+        } else if (x instanceof JSTemporalZonedDateTimeObject) {
+            return (y instanceof JSTemporalZonedDateTimeObject);
+        } else if (x instanceof JSTemporalPlainYearMonthObject) {
+            return (y instanceof JSTemporalPlainYearMonthObject);
+        } else if (x instanceof JSTemporalPlainMonthDayObject) {
+            return (y instanceof JSTemporalPlainMonthDayObject);
+        } else if (x instanceof JSTemporalInstantObject) {
+            return (y instanceof JSTemporalInstantObject);
+        } else {
+            return false;
+        }
     }
 
     @TruffleBoundary
-    public static TruffleString formatRange(JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
-        DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, startDate, endDate);
+    public static TruffleString formatRange(JSDateTimeFormatObject dateTimeFormat, Object x, Object y) {
+        DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, x, y);
 
         if (dateFieldsPracticallyEqual(formattedRange)) {
-            return JSDateTimeFormat.format(dateTimeFormat, startDate);
+            return JSDateTimeFormat.format(dateTimeFormat, x);
         }
 
         return Strings.fromJavaString(formattedRange.toString());
@@ -1094,11 +1159,11 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
-        DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, startDate, endDate);
+    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDateTimeFormatObject dateTimeFormat, Object x, Object y) {
+        DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, x, y);
 
         if (dateFieldsPracticallyEqual(formattedRange)) {
-            return JSDateTimeFormat.formatToParts(context, realm, dateTimeFormat, startDate, IntlUtil.SHARED);
+            return JSDateTimeFormat.formatToParts(context, realm, dateTimeFormat, x, IntlUtil.SHARED);
         }
 
         String formattedString = formattedRange.toString();
