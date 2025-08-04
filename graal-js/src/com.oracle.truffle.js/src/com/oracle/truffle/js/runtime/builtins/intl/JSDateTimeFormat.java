@@ -299,30 +299,33 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             }
             state.hourCycle = hc;
         }
-        if (timeStyleOpt != null || dateStyleOpt != null) {
-            if (dateStyleOpt != null) {
-                state.temporalPlainDateFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale);
-                state.temporalPlainYearMonthFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqML", patternGenerator, javaLocale);
-                state.temporalPlainMonthDayFormat = adjustDateTimeStyleFormat(dateFormat, "MLdFg", patternGenerator, javaLocale);
+
+        if (ctx.isOptionTemporal()) {
+            if (timeStyleOpt != null || dateStyleOpt != null) {
+                if (dateStyleOpt != null) {
+                    state.temporalPlainDateFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale);
+                    state.temporalPlainYearMonthFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqML", patternGenerator, javaLocale);
+                    state.temporalPlainMonthDayFormat = adjustDateTimeStyleFormat(dateFormat, "MLdFg", patternGenerator, javaLocale);
+                }
+                if (timeStyleOpt != null) {
+                    state.temporalPlainTimeFormat = adjustDateTimeStyleFormat(dateFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale);
+                }
+                state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale);
+                state.temporalInstanceFormat = dateFormat;
+            } else {
+                state.temporalPlainDateFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false,
+                                anyPresent, patternGenerator, javaLocale, null);
+                state.temporalPlainYearMonthFormat = getDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, null, Required.YEAR_MONTH, Defaults.YEAR_MONTH, false,
+                                anyPresent, patternGenerator, javaLocale, null);
+                state.temporalPlainMonthDayFormat = getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.MONTH_DAY, Defaults.MONTH_DAY, false,
+                                anyPresent, patternGenerator, javaLocale, null);
+                state.temporalPlainTimeFormat = getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt, Required.TIME,
+                                Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null);
+                state.temporalPlainDateTimeFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
+                                tzNameOpt, Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null);
+                state.temporalInstanceFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
+                                Required.ANY, (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME, true, anyPresent, patternGenerator, javaLocale, null);
             }
-            if (timeStyleOpt != null) {
-                state.temporalPlainTimeFormat = adjustDateTimeStyleFormat(dateFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale);
-            }
-            state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale);
-            state.temporalInstanceFormat = dateFormat;
-        } else {
-            state.temporalPlainDateFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false, anyPresent,
-                            patternGenerator, javaLocale, null);
-            state.temporalPlainYearMonthFormat = getDateTimeFormat(null, eraOpt, yearOpt, monthOpt, null, null, null, null, null, null, -1, null, Required.YEAR_MONTH, Defaults.YEAR_MONTH, false,
-                            anyPresent, patternGenerator, javaLocale, null);
-            state.temporalPlainMonthDayFormat = getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.MONTH_DAY, Defaults.MONTH_DAY, false, anyPresent,
-                            patternGenerator, javaLocale, null);
-            state.temporalPlainTimeFormat = getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt, Required.TIME,
-                            Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null);
-            state.temporalPlainDateTimeFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
-                            Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null);
-            state.temporalInstanceFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
-                            Required.ANY, (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME, true, anyPresent, patternGenerator, javaLocale, null);
         }
 
         String pattern = ((SimpleDateFormat) dateFormat).toPattern();
@@ -356,7 +359,9 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         state.dateFormat.setTimeZone(timeZone);
-        state.temporalInstanceFormat.setTimeZone(timeZone);
+        if (state.temporalInstanceFormat != null) {
+            state.temporalInstanceFormat.setTimeZone(timeZone);
+        }
         if (state.temporalPlainDateFormat != null) {
             state.temporalPlainDateFormat.setTimeZone(timeZone);
         }
