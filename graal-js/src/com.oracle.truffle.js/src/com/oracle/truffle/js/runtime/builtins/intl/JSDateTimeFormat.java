@@ -405,16 +405,16 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     private static DateFormat getDateTimeFormat(
                     String weekday,
                     String era,
-                    String year,
-                    String month,
-                    String day,
+                    String yearParam,
+                    String monthParam,
+                    String dayParam,
                     String dayPeriod,
-                    String hour,
+                    String hourParam,
                     String hc,
-                    String minute,
-                    String second,
+                    String minuteParam,
+                    String secondParam,
                     int fractionalSecondDigits,
-                    String tzName,
+                    String tzNameParam,
                     Required required,
                     Defaults defaults,
                     boolean inheritAll,
@@ -422,6 +422,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     DateTimePatternGenerator patternGenerator,
                     Locale javaLocale,
                     InternalState state) {
+        String year = yearParam;
+        String month = monthParam;
+        String day = dayParam;
+        String hour = hourParam;
+        String minute = minuteParam;
+        String second = secondParam;
+        String tzName = tzNameParam;
         boolean needDefaults = true;
         if (required == Required.DATE || required == Required.ANY) {
             if (weekday != null || year != null || month != null || day != null) {
