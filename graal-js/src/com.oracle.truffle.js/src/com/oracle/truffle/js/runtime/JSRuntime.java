@@ -2838,32 +2838,18 @@ public final class JSRuntime {
     }
 
     public static Object getBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArray.ElementType elementType, int index) {
-        switch (elementType) {
-            case Int8:
-                return (int) buffer.get(index);
-            case Uint8:
-            case Uint8Clamped:
-                return buffer.get(index) & 0xff;
-            case Int16:
-                return bufferAccess.getInt16(buffer, index);
-            case Uint16:
-                return bufferAccess.getUint16(buffer, index);
-            case Int32:
-                return bufferAccess.getInt32(buffer, index);
-            case Uint32:
-                return toUint32(bufferAccess.getInt32(buffer, index));
-            case BigInt64:
-            case BigUint64:
-                return BigInt.valueOf(bufferAccess.getInt64(buffer, index));
-            case Float16:
-                return (double) Float.float16ToFloat(bufferAccess.getFloat16(buffer, index));
-            case Float32:
-                return (double) bufferAccess.getFloat(buffer, index);
-            case Float64:
-                return bufferAccess.getDouble(buffer, index);
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
+        return switch (elementType) {
+            case Int8 -> (int) buffer.get(index);
+            case Uint8, Uint8Clamped -> buffer.get(index) & 0xff;
+            case Int16 -> bufferAccess.getInt16(buffer, index);
+            case Uint16 -> bufferAccess.getUint16(buffer, index);
+            case Int32 -> bufferAccess.getInt32(buffer, index);
+            case Uint32 -> toUint32(bufferAccess.getInt32(buffer, index));
+            case BigInt64, BigUint64 -> BigInt.valueOf(bufferAccess.getInt64(buffer, index));
+            case Float16 -> (double) Float.float16ToFloat(bufferAccess.getFloat16(buffer, index));
+            case Float32 -> (double) bufferAccess.getFloat(buffer, index);
+            case Float64 -> bufferAccess.getDouble(buffer, index);
+        };
     }
 
     public static void setBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArray.ElementType elementType, int index, Object value) {
