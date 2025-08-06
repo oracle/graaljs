@@ -360,7 +360,7 @@ public final class DatePrototypeBuiltins {
 
         protected JSDateTimeFormatObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
             JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
-            initDateTimeFormatNode.executeInit(dateTimeFormatObj, locales, options);
+            initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
             return dateTimeFormatObj;
         }
     }
@@ -415,7 +415,7 @@ public final class DatePrototypeBuiltins {
 
         public JSDateToStringIntlNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, NO_UTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.ANY, InitializeDateTimeFormatNode.Defaults.ALL);
+            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createAnyAll(context);
         }
 
         @Specialization
@@ -483,8 +483,7 @@ public final class DatePrototypeBuiltins {
 
         public JSDateToLocaleDateStringIntlNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, NO_UTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.DATE,
-                            InitializeDateTimeFormatNode.Defaults.DATE);
+            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createDateDate(context);
         }
 
         @Specialization
@@ -520,8 +519,7 @@ public final class DatePrototypeBuiltins {
 
         public JSDateToLocaleTimeStringIntlNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, NO_UTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.TIME,
-                            InitializeDateTimeFormatNode.Defaults.TIME);
+            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createTimeTime(context);
         }
 
         @Specialization

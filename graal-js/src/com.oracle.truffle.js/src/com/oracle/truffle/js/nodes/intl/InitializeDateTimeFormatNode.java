@@ -46,6 +46,7 @@ import java.util.MissingResourceException;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -77,20 +78,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     public static final List<String> TIME_ZONE_NAME_OPTION_VALUES_ES2022 = List.of(IntlUtil.SHORT, IntlUtil.LONG,
                     IntlUtil.SHORT_OFFSET, IntlUtil.LONG_OFFSET, IntlUtil.SHORT_GENERIC, IntlUtil.LONG_GENERIC);
 
-    public enum Required {
-        DATE,
-        TIME,
-        ANY
-    }
-
-    public enum Defaults {
-        DATE,
-        TIME,
-        ALL
-    }
-
-    private final Required required;
-    private final Defaults defaults;
+    private final JSDateTimeFormat.Required required;
+    private final JSDateTimeFormat.Defaults defaults;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
@@ -125,7 +114,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
     private final JSContext context;
 
-    protected InitializeDateTimeFormatNode(JSContext context, Required required, Defaults defaults) {
+    protected InitializeDateTimeFormatNode(JSContext context, JSDateTimeFormat.Required required, JSDateTimeFormat.Defaults defaults) {
 
         this.context = context;
 
@@ -161,14 +150,38 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.toJavaStringNode = TruffleString.ToJavaStringNode.create();
     }
 
-    public abstract JSDateTimeFormatObject executeInit(JSDateTimeFormatObject dateTimeFormatObj, Object locales, Object options);
+    public JSDateTimeFormatObject initialize(JSDateTimeFormatObject dateTimeFormatObj, Object locales, Object options) {
+        return executeInit(dateTimeFormatObj, locales, options, null);
+    }
 
-    public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, Required required, Defaults defaults) {
+    public abstract JSDateTimeFormatObject executeInit(JSDateTimeFormatObject dateTimeFormatObj, Object locales, Object options, TruffleString toLocaleStringTimeZone);
+
+    public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, JSDateTimeFormat.Required required, JSDateTimeFormat.Defaults defaults) {
         return InitializeDateTimeFormatNodeGen.create(context, required, defaults);
     }
 
+    @NeverDefault
+    public static InitializeDateTimeFormatNode createAnyAll(JSContext context) {
+        return createInitalizeDateTimeFormatNode(context, JSDateTimeFormat.Required.ANY, JSDateTimeFormat.Defaults.ALL);
+    }
+
+    @NeverDefault
+    public static InitializeDateTimeFormatNode createAnyDate(JSContext context) {
+        return createInitalizeDateTimeFormatNode(context, JSDateTimeFormat.Required.ANY, JSDateTimeFormat.Defaults.DATE);
+    }
+
+    @NeverDefault
+    public static InitializeDateTimeFormatNode createDateDate(JSContext context) {
+        return createInitalizeDateTimeFormatNode(context, JSDateTimeFormat.Required.DATE, JSDateTimeFormat.Defaults.DATE);
+    }
+
+    @NeverDefault
+    public static InitializeDateTimeFormatNode createTimeTime(JSContext context) {
+        return createInitalizeDateTimeFormatNode(context, JSDateTimeFormat.Required.TIME, JSDateTimeFormat.Defaults.TIME);
+    }
+
     @Specialization
-    public JSDateTimeFormatObject initializeDateTimeFormat(JSDateTimeFormatObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
+    public JSDateTimeFormatObject initializeDateTimeFormat(JSDateTimeFormatObject dateTimeFormatObj, Object localesArg, Object optionsArg, TruffleString toLocaleStringTimeZone) {
 
         // must be invoked before any code that tries to access ICU library data
         try {
@@ -195,7 +208,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             String hcOpt = getHourCycleOption.executeValue(options);
 
             Object timeZoneValue = getTimeZoneNode.getValue(options);
-            Pair<TimeZone, String> timeZone = toTimeZone(timeZoneValue);
+            Pair<TimeZone, String> timeZone = toTimeZone(timeZoneValue, toLocaleStringTimeZone);
 
             String weekdayOpt = getWeekdayOption.executeValue(options);
             String eraOpt = getEraOption.executeValue(options);
@@ -218,36 +231,17 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             String timeStyleOpt = getTimeStyleOption.executeValue(options);
 
             if ((dateStyleOpt != null || timeStyleOpt != null)) {
-                if (hasExplicitFormatComponents || (required == Required.DATE && timeStyleOpt != null) || (required == Required.TIME && dateStyleOpt != null)) {
+                if (hasExplicitFormatComponents //
+                                || (required == JSDateTimeFormat.Required.DATE && timeStyleOpt != null) //
+                                || (required == JSDateTimeFormat.Required.TIME && dateStyleOpt != null)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("dateStyle and timeStyle options cannot be mixed with other date/time options");
-                }
-            } else {
-                boolean needDefaults = true;
-                if (required == Required.DATE || required == Required.ANY) {
-                    if (weekdayOpt != null || yearOpt != null || monthOpt != null || dayOpt != null) {
-                        needDefaults = false;
-                    }
-                }
-                if (required == Required.TIME || required == Required.ANY) {
-                    if (dayPeriodOpt != null || hourOpt != null || minuteOpt != null || secondOpt != null || fractionalSecondDigitsOpt != 0) {
-                        needDefaults = false;
-                    }
-                }
-                if (needDefaults && (defaults == Defaults.DATE || defaults == Defaults.ALL)) {
-                    yearOpt = IntlUtil.NUMERIC;
-                    monthOpt = IntlUtil.NUMERIC;
-                    dayOpt = IntlUtil.NUMERIC;
-                }
-                if (needDefaults && (defaults == Defaults.TIME || defaults == Defaults.ALL)) {
-                    hourOpt = IntlUtil.NUMERIC;
-                    minuteOpt = IntlUtil.NUMERIC;
-                    secondOpt = IntlUtil.NUMERIC;
                 }
             }
 
             JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt,
-                            fractionalSecondDigitsOpt, tzNameOpt, timeZone.getFirst(), timeZone.getSecond(), calendarOpt, numberingSystemOpt, dateStyleOpt, timeStyleOpt);
+                            fractionalSecondDigitsOpt, tzNameOpt, timeZone.getFirst(), timeZone.getSecond(), calendarOpt, numberingSystemOpt, dateStyleOpt, timeStyleOpt, required, defaults,
+                            toLocaleStringTimeZone);
 
         } catch (MissingResourceException e) {
             errorBranch.enter();
@@ -257,17 +251,22 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         return dateTimeFormatObj;
     }
 
-    private Pair<TimeZone, String> toTimeZone(Object timeZoneValue) {
-        TimeZone timeZone;
-        String tzId;
-        if (timeZoneValue != Undefined.instance) {
+    private Pair<TimeZone, String> toTimeZone(Object timeZoneValue, TruffleString toLocaleStringTimeZone) {
+        if (timeZoneValue == Undefined.instance) {
+            if (toLocaleStringTimeZone != null) {
+                return parseAndGetICUTimeZone(toJavaStringNode.execute(toLocaleStringTimeZone));
+            } else {
+                TimeZone timeZone = getRealm().getLocalTimeZone();
+                String tzId = timeZone.getID();
+                return new Pair<>(timeZone, tzId);
+            }
+        } else {
+            if (toLocaleStringTimeZone != null) {
+                throw Errors.createTypeError("timeZone option not allowed when formatting ZonedDateTime");
+            }
             TruffleString nameTS = toStringNode.executeString(timeZoneValue);
             String name = toJavaStringNode.execute(nameTS);
             return parseAndGetICUTimeZone(name);
-        } else {
-            timeZone = getRealm().getLocalTimeZone();
-            tzId = timeZone.getID();
-            return new Pair<>(timeZone, tzId);
         }
     }
 

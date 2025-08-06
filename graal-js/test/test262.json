@@ -2044,66 +2044,6 @@
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-not-overlapping-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaindate-formatting-datetime-style.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-25"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaindatetime-formatting-datetime-style.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-25"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plainmonthday-formatting-datetime-style.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-25"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaintime-formatting-datetime-style.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-25"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plainyearmonth-formatting-datetime-style.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-25"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-not-overlapping-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/to-datetime-formattable-with-different-arg-kinds.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-not-overlapping-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/to-datetime-formattable-with-different-arg-kinds.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-not-overlapping-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2140,66 +2080,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/dateStyle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/default-includes-time-not-time-zone-name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/locales-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/lone-options-accepted.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/options-conflict.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/calendar-mismatch.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/dateStyle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/locales-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/lone-options-accepted.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/options-conflict.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/toZonedDateTime/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
@@ -2207,134 +2087,6 @@
     "filePath" : "intl402/Temporal/PlainDate/prototype/until/until-across-lunisolar-leap-months.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/calendar-mismatch.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/dateStyle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/default-includes-time-not-time-zone-name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/locales-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/lone-options-accepted.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/options-conflict.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/calendar-mismatch.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/dateStyle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/locales-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/lone-options-accepted.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/options-conflict.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/default-does-not-include-date-and-time-zone-name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/locales-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/lone-options-accepted.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/options-conflict.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/timeStyle-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/calendar-mismatch.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/dateStyle-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/dateStyle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/locales-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/lone-options-accepted.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/options-conflict.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/toLocaleString/resolved-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/construct-non-utc-non-iso.js",
     "status" : "FAIL",
@@ -2395,50 +2147,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/startOfDay/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/calendar-mismatch.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/dateStyle-timeStyle-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/dateStyle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/default-includes-time-and-time-zone-name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/locales-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/lone-options-accepted.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/options-conflict.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/options-timeZone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/options-timeZoneName-affects-instance-time-zone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Temporal failures"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/time-zone-canonicalized.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test: expects canonical timezones to be observable."
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withPlainTime/dst-skipped-cross-midnight.js",
     "status" : "FAIL",
@@ -2533,23 +2241,7 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
   }, {
-    "filePath" : "staging/Intl402/Temporal/old/date-time-format.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/date-toLocaleString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/datetime-toLocaleString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
     "filePath" : "staging/Intl402/Temporal/old/hebrew-leap-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/instant-toLocaleString.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
@@ -2558,10 +2250,6 @@
     "comment" : "new failures 2024-08-09"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/japanese-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/monthday-toLocaleString.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
@@ -2640,14 +2328,6 @@
     "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-roc.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/time-toLocaleString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/yearmonth-toLocaleString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/zdt-round.js",
     "status" : "FAIL",

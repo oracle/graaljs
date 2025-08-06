@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,11 +62,9 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
@@ -185,14 +183,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorInvalidTimeValue();
             }
-            Number xNumber = startDateToNumberNode.executeNumber(startDate);
-            Number yNumber = endDateToNumberNode.executeNumber(endDate);
-            double x = JSDate.timeClip(JSRuntime.toDouble(xNumber));
-            double y = JSDate.timeClip(JSRuntime.toDouble(yNumber));
-            if (Double.isNaN(x) || Double.isNaN(y)) {
-                errorBranch.enter(this);
-                throw Errors.createRangeErrorInvalidTimeValue();
-            }
+            Object x = JSDateTimeFormat.toDateTimeFormattable(startDate, startDateToNumberNode);
+            Object y = JSDateTimeFormat.toDateTimeFormattable(endDate, endDateToNumberNode);
             return JSDateTimeFormat.formatRange(dateTimeFormat, x, y);
         }
 
@@ -218,14 +210,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorInvalidTimeValue();
             }
-            Number xNumber = startDateToNumberNode.executeNumber(startDate);
-            Number yNumber = endDateToNumberNode.executeNumber(endDate);
-            double x = JSDate.timeClip(JSRuntime.toDouble(xNumber));
-            double y = JSDate.timeClip(JSRuntime.toDouble(yNumber));
-            if (Double.isNaN(x) || Double.isNaN(y)) {
-                errorBranch.enter(this);
-                throw Errors.createRangeErrorInvalidTimeValue();
-            }
+            Object x = JSDateTimeFormat.toDateTimeFormattable(startDate, startDateToNumberNode);
+            Object y = JSDateTimeFormat.toDateTimeFormattable(endDate, endDateToNumberNode);
             return JSDateTimeFormat.formatRangeToParts(getContext(), getRealm(), dateTimeFormat, x, y);
         }
 

@@ -62,6 +62,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBui
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeRoundNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToJSONNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToPlainTimeNodeGen;
@@ -74,6 +75,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBui
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.temporal.DifferencePlainDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
@@ -97,6 +99,8 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
@@ -257,8 +261,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 return JSTemporalPlainDateTimeToStringNodeGen.create(context, builtin,
                                 args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toLocaleString:
+                return context.isOptionIntl402()
+                                ? JSTemporalPlainDateTimeToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                : JSTemporalPlainDateTimeToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toJSON:
-                return JSTemporalPlainDateTimeToLocaleStringNodeGen.create(context, builtin,
+                return JSTemporalPlainDateTimeToJSONNodeGen.create(context, builtin,
                                 args().withThis().createArgumentNodes(context));
             case valueOf:
                 return UnsupportedValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -519,14 +526,14 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
     }
 
-    public abstract static class JSTemporalPlainDateTimeToLocaleString extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainDateTimeToJSON extends JSTemporalBuiltinOperation {
 
-        protected JSTemporalPlainDateTimeToLocaleString(JSContext context, JSBuiltin builtin) {
+        protected JSTemporalPlainDateTimeToJSON(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        static TruffleString toLocaleString(JSTemporalPlainDateTimeObject dt) {
+        static TruffleString toJSON(JSTemporalPlainDateTimeObject dt) {
             return JSTemporalPlainDateTime.temporalDateTimeToString(dt.getYear(), dt.getMonth(), dt.getDay(),
                             dt.getHour(), dt.getMinute(), dt.getSecond(),
                             dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(),
@@ -535,6 +542,27 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization(guards = "!isJSTemporalPlainDateTime(thisObj)")
         static Object invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalPlainDateTimeExpected();
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeToLocaleString extends JSTemporalBuiltinOperation {
+
+        protected JSTemporalPlainDateTimeToLocaleString(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        TruffleString toLocaleString(JSTemporalPlainDateTimeObject dt, Object locales, Object options,
+                        @Cached("createAnyAll(getContext())") InitializeDateTimeFormatNode initDateTimeFormatNode) {
+            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
+            initDateTimeFormatNode.initialize(dateTimeFormatObj, locales, options);
+            return JSDateTimeFormat.format(dateTimeFormatObj, dt);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSTemporalPlainDateTime(thisObj)")
+        static Object invalidReceiver(Object thisObj, Object locales, Object options) {
             throw TemporalErrors.createTypeErrorTemporalPlainDateTimeExpected();
         }
     }

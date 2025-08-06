@@ -68,6 +68,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBui
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeStartOfDayNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeTimeZoneIdGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeToInstantNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeToJSONNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeToPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeToPlainDateTimeNodeGen;
@@ -83,6 +84,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.GetOptionsObjectNode;
 import com.oracle.truffle.js.nodes.intl.GetStringOptionNode;
+import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
@@ -106,6 +108,8 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -256,9 +260,11 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             case toString:
                 return JSTemporalZonedDateTimeToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toLocaleString:
-                return JSTemporalZonedDateTimeToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return context.isOptionIntl402()
+                                ? JSTemporalZonedDateTimeToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                : JSTemporalZonedDateTimeToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toJSON:
-                return JSTemporalZonedDateTimeToLocaleStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSTemporalZonedDateTimeToJSONNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return UnsupportedValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case with:
@@ -523,6 +529,23 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
     }
 
+    public abstract static class JSTemporalZonedDateTimeToJSON extends JSTemporalBuiltinOperation {
+
+        protected JSTemporalZonedDateTimeToJSON(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected TruffleString toJSON(JSTemporalZonedDateTimeObject zonedDateTime) {
+            return TemporalUtil.temporalZonedDateTimeToString(getContext(), getRealm(), zonedDateTime, AUTO, ShowCalendar.AUTO, AUTO, AUTO);
+        }
+
+        @Specialization(guards = "!isJSTemporalZonedDateTime(thisObj)")
+        static Object invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalZonedDateTimeExpected();
+        }
+    }
+
     public abstract static class JSTemporalZonedDateTimeToLocaleString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalZonedDateTimeToLocaleString(JSContext context, JSBuiltin builtin) {
@@ -530,12 +553,22 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected TruffleString toLocaleString(JSTemporalZonedDateTimeObject zonedDateTime) {
-            return TemporalUtil.temporalZonedDateTimeToString(getContext(), getRealm(), zonedDateTime, AUTO, ShowCalendar.AUTO, AUTO, AUTO);
+        public TruffleString toLocaleString(JSTemporalZonedDateTimeObject zonedDateTime, Object locales, Object options,
+                        @Cached("createAnyAll(getContext())") InitializeDateTimeFormatNode initDateTimeFormatNode) {
+            JSContext context = getContext();
+            JSRealm realm = getRealm();
+            JSDateTimeFormatObject dateTimeFormat = JSDateTimeFormat.create(context, realm);
+            initDateTimeFormatNode.executeInit(dateTimeFormat, locales, options, zonedDateTime.getTimeZone());
+            TruffleString calendar = zonedDateTime.getCalendar();
+            if (!TemporalConstants.ISO8601.equals(calendar) && !calendar.equals(dateTimeFormat.getInternalState().getCalendar())) {
+                throw Errors.createRangeError("Calendar mismatch");
+            }
+            return JSDateTimeFormat.format(dateTimeFormat, JSTemporalInstant.create(context, realm, zonedDateTime.getNanoseconds()));
         }
 
+        @SuppressWarnings("unused")
         @Specialization(guards = "!isJSTemporalZonedDateTime(thisObj)")
-        static Object invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
+        static Object invalidReceiver(Object thisObj, Object locales, Object options) {
             throw TemporalErrors.createTypeErrorTemporalZonedDateTimeExpected();
         }
     }

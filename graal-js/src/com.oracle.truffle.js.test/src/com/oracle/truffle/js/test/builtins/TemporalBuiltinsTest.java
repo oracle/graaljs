@@ -59,7 +59,7 @@ import com.oracle.truffle.js.test.JSTest;
 public class TemporalBuiltinsTest extends JSTest {
 
     private static Context getJSContext() {
-        return JSTest.newContextBuilder(ID).option("js.temporal", "true").build();
+        return JSTest.newContextBuilder(ID).option("js.temporal", "true").option("js.locale", "en").build();
     }
 
     private static void validatePlainTime(Context ctx, long hour, long minute, long second, long millisecond, long microsecond,
@@ -293,7 +293,7 @@ public class TemporalBuiltinsTest extends JSTest {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = new Temporal.PlainTime(10, 25, 5, 500, 400, 760);");
             Value str = ctx.eval(ID, "plainTime.toLocaleString();");
-            assertEquals("10:25:05.50040076", str.asString());
+            assertEquals("10:25:05\u202fAM", str.asString());
         }
     }
 

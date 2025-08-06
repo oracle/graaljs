@@ -1957,8 +1957,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         public ConstructDateTimeFormatNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
-            initializeDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.ANY,
-                            InitializeDateTimeFormatNode.Defaults.DATE);
+            initializeDateTimeFormatNode = InitializeDateTimeFormatNode.createAnyDate(context);
         }
 
         @Specialization
@@ -1966,7 +1965,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             JSDateTimeFormatObject dateTimeFormat = JSDateTimeFormat.create(getContext(), realm, proto);
-            return initializeDateTimeFormatNode.executeInit(dateTimeFormat, locales, options);
+            return initializeDateTimeFormatNode.initialize(dateTimeFormat, locales, options);
         }
 
         @Override
