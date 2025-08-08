@@ -3083,6 +3083,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (isTypedArrayImplementation) {
                     checkOutOfBounds((JSTypedArrayObject) thisObj);
                     len = getLength(obj);
+                    count = Math.min(count, Math.min(len - to, len - from));
                 }
 
                 long direction;
@@ -3096,9 +3097,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
                 while (count > 0) {
                     if (isTypedArrayImplementation || hasProperty(obj, from)) {
-                        if (isTypedArrayImplementation && (from >= len || to >= len)) {
-                            break;
-                        }
                         Object fromVal = read(obj, from);
                         write(obj, to, fromVal);
                     } else {
