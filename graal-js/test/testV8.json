@@ -278,10 +278,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "mjsunit/call-lhs-web-compat-early-errors.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/clone-ic-regressions.js",
     "status" : "FAIL",
     "comment" : "Uses %HaveSameMap in a new Realm"
@@ -833,9 +829,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/ignition/dead-code-source-position.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/ignition/regress-599001-verifyheap.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
@@ -843,9 +836,6 @@
     "filePath" : "mjsunit/ignition/regress-672027.js",
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
-  }, {
-    "filePath" : "mjsunit/invalid-lhs.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/json-errors.js",
     "status" : "FAIL",
@@ -1173,19 +1163,11 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/regress/regress-1230597.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/regress/regress-1255368.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/regress/regress-12657.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1273677.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -1318,9 +1300,6 @@
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-4266.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-436893.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-446389.js",
@@ -1707,9 +1686,6 @@
     "status" : "SKIP",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15). Set to skip as the test doesn't terminate in due time."
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-412208.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-429159.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1898,10 +1874,6 @@
     "filePath" : "mjsunit/regress/regress-crbug-918301.js",
     "status" : "SKIP",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15). Set to skip as the test doesn't terminate in due time."
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-934166.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-941743.js",
     "status" : "SKIP",
@@ -2847,9 +2819,6 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
-    "filePath" : "mjsunit/serialize-embedded-error.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/shared-memory/regress-crbug-1487973.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -2896,10 +2865,6 @@
     "filePath" : "mjsunit/string-oom-replace-regexp-global-with-function.js",
     "runInIsolation" : true,
     "comment" : "Out of memory even when run together with other memory-intense tests"
-  }, {
-    "filePath" : "mjsunit/switch.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/temporal/calendar-constructor.js",
     "status" : "FAIL",
