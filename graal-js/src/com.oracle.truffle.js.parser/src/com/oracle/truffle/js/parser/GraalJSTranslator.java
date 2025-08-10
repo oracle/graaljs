@@ -195,6 +195,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     public static final TruffleString SUPER_CALLED_TWICE = Strings.constant("super() called twice");
     public static final TruffleString UNSUPPORTED_REFERENCE_TO_SUPER = Strings.constant("Unsupported reference to 'super'");
+    public static final TruffleString INVALID_LHS = Strings.constant("Invalid left-hand side in assignment");
     public static final String LINE__ = "__LINE__";
     public static final String FILE__ = "__FILE__";
     public static final String DIR__ = "__DIR__";
@@ -2851,12 +2852,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // Checkstyle: stop
             default: // ident with other token type
                 // Checkstyle: resume
-                if (!(lhsExpression instanceof IdentNode)) {
+                if (!(lhsExpression instanceof IdentNode) && !(lhsExpression instanceof CallNode)) {
                     throw Errors.unsupported("unsupported assignment to token type: " + lhsExpression.tokenType().toString() + " " + lhsExpression.toString());
                 }
                 // fall through
             case IDENT:
-                assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
+                if (lhsExpression instanceof CallNode callNode) {
+                    assert callNode.isWebCompatAssignmentTargetType();
+                    assignedNode = factory.createDual(context, transform(lhsExpression), factory.createThrowError(JSErrorType.ReferenceError, INVALID_LHS));
+                } else {
+                    assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
+                }
                 break;
             case LBRACKET:
                 // target[element]

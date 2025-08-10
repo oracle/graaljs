@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -380,6 +380,31 @@ public enum TokenType {
             case ASSIGN_AND:
             case ASSIGN_OR:
             case ASSIGN_NULLCOAL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Is {@code AssignmentOperator} (one of {@code = *= /= %= += -= <<= >>= >>>= &= ^= |= **=})?
+     * Note that {@code = &&= ||= ??=} are not included.
+     */
+    public boolean isAssignmentOperator() {
+        switch (this) {
+            case ASSIGN_INIT:
+            case ASSIGN_ADD:
+            case ASSIGN_BIT_AND:
+            case ASSIGN_BIT_OR:
+            case ASSIGN_BIT_XOR:
+            case ASSIGN_DIV:
+            case ASSIGN_MOD:
+            case ASSIGN_EXP:
+            case ASSIGN_MUL:
+            case ASSIGN_SAR:
+            case ASSIGN_SHL:
+            case ASSIGN_SHR:
+            case ASSIGN_SUB:
                 return true;
             default:
                 return false;

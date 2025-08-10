@@ -1049,7 +1049,7 @@ public class Parser extends AbstractParser {
                 } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
                     verifyDestructuringAssignmentPattern(lhs, CONTEXT_ASSIGNMENT_TARGET);
                     break;
-                } else {
+                } else if (!(isWebCompatAssignmentTargetType(lhs) && (opType == ASSIGN || opType.isAssignmentOperator()))) {
                     throw invalidLHSError(lhs);
                 }
             default:
@@ -1058,6 +1058,10 @@ public class Parser extends AbstractParser {
 
         assert !BinaryNode.isLogical(opType);
         return new BinaryNode(op, lhs, rhsExpr);
+    }
+
+    private static boolean isWebCompatAssignmentTargetType(Expression lhs) {
+        return lhs instanceof CallNode callNode && callNode.isWebCompatAssignmentTargetType();
     }
 
     private boolean isDestructuringLhs(Expression lhs) {
@@ -2043,7 +2047,7 @@ public class Parser extends AbstractParser {
             IdentNode superIdent = new IdentNode(identToken, ctorFinish, lexer.stringIntern(SUPER.getNameTS())).setIsDirectSuper();
             IdentNode argsIdent = new IdentNode(identToken, ctorFinish, lexer.stringIntern(ARGS)).setIsRestParameter();
             Expression spreadArgs = new UnaryNode(Token.recast(classToken, TokenType.SPREAD_ARGUMENT), argsIdent);
-            Expression superCall = CallNode.forCall(classLineNumber, classToken, Token.descPosition(classToken), ctorFinish, superIdent, List.of(spreadArgs), false, false, false, false, true);
+            Expression superCall = CallNode.forCall(classLineNumber, classToken, Token.descPosition(classToken), ctorFinish, superIdent, List.of(spreadArgs), false, false, false, false, true, false);
             statements = List.of(new ExpressionStatement(classLineNumber, classToken, ctorFinish, superCall));
             parameters = List.of(argsIdent);
         } else {
@@ -3090,7 +3094,7 @@ public class Parser extends AbstractParser {
                             assert init != null : "for..in/of init expression cannot be null here";
 
                             // check if initial expression is a valid L-value
-                            if (!checkValidLValue(init, isForOf || isForAwaitOf ? CONTEXT_FOR_OF_ITERATOR : CONTEXT_FOR_IN_ITERATOR)) {
+                            if (!isWebCompatAssignmentTargetType(init) && !checkValidLValue(init, isForOf || isForAwaitOf ? CONTEXT_FOR_OF_ITERATOR : CONTEXT_FOR_IN_ITERATOR)) {
                                 throw error(AbstractParser.message(MSG_NOT_LVALUE_FOR_IN_LOOP, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), init.getToken());
                             }
                         }
@@ -4724,6 +4728,7 @@ public class Parser extends AbstractParser {
             // Catch special functions.
             boolean eval = false;
             boolean applyArguments = false;
+            boolean webCompatAssignmentType = isAnnexB() && !isStrictMode;
             if (lhs instanceof IdentNode) {
                 final IdentNode ident = (IdentNode) lhs;
                 final String name = ident.getName();
@@ -4733,6 +4738,7 @@ public class Parser extends AbstractParser {
                 } else if (SUPER.getName().equals(name)) {
                     assert ident.isDirectSuper();
                     markSuperCall();
+                    webCompatAssignmentType = false;
                 }
             } else if (lhs instanceof AccessNode && !((AccessNode) lhs).isPrivate() && arguments.size() == 2 && arguments.get(1) instanceof IdentNode &&
                             ((IdentNode) arguments.get(1)).isArguments() && APPLY_NAME.equals(((AccessNode) lhs).getProperty())) {
@@ -4741,7 +4747,7 @@ public class Parser extends AbstractParser {
                 }
             }
 
-            lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false, eval, applyArguments, false);
+            lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, false, eval, applyArguments, false, webCompatAssignmentType);
         }
 
         boolean optionalChain = false;
@@ -4754,7 +4760,7 @@ public class Parser extends AbstractParser {
                 case LPAREN: {
                     final List<Expression> arguments = argumentList(yield, await);
 
-                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, optionalChain);
+                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, optionalChain, false, false, false, isAnnexB() && !isStrictMode && !optionalChain);
 
                     break;
                 }
@@ -6045,7 +6051,9 @@ public class Parser extends AbstractParser {
             String contextString = opType == TokenType.INCPREFIX ? CONTEXT_OPERAND_FOR_INC_OPERATOR : CONTEXT_OPERAND_FOR_DEC_OPERATOR;
             verifyStrictIdent((IdentNode) lhs, contextString);
         } else if (!(lhs instanceof AccessNode || lhs instanceof IndexNode) || ((BaseNode) lhs).isOptional()) {
-            throw invalidLHSError(lhs);
+            if (!isWebCompatAssignmentTargetType(lhs)) {
+                throw invalidLHSError(lhs);
+            }
         }
 
         return incDecExpression(unaryToken, opType, lhs, isPostfix);

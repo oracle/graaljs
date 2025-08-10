@@ -87,6 +87,9 @@ public final class CallNode extends OptionalExpression {
     /** Is this an {@code import.defer} call? */
     private static final int IS_IMPORT_DEFER = 1 << 9;
 
+    /** Is AssignmentTargetType of this expression web-compat? */
+    private static final int IS_WEB_COMPAT_ASSIGNMENT_TYPE = 1 << 10;
+
     private final int flags;
 
     private final int lineNumber;
@@ -96,30 +99,30 @@ public final class CallNode extends OptionalExpression {
     }
 
     public static Expression forCall(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args) {
-        return forCall(lineNumber, token, start, finish, function, args, false, false, false, false, false);
+        return forCall(lineNumber, token, start, finish, function, args, false, false, false, false, false, false);
     }
 
     public static Expression forCall(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
                     boolean optional, boolean optionalChain) {
-        return forCall(lineNumber, token, start, finish, function, args, optional, optionalChain, false, false, false);
+        return forCall(lineNumber, token, start, finish, function, args, optional, optionalChain, false, false, false, false);
     }
 
     public static Expression forCall(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
-                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments, boolean isDefaultDerivedConstructorSuperCall) {
-        return create(lineNumber, token, start, finish, function, args, optional, optionalChain, isEval, isApplyArguments, isDefaultDerivedConstructorSuperCall, false);
+                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments, boolean isDefaultDerivedConstructorSuperCall, boolean isWebCompatAssignmentType) {
+        return create(lineNumber, token, start, finish, function, args, optional, optionalChain, isEval, isApplyArguments, isDefaultDerivedConstructorSuperCall, isWebCompatAssignmentType);
     }
 
     public static Expression forTaggedTemplateLiteral(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args) {
-        return create(lineNumber, token, start, finish, function, args, false, false, false, false, false, true);
+        return new CallNode(lineNumber, token, start, finish, setIsFunction(function), args, IS_TAGGED_TEMPLATE_LITERAL);
     }
 
     private static Expression create(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
-                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments, boolean isDefaultDerivedConstructorSuperCall, boolean isTaggedTemplateLiteral) {
+                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments, boolean isDefaultDerivedConstructorSuperCall, boolean isWebCompatAssignmentType) {
         return new CallNode(lineNumber, token, start, finish, setIsFunction(function), args,
                         (optional ? IS_OPTIONAL : 0) | (optionalChain ? IS_OPTIONAL_CHAIN : 0) |
                                         (isEval ? IS_EVAL : 0) | (isApplyArguments ? IS_APPLY_ARGUMENTS : 0) |
-                                        (isTaggedTemplateLiteral ? IS_TAGGED_TEMPLATE_LITERAL : 0) |
-                                        (isDefaultDerivedConstructorSuperCall ? IS_DEFAULT_DERIVED_CONSTRUCTOR_SUPER_CALL : 0));
+                                        (isDefaultDerivedConstructorSuperCall ? IS_DEFAULT_DERIVED_CONSTRUCTOR_SUPER_CALL : 0) |
+                                        (isWebCompatAssignmentType ? IS_WEB_COMPAT_ASSIGNMENT_TYPE : 0));
     }
 
     public static Expression forImport(int lineNumber, long token, int start, int finish, IdentNode importIdent, List<Expression> args, Module.ImportPhase phase) {
@@ -315,6 +318,10 @@ public final class CallNode extends OptionalExpression {
 
     public boolean isDefaultDerivedConstructorSuperCall() {
         return (flags & IS_DEFAULT_DERIVED_CONSTRUCTOR_SUPER_CALL) != 0;
+    }
+
+    public boolean isWebCompatAssignmentTargetType() {
+        return (flags & IS_WEB_COMPAT_ASSIGNMENT_TYPE) != 0;
     }
 
 }
