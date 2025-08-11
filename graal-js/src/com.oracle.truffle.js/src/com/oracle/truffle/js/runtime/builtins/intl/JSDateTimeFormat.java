@@ -342,16 +342,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         if (state.calendar == null) {
             state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
         }
-        if ("gregory".equals(state.calendar)) {
+
+        Calendar calendar = dateFormat.getCalendar();
+        if (calendar instanceof GregorianCalendar gCalendar) {
             // Ensure that Gregorian calendar is used for all dates.
             // GregorianCalendar used by SimpleDateFormat is using
             // Julian calendar for dates before 1582 otherwise.
-            Calendar calendar = dateFormat.getCalendar();
-            if (!(calendar instanceof GregorianCalendar)) {
-                calendar = new GregorianCalendar(javaLocale);
-                dateFormat.setCalendar(calendar);
-            }
-            ((GregorianCalendar) calendar).setGregorianChange(new Date(Long.MIN_VALUE));
+            gCalendar.setGregorianChange(new Date(Long.MIN_VALUE));
         }
 
         if (tzNameOpt != null && !tzNameOpt.isEmpty()) {
