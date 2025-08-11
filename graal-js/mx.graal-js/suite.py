@@ -909,6 +909,21 @@ suite = {
       ],
       "testDistribution": True,
       "maven" : False,
-    }
+    },
+
+    "GRAALJS_POLYBENCH_BENCHMARKS" : {
+      "description": "Distribution for GraalJS polybench benchmarks",
+      "layout": {
+        "./compiler/": [
+          "file:benchmarks/compiler/*.js",
+        ],
+        "./interpreter/": [
+          "file:benchmarks/interpreter/*.js",
+        ],
+        "./warmup/": [
+          "extracted-dependency:truffle:WARMUP_BENCHMARKS/*"
+        ],
+      },
+    },
   }
 }
