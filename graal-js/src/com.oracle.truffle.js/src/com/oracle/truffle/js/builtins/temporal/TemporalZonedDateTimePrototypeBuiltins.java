@@ -462,7 +462,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case nanosecond:
                     return tdt.getNanosecond();
                 case dayOfWeek:
-                    return isoCalendar ? TemporalUtil.toISODayOfWeek(tdt.getYear(), tdt.getMonth(), tdt.getDay()) : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_WEEK);
+                    return isoCalendar ? TemporalUtil.toISODayOfWeek(tdt.getYear(), tdt.getMonth(), tdt.getDay()) : IntlUtil.getDayOfWeek(cal);
                 case dayOfYear:
                     return isoCalendar ? TemporalUtil.toISODayOfYear(tdt.getYear(), tdt.getMonth(), tdt.getDay()) : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_YEAR);
                 case weekOfYear:
