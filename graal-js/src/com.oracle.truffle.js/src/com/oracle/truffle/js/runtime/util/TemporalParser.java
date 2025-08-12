@@ -81,7 +81,7 @@ public final class TemporalParser {
     private static final String patternTimeZoneNumericUTCOffset = "^([-+])([01][0-9]|2[0-3])(:?([0-5][0-9])(?::?([0-5][0-9]|60)(?:[.,]([0-9]{1,9}))?)?)?";
     private static final String patternDateSpecYearMonth = "^([0-9]{4}|[+-][0-9]{6})-?(0[1-9]|1[0-2])";
     private static final String patternDateSpecMonthDay = "^(?:--)?(0[1-9]|1[012])-?(0[1-9]|[12][0-9]|3[01])";
-    private static final String patternTimeZoneIANANameComponent = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
+    private static final String patternTimeZoneIANAName = "^[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*";
     // LowercaseAlpha [a-z]
     // AKeyLeadingChar [a-z_]
     // AKeyChar [0-9a-z_-]
@@ -97,7 +97,6 @@ public final class TemporalParser {
 
     private static final TruffleString UC_T = Strings.constant("T");
     private static final TruffleString T = Strings.constant("t");
-    private static final TruffleString ETC_GMT = Strings.constant("Etc/GMT");
     private static final TruffleString SIX_ZEROS = Strings.constant("000000");
 
     private final TruffleString input;
@@ -265,34 +264,11 @@ public final class TemporalParser {
     }
 
     private boolean parseTimeZoneIANAName() {
-        TruffleString ianaName = rest;
-
-        // Etc/GMT
-        if (Strings.startsWith(rest, ETC_GMT)) {
-            move(Strings.length(ETC_GMT));
-            if (!rest.isEmpty() && (Strings.charAt(rest, 0) == '+' || Strings.charAt(rest, 0) == '-')) {
-                move(1);
-                try {
-                    int unpaddedHour = rest.parseIntUncached();
-                    if (0 <= unpaddedHour && unpaddedHour <= 23) {
-                        this.timeZoneIANAName = ianaName;
-                        return true;
-                    }
-                } catch (TruffleString.NumberFormatException e) {
-                    // parsingError, intentionally left blank
-                }
-            }
-        }
-
         reset();
-        // TimeZoneIANANameTail
-        Matcher matcher = createMatch(patternTimeZoneIANANameComponent, rest);
+        Matcher matcher = createMatch(patternTimeZoneIANAName, rest);
         if (matcher.matches()) {
-            this.timeZoneIANAName = group(rest, matcher, 1);
-
-            assert timeZoneIANAName == null || isTZLeadingChar(Strings.charAt(timeZoneIANAName, 0));
-
-            move(matcher.end(1));
+            this.timeZoneIANAName = group(rest, matcher, 0);
+            move(matcher.end(0));
             return true;
         }
         return false;
