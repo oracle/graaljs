@@ -3215,7 +3215,8 @@ public final class TemporalUtil {
         if (transition == null) {
             return null;
         }
-        return BigInt.valueOf(transition.getTime()).multiply(BI_NS_PER_MS);
+        BigInt result = BigInt.valueOf(transition.getTime()).multiply(BI_NS_PER_MS);
+        return isValidEpochNanoseconds(result) ? result : null;
     }
 
     @TruffleBoundary
@@ -3230,7 +3231,8 @@ public final class TemporalUtil {
         if (transition == null) {
             return null;
         }
-        return BigInt.valueOf(transition.getTime()).multiply(BI_NS_PER_MS);
+        BigInt result = BigInt.valueOf(transition.getTime()).multiply(BI_NS_PER_MS);
+        return isValidEpochNanoseconds(result) ? result : null;
     }
 
     @TruffleBoundary
