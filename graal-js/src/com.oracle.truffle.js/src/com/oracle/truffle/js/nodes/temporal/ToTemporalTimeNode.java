@@ -106,7 +106,7 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
                                 this, errorBranch);
             } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(item))) {
                 JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) item;
-                JSTemporalDateTimeRecord isoDateTime = TemporalUtil.getISODateTimeFor(zonedDateTime.getTimeZone(), zonedDateTime.getNanoseconds());
+                JSTemporalDateTimeRecord isoDateTime = TemporalUtil.getISODateTimeFor(ctx, zonedDateTime.getTimeZone(), zonedDateTime.getNanoseconds());
                 Object resolvedOptions = getOptionsObjectNode.execute(options);
                 TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
                 return JSTemporalPlainTime.create(ctx, realm,
