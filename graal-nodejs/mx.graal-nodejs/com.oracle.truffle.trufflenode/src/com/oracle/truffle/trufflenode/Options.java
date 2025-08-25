@@ -131,10 +131,8 @@ public final class Options {
 
         private Context.Builder contextBuilder;
         private boolean exposeGC;
-        private boolean polyglot;
         private boolean unsafeWasmMemory;
         private boolean auxEngineCacheMode;
-        private boolean wasmEnabled;
 
         private static final Set<String> AUX_CACHE_OPTIONS = Set.of("engine.Cache",
                         "engine.CacheLoad",
@@ -182,24 +180,12 @@ public final class Options {
 
         @Override
         public Object[] apply(String[] args) {
-            launch(filterArguments(args));
+            launch(args);
             if (contextBuilder == null) {
                 // launch(Context.Builder) was not called (i.e. help was printed) => exit
                 System.exit(0);
             }
             return new Object[]{contextBuilder, exposeGC, unsafeWasmMemory, auxEngineCacheMode};
-        }
-
-        private String[] filterArguments(String[] args) {
-            List<String> filtered = new ArrayList<>();
-            for (String arg : args) {
-                if ("--polyglot".equals(arg)) {
-                    polyglot = true;
-                } else {
-                    filtered.add(arg);
-                }
-            }
-            return filtered.toArray(new String[filtered.size()]);
         }
 
         @Override
@@ -336,7 +322,6 @@ public final class Options {
             if (optWebAssembly != Boolean.FALSE) {
                 // WebAssembly is enabled by default, if available.
                 if (isWasmAvailable()) {
-                    wasmEnabled = true;
                     if (optWebAssembly == null) {
                         optWebAssembly = Boolean.TRUE;
                         polyglotOptions.put("js.webassembly", "true");
@@ -410,18 +395,6 @@ public final class Options {
                 opt = option;
             }
             System.out.println(String.format("  %-22s%s", opt, description));
-        }
-
-        @Override
-        protected String[] getDefaultLanguages() {
-            if (polyglot) {
-                return new String[0];
-            } else if (wasmEnabled) {
-                assert isWasmAvailable() : "wasm not available";
-                return new String[]{getLanguageId(), WASM_LANGUAGE_ID};
-            } else {
-                return super.getDefaultLanguages();
-            }
         }
 
         private static boolean isWasmAvailable() {
