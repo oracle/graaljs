@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Unhandled;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -62,7 +61,6 @@ import java.util.Set;
 
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -71,7 +69,6 @@ import org.graalvm.polyglot.Value;
 
 public class JSLauncher extends AbstractLanguageLauncher {
     static final String MODULE_MIME_TYPE = "application/javascript+module";
-    private static final String WASM_LANGUAGE_ID = "wasm";
     private static final String PROMPT = "> ";
 
     public static void main(String[] args) {
@@ -81,7 +78,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
     private boolean printResult = false;
     private boolean allowExperimentalOptions = false;
     private boolean useSharedEngine = false;
-    private boolean wasmEnabled = false;
     private String[] programArgs;
     private final List<UnparsedSource> unparsedSources = new LinkedList<>();
     private VersionAction versionAction = VersionAction.None;
@@ -99,15 +95,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
     @Override
     protected String getLanguageId() {
         return "js";
-    }
-
-    @Override
-    protected String[] getDefaultLanguages() {
-        if (wasmEnabled && isLanguageAvailable(WASM_LANGUAGE_ID)) {
-            return new String[]{getLanguageId(), WASM_LANGUAGE_ID};
-        } else {
-            return super.getDefaultLanguages();
-        }
     }
 
     protected void preEval(@SuppressWarnings("unused") Context context) {
@@ -164,10 +151,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
                         continue;
                     case MissingValue:
                         throw abort("Missing argument for " + arg);
-                }
-
-                if (flag.equals("js.webassembly") || flag.equals("webassembly")) {
-                    wasmEnabled = !hasEquals || "true".equals(value);
                 }
 
                 unrecognizedOptions.add(arg);
@@ -538,16 +521,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
         for (PolyglotException.StackFrame s : stackTrace) {
             output.append(System.lineSeparator());
             output.append(indent).append("    at ").append(s);
-        }
-    }
-
-    private static boolean isLanguageAvailable(String languageId) {
-        try (Engine tempEngine = Engine.newBuilder().useSystemProperties(false).//
-                        out(OutputStream.nullOutputStream()).//
-                        err(OutputStream.nullOutputStream()).//
-                        option("engine.WarnInterpreterOnly", "false").//
-                        build()) {
-            return tempEngine.getLanguages().containsKey(languageId);
         }
     }
 
