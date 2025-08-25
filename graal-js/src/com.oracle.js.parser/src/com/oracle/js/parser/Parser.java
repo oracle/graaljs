@@ -1577,7 +1577,7 @@ public class Parser extends AbstractParser {
         }
 
         if (isBindingIdentifier()) {
-            if (T(k + 1) == COLON && (type != YIELD || !yield) && (!isAwait() || !await)) {
+            if (lookahead() == COLON && (type != YIELD || !yield) && (!isAwait() || !await)) {
                 labelStatement(yield, await, mayBeLabeledFunctionDeclaration);
                 return;
             }
