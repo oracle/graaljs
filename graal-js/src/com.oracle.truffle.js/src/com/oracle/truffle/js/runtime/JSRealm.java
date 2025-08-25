@@ -45,6 +45,7 @@ import static com.oracle.truffle.api.CompilerDirectives.SLOWPATH_PROBABILITY;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.security.SecureRandom;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -93,6 +94,7 @@ import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
+import com.oracle.truffle.js.builtins.CryptoBuiltins;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltins;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
@@ -418,8 +420,12 @@ public class JSRealm {
     @CompilationFinal private JSFunctionObject typedArrayConstructor;
     @CompilationFinal private JSDynamicObject typedArrayPrototype;
 
+    @CompilationFinal private JSObject cryptoObject;
+
     private JSDynamicObject preinitIntlObject;
     private JSDynamicObject preinitConsoleBuiltinObject;
+    private JSFunctionObject preinitCryptoFunctionObject;
+    private JSObject preinitCryptoObject;
     private JSDynamicObject preinitPerformanceObject;
 
     private volatile Map<Object, JSArrayObject> templateRegistry;
@@ -529,7 +535,8 @@ public class JSRealm {
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     public static final long NANOSECONDS_PER_SECOND = 1000 * NANOSECONDS_PER_MILLISECOND;
-    private SplittableRandom random;
+    private SecureRandom secureRandom;
+    private SplittableRandom splittableRandom;
     private long nanoToZeroTimeOffset;
     private long lastFuzzyTime = Long.MIN_VALUE;
 
@@ -2107,6 +2114,26 @@ public class JSRealm {
         }
     }
 
+    private void addCryptoGlobal() {
+        if (getContextOptions().isCrypto()) {
+            JSFunctionObject theCryptoFunctionObject = preinitCryptoFunctionObject;
+            JSObject theCryptoObject = preinitCryptoObject;
+            if (theCryptoFunctionObject == null) {
+                assert theCryptoObject == null;
+                JSObject cryptoPrototype = CryptoBuiltins.createCryptoPrototype(this);
+                theCryptoFunctionObject = CryptoBuiltins.createCryptoFunction(this, cryptoPrototype);
+                theCryptoObject = CryptoBuiltins.createCryptoObject(this, cryptoPrototype);
+            }
+            putGlobalProperty(CryptoBuiltins.FUNCTION_NAME, theCryptoFunctionObject);
+            putGlobalProperty(CryptoBuiltins.OBJECT_NAME, theCryptoObject);
+            cryptoObject = theCryptoObject;
+        }
+    }
+
+    public final boolean isCryptoObject(Object object) {
+        return cryptoObject == object;
+    }
+
     private void addPerformanceGlobal() {
         if (getContextOptions().isPerformance()) {
             putGlobalProperty(PERFORMANCE_CLASS_NAME, preinitPerformanceObject != null ? preinitPerformanceObject : createPerformanceObject());
@@ -2126,6 +2153,7 @@ public class JSRealm {
         addLoadGlobals();
         addConsoleGlobals();
         addPrintGlobals();
+        addCryptoGlobal();
         addPerformanceGlobal();
 
         if (isJavaInteropEnabled()) {
@@ -2705,6 +2733,9 @@ public class JSRealm {
     private void preinitializeObjects() {
         preinitIntlObject = createIntlObject();
         preinitConsoleBuiltinObject = createConsoleObject();
+        JSObject cryptoPrototype = CryptoBuiltins.createCryptoPrototype(this);
+        preinitCryptoFunctionObject = CryptoBuiltins.createCryptoFunction(this, cryptoPrototype);
+        preinitCryptoObject = CryptoBuiltins.createCryptoObject(this, cryptoPrototype);
         preinitPerformanceObject = createPerformanceObject();
     }
 
@@ -2856,7 +2887,7 @@ public class JSRealm {
             return Math.floorDiv(ns, resolution) * resolution;
         } else {
             // fuzzy time
-            long fuzz = random.nextLong(NANOSECONDS_PER_MILLISECOND) + 1;
+            long fuzz = splittableRandom.nextLong(NANOSECONDS_PER_MILLISECOND) + 1;
             ns = ns - ns % fuzz;
             long last = lastFuzzyTime;
             if (ns > last) {
@@ -2945,13 +2976,18 @@ public class JSRealm {
     private void initTimeOffsetAndRandom() {
         assert !getEnv().isPreInitialization();
 
-        random = new SplittableRandom();
+        secureRandom = new SecureRandom();
+        splittableRandom = new SplittableRandom();
         nanoToZeroTimeOffset = -System.nanoTime();
         lastFuzzyTime = Long.MIN_VALUE;
     }
 
-    public final SplittableRandom getRandom() {
-        return random;
+    public final SecureRandom getSecureRandom() {
+        return secureRandom;
+    }
+
+    public final SplittableRandom getSplittableRandom() {
+        return splittableRandom;
     }
 
     public JSRealm getParent() {
