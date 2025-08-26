@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.PerformanceBuiltins;
 import com.oracle.truffle.js.builtins.testing.Test262Builtins;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -79,7 +78,7 @@ public final class JSTest262 {
         JSObjectUtil.putDataProperty(agent, Strings.BROADCAST, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_BROADCAST), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, Strings.GET_REPORT, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_GET_REPORT), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, Strings.SLEEP, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_SLEEP), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(agent, Strings.MONOTONIC_NOW, realm.lookupFunction(PerformanceBuiltins.BUILTINS, Strings.NOW), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, Strings.MONOTONIC_NOW, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.MONOTONIC_NOW), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, Strings.RECEIVE_BROADCAST, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_RECEIVE_BROADCAST), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, Strings.REPORT, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_REPORT), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(agent, Strings.LEAVING, realm.lookupFunction(Test262Builtins.BUILTINS, Strings.AGENT_LEAVING), JSAttributes.getDefaultNotEnumerable());
