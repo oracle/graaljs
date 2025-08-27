@@ -279,6 +279,10 @@ public final class JSContextOptions {
     @Option(name = CONSOLE_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'console' global property.") //
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
 
+    public static final String CRYPTO_NAME = JS_OPTION_PREFIX + "crypto";
+    @Option(name = CRYPTO_NAME, category = OptionCategory.USER, help = "Provide 'crypto' global property.") //
+    public static final OptionKey<Boolean> CRYPTO = new OptionKey<>(false);
+
     public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
     @Option(name = PERFORMANCE_NAME, category = OptionCategory.USER, help = "Provide 'performance' global property.") //
     public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(false);
@@ -1061,6 +1065,11 @@ public final class JSContextOptions {
     public String getRequireCwd() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return COMMONJS_REQUIRE_CWD.getValue(optionValues);
+    }
+
+    public boolean isCrypto() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option crypto was assumed not to be accessed in compiled code.");
+        return CRYPTO.getValue(optionValues);
     }
 
     public boolean isPerformance() {
