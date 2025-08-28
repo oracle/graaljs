@@ -3175,12 +3175,9 @@ public final class TemporalUtil {
         long time = hours * JSDate.MS_PER_HOUR + minutes * JSDate.MS_PER_MINUTE + seconds * JSDate.MS_PER_SECOND + milliseconds;
         BigInt fractions = BigInt.valueOf(microseconds * 1_000L + nanoseconds);
         long localMillis = date * JSDate.MS_PER_DAY + time;
-        int[] former = new int[2];
-        int[] latter = new int[2];
-        timeZone.getOffsetFromLocal(localMillis, BasicTimeZone.LocalOption.FORMER, BasicTimeZone.LocalOption.FORMER, former);
-        timeZone.getOffsetFromLocal(localMillis, BasicTimeZone.LocalOption.LATTER, BasicTimeZone.LocalOption.LATTER, latter);
-        int formerOffset = former[0] + former[1];
-        int latterOffset = latter[0] + latter[1];
+        int[] offsets = getNamedTimeZoneOffsets(timeZone, localMillis);
+        int formerOffset = offsets[0];
+        int latterOffset = offsets[1];
         if (formerOffset == latterOffset) {
             return List.of(BigInt.valueOf(localMillis - formerOffset).multiply(BI_NS_PER_MS).add(fractions));
         } else if (formerOffset > latterOffset) {
@@ -3189,6 +3186,15 @@ public final class TemporalUtil {
         } else {
             return List.of();
         }
+    }
+
+    public static int[] getNamedTimeZoneOffsets(BasicTimeZone timeZone, long localMillis) {
+        int[] offsets = new int[2];
+        timeZone.getOffsetFromLocal(localMillis, BasicTimeZone.LocalOption.FORMER, BasicTimeZone.LocalOption.FORMER, offsets);
+        int formerOffset = offsets[0] + offsets[1];
+        timeZone.getOffsetFromLocal(localMillis, BasicTimeZone.LocalOption.LATTER, BasicTimeZone.LocalOption.LATTER, offsets);
+        int latterOffset = offsets[0] + offsets[1];
+        return new int[]{formerOffset, latterOffset};
     }
 
     @TruffleBoundary
@@ -3760,6 +3766,35 @@ public final class TemporalUtil {
 
     public static TruffleString toTemporalTimeZoneIdentifier(Object argument) {
         return ToTemporalTimeZoneIdentifierNode.getUncached().execute(argument);
+    }
+
+    @TruffleBoundary
+    public static BigInt getStartOfDay(JSContext context, TruffleString timeZoneId, int isoYear, int isoMonth, int isoDay) {
+        long date = JSDate.isoDateToEpochDays(isoYear, isoMonth - 1, isoDay);
+        long localMillis = date * JSDate.MS_PER_DAY;
+        long startMs;
+        String javaTimeZoneId = Strings.toJavaString(timeZoneId);
+        char c = javaTimeZoneId.charAt(0);
+        if (c != '-' && c != '+') {
+            BasicTimeZone timeZone = (BasicTimeZone) IntlUtil.getICUTimeZone(javaTimeZoneId, context);
+            int[] offsets = getNamedTimeZoneOffsets(timeZone, localMillis);
+            int formerOffset = offsets[0];
+            int latterOffset = offsets[1];
+            if (formerOffset >= latterOffset) {
+                startMs = localMillis - formerOffset;
+            } else {
+                TimeZoneTransition transition = timeZone.getNextTransition(localMillis - latterOffset, true);
+                startMs = transition.getTime();
+            }
+        } else {
+            // offset time-zone identifier
+            startMs = localMillis - IntlUtil.getICUTimeZoneForOffset(javaTimeZoneId).getRawOffset();
+        }
+        BigInt epochNs = BigInt.valueOf(startMs).multiply(BI_NS_PER_MS);
+        if (!isValidEpochNanoseconds(epochNs)) {
+            throw TemporalErrors.createRangeErrorInvalidNanoseconds();
+        }
+        return epochNs;
     }
 
 }
