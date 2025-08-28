@@ -75,7 +75,7 @@ package com.oracle.truffle.js.runtime.doubleconv;
 /**
  * This class provides the public API for the double conversion package.
  *
- * Using double-conversion version 3.3.0.
+ * Port of double-conversion version 3.3.1.
  */
 public final class DoubleConversion {
 
