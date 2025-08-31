@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.scriptengine.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
 import java.util.concurrent.Callable;
@@ -73,7 +72,7 @@ public class TestInvocable {
         String arg = "arg";
         Object obj = engine.eval("var obj = {" + functionName + ": function(arg) { return arg; }}; obj;");
 
-        assertSame(arg, inv.invokeMethod(obj, functionName, arg));
+        assertEquals(arg, inv.invokeMethod(obj, functionName, arg));
     }
 
     @Test
@@ -85,7 +84,7 @@ public class TestInvocable {
         String arg = "arg";
         engine.eval("var " + functionName + " = function(arg) { return arg; };");
 
-        assertSame(arg, inv.invokeFunction(functionName, arg));
+        assertEquals(arg, inv.invokeFunction(functionName, arg));
     }
 
     @Test(expected = NoSuchMethodException.class)
