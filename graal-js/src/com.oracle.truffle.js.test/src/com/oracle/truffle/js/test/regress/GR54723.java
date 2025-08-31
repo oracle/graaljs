@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.test.regress;
 
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Map;
@@ -65,9 +65,9 @@ public class GR54723 {
 
             ctx.getBindings("js").putMember("p", p);
 
-            assertSame("internalValue", ctx.eval("js", "p?.object?.value").asString());
+            assertEquals("internalValue", ctx.eval("js", "p?.object?.value").asString());
             assertTrue(ctx.eval("js", "p?.nonexistent?.value").isNull());
-            assertSame("test", ctx.eval("js", "p?.func?.()").asString());
+            assertEquals("test", ctx.eval("js", "p?.func?.()").asString());
             assertTrue(ctx.eval("js", "p?.nonexistent?.()").isNull());
         }
     }
