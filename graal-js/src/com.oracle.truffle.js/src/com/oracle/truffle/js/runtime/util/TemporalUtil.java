@@ -530,7 +530,7 @@ public final class TemporalUtil {
         if (rec == null) {
             throw TemporalErrors.createRangeErrorInvalidRelativeToString();
         }
-        return parseISODateTimeIntl(isoString, rec);
+        return parseISODateTimeIntl(isoString, rec, true);
     }
 
     @TruffleBoundary
@@ -558,7 +558,7 @@ public final class TemporalUtil {
         throw Errors.createRangeError("cannot parse MonthDay");
     }
 
-    private static ParseISODateTimeResult parseISODateTimeIntl(TruffleString string, JSTemporalParserRecord rec) {
+    private static ParseISODateTimeResult parseISODateTimeIntl(TruffleString string, JSTemporalParserRecord rec, boolean startDayToMidnight) {
         TruffleString fraction = rec.getFraction();
         if (fraction == null) {
             fraction = TemporalConstants.ZEROS;
@@ -573,7 +573,7 @@ public final class TemporalUtil {
         int y = rec.getYear() == Long.MIN_VALUE ? 0 : ltoi(rec.getYear());
         int m = rec.getMonth() == Long.MIN_VALUE ? 1 : ltoi(rec.getMonth());
         int d = rec.getDay() == Long.MIN_VALUE ? 1 : ltoi(rec.getDay());
-        int h = rec.getHour() == Long.MIN_VALUE ? 0 : ltoi(rec.getHour());
+        int h = rec.getHour() == Long.MIN_VALUE ? (startDayToMidnight ? 0 : -1) : ltoi(rec.getHour());
         int min = rec.getMinute() == Long.MIN_VALUE ? 0 : ltoi(rec.getMinute());
         int s = rec.getSecond() == Long.MIN_VALUE ? 0 : ltoi(rec.getSecond());
         int ms = 0;
@@ -593,9 +593,6 @@ public final class TemporalUtil {
 
         if (!isValidISODate(y, m, d)) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
-        }
-        if (!isValidTime(h, min, s, ms, mus, ns)) {
-            throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
 
         JSTemporalTimeZoneRecord timeZoneResult = JSTemporalTimeZoneRecord.create(rec.getZ(), rec.getTimeZoneNumericUTCOffset(), rec.getTimeZoneAnnotation());
@@ -1149,7 +1146,7 @@ public final class TemporalUtil {
         if (rec == null) {
             throw Errors.createRangeError("cannot parse the date string");
         }
-        return parseISODateTimeIntl(string, rec);
+        return parseISODateTimeIntl(string, rec, !zoned);
     }
 
     @TruffleBoundary
@@ -1162,7 +1159,7 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord parseTemporalTimeString(TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalTimeString();
         if (rec != null) {
-            JSTemporalDateTimeRecord result = parseISODateTimeIntl(string, rec);
+            JSTemporalDateTimeRecord result = parseISODateTimeIntl(string, rec, true);
             if (result.hasCalendar()) {
                 return JSTemporalDateTimeRecord.createCalendar(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
                                 result.getNanosecond(), result.getCalendar());
@@ -2964,7 +2961,7 @@ public final class TemporalUtil {
     private static ParseISODateTimeResult parseTemporalInstantString(TruffleString string) {
         try {
             JSTemporalParserRecord rec = (new TemporalParser(string)).parseTemporalInstantString();
-            ParseISODateTimeResult result = parseISODateTimeIntl(string, rec);
+            ParseISODateTimeResult result = parseISODateTimeIntl(string, rec, true);
             return result;
         } catch (Exception ex) {
             throw Errors.createRangeError("Instant cannot be parsed");
@@ -3048,6 +3045,11 @@ public final class TemporalUtil {
     public static BigInt interpretISODateTimeOffset(JSContext ctx, JSRealm realm, int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
                     int nanosecond, OffsetBehaviour offsetBehaviour, long offsetNanoseconds, TruffleString timeZone, Disambiguation disambiguation, OffsetOption offsetOption,
                     MatchBehaviour matchBehaviour) {
+        if (hour == -1) { // time is start-of-day
+            assert offsetBehaviour == OffsetBehaviour.WALL;
+            assert offsetNanoseconds == 0;
+            return getStartOfDay(ctx, timeZone, year, month, day);
+        }
         JSTemporalPlainDateTimeObject dateTime = JSTemporalPlainDateTime.create(ctx, realm, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, ISO8601);
         if (offsetBehaviour == OffsetBehaviour.WALL || OffsetOption.IGNORE == offsetOption) {
             return getEpochNanosecondsFor(ctx, realm, timeZone, dateTime, disambiguation);

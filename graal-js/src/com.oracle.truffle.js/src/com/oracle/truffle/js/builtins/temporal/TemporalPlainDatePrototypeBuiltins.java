@@ -657,20 +657,18 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
 
             JSRealm realm = getRealm();
+            BigInt epochNs;
             if (timeIsUndefined.profile(this, temporalTime == Undefined.instance)) {
-                temporalDateTime = JSTemporalPlainDateTime.create(getContext(), realm,
-                                td.getYear(), td.getMonth(), td.getDay(),
-                                0, 0, 0, 0, 0, 0, td.getCalendar(),
-                                this, errorBranch);
+                epochNs = TemporalUtil.getStartOfDay(getContext(), timeZone, td.getYear(), td.getMonth(), td.getDay());
             } else {
                 JSTemporalPlainTimeObject tt = toTemporalTime.execute(temporalTime, Undefined.instance);
                 temporalDateTime = JSTemporalPlainDateTime.create(getContext(), realm,
                                 td.getYear(), td.getMonth(), td.getDay(),
                                 tt.getHour(), tt.getMinute(), tt.getSecond(), tt.getMillisecond(), tt.getMicrosecond(), tt.getNanosecond(), td.getCalendar(),
                                 this, errorBranch);
+                epochNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
             }
 
-            BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(getContext(), realm, timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
             return JSTemporalZonedDateTime.create(getContext(), realm, epochNs, timeZone, td.getCalendar());
         }
 
