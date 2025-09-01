@@ -3528,10 +3528,11 @@ public final class TemporalUtil {
                         newValue = maxMonth;
                     }
                 }
-                // Workaround for Hebrew calendar's behaviour for plain
+                // Workaround for Hebrew/Chinese calendar's behaviour for plain
                 // cal.set(Calendar.ORDINAL_MONTH, newValue);
                 int oldValue = cal.get(Calendar.ORDINAL_MONTH);
                 cal.roll(Calendar.ORDINAL_MONTH, newValue - oldValue);
+                cal.get(Calendar.ORDINAL_MONTH);
             } else {
                 int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
                 String monthCodeStr = monthCode.toString();
