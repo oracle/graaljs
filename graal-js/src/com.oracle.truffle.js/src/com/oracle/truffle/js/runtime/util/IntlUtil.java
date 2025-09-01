@@ -1096,6 +1096,12 @@ public final class IntlUtil {
     }
 
     @TruffleBoundary
+    public static int getDayOfWeek(Calendar cal) {
+        int icuDayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+        return (icuDayOfWeek == Calendar.SUNDAY) ? 7 : (icuDayOfWeek - 1);
+    }
+
+    @TruffleBoundary
     public static String getTemporalMonthCode(Calendar cal) {
         return cal.getTemporalMonthCode();
     }

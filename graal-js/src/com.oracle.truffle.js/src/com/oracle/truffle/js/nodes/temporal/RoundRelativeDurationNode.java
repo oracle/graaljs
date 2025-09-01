@@ -304,7 +304,6 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
     private NormalizedDurationRecord bubbleRelativeDuration(int sign, NormalizedDurationRecord duration0, BigInt nudgedEpochNs, ISODateTimeRecord dateTime, TruffleString calendar,
                     TruffleString timeZone, Unit largestUnit, Unit smallestUnit,
                     TemporalAddDateTimeNode addDateTimeNode, InlinedBranchProfile errorBranch) {
-        assert largestUnit.isDateUnit() : largestUnit;
         assert smallestUnit.isDateUnit() : smallestUnit;
         NormalizedDurationRecord duration = duration0;
         if (smallestUnit == Unit.YEAR) {

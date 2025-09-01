@@ -385,9 +385,10 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecisionRecord(smallestUnit, digits);
             BigInt roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), precision.getIncrement(), precision.getUnit(), roundingMode);
 
+            JSContext context = getContext();
             JSRealm realm = getRealm();
-            var roundedInstant = JSTemporalInstant.create(getContext(), realm, roundedNs);
-            return TemporalUtil.temporalInstantToString(roundedInstant, timeZone, precision.getPrecision());
+            var roundedInstant = JSTemporalInstant.create(context, realm, roundedNs);
+            return TemporalUtil.temporalInstantToString(context, roundedInstant, timeZone, precision.getPrecision());
         }
 
         @SuppressWarnings("unused")
@@ -406,7 +407,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @SuppressWarnings("unused")
         @Specialization
         protected TruffleString toJSON(JSTemporalInstantObject instant) {
-            return TemporalUtil.temporalInstantToString(instant, Undefined.instance, AUTO);
+            return TemporalUtil.temporalInstantToString(getContext(), instant, Undefined.instance, AUTO);
         }
 
         @Specialization(guards = "!isJSTemporalInstant(thisObj)")

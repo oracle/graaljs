@@ -2080,82 +2080,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toZonedDateTime/dst-skipped-cross-midnight.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/until/until-across-lunisolar-leap-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/construct-non-utc-non-iso.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/etc-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/dst-skipped-cross-midnight.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/etc-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/timezone-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/iana-legacy-names.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/links-backward.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/links-etcetera.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/non-canonical-utc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/canonicalize-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/equals/timezone-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/transition-at-instant-boundaries.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/hoursInDay/dst-skipped-cross-midnight.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/round/dst-skipped-cross-midnight.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/startOfDay/dst-skipped-cross-midnight.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withPlainTime/dst-skipped-cross-midnight.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-10-16"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/timezone-case-insensitive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
     "filePath" : "language/comments/S7.4_A5.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -2313,10 +2237,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
   }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-iso8601.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
     "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-japanese.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
@@ -2328,14 +2248,6 @@
     "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-roc.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/zdt-round.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/zoneddatetime-dst-corner-cases.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/sm/Array/from-iterator-close.js",
     "status" : "FAIL",
@@ -2491,10 +2403,6 @@
     "comment" : "requires Unicode 16.0"
   }, {
     "filePath" : "staging/sm/Temporal/PlainDate/from-constrain-hebrew.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
-    "filePath" : "staging/sm/Temporal/PlainDate/from-hebrew-keviah.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {

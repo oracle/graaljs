@@ -334,7 +334,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case day:
                     return isoCalendar ? temporalDT.getDay() : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_MONTH);
                 case dayOfWeek:
-                    return isoCalendar ? TemporalUtil.toISODayOfWeek(temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay()) : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_WEEK);
+                    return isoCalendar ? TemporalUtil.toISODayOfWeek(temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay()) : IntlUtil.getDayOfWeek(cal);
                 case dayOfYear:
                     return isoCalendar ? TemporalUtil.toISODayOfYear(temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay()) : IntlUtil.getCalendarField(cal, Calendar.DAY_OF_YEAR);
                 case monthCode:
