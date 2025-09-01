@@ -1395,11 +1395,15 @@ public final class TemporalUtil {
     // the algorithm used by the specification is very slow. So, we use
     // an optimized version of this algorithm (i.e. we use slightly different
     // steps than the specification).
-    public static JSTemporalDurationObject calendarDateUntil(JSContext context, JSRealm realm, @SuppressWarnings("unused") TruffleString calendar, JSTemporalPlainDateObject one,
+    public static JSTemporalDurationObject calendarDateUntil(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject one,
                     JSTemporalPlainDateObject two, Unit largestUnit, Node node, InlinedBranchProfile errorBranch) {
         int sign = -compareISODate(one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay());
         if (sign == 0) {
             return JSTemporalDuration.createTemporalDuration(context, realm, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
+        }
+
+        if (!ISO8601.equals(calendar)) {
+            return nonISODateUntil(context, realm, calendar, one, two, largestUnit, sign, node, errorBranch);
         }
 
         int years = 0;
@@ -1441,6 +1445,58 @@ public final class TemporalUtil {
         return JSTemporalDuration.createTemporalDuration(context, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, node, errorBranch);
     }
 
+    @TruffleBoundary
+    public static JSTemporalDurationObject nonISODateUntil(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject oneDate,
+                    JSTemporalPlainDateObject twoDate, Unit largestUnit, int sign, Node node, InlinedBranchProfile errorBranch) {
+        Calendar one = IntlUtil.getCalendar(calendar, oneDate.getYear(), oneDate.getMonth(), oneDate.getDay());
+        Calendar two = IntlUtil.getCalendar(calendar, twoDate.getYear(), twoDate.getMonth(), twoDate.getDay());
+        int years = 0;
+        int months = 0;
+        Calendar intermediate;
+        if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
+            int candidateYears = two.get(Calendar.EXTENDED_YEAR) - one.get(Calendar.EXTENDED_YEAR);
+            if (candidateYears != 0) {
+                candidateYears -= sign;
+            }
+            while (true) {
+                Calendar oneTemp = (Calendar) one.clone();
+                oneTemp.add(Calendar.EXTENDED_YEAR, candidateYears);
+                if (nonISODateSurpasses(sign, oneTemp, two)) {
+                    break;
+                }
+                years = candidateYears;
+                candidateYears += sign;
+            }
+
+            int candidateMonths = sign;
+            intermediate = (Calendar) one.clone();
+            intermediate.add(Calendar.EXTENDED_YEAR, years);
+            intermediate.add(Calendar.ORDINAL_MONTH, candidateMonths);
+            while (!nonISODateSurpasses(sign, intermediate, two)) {
+                months = candidateMonths;
+                candidateMonths += sign;
+                intermediate.add(Calendar.ORDINAL_MONTH, sign);
+            }
+            if (largestUnit == Unit.MONTH) {
+                months += 12 * years;
+                years = 0;
+            }
+        }
+
+        intermediate = (Calendar) one.clone();
+        intermediate.add(Calendar.EXTENDED_YEAR, years);
+        intermediate.add(Calendar.ORDINAL_MONTH, months);
+        int weeks = 0;
+        int days = (int) ((two.getTimeInMillis() - intermediate.getTimeInMillis()) / MS_PER_DAY);
+
+        if (largestUnit == Unit.WEEK) {
+            weeks = days / 7;
+            days %= 7;
+        }
+
+        return JSTemporalDuration.createTemporalDuration(context, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, node, errorBranch);
+    }
+
     private static boolean isoDateSurpasses(int sign, int y1, int m1, int d1, JSTemporalPlainDateObject isoDate2) {
         if (y1 != isoDate2.getYear()) {
             return (sign * (y1 - isoDate2.getYear()) > 0);
@@ -1448,6 +1504,26 @@ public final class TemporalUtil {
             return (sign * (m1 - isoDate2.getMonth()) > 0);
         } else if (d1 != isoDate2.getDay()) {
             return (sign * (d1 - isoDate2.getDay()) > 0);
+        } else {
+            return false;
+        }
+    }
+
+    private static boolean nonISODateSurpasses(int sign, Calendar one, Calendar two) {
+        int y1 = one.get(Calendar.EXTENDED_YEAR);
+        int y2 = two.get(Calendar.EXTENDED_YEAR);
+        if (y1 != y2) {
+            return (sign * (y1 - y2) > 0);
+        }
+        int m1 = one.get(Calendar.ORDINAL_MONTH);
+        int m2 = two.get(Calendar.ORDINAL_MONTH);
+        if (m1 != m2) {
+            return (sign * (m1 - m2) > 0);
+        }
+        int d1 = one.get(Calendar.DAY_OF_MONTH);
+        int d2 = two.get(Calendar.DAY_OF_MONTH);
+        if (d1 != d2) {
+            return (sign * (d1 - d2) > 0);
         } else {
             return false;
         }
