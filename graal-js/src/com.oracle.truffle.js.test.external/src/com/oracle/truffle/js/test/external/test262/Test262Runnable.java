@@ -275,6 +275,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "IsHTMLDDA",
                     "explicit-resource-management",
+                    "immutable-arraybuffer",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
