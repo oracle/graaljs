@@ -541,8 +541,8 @@ public class JSRealm {
     private long lastFuzzyTime = Long.MIN_VALUE;
 
     private final Charset charset;
-    private PrintWriterWrapper outputWriter;
-    private PrintWriterWrapper errorWriter;
+    private final PrintWriterWrapper outputWriter;
+    private final PrintWriterWrapper errorWriter;
 
     private final JSConsoleUtil consoleUtil;
     private JSModuleLoader moduleLoader;
