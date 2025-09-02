@@ -298,9 +298,9 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "built-ins/Iterator/concat/next-method-returns-throwing-value-done.js",
+    "filePath" : "built-ins/Iterator/concat/next-method-returns-throwing-value.js",
     "status" : "FAIL",
-    "comment" : "Incorrect test (see https://github.com/tc39/test262/issues/4380)"
+    "comment" : "Obsolete test: https://github.com/tc39/test262/pull/4523#issuecomment-3244199586"
   }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
@@ -2033,6 +2033,54 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/since/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/toString/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/until/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/until/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/add/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/subtract/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/toString/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -2079,6 +2127,62 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/canonicalize-era-codes.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/remapping-era.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/with/gregorian-mutually-exclusive-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/from/canonicalize-era-codes.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/argument-object.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/canonicalize-era-codes.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-gregory.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-hebrew.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/remapping-era.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/with/minimum-valid-year-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/construct-non-utc-non-iso.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/canonicalize-era-codes.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
   }, {
     "filePath" : "language/comments/S7.4_A5.js",
     "status" : "PASS",
@@ -2169,6 +2273,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
+    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-rgsa.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2025-09-02"
+  }, {
     "filePath" : "staging/Intl402/Temporal/old/japanese-before-era.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-08-09"
@@ -2217,19 +2329,11 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
   }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-rgsa.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
     "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-tbla.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-umalqura.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
   }, {
@@ -2427,5 +2531,9 @@
       "minVersion" : 17
     },
     "comment" : "expects uint8array-base64 to be enabled"
+  }, {
+    "filePath" : "staging/top-level-await/tla-hang-entry.js",
+    "status" : "FAIL",
+    "comment" : "Invalid test: uses bare module specifiers instead of relative ones"
   } ]
 }

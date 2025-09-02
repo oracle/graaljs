@@ -217,12 +217,12 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 Object result = iteratorNextNode.execute(iterator);
                 boolean done = iteratorCompleteNode.execute(result);
                 if (done) {
-                    iteratorValueNode.execute(result);
                     args.innerAlive = false;
                     args.innerIterator = null;
                     args.iterableIndex = ++iterableIndex;
                 } else {
-                    return generatorYield(thisObj, result);
+                    Object innerValue = iteratorValueNode.execute(result);
+                    return createResultContinue(thisObj, innerValue);
                     // Note: Abrupt completion is handled by IteratorHelperReturnNode.
                 }
             }
