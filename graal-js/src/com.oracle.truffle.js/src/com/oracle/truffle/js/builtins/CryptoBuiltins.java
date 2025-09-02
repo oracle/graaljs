@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.ThrowTypeErrorRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.ImageBuildTimeOptionsSupport;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -96,6 +97,11 @@ public final class CryptoBuiltins extends JSBuiltinsContainer.SwitchEnum<CryptoB
 
         CryptoPrototype(int length) {
             this.length = length;
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return ImageBuildTimeOptionsSupport.ALLOW_IO;
         }
 
         @Override

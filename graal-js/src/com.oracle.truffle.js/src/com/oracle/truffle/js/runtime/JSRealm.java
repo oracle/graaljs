@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
@@ -535,10 +536,16 @@ public class JSRealm {
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     public static final long NANOSECONDS_PER_SECOND = 1000 * NANOSECONDS_PER_MILLISECOND;
-    private SecureRandom secureRandom;
     private SplittableRandom splittableRandom;
     private long nanoToZeroTimeOffset;
     private long lastFuzzyTime = Long.MIN_VALUE;
+
+    /**
+     * This {@link Random} field stores an instance of {@link SecureRandom}. This is to avoid making
+     * `SecureRandom` reachable (and with that the {@link java.security} package) when
+     * {@link ImageBuildTimeOptionsSupport#ALLOW_IO} is set to 'false'.
+     */
+    private Random secureRandom;
 
     private final Charset charset;
     private final PrintWriterWrapper outputWriter;
@@ -2976,14 +2983,16 @@ public class JSRealm {
     private void initTimeOffsetAndRandom() {
         assert !getEnv().isPreInitialization();
 
-        secureRandom = CryptoBuiltins.getSecureRandomInstance();
+        if (getContextOptions().isCrypto()) {
+            secureRandom = CryptoBuiltins.getSecureRandomInstance();
+        }
         splittableRandom = new SplittableRandom();
         nanoToZeroTimeOffset = -System.nanoTime();
         lastFuzzyTime = Long.MIN_VALUE;
     }
 
     public final SecureRandom getSecureRandom() {
-        return secureRandom;
+        return (SecureRandom) secureRandom;
     }
 
     public final SplittableRandom getSplittableRandom() {

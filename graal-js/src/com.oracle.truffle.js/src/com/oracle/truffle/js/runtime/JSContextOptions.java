@@ -1069,7 +1069,7 @@ public final class JSContextOptions {
 
     public boolean isCrypto() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option crypto was assumed not to be accessed in compiled code.");
-        return CRYPTO.getValue(optionValues);
+        return ImageBuildTimeOptionsSupport.ALLOW_IO && CRYPTO.getValue(optionValues);
     }
 
     public boolean isPerformance() {
