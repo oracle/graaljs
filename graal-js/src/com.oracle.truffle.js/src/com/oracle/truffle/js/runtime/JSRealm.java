@@ -2976,7 +2976,7 @@ public class JSRealm {
     private void initTimeOffsetAndRandom() {
         assert !getEnv().isPreInitialization();
 
-        secureRandom = new SecureRandom();
+        secureRandom = CryptoBuiltins.getSecureRandomInstance();
         splittableRandom = new SplittableRandom();
         nanoToZeroTimeOffset = -System.nanoTime();
         lastFuzzyTime = Long.MIN_VALUE;
