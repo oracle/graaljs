@@ -394,7 +394,7 @@ public class JSRealm {
     private final JSFunctionObject asyncFunctionConstructor;
     private final JSDynamicObject asyncFunctionPrototype;
 
-    private final JSFunctionObject asyncIteratorContructor;
+    private final JSFunctionObject asyncIteratorConstructor;
     private final JSDynamicObject asyncIteratorPrototype;
     private final JSDynamicObject asyncFromSyncIteratorPrototype;
     private final JSDynamicObject asyncGeneratorObjectPrototype;
@@ -771,8 +771,8 @@ public class JSRealm {
         if (context.getLanguageOptions().asyncIteratorHelpers()) {
             ctor = JSAsyncIterator.createConstructor(this);
             this.asyncIteratorPrototype = ctor.getPrototype();
-            this.asyncIteratorContructor = ctor.getFunctionObject();
-            this.wrapForAsyncIteratorPrototype = JSWrapForValidAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
+            this.asyncIteratorConstructor = ctor.getFunctionObject();
+            this.wrapForAsyncIteratorPrototype = JSWrapForValidAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorConstructor);
             this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
         } else {
             if (ecmaScriptVersion >= JSConfig.ECMAScript2018) {
@@ -780,7 +780,7 @@ public class JSRealm {
             } else {
                 this.asyncIteratorPrototype = null;
             }
-            this.asyncIteratorContructor = null;
+            this.asyncIteratorConstructor = null;
             this.wrapForAsyncIteratorPrototype = null;
             this.asyncIteratorHelperPrototype = null;
         }
@@ -1767,7 +1767,7 @@ public class JSRealm {
     }
 
     public JSFunctionObject getAsyncIteratorConstructor() {
-        return asyncIteratorContructor;
+        return asyncIteratorConstructor;
     }
 
     public JSDynamicObject getIteratorPrototype() {
