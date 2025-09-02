@@ -1827,10 +1827,10 @@ public class JSRealm {
     }
 
     /**
-     * Creates the %ThrowTypeError% function object (https://tc39.es/ecma262/#sec-%throwtypeerror%).
-     * It is used where a function is needed that always throws a TypeError, including getters and
-     * setters for restricted (i.e. deprecated) function and arguments object properties (namely,
-     * 'caller', 'callee', 'arguments') that may not be accessed in strict mode.
+     * Creates the %ThrowTypeError% function object. It is used where a function is needed that
+     * always throws a TypeError, including getters and setters for restricted (i.e. deprecated)
+     * function and arguments object properties (namely, 'caller', 'callee', 'arguments') that may
+     * not be accessed in strict mode.
      */
     private JSFunctionObject createThrowTypeErrorFunction(boolean restrictedProperty) {
         CompilerAsserts.neverPartOfCompilation();
