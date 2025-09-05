@@ -2,8 +2,8 @@
 suite = {
   "mxversion" : "7.45.0",
   "name" : "graal-nodejs",
-  "version" : "25.0.0",
-  "release" : True,
+  "version" : "25.0.1",
+  "release" : False,
   "versionConflictResolution" : "latest",
 
   "imports" : {
