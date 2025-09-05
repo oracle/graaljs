@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.runtime.util;
 
 import java.time.ZoneId;
+import java.time.zone.ZoneRules;
+import java.time.zone.ZoneRulesException;
 import java.time.zone.ZoneRulesProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -844,7 +846,20 @@ public final class IntlUtil {
     public static TimeZone getICUTimeZone(String tzId, JSContext context) {
         assert tzId != null;
         if (context.getLanguageOptions().zoneRulesBasedTimeZones()) {
-            return new ZoneRulesBasedTimeZone(tzId, ZoneRulesProvider.getRules(tzId, false));
+            ZoneRules rules;
+            try {
+                rules = ZoneRulesProvider.getRules(tzId, false);
+            } catch (ZoneRulesException ex) {
+                String id = switch (tzId) {
+                    case "EST" -> "America/Panama";
+                    case "MST" -> "America/Phoenix";
+                    case "HST" -> "Pacific/Honolulu";
+                    case "ROC" -> "Asia/Taipei";
+                    default -> "Etc/" + tzId;
+                };
+                rules = ZoneRulesProvider.getRules(id, false);
+            }
+            return new ZoneRulesBasedTimeZone(tzId, rules);
         } else {
             return TimeZone.getTimeZone(tzId);
         }
