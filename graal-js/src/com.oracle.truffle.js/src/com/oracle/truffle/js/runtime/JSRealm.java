@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
@@ -394,7 +395,7 @@ public class JSRealm {
     private final JSFunctionObject asyncFunctionConstructor;
     private final JSDynamicObject asyncFunctionPrototype;
 
-    private final JSFunctionObject asyncIteratorContructor;
+    private final JSFunctionObject asyncIteratorConstructor;
     private final JSDynamicObject asyncIteratorPrototype;
     private final JSDynamicObject asyncFromSyncIteratorPrototype;
     private final JSDynamicObject asyncGeneratorObjectPrototype;
@@ -535,14 +536,20 @@ public class JSRealm {
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     public static final long NANOSECONDS_PER_SECOND = 1000 * NANOSECONDS_PER_MILLISECOND;
-    private SecureRandom secureRandom;
     private SplittableRandom splittableRandom;
     private long nanoToZeroTimeOffset;
     private long lastFuzzyTime = Long.MIN_VALUE;
 
+    /**
+     * This {@link Random} field stores an instance of {@link SecureRandom}. This is to avoid making
+     * `SecureRandom` reachable (and with that the {@link java.security} package) when
+     * {@link ImageBuildTimeOptionsSupport#ALLOW_IO} is set to 'false'.
+     */
+    private Random secureRandom;
+
     private final Charset charset;
-    private PrintWriterWrapper outputWriter;
-    private PrintWriterWrapper errorWriter;
+    private final PrintWriterWrapper outputWriter;
+    private final PrintWriterWrapper errorWriter;
 
     private final JSConsoleUtil consoleUtil;
     private JSModuleLoader moduleLoader;
@@ -771,8 +778,8 @@ public class JSRealm {
         if (context.getLanguageOptions().asyncIteratorHelpers()) {
             ctor = JSAsyncIterator.createConstructor(this);
             this.asyncIteratorPrototype = ctor.getPrototype();
-            this.asyncIteratorContructor = ctor.getFunctionObject();
-            this.wrapForAsyncIteratorPrototype = JSWrapForValidAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
+            this.asyncIteratorConstructor = ctor.getFunctionObject();
+            this.wrapForAsyncIteratorPrototype = JSWrapForValidAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorConstructor);
             this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
         } else {
             if (ecmaScriptVersion >= JSConfig.ECMAScript2018) {
@@ -780,7 +787,7 @@ public class JSRealm {
             } else {
                 this.asyncIteratorPrototype = null;
             }
-            this.asyncIteratorContructor = null;
+            this.asyncIteratorConstructor = null;
             this.wrapForAsyncIteratorPrototype = null;
             this.asyncIteratorHelperPrototype = null;
         }
@@ -1767,7 +1774,7 @@ public class JSRealm {
     }
 
     public JSFunctionObject getAsyncIteratorConstructor() {
-        return asyncIteratorContructor;
+        return asyncIteratorConstructor;
     }
 
     public JSDynamicObject getIteratorPrototype() {
@@ -1827,10 +1834,10 @@ public class JSRealm {
     }
 
     /**
-     * Creates the %ThrowTypeError% function object (https://tc39.es/ecma262/#sec-%throwtypeerror%).
-     * It is used where a function is needed that always throws a TypeError, including getters and
-     * setters for restricted (i.e. deprecated) function and arguments object properties (namely,
-     * 'caller', 'callee', 'arguments') that may not be accessed in strict mode.
+     * Creates the %ThrowTypeError% function object. It is used where a function is needed that
+     * always throws a TypeError, including getters and setters for restricted (i.e. deprecated)
+     * function and arguments object properties (namely, 'caller', 'callee', 'arguments') that may
+     * not be accessed in strict mode.
      */
     private JSFunctionObject createThrowTypeErrorFunction(boolean restrictedProperty) {
         CompilerAsserts.neverPartOfCompilation();
@@ -2976,14 +2983,16 @@ public class JSRealm {
     private void initTimeOffsetAndRandom() {
         assert !getEnv().isPreInitialization();
 
-        secureRandom = new SecureRandom();
+        if (getContextOptions().isCrypto()) {
+            secureRandom = CryptoBuiltins.getSecureRandomInstance();
+        }
         splittableRandom = new SplittableRandom();
         nanoToZeroTimeOffset = -System.nanoTime();
         lastFuzzyTime = Long.MIN_VALUE;
     }
 
     public final SecureRandom getSecureRandom() {
-        return secureRandom;
+        return (SecureRandom) secureRandom;
     }
 
     public final SplittableRandom getSplittableRandom() {

@@ -42,9 +42,13 @@ package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
 import java.nio.ReadOnlyBufferException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.Security;
 import java.util.UUID;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -57,6 +61,7 @@ import com.oracle.truffle.js.nodes.ThrowTypeErrorRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.ImageBuildTimeOptionsSupport;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -76,9 +81,9 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class CryptoBuiltins extends JSBuiltinsContainer.SwitchEnum<CryptoBuiltins.CryptoPrototype> {
 
-    public static final JSBuiltinsContainer BUILTINS = new CryptoBuiltins();
     public static final TruffleString OBJECT_NAME = Strings.constant("crypto");
     public static final TruffleString FUNCTION_NAME = Strings.constant("Crypto");
+    private static final JSBuiltinsContainer BUILTINS = new CryptoBuiltins();
 
     private CryptoBuiltins() {
         super(OBJECT_NAME, CryptoPrototype.class);
@@ -92,6 +97,11 @@ public final class CryptoBuiltins extends JSBuiltinsContainer.SwitchEnum<CryptoB
 
         CryptoPrototype(int length) {
             this.length = length;
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return ImageBuildTimeOptionsSupport.ALLOW_IO;
         }
 
         @Override
@@ -122,6 +132,19 @@ public final class CryptoBuiltins extends JSBuiltinsContainer.SwitchEnum<CryptoB
 
     public static JSObject createCryptoObject(JSRealm realm, JSObject cryptoPrototype) {
         return JSOrdinary.createWithPrototype(cryptoPrototype, realm.getContext());
+    }
+
+    public static SecureRandom getSecureRandomInstance() {
+        // prefer SecureRandom using non-blocking source
+        if (Security.getAlgorithms("SecureRandom").contains("NATIVEPRNGNONBLOCKING")) {
+            try {
+                return SecureRandom.getInstance("NATIVEPRNGNONBLOCKING");
+            } catch (NoSuchAlgorithmException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        } else {
+            return new SecureRandom();
+        }
     }
 
     @Override
