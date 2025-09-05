@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,17 @@
 package com.oracle.truffle.js.runtime.util;
 
 import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
-import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.BasicTimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.InitialTimeZoneRule;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZoneRule;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZoneTransition;
 import com.oracle.truffle.js.runtime.Errors;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
 import java.util.Date;
 import java.util.List;
@@ -56,7 +60,7 @@ import java.util.List;
  * Implementation of ICU4J {@code TimeZone} that takes time-zone data from the provided
  * {@code ZoneRules} object (instead of ICU4J tzdb-related data files).
  */
-public class ZoneRulesBasedTimeZone extends TimeZone {
+public class ZoneRulesBasedTimeZone extends BasicTimeZone {
     private static final long serialVersionUID = 3774721234048749245L;
     private final ZoneRules rules;
 
@@ -82,6 +86,11 @@ public class ZoneRulesBasedTimeZone extends TimeZone {
     }
 
     @Override
+    public int getOffset(long date) {
+        return toMillis(rules.getOffset(Instant.ofEpochMilli(date)));
+    }
+
+    @Override
     public int getRawOffset() {
         return toMillis(rules.getStandardOffset(Instant.now()));
     }
@@ -104,6 +113,54 @@ public class ZoneRulesBasedTimeZone extends TimeZone {
 
     private static int toMillis(ZoneOffset offset) {
         return offset.getTotalSeconds() * 1000;
+    }
+
+    @Override
+    public TimeZoneTransition getNextTransition(long base, boolean inclusive) {
+        return toTimeZoneTransition(rules.nextTransition(Instant.ofEpochMilli(base - (inclusive ? 1 : 0))));
+    }
+
+    @Override
+    public TimeZoneTransition getPreviousTransition(long base, boolean inclusive) {
+        return toTimeZoneTransition(rules.previousTransition(Instant.ofEpochMilli(base + (inclusive ? 1 : 0))));
+    }
+
+    private TimeZoneTransition toTimeZoneTransition(ZoneOffsetTransition transition) {
+        if (transition == null) {
+            return null;
+        }
+        int before = toMillis(transition.getOffsetBefore());
+        int after = toMillis(transition.getOffsetAfter());
+        int rawOffset = Math.min(before, after);
+        int dstSavings = Math.max(before, after) - rawOffset;
+        TimeZoneRule from = new InitialTimeZoneRule(getID(), rawOffset, (before == rawOffset) ? 0 : dstSavings);
+        TimeZoneRule to = new InitialTimeZoneRule(getID(), rawOffset, (after == rawOffset) ? 0 : dstSavings);
+        return new TimeZoneTransition(transition.getInstant().toEpochMilli(), from, to);
+    }
+
+    @Override
+    public void getOffsetFromLocal(long date,
+                    LocalOption nonExistingTimeOpt, LocalOption duplicatedTimeOpt, int[] offsets) {
+        LocalDateTime dateTime = LocalDateTime.ofEpochSecond(Math.floorDiv(date, 1000), Math.floorMod(date, 1000) * 1_000_000, ZoneOffset.UTC);
+        List<ZoneOffset> validOffsets = rules.getValidOffsets(dateTime);
+        ZoneOffset offset;
+        if (validOffsets.size() == 1) {
+            offset = validOffsets.get(0);
+        } else {
+            LocalOption timeOpt = validOffsets.isEmpty() ? nonExistingTimeOpt : duplicatedTimeOpt;
+            ZoneOffsetTransition transition = rules.getTransition(dateTime);
+            offset = switch (timeOpt) {
+                case FORMER -> transition.getOffsetBefore();
+                case LATTER -> transition.getOffsetAfter();
+                default -> throw new UnsupportedOperationException();
+            };
+        }
+        offsets[0] = toMillis(offset);
+    }
+
+    @Override
+    public TimeZoneRule[] getTimeZoneRules() {
+        throw new UnsupportedOperationException();
     }
 
 }
