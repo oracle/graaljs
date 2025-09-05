@@ -241,7 +241,6 @@ public class JSRealm {
     public static final TruffleString ARGUMENTS_NAME = Strings.ARGUMENTS;
     public static final TruffleString JAVA_CLASS_NAME = Strings.constant("Java");
     public static final TruffleString JAVA_CLASS_NAME_NASHORN_COMPAT = Strings.constant("JavaNashornCompat");
-    public static final TruffleString PERFORMANCE_CLASS_NAME = Strings.constant("performance");
     public static final TruffleString DEBUG_CLASS_NAME = Strings.constant("Debug");
     public static final TruffleString CONSOLE_CLASS_NAME = Strings.constant("Console");
     public static final TruffleString SYMBOL_ITERATOR_NAME = Strings.constant("[Symbol.iterator]");
@@ -427,7 +426,8 @@ public class JSRealm {
     private JSDynamicObject preinitConsoleBuiltinObject;
     private JSFunctionObject preinitCryptoFunctionObject;
     private JSObject preinitCryptoObject;
-    private JSDynamicObject preinitPerformanceObject;
+    private JSObject preinitPerformanceObject;
+    private JSObject performanceObject;
 
     private volatile Map<Object, JSArrayObject> templateRegistry;
     private volatile Map<Object, JSArrayObject> dedentMap;
@@ -538,6 +538,7 @@ public class JSRealm {
     public static final long NANOSECONDS_PER_SECOND = 1000 * NANOSECONDS_PER_MILLISECOND;
     private SplittableRandom splittableRandom;
     private long nanoToZeroTimeOffset;
+    private long nanoTimeOrigin;
     private long lastFuzzyTime = Long.MIN_VALUE;
 
     /**
@@ -2143,8 +2144,17 @@ public class JSRealm {
 
     private void addPerformanceGlobal() {
         if (getContextOptions().isPerformance()) {
-            putGlobalProperty(PERFORMANCE_CLASS_NAME, preinitPerformanceObject != null ? preinitPerformanceObject : createPerformanceObject());
+            JSObject performanceObj = preinitPerformanceObject != null ? preinitPerformanceObject : PerformanceBuiltins.createPerformanceObject(this);
+            var performancePrototype = JSObject.getPrototype(performanceObj);
+            var performanceConstructor = (JSFunctionObject) JSDynamicObject.getOrNull(performancePrototype, JSObject.CONSTRUCTOR);
+            this.performanceObject = performanceObj;
+            putGlobalProperty(PerformanceBuiltins.FUNCTION_NAME, performanceConstructor);
+            putGlobalProperty(PerformanceBuiltins.OBJECT_NAME, performanceObj);
         }
+    }
+
+    public final Object getPerformanceObject() {
+        return performanceObject;
     }
 
     /**
@@ -2394,12 +2404,6 @@ public class JSRealm {
         JSObject console = JSOrdinary.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, console, ConsoleBuiltins.BUILTINS);
         return console;
-    }
-
-    private JSDynamicObject createPerformanceObject() {
-        JSObject obj = JSOrdinary.createInit(this);
-        JSObjectUtil.putFunctionsFromContainer(this, obj, PerformanceBuiltins.BUILTINS);
-        return obj;
     }
 
     /**
@@ -2743,7 +2747,7 @@ public class JSRealm {
         JSObject cryptoPrototype = CryptoBuiltins.createCryptoPrototype(this);
         preinitCryptoFunctionObject = CryptoBuiltins.createCryptoFunction(this, cryptoPrototype);
         preinitCryptoObject = CryptoBuiltins.createCryptoObject(this, cryptoPrototype);
-        preinitPerformanceObject = createPerformanceObject();
+        preinitPerformanceObject = PerformanceBuiltins.createPerformanceObject(this);
     }
 
     private void addArgumentsFromEnv(TruffleLanguage.Env newEnv) {
@@ -2887,6 +2891,10 @@ public class JSRealm {
         return updateResolution(ns);
     }
 
+    public long nanoTimeOrigin() {
+        return nanoTimeOrigin;
+    }
+
     private long updateResolution(long nanos) {
         long ns = nanos;
         long resolution = getContext().getTimerResolution();
@@ -2988,6 +2996,7 @@ public class JSRealm {
         }
         splittableRandom = new SplittableRandom();
         nanoToZeroTimeOffset = -System.nanoTime();
+        nanoTimeOrigin = nanoTimeWallClock();
         lastFuzzyTime = Long.MIN_VALUE;
     }
 

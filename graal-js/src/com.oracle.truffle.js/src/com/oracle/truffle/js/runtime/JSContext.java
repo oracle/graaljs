@@ -416,6 +416,7 @@ public class JSContext {
         DedentCallback,
         WorkerProcessMessage,
         OperatorsConstructor,
+        PerformanceConstructor,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;

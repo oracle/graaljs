@@ -284,7 +284,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> CRYPTO = new OptionKey<>(false);
 
     public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
-    @Option(name = PERFORMANCE_NAME, category = OptionCategory.USER, help = "Provide 'performance' global property.") //
+    @Option(name = PERFORMANCE_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'performance' global property.") //
     public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(false);
 
     public static final String SHELL_NAME = JS_OPTION_PREFIX + "shell";

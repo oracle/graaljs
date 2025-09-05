@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.js.builtins.testing.Test262BuiltinsFactory.Test262Agen
 import com.oracle.truffle.js.builtins.testing.Test262BuiltinsFactory.Test262AgentStartNodeGen;
 import com.oracle.truffle.js.builtins.testing.Test262BuiltinsFactory.Test262CreateRealmNodeGen;
 import com.oracle.truffle.js.builtins.testing.Test262BuiltinsFactory.Test262EvalScriptNodeGen;
+import com.oracle.truffle.js.builtins.testing.Test262BuiltinsFactory.Test262MonotonicNowNodeGen;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -101,7 +102,8 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         agentSleep(1),
         agentReceiveBroadcast(1),
         agentReport(1),
-        agentLeaving(0);
+        agentLeaving(0),
+        monotonicNow(0);
 
         private final int length;
 
@@ -141,6 +143,8 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
                 return Test262AgentReportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case agentLeaving:
                 return Test262AgentLeavingNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
+            case monotonicNow:
+                return Test262MonotonicNowNodeGen.create(context, builtin, args().createArgumentNodes(context));
         }
         return null;
     }
@@ -316,6 +320,18 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         protected Object leaving() {
             ((DebugJSAgent) getRealm().getAgent()).leaving();
             return Undefined.instance;
+        }
+    }
+
+    abstract static class Test262MonotonicNowNode extends JSBuiltinNode {
+
+        Test262MonotonicNowNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        final double now() {
+            return getRealm().nanoTime() / (double) JSRealm.NANOSECONDS_PER_MILLISECOND;
         }
     }
 }
