@@ -65,7 +65,7 @@ local ci = import '../ci.jsonnet';
       ['${STANDALONE_HOME}/bin/js', '--vm.Xss16m', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/misc/havlak.js', '--show-warmup'],
       # maven-downloader smoke test
       ['set-export', 'VERBOSE_GRAALVM_LAUNCHERS', 'true'],
-      ['${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'wasm', '-v', '23.1.3'],
+      ['${STANDALONE_HOME}/bin/js-polyglot-get', '-o', 'maven downloader output', '-a', 'java', '-v', '23.1.8', '-r', ['mx', '--quiet', '--no-warning', 'urlrewrite', 'https://curio.ssw.jku.at/nexus/content/repositories/maven-releases']],
       ['unset', 'VERBOSE_GRAALVM_LAUNCHERS'],
     ],
     timelimit: '45:00',
