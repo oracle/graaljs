@@ -125,6 +125,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.UnitGroup;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 
 public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainDateTimePrototypeBuiltins.TemporalPlainDateTimePrototype> {
@@ -441,7 +442,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSContext ctx = getContext();
             JSRealm realm = getRealm();
             JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
-            var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateTimeOrAuto, TemporalUtil.unitMappingDateTime, Unit.NANOSECOND, Unit.DAY);
+            var settings = getDifferenceSettings.execute(sign, resolvedOptions, UnitGroup.DATETIME, null, Unit.NANOSECOND, Unit.DAY);
 
             if (dateTime.getYear() == other.getYear() && dateTime.getMonth() == other.getMonth() && dateTime.getDay() == other.getDay() && dateTime.getHour() == other.getHour() &&
                             dateTime.getMinute() == other.getMinute() && dateTime.getSecond() == other.getSecond() && dateTime.getMillisecond() == other.getMillisecond() &&
@@ -492,7 +493,8 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             int digits = toFractionalSecondDigitsNode.execute(options);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
 
-            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.EMPTY);
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+            TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.TIME, null, this, errorBranch);
             if (smallestUnit == Unit.HOUR) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
@@ -694,7 +696,8 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             }
             int roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
-            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTimeOrDay, Unit.REQUIRED);
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, Unit.REQUIRED);
+            TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.TIME, Unit.DAY, this, errorBranch);
             int maximum;
             boolean inclusive;
             if (Unit.DAY == smallestUnit) {

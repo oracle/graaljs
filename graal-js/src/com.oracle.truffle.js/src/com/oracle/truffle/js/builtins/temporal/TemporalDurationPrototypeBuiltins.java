@@ -113,6 +113,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.UnitGroup;
 
 public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationPrototypeBuiltins.TemporalDurationPrototype> {
 
@@ -507,13 +508,14 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             boolean smallestUnitPresent = true;
             boolean largestUnitPresent = true;
-            Unit largestUnit = getLargestUnit.execute(roundTo, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateTimeOrAuto, Unit.EMPTY);
+            Unit largestUnit = getLargestUnit.execute(roundTo, TemporalConstants.LARGEST_UNIT, Unit.EMPTY);
             var relativeToRec = toRelativeTemporalObjectNode.execute(roundTo);
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
             int roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
-            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingDateTime, Unit.EMPTY);
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+            TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.DATETIME, null, this, errorBranch);
             if (smallestUnit == Unit.EMPTY) {
                 smallestUnitPresent = false;
                 smallestUnit = Unit.NANOSECOND;
@@ -663,7 +665,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
 
-            Unit unit = getTemporalUnit.execute(totalOf, UNIT, TemporalUtil.unitMappingDateTime, Unit.REQUIRED);
+            Unit unit = getTemporalUnit.execute(totalOf, UNIT, Unit.REQUIRED);
+            TemporalUtil.validateTemporalUnitValue(unit, UnitGroup.DATETIME, null, this, errorBranch);
             JSTemporalPlainDateTimeObject precalculatedPlainDateTime = null;
             boolean plainDateTimeOrRelativeToWillBeUsed = unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY ||
                             duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0;
@@ -796,7 +799,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             int digits = toFractionalSecondDigitsNode.execute(options);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
 
-            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.EMPTY);
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+            TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.TIME, null, this, errorBranch);
             if (smallestUnit == Unit.HOUR || smallestUnit == Unit.MINUTE) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();

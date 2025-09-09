@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.Map;
+import java.util.EnumSet;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -50,9 +50,11 @@ import com.oracle.truffle.js.builtins.temporal.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.UnitGroup;
 
 /**
  * Implementation of GetDifferenceSettings() operation.
@@ -72,11 +74,11 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
                     int roundingIncrement) {
     }
 
-    public abstract GetDifferenceSettingsResult execute(int operation, JSDynamicObject options, Map<TruffleString, Unit> unitMappingOrAuto, Map<TruffleString, TemporalUtil.Unit> unitMapping,
+    public abstract GetDifferenceSettingsResult execute(int operation, JSDynamicObject options, UnitGroup unitGroup, EnumSet<Unit> disallowedUnits,
                     TemporalUtil.Unit fallbackSmallestUnit, TemporalUtil.Unit smallestLargestDefaultUnit);
 
     @Specialization
-    final GetDifferenceSettingsResult getDifferenceSettings(int operation, JSDynamicObject resolvedOptions, Map<TruffleString, Unit> unitMappingOrAuto, Map<TruffleString, Unit> unitMapping,
+    final GetDifferenceSettingsResult getDifferenceSettings(int operation, JSDynamicObject resolvedOptions, UnitGroup unitGroup, EnumSet<Unit> disallowedUnits,
                     Unit fallbackSmallestUnit, Unit smallestLargestDefaultUnit,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached TemporalGetOptionNode getOptionNode,
@@ -84,14 +86,29 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
                     @Cached GetTemporalUnitNode getLargestUnit,
                     @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
                     @Cached GetTemporalUnitNode getSmallestUnit) {
-        assert unitMappingOrAuto.containsKey(TemporalConstants.AUTO) && !unitMapping.containsKey(TemporalConstants.AUTO);
-        Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, unitMappingOrAuto, Unit.AUTO);
+        Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, Unit.EMPTY);
         int roundingIncrement = getRoundingIncrementOption.execute(resolvedOptions);
         RoundingMode roundingMode = JSTemporalBuiltinOperation.toTemporalRoundingMode(resolvedOptions, TemporalConstants.TRUNC, equalNode, getOptionNode);
+        Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+        TemporalUtil.validateTemporalUnitValue(largestUnit, unitGroup, Unit.AUTO, this, errorBranch);
+        if (largestUnit == Unit.EMPTY) {
+            largestUnit = Unit.AUTO;
+        }
+        if (disallowedUnits != null && disallowedUnits.contains(largestUnit)) {
+            errorBranch.enter(this);
+            throw TemporalErrors.createRangeErrorDisallowedUnit(this, largestUnit);
+        }
         if (operation == TemporalUtil.SINCE) {
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
         }
-        Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, unitMapping, fallbackSmallestUnit);
+        TemporalUtil.validateTemporalUnitValue(smallestUnit, unitGroup, null, this, errorBranch);
+        if (smallestUnit == Unit.EMPTY) {
+            smallestUnit = fallbackSmallestUnit;
+        }
+        if (disallowedUnits != null && disallowedUnits.contains(smallestUnit)) {
+            errorBranch.enter(this);
+            throw TemporalErrors.createRangeErrorDisallowedUnit(this, smallestUnit);
+        }
         Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(smallestLargestDefaultUnit, smallestUnit);
         if (largestUnit == Unit.AUTO) {
             largestUnit = defaultLargestUnit;

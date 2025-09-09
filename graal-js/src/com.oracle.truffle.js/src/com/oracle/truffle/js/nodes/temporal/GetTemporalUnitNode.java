@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,43 +40,87 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
+import static java.util.Map.entry;
+
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 /**
  * Implementation of GetTemporalUnit() operation.
  */
 public abstract class GetTemporalUnitNode extends JavaScriptBaseNode {
+    private static final List<?> ALLOWED_STRINGS = List.of(
+                    TemporalConstants.AUTO,
+                    TemporalConstants.YEAR,
+                    TemporalConstants.MONTH,
+                    TemporalConstants.WEEK,
+                    TemporalConstants.DAY,
+                    TemporalConstants.HOUR,
+                    TemporalConstants.MINUTE,
+                    TemporalConstants.SECOND,
+                    TemporalConstants.MILLISECOND,
+                    TemporalConstants.MICROSECOND,
+                    TemporalConstants.NANOSECOND,
+                    TemporalConstants.YEARS,
+                    TemporalConstants.MONTHS,
+                    TemporalConstants.WEEKS,
+                    TemporalConstants.DAYS,
+                    TemporalConstants.HOURS,
+                    TemporalConstants.MINUTES,
+                    TemporalConstants.SECONDS,
+                    TemporalConstants.MILLISECONDS,
+                    TemporalConstants.MICROSECONDS,
+                    TemporalConstants.NANOSECONDS);
+    private static final Map<TruffleString, Unit> NAME_TO_UNIT = Map.ofEntries(
+                    entry(TemporalConstants.AUTO, Unit.AUTO),
+                    entry(TemporalConstants.YEAR, Unit.YEAR),
+                    entry(TemporalConstants.MONTH, Unit.MONTH),
+                    entry(TemporalConstants.WEEK, Unit.WEEK),
+                    entry(TemporalConstants.DAY, Unit.DAY),
+                    entry(TemporalConstants.HOUR, Unit.HOUR),
+                    entry(TemporalConstants.MINUTE, Unit.MINUTE),
+                    entry(TemporalConstants.SECOND, Unit.SECOND),
+                    entry(TemporalConstants.MILLISECOND, Unit.MILLISECOND),
+                    entry(TemporalConstants.MICROSECOND, Unit.MICROSECOND),
+                    entry(TemporalConstants.NANOSECOND, Unit.NANOSECOND),
+                    entry(TemporalConstants.YEARS, Unit.YEAR),
+                    entry(TemporalConstants.MONTHS, Unit.MONTH),
+                    entry(TemporalConstants.WEEKS, Unit.WEEK),
+                    entry(TemporalConstants.DAYS, Unit.DAY),
+                    entry(TemporalConstants.HOURS, Unit.HOUR),
+                    entry(TemporalConstants.MINUTES, Unit.MINUTE),
+                    entry(TemporalConstants.SECONDS, Unit.SECOND),
+                    entry(TemporalConstants.MILLISECONDS, Unit.MILLISECOND),
+                    entry(TemporalConstants.MICROSECONDS, Unit.MICROSECOND),
+                    entry(TemporalConstants.NANOSECONDS, Unit.NANOSECOND));
 
     protected GetTemporalUnitNode() {
     }
 
-    public abstract TemporalUtil.Unit execute(JSDynamicObject normalizedOptions, TruffleString key, Map<TruffleString, TemporalUtil.Unit> unitMapping, TemporalUtil.Unit defaultValue);
+    public abstract Unit execute(JSDynamicObject options, TruffleString key, TemporalUtil.Unit defaultValue);
 
     @Specialization
-    final TemporalUtil.Unit getUnit(JSDynamicObject normalizedOptions, TruffleString key, Map<TruffleString, TemporalUtil.Unit> unitMapping, TemporalUtil.Unit defaultValue,
-                    @Cached InlinedBranchProfile errorBranch,
+    final TemporalUtil.Unit getUnit(JSDynamicObject options, TruffleString key, Unit defaultValue,
                     @Cached TemporalGetOptionNode getOptionNode) {
-        assert defaultValue == TemporalUtil.Unit.REQUIRED || defaultValue == TemporalUtil.Unit.EMPTY || unitMapping.containsValue(defaultValue) : defaultValue;
-        TruffleString value = (TruffleString) getOptionNode.execute(normalizedOptions, key, TemporalUtil.OptionType.STRING, null, null);
-        if (value != null) {
-            TemporalUtil.Unit unit = Boundaries.mapGet(unitMapping, value);
-            if (unit != null) {
-                return unit;
-            }
-        } else if (defaultValue != TemporalUtil.Unit.REQUIRED) {
-            return defaultValue;
+        Object value = getOptionNode.execute(options, key, TemporalUtil.OptionType.STRING, ALLOWED_STRINGS, defaultValue);
+        if (value == Unit.REQUIRED) { // part of GetOption()
+            throw Errors.createRangeErrorFormat("Property %s is required", this, key);
         }
-        errorBranch.enter(this);
-        throw TemporalErrors.createRangeErrorUnitValueUndefinedOrNotAllowed(key, value, unitMapping);
+        if (value == Unit.EMPTY) {
+            return Unit.EMPTY;
+        }
+        return Boundaries.mapGet(NAME_TO_UNIT, (TruffleString) value);
     }
+
 }
