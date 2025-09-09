@@ -83,9 +83,9 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached TruffleString.EqualNode equalNode,
-                    @Cached GetTemporalUnitNode getLargestUnit,
+                    @Cached GetTemporalUnitValuedOptionNode getLargestUnit,
                     @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
-                    @Cached GetTemporalUnitNode getSmallestUnit) {
+                    @Cached GetTemporalUnitValuedOptionNode getSmallestUnit) {
         Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, Unit.UNSET);
         int roundingIncrement = getRoundingIncrementOption.execute(resolvedOptions);
         RoundingMode roundingMode = JSTemporalBuiltinOperation.toTemporalRoundingMode(resolvedOptions, TemporalConstants.TRUNC, equalNode, getOptionNode);

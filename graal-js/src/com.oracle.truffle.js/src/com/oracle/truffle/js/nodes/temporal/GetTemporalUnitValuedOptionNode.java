@@ -57,9 +57,9 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 /**
- * Implementation of GetTemporalUnit() operation.
+ * Implementation of GetTemporalUnitValuedOption() operation.
  */
-public abstract class GetTemporalUnitNode extends JavaScriptBaseNode {
+public abstract class GetTemporalUnitValuedOptionNode extends JavaScriptBaseNode {
     private static final List<?> ALLOWED_STRINGS = List.of(
                     TemporalConstants.AUTO,
                     TemporalConstants.YEAR,
@@ -105,7 +105,7 @@ public abstract class GetTemporalUnitNode extends JavaScriptBaseNode {
                     entry(TemporalConstants.MICROSECONDS, Unit.MICROSECOND),
                     entry(TemporalConstants.NANOSECONDS, Unit.NANOSECOND));
 
-    protected GetTemporalUnitNode() {
+    protected GetTemporalUnitValuedOptionNode() {
     }
 
     public abstract Unit execute(JSDynamicObject options, TruffleString key, TemporalUtil.Unit defaultValue);

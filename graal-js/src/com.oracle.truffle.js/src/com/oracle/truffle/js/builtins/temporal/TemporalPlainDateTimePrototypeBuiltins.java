@@ -79,7 +79,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.temporal.DifferencePlainDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
-import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitValuedOptionNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
@@ -485,7 +485,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached ToFractionalSecondDigitsNode toFractionalSecondDigitsNode,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
@@ -680,7 +680,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         final JSTemporalPlainDateTimeObject round(JSTemporalPlainDateTimeObject dt, Object roundToParam,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getSmallestUnit,
                         @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {

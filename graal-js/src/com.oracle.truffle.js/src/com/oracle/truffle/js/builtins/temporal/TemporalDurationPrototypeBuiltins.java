@@ -74,7 +74,7 @@ import com.oracle.truffle.js.nodes.temporal.DifferencePlainDateTimeWithRoundingN
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
-import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitValuedOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddZonedDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDifferenceDateNode;
@@ -486,8 +486,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached InlinedConditionProfile relativeToIsZonedDateTime,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached GetTemporalUnitNode getLargestUnit,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getLargestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getSmallestUnit,
                         @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
                         @Cached TemporalAddDateNode addDate,
                         @Cached DifferencePlainDateTimeWithRoundingNode differencePlainDateTimeWithRounding,
@@ -642,7 +642,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected final double total(JSTemporalDurationObject duration, Object totalOfParam,
                         @Bind Node node,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached GetTemporalUnitNode getTemporalUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getTemporalUnit,
                         @Cached TemporalAddDateNode addDate,
                         @Cached DifferencePlainDateTimeWithRoundingNode differencePlainDateTimeWithRounding,
                         @Cached DifferenceZonedDateTimeWithRoundingNode differenceZonedDateTimeWithRounding,
@@ -792,7 +792,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached JSNumberToBigIntNode toBigIntNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(opt, this, errorBranch, optionUndefined);

@@ -69,7 +69,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
-import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitValuedOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
@@ -286,7 +286,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         protected JSTemporalInstantObject round(JSTemporalInstantObject instant, Object roundToParam,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getSmallestUnit,
                         @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -365,7 +365,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getSmallestUnit,
                         @Cached("create(TIME_ZONE, getContext())") PropertyGetNode getTimeZone,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {

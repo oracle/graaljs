@@ -73,7 +73,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
-import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitValuedOptionNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
@@ -395,7 +395,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected JSTemporalPlainTimeObject round(JSTemporalPlainTimeObject temporalTime, Object roundToParam,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getSmallestUnit,
                         @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -491,7 +491,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached ToFractionalSecondDigitsNode toFractionalSecondDigitsNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetTemporalUnitValuedOptionNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
