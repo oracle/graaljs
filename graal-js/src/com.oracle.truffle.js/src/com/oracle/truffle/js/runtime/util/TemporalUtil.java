@@ -428,6 +428,12 @@ public final class TemporalUtil {
         }
     }
 
+    public enum UnitGroup {
+        DATE,
+        TIME,
+        DATETIME
+    }
+
     public enum RoundingMode {
         EMPTY,
         CEIL,
