@@ -117,8 +117,8 @@ public abstract class GetTemporalUnitNode extends JavaScriptBaseNode {
         if (value == Unit.REQUIRED) { // part of GetOption()
             throw Errors.createRangeErrorFormat("Property %s is required", this, key);
         }
-        if (value == Unit.EMPTY) {
-            return Unit.EMPTY;
+        if (value == Unit.UNSET) {
+            return Unit.UNSET;
         }
         return Boundaries.mapGet(NAME_TO_UNIT, (TruffleString) value);
     }

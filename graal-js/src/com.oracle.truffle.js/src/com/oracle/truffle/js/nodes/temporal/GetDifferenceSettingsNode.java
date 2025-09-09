@@ -86,12 +86,12 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
                     @Cached GetTemporalUnitNode getLargestUnit,
                     @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
                     @Cached GetTemporalUnitNode getSmallestUnit) {
-        Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, Unit.EMPTY);
+        Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, Unit.UNSET);
         int roundingIncrement = getRoundingIncrementOption.execute(resolvedOptions);
         RoundingMode roundingMode = JSTemporalBuiltinOperation.toTemporalRoundingMode(resolvedOptions, TemporalConstants.TRUNC, equalNode, getOptionNode);
-        Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+        Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, Unit.UNSET);
         TemporalUtil.validateTemporalUnitValue(largestUnit, unitGroup, Unit.AUTO, this, errorBranch);
-        if (largestUnit == Unit.EMPTY) {
+        if (largestUnit == Unit.UNSET) {
             largestUnit = Unit.AUTO;
         }
         if (disallowedUnits != null && disallowedUnits.contains(largestUnit)) {
@@ -102,7 +102,7 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
         }
         TemporalUtil.validateTemporalUnitValue(smallestUnit, unitGroup, null, this, errorBranch);
-        if (smallestUnit == Unit.EMPTY) {
+        if (smallestUnit == Unit.UNSET) {
             smallestUnit = fallbackSmallestUnit;
         }
         if (disallowedUnits != null && disallowedUnits.contains(smallestUnit)) {

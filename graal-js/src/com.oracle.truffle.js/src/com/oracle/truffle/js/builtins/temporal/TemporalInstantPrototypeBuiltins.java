@@ -372,7 +372,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             int digits = toFractionalSecondDigits.execute(options);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
-            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.UNSET);
             Object timeZone = getTimeZone.getValue(options);
             TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.TIME, null, this, errorBranch);
             if (smallestUnit == Unit.HOUR) {

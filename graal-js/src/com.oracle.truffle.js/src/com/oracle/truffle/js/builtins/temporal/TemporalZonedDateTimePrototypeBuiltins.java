@@ -499,7 +499,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             int digits = toFractionalSecondDigitsNode.execute(options);
             TruffleString showOffset = TemporalUtil.toShowOffsetOption(options, getOptionNode);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
-            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.UNSET);
             TruffleString showTimeZone = TemporalUtil.toShowTimeZoneNameOption(options, getOptionNode);
             TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.TIME, null, this, errorBranch);
             if (smallestUnit == Unit.HOUR) {

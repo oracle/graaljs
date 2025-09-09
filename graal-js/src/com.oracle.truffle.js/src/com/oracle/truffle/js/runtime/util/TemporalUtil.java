@@ -338,7 +338,7 @@ public final class TemporalUtil {
     }
 
     public enum Unit {
-        EMPTY(Strings.EMPTY_STRING),
+        UNSET(Strings.EMPTY_STRING),
         AUTO(TemporalConstants.AUTO),
         YEAR(TemporalConstants.YEAR),
         MONTH(TemporalConstants.MONTH),
@@ -401,7 +401,7 @@ public final class TemporalUtil {
 
         public boolean isDateTimeUnit() {
             return switch (this) {
-                case EMPTY, AUTO -> false;
+                case UNSET, AUTO -> false;
                 default -> true;
             };
         }
@@ -480,7 +480,7 @@ public final class TemporalUtil {
             case MILLISECOND -> JSTemporalPrecisionRecord.create(3, Unit.MILLISECOND, 1);
             case MICROSECOND -> JSTemporalPrecisionRecord.create(6, Unit.MICROSECOND, 1);
             case NANOSECOND -> JSTemporalPrecisionRecord.create(9, Unit.NANOSECOND, 1);
-            case EMPTY -> switch (fractionalDigitCount) {
+            case UNSET -> switch (fractionalDigitCount) {
                 case ToFractionalSecondDigitsNode.AUTO -> JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
                 case 0 -> JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
                 case 1, 2, 3 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MILLISECOND, (int) Math.pow(10, 3 - fractionalDigitCount));
@@ -2900,7 +2900,7 @@ public final class TemporalUtil {
 
     public static TruffleString temporalZonedDateTimeToString(JSContext ctx, JSRealm realm, JSDynamicObject zonedDateTime, Object precision, ShowCalendar showCalendar, TruffleString showTimeZone,
                     TruffleString showOffset) {
-        return temporalZonedDateTimeToString(ctx, realm, zonedDateTime, precision, showCalendar, showTimeZone, showOffset, null, Unit.EMPTY, RoundingMode.EMPTY);
+        return temporalZonedDateTimeToString(ctx, realm, zonedDateTime, precision, showCalendar, showTimeZone, showOffset, null, Unit.UNSET, RoundingMode.EMPTY);
     }
 
     public static int compareISODateTime(int year, int month, int day, int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds, int year2, int month2,
@@ -2939,7 +2939,7 @@ public final class TemporalUtil {
         assert unitParam != null && roundingModeParam != null;
         JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) zonedDateTimeParam;
         int increment = incrementParam == null ? 1 : incrementParam;
-        Unit unit = unitParam == Unit.EMPTY ? Unit.NANOSECOND : unitParam;
+        Unit unit = unitParam == Unit.UNSET ? Unit.NANOSECOND : unitParam;
         RoundingMode roundingMode = roundingModeParam == RoundingMode.EMPTY ? RoundingMode.TRUNC : roundingModeParam;
 
         BigInt ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), increment, unit, roundingMode);
@@ -3849,7 +3849,7 @@ public final class TemporalUtil {
     }
 
     public static void validateTemporalUnitValue(Unit unit, UnitGroup unitGroup, Unit extraValue, Node node, InlinedBranchProfile errorBranch) {
-        if (unit == Unit.EMPTY || unit == extraValue) {
+        if (unit == Unit.UNSET || unit == extraValue) {
             return;
         }
         switch (unitGroup) {

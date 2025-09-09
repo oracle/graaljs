@@ -508,15 +508,15 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             boolean smallestUnitPresent = true;
             boolean largestUnitPresent = true;
-            Unit largestUnit = getLargestUnit.execute(roundTo, TemporalConstants.LARGEST_UNIT, Unit.EMPTY);
+            Unit largestUnit = getLargestUnit.execute(roundTo, TemporalConstants.LARGEST_UNIT, Unit.UNSET);
             var relativeToRec = toRelativeTemporalObjectNode.execute(roundTo);
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
             int roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
-            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, Unit.UNSET);
             TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.DATETIME, null, this, errorBranch);
-            if (smallestUnit == Unit.EMPTY) {
+            if (smallestUnit == Unit.UNSET) {
                 smallestUnitPresent = false;
                 smallestUnit = Unit.NANOSECOND;
             }
@@ -525,7 +525,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds());
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(existingLargestUnit, smallestUnit);
-            if (largestUnit == Unit.EMPTY) {
+            if (largestUnit == Unit.UNSET) {
                 largestUnitPresent = false;
                 largestUnit = defaultLargestUnit;
             } else if (Unit.AUTO == largestUnit) {
@@ -799,7 +799,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             int digits = toFractionalSecondDigitsNode.execute(options);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
 
-            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.UNSET);
             TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.TIME, null, this, errorBranch);
             if (smallestUnit == Unit.HOUR || smallestUnit == Unit.MINUTE) {
                 errorBranch.enter(this);

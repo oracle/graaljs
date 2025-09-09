@@ -498,7 +498,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             int digits = toFractionalSecondDigitsNode.execute(options);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
 
-            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.EMPTY);
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, Unit.UNSET);
             TemporalUtil.validateTemporalUnitValue(smallestUnit, UnitGroup.TIME, null, this, errorBranch);
             if (smallestUnit == Unit.HOUR) {
                 errorBranch.enter(this);
