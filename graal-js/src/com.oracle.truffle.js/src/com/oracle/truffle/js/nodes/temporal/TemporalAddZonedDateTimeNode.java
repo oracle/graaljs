@@ -56,8 +56,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
@@ -70,23 +68,16 @@ public abstract class TemporalAddZonedDateTimeNode extends JavaScriptBaseNode {
     protected TemporalAddZonedDateTimeNode() {
     }
 
-    public final BigInt execute(BigInt epochNanoseconds,
-                    TruffleString timeZone, TruffleString calendar,
-                    double years, double months, double weeks, double days, BigInt norm,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime) {
-        return execute(epochNanoseconds, timeZone, calendar, years, months, weeks, days, norm, precalculatedPlainDateTime, Undefined.instance);
-    }
-
     public abstract BigInt execute(BigInt epochNanoseconds,
                     TruffleString timeZone, TruffleString calendar,
                     double years, double months, double weeks, double days, BigInt norm,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject options);
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, Overflow overflow);
 
     @Specialization
     protected BigInt addZonedDateTime(BigInt epochNanoseconds,
                     TruffleString timeZone, TruffleString calendar,
                     double years, double months, double weeks, double days, BigInt norm,
-                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject options,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, Overflow overflow,
                     @Cached InlinedBranchProfile errorBranch) {
         JSContext ctx = getJSContext();
         JSRealm realm = getRealm();
@@ -98,7 +89,6 @@ public abstract class TemporalAddZonedDateTimeNode extends JavaScriptBaseNode {
         JSTemporalPlainDateTimeObject temporalDateTime = precalculatedPlainDateTime != null
                         ? precalculatedPlainDateTime
                         : TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, instant, calendar);
-        Overflow overflow = TemporalUtil.toTemporalOverflow(options);
         if (years == 0 && months == 0 && weeks == 0) {
             BigInt intermediate = TemporalUtil.addDaysToZonedDateTime(ctx, realm, instant, temporalDateTime, timeZone, (int) days, overflow).epochNanoseconds();
             return TemporalUtil.addInstant(intermediate, norm);

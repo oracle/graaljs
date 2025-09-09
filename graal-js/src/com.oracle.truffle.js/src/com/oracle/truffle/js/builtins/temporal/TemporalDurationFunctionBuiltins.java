@@ -165,11 +165,11 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                 var after1 = addZonedDateTimeNode.execute(
                                 zonedRelativeTo.getNanoseconds(), timeZone, calendar,
                                 one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
-                                norm1, precalculatedPlainDateTime);
+                                norm1, precalculatedPlainDateTime, TemporalUtil.Overflow.CONSTRAIN);
                 var after2 = addZonedDateTimeNode.execute(
                                 zonedRelativeTo.getNanoseconds(), timeZone, calendar,
                                 two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
-                                norm2, precalculatedPlainDateTime);
+                                norm2, precalculatedPlainDateTime, TemporalUtil.Overflow.CONSTRAIN);
                 return after1.compareTo(after2);
             }
             double days1;

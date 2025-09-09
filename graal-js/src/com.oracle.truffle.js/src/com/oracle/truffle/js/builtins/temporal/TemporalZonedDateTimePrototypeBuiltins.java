@@ -730,7 +730,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached InlinedConditionProfile optionUndefined,
                         @Cached TemporalAddZonedDateTimeNode addZonedDateTimeNode) {
             JSTemporalDurationObject duration = toTemporalDurationNode.execute(temporalDurationLike);
-            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
+            JSDynamicObject resolvedOptions = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(resolvedOptions);
             TruffleString timeZone = zonedDateTime.getTimeZone();
             TruffleString calendar = zonedDateTime.getCalendar();
             JSRealm realm = getRealm();
@@ -739,7 +740,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
             BigInt epochNanoseconds = addZonedDateTimeNode.execute(zonedDateTime.getNanoseconds(), timeZone, calendar,
                             sign * duration.getYears(), sign * duration.getMonths(), sign * duration.getWeeks(), sign * duration.getDays(),
-                            norm, null, options);
+                            norm, null, overflow);
             return JSTemporalZonedDateTime.create(getContext(), realm, epochNanoseconds, timeZone, calendar);
         }
 

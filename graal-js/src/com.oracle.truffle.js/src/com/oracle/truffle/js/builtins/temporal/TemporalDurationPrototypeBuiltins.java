@@ -441,9 +441,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     startDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, relativeToInstant, calendar);
                 }
                 BigInt intermediateNs = addZonedDateTimeNode.execute(zonedRelativeTo.getNanoseconds(), timeZone, calendar,
-                                y1, mon1, w1, d1, norm1, startDateTime);
+                                y1, mon1, w1, d1, norm1, startDateTime, TemporalUtil.Overflow.CONSTRAIN);
                 BigInt endNs = addZonedDateTimeNode.execute(intermediateNs, timeZone, calendar,
-                                y2, mon2, w2, d2, norm2, null);
+                                y2, mon2, w2, d2, norm2, null, TemporalUtil.Overflow.CONSTRAIN);
 
                 if (largestUnit.isTimeUnit()) {
                     BigInt norm = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(endNs, zonedRelativeTo.getNanoseconds());
@@ -590,7 +590,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 BigInt relativeEpochNs = zonedRelativeTo.getNanoseconds();
                 BigInt targetEpochNs = addZonedDateTimeNode.execute(relativeEpochNs, timeZone, calendar,
                                 duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
-                                norm, precalculatedPlainDateTime);
+                                norm, precalculatedPlainDateTime, TemporalUtil.Overflow.CONSTRAIN);
 
                 var roundRecord = differenceZonedDateTimeWithRounding.execute(relativeEpochNs, targetEpochNs, calendar, timeZone,
                                 precalculatedPlainDateTime, largestUnit, roundingIncrement, smallestUnit, roundingMode);
@@ -694,7 +694,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 BigInt relativeEpochNs = zonedRelativeTo.getNanoseconds();
                 BigInt targetEpochNs = addZonedDateTimeNode.execute(relativeEpochNs, timeZone, calendar,
                                 duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
-                                norm, precalculatedPlainDateTime);
+                                norm, precalculatedPlainDateTime, TemporalUtil.Overflow.CONSTRAIN);
 
                 var roundRecord = differenceZonedDateTimeWithRounding.execute(relativeEpochNs, targetEpochNs, calendar, timeZone,
                                 precalculatedPlainDateTime, unit, 1, unit, RoundingMode.TRUNC);
