@@ -104,6 +104,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.UnitGroup;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 
 public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainYearMonthPrototypeBuiltins.TemporalPlainYearMonthPrototype> {
@@ -487,7 +488,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
     }
 
     public abstract static class JSTemporalPlainYearMonthUntilSinceNode extends JSTemporalBuiltinOperation {
-
+        private static final EnumSet<Unit> WEEK_DAY_SET = EnumSet.of(Unit.WEEK, Unit.DAY);
         private final int sign;
 
         protected JSTemporalPlainYearMonthUntilSinceNode(JSContext context, JSBuiltin builtin, int sign) {
@@ -513,7 +514,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
             JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
-            var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingYearMonthOrAuto, TemporalUtil.unitMappingYearMonth, Unit.MONTH, Unit.YEAR);
+            var settings = getDifferenceSettings.execute(sign, resolvedOptions, UnitGroup.DATE, WEEK_DAY_SET, Unit.MONTH, Unit.YEAR);
 
             JSContext ctx = getContext();
             JSRealm realm = getRealm();

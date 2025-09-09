@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,7 +100,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         } else if (type.allowsString()) {
             value = toStringNode.executeString(value);
         }
-        if (value != Undefined.instance && values != null && !Boundaries.listContainsUnchecked(values, value)) {
+        if (values != null && !Boundaries.listContainsUnchecked(values, value)) {
             errorBranch.enter(this);
             throw TemporalErrors.createRangeErrorOptionsNotContained(values, value);
         }

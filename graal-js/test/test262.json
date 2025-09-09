@@ -2033,54 +2033,6 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/since/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/toString/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/until/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/until/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/add/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/subtract/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/toString/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {

@@ -115,6 +115,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.UnitGroup;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 
 public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainDatePrototypeBuiltins.TemporalPlainDatePrototype> {
@@ -435,7 +436,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
 
             JSDynamicObject resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
-            var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingDateOrAuto, TemporalUtil.unitMappingDate, Unit.DAY, Unit.DAY);
+            var settings = getDifferenceSettings.execute(sign, resolvedOptions, UnitGroup.DATE, null, Unit.DAY, Unit.DAY);
 
             TruffleString calendar = temporalDate.getCalendar();
             JSTemporalDurationObject result = differenceDate.execute(calendar, temporalDate, other, settings.largestUnit());

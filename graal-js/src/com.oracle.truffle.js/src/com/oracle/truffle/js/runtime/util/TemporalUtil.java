@@ -88,7 +88,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE_NAM
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.USE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.UTC;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
@@ -98,7 +97,6 @@ import java.math.BigInteger;
 import java.math.MathContext;
 import java.time.Year;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -175,18 +173,6 @@ public final class TemporalUtil {
     private static final Function<Object, Object> toString = JSRuntime::toString;
     private static final Function<Object, Object> toTemporalTimeZoneIdentifier = TemporalUtil::toTemporalTimeZoneIdentifier;
 
-    public static final Map<TruffleString, TruffleString> singularToPlural = Map.ofEntries(
-                    Map.entry(YEAR, YEARS),
-                    Map.entry(MONTH, MONTHS),
-                    Map.entry(WEEK, WEEKS),
-                    Map.entry(DAY, DAYS),
-                    Map.entry(HOUR, HOURS),
-                    Map.entry(MINUTE, MINUTES),
-                    Map.entry(SECOND, SECONDS),
-                    Map.entry(MILLISECOND, MILLISECONDS),
-                    Map.entry(MICROSECOND, MICROSECONDS),
-                    Map.entry(NANOSECOND, NANOSECONDS));
-
     private static final Map<TruffleString, Function<Object, Object>> temporalFieldConversion = Map.ofEntries(
                     Map.entry(YEAR, toIntegerWithTruncation),
                     Map.entry(MONTH, toPositiveInteger),
@@ -240,20 +226,6 @@ public final class TemporalUtil {
     public static final List<TruffleString> listTimeUnits = List.of(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
     public static final List<TruffleString> listTimeUnitsOffset = List.of(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, OFFSET);
     public static final List<TruffleString> listTimeUnitsOffsetTZ = List.of(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, OFFSET, TIME_ZONE);
-
-    private static final List<TruffleString> singularDateUnits = List.of(YEAR, MONTH, WEEK, DAY);
-    private static final List<TruffleString> singularTimeUnits = listTimeUnits;
-    private static final List<TruffleString> singularDateTimeUnits = List.of(YEAR, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
-    private static final List<TruffleString> singularYearMonthUnits = List.of(YEAR, MONTH);
-    public static final Map<TruffleString, Unit> unitMappingDate = createUnitMapping(singularDateUnits);
-    public static final Map<TruffleString, Unit> unitMappingDateOrAuto = createUnitMapping(singularDateUnits, AUTO);
-    public static final Map<TruffleString, Unit> unitMappingTime = createUnitMapping(singularTimeUnits);
-    public static final Map<TruffleString, Unit> unitMappingTimeOrDay = createUnitMapping(singularTimeUnits, DAY);
-    public static final Map<TruffleString, Unit> unitMappingTimeOrAuto = createUnitMapping(singularTimeUnits, AUTO);
-    public static final Map<TruffleString, Unit> unitMappingDateTime = createUnitMapping(singularDateTimeUnits);
-    public static final Map<TruffleString, Unit> unitMappingDateTimeOrAuto = createUnitMapping(singularDateTimeUnits, AUTO);
-    public static final Map<TruffleString, Unit> unitMappingYearMonth = createUnitMapping(singularYearMonthUnits);
-    public static final Map<TruffleString, Unit> unitMappingYearMonthOrAuto = createUnitMapping(singularYearMonthUnits, AUTO);
 
     public static final List<TruffleString> listAuto = List.of(AUTO);
     public static final List<TruffleString> listAutoNever = List.of(AUTO, NEVER);
@@ -366,7 +338,7 @@ public final class TemporalUtil {
     }
 
     public enum Unit {
-        EMPTY(Strings.EMPTY_STRING),
+        UNSET(Strings.EMPTY_STRING),
         AUTO(TemporalConstants.AUTO),
         YEAR(TemporalConstants.YEAR),
         MONTH(TemporalConstants.MONTH),
@@ -426,6 +398,19 @@ public final class TemporalUtil {
                 default -> false;
             };
         }
+
+        public boolean isDateTimeUnit() {
+            return switch (this) {
+                case UNSET, AUTO -> false;
+                default -> true;
+            };
+        }
+    }
+
+    public enum UnitGroup {
+        DATE,
+        TIME,
+        DATETIME
     }
 
     public enum RoundingMode {
@@ -471,19 +456,6 @@ public final class TemporalUtil {
         CRITICAL
     }
 
-    private static Map<TruffleString, Unit> createUnitMapping(List<TruffleString> singularUnits, TruffleString... extraValues) {
-        Map<TruffleString, Unit> map = new HashMap<>();
-        for (TruffleString singular : IteratorUtil.concatLists(singularUnits, List.of(extraValues))) {
-            Unit unit = Unit.valueOf(singular.toJavaStringUncached().toUpperCase(Locale.ROOT));
-            map.put(singular, unit);
-            TruffleString plural = singularToPlural.get(singular);
-            if (plural != null) {
-                map.put(plural, unit);
-            }
-        }
-        return Map.copyOf(map);
-    }
-
     public static int validateTemporalRoundingIncrement(int increment, long dividend, boolean inclusive,
                     Node node, InlinedBranchProfile errorBranch) {
         double maximum;
@@ -508,7 +480,7 @@ public final class TemporalUtil {
             case MILLISECOND -> JSTemporalPrecisionRecord.create(3, Unit.MILLISECOND, 1);
             case MICROSECOND -> JSTemporalPrecisionRecord.create(6, Unit.MICROSECOND, 1);
             case NANOSECOND -> JSTemporalPrecisionRecord.create(9, Unit.NANOSECOND, 1);
-            case EMPTY -> switch (fractionalDigitCount) {
+            case UNSET -> switch (fractionalDigitCount) {
                 case ToFractionalSecondDigitsNode.AUTO -> JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
                 case 0 -> JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
                 case 1, 2, 3 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MILLISECOND, (int) Math.pow(10, 3 - fractionalDigitCount));
@@ -2928,7 +2900,7 @@ public final class TemporalUtil {
 
     public static TruffleString temporalZonedDateTimeToString(JSContext ctx, JSRealm realm, JSDynamicObject zonedDateTime, Object precision, ShowCalendar showCalendar, TruffleString showTimeZone,
                     TruffleString showOffset) {
-        return temporalZonedDateTimeToString(ctx, realm, zonedDateTime, precision, showCalendar, showTimeZone, showOffset, null, Unit.EMPTY, RoundingMode.EMPTY);
+        return temporalZonedDateTimeToString(ctx, realm, zonedDateTime, precision, showCalendar, showTimeZone, showOffset, null, Unit.UNSET, RoundingMode.EMPTY);
     }
 
     public static int compareISODateTime(int year, int month, int day, int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds, int year2, int month2,
@@ -2967,7 +2939,7 @@ public final class TemporalUtil {
         assert unitParam != null && roundingModeParam != null;
         JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) zonedDateTimeParam;
         int increment = incrementParam == null ? 1 : incrementParam;
-        Unit unit = unitParam == Unit.EMPTY ? Unit.NANOSECOND : unitParam;
+        Unit unit = unitParam == Unit.UNSET ? Unit.NANOSECOND : unitParam;
         RoundingMode roundingMode = roundingModeParam == RoundingMode.EMPTY ? RoundingMode.TRUNC : roundingModeParam;
 
         BigInt ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), increment, unit, roundingMode);
@@ -3874,6 +3846,32 @@ public final class TemporalUtil {
             throw TemporalErrors.createRangeErrorInvalidNanoseconds();
         }
         return epochNs;
+    }
+
+    public static void validateTemporalUnitValue(Unit unit, UnitGroup unitGroup, Unit extraValue, Node node, InlinedBranchProfile errorBranch) {
+        if (unit == Unit.UNSET || unit == extraValue) {
+            return;
+        }
+        switch (unitGroup) {
+            case TIME -> {
+                if (!unit.isTimeUnit()) {
+                    errorBranch.enter(node);
+                    throw TemporalErrors.createRangeErrorNotATimeUnit(node, unit);
+                }
+            }
+            case DATE -> {
+                if (!unit.isDateUnit()) {
+                    errorBranch.enter(node);
+                    throw TemporalErrors.createRangeErrorNotADateUnit(node, unit);
+                }
+            }
+            case DATETIME -> {
+                if (!unit.isDateTimeUnit()) {
+                    errorBranch.enter(node);
+                    throw TemporalErrors.createRangeErrorNotADateTimeUnit(node, unit);
+                }
+            }
+        }
     }
 
 }

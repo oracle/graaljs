@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
@@ -73,6 +74,26 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createRangeErrorInvalidRelativeToString() {
         return Errors.createRangeError("invalid relativeTo string");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorNotATimeUnit(Node originatingNode, TemporalUtil.Unit unit) {
+        return Errors.createRangeErrorFormat("'%s' is not a time unit", originatingNode, unit);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorNotADateUnit(Node originatingNode, TemporalUtil.Unit unit) {
+        return Errors.createRangeErrorFormat("'%s' is not a date unit", originatingNode, unit);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorNotADateTimeUnit(Node originatingNode, TemporalUtil.Unit unit) {
+        return Errors.createRangeErrorFormat("'%s' is not a date-time unit", originatingNode, unit);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorDisallowedUnit(Node originatingNode, TemporalUtil.Unit unit) {
+        return Errors.createRangeErrorFormat("'%s' is not allowed here", originatingNode, unit);
     }
 
     @TruffleBoundary
