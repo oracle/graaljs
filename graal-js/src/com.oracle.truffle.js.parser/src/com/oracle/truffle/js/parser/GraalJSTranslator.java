@@ -3104,7 +3104,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         }
         JavaScriptNode closeIfNotDone = factory.createIteratorCloseWrapper(context, createBlock(initElements), iteratorTempVar.createReadNode(), true);
-        return factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempVar.createReadNode());
+        JavaScriptNode resetIterator = iteratorTempVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
+        JavaScriptNode resetValue = valueTempVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
+        return factory.createTryFinally(
+                        factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempVar.createReadNode()),
+                        factory.createExprBlock(resetIterator, resetValue));
     }
 
     private JavaScriptNode transformDestructuringObjectAssignment(Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment) {
@@ -3163,7 +3167,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode initElement = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
             initElements[i] = (toPropertyKey == null) ? initElement : factory.createDual(context, toPropertyKey, initElement);
         }
-        return factory.createExprBlock(initValueTempVar, createBlock(initElements), valueTempVar.createReadNode());
+        JavaScriptNode resetValue = valueTempVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
+        return factory.createTryFinally(
+                        factory.createExprBlock(initValueTempVar, createBlock(initElements), valueTempVar.createReadNode()),
+                        resetValue);
     }
 
     @Override
