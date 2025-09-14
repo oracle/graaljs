@@ -585,7 +585,7 @@ class MaybeStackBuffer<v8::Local<v8::Value>, kStackStorageSize> {
     SetLength(length);
 
     // T() is 0 for integer types, nullptr for pointers, etc.
-    buf_[length] = nullptr;
+    buf_[length] = v8::Local<v8::Value>();
   }
 
   // Make derefencing this object return nullptr.
