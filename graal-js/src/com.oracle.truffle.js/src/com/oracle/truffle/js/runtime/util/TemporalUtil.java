@@ -1426,7 +1426,7 @@ public final class TemporalUtil {
         int months = 0;
         Calendar intermediate;
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
-            int candidateYears = two.get(Calendar.EXTENDED_YEAR) - one.get(Calendar.EXTENDED_YEAR);
+            int candidateYears = IntlUtil.getExtendedYear(two) - IntlUtil.getExtendedYear(one);
             if (candidateYears != 0) {
                 candidateYears -= sign;
             }
@@ -1482,8 +1482,8 @@ public final class TemporalUtil {
     }
 
     private static boolean nonISODateSurpasses(int sign, Calendar one, Calendar two) {
-        int y1 = one.get(Calendar.EXTENDED_YEAR);
-        int y2 = two.get(Calendar.EXTENDED_YEAR);
+        int y1 = IntlUtil.getExtendedYear(one);
+        int y2 = IntlUtil.getExtendedYear(two);
         if (y1 != y2) {
             return (sign * (y1 - y2) > 0);
         }
@@ -3344,7 +3344,7 @@ public final class TemporalUtil {
         } else {
             Calendar cal = IntlUtil.getCalendar(calendar);
             cal.setTimeInMillis(JSDate.MS_PER_DAY * JSDate.isoDateToEpochDays(isoDate.year(), isoDate.month() - 1, isoDate.day()));
-            JSObject.set(record, YEAR, cal.get(Calendar.EXTENDED_YEAR));
+            JSObject.set(record, YEAR, IntlUtil.getExtendedYear(cal));
             if (IntlUtil.calendarSupportsEra(cal)) {
                 JSObject.set(record, ERA, IntlUtil.getEra(cal));
                 JSObject.set(record, ERA_YEAR, IntlUtil.getEraYear(cal));
@@ -3397,7 +3397,7 @@ public final class TemporalUtil {
                             long eraYearMS = cal.getTimeInMillis();
 
                             cal.setTimeInMillis(0);
-                            cal.set(Calendar.EXTENDED_YEAR, ((Number) year).intValue());
+                            IntlUtil.setExtendedYear(cal, ((Number) year).intValue());
                             long yearMS = cal.getTimeInMillis();
 
                             if (yearMS != eraYearMS) {
@@ -3486,7 +3486,7 @@ public final class TemporalUtil {
                 }
             } else {
                 int year = ((Number) yearObject).intValue();
-                cal.set(Calendar.EXTENDED_YEAR, year);
+                IntlUtil.setExtendedYear(cal, year);
             }
             Object monthCode = JSObject.get(fields, MONTH_CODE);
             if (monthCode == Undefined.instance) {
@@ -3506,7 +3506,7 @@ public final class TemporalUtil {
                 cal.roll(Calendar.ORDINAL_MONTH, newValue - oldValue);
                 cal.get(Calendar.ORDINAL_MONTH);
             } else {
-                int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
+                int extendedYear = IntlUtil.getExtendedYear(cal);
                 String monthCodeStr = monthCode.toString();
                 cal.setTemporalMonthCode(monthCodeStr);
                 if (!monthCodeStr.equals(cal.getTemporalMonthCode())) {
@@ -3525,8 +3525,8 @@ public final class TemporalUtil {
                         }
                         // the setting of non existing leap month could have
                         // rolled the year to the next one => restore the original value
-                        if (extendedYear != cal.get(Calendar.EXTENDED_YEAR)) {
-                            cal.set(Calendar.EXTENDED_YEAR, extendedYear);
+                        if (extendedYear != IntlUtil.getExtendedYear(cal)) {
+                            IntlUtil.setExtendedYear(cal, extendedYear);
                         }
                         cal.setTemporalMonthCode(nonLeapMonthCode);
                     }
@@ -3611,7 +3611,7 @@ public final class TemporalUtil {
 
             if (year != Undefined.instance) {
                 // check month/restrict day according to the provided year
-                cal.set(Calendar.YEAR, ((Number) year).intValue());
+                cal.set(Calendar.EXTENDED_YEAR, ((Number) year).intValue());
                 cal.setTemporalMonthCode(monthCode);
                 if (monthCode.equals(cal.getTemporalMonthCode())) {
                     dMax = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
@@ -3645,7 +3645,7 @@ public final class TemporalUtil {
                         }
                     }
                 }
-                cal.set(Calendar.EXTENDED_YEAR, cal.get(Calendar.EXTENDED_YEAR) - 1);
+                cal.add(Calendar.EXTENDED_YEAR, -1);
             }
             return new ISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
         }

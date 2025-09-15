@@ -1102,6 +1102,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static int getCalendarField(Calendar cal, int field) {
+        assert field != Calendar.EXTENDED_YEAR : "getExtendedYear() should be used";
         return cal.get(field);
     }
 
@@ -1140,6 +1141,25 @@ public final class IntlUtil {
     @TruffleBoundary
     public static Object getEra(Calendar cal) {
         return calendarSupportsEra(cal) ? getEraAsString(cal) : Undefined.instance;
+    }
+
+    // Chinese calendar can use various epochs. ChineseCalendar in ICU4J
+    // uses the traditional epoch based on the reign of Huang Di. Modern
+    // Chinese standard calendar uses the epoch of the Gregorian calendar.
+    // This constant is the offset between them.
+    private static final int CHINESE_EPOCH_OFFSET = 2637;
+
+    @TruffleBoundary
+    public static int getExtendedYear(Calendar cal) {
+        int year = cal.get(Calendar.EXTENDED_YEAR);
+        int offset = (cal instanceof ChineseCalendar) ? CHINESE_EPOCH_OFFSET : 0;
+        return year - offset;
+    }
+
+    @TruffleBoundary
+    public static void setExtendedYear(Calendar cal, int year) {
+        int offset = (cal instanceof ChineseCalendar) ? CHINESE_EPOCH_OFFSET : 0;
+        cal.set(Calendar.EXTENDED_YEAR, year + offset);
     }
 
     @TruffleBoundary

@@ -281,7 +281,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 case eraYear:
                     return isoCalendar ? Undefined.instance : IntlUtil.getEraYear(cal);
                 case year:
-                    return isoCalendar ? temporalDT.getYear() : IntlUtil.getCalendarField(cal, Calendar.EXTENDED_YEAR);
+                    return isoCalendar ? temporalDT.getYear() : IntlUtil.getExtendedYear(cal);
                 case month:
                     return isoCalendar ? temporalDT.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.ORDINAL_MONTH) + 1);
                 case day:

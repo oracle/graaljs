@@ -227,7 +227,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 case eraYear:
                     return isoCalendar ? Undefined.instance : IntlUtil.getEraYear(cal);
                 case year:
-                    return isoCalendar ? temporalYM.getYear() : IntlUtil.getCalendarField(cal, Calendar.EXTENDED_YEAR);
+                    return isoCalendar ? temporalYM.getYear() : IntlUtil.getExtendedYear(cal);
                 case month:
                     return isoCalendar ? temporalYM.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.ORDINAL_MONTH) + 1);
                 case monthCode:
