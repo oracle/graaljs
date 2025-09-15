@@ -512,6 +512,11 @@ class MaybeStackBuffer {
 template <size_t kStackStorageSize>
 class MaybeStackBuffer<v8::Local<v8::Value>, kStackStorageSize> {
  public:
+  // Disallow copy constructor
+  MaybeStackBuffer(const MaybeStackBuffer&) = delete;
+  // Disallow copy assignment operator
+  MaybeStackBuffer& operator=(const MaybeStackBuffer& other) = delete;
+
   const v8::Local<v8::Value>* out() const {
     return buf_;
   }
@@ -546,8 +551,7 @@ class MaybeStackBuffer<v8::Local<v8::Value>, kStackStorageSize> {
   // Current maximum capacity of the buffer with which SetLength() can be used
   // without first calling AllocateSufficientStorage().
   size_t capacity() const {
-    return IsAllocated() ? capacity_ :
-                           IsInvalidated() ? 0 : kStackStorageSize;
+    return capacity_;
   }
 
   // Make sure enough space for `storage` entries is available.
@@ -594,6 +598,7 @@ class MaybeStackBuffer<v8::Local<v8::Value>, kStackStorageSize> {
   // be used.
   void Invalidate() {
     CHECK(!IsAllocated());
+    capacity_ = 0;
     length_ = 0;
     buf_ = nullptr;
   }
@@ -614,10 +619,11 @@ class MaybeStackBuffer<v8::Local<v8::Value>, kStackStorageSize> {
     CHECK(IsAllocated());
     buf_ = buf_st_;
     length_ = 0;
-    capacity_ = 0;
+    capacity_ = arraysize(buf_st_);
   }
 
-  MaybeStackBuffer() : length_(0), capacity_(0), buf_(buf_st_) {
+  MaybeStackBuffer()
+      : length_(0), capacity_(arraysize(buf_st_)), buf_(buf_st_) {
     // Default to a zero-length, null-terminated buffer.
     buf_[0] = v8::Local<v8::Value>();
   }
