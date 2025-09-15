@@ -159,6 +159,11 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorInvalidMonthCode(Object monthCode) {
+        throw Errors.createRangeErrorFormat("Invalid month code: '%s'", null, monthCode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorTemporalPlainTimeExpected() {
         return Errors.createTypeError("Temporal.PlainTime expected");
     }

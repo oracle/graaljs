@@ -3359,20 +3359,12 @@ public final class TemporalUtil {
     // 12.1.38
     @TruffleBoundary
     public static void calendarResolveFields(JSContext ctx, TruffleString calendar, JSDynamicObject fields, FieldsType type, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
-        boolean hasLeapYears;
-        int monthCount;
-        boolean supportsEras;
         boolean seenYearInfo = false;
         boolean isoCalendar = ISO8601.equals(calendar);
-        if (isoCalendar) {
-            hasLeapYears = false;
-            monthCount = 12;
-            supportsEras = false;
-        } else {
-            Calendar cal = IntlUtil.getCalendar(calendar);
-            hasLeapYears = IntlUtil.hasLeapYears(cal);
-            monthCount = cal.getMaximum(Calendar.ORDINAL_MONTH) + 1;
-            supportsEras = IntlUtil.calendarSupportsEra(cal);
+        Calendar cal = null;
+        if (!isoCalendar) {
+            cal = IntlUtil.getCalendar(calendar);
+            boolean supportsEras = IntlUtil.calendarSupportsEra(cal);
 
             if (supportsEras) {
                 Object era = JSObject.get(fields, ERA);
@@ -3441,21 +3433,28 @@ public final class TemporalUtil {
             }
             return;
         }
-        int monthLength = Strings.length((TruffleString) monthCode);
-        if (monthLength < 3 || 4 < monthLength || (monthLength == 4 && !hasLeapYears)) {
-            throw Errors.createRangeError("Invalid month code length");
+        TruffleString monthCodeTS = (TruffleString) monthCode;
+        if (isoCalendar) {
+            int monthLength = Strings.length(monthCodeTS);
+            if (monthLength != 3) {
+                throw Errors.createRangeError("Invalid month code length");
+            }
+            if (Strings.charAt(monthCodeTS, 0) != 'M') {
+                throw Errors.createRangeError("Month code should start with 'M'");
+            }
+        } else {
+            try {
+                cal.setTemporalMonthCode(monthCodeTS.toString());
+            } catch (IllegalArgumentException ex) {
+                throw TemporalErrors.createRangeErrorInvalidMonthCode(monthCodeTS);
+            }
         }
-        if (Strings.charAt((TruffleString) monthCode, 0) != 'M') {
-            throw Errors.createRangeError("Month code should start with 'M'");
-        }
-        if (monthLength == 4 && Strings.charAt((TruffleString) monthCode, 3) != 'L') {
-            throw Errors.createRangeError("Code of a leap month should end with 'L'");
-        }
-        TruffleString monthCodeDigits = Strings.substring(ctx, (TruffleString) monthCode, 1, 2);
+
+        TruffleString monthCodeDigits = Strings.substring(ctx, monthCodeTS, 1, 2);
         double monthCodeInteger = JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(monthCodeDigits));
 
-        if (Double.isNaN(monthCodeInteger) || monthCodeInteger < 1 || monthCount < monthCodeInteger) {
-            throw Errors.createRangeErrorFormat("Invalid month code: %s", null, monthCode);
+        if (isoCalendar && (Double.isNaN(monthCodeInteger) || monthCodeInteger < 1 || 12 < monthCodeInteger)) {
+            throw TemporalErrors.createRangeErrorInvalidMonthCode(monthCodeTS);
         }
 
         if (month != Undefined.instance && JSRuntime.doubleValue((Number) month) != monthCodeInteger) {
