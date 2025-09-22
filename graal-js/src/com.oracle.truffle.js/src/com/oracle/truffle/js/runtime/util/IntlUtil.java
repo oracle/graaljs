@@ -1047,6 +1047,8 @@ public final class IntlUtil {
     @TruffleBoundary
     public static String[] availableTimeZones() {
         Set<String> set = TimeZone.getAvailableIDs(TimeZone.SystemTimeZoneType.CANONICAL_LOCATION, null, null);
+        set = new HashSet<>(set);
+        set.remove("Antarctica/McMurdo");
         String[] timeZones = set.toArray(new String[set.size()]);
         Arrays.sort(timeZones);
         return timeZones;
