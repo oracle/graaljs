@@ -77,7 +77,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
-import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -2837,42 +2837,26 @@ public final class JSRuntime {
         return result;
     }
 
-    public static Object getBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArray.ElementType elementType, int index) {
-        switch (elementType) {
-            case Int8:
-                return (int) buffer.get(index);
-            case Uint8:
-            case Uint8Clamped:
-                return buffer.get(index) & 0xff;
-            case Int16:
-                return bufferAccess.getInt16(buffer, index);
-            case Uint16:
-                return bufferAccess.getUint16(buffer, index);
-            case Int32:
-                return bufferAccess.getInt32(buffer, index);
-            case Uint32:
-                return toUint32(bufferAccess.getInt32(buffer, index));
-            case BigInt64:
-            case BigUint64:
-                return BigInt.valueOf(bufferAccess.getInt64(buffer, index));
-            case Float16:
-                return (double) Float.float16ToFloat(bufferAccess.getFloat16(buffer, index));
-            case Float32:
-                return (double) bufferAccess.getFloat(buffer, index);
-            case Float64:
-                return bufferAccess.getDouble(buffer, index);
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
+    public static Object getBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArrayFactory elementType, int index) {
+        return switch (elementType) {
+            case Int8Array -> (int) buffer.get(index);
+            case Uint8Array, Uint8ClampedArray -> buffer.get(index) & 0xff;
+            case Int16Array -> bufferAccess.getInt16(buffer, index);
+            case Uint16Array -> bufferAccess.getUint16(buffer, index);
+            case Int32Array -> bufferAccess.getInt32(buffer, index);
+            case Uint32Array -> toUint32(bufferAccess.getInt32(buffer, index));
+            case BigInt64Array, BigUint64Array -> BigInt.valueOf(bufferAccess.getInt64(buffer, index));
+            case Float16Array -> (double) Float.float16ToFloat(bufferAccess.getFloat16(buffer, index));
+            case Float32Array -> (double) bufferAccess.getFloat(buffer, index);
+            case Float64Array -> bufferAccess.getDouble(buffer, index);
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
     }
 
-    public static void setBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArray.ElementType elementType, int index, Object value) {
+    public static void setBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArrayFactory elementType, int index, Object value) {
         switch (elementType) {
-            case Int8:
-            case Uint8:
-                buffer.put(index, (byte) toInt32((Number) value));
-                break;
-            case Uint8Clamped:
+            case Int8Array, Uint8Array -> buffer.put(index, (byte) toInt32((Number) value));
+            case Uint8ClampedArray -> {
                 int intValue;
                 if (value instanceof Integer) {
                     intValue = (Integer) value;
@@ -2881,32 +2865,14 @@ public final class JSRuntime {
                 }
                 int clampedValue = intValue < 0 ? 0 : (intValue > 0xff ? 0xff : intValue);
                 buffer.put(index, (byte) clampedValue);
-                break;
-            case Int16:
-                bufferAccess.putInt16(buffer, index, (short) toInt32((Number) value));
-                break;
-            case Uint16:
-                bufferAccess.putInt16(buffer, index, (char) toInt32((Number) value));
-                break;
-            case Int32:
-            case Uint32:
-                bufferAccess.putInt32(buffer, index, toInt32((Number) value));
-                break;
-            case BigInt64:
-            case BigUint64:
-                bufferAccess.putInt64(buffer, index, toBigInt(value).longValue());
-                break;
-            case Float16:
-                bufferAccess.putFloat16(buffer, index, toFloat16((Number) value));
-                break;
-            case Float32:
-                bufferAccess.putFloat(buffer, index, floatValue((Number) value));
-                break;
-            case Float64:
-                bufferAccess.putDouble(buffer, index, doubleValue((Number) value));
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
+            }
+            case Int16Array, Uint16Array -> bufferAccess.putInt16(buffer, index, toInt32((Number) value));
+            case Int32Array, Uint32Array -> bufferAccess.putInt32(buffer, index, toInt32((Number) value));
+            case BigInt64Array, BigUint64Array -> bufferAccess.putInt64(buffer, index, toBigInt(value).longValue());
+            case Float16Array -> bufferAccess.putFloat16(buffer, index, toFloat16((Number) value));
+            case Float32Array -> bufferAccess.putFloat(buffer, index, floatValue((Number) value));
+            case Float64Array -> bufferAccess.putDouble(buffer, index, doubleValue((Number) value));
+            default -> throw CompilerDirectives.shouldNotReachHere();
         }
     }
 }
