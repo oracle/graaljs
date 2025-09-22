@@ -77,7 +77,9 @@ import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -672,6 +674,10 @@ public final class IntlUtil {
     }
 
     public static String normalizeCAType(String type) {
+        return normalizeCAType(type, true);
+    }
+
+    public static String normalizeCAType(String type, boolean fallbackForIslamic) {
         // (Preferred) aliases from
         // https://github.com/unicode-org/cldr/blob/master/common/bcp47/calendar.xml
         if ("gregorian".equals(type)) {
@@ -680,8 +686,16 @@ public final class IntlUtil {
             return "ethioaa";
         } else if ("islamicc".equals(type)) {
             return "islamic-civil";
+        } else if (fallbackForIslamic && ("islamic".equals(type) || "islamic-rgsa".equals(type)) && !isIslamicCalendarSupported()) {
+            // islamic and islamic-rgsa should fallback to other values
+            // see https://github.com/tc39/proposal-intl-era-monthcode/pull/46
+            return "islamic-civil";
         }
         return type;
+    }
+
+    private static boolean isIslamicCalendarSupported() {
+        return JavaScriptLanguage.get(null).getJSContext().getEcmaScriptVersion() < JSConfig.StagingECMAScriptVersion;
     }
 
     private static String normalizeRGType(String type) {
@@ -923,7 +937,7 @@ public final class IntlUtil {
         for (String calendar : calendars) {
             // ICU4J returns "unknown" available calendar but it does not provide any useful data
             // for this calendar
-            if (!"unknown".equals(calendar)) {
+            if (!"unknown".equals(calendar) && (!"islamic".equals(calendar) && !"islamic-rgsa".equals(calendar) || isIslamicCalendarSupported())) {
                 calendars[length++] = IntlUtil.normalizeCAType(calendar);
             }
         }
@@ -945,12 +959,21 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String canonicalizeCalendar(String id) {
+        return canonicalizeCalendar(id, true);
+    }
+
+    @TruffleBoundary
+    public static String canonicalizeCalendar(String id, boolean throwForUnsupported) {
         // AvailableCalendars() in the spec contains aliases,
         // but our availableCalendars() is normalized already
         // => we must normalize before the search
-        String canonical = normalizeCAType(id.toLowerCase(Locale.ROOT));
+        String canonical = normalizeCAType(id.toLowerCase(Locale.ROOT), false);
         if (Arrays.binarySearch(availableCalendars(), canonical) < 0) {
-            throw Errors.createRangeErrorInvalidCalendar(id);
+            if (throwForUnsupported) {
+                throw Errors.createRangeErrorInvalidCalendar(id);
+            } else {
+                return null;
+            }
         }
         return canonical;
     }
