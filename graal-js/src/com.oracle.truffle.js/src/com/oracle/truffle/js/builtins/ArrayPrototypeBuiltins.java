@@ -1457,9 +1457,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayConcatNode extends JSArrayOperation {
-        public JSArrayConcatNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
 
         @Child private JSToBooleanNode toBooleanNode;
         @Child private JSArrayFirstElementIndexNode firstElementIndexNode;
@@ -1467,16 +1464,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertyGetNode getSpreadableNode;
         @Child private JSIsArrayNode isArrayNode;
 
-        private final ConditionProfile isFirstSpreadable = ConditionProfile.create();
-        private final ConditionProfile hasFirstElements = ConditionProfile.create();
-        private final ConditionProfile isSecondSpreadable = ConditionProfile.create();
-        private final ConditionProfile hasSecondElements = ConditionProfile.create();
-        private final ConditionProfile lengthErrorProfile = ConditionProfile.create();
-        private final ConditionProfile hasMultipleArgs = ConditionProfile.create();
-        private final ConditionProfile hasOneArg = ConditionProfile.create();
-        private final ConditionProfile optimizationsObservable = ConditionProfile.create();
-        private final ConditionProfile hasFirstOneElement = ConditionProfile.create();
-        private final ConditionProfile hasSecondOneElement = ConditionProfile.create();
+        public JSArrayConcatNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getSpreadableNode = PropertyGetNode.create(Symbol.SYMBOL_IS_CONCAT_SPREADABLE, context);
+        }
 
         protected boolean toBoolean(Object target) {
             if (toBooleanNode == null) {
@@ -1487,39 +1478,50 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object concat(Object thisObj, Object[] args) {
+        protected Object concat(Object thisObj, Object[] args,
+                        @Cached InlinedConditionProfile isFirstSpreadable,
+                        @Cached InlinedConditionProfile hasFirstElements,
+                        @Cached InlinedConditionProfile hasFirstOneElement,
+                        @Cached InlinedConditionProfile isSecondSpreadable,
+                        @Cached InlinedConditionProfile hasSecondElements,
+                        @Cached InlinedConditionProfile hasSecondOneElement,
+                        @Cached InlinedConditionProfile lengthErrorProfile,
+                        @Cached InlinedConditionProfile hasOneArg,
+                        @Cached InlinedConditionProfile hasMultipleArgs,
+                        @Cached InlinedConditionProfile optimizationsObservable) {
             Object thisJSObj = toObject(thisObj);
             Object retObj = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
 
-            long n = concatElementIntl(retObj, thisJSObj, 0, isFirstSpreadable, hasFirstElements, hasFirstOneElement);
-            long resultLen = concatIntl(retObj, n, args);
+            long resultLen = concatElementIntl(retObj, thisJSObj, 0,
+                            isFirstSpreadable, hasFirstElements, hasFirstOneElement, lengthErrorProfile, optimizationsObservable);
+            if (hasOneArg.profile(this, args.length == 1)) {
+                resultLen = concatElementIntl(retObj, args[0], resultLen,
+                                isSecondSpreadable, hasSecondElements, hasSecondOneElement, lengthErrorProfile, optimizationsObservable);
+            } else if (hasMultipleArgs.profile(this, args.length > 1)) {
+                for (int i = 0; i < args.length; i++) {
+                    resultLen = concatElementIntl(retObj, args[i], resultLen,
+                                    isSecondSpreadable, hasSecondElements, hasSecondOneElement, lengthErrorProfile, optimizationsObservable);
+                }
+            }
 
             // the last set element could be non-existent
             setLength(retObj, resultLen);
             return retObj;
         }
 
-        private long concatIntl(Object retObj, long initialLength, Object[] args) {
-            long n = initialLength;
-            if (hasOneArg.profile(args.length == 1)) {
-                n = concatElementIntl(retObj, args[0], n, isSecondSpreadable, hasSecondElements, hasSecondOneElement);
-            } else if (hasMultipleArgs.profile(args.length > 1)) {
-                for (int i = 0; i < args.length; i++) {
-                    n = concatElementIntl(retObj, args[i], n, isSecondSpreadable, hasSecondElements, hasSecondOneElement);
-                }
-            }
-            return n;
-        }
-
-        private long concatElementIntl(Object retObj, Object el, final long n, final ConditionProfile isSpreadable, final ConditionProfile hasElements,
-                        final ConditionProfile hasOneElement) {
-            if (isSpreadable.profile(isConcatSpreadable(el))) {
+        private long concatElementIntl(Object retObj, Object el, final long n,
+                        InlinedConditionProfile isSpreadable,
+                        InlinedConditionProfile hasElements,
+                        InlinedConditionProfile hasOneElement,
+                        InlinedConditionProfile lengthErrorProfile,
+                        InlinedConditionProfile optimizationsObservable) {
+            if (isSpreadable.profile(this, isConcatSpreadable(el))) {
                 long len2 = getLength(el);
-                if (hasElements.profile(len2 > 0)) {
-                    return concatSpreadable(retObj, n, el, len2, hasOneElement);
+                if (hasElements.profile(this, len2 > 0)) {
+                    return concatSpreadable(retObj, n, el, len2, hasOneElement, lengthErrorProfile, optimizationsObservable);
                 }
             } else {
-                if (lengthErrorProfile.profile(n > JSRuntime.MAX_SAFE_INTEGER)) {
+                if (lengthErrorProfile.profile(this, n > JSRuntime.MAX_SAFE_INTEGER)) {
                     errorBranch.enter();
                     throwLengthError();
                 }
@@ -1529,19 +1531,22 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return n;
         }
 
-        private long concatSpreadable(Object retObj, long n, Object elObj, long len2, final ConditionProfile hasOneElement) {
-            if (lengthErrorProfile.profile((n + len2) > JSRuntime.MAX_SAFE_INTEGER)) {
+        private long concatSpreadable(Object retObj, long n, Object elObj, long len2,
+                        InlinedConditionProfile hasOneElement,
+                        InlinedConditionProfile lengthErrorProfile,
+                        InlinedConditionProfile optimizationsObservable) {
+            if (lengthErrorProfile.profile(this, (n + len2) > JSRuntime.MAX_SAFE_INTEGER)) {
                 errorBranch.enter();
                 throwLengthError();
             }
-            if (optimizationsObservable.profile(JSProxy.isJSProxy(elObj) || !JSDynamicObject.isJSDynamicObject(elObj))) {
+            if (optimizationsObservable.profile(this, JSProxy.isJSProxy(elObj) || !JSDynamicObject.isJSDynamicObject(elObj))) {
                 // strictly to the standard implementation; traps could expose optimizations!
                 for (long k = 0; k < len2; k++) {
                     if (hasProperty(elObj, k)) {
                         writeOwn(retObj, n + k, read(elObj, k));
                     }
                 }
-            } else if (hasOneElement.profile(len2 == 1)) {
+            } else if (hasOneElement.profile(this, len2 == 1)) {
                 // fastpath for 1-element entries
                 if (hasProperty(elObj, 0)) {
                     writeOwn(retObj, n, read(elObj, 0));
@@ -1557,11 +1562,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return n + len2;
         }
 
-        // ES2015, 22.1.3.1.1
         private boolean isConcatSpreadable(Object el) {
-            if (el instanceof JSObject) {
-                JSObject obj = (JSObject) el;
-                Object spreadable = getSpreadableProperty(obj);
+            if (el instanceof JSObject obj) {
+                Object spreadable = getSpreadableNode.getValue(obj);
                 if (spreadable != Undefined.instance) {
                     return toBoolean(spreadable);
                 }
@@ -1575,14 +1578,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 isArrayNode = insert(JSIsArrayNode.createIsArrayLike());
             }
             return isArrayNode.execute(object);
-        }
-
-        private Object getSpreadableProperty(Object obj) {
-            if (getSpreadableNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getSpreadableNode = insert(PropertyGetNode.create(Symbol.SYMBOL_IS_CONCAT_SPREADABLE, false, getContext()));
-            }
-            return getSpreadableNode.getValue(obj);
         }
 
         private long firstElementIndex(JSDynamicObject target, long length) {
