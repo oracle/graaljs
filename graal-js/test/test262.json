@@ -2080,62 +2080,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/canonicalize-era-codes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/remapping-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/with/gregorian-mutually-exclusive-fields.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/from/canonicalize-era-codes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/argument-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/calendar-not-supporting-eras.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/canonicalize-era-codes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-gregory.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-hebrew.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/from/remapping-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/with/minimum-valid-year-month.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/construct-non-utc-non-iso.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/calendar-not-supporting-eras.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/canonicalize-era-codes.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
     "filePath" : "language/comments/S7.4_A5.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -2213,97 +2157,17 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months-chinese.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months-hebrew.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/hebrew-leap-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
     "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-rgsa.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
+    "ecmaVersion" : {
+      "minVersion" : 17
+    },
+    "comment" : "Expects islamic-rgsa calendar to be unsupported"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-09-02"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/japanese-before-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-08-09"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/japanese-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-buddhist.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-chinese.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-coptic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-dangi.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-ethioaa.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-ethiopic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-gregory.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-hebrew.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-indian.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-civil.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-tbla.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamic-umalqura.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-islamicc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-japanese.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-persian.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
-  }, {
-    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars-roc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-05-08"
+    "ecmaVersion" : {
+      "minVersion" : 17
+    },
+    "comment" : "Expects islamic calendar to be unsupported"
   }, {
     "filePath" : "staging/sm/Array/from-iterator-close.js",
     "status" : "FAIL",
@@ -2460,23 +2324,15 @@
   }, {
     "filePath" : "staging/sm/Temporal/PlainDate/from-constrain-hebrew.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
+    "comment" : "The test and ICU4J do not agree on the length of Kislev in year 0 (i.e. on Rosh Hashanah postponement rules)"
   }, {
     "filePath" : "staging/sm/Temporal/PlainDate/from-islamic-umalqura.js",
     "status" : "FAIL",
     "comment" : "Invalid test? (expects RangeError for an unclear reason)"
   }, {
-    "filePath" : "staging/sm/Temporal/PlainDate/non-positive-era-year.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
-  }, {
     "filePath" : "staging/sm/Temporal/PlainMonthDay/from-chinese-leap-month-uncommon.js",
     "status" : "SKIP",
     "comment" : "ICU4J seems unable to find some uncommon leap months"
-  }, {
-    "filePath" : "staging/sm/Temporal/ZonedDateTime/zones-and-links.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-01-23"
   }, {
     "filePath" : "staging/sm/TypedArray/prototype-constructor-identity.js",
     "ecmaVersion" : {
