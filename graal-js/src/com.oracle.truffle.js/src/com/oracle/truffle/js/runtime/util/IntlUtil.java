@@ -1112,6 +1112,11 @@ public final class IntlUtil {
     public static Calendar getCalendar(TruffleString calendarID, int year, int month, int day) {
         Calendar cal = getCalendar(calendarID);
         cal.setTimeInMillis(JSDate.MS_PER_DAY * JSDate.isoDateToEpochDays(year, month - 1, day));
+        if (cal instanceof ChineseCalendar) {
+            // Force initialization of fields, ChineseCalendar may return
+            // incorrect results otherwise.
+            cal.get(Calendar.DAY_OF_MONTH);
+        }
         return cal;
     }
 
