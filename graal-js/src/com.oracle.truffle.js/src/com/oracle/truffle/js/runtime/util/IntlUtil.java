@@ -1138,6 +1138,15 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static int getCalendarFieldMax(Calendar cal, int field) {
+        if (field == Calendar.DAY_OF_MONTH && cal instanceof EthiopicCalendar etCal && etCal.isAmeteAlemEra()) {
+            int month = cal.get(Calendar.ORDINAL_MONTH);
+            if (month == 12) {
+                int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
+                return (Math.floorMod(extendedYear, 4) / 3) + 5;
+            } else {
+                return 30;
+            }
+        }
         return cal.getActualMaximum(field);
     }
 
