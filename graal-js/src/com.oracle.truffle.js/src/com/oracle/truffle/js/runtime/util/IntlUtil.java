@@ -63,14 +63,17 @@ import org.graalvm.shadowed.com.ibm.icu.text.Collator;
 import org.graalvm.shadowed.com.ibm.icu.text.CurrencyMetaInfo;
 import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
+import org.graalvm.shadowed.com.ibm.icu.util.BuddhistCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 import org.graalvm.shadowed.com.ibm.icu.util.ChineseCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.EthiopicCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.HebrewCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.IndianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.IslamicCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.JapaneseCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.PersianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TaiwanCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 
@@ -1187,18 +1190,36 @@ public final class IntlUtil {
     // Chinese standard calendar uses the epoch of the Gregorian calendar.
     // This constant is the offset between them.
     private static final int CHINESE_EPOCH_OFFSET = 2637;
+    private static final int TAIWAN_EPOCH_OFFSET = 1911;
+    private static final int BUDDHIST_EPOCH_OFFSET = -543;
+
+    private static int getEpochOffset(Calendar cal) {
+        if (cal instanceof ChineseCalendar) {
+            return CHINESE_EPOCH_OFFSET;
+        } else if (cal instanceof TaiwanCalendar) {
+            return TAIWAN_EPOCH_OFFSET;
+        } else if (cal instanceof BuddhistCalendar) {
+            return BUDDHIST_EPOCH_OFFSET;
+        }
+        return 0;
+    }
 
     @TruffleBoundary
     public static int getExtendedYear(Calendar cal) {
+        if (cal instanceof EthiopicCalendar ethiopicCal && ethiopicCal.isAmeteAlemEra()) {
+            return cal.get(Calendar.YEAR);
+        }
         int year = cal.get(Calendar.EXTENDED_YEAR);
-        int offset = (cal instanceof ChineseCalendar) ? CHINESE_EPOCH_OFFSET : 0;
-        return year - offset;
+        return year - getEpochOffset(cal);
     }
 
     @TruffleBoundary
     public static void setExtendedYear(Calendar cal, int year) {
-        int offset = (cal instanceof ChineseCalendar) ? CHINESE_EPOCH_OFFSET : 0;
-        cal.set(Calendar.EXTENDED_YEAR, year + offset);
+        if (cal instanceof EthiopicCalendar ethiopicCal && ethiopicCal.isAmeteAlemEra()) {
+            cal.set(Calendar.YEAR, year);
+        } else {
+            cal.set(Calendar.EXTENDED_YEAR, year + getEpochOffset(cal));
+        }
     }
 
     @TruffleBoundary
