@@ -2782,9 +2782,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
         @Child private InteropLibrary interopNode;
         @Child private ImportValueNode importValueNode;
-        private final ConditionProfile isSparse = ConditionProfile.create();
-        private final BranchProfile hasCompareFnBranch = BranchProfile.create();
-        private final BranchProfile noCompareFnBranch = BranchProfile.create();
 
         public JSArraySortNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, false);
@@ -2793,7 +2790,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isJSFastArray(thisObj)"}, assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
         protected JSArrayObject sortArray(JSArrayObject thisObj, Object compare,
                         @Cached JSArrayToDenseObjectArrayNode arrayToObjectArrayNode,
-                        @Cached("create(getContext(), true)") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
+                        @Cached("create(getContext(), true)") JSArrayDeleteRangeNode arrayDeleteRangeNode,
+                        @Shared @Cached InlinedConditionProfile isSparse,
+                        @Shared @Cached InlinedConditionProfile compareProfile) {
             checkCompareCallableOrUndefined(compare);
             long len = getLength(thisObj);
 
@@ -2805,9 +2804,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             ScriptArray scriptArray = arrayGetArrayType(thisObj);
             Object[] array = arrayToObjectArrayNode.executeObjectArray(thisObj, scriptArray, len);
 
-            sortAndWriteBack(array, thisObj, compare);
+            sortAndWriteBack(array, thisObj, compare, compareProfile);
 
-            if (isSparse.profile(array.length < len)) {
+            if (isSparse.profile(this, array.length < len)) {
                 arrayDeleteRangeNode.execute(thisObj, scriptArray, array.length, len);
             }
             return thisObj;
@@ -2823,18 +2822,23 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected final Object sort(Object thisObj, final Object comparefn,
-                        @Cached InlinedConditionProfile isJSObject,
-                        @Cached InlinedBranchProfile growProfile) {
+                        @Exclusive @Cached InlinedConditionProfile isJSObject,
+                        @Exclusive @Cached InlinedBranchProfile growProfile,
+                        @Shared @Cached InlinedConditionProfile isSparse,
+                        @Shared @Cached InlinedConditionProfile compareProfile) {
             checkCompareCallableOrUndefined(comparefn);
             Object obj = toObject(thisObj);
             if (isJSObject.profile(this, obj instanceof JSObject)) {
-                return sortJSObject(comparefn, (JSObject) obj, growProfile);
+                return sortJSObject(comparefn, (JSObject) obj, growProfile, isSparse, compareProfile);
             } else {
-                return sortForeignObject(comparefn, obj);
+                return sortForeignObject(comparefn, obj, compareProfile);
             }
         }
 
-        private JSDynamicObject sortJSObject(Object comparefn, JSObject thisJSObj, InlinedBranchProfile growProfile) {
+        private JSDynamicObject sortJSObject(Object comparefn, JSObject thisJSObj,
+                        InlinedBranchProfile growProfile,
+                        InlinedConditionProfile isSparse,
+                        InlinedConditionProfile compareProfile) {
             long len = getLength(thisJSObj);
 
             if (len == 0) {
@@ -2844,15 +2848,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             Object[] array = jsobjectToArray(thisJSObj, len, true, this, growProfile);
 
-            sortAndWriteBack(array, thisJSObj, comparefn);
+            sortAndWriteBack(array, thisJSObj, comparefn, compareProfile);
 
-            if (isSparse.profile(array.length < len)) {
+            if (isSparse.profile(this, array.length < len)) {
                 deleteGenericElements(thisJSObj, array.length, len);
             }
             return thisJSObj;
         }
 
-        public Object sortForeignObject(Object comparefn, Object thisObj) {
+        public Object sortForeignObject(Object comparefn, Object thisObj, InlinedConditionProfile compareProfile) {
             assert JSGuards.isForeignObject(thisObj);
             long len = getLength(thisObj);
 
@@ -2868,13 +2872,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             Object[] array = foreignArrayToObjectArray(thisObj, (int) len);
 
-            sortAndWriteBack(array, thisObj, comparefn);
+            sortAndWriteBack(array, thisObj, comparefn, compareProfile);
 
             return thisObj;
         }
 
-        private void sortAndWriteBack(Object[] array, Object thisObj, Object comparefn) {
-            Comparator<Object> comparator = getComparator(thisObj, comparefn);
+        private void sortAndWriteBack(Object[] array, Object thisObj, Object comparefn, InlinedConditionProfile compareProfile) {
+            Comparator<Object> comparator = getComparator(thisObj, comparefn, compareProfile);
             Boundaries.arraySort(array, comparator);
 
             for (int i = 0; i < array.length; i++) {
@@ -2911,13 +2915,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return array;
         }
 
-        private Comparator<Object> getComparator(Object thisObj, Object compare) {
-            if (compare == Undefined.instance) {
-                noCompareFnBranch.enter();
+        private Comparator<Object> getComparator(Object thisObj, Object compare, InlinedConditionProfile compareProfile) {
+            if (compareProfile.profile(this, compare == Undefined.instance)) {
                 return getDefaultComparator(thisObj);
             } else {
-                assert isCallable(compare);
-                hasCompareFnBranch.enter();
+                assert JSRuntime.isCallable(compare);
                 return new SortComparator(compare);
             }
         }
