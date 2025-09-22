@@ -53,7 +53,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewGetNodeGen;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewGetterNodeGen;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewSetNodeGen;
@@ -69,7 +68,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -80,13 +78,9 @@ import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DataViewPrototypeBuiltins.DataViewPrototype> {
+public final class DataViewPrototypeBuiltins {
 
-    public static final JSBuiltinsContainer BUILTINS = new DataViewPrototypeBuiltins();
-
-    protected DataViewPrototypeBuiltins() {
-        super(JSDataView.PROTOTYPE_NAME, DataViewPrototype.class);
-    }
+    public static final JSBuiltinsContainer BUILTINS = JSBuiltinsContainer.fromEnum(JSDataView.PROTOTYPE_NAME, DataViewPrototype.class);
 
     public enum DataViewPrototype implements BuiltinEnum<DataViewPrototype> {
         getBigInt64(1),
@@ -140,41 +134,35 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }
-    }
 
-    @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, DataViewPrototype builtinEnum) {
-        switch (builtinEnum) {
-            case getBigInt64:
-            case getBigUint64:
-            case getFloat16:
-            case getFloat32:
-            case getFloat64:
-            case getInt16:
-            case getInt32:
-            case getInt8:
-            case getUint16:
-            case getUint32:
-            case getUint8:
-                return DataViewGetNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-            case setBigInt64:
-            case setBigUint64:
-            case setFloat16:
-            case setFloat32:
-            case setFloat64:
-            case setInt16:
-            case setInt32:
-            case setInt8:
-            case setUint16:
-            case setUint32:
-            case setUint8:
-                return DataViewSetNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
-            case buffer:
-            case byteLength:
-            case byteOffset:
-                return DataViewGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
+        TypedArrayFactory getTypedArrayFactory() {
+            return switch (this) {
+                case getInt8, setInt8 -> TypedArrayFactory.Int8Array;
+                case getUint8, setUint8 -> TypedArrayFactory.Uint8Array;
+                case getInt16, setInt16 -> TypedArrayFactory.Int16Array;
+                case getUint16, setUint16 -> TypedArrayFactory.Uint16Array;
+                case getInt32, setInt32 -> TypedArrayFactory.Int32Array;
+                case getUint32, setUint32 -> TypedArrayFactory.Uint32Array;
+                case getFloat16, setFloat16 -> TypedArrayFactory.Float16Array;
+                case getFloat32, setFloat32 -> TypedArrayFactory.Float32Array;
+                case getFloat64, setFloat64 -> TypedArrayFactory.Float64Array;
+                case getBigInt64, setBigInt64 -> TypedArrayFactory.BigInt64Array;
+                case getBigUint64, setBigUint64 -> TypedArrayFactory.BigUint64Array;
+                default -> throw Errors.shouldNotReachHereUnexpectedValue(this);
+            };
         }
-        return null;
+
+        @Override
+        public Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
+            return switch (this) {
+                case getBigInt64, getBigUint64, getFloat16, getFloat32, getFloat64, getInt8, getInt16, getInt32, getUint8, getUint16, getUint32 ->
+                    DataViewGetNodeGen.create(context, builtin, getTypedArrayFactory(), args().withThis().fixedArgs(2).createArgumentNodes(context));
+                case setBigInt64, setBigUint64, setFloat16, setFloat32, setFloat64, setInt8, setInt16, setInt32, setUint8, setUint16, setUint32 ->
+                    DataViewSetNodeGen.create(context, builtin, getTypedArrayFactory(), args().withThis().fixedArgs(3).createArgumentNodes(context));
+                case buffer, byteLength, byteOffset ->
+                    DataViewGetterNodeGen.create(context, builtin, this, args().withThis().createArgumentNodes(context));
+            };
+        }
     }
 
     static void checkViewOutOfBounds(JSContext context, JSDataViewObject dataView, InlinedBranchProfile errorBranch, Node node) {
@@ -203,19 +191,9 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     public abstract static class DataViewAccessNode extends JSBuiltinNode {
         protected final TypedArrayFactory factory;
 
-        public DataViewAccessNode(JSContext context, JSBuiltin builtin) {
+        public DataViewAccessNode(JSContext context, JSBuiltin builtin, TypedArrayFactory typedArrayFactory) {
             super(context, builtin);
-            // string doesn't escape
-            this.factory = typedArrayFactoryFromType(Strings.lazySubstring(builtin.getName(), 3));
-        }
-
-        private static TypedArrayFactory typedArrayFactoryFromType(TruffleString type) {
-            for (TypedArrayFactory factory : TypedArray.factories()) {
-                if (Strings.startsWith(factory.getName(), type)) {
-                    return factory;
-                }
-            }
-            throw new IllegalArgumentException(Strings.toJavaString(type));
+            this.factory = typedArrayFactory;
         }
 
         protected final int getBufferIndex(JSDataViewObject dataView, long getIndex,
@@ -236,8 +214,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public abstract static class DataViewGetNode extends DataViewAccessNode {
 
-        public DataViewGetNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
+        public DataViewGetNode(JSContext context, JSBuiltin builtin, TypedArrayFactory typedArrayFactory) {
+            super(context, builtin, typedArrayFactory);
         }
 
         @Specialization
@@ -306,8 +284,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private JSToDoubleNode toDoubleNode;
         @Child private JSToInt32Node toInt32Node;
 
-        public DataViewSetNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
+        public DataViewSetNode(JSContext context, JSBuiltin builtin, TypedArrayFactory typedArrayFactory) {
+            super(context, builtin, typedArrayFactory);
             if (factory.isBigInt()) {
                 this.toBigIntNode = JSToBigIntNode.create();
             } else if (factory.isFloat()) {
