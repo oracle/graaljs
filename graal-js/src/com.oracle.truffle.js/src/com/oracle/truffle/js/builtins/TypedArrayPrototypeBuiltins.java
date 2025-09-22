@@ -363,7 +363,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected ArraySpeciesConstructorNode getArraySpeciesConstructorNode() {
             if (arraySpeciesCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                arraySpeciesCreateNode = insert(ArraySpeciesConstructorNode.create(getContext(), true));
+                arraySpeciesCreateNode = insert(ArraySpeciesConstructorNode.create(true));
             }
             return arraySpeciesCreateNode;
         }

@@ -92,6 +92,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.array.SpeciesConstructorNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
@@ -548,7 +549,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertySetNode setLastIndexNode;
         @Child private WriteElementNode writeNode;
         @Child private ReadElementNode readNode;
-        @Child private ArraySpeciesConstructorNode arraySpeciesCreateNode;
 
         public RegExpPrototypeSymbolOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -568,14 +568,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 writeNode = insert(WriteElementNode.create(getContext(), true, true));
             }
             writeNode.executeWithTargetAndIndexAndValue(target, index, value);
-        }
-
-        protected final ArraySpeciesConstructorNode getArraySpeciesConstructorNode() {
-            if (arraySpeciesCreateNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                arraySpeciesCreateNode = insert(ArraySpeciesConstructorNode.create(getContext(), false));
-            }
-            return arraySpeciesCreateNode;
         }
 
         private void initLastIndexNode() {
@@ -633,9 +625,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private IsJSObjectNode isObjectNode;
         @Child private JSToStringNode toString1Node;
         @Child private IsPristineObjectNode isPristineObjectNode;
+        @Child private SpeciesConstructorNode speciesConstructorNode;
 
         JSRegExpSplitNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.speciesConstructorNode = SpeciesConstructorNode.create();
         }
 
         @Specialization
@@ -703,8 +697,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private Object getSpeciesConstructor(JSDynamicObject rx) {
-            JSDynamicObject regexpConstructor = getRealm().getRegExpConstructor();
-            return getArraySpeciesConstructorNode().speciesConstructor(rx, regexpConstructor);
+            var regexpConstructor = getRealm().getRegExpConstructor();
+            return speciesConstructorNode.execute(rx, regexpConstructor);
         }
 
         /**
@@ -1783,7 +1777,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected final Object matchAll(JSDynamicObject regex, Object stringObj,
                         @Bind Node node,
                         @Cached JSToStringNode toStringNodeForInput,
-                        @Cached("create(getContext(), false)") ArraySpeciesConstructorNode speciesConstructNode,
+                        @Cached("create(false)") ArraySpeciesConstructorNode speciesConstructNode,
                         @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
                         @Cached JSToStringNode toStringNodeForFlags,
                         @Cached("create(LAST_INDEX, getContext())") PropertyGetNode getLastIndexNode,
@@ -1795,7 +1789,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
                         @Cached TruffleString.CharIndexOfAnyCharUTF16Node stringIndexOfAnyNode) {
             Object string = toStringNodeForInput.executeString(stringObj);
-            JSDynamicObject regExpConstructor = getRealm().getRegExpConstructor();
+            var regExpConstructor = getRealm().getRegExpConstructor();
             Object constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
             TruffleString flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
             Object matcher = speciesConstructNode.construct(constructor, regex, flags);

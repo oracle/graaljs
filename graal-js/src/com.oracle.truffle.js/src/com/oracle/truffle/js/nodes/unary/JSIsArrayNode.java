@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.unary;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -104,10 +105,12 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
         return interop.hasArrayElements(object);
     }
 
+    @NeverDefault
     public static JSIsArrayNode createIsArrayLike() {
         return JSIsArrayNodeGen.create(false);
     }
 
+    @NeverDefault
     public static JSIsArrayNode createIsArray() {
         return JSIsArrayNodeGen.create(true);
     }

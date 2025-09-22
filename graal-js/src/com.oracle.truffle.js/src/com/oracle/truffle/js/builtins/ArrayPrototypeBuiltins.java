@@ -73,7 +73,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
@@ -130,6 +129,7 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
+import com.oracle.truffle.js.nodes.array.ArraySpeciesCreateNode;
 import com.oracle.truffle.js.nodes.array.JSArrayDeleteRangeNode;
 import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
@@ -138,6 +138,7 @@ import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayToDenseObjectArrayNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
+import com.oracle.truffle.js.nodes.array.SpeciesConstructorNode;
 import com.oracle.truffle.js.nodes.array.TestArrayNode;
 import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
@@ -157,7 +158,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -434,7 +434,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final ArraySpeciesConstructorNode getArraySpeciesConstructorNode() {
             if (arraySpeciesCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                arraySpeciesCreateNode = insert(ArraySpeciesConstructorNode.create(getContext(), isTypedArrayImplementation));
+                arraySpeciesCreateNode = insert(ArraySpeciesConstructorNode.create(isTypedArrayImplementation));
             }
             return arraySpeciesCreateNode;
         }
@@ -470,31 +470,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public static class ArraySpeciesConstructorNode extends JavaScriptBaseNode {
         private final boolean isTypedArrayImplementation; // for reusing array code on TypedArrays
         @Child private JSFunctionCallNode constructorCall;
-        @Child private PropertyGetNode getConstructorNode;
-        @Child private PropertyGetNode getSpeciesNode;
-        @Child private JSIsArrayNode isArrayNode;
-        @Child private IsConstructorNode isConstructorNode = IsConstructorNode.create();
-        @Child private ArrayCreateNode arrayCreateNode;
+        @Child private ArraySpeciesCreateNode arraySpeciesCreate;
+        @Child private SpeciesConstructorNode speciesConstructor;
         @Child private TypedArrayLengthNode typedArrayLengthNode;
         private final BranchProfile errorBranch = BranchProfile.create();
-        private final BranchProfile arraySpeciesIsArray = BranchProfile.create();
-        private final BranchProfile arraySpeciesGetSymbol = BranchProfile.create();
-        private final BranchProfile differentRealm = BranchProfile.create();
-        private final BranchProfile defaultConstructorBranch = BranchProfile.create();
-        private final ConditionProfile arraySpeciesEmpty = ConditionProfile.create();
-        private final JSContext context;
 
-        protected ArraySpeciesConstructorNode(JSContext context, boolean isTypedArrayImplementation) {
-            this.context = context;
+        protected ArraySpeciesConstructorNode(boolean isTypedArrayImplementation) {
             this.isTypedArrayImplementation = isTypedArrayImplementation;
-            this.isArrayNode = JSIsArrayNode.createIsArray();
             this.constructorCall = JSFunctionCallNode.createNew();
             this.typedArrayLengthNode = isTypedArrayImplementation ? TypedArrayLengthNode.create() : null;
         }
 
         @NeverDefault
-        public static ArraySpeciesConstructorNode create(JSContext context, boolean isTypedArrayImplementation) {
-            return new ArraySpeciesConstructorNode(context, isTypedArrayImplementation);
+        public static ArraySpeciesConstructorNode create(boolean isTypedArrayImplementation) {
+            return new ArraySpeciesConstructorNode(isTypedArrayImplementation);
         }
 
         protected final Object createEmptyContainer(Object thisObj, long size) {
@@ -522,11 +511,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         public final JSTypedArrayObject typedArrayCreate(Object constructor, Object... args) {
             assert isTypedArrayImplementation;
             Object newObject = construct(constructor, args);
-            if (!(newObject instanceof JSTypedArrayObject)) {
+            if (!(newObject instanceof JSTypedArrayObject newTypedArray)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferViewExpected();
             }
-            JSTypedArrayObject newTypedArray = (JSTypedArrayObject) newObject;
+            JSContext context = getJSContext();
             if (JSArrayBufferView.isOutOfBounds(newTypedArray, context)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorOutOfBoundsTypedArray();
@@ -548,58 +537,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
          * ES6, 9.4.2.3 ArraySpeciesCreate(originalArray, length).
          */
         protected final Object arraySpeciesCreate(Object originalArray, long length) {
-            Object ctor = Undefined.instance;
-            if (isArray(originalArray)) {
-                arraySpeciesIsArray.enter();
-                ctor = getConstructorProperty(originalArray);
-                if (ctor instanceof JSObject) {
-                    JSObject ctorObj = (JSObject) ctor;
-                    if (ctorObj instanceof JSFunctionObject ctorFunction && JSFunction.isConstructor(ctorFunction)) {
-                        JSRealm thisRealm = getRealm();
-                        JSRealm ctorRealm = JSFunction.getRealm(ctorFunction);
-                        if (thisRealm != ctorRealm) {
-                            differentRealm.enter();
-                            if (ctorRealm.getArrayConstructor() == ctor) {
-                                /*
-                                 * If originalArray was created using the standard built-in Array
-                                 * constructor for a realm that is not the realm of the running
-                                 * execution context, then a new Array is created using the realm of
-                                 * the running execution context.
-                                 */
-                                return arrayCreate(length);
-                            }
-                        }
-                    }
-                    arraySpeciesGetSymbol.enter();
-                    ctor = getSpeciesProperty(ctor);
-                    ctor = ctor == Null.instance ? Undefined.instance : ctor;
-                }
-            }
-            if (arraySpeciesEmpty.profile(ctor == Undefined.instance)) {
-                return arrayCreate(length);
-            }
-            if (!isConstructorNode.executeBoolean(ctor)) {
-                errorBranch.enter();
-                throw Errors.createTypeErrorNotAConstructor(ctor, context);
-            }
-            return construct(ctor, JSRuntime.longToIntOrDouble(length));
-        }
-
-        protected final boolean isArray(Object thisObj) {
-            return isArrayNode.execute(thisObj);
-        }
-
-        private JSArrayObject arrayCreate(long length) {
-            if (arrayCreateNode == null) {
+            if (arraySpeciesCreate == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                arrayCreateNode = insert(ArrayCreateNode.create(context));
+                arraySpeciesCreate = insert(ArraySpeciesCreateNode.create());
             }
-            return arrayCreateNode.execute(length);
+            return arraySpeciesCreate.execute(originalArray, length);
         }
 
         protected Object construct(Object constructor, Object... userArgs) {
-            Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, userArgs.length);
-            System.arraycopy(userArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, userArgs.length);
+            Object[] args = JSArguments.create(JSFunction.CONSTRUCT, constructor, userArgs);
             return constructorCall.executeCall(args);
         }
 
@@ -608,45 +554,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return realm.getArrayBufferViewConstructor(arrayType.getFactory());
         }
 
-        /**
-         * Implement 7.3.20 SpeciesConstructor.
-         */
-        protected final Object speciesConstructor(JSDynamicObject thisObj, JSDynamicObject defaultConstructor) {
-            Object c = getConstructorProperty(thisObj);
-            if (c == Undefined.instance) {
-                defaultConstructorBranch.enter();
-                return defaultConstructor;
-            }
-            if (!(c instanceof JSObject)) {
-                errorBranch.enter();
-                throw Errors.createTypeErrorNotAnObject(c);
-            }
-            Object speciesConstructor = getSpeciesProperty(c);
-            if (speciesConstructor == Undefined.instance || speciesConstructor == Null.instance) {
-                defaultConstructorBranch.enter();
-                return defaultConstructor;
-            }
-            if (!isConstructorNode.executeBoolean(speciesConstructor)) {
-                errorBranch.enter();
-                throw Errors.createTypeErrorNotAConstructor(speciesConstructor, context);
-            }
-            return speciesConstructor;
-        }
-
-        private Object getConstructorProperty(Object obj) {
-            if (getConstructorNode == null) {
+        protected final Object speciesConstructor(JSDynamicObject thisObj, JSFunctionObject defaultConstructor) {
+            if (speciesConstructor == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getConstructorNode = insert(PropertyGetNode.create(JSObject.CONSTRUCTOR, false, context));
+                speciesConstructor = insert(SpeciesConstructorNode.create());
             }
-            return getConstructorNode.getValue(obj);
-        }
-
-        private Object getSpeciesProperty(Object obj) {
-            if (getSpeciesNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getSpeciesNode = insert(PropertyGetNode.create(Symbol.SYMBOL_SPECIES, false, context));
-            }
-            return getSpeciesNode.getValue(obj);
+            return speciesConstructor.execute(thisObj, defaultConstructor);
         }
     }
 
@@ -3342,7 +3255,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throwLengthError();
             }
 
-            JSArrayObject resObj = getArraySpeciesConstructorNode().arrayCreate(newLen);
+            JSArrayObject resObj = arrayCreate(newLen);
 
             if (JSDynamicObject.isJSDynamicObject(thisObj)) {
                 objectBranch.enter(this);
