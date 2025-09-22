@@ -1244,6 +1244,15 @@ public final class IntlUtil {
     }
 
     @TruffleBoundary
+    public static void setOrdinalMonth(Calendar cal, int month) {
+        // Workaround for Hebrew/Chinese calendar's behaviour for plain
+        // cal.set(Calendar.ORDINAL_MONTH, month);
+        int oldValue = cal.get(Calendar.ORDINAL_MONTH);
+        cal.roll(Calendar.ORDINAL_MONTH, month - oldValue);
+        cal.get(Calendar.ORDINAL_MONTH);
+    }
+
+    @TruffleBoundary
     private static TruffleString getEraAsString(Calendar cal) {
         int era = cal.get(Calendar.ERA);
         if (cal instanceof JapaneseCalendar) {
