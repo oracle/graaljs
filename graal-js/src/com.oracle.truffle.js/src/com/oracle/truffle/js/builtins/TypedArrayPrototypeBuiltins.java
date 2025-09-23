@@ -325,11 +325,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          */
         @Specialization
         protected JSTypedArrayObject subarray(JSTypedArrayObject thisObj, Object start, Object end,
+                        @Cached TypedArrayLengthNode typedArrayLength,
                         @Cached InlinedConditionProfile negativeBegin,
                         @Cached InlinedConditionProfile negativeEnd,
                         @Cached InlinedConditionProfile smallerEnd) {
             TypedArray array = typedArrayGetArrayType(thisObj);
-            long srcLength = JSArrayBufferView.isOutOfBounds(thisObj, getContext()) ? 0 : array.length(thisObj);
+            long srcLength = typedArrayLength.execute(this, thisObj, getContext());
             long relativeStart = toInteger(start);
             long startIndex = negativeBegin.profile(this, relativeStart < 0) ? Math.max(srcLength + relativeStart, 0) : Math.min(relativeStart, srcLength);
             int srcByteOffset = thisObj.getByteOffset();
