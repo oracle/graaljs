@@ -44,6 +44,7 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -242,37 +243,50 @@ public final class DataViewPrototypeBuiltins {
             throw Errors.createTypeErrorNotADataView();
         }
 
+        @SuppressWarnings("unused")
         @GenerateInline
         @GenerateCached(false)
         @ImportStatic({JSConfig.class})
         public abstract static class GetBufferElementNode extends JavaScriptBaseNode {
             protected abstract Object execute(Node node, JSArrayBufferObject buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory);
 
-            @Specialization
-            static Object doHeapArrayBuffer(JSArrayBufferObject.Heap buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory) {
-                assert !JSArrayBuffer.isJSInteropArrayBuffer(buffer) && !JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
-                CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_ARRAY, true, false);
-                CompilerAsserts.partialEvaluationConstant(strategy);
-                return strategy.getBufferElement(buffer, bufferIndex, littleEndian, null);
+            @Specialization(guards = "littleEndian")
+            static Object doHeapArrayBufferLE(JSArrayBufferObject.Heap buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory) {
+                return getBufferElement(buffer, bufferIndex, true, factory, TypedArray.BUFFER_TYPE_ARRAY, null);
             }
 
-            @Specialization
-            static Object doDirectOrSharedArrayBuffer(JSArrayBufferObject.DirectBase buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory) {
-                assert !JSArrayBuffer.isJSInteropArrayBuffer(buffer) && JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
-                CompilerAsserts.partialEvaluationConstant(factory);
+            @Specialization(guards = "!littleEndian")
+            static Object doHeapArrayBufferBE(JSArrayBufferObject.Heap buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory) {
+                return getBufferElement(buffer, bufferIndex, false, factory, TypedArray.BUFFER_TYPE_ARRAY, null);
+            }
+
+            @Specialization(guards = "littleEndian")
+            static Object doDirectOrSharedArrayBufferLE(JSArrayBufferObject.DirectBase buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory) {
                 // It does not matter whether we use BUFFER_TYPE_DIRECT or BUFFER_TYPE_SHARED here
-                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_DIRECT, true, false);
-                CompilerAsserts.partialEvaluationConstant(strategy);
-                return strategy.getBufferElement(buffer, bufferIndex, littleEndian, null);
+                return getBufferElement(buffer, bufferIndex, true, factory, TypedArray.BUFFER_TYPE_DIRECT, null);
             }
 
-            @Specialization
-            static Object doInteropBuffer(JSArrayBufferObject.Interop buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory,
-                            @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-                assert JSArrayBuffer.isJSInteropArrayBuffer(buffer) && !JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
+            @Specialization(guards = "!littleEndian")
+            static Object doDirectOrSharedArrayBufferBE(JSArrayBufferObject.DirectBase buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory) {
+                // It does not matter whether we use BUFFER_TYPE_DIRECT or BUFFER_TYPE_SHARED here
+                return getBufferElement(buffer, bufferIndex, false, factory, TypedArray.BUFFER_TYPE_DIRECT, null);
+            }
+
+            @Specialization(guards = "littleEndian")
+            static Object doInteropBufferLE(JSArrayBufferObject.Interop buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory,
+                            @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+                return getBufferElement(buffer, bufferIndex, true, factory, TypedArray.BUFFER_TYPE_INTEROP, interop);
+            }
+
+            @Specialization(guards = "!littleEndian")
+            static Object doInteropBufferBE(JSArrayBufferObject.Interop buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory,
+                            @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+                return getBufferElement(buffer, bufferIndex, false, factory, TypedArray.BUFFER_TYPE_INTEROP, interop);
+            }
+
+            private static Object getBufferElement(JSArrayBufferObject buffer, int bufferIndex, boolean littleEndian, TypedArrayFactory factory, byte bufferType, InteropLibrary interop) {
                 CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_INTEROP, true, false);
+                TypedArray strategy = factory.createArrayType(bufferType, true, false);
                 CompilerAsserts.partialEvaluationConstant(strategy);
                 return strategy.getBufferElement(buffer, bufferIndex, littleEndian, interop);
             }
@@ -325,37 +339,50 @@ public final class DataViewPrototypeBuiltins {
             throw Errors.createTypeErrorNotADataView();
         }
 
+        @SuppressWarnings("unused")
         @GenerateInline
         @GenerateCached(false)
         @ImportStatic({JSConfig.class})
         public abstract static class SetBufferElementNode extends JavaScriptBaseNode {
             protected abstract void execute(Node node, JSArrayBufferObject buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory);
 
-            @Specialization
-            static void doHeapArrayBuffer(JSArrayBufferObject.Heap buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory) {
-                assert !JSArrayBuffer.isJSInteropArrayBuffer(buffer) && !JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
-                CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_ARRAY, true, false);
-                CompilerAsserts.partialEvaluationConstant(strategy);
-                strategy.setBufferElement(buffer, bufferIndex, littleEndian, value, null);
+            @Specialization(guards = "littleEndian")
+            static void doHeapArrayBufferLE(JSArrayBufferObject.Heap buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory) {
+                setBufferElement(buffer, bufferIndex, true, value, factory, TypedArray.BUFFER_TYPE_ARRAY, null);
             }
 
-            @Specialization
-            static void doDirectOrSharedArrayBuffer(JSArrayBufferObject.DirectBase buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory) {
-                assert !JSArrayBuffer.isJSInteropArrayBuffer(buffer) && JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
-                CompilerAsserts.partialEvaluationConstant(factory);
+            @Specialization(guards = "!littleEndian")
+            static void doHeapArrayBufferBE(JSArrayBufferObject.Heap buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory) {
+                setBufferElement(buffer, bufferIndex, false, value, factory, TypedArray.BUFFER_TYPE_ARRAY, null);
+            }
+
+            @Specialization(guards = "littleEndian")
+            static void doDirectOrSharedArrayBufferLE(JSArrayBufferObject.DirectBase buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory) {
                 // It does not matter whether we use BUFFER_TYPE_DIRECT or BUFFER_TYPE_SHARED here
-                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_DIRECT, true, false);
-                CompilerAsserts.partialEvaluationConstant(strategy);
-                strategy.setBufferElement(buffer, bufferIndex, littleEndian, value, null);
+                setBufferElement(buffer, bufferIndex, true, value, factory, TypedArray.BUFFER_TYPE_DIRECT, null);
             }
 
-            @Specialization
-            static void doInteropBuffer(JSArrayBufferObject.Interop buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory,
-                            @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-                assert JSArrayBuffer.isJSInteropArrayBuffer(buffer) && !JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer) : buffer;
+            @Specialization(guards = "!littleEndian")
+            static void doDirectOrSharedArrayBufferBE(JSArrayBufferObject.DirectBase buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory) {
+                // It does not matter whether we use BUFFER_TYPE_DIRECT or BUFFER_TYPE_SHARED here
+                setBufferElement(buffer, bufferIndex, false, value, factory, TypedArray.BUFFER_TYPE_DIRECT, null);
+            }
+
+            @Specialization(guards = "littleEndian")
+            static void doInteropBufferLE(JSArrayBufferObject.Interop buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory,
+                            @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+                setBufferElement(buffer, bufferIndex, true, value, factory, TypedArray.BUFFER_TYPE_INTEROP, interop);
+            }
+
+            @Specialization(guards = "!littleEndian")
+            static void doInteropBufferBE(JSArrayBufferObject.Interop buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory,
+                            @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+                setBufferElement(buffer, bufferIndex, false, value, factory, TypedArray.BUFFER_TYPE_INTEROP, interop);
+            }
+
+            private static void setBufferElement(JSArrayBufferObject buffer, int bufferIndex, boolean littleEndian, Object value, TypedArrayFactory factory, byte bufferType, InteropLibrary interop) {
                 CompilerAsserts.partialEvaluationConstant(factory);
-                TypedArray strategy = factory.createArrayType(TypedArray.BUFFER_TYPE_INTEROP, true, false);
+                TypedArray strategy = factory.createArrayType(bufferType, true, false);
                 CompilerAsserts.partialEvaluationConstant(strategy);
                 strategy.setBufferElement(buffer, bufferIndex, littleEndian, value, interop);
             }
