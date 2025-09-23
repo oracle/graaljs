@@ -81,7 +81,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIndex
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayJoinNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayMapNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayReduceNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins.DataViewGetNode.GetBufferElementNode;
@@ -104,6 +103,7 @@ import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSTypedArraySortNode;
 import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
@@ -245,7 +245,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case reduceRight:
                 return JSArrayReduceNodeGen.create(context, builtin, true, false, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
             case slice:
-                return JSArraySliceNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return TypedArrayPrototypeBuiltinsFactory.TypedArraySliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case every:
                 return JSArrayEveryNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case copyWithin:
@@ -829,6 +829,81 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else {
                 setBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, value, cachedFactory);
             }
+        }
+    }
+
+    public abstract static class TypedArraySliceNode extends JSArrayOperation {
+
+        @Child private InteropLibrary getByteBufferInterop;
+
+        public TypedArraySliceNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, true);
+        }
+
+        @Specialization
+        protected Object slice(Object thisObj, Object begin, Object end,
+                        @Cached JSToIntegerAsLongNode toIntegerAsLong,
+                        @Cached CopyTypedArrayElementsNode copyTypedArrayElements,
+                        @Cached InlinedConditionProfile sizeIsZero,
+                        @Cached InlinedConditionProfile offsetProfile1,
+                        @Cached InlinedConditionProfile offsetProfile2) {
+            JSTypedArrayObject sourceTypedArray = validateTypedArray(thisObj);
+            long len = getLength(sourceTypedArray);
+            long startPos = begin != Undefined.instance ? JSRuntime.getOffset(toIntegerAsLong.executeLong(begin), len, this, offsetProfile1) : 0;
+
+            long endPos;
+            if (end == Undefined.instance) {
+                endPos = len;
+            } else {
+                endPos = JSRuntime.getOffset(toIntegerAsLong.executeLong(end), len, this, offsetProfile2);
+            }
+
+            long size = startPos <= endPos ? endPos - startPos : 0;
+            JSTypedArrayObject resultTypedArray = getArraySpeciesConstructorNode().typedArraySpeciesCreate(sourceTypedArray, JSRuntime.longToIntOrDouble(size));
+            if (sizeIsZero.profile(this, size > 0)) {
+                checkOutOfBounds(sourceTypedArray);
+                endPos = Math.min(endPos, getLength(sourceTypedArray));
+                size = startPos <= endPos ? endPos - startPos : 0;
+
+                TypedArray sourceType = sourceTypedArray.getArrayType();
+                TypedArray targetType = resultTypedArray.getArrayType();
+                JSArrayBufferObject sourceBuffer = sourceTypedArray.getArrayBuffer();
+                JSArrayBufferObject targetBuffer = resultTypedArray.getArrayBuffer();
+                int sourceElementSize = sourceType.bytesPerElement();
+                int targetElementSize = targetType.bytesPerElement();
+                int sourceByteOffset = sourceType.getOffset(sourceTypedArray);
+                int targetByteOffset = targetType.getOffset(resultTypedArray);
+                long sourceByteIndex = startPos * sourceElementSize + sourceByteOffset;
+                assert JSRuntime.longIsRepresentableAsInt(size) && JSRuntime.longIsRepresentableAsInt(sourceByteIndex);
+
+                /*
+                 * If we are able to get a ByteBuffer from the source and/or target interop buffer,
+                 * then use it directly instead of going through interop for each element.
+                 */
+                ByteBuffer sourceInteropByteBuffer = null;
+                if (sourceType.isInterop()) {
+                    sourceInteropByteBuffer = getByteBufferFromInteropBuffer(sourceBuffer);
+                }
+                ByteBuffer targetInteropByteBuffer = null;
+                if (targetType.isInterop()) {
+                    targetInteropByteBuffer = getByteBufferFromInteropBuffer(targetBuffer);
+                }
+
+                copyTypedArrayElements.execute(this, targetBuffer, sourceBuffer,
+                                targetByteOffset, (int) sourceByteIndex, (int) size,
+                                targetElementSize, sourceElementSize, targetType, sourceType,
+                                sourceInteropByteBuffer, targetInteropByteBuffer, false);
+                reportLoopCount(this, size);
+            }
+            return resultTypedArray;
+        }
+
+        private ByteBuffer getByteBufferFromInteropBuffer(JSArrayBufferObject interopBuffer) {
+            if (getByteBufferInterop == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
+            }
+            return JSInteropUtil.jsInteropBufferAsByteBuffer(interopBuffer, getByteBufferInterop, getRealm());
         }
     }
 
