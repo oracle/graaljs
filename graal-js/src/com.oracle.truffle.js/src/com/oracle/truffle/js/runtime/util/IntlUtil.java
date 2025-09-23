@@ -63,21 +63,27 @@ import org.graalvm.shadowed.com.ibm.icu.text.Collator;
 import org.graalvm.shadowed.com.ibm.icu.text.CurrencyMetaInfo;
 import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
+import org.graalvm.shadowed.com.ibm.icu.util.BuddhistCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 import org.graalvm.shadowed.com.ibm.icu.util.ChineseCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.CopticCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.EthiopicCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.HebrewCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.IndianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.IslamicCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.JapaneseCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.PersianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TaiwanCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -363,8 +369,6 @@ public final class IntlUtil {
     public static final TruffleString KEY_YEARS_DISPLAY = Strings.constant(YEARS_DISPLAY);
 
     // Calendar-related constants
-    public static final TruffleString GREGORY = Strings.constant("gregory");
-    public static final TruffleString GREGORY_INVERSE = Strings.constant("gregory-inverse");
     public static final TruffleString AD = Strings.constant("ad");
     public static final TruffleString BC = Strings.constant("bc");
     public static final TruffleString CE = Strings.constant("ce");
@@ -374,8 +378,20 @@ public final class IntlUtil {
     public static final TruffleString SHOWA = Strings.constant("showa");
     public static final TruffleString TAISHO = Strings.constant("taisho");
     public static final TruffleString MEIJI = Strings.constant("meiji");
-    public static final TruffleString JAPANESE = Strings.constant("japanese");
-    public static final TruffleString JAPANESE_INVERSE = Strings.constant("japanese-inverse");
+    public static final TruffleString AA = Strings.constant("aa");
+    public static final TruffleString AM = Strings.constant("am");
+    public static final TruffleString AP = Strings.constant("ap");
+    public static final TruffleString AH = Strings.constant("ah");
+    public static final TruffleString BH = Strings.constant("bh");
+    public static final TruffleString BE = Strings.constant("be");
+    public static final TruffleString INCAR = Strings.constant("incar");
+    public static final TruffleString MUNDI = Strings.constant("mundi");
+    public static final TruffleString SHAKA = Strings.constant("shaka");
+    public static final TruffleString ROC = Strings.constant("roc");
+    public static final TruffleString BROC = Strings.constant("broc");
+    public static final TruffleString MINGUO = Strings.constant("minguo");
+    public static final TruffleString BEFORE_ROC = Strings.constant("before-roc");
+    public static final TruffleString MINGUO_QIAN = Strings.constant("minguo-qian");
 
     // https://tc39.es/ecma402/#table-sanctioned-simple-unit-identifiers
     private static final Set<String> SANCTIONED_SIMPLE_UNIT_IDENTIFIERS = Set.of(new String[]{
@@ -672,6 +688,10 @@ public final class IntlUtil {
     }
 
     public static String normalizeCAType(String type) {
+        return normalizeCAType(type, true);
+    }
+
+    public static String normalizeCAType(String type, boolean fallbackForIslamic) {
         // (Preferred) aliases from
         // https://github.com/unicode-org/cldr/blob/master/common/bcp47/calendar.xml
         if ("gregorian".equals(type)) {
@@ -680,8 +700,16 @@ public final class IntlUtil {
             return "ethioaa";
         } else if ("islamicc".equals(type)) {
             return "islamic-civil";
+        } else if (fallbackForIslamic && ("islamic".equals(type) || "islamic-rgsa".equals(type)) && !isIslamicCalendarSupported()) {
+            // islamic and islamic-rgsa should fallback to other values
+            // see https://github.com/tc39/proposal-intl-era-monthcode/pull/46
+            return "islamic-civil";
         }
         return type;
+    }
+
+    private static boolean isIslamicCalendarSupported() {
+        return JavaScriptLanguage.get(null).getJSContext().getEcmaScriptVersion() < JSConfig.StagingECMAScriptVersion;
     }
 
     private static String normalizeRGType(String type) {
@@ -923,7 +951,7 @@ public final class IntlUtil {
         for (String calendar : calendars) {
             // ICU4J returns "unknown" available calendar but it does not provide any useful data
             // for this calendar
-            if (!"unknown".equals(calendar)) {
+            if (!"unknown".equals(calendar) && (!"islamic".equals(calendar) && !"islamic-rgsa".equals(calendar) || isIslamicCalendarSupported())) {
                 calendars[length++] = IntlUtil.normalizeCAType(calendar);
             }
         }
@@ -945,12 +973,21 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String canonicalizeCalendar(String id) {
+        return canonicalizeCalendar(id, true);
+    }
+
+    @TruffleBoundary
+    public static String canonicalizeCalendar(String id, boolean throwForUnsupported) {
         // AvailableCalendars() in the spec contains aliases,
         // but our availableCalendars() is normalized already
         // => we must normalize before the search
-        String canonical = normalizeCAType(id.toLowerCase(Locale.ROOT));
+        String canonical = normalizeCAType(id.toLowerCase(Locale.ROOT), false);
         if (Arrays.binarySearch(availableCalendars(), canonical) < 0) {
-            throw Errors.createRangeErrorInvalidCalendar(id);
+            if (throwForUnsupported) {
+                throw Errors.createRangeErrorInvalidCalendar(id);
+            } else {
+                return null;
+            }
         }
         return canonical;
     }
@@ -1047,6 +1084,8 @@ public final class IntlUtil {
     @TruffleBoundary
     public static String[] availableTimeZones() {
         Set<String> set = TimeZone.getAvailableIDs(TimeZone.SystemTimeZoneType.CANONICAL_LOCATION, null, null);
+        set = new HashSet<>(set);
+        set.remove("Antarctica/McMurdo");
         String[] timeZones = set.toArray(new String[set.size()]);
         Arrays.sort(timeZones);
         return timeZones;
@@ -1087,6 +1126,11 @@ public final class IntlUtil {
     public static Calendar getCalendar(TruffleString calendarID, int year, int month, int day) {
         Calendar cal = getCalendar(calendarID);
         cal.setTimeInMillis(JSDate.MS_PER_DAY * JSDate.isoDateToEpochDays(year, month - 1, day));
+        if (cal instanceof ChineseCalendar) {
+            // Force initialization of fields, ChineseCalendar may return
+            // incorrect results otherwise.
+            cal.get(Calendar.DAY_OF_MONTH);
+        }
         return cal;
     }
 
@@ -1102,11 +1146,21 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static int getCalendarField(Calendar cal, int field) {
+        assert field != Calendar.EXTENDED_YEAR : "getExtendedYear() should be used";
         return cal.get(field);
     }
 
     @TruffleBoundary
     public static int getCalendarFieldMax(Calendar cal, int field) {
+        if (field == Calendar.DAY_OF_MONTH && cal instanceof EthiopicCalendar etCal && etCal.isAmeteAlemEra()) {
+            int month = cal.get(Calendar.ORDINAL_MONTH);
+            if (month == 12) {
+                int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
+                return (Math.floorMod(extendedYear, 4) / 3) + 5;
+            } else {
+                return 30;
+            }
+        }
         return cal.getActualMaximum(field);
     }
 
@@ -1129,17 +1183,73 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static boolean calendarSupportsEra(Calendar cal) {
+        if (cal instanceof HebrewCalendar || cal instanceof IndianCalendar || cal instanceof IslamicCalendar || cal instanceof BuddhistCalendar || cal instanceof EthiopicCalendar ||
+                        isPersianCalendar(cal)) {
+            return true;
+        }
         return (cal.getMaximum(Calendar.ERA) != cal.getMinimum(Calendar.ERA) && !(cal instanceof ChineseCalendar));
     }
 
     @TruffleBoundary
     public static Object getEraYear(Calendar cal) {
+        if (cal instanceof IslamicCalendar || (cal instanceof JapaneseCalendar && cal.get(Calendar.ERA) < JapaneseCalendar.MEIJI)) {
+            int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
+            return (extendedYear <= 0) ? (1 - extendedYear) : extendedYear;
+        } else if (cal instanceof CopticCalendar) {
+            return cal.get(Calendar.EXTENDED_YEAR);
+        }
         return calendarSupportsEra(cal) ? cal.get(Calendar.YEAR) : Undefined.instance;
     }
 
     @TruffleBoundary
     public static Object getEra(Calendar cal) {
         return calendarSupportsEra(cal) ? getEraAsString(cal) : Undefined.instance;
+    }
+
+    // Chinese calendar can use various epochs. ChineseCalendar in ICU4J
+    // uses the traditional epoch based on the reign of Huang Di. Modern
+    // Chinese standard calendar uses the epoch of the Gregorian calendar.
+    // This constant is the offset between them.
+    private static final int CHINESE_EPOCH_OFFSET = 2637;
+    private static final int TAIWAN_EPOCH_OFFSET = 1911;
+    private static final int BUDDHIST_EPOCH_OFFSET = -543;
+
+    private static int getEpochOffset(Calendar cal) {
+        if (cal instanceof ChineseCalendar) {
+            return CHINESE_EPOCH_OFFSET;
+        } else if (cal instanceof TaiwanCalendar) {
+            return TAIWAN_EPOCH_OFFSET;
+        } else if (cal instanceof BuddhistCalendar) {
+            return BUDDHIST_EPOCH_OFFSET;
+        }
+        return 0;
+    }
+
+    @TruffleBoundary
+    public static int getExtendedYear(Calendar cal) {
+        if (cal instanceof EthiopicCalendar ethiopicCal && ethiopicCal.isAmeteAlemEra()) {
+            return cal.get(Calendar.YEAR);
+        }
+        int year = cal.get(Calendar.EXTENDED_YEAR);
+        return year - getEpochOffset(cal);
+    }
+
+    @TruffleBoundary
+    public static void setExtendedYear(Calendar cal, int year) {
+        if (cal instanceof EthiopicCalendar ethiopicCal && ethiopicCal.isAmeteAlemEra()) {
+            cal.set(Calendar.YEAR, year);
+        } else {
+            cal.set(Calendar.EXTENDED_YEAR, year + getEpochOffset(cal));
+        }
+    }
+
+    @TruffleBoundary
+    public static void setOrdinalMonth(Calendar cal, int month) {
+        // Workaround for Hebrew/Chinese calendar's behaviour for plain
+        // cal.set(Calendar.ORDINAL_MONTH, month);
+        int oldValue = cal.get(Calendar.ORDINAL_MONTH);
+        cal.roll(Calendar.ORDINAL_MONTH, month - oldValue);
+        cal.get(Calendar.ORDINAL_MONTH);
     }
 
     @TruffleBoundary
@@ -1156,17 +1266,37 @@ public final class IntlUtil {
                 return TAISHO;
             } else if (era == JapaneseCalendar.MEIJI) {
                 return MEIJI;
-            } else if (era == GregorianCalendar.AD) {
-                return JAPANESE;
-            } else if (era == GregorianCalendar.BC) {
-                return JAPANESE_INVERSE;
+            } else {
+                int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
+                return (extendedYear > 0) ? CE : BCE;
+            }
+        } else if (cal instanceof BuddhistCalendar) {
+            return BE;
+        } else if (cal instanceof CopticCalendar) {
+            return AM;
+        } else if (cal instanceof EthiopicCalendar) {
+            return (era == 0) ? AA : AM;
+        } else if (cal instanceof IndianCalendar) {
+            return SHAKA;
+        } else if (cal instanceof TaiwanCalendar) {
+            if (era == TaiwanCalendar.MINGUO) {
+                return ROC;
+            } else {
+                return BROC;
             }
         } else if (cal instanceof GregorianCalendar) {
             if (era == GregorianCalendar.AD) {
-                return GREGORY;
+                return CE;
             } else {
-                return GREGORY_INVERSE;
+                return BCE;
             }
+        } else if (cal instanceof HebrewCalendar) {
+            return AM;
+        } else if (isPersianCalendar(cal)) {
+            return AP;
+        } else if (cal instanceof IslamicCalendar) {
+            int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
+            return (extendedYear > 0) ? AH : BH;
         }
         return Strings.UNKNOWN;
     }
@@ -1184,23 +1314,58 @@ public final class IntlUtil {
                 return JapaneseCalendar.TAISHO;
             } else if (Strings.equals(MEIJI, era)) {
                 return JapaneseCalendar.MEIJI;
-            } else if (Strings.equals(JAPANESE, era) || Strings.equals(GREGORY, era) || Strings.equals(AD, era) || Strings.equals(CE, era)) {
+            } else if (Strings.equals(AD, era) || Strings.equals(CE, era)) {
                 return GregorianCalendar.AD;
-            } else if (Strings.equals(JAPANESE_INVERSE, era) || Strings.equals(GREGORY_INVERSE, era) || Strings.equals(BC, era) || Strings.equals(BCE, era)) {
+            } else if (Strings.equals(BC, era) || Strings.equals(BCE, era)) {
                 return GregorianCalendar.BC;
             }
+        } else if (cal instanceof BuddhistCalendar) {
+            if (Strings.equals(BE, era)) {
+                return BuddhistCalendar.BE;
+            }
+        } else if (cal instanceof CopticCalendar) {
+            if (Strings.equals(AM, era)) {
+                return 1;
+            }
+        } else if (cal instanceof EthiopicCalendar ethiopicCal) {
+            if (Strings.equals(AA, era) || Strings.equals(MUNDI, era)) {
+                return 0;
+            } else if (!ethiopicCal.isAmeteAlemEra() && (Strings.equals(AM, era) || Strings.equals(INCAR, era))) {
+                return 1;
+            }
+        } else if (cal instanceof IndianCalendar) {
+            if (Strings.equals(SHAKA, era)) {
+                return 0;
+            }
+        } else if (cal instanceof TaiwanCalendar) {
+            if (Strings.equals(ROC, era) || Strings.equals(MINGUO, era)) {
+                return TaiwanCalendar.MINGUO;
+            } else if (Strings.equals(BROC, era) || Strings.equals(BEFORE_ROC, era) || Strings.equals(MINGUO_QIAN, era)) {
+                return TaiwanCalendar.BEFORE_MINGUO;
+            }
         } else if (cal instanceof GregorianCalendar) {
-            if (Strings.equals(GREGORY, era) || Strings.equals(AD, era) || Strings.equals(CE, era)) {
+            if (Strings.equals(AD, era) || Strings.equals(CE, era)) {
                 return GregorianCalendar.AD;
-            } else if (Strings.equals(GREGORY_INVERSE, era) || Strings.equals(BC, era) || Strings.equals(BCE, era)) {
+            } else if (Strings.equals(BC, era) || Strings.equals(BCE, era)) {
                 return GregorianCalendar.BC;
+            }
+        } else if (cal instanceof IslamicCalendar) {
+            if (Strings.equals(AH, era) || Strings.equals(BH, era)) {
+                return 0;
+            }
+        } else if (cal instanceof HebrewCalendar) {
+            if (Strings.equals(AM, era)) {
+                return 0;
+            }
+        } else if (isPersianCalendar(cal)) {
+            if (Strings.equals(AP, era)) {
+                return 0;
             }
         }
         return null;
     }
 
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     static int maxDayInMonth(Calendar cal, String monthCode) {
         // various irregularities
         if (cal instanceof GregorianCalendar) {
@@ -1221,7 +1386,7 @@ public final class IntlUtil {
             } else {
                 return 30;
             }
-        } else if (cal instanceof PersianCalendar) {
+        } else if (isPersianCalendar(cal)) {
             if ("M12".equals(monthCode)) {
                 return 30;
             }
@@ -1235,6 +1400,11 @@ public final class IntlUtil {
         // regular month
         cal.setTemporalMonthCode(monthCode);
         return cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isPersianCalendar(Calendar cal) {
+        return (cal instanceof PersianCalendar);
     }
 
 }

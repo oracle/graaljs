@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -247,7 +247,16 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 break;
             case IntlUtil.CALENDAR:
                 IntlUtil.ensureIsStructurallyValidCalendar(code);
-                result = displayNames.keyValueDisplayName(IntlUtil.CALENDAR, displayNamesFriendlyCalendar(code.toLowerCase()));
+                if (IntlUtil.canonicalizeCalendar(code, false) == null) {
+                    // should use fallback logic for unsupported calendars
+                    if (displayNames.getContext(DisplayContext.Type.SUBSTITUTE_HANDLING) == DisplayContext.NO_SUBSTITUTE) {
+                        result = null;
+                    } else {
+                        result = code;
+                    }
+                } else {
+                    result = displayNames.keyValueDisplayName(IntlUtil.CALENDAR, displayNamesFriendlyCalendar(code.toLowerCase()));
+                }
                 break;
             case IntlUtil.DATE_TIME_FIELD:
                 result = state.dateTimePatternGenerator.getFieldDisplayName(toDateTimeFieldCode(code), state.displayWidth);

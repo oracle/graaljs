@@ -433,7 +433,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case eraYear:
                     return isoCalendar ? Undefined.instance : IntlUtil.getEraYear(cal);
                 case year:
-                    return isoCalendar ? tdt.getYear() : IntlUtil.getCalendarField(cal, Calendar.EXTENDED_YEAR);
+                    return isoCalendar ? tdt.getYear() : IntlUtil.getExtendedYear(cal);
                 case month:
                     return isoCalendar ? tdt.getMonth() : (IntlUtil.getCalendarField(cal, Calendar.ORDINAL_MONTH) + 1);
                 case monthCode:

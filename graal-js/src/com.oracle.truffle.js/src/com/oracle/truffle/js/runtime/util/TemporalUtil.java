@@ -98,14 +98,19 @@ import java.math.MathContext;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.shadowed.com.ibm.icu.util.BasicTimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.BuddhistCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
+import org.graalvm.shadowed.com.ibm.icu.util.EthiopicCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.HebrewCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.IndianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.IslamicCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.JapaneseCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZoneTransition;
 
@@ -1352,15 +1357,36 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalPlainDateObject calendarDateAdd(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject isoDate, JSTemporalDurationObject duration,
-                    Overflow overflow,
-                    Node node, InlinedBranchProfile errorBranch) {
-        BigInt norm = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                        duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-        TimeDurationRecord balanceResult = TemporalUtil.balanceTimeDuration(norm, Unit.DAY);
-        double days = duration.getDays() + balanceResult.days();
+                    Overflow overflow, Node node, InlinedBranchProfile errorBranch) {
+        if (!ISO8601.equals(calendar)) {
+            return nonISODateAdd(context, realm, calendar, isoDate, duration, overflow, node, errorBranch);
+        }
         ISODateRecord result = TemporalUtil.addISODate(isoDate.getYear(), isoDate.getMonth(), isoDate.getDay(),
-                        duration.getYears(), duration.getMonths(), duration.getWeeks(), days, overflow);
+                        duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow);
         return JSTemporalPlainDate.create(context, realm, result.year(), result.month(), result.day(), calendar, node, errorBranch);
+    }
+
+    @TruffleBoundary
+    public static JSTemporalPlainDateObject nonISODateAdd(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject isoDate, JSTemporalDurationObject duration,
+                    @SuppressWarnings("unused") Overflow overflow, Node node, InlinedBranchProfile errorBranch) {
+        Calendar cal = IntlUtil.getCalendar(calendar, isoDate.getYear(), isoDate.getMonth(), isoDate.getDay());
+        int years = (int) duration.getYears();
+        int months = (int) duration.getMonths();
+
+        if (cal instanceof IndianCalendar || (cal instanceof IslamicCalendar islamicCal && islamicCal.getCalculationType() == IslamicCalendar.CalculationType.ISLAMIC_UMALQURA)) {
+            if (months < 0) { // some ICU4J calendars don't handle negative months correctly
+                int yearDelta = Math.floorDiv(months, 12);
+                years += yearDelta;
+                months -= 12 * yearDelta;
+            }
+        }
+
+        cal.add(Calendar.EXTENDED_YEAR, years);
+        cal.add(Calendar.ORDINAL_MONTH, months);
+        cal.add(Calendar.DAY_OF_MONTH, (int) (duration.getDays() + 7 * duration.getWeeks()));
+
+        long ms = cal.getTimeInMillis();
+        return JSTemporalPlainDate.create(context, realm, JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms), calendar, node, errorBranch);
     }
 
     // This method implements CalendarDateUntil() operation. Unfortunately,
@@ -1426,7 +1452,7 @@ public final class TemporalUtil {
         int months = 0;
         Calendar intermediate;
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
-            int candidateYears = two.get(Calendar.EXTENDED_YEAR) - one.get(Calendar.EXTENDED_YEAR);
+            int candidateYears = IntlUtil.getExtendedYear(two) - IntlUtil.getExtendedYear(one);
             if (candidateYears != 0) {
                 candidateYears -= sign;
             }
@@ -1482,8 +1508,8 @@ public final class TemporalUtil {
     }
 
     private static boolean nonISODateSurpasses(int sign, Calendar one, Calendar two) {
-        int y1 = one.get(Calendar.EXTENDED_YEAR);
-        int y2 = two.get(Calendar.EXTENDED_YEAR);
+        int y1 = IntlUtil.getExtendedYear(one);
+        int y2 = IntlUtil.getExtendedYear(two);
         if (y1 != y2) {
             return (sign * (y1 - y2) > 0);
         }
@@ -3344,7 +3370,7 @@ public final class TemporalUtil {
         } else {
             Calendar cal = IntlUtil.getCalendar(calendar);
             cal.setTimeInMillis(JSDate.MS_PER_DAY * JSDate.isoDateToEpochDays(isoDate.year(), isoDate.month() - 1, isoDate.day()));
-            JSObject.set(record, YEAR, cal.get(Calendar.EXTENDED_YEAR));
+            JSObject.set(record, YEAR, IntlUtil.getExtendedYear(cal));
             if (IntlUtil.calendarSupportsEra(cal)) {
                 JSObject.set(record, ERA, IntlUtil.getEra(cal));
                 JSObject.set(record, ERA_YEAR, IntlUtil.getEraYear(cal));
@@ -3359,26 +3385,22 @@ public final class TemporalUtil {
     // 12.1.38
     @TruffleBoundary
     public static void calendarResolveFields(JSContext ctx, TruffleString calendar, JSDynamicObject fields, FieldsType type, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
-        boolean hasLeapYears;
-        int monthCount;
-        boolean supportsEras;
         boolean seenYearInfo = false;
         boolean isoCalendar = ISO8601.equals(calendar);
-        if (isoCalendar) {
-            hasLeapYears = false;
-            monthCount = 12;
-            supportsEras = false;
-        } else {
-            Calendar cal = IntlUtil.getCalendar(calendar);
-            hasLeapYears = IntlUtil.hasLeapYears(cal);
-            monthCount = cal.getMaximum(Calendar.ORDINAL_MONTH) + 1;
-            supportsEras = IntlUtil.calendarSupportsEra(cal);
+        Calendar cal = null;
+        if (!isoCalendar) {
+            cal = IntlUtil.getCalendar(calendar);
+            boolean supportsEras = IntlUtil.calendarSupportsEra(cal);
 
             if (supportsEras) {
                 Object era = JSObject.get(fields, ERA);
                 Object eraYear = JSObject.get(fields, ERA_YEAR);
                 boolean eraSet = (era != Undefined.instance);
                 boolean eraYearSet = (eraYear != Undefined.instance);
+                if (eraYearSet && cal instanceof IslamicCalendar && Strings.equals(IntlUtil.BH, (TruffleString) era)) {
+                    eraYear = 1 - ((Number) eraYear).intValue();
+                    JSObject.set(fields, ERA_YEAR, eraYear);
+                }
 
                 if (eraSet != eraYearSet) {
                     throw Errors.createTypeError("Both era and eraYear should be set (or none of them).");
@@ -3391,16 +3413,24 @@ public final class TemporalUtil {
                         }
                         if (year != Undefined.instance) {
                             // year should be consistent with era and eraYear
-                            cal.setTimeInMillis(0);
+                            cal.clear();
                             cal.set(Calendar.ERA, canonicalEra);
-                            cal.set(Calendar.YEAR, ((Number) eraYear).intValue());
+                            int eraYearInt = ((Number) eraYear).intValue();
+                            cal.set(Calendar.YEAR, eraYearInt);
                             long eraYearMS = cal.getTimeInMillis();
 
-                            cal.setTimeInMillis(0);
-                            cal.set(Calendar.EXTENDED_YEAR, ((Number) year).intValue());
-                            long yearMS = cal.getTimeInMillis();
+                            int yearInt = ((Number) year).intValue();
+                            boolean yearConsistent;
+                            if (cal instanceof BuddhistCalendar || cal instanceof EthiopicCalendar) {
+                                yearConsistent = (eraYearInt == yearInt);
+                            } else {
+                                cal.clear();
+                                IntlUtil.setExtendedYear(cal, yearInt);
+                                long yearMS = cal.getTimeInMillis();
+                                yearConsistent = (yearMS == eraYearMS);
+                            }
 
-                            if (yearMS != eraYearMS) {
+                            if (!yearConsistent) {
                                 throw Errors.createRangeError("Year is not consistent with era and eraYear.");
                             }
                         }
@@ -3412,6 +3442,7 @@ public final class TemporalUtil {
                             }
                         } else {
                             seenYearInfo = true;
+                            IntlUtil.setExtendedYear(cal, ((Number) year).intValue());
                         }
                     }
                 }
@@ -3420,6 +3451,9 @@ public final class TemporalUtil {
         if (!seenYearInfo) {
             Object year = JSObject.get(fields, YEAR);
             seenYearInfo = (year != Undefined.instance);
+            if (seenYearInfo && !isoCalendar) {
+                IntlUtil.setExtendedYear(cal, ((Number) year).intValue());
+            }
         }
         if (type != FieldsType.MONTH_DAY && !seenYearInfo) {
             throw Errors.createTypeError("No year present.");
@@ -3441,24 +3475,36 @@ public final class TemporalUtil {
             }
             return;
         }
-        int monthLength = Strings.length((TruffleString) monthCode);
-        if (monthLength < 3 || 4 < monthLength || (monthLength == 4 && !hasLeapYears)) {
-            throw Errors.createRangeError("Invalid month code length");
+        TruffleString monthCodeTS = (TruffleString) monthCode;
+        if (isoCalendar) {
+            int monthLength = Strings.length(monthCodeTS);
+            if (monthLength != 3) {
+                throw Errors.createRangeError("Invalid month code length");
+            }
+            if (Strings.charAt(monthCodeTS, 0) != 'M') {
+                throw Errors.createRangeError("Month code should start with 'M'");
+            }
+        } else {
+            try {
+                cal.setTemporalMonthCode(monthCodeTS.toString());
+            } catch (IllegalArgumentException ex) {
+                throw TemporalErrors.createRangeErrorInvalidMonthCode(monthCodeTS);
+            }
+            if (month != Undefined.instance) {
+                if (((Number) month).doubleValue() != cal.get(Calendar.ORDINAL_MONTH) + 1) {
+                    throw Errors.createRangeError("Month does not equal the month code.");
+                }
+            }
         }
-        if (Strings.charAt((TruffleString) monthCode, 0) != 'M') {
-            throw Errors.createRangeError("Month code should start with 'M'");
-        }
-        if (monthLength == 4 && Strings.charAt((TruffleString) monthCode, 3) != 'L') {
-            throw Errors.createRangeError("Code of a leap month should end with 'L'");
-        }
-        TruffleString monthCodeDigits = Strings.substring(ctx, (TruffleString) monthCode, 1, 2);
+
+        TruffleString monthCodeDigits = Strings.substring(ctx, monthCodeTS, 1, 2);
         double monthCodeInteger = JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(monthCodeDigits));
 
-        if (Double.isNaN(monthCodeInteger) || monthCodeInteger < 1 || monthCount < monthCodeInteger) {
-            throw Errors.createRangeErrorFormat("Invalid month code: %s", null, monthCode);
+        if (isoCalendar && (Double.isNaN(monthCodeInteger) || monthCodeInteger < 1 || 12 < monthCodeInteger)) {
+            throw TemporalErrors.createRangeErrorInvalidMonthCode(monthCodeTS);
         }
 
-        if (month != Undefined.instance && JSRuntime.doubleValue((Number) month) != monthCodeInteger) {
+        if (isoCalendar && month != Undefined.instance && JSRuntime.doubleValue((Number) month) != monthCodeInteger) {
             throw Errors.createRangeError("Month does not equal the month code.");
         }
 
@@ -3475,18 +3521,30 @@ public final class TemporalUtil {
             return regulateISODate(year, month, day, overflow);
         } else {
             Calendar cal = IntlUtil.getCalendar(calendar);
-            cal.setTimeInMillis(0);
+            cal.clear();
             if (yearObject == Undefined.instance) {
                 Object eraObject = JSObject.get(fields, ERA);
                 if (eraObject != Undefined.instance) {
-                    TruffleString era = (TruffleString) JSObject.get(fields, ERA);
-                    cal.set(Calendar.ERA, IntlUtil.canonicalizeEraInCalendar(cal, era));
+                    TruffleString eraName = (TruffleString) JSObject.get(fields, ERA);
+                    int era = IntlUtil.canonicalizeEraInCalendar(cal, eraName);
                     int eraYear = ((Number) JSObject.get(fields, ERA_YEAR)).intValue();
-                    cal.set(Calendar.YEAR, eraYear);
+                    if (cal instanceof JapaneseCalendar && era <= GregorianCalendar.AD) {
+                        IntlUtil.setExtendedYear(cal, (era == GregorianCalendar.AD) ? eraYear : (1 - eraYear));
+                    } else {
+                        cal.set(Calendar.ERA, era);
+                        cal.set(Calendar.YEAR, eraYear);
+                        if (cal instanceof JapaneseCalendar) {
+                            // Eras in Japanese calendar do not start on the first day of month,
+                            // but we need a day that exists in all calendar months (so that
+                            // the setting of the month below does not overflow into the following
+                            // month) => set the day to 1
+                            cal.set(Calendar.DAY_OF_MONTH, 1);
+                        }
+                    }
                 }
             } else {
                 int year = ((Number) yearObject).intValue();
-                cal.set(Calendar.EXTENDED_YEAR, year);
+                IntlUtil.setExtendedYear(cal, year);
             }
             Object monthCode = JSObject.get(fields, MONTH_CODE);
             if (monthCode == Undefined.instance) {
@@ -3500,13 +3558,9 @@ public final class TemporalUtil {
                         newValue = maxMonth;
                     }
                 }
-                // Workaround for Hebrew/Chinese calendar's behaviour for plain
-                // cal.set(Calendar.ORDINAL_MONTH, newValue);
-                int oldValue = cal.get(Calendar.ORDINAL_MONTH);
-                cal.roll(Calendar.ORDINAL_MONTH, newValue - oldValue);
-                cal.get(Calendar.ORDINAL_MONTH);
+                IntlUtil.setOrdinalMonth(cal, newValue);
             } else {
-                int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
+                int extendedYear = IntlUtil.getExtendedYear(cal);
                 String monthCodeStr = monthCode.toString();
                 cal.setTemporalMonthCode(monthCodeStr);
                 if (!monthCodeStr.equals(cal.getTemporalMonthCode())) {
@@ -3525,14 +3579,14 @@ public final class TemporalUtil {
                         }
                         // the setting of non existing leap month could have
                         // rolled the year to the next one => restore the original value
-                        if (extendedYear != cal.get(Calendar.EXTENDED_YEAR)) {
-                            cal.set(Calendar.EXTENDED_YEAR, extendedYear);
+                        if (extendedYear != IntlUtil.getExtendedYear(cal)) {
+                            IntlUtil.setExtendedYear(cal, extendedYear);
                         }
                         cal.setTemporalMonthCode(nonLeapMonthCode);
                     }
                 }
             }
-            int maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+            int maxDay = IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_MONTH);
             if (maxDay < day) {
                 if (overflow == Overflow.REJECT) {
                     throw Errors.createRangeError("Invalid day");
@@ -3573,10 +3627,16 @@ public final class TemporalUtil {
             return new ISODateRecord(referenceISOYear, result.month(), result.day());
         } else {
             Calendar cal = IntlUtil.getCalendar(calendar);
-            cal.setTimeInMillis(0);
+            cal.clear();
 
             int m = month.intValue() - 1;
-            int mMax = cal.getMaximum(Calendar.ORDINAL_MONTH);
+            int mMax;
+            if (year == Undefined.instance) {
+                mMax = cal.getMaximum(Calendar.ORDINAL_MONTH);
+            } else {
+                IntlUtil.setExtendedYear(cal, ((Number) year).intValue());
+                mMax = cal.getActualMaximum(Calendar.ORDINAL_MONTH);
+            }
             if (m > mMax) {
                 if (overflow == Overflow.CONSTRAIN) {
                     m = mMax;
@@ -3586,45 +3646,34 @@ public final class TemporalUtil {
             }
 
             Object monthCodeValue = JSObject.get(fields, MONTH_CODE);
-            String monthCode;
-            if (monthCodeValue == Undefined.instance) {
-                monthCode = String.format(Locale.ROOT, "M%02d", m + 1);
-            } else {
+            String monthCode = null;
+
+            if (monthCodeValue != Undefined.instance) {
                 TruffleString monthCodeTS = (TruffleString) monthCodeValue;
                 monthCode = Strings.toJavaString(monthCodeTS);
-            }
-            try {
-                cal.setTemporalMonthCode(monthCode);
-            } catch (IllegalArgumentException iaex) {
-                throw TemporalErrors.createRangeErrorDateOutsideRange();
+                try {
+                    cal.setTemporalMonthCode(monthCode);
+                } catch (IllegalArgumentException iaex) {
+                    throw TemporalErrors.createRangeErrorDateOutsideRange();
+                }
+            } else {
+                IntlUtil.setOrdinalMonth(cal, m);
+                if (year != Undefined.instance) {
+                    monthCode = cal.getTemporalMonthCode();
+                }
             }
 
             int d = day.intValue();
-            int dMax = IntlUtil.maxDayInMonth(cal, monthCode);
+            int dMax;
+            if (year != Undefined.instance || monthCode == null) {
+                dMax = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+            } else {
+                dMax = IntlUtil.maxDayInMonth(cal, monthCode);
+            }
             if (d > dMax) {
                 if (overflow == Overflow.CONSTRAIN) {
                     d = dMax;
                 } else {
-                    throw TemporalErrors.createRangeErrorDateOutsideRange();
-                }
-            }
-
-            if (year != Undefined.instance) {
-                // check month/restrict day according to the provided year
-                cal.set(Calendar.YEAR, ((Number) year).intValue());
-                cal.setTemporalMonthCode(monthCode);
-                if (monthCode.equals(cal.getTemporalMonthCode())) {
-                    dMax = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
-                    if (d > dMax) {
-                        if (overflow == Overflow.CONSTRAIN) {
-                            d = dMax;
-                        } else {
-                            // no day d in this month
-                            throw TemporalErrors.createRangeErrorDateOutsideRange();
-                        }
-                    }
-                } else if (overflow == Overflow.REJECT) {
-                    // no month with monthCode in the provided year
                     throw TemporalErrors.createRangeErrorDateOutsideRange();
                 }
             }
@@ -3634,8 +3683,12 @@ public final class TemporalUtil {
             cal.set(Calendar.DAY_OF_MONTH, 1);
             long ms;
             while (true) {
-                cal.setTemporalMonthCode(monthCode);
-                if (monthCode.equals(cal.getTemporalMonthCode())) {
+                if (monthCode == null) {
+                    cal.set(Calendar.ORDINAL_MONTH, m);
+                } else {
+                    cal.setTemporalMonthCode(monthCode);
+                }
+                if ((monthCode == null) ? (m == cal.get(Calendar.ORDINAL_MONTH)) : monthCode.equals(cal.getTemporalMonthCode())) {
                     dMax = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
                     if (d <= dMax) {
                         cal.set(Calendar.DAY_OF_MONTH, d);
@@ -3645,7 +3698,7 @@ public final class TemporalUtil {
                         }
                     }
                 }
-                cal.set(Calendar.EXTENDED_YEAR, cal.get(Calendar.EXTENDED_YEAR) - 1);
+                cal.add(Calendar.EXTENDED_YEAR, -1);
             }
             return new ISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
         }

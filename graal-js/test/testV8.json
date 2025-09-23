@@ -27,6 +27,13 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/date-format/check-ca-option.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Expects islamic and islamic-rgsa calendars to be supported"
+  }, {
     "filePath" : "intl/date-format/timezone.js",
     "status" : "FAIL",
     "comment" : "Obsolete test, expects time-zone canonicalization."
@@ -34,6 +41,13 @@
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+  }, {
+    "filePath" : "intl/displaynames/calendar-v2.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Expects islamic and islamic-rgsa calendars to be supported"
   }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
@@ -59,6 +73,13 @@
     "filePath" : "intl/regress-10526.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/regress-10527.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Expects islamic and islamic-rgsa calendars to be supported"
   }, {
     "filePath" : "intl/regress-1074578.js",
     "status" : "FAIL",
