@@ -116,7 +116,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -779,13 +778,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         static Object doCached(Node node, JSArrayBufferObject buffer, int bufferIndex, boolean littleEndian,
                         @SuppressWarnings("unused") TypedArrayFactory factory, ByteBuffer byteBuffer,
                         @Cached("factory") TypedArrayFactory cachedFactory,
-                        @Cached InlinedConditionProfile hasByteBuffer,
                         @Cached GetBufferElementNode getBufferElementNode) {
-            if (hasByteBuffer.profile(node, byteBuffer != null)) {
-                return JSRuntime.getBufferElementDirect(ByteBufferAccess.forOrder(littleEndian), byteBuffer, cachedFactory, bufferIndex);
-            } else {
-                return getBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, cachedFactory);
-            }
+            return getBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, cachedFactory, byteBuffer);
         }
     }
 
@@ -802,13 +796,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         static void doCached(Node node, JSArrayBufferObject buffer, int bufferIndex, boolean littleEndian, Object value,
                         @SuppressWarnings("unused") TypedArrayFactory factory, ByteBuffer byteBuffer,
                         @Cached("factory") TypedArrayFactory cachedFactory,
-                        @Cached InlinedConditionProfile hasByteBuffer,
                         @Cached SetBufferElementNode setBufferElementNode) {
-            if (hasByteBuffer.profile(node, byteBuffer != null)) {
-                JSRuntime.setBufferElementDirect(ByteBufferAccess.forOrder(littleEndian), byteBuffer, cachedFactory, bufferIndex, value);
-            } else {
-                setBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, value, cachedFactory);
-            }
+            setBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, value, cachedFactory, byteBuffer);
         }
     }
 
