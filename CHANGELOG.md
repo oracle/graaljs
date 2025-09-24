@@ -5,7 +5,7 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
-## Version 26.0.0
+## Version 25.1.0
 * Added an experimental option `js.crypto` that provides `getRandomValues()` and `randomUUID()` from the [Web Crypto API](https://w3c.github.io/webcrypto/#crypto-interface).
 * Added stable option `js.performance` that provides `performance.now()`, `timeOrigin`, and `toJSON()` from the [Web High Resolution Time API](https://w3c.github.io/hr-time/).
 
