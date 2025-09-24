@@ -53,6 +53,7 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -667,37 +668,13 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         ByteBuffer targetByteBuffer,
                         boolean distinctBuffers);
 
-        @Specialization(guards = {"targetType.getFactory() == sourceType.getFactory()", "targetType.isArray()", "sourceType.isArray()"})
-        static void copyBytewiseArray(Node node, JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
-                        int targetByteIndex, int sourceByteIndex, int sourceLength,
-                        @SuppressWarnings("unused") int targetElementSize, int sourceElementSize,
-                        @SuppressWarnings("unused") TypedArray targetType, @SuppressWarnings("unused") TypedArray sourceType,
-                        @SuppressWarnings("unused") ByteBuffer sourceInteropByteBuffer,
-                        @SuppressWarnings("unused") ByteBuffer targetInteropByteBuffer,
-                        boolean distinctBuffers,
-                        @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
-                        @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode) {
-            int sourceByteLength = sourceLength * sourceElementSize;
-            byte[] sourceByteArray = JSArrayBuffer.getByteArray(sourceBuffer);
-            byte[] targetByteArray = JSArrayBuffer.getByteArray(targetBuffer);
-            // buffers must be distinct for bulk copy to be allowed
-            if (distinctBuffers || sourceByteArray != targetByteArray) {
-                System.arraycopy(sourceByteArray, sourceByteIndex, targetByteArray, targetByteIndex, sourceByteLength);
-                return;
-            }
-
-            // if we could not do a bulk copy, perform a bytewise copy
-            copyBytewiseCommon(node, targetBuffer, sourceBuffer, targetByteIndex, sourceByteIndex, sourceByteLength,
-                            null, null, getBufferElementNode, setBufferElementNode);
-        }
-
         /**
          * If source element type == target element type, the copy must be performed in a manner
          * that preserves the bit-level encoding of the source data. This is not guaranteed for
          * float16 and float32 when copying elementwise due to the round-trip conversion to and from
          * double being lossy for NaN values.
          */
-        @Specialization(guards = {"targetType.getFactory() == sourceType.getFactory()", "!targetType.isArray() || !sourceType.isArray()"})
+        @Specialization(guards = {"targetType.getFactory() == sourceType.getFactory()"})
         static void copyBytewise(Node node, JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
                         int targetByteIndex, int sourceByteIndex, int sourceLength,
                         @SuppressWarnings("unused") int targetElementSize, int sourceElementSize,
@@ -706,8 +683,21 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         ByteBuffer targetInteropByteBuffer,
                         boolean distinctBuffers,
                         @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
-                        @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode) {
+                        @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode,
+                        @Cached InlinedConditionProfile bothArraysBranch,
+                        @Cached @Exclusive InlinedBranchProfile sameArrayBranch) {
             int sourceByteLength = sourceLength * sourceElementSize;
+            if (bothArraysBranch.profile(node, targetType.isArray() && sourceType.isArray())) {
+                byte[] sourceByteArray = JSArrayBuffer.getByteArray(sourceBuffer);
+                byte[] targetByteArray = JSArrayBuffer.getByteArray(targetBuffer);
+                if (distinctBuffers || sourceByteArray != targetByteArray) {
+                    System.arraycopy(sourceByteArray, sourceByteIndex, targetByteArray, targetByteIndex, sourceByteLength);
+                    return;
+                } else {
+                    sameArrayBranch.enter(node);
+                }
+            }
+
             ByteBuffer sourceByteBuffer;
             ByteBuffer targetByteBuffer;
             if (sourceType.isDirect()) {
@@ -726,8 +716,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 assert targetType.isArray();
                 targetByteBuffer = Boundaries.byteBufferWrap(JSArrayBuffer.getByteArray(targetBuffer));
             }
-            // same element type => bulk copy (if possible)
-            // buffers must be distinct for bulk copy to be allowed
+            // if buffers are distinct, try to perform a bulk copy
             if (distinctBuffers && (sourceByteBuffer != null && targetByteBuffer != null)) {
                 Boundaries.byteBufferPutSlice(
                                 targetByteBuffer, targetByteIndex,
@@ -736,15 +725,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return;
             }
 
-            copyBytewiseCommon(node, targetBuffer, sourceBuffer, targetByteIndex, sourceByteIndex, sourceByteLength,
-                            sourceByteBuffer, targetByteBuffer, getBufferElementNode, setBufferElementNode);
-        }
-
-        private static void copyBytewiseCommon(Node node, JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
-                        int targetByteIndex, int sourceByteIndex, int sourceByteLength,
-                        ByteBuffer sourceByteBuffer, ByteBuffer targetByteBuffer,
-                        GetBufferElementTypeDispatchNode getBufferElementNode,
-                        SetBufferElementTypeDispatchNode setBufferElementNode) {
             // if we could not do a bulk copy, perform a bytewise copy
             boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
             TypedArrayFactory sourceFactory = TypedArrayFactory.Uint8Array;
@@ -769,7 +749,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @SuppressWarnings("unused") boolean distinctBuffers,
                         @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
                         @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode,
-                        @Cached InlinedBranchProfile errorBranch) {
+                        @Cached @Exclusive InlinedBranchProfile errorBranch) {
             if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
                 errorBranch.enter(node);
                 throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(node);
