@@ -4,7 +4,7 @@ suite = {
 
   "name" : "graal-js",
 
-  "version" : "26.0.0",
+  "version" : "25.1.0",
   "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "https://www.graalvm.org/javascript",
@@ -25,7 +25,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "7d7ea5fdcf05b17a1a5df8394544dd8c12897a95",
+           "version" : "b1181d14631c6760fd72c5eb441ad1aeca1f937f",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
