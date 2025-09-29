@@ -536,9 +536,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             double durationMonths = duration.months();
             boolean roundingGranularityIsNoop = settings.smallestUnit() == Unit.MONTH && settings.roundingIncrement() == 1;
             if (!roundingGranularityIsNoop) {
+                var isoDateTime = new ISODateTimeRecord(thisDate.getYear(), thisDate.getMonth(), thisDate.getDay(), 0, 0, 0, 0, 0, 0);
+                BigInt originEpochNs = TemporalUtil.getUTCEpochNanoseconds(isoDateTime.year(), isoDateTime.month(), isoDateTime.day(), 0, 0, 0, 0, 0, 0);
                 BigInt destEpochNs = TemporalUtil.getUTCEpochNanoseconds(otherDate.getYear(), otherDate.getMonth(), otherDate.getDay(), 0, 0, 0, 0, 0, 0);
-                var dateTime = new ISODateTimeRecord(thisDate.getYear(), thisDate.getMonth(), thisDate.getDay(), 0, 0, 0, 0, 0, 0);
-                var roundedDuration = roundRelativeDuration.execute(duration, destEpochNs, dateTime, calendar, null,
+                var roundedDuration = roundRelativeDuration.execute(duration, originEpochNs, destEpochNs, isoDateTime, calendar, null,
                                 settings.largestUnit(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode()).duration();
                 durationYears = roundedDuration.getYears();
                 durationMonths = roundedDuration.getMonths();
