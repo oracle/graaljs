@@ -1452,6 +1452,8 @@ public final class TemporalUtil {
         int months = 0;
         Calendar intermediate;
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
+            int oneDay = one.get(Calendar.DAY_OF_MONTH);
+
             int candidateYears = IntlUtil.getExtendedYear(two) - IntlUtil.getExtendedYear(one);
             if (candidateYears != 0) {
                 candidateYears -= sign;
@@ -1459,7 +1461,7 @@ public final class TemporalUtil {
             while (true) {
                 Calendar oneTemp = (Calendar) one.clone();
                 oneTemp.add(Calendar.EXTENDED_YEAR, candidateYears);
-                if (nonISODateSurpasses(sign, oneTemp, two)) {
+                if (nonISODateSurpasses(sign, oneTemp, oneDay, two)) {
                     break;
                 }
                 years = candidateYears;
@@ -1470,7 +1472,7 @@ public final class TemporalUtil {
             intermediate = (Calendar) one.clone();
             intermediate.add(Calendar.EXTENDED_YEAR, years);
             intermediate.add(Calendar.ORDINAL_MONTH, candidateMonths);
-            while (!nonISODateSurpasses(sign, intermediate, two)) {
+            while (!nonISODateSurpasses(sign, intermediate, oneDay, two)) {
                 months = candidateMonths;
                 candidateMonths += sign;
                 intermediate.add(Calendar.ORDINAL_MONTH, sign);
@@ -1507,7 +1509,7 @@ public final class TemporalUtil {
         }
     }
 
-    private static boolean nonISODateSurpasses(int sign, Calendar one, Calendar two) {
+    private static boolean nonISODateSurpasses(int sign, Calendar one, int d1, Calendar two) {
         int y1 = IntlUtil.getExtendedYear(one);
         int y2 = IntlUtil.getExtendedYear(two);
         if (y1 != y2) {
@@ -1518,7 +1520,6 @@ public final class TemporalUtil {
         if (m1 != m2) {
             return (sign * (m1 - m2) > 0);
         }
-        int d1 = one.get(Calendar.DAY_OF_MONTH);
         int d2 = two.get(Calendar.DAY_OF_MONTH);
         if (d1 != d2) {
             return (sign * (d1 - d2) > 0);
