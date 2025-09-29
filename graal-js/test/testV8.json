@@ -719,6 +719,41 @@
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
   }, {
+    "filePath" : "mjsunit/harmony/private-fields-nonextensible-global-proxy-no-lazy-feedback.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Pre nonextensible-applies-to-private proposal behavior"
+  }, {
+    "filePath" : "mjsunit/harmony/private-fields-nonextensible-global-proxy.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Pre nonextensible-applies-to-private proposal behavior"
+  }, {
+    "filePath" : "mjsunit/harmony/private-fields-special-object.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Pre nonextensible-applies-to-private proposal behavior"
+  }, {
+    "filePath" : "mjsunit/harmony/private-fields-static.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Pre nonextensible-applies-to-private proposal behavior"
+  }, {
+    "filePath" : "mjsunit/harmony/private-fields.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Pre nonextensible-applies-to-private proposal behavior"
+  }, {
     "filePath" : "mjsunit/harmony/private.js",
     "status" : "FAIL",
     "comment" : "Private symbols can be modified on frozen/sealed objects in v8."
@@ -1513,6 +1548,13 @@
     },
     "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
   }, {
+    "filePath" : "mjsunit/regress/regress-930045.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Pre nonextensible-applies-to-private proposal behavior"
+  }, {
     "filePath" : "mjsunit/regress/regress-944.js",
     "status" : "FAIL"
   }, {
@@ -1564,6 +1606,20 @@
     "filePath" : "mjsunit/regress/regress-crbug-1263994.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1302527-no-lazy-feedback.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Pre nonextensible-applies-to-private proposal behavior"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1302527.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Pre nonextensible-applies-to-private proposal behavior"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1308360.js",
     "status" : "FAIL",

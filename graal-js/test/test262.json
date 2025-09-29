@@ -298,10 +298,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "built-ins/Iterator/concat/next-method-returns-throwing-value.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test: https://github.com/tc39/test262/pull/4523#issuecomment-3244199586"
-  }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
     "comment" : "Long running test"
@@ -2157,6 +2153,20 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "language/statements/class/elements/private-class-field-on-nonextensible-objects.js",
+    "status" : "FAIL",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "nonextensible-applies-to-private proposal, incorrect test: https://github.com/tc39/test262/issues/4587"
+  }, {
+    "filePath" : "language/statements/class/subclass/private-class-field-on-nonextensible-return-override.js",
+    "status" : "FAIL",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "nonextensible-applies-to-private proposal, incorrect test: https://github.com/tc39/test262/issues/4587"
+  }, {
     "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-rgsa.js",
     "ecmaVersion" : {
       "minVersion" : 17
@@ -2221,10 +2231,6 @@
     "status" : "FAIL",
     "comment" : "Test of non-standard 'caller' and 'arguments' properties"
   }, {
-    "filePath" : "staging/sm/extensions/regress-469625-01.js",
-    "status" : "FAIL",
-    "comment" : "Expects a particular error message"
-  }, {
     "filePath" : "staging/sm/Function/constructor-binding.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
@@ -2263,12 +2269,35 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
+    "filePath" : "staging/sm/Math/acosh-exact.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: https://github.com/tc39/test262/issues/4588"
+  }, {
+    "filePath" : "staging/sm/Math/atanh-exact.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: https://github.com/tc39/test262/issues/4588"
+  }, {
     "filePath" : "staging/sm/Math/exp-exact.js",
     "status" : "PASS",
     "statusOverrides" : {
       "AARCH64" : "FAIL"
     },
     "comment" : "The test expects more than the specification. Namely, it expects Math.exp(1) === Math.E, which we fail to satisfy on aarch64"
+  }, {
+    "filePath" : "staging/sm/Math/log1p-exact.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: https://github.com/tc39/test262/issues/4588"
+  }, {
+    "filePath" : "staging/sm/Math/trunc.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: https://github.com/tc39/test262/issues/4588"
+  }, {
+    "filePath" : "staging/sm/PrivateName/modify-non-extensible.js",
+    "status" : "FAIL",
+    "statusOverrides" : {
+      "STAGING" : "PASS"
+    },
+    "comment" : "nonextensible-applies-to-private proposal"
   }, {
     "filePath" : "staging/sm/RegExp/match-local-tolength-recompilation.js",
     "status" : "FAIL",
