@@ -3226,7 +3226,6 @@ public final class TemporalUtil {
                             balanced.getSecond(), balanced.getMillisecond(), balanced.getMicrosecond(), balanced.getNanosecond());
             possibleEpochNanoseconds = List.of(epochNanoseconds);
         } else {
-            checkISODaysRange(isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay());
             possibleEpochNanoseconds = TemporalUtil.getNamedTimeZoneEpochNanoseconds(context, timeZone, isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay(),
                             isoDateTime.getHour(), isoDateTime.getMinute(), isoDateTime.getSecond(), isoDateTime.getMillisecond(), isoDateTime.getMicrosecond(), isoDateTime.getNanosecond());
         }
