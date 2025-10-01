@@ -91,6 +91,9 @@ public abstract class DifferenceZonedDateTimeNode extends JavaScriptBaseNode {
 
         JSTemporalInstantObject endInstant = JSTemporalInstant.create(ctx, realm, ns2);
         JSTemporalPlainDateTimeObject endDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, endInstant, calendar);
+        if (startDateTime.getYear() == endDateTime.getYear() && startDateTime.getMonth() == endDateTime.getMonth() && startDateTime.getDay() == endDateTime.getDay()) {
+            return new NormalizedDurationRecord(0, 0, 0, 0, ns2.subtract(ns1));
+        }
         int maxDayCorrection = sign == 1 ? 2 : 1;
         int dayCorrection = 0;
 

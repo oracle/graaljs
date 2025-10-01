@@ -241,6 +241,7 @@ public class Test262Runnable extends TestRunnable {
                     "let",
                     "logical-assignment-operators",
                     "new.target",
+                    "nonextensible-applies-to-private",
                     "numeric-separator-literal",
                     "object-rest",
                     "object-spread",

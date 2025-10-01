@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -77,7 +79,11 @@ public abstract class PrivateFieldAddNode extends JavaScriptBaseNode {
 
     @Specialization(limit = "3")
     void doFieldAdd(JSObject target, HiddenKey key, Object value,
-                    @CachedLibrary("target") DynamicObjectLibrary access) {
+                    @CachedLibrary("target") DynamicObjectLibrary access,
+                    @Cached IsExtensibleNode isExtensible) {
+        if (getJSContext().getEcmaScriptVersion() == JSConfig.StagingECMAScriptVersion && !isExtensible.executeBoolean(target)) {
+            throw Errors.createTypeError("Cannot define a private field on a non-extensible object", this);
+        }
         if (!Properties.containsKey(access, target, key)) {
             Properties.putWithFlags(access, target, key, value, JSAttributes.getDefaultNotEnumerable());
         } else {

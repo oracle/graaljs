@@ -77,12 +77,12 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
     protected RoundRelativeDurationNode() {
     }
 
-    public abstract TemporalDurationWithTotalRecord execute(NormalizedDurationRecord duration, BigInt destEpochNs, ISODateTimeRecord dateTime,
+    public abstract TemporalDurationWithTotalRecord execute(NormalizedDurationRecord duration, BigInt originEpochNs, BigInt destEpochNs, ISODateTimeRecord dateTime,
                     TruffleString calendar, TruffleString timeZone,
                     Unit largestUnit, int increment, Unit smallestUnit, RoundingMode roundingMode);
 
     @Specialization
-    protected final TemporalDurationWithTotalRecord roundRelativeDuration(NormalizedDurationRecord duration0, BigInt destEpochNs, ISODateTimeRecord dateTime,
+    protected final TemporalDurationWithTotalRecord roundRelativeDuration(NormalizedDurationRecord duration0, BigInt originEpochNs, BigInt destEpochNs, ISODateTimeRecord dateTime,
                     TruffleString calendar, TruffleString timeZone,
                     Unit largestUnit0, int increment, Unit smallestUnit, RoundingMode roundingMode,
                     @Cached TemporalAddDateTimeNode addDateTimeNode,
@@ -98,7 +98,7 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
                         TemporalUtil.normalizedTimeDurationSign(duration.normalizedTimeTotalNanoseconds()), 0, 0, 0, 0, 0) < 0 ? -1 : 1;
         DurationNudgeResultRecord nudgeResult;
         if (irregularLengthUnit) {
-            nudgeResult = nudgeToCalendarUnit(sign, duration, destEpochNs, dateTime, calendar, timeZone, increment, smallestUnit, roundingMode,
+            nudgeResult = nudgeToCalendarUnit(sign, duration, originEpochNs, destEpochNs, dateTime, calendar, timeZone, increment, smallestUnit, roundingMode,
                             addDateTimeNode, differenceDateNode, errorBranch);
         } else if (timeZone != null) {
             nudgeResult = nudgeToZonedTime(sign, duration, dateTime, calendar, timeZone, increment, smallestUnit, roundingMode,
@@ -122,7 +122,7 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
                         balanceResult.milliseconds(), balanceResult.microseconds(), balanceResult.nanoseconds()), nudgeResult.total());
     }
 
-    private DurationNudgeResultRecord nudgeToCalendarUnit(int sign, NormalizedDurationRecord duration, BigInt destEpochNs, ISODateTimeRecord dateTime, TruffleString calendar,
+    private DurationNudgeResultRecord nudgeToCalendarUnit(int sign, NormalizedDurationRecord duration, BigInt originEpochNs, BigInt destEpochNs, ISODateTimeRecord dateTime, TruffleString calendar,
                     TruffleString timeZone, int increment, Unit unit, RoundingMode roundingMode,
                     TemporalAddDateTimeNode addDateTimeNode, TemporalDifferenceDateNode differenceDateNode, InlinedBranchProfile errorBranch) {
         JSRealm realm = getRealm();
@@ -169,28 +169,33 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
             }
             default -> throw Errors.shouldNotReachHereUnexpectedValue(unit);
         }
-        JSTemporalDateTimeRecord start = addDateTimeNode.execute(dateTime.year(), dateTime.month(), dateTime.day(),
-                        dateTime.hour(), dateTime.minute(), dateTime.second(), dateTime.millisecond(), dateTime.microsecond(), dateTime.nanosecond(),
-                        calendar,
-                        startDuration.years(), startDuration.months(), startDuration.weeks(), startDuration.days(), startDuration.normalizedTimeTotalNanoseconds(),
-                        TemporalUtil.Overflow.CONSTRAIN);
+        BigInt startEpochNs;
+        if (r1 == 0) {
+            startEpochNs = originEpochNs;
+        } else {
+            JSTemporalDateTimeRecord start = addDateTimeNode.execute(dateTime.year(), dateTime.month(), dateTime.day(), dateTime.hour(), dateTime.minute(), dateTime.second(), dateTime.millisecond(),
+                            dateTime.microsecond(), dateTime.nanosecond(), calendar, startDuration.years(), startDuration.months(), startDuration.weeks(), startDuration.days(),
+                            startDuration.normalizedTimeTotalNanoseconds(), TemporalUtil.Overflow.CONSTRAIN);
+            if (timeZone == null) {
+                startEpochNs = TemporalUtil.getUTCEpochNanoseconds(start.getYear(), start.getMonth(), start.getDay(),
+                                start.getHour(), start.getMinute(), start.getSecond(), start.getMillisecond(), start.getMicrosecond(), start.getNanosecond());
+            } else {
+                var startDateTime = JSTemporalPlainDateTime.create(ctx, realm, start.getYear(), start.getMonth(), start.getDay(),
+                                start.getHour(), start.getMinute(), start.getSecond(), start.getMillisecond(), start.getMicrosecond(), start.getNanosecond(),
+                                calendar, this, errorBranch);
+                startEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
+            }
+        }
         JSTemporalDateTimeRecord end = addDateTimeNode.execute(dateTime.year(), dateTime.month(), dateTime.day(),
                         dateTime.hour(), dateTime.minute(), dateTime.second(), dateTime.millisecond(), dateTime.microsecond(), dateTime.nanosecond(),
                         calendar,
                         endDuration.years(), endDuration.months(), endDuration.weeks(), endDuration.days(), endDuration.normalizedTimeTotalNanoseconds(),
                         TemporalUtil.Overflow.CONSTRAIN);
-        BigInt startEpochNs;
         BigInt endEpochNs;
         if (timeZone == null) {
-            startEpochNs = TemporalUtil.getUTCEpochNanoseconds(start.getYear(), start.getMonth(), start.getDay(),
-                            start.getHour(), start.getMinute(), start.getSecond(), start.getMillisecond(), start.getMicrosecond(), start.getNanosecond());
             endEpochNs = TemporalUtil.getUTCEpochNanoseconds(end.getYear(), end.getMonth(), end.getDay(),
                             end.getHour(), end.getMinute(), end.getSecond(), end.getMillisecond(), end.getMicrosecond(), end.getNanosecond());
         } else {
-            var startDateTime = JSTemporalPlainDateTime.create(ctx, realm, start.getYear(), start.getMonth(), start.getDay(),
-                            start.getHour(), start.getMinute(), start.getSecond(), start.getMillisecond(), start.getMicrosecond(), start.getNanosecond(),
-                            calendar, this, errorBranch);
-            startEpochNs = TemporalUtil.getEpochNanosecondsFor(ctx, realm, timeZone, startDateTime, Disambiguation.COMPATIBLE);
             var endDateTime = JSTemporalPlainDateTime.create(ctx, realm, end.getYear(), end.getMonth(), end.getDay(),
                             end.getHour(), end.getMinute(), end.getSecond(), end.getMillisecond(), end.getMicrosecond(), end.getNanosecond(),
                             calendar, this, errorBranch);

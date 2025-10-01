@@ -207,6 +207,11 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
     @ImportStatic(JSConfig.class)
     public abstract static class WeakMapGetHelperNode extends JavaScriptBaseNode {
+        private final boolean throwForInvalidKey;
+
+        protected WeakMapGetHelperNode(boolean throwForInvalidKey) {
+            this.throwForInvalidKey = throwForInvalidKey;
+        }
 
         public abstract Object execute(JSWeakMapObject thisObject, Object key);
 
@@ -237,9 +242,13 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"})
-        protected static Object getInvalidKey(JSWeakMapObject thisObj, Object key,
+        protected Object getInvalidKey(JSWeakMapObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
-            return null;
+            if (throwForInvalidKey) {
+                throw typeErrorKeyIsNotValid();
+            } else {
+                return null;
+            }
         }
 
         @TruffleBoundary(allowInlining = true)
@@ -259,7 +268,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @Specialization
         protected Object weakMap(JSWeakMapObject thisObj, Object key,
-                        @Cached WeakMapGetHelperNode getNode) {
+                        @Cached("create(false)") WeakMapGetHelperNode getNode) {
             return JSRuntime.nullToUndefined(getNode.execute(thisObj, key));
         }
 
@@ -408,7 +417,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @Specialization
         protected Object weakMap(JSWeakMapObject thisObj, Object key, Object value,
-                        @Cached WeakMapGetHelperNode getNode,
+                        @Cached("create(true)") WeakMapGetHelperNode getNode,
                         @Cached WeakMapSetHelperNode setNode) {
             Object current = getNode.execute(thisObj, key);
             if (current == null) {
@@ -438,7 +447,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected Object weakMap(JSWeakMapObject thisObj, Object key, Object callbackfn,
                         @Cached IsCallableNode isCallable,
-                        @Cached WeakMapGetHelperNode getNode,
+                        @Cached("create(true)") WeakMapGetHelperNode getNode,
                         @Cached("createCall()") JSFunctionCallNode callNode,
                         @Cached WeakMapSetHelperNode setNode,
                         @Cached InlinedBranchProfile errorBranch) {

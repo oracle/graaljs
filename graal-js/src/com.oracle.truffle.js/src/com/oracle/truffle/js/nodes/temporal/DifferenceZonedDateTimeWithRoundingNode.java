@@ -100,6 +100,6 @@ public abstract class DifferenceZonedDateTimeWithRoundingNode extends JavaScript
                         precalculatedPlainDateTime.getYear(), precalculatedPlainDateTime.getMonth(), precalculatedPlainDateTime.getDay(),
                         precalculatedPlainDateTime.getHour(), precalculatedPlainDateTime.getMinute(), precalculatedPlainDateTime.getSecond(),
                         precalculatedPlainDateTime.getMillisecond(), precalculatedPlainDateTime.getMicrosecond(), precalculatedPlainDateTime.getNanosecond());
-        return roundRelativeDuration.execute(difference, ns2, dateTime, calendar, timeZone, largestUnit, roundingIncrement, smallestUnit, roundingMode);
+        return roundRelativeDuration.execute(difference, ns1, ns2, dateTime, calendar, timeZone, largestUnit, roundingIncrement, smallestUnit, roundingMode);
     }
 }

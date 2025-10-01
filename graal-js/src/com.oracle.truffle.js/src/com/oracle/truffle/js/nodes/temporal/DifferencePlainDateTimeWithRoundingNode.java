@@ -113,7 +113,8 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
         }
 
         ISODateTimeRecord dateTime = new ISODateTimeRecord(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1);
+        BigInt originEpochNs = TemporalUtil.getUTCEpochNanoseconds(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1);
         BigInt destEpochNs = TemporalUtil.getUTCEpochNanoseconds(y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2);
-        return roundRelativeDuration.execute(diff, destEpochNs, dateTime, calendar, null, largestUnit, roundingIncrement, smallestUnit, roundingMode);
+        return roundRelativeDuration.execute(diff, originEpochNs, destEpochNs, dateTime, calendar, null, largestUnit, roundingIncrement, smallestUnit, roundingMode);
     }
 }
