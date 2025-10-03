@@ -1,4 +1,4 @@
-load('../assert.js');
+load('../js/assert.js');
 
 class C {
     #data1;
@@ -25,3 +25,9 @@ const subject = new C(new D("data"));
 const C(D(x)) = subject;
 
 assertSame(x, "data");
+
+const { a: C(D(y)) } = { a: subject };
+assertSame(y, "data");
+
+const { a: { b: C(D(z)) } } = { a: { b: subject } };
+assertSame(z, "data");``

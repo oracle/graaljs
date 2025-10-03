@@ -153,7 +153,6 @@ import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SuspendNode;
-import com.oracle.truffle.js.nodes.extractor.InvokeCustomMatcherOrThrowNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -2849,9 +2848,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
                 // fall through
             case IDENT:
-                // todo-lw: call node :(
                 if (lhsExpression instanceof CallNode) {
-                    assignedNode = transformAssignmentExtractor((CallNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
+                    assignedNode = transformAssignmentExtractor((CallNode) lhsExpression, assignedValue, initializationAssignment);
                 } else {
                     assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
                 }
@@ -3066,10 +3064,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         LiteralNode.ArrayLiteralNode arrayLiteralNode = (LiteralNode.ArrayLiteralNode) lhsExpression;
         List<Expression> elementExpressions = arrayLiteralNode.getElementExpressions();
 
-        return this.transformDestructuringArrayAssignment(elementExpressions, getIterator, valueTempVar, initializationAssignment);
+        return this.transformDestructuringArrayAssignment(elementExpressions, getIterator, valueTempVar.createReadNode(), initializationAssignment);
     }
 
-    private JavaScriptNode transformDestructuringArrayAssignment(List<Expression> elementExpressions, JavaScriptNode getIterator, VarRef valueTempVar, boolean initializationAssignment) {
+    private JavaScriptNode transformDestructuringArrayAssignment(List<Expression> elementExpressions, JavaScriptNode getIterator, JavaScriptNode valueTempNode, boolean initializationAssignment) {
         JavaScriptNode[] initElements = javaScriptNodeArray(elementExpressions.size());
         VarRef iteratorTempVar = environment.createTempVar();
         // By default, we use the hint to track the type of iterator.
@@ -3094,7 +3092,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (init != null) {
                 rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
             }
-            // todo-lw: this change is kind of sus
             if (lhsExpr != null && (lhsExpr.isTokenType(TokenType.SPREAD_ARRAY) || lhsExpr.isTokenType(TokenType.SPREAD_ARGUMENT))) {
                 rhsNode = factory.createIteratorToArray(context, iteratorTempVar.createReadNode());
                 lhsExpr = ((UnaryNode) lhsExpr).getExpression();
@@ -3106,12 +3103,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         }
         JavaScriptNode closeIfNotDone = factory.createIteratorCloseIfNotDone(context, createBlock(initElements), iteratorTempVar.createReadNode());
-        return factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempVar.createReadNode());
+        return factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempNode);
     }
 
-    private JavaScriptNode transformAssignmentExtractor(CallNode fakeCallNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertToNumeric, boolean initializationAssignment) {
-        // todo-lw: call node :(
-
+    private JavaScriptNode transformAssignmentExtractor(CallNode fakeCallNode, JavaScriptNode assignedValue, boolean initializationAssignment) {
         final var functionExpr = fakeCallNode.getFunction();
         final var function = transform(functionExpr);
 
@@ -3121,11 +3116,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             receiver = transform(accessNode.getBase());
         }
 
-        final var invokeCustomMatcherOrThrowNode = InvokeCustomMatcherOrThrowNode.create(context, function, assignedValue, receiver);
+        final var invokeCustomMatcherOrThrowNode = factory.createInvokeCustomMatcherOrThrow(context, function, assignedValue, receiver);
 
         final var args = fakeCallNode.getArgs();
         VarRef valueTempVar = environment.createTempVar();
-        return this.transformDestructuringArrayAssignment(args, invokeCustomMatcherOrThrowNode, valueTempVar, initializationAssignment);
+        return this.transformDestructuringArrayAssignment(args, invokeCustomMatcherOrThrowNode,
+                createBlock(valueTempVar.createWriteNode(assignedValue), valueTempVar.createReadNode()), initializationAssignment);
     }
 
     private JavaScriptNode transformDestructuringObjectAssignment(Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment) {

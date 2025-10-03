@@ -1,4 +1,4 @@
-load('../assert.js');
+load('../js/assert.js');
 
 // potentially built-in as part of Pattern Matching
 RegExp.prototype[Symbol.customMatcher] = function (value) {
