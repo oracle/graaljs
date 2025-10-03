@@ -131,7 +131,8 @@ public final class Symbol implements TruffleObject {
      */
     public static final Symbol SYMBOL_UNSCOPABLES = Symbol.createWellKnown(Strings.constant("Symbol.unscopables"));
     /**
-     * todo-lw: doc
+     * When destructuring using the Extractor pattern, the result of this function will be destructured.
+     * Only relevant if the option {@code truffle.js.parser.extractors} is enabled.
      */
     public static final Symbol SYMBOL_CUSTOM_MATCHER = Symbol.createWellKnown(Strings.constant("Symbol.customMatcher"));
 

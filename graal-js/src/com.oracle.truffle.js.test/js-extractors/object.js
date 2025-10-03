@@ -1,4 +1,4 @@
-load('../assert.js');
+load('../js/assert.js');
 
 const MapExtractor = {
     [Symbol.customMatcher](map) {

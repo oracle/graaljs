@@ -68,7 +68,7 @@ public abstract class InvokeCustomMatcherOrThrowNode extends JavaScriptNode {
         // 5. If result is not an Object, throw a TypeError exception.
         if (!isObjectNode.executeBoolean(result)) {
             errorBranchProfile.enter(this);
-            throw Errors.createTypeErrorNotAnObject(result);
+            throw Errors.createTypeErrorInvalidCustomMatcherReturnValue(result, this);
         }
 
         // 6. Let iteratorRecord be ? GetIterator(result, sync). & 7. Return iteratorRecord.

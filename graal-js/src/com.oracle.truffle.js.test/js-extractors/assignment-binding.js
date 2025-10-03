@@ -1,4 +1,4 @@
-load('../assert.js');
+load('../js/assert.js');
 
 {
     class C {
@@ -15,10 +15,26 @@ load('../assert.js');
 
     const subject = new C("data");
 
-    let x;
-    C(x) = subject;
+    {
+        let x;
+        C(x) = subject;
+        assertSame("data", x);
+    }
 
-    assertSame(x, "data");
+    {
+        let C(x) = subject;
+        assertSame("data", x);
+    }
+
+    {
+        var C(x) = subject;
+        assertSame("data", x);
+    }
+
+    {
+        const C(x) = subject;
+        assertSame("data", x);
+    }
 }
 
 {
@@ -34,11 +50,20 @@ load('../assert.js');
 
     const subject = new C({ x: 1, y: 2 });
 
-    let x, y;
-    C({ x, y }) = subject;
+    {
+        let x, y;
+        C({x, y}) = subject;
 
-    assertSame(x, 1);
-    assertSame(y, 2);
+        assertSame(1, x);
+        assertSame(2, y);
+    }
+
+    {
+        let C({x, y}) = subject;
+
+        assertSame(1, x);
+        assertSame(2, y);
+    }
 }
 
 {
@@ -56,9 +81,18 @@ load('../assert.js');
 
     const subject = new C(undefined, 2);
 
-    const C(x = -1, y) = subject;
-    assertSame(x, -1);
-    assertSame(y, 2);
+    {
+        let x = -1, y = 100;
+        C(x = -1, y) = subject;
+        assertSame(-1, x);
+        assertSame(2, y);
+    }
+
+    {
+        const C(x = -1, y) = subject;
+        assertSame(-1, x);
+        assertSame(2, y);
+    }
 }
 
 {
@@ -80,7 +114,22 @@ load('../assert.js');
 
     const subject = new C(1, 2, 3);
 
-    const C(x, ...y) = subject;
-    assertSame(x, 1);
-    assertSameContent(y, [2, 3]);
+    {
+        let x, y;
+        C(x, ...y) = subject;
+        assertSame(1, x);
+        assertSameContent([2, 3], y);
+    }
+
+    {
+        const C(x, ...y) = subject;
+        assertSame(1, x);
+        assertSameContent([2, 3], y);
+    }
+
+    {
+        assertSame(subject, C() = subject)
+        assertSame(subject, C(x) = subject)
+        assertSame(subject, C(x, ...y) = subject)
+    }
 }

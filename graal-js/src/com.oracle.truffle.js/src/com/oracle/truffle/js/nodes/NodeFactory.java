@@ -202,6 +202,7 @@ import com.oracle.truffle.js.nodes.control.VoidBlockNode;
 import com.oracle.truffle.js.nodes.control.WhileNode;
 import com.oracle.truffle.js.nodes.control.WithNode;
 import com.oracle.truffle.js.nodes.control.YieldNode;
+import com.oracle.truffle.js.nodes.extractor.InvokeCustomMatcherOrThrowNode;
 import com.oracle.truffle.js.nodes.function.AbstractBodyNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
@@ -1388,6 +1389,10 @@ public class NodeFactory {
         } else {
             return createToObject(operand);
         }
+    }
+
+    public JavaScriptNode createInvokeCustomMatcherOrThrow(JSContext context, JavaScriptNode matcher, JavaScriptNode subject, JavaScriptNode receiver) {
+        return InvokeCustomMatcherOrThrowNode.create(context, matcher, subject, receiver);
     }
 
     // #####
