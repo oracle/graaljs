@@ -3121,7 +3121,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             receiver = transform(accessNode.getBase());
         }
 
-        final var invokeCustomMatcherOrThrowNode = InvokeCustomMatcherOrThrowNode.create(context, function, assignedValue, receiver);
+        final var invokeCustomMatcherOrThrowNode = factory.createInvokeCustomMatcherOrThrow(context, function, assignedValue, receiver);
 
         final var args = fakeCallNode.getArgs();
         VarRef valueTempVar = environment.createTempVar();

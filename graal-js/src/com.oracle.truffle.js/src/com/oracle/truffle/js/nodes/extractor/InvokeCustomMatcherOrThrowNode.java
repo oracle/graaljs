@@ -68,6 +68,8 @@ public abstract class InvokeCustomMatcherOrThrowNode extends JavaScriptNode {
         // 5. If result is not an Object, throw a TypeError exception.
         if (!isObjectNode.executeBoolean(result)) {
             errorBranchProfile.enter(this);
+            // todo-lw: right now this is kind of unhelpful since it's super generic, error message should
+            //  ideally include something like "make sure to return an iterable from [Symbol.customMatcher]"
             throw Errors.createTypeErrorNotAnObject(result);
         }
 

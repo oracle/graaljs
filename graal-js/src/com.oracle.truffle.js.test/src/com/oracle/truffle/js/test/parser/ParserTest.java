@@ -217,7 +217,7 @@ public class ParserTest {
                             }
                             extractor = {
                                 [Symbol.customMatcher](subject, _kind, receiver) {
-                                    return receiver.#f(subject);
+                                    return [receiver.#f(subject)];
                                 }
                             };
                         }
@@ -226,6 +226,30 @@ public class ParserTest {
                         const subject = "data";
                         
                         const obj.extractor(x) = subject;
+                        """, "test").buildLiteral();
+            ctx.eval(src);
+        }
+    }
+
+    @Test
+    public void testInvalidExtractorStatement() {
+        try (Context ctx = JSTest.newContextBuilder().build()) {
+            org.graalvm.polyglot.Source src = org.graalvm.polyglot.Source.newBuilder("js", """
+                        class C {
+                            #data;
+                            constructor(data) {
+                                this.#data = data;
+                            }
+                            static [Symbol.customMatcher](subject) {
+                                return #data in subject && [subject.#data];
+                            }
+                        }
+                        
+                        
+                        const subject = new C("data");
+                        
+                        let y;
+                        C(y) = subject;
                         """, "test").buildLiteral();
             ctx.eval(src);
         }
