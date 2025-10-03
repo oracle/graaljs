@@ -66,6 +66,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleOptionDescriptors;
+import com.oracle.truffle.js.builtins.CryptoBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.util.UTS35Validator;
 
@@ -1068,8 +1069,13 @@ public final class JSContextOptions {
     }
 
     public boolean isCrypto() {
-        CompilerAsserts.neverPartOfCompilation("Context patchable option crypto was assumed not to be accessed in compiled code.");
-        return ImageBuildTimeOptionsSupport.ALLOW_IO && CRYPTO.getValue(optionValues);
+        CompilerAsserts.neverPartOfCompilation("Context patchable option " + CRYPTO_NAME + " was assumed not to be accessed in compiled code.");
+        if (CRYPTO.getValue(optionValues)) {
+            CryptoBuiltins.ensureCryptoBuiltinsEnabled();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     public boolean isPerformance() {

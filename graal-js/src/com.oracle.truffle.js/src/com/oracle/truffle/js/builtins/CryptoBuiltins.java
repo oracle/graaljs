@@ -134,6 +134,12 @@ public final class CryptoBuiltins extends JSBuiltinsContainer.SwitchEnum<CryptoB
         return JSOrdinary.createWithPrototype(cryptoPrototype, realm.getContext());
     }
 
+    public static void ensureCryptoBuiltinsEnabled() {
+        if (!ImageBuildTimeOptionsSupport.ALLOW_IO) {
+            throw CompilerDirectives.shouldNotReachHere("Crypto builtins disabled due to -D" + ImageBuildTimeOptionsSupport.DISABLE_PRIVILEGES_NAME + "=io");
+        }
+    }
+
     public static SecureRandom getSecureRandomInstance() {
         // prefer SecureRandom using non-blocking source
         if (Security.getAlgorithms("SecureRandom").contains("NATIVEPRNGNONBLOCKING")) {
@@ -149,6 +155,7 @@ public final class CryptoBuiltins extends JSBuiltinsContainer.SwitchEnum<CryptoB
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, CryptoPrototype builtinEnum) {
+        ensureCryptoBuiltinsEnabled();
         return switch (builtinEnum) {
             case getRandomValues ->
                 JSCryptoGetRandomValuesNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));

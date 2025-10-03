@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime;
 
 public final class ImageBuildTimeOptionsSupport {
+    public static final String DISABLE_PRIVILEGES_NAME = "polyglot.image-build-time.DisablePrivileges";
     // See com.oracle.truffle.polyglot.PolyglotEngineImpl.ALLOW_IO
     public static final boolean ALLOW_IO;
 
@@ -48,7 +49,7 @@ public final class ImageBuildTimeOptionsSupport {
         boolean io = true;
 
         // See com.oracle.truffle.polyglot.ImageBuildTimeOptions
-        String[] privileges = System.getProperty("polyglot.image-build-time.DisablePrivileges", "").split(",");
+        String[] privileges = System.getProperty(DISABLE_PRIVILEGES_NAME, "").split(",");
         for (String privilege : privileges) {
             if ("io".equals(privilege)) {
                 io = false;
