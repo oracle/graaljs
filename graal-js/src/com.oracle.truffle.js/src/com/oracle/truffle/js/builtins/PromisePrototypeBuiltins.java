@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.PromisePrototypeBuiltinsFactory.CatchNodeGen;
 import com.oracle.truffle.js.builtins.PromisePrototypeBuiltinsFactory.FinallyNodeGen;
 import com.oracle.truffle.js.builtins.PromisePrototypeBuiltinsFactory.ThenNodeGen;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
+import com.oracle.truffle.js.nodes.array.SpeciesConstructorNode;
 import com.oracle.truffle.js.nodes.control.ThrowNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -124,15 +124,15 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
     @ImportStatic({JSPromise.class})
     public abstract static class PromiseMethodNode extends JSBuiltinNode {
-        @Child private ArraySpeciesConstructorNode speciesConstructorNode;
+        @Child private SpeciesConstructorNode speciesConstructorNode;
 
         protected PromiseMethodNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.speciesConstructorNode = ArraySpeciesConstructorNode.create(context, false);
+            this.speciesConstructorNode = SpeciesConstructorNode.create();
         }
 
         protected final Object speciesConstructor(JSDynamicObject promise) {
-            return speciesConstructorNode.speciesConstructor(promise, getRealm().getPromiseConstructor());
+            return speciesConstructorNode.execute(promise, getRealm().getPromiseConstructor());
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -582,7 +582,7 @@ public final class Uint8ArrayBuiltins {
                         @Cached(parameters = {"getContext()"}) GetOptionsObjectNode getOptionsObjectNode,
                         @Cached(parameters = {"ALPHABET", "getContext()"}) PropertyGetNode getAlphabetNode,
                         @Cached(parameters = {"LAST_CHUNK_HANDLING", "getContext()"}) PropertyGetNode getLastChunkHandlingNode,
-                        @Cached(parameters = {"getContext()", "true"}) ArraySpeciesConstructorNode constructTypedArrayNode,
+                        @Cached(parameters = {"true"}) ArraySpeciesConstructorNode constructTypedArrayNode,
                         @Cached TruffleString.ReadCharUTF16Node charAtNode,
                         @Cached TruffleString.EqualNode equalNode) {
             Object opts = getOptionsObjectNode.execute(options);
@@ -653,7 +653,7 @@ public final class Uint8ArrayBuiltins {
 
         @Specialization
         protected final JSObject doString(TruffleString string,
-                        @Cached(parameters = {"getContext()", "true"}) ArraySpeciesConstructorNode constructTypedArrayNode,
+                        @Cached(parameters = {"true"}) ArraySpeciesConstructorNode constructTypedArrayNode,
                         @Cached TruffleString.ReadCharUTF16Node charAtNode) {
             var result = fromHex(string, Integer.MAX_VALUE, charAtNode);
             if (result.error() != null) {

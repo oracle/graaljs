@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -174,7 +174,7 @@ public class TextEncoderBuiltins {
 
         protected EncodeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.constructTypedArrayNode = ArraySpeciesConstructorNode.create(context, true);
+            this.constructTypedArrayNode = ArraySpeciesConstructorNode.create(true);
             this.switchEncodingNode = TruffleString.SwitchEncodingNode.create();
         }
 

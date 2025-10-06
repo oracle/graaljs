@@ -65,6 +65,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.NonIdempotent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -985,6 +986,12 @@ public class JSContext {
         JSRealm currentRealm = JSRealm.get(null);
         assert currentRealm != null;
         return currentRealm;
+    }
+
+    @Idempotent
+    @NeverDefault
+    public static JSContext get(Node node) {
+        return JavaScriptLanguage.get(node).getJSContext();
     }
 
     public final Shape getEmptyShapeNullPrototype() {
