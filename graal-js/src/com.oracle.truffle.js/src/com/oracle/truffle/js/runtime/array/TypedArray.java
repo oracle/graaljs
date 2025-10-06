@@ -70,21 +70,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class TypedArray extends ScriptArray {
 
-    public enum ElementType {
-        Int8,
-        Uint8,
-        Uint8Clamped,
-        Int16,
-        Uint16,
-        Int32,
-        Uint32,
-        BigInt64,
-        BigUint64,
-        Float16,
-        Float32,
-        Float64
-    }
-
     private final int bytesPerElement;
     private final byte bytesPerElementShift;
     private final boolean offset;
@@ -290,8 +275,6 @@ public abstract class TypedArray extends ScriptArray {
         return offset;
     }
 
-    public abstract ElementType getElementType();
-
     public abstract Object getBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, InteropLibrary interop);
 
     public abstract void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop);
@@ -438,10 +421,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.forOrder(littleEndian).putInt8(getByteArray(buffer), index, value);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int8;
-        }
     }
 
     public static final class DirectInt8Array extends TypedIntArray {
@@ -481,10 +460,6 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int8;
-        }
     }
 
     public static class InteropInt8Array extends InteropOneByteIntArray {
@@ -492,10 +467,6 @@ public abstract class TypedArray extends ScriptArray {
             super(factory, offset, fixedLength);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int8;
-        }
     }
 
     public abstract static class InteropOneByteIntArray extends TypedIntArray {
@@ -571,10 +542,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.forOrder(littleEndian).putInt8(getByteArray(buffer), index, value);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Uint8;
-        }
     }
 
     public static final class DirectUint8Array extends TypedIntArray {
@@ -614,10 +581,6 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Uint8;
-        }
     }
 
     public static final class InteropUint8Array extends InteropOneByteIntArray {
@@ -635,10 +598,6 @@ public abstract class TypedArray extends ScriptArray {
             return super.getBufferElementIntImpl(buffer, index, littleEndian, interop) & 0xff;
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Uint8;
-        }
     }
 
     public abstract static class AbstractUint8ClampedArray extends TypedIntArray {
@@ -667,10 +626,6 @@ public abstract class TypedArray extends ScriptArray {
             setBufferElementIntImpl(buffer, index, littleEndian, toInt(JSRuntime.toDouble((Number) value)), interop);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Uint8Clamped;
-        }
     }
 
     public static final class Uint8ClampedArray extends AbstractUint8ClampedArray {
@@ -778,10 +733,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.forOrder(littleEndian).putInt16(getByteArray(buffer), index, value);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int16;
-        }
     }
 
     public static final class DirectInt16Array extends TypedIntArray {
@@ -821,10 +772,6 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int16;
-        }
     }
 
     public static class InteropInt16Array extends InteropTwoByteIntArray {
@@ -832,10 +779,6 @@ public abstract class TypedArray extends ScriptArray {
             super(factory, offset, fixedLength);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int16;
-        }
     }
 
     public abstract static class InteropTwoByteIntArray extends TypedIntArray {
@@ -911,10 +854,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.forOrder(littleEndian).putInt16(getByteArray(buffer), index, value);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Uint16;
-        }
     }
 
     public static final class DirectUint16Array extends TypedIntArray {
@@ -954,10 +893,6 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Uint16;
-        }
     }
 
     public static final class InteropUint16Array extends InteropTwoByteIntArray {
@@ -975,10 +910,6 @@ public abstract class TypedArray extends ScriptArray {
             return super.getBufferElementIntImpl(buffer, index, littleEndian, interop) & 0xffff;
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Uint16;
-        }
     }
 
     static final int INT32_BYTES_PER_ELEMENT = 4;
@@ -1008,10 +939,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.forOrder(littleEndian).putInt32(getByteArray(buffer), index, value);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int32;
-        }
     }
 
     public static final class DirectInt32Array extends TypedIntArray {
@@ -1046,10 +973,6 @@ public abstract class TypedArray extends ScriptArray {
             return ByteBufferAccess.nativeOrder().compareExchangeInt32(byteBuffer, bufferOffset, expectedValue, newValue);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int32;
-        }
     }
 
     public static final class InteropInt32Array extends TypedIntArray {
@@ -1097,10 +1020,6 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Int32;
-        }
     }
 
     static final int UINT32_BYTES_PER_ELEMENT = 4;
@@ -1139,10 +1058,6 @@ public abstract class TypedArray extends ScriptArray {
             return toUint32(getBufferElementIntImpl(buffer, index, littleEndian, interop));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Uint32;
-        }
     }
 
     public static final class Uint32Array extends AbstractUint32Array {
@@ -1334,10 +1249,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.nativeOrder().putInt64(getByteArray(buffer), offset + index * BIGINT64_BYTES_PER_ELEMENT, value);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.BigInt64;
-        }
     }
 
     public static final class DirectBigInt64Array extends TypedBigIntArray {
@@ -1376,10 +1287,6 @@ public abstract class TypedArray extends ScriptArray {
             return BigInt.valueOf(compareExchangeLong(typedArray, index, expectedValue.longValue(), newValue.longValue()));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.BigInt64;
-        }
     }
 
     public static class InteropBigInt64Array extends InteropBigIntArray {
@@ -1387,10 +1294,6 @@ public abstract class TypedArray extends ScriptArray {
             super(factory, offset, fixedLength);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.BigInt64;
-        }
     }
 
     public abstract static class InteropBigIntArray extends TypedBigIntArray {
@@ -1476,10 +1379,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.nativeOrder().putInt64(getByteArray(buffer), offset + index * BIGUINT64_BYTES_PER_ELEMENT, value);
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.BigUint64;
-        }
     }
 
     public static final class DirectBigUint64Array extends TypedBigIntArray {
@@ -1528,10 +1427,6 @@ public abstract class TypedArray extends ScriptArray {
             return BigInt.valueOfUnsigned(compareExchangeLong(typedArray, index, expectedValue.longValue(), newValue.longValue()));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.BigUint64;
-        }
     }
 
     public static final class InteropBigUint64Array extends InteropBigIntArray {
@@ -1549,10 +1444,6 @@ public abstract class TypedArray extends ScriptArray {
             return BigInt.valueOfUnsigned(getBufferElementLongImpl(buffer, index, littleEndian, interop));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.BigUint64;
-        }
     }
 
     public abstract static class TypedFloatArray extends TypedArray {
@@ -1623,10 +1514,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.forOrder(littleEndian).putFloat16(getByteArray(buffer), index, JSRuntime.toFloat16((Number) value));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float16;
-        }
     }
 
     public static final class DirectFloat16Array extends TypedFloatArray {
@@ -1654,10 +1541,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteBufferAccess.forOrder(littleEndian).putFloat16(getDirectByteBuffer(buffer), index, JSRuntime.toFloat16((Number) value));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float16;
-        }
     }
 
     public static final class InteropFloat16Array extends TypedFloatArray {
@@ -1705,10 +1588,6 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float16;
-        }
     }
 
     static final int FLOAT32_BYTES_PER_ELEMENT = 4;
@@ -1738,10 +1617,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.forOrder(littleEndian).putFloat(getByteArray(buffer), index, JSRuntime.floatValue((Number) value));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float32;
-        }
     }
 
     public static final class DirectFloat32Array extends TypedFloatArray {
@@ -1769,10 +1644,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteBufferAccess.forOrder(littleEndian).putFloat(getDirectByteBuffer(buffer), index, JSRuntime.floatValue((Number) value));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float32;
-        }
     }
 
     public static final class InteropFloat32Array extends TypedFloatArray {
@@ -1820,10 +1691,6 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float32;
-        }
     }
 
     static final int FLOAT64_BYTES_PER_ELEMENT = 8;
@@ -1853,10 +1720,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteArrayAccess.forOrder(littleEndian).putDouble(getByteArray(buffer), index, JSRuntime.doubleValue((Number) value));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float64;
-        }
     }
 
     public static final class DirectFloat64Array extends TypedFloatArray {
@@ -1884,10 +1747,6 @@ public abstract class TypedArray extends ScriptArray {
             ByteBufferAccess.forOrder(littleEndian).putDouble(getDirectByteBuffer(buffer), index, JSRuntime.doubleValue((Number) value));
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float64;
-        }
     }
 
     public static final class InteropFloat64Array extends TypedFloatArray {
@@ -1935,9 +1794,5 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        @Override
-        public ElementType getElementType() {
-            return ElementType.Float64;
-        }
     }
 }

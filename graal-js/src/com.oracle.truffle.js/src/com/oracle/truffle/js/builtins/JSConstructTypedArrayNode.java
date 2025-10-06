@@ -292,7 +292,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         assert typedArray == JSArrayBufferView.typedArrayGetArrayType(result);
 
-        if (bulkCopyProfile.profile(this, !sourceType.isInterop() && sourceType.getElementType() == typedArray.getElementType())) {
+        if (bulkCopyProfile.profile(this, !sourceType.isInterop() && sourceType.getFactory() == typedArray.getFactory())) {
             JSArrayBufferObject srcData = arrayBufferView.getArrayBuffer();
             int sourceByteOffset = arrayBufferView.getByteOffset();
             int elementSize = sourceType.bytesPerElement();
