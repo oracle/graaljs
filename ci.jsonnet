@@ -101,7 +101,6 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   jdklatestPlatforms:: [
     common.jdklatest + common.linux_amd64,
     common.jdklatest + common.linux_aarch64,
-    common.jdklatest + common.darwin_amd64,
     common.jdklatest + common.darwin_aarch64,
     common.jdklatest + common.windows_amd64,
   ],
@@ -191,10 +190,8 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
         ] else []),
       },
     ],
-    // Avoid building native images on machines with very little RAM.
-    capabilities+: if 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
     targets: ['ondemand'],
-    timelimit: if 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then '1:30:00' else '1:00:00',
+    timelimit: '1:00:00',
     notify_groups: ['javascript'],
     defined_in: std.thisFile,
   },
