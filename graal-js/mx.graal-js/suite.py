@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-  "mxversion" : "7.58.0",
+  "mxversion" : "7.65.0",
 
   "name" : "graal-js",
 
@@ -49,6 +49,8 @@ suite = {
   },
 
   "defaultLicense" : "UPL",
+
+  "capture_suite_commit_info": True,
 
   "libraries" : {
     "NETBEANS_PROFILER" : {
