@@ -9,7 +9,7 @@ The average user will prefer the pre-built binaries as part of [GraalVM](http://
 
 * Python 3.8+ (required by `mx`)
 * git (to download, update, and locate repositories)
-* Java JDK 11 or newer
+* Java JDK 21 or newer
 
 Building the Node.js support is optional, and requires additional tools, see futher below.
 
@@ -30,7 +30,7 @@ Building the Node.js support is optional, and requires additional tools, see fut
 
 3. clone the `graaljs` repository and enter it:
     ```bash
-    git clone https://github.com/graalvm/graaljs.git
+    git clone https://github.com/oracle/graaljs.git
     cd graaljs/graal-js
     ```
     Note that the `graaljs` repository contains two so-called suites: `graal-js` (the core JavaScript engine) and `graal-nodejs` (the Node.js project modified so it uses GraalVM JavaScript as JavaScript engine).
