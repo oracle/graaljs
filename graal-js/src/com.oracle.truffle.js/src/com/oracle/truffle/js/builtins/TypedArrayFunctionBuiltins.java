@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,7 +105,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Specialization(guards = "isConstructor.executeBoolean(thisObj)")
         protected JSTypedArrayObject arrayOf(Object thisObj, Object[] args) {
             int len = args.length;
-            JSTypedArrayObject newObj = getArraySpeciesConstructorNode().typedArrayCreate(thisObj, len);
+            JSTypedArrayObject newObj = getArraySpeciesConstructorNode().typedArrayCreateInWriteMode(thisObj, len);
             int k = 0;
             while (k < len) {
                 Object kValue = args[k];
@@ -156,7 +156,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                 values.add(nextValue, this, growProfile);
             }
             int len = values.size();
-            JSTypedArrayObject obj = getArraySpeciesConstructorNode().typedArrayCreate(thisObj, len);
+            JSTypedArrayObject obj = getArraySpeciesConstructorNode().typedArrayCreateInWriteMode(thisObj, len);
             for (int k = 0; k < len; k++) {
                 Object mapped = values.get(k);
                 if (mapping) {

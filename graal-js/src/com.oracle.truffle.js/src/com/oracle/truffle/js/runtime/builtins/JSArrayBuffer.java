@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayBufferFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -65,7 +66,10 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     public static final JSArrayBuffer DIRECT_INSTANCE = new JSArrayBuffer();
     public static final JSArrayBuffer INTEROP_INSTANCE = new JSArrayBuffer();
 
+    // Used for maxByteLength of fixed length buffers
     public static final int FIXED_LENGTH = -1;
+    // Used for maxByteLength of immutable buffers
+    public static final int IMMUTABLE_BUFFER = -2;
 
     private JSArrayBuffer() {
     }
@@ -232,6 +236,9 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
      */
     @TruffleBoundary
     public static void detachArrayBuffer(JSArrayBufferObject arrayBuffer) {
+        if (arrayBuffer.isImmutable()) {
+            throw Errors.createTypeErrorImmutableBuffer();
+        }
         JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate("no detached array buffer");
         if (isJSDirectArrayBuffer(arrayBuffer)) {
             ((JSArrayBufferObject.Direct) arrayBuffer).detachArrayBuffer();

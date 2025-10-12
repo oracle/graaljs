@@ -622,6 +622,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorImmutableBuffer() {
+        return Errors.createTypeError("Immutable buffer");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorInvalidDetachKey() {
         return Errors.createTypeError("Invalid detach key");
     }

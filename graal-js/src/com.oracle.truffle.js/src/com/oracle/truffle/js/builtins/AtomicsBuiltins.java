@@ -293,10 +293,17 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         protected final JSTypedArrayObject validateTypedArray(Object object) {
+            return validateTypedArray(object, false);
+        }
+
+        protected final JSTypedArrayObject validateTypedArray(Object object, boolean writeAccess) {
             if (!JSArrayBufferView.isJSArrayBufferView(object)) {
                 throw createTypeErrorNotTypedArray();
             }
             JSTypedArrayObject typedArrayObject = (JSTypedArrayObject) object;
+            if (writeAccess && typedArrayObject.getArrayBuffer().isImmutable()) {
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
             checkOutOfBounds(typedArrayObject);
             return typedArrayObject;
         }
@@ -502,7 +509,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                         @Cached @Shared JSToIndexNode toIndexNode,
                         @Cached InlinedBranchProfile notSharedArrayBuffer) {
 
-            JSTypedArrayObject target = validateTypedArray(maybeTarget);
+            JSTypedArrayObject target = validateTypedArray(maybeTarget, true);
             boolean sharedArrayBuffer = isSharedBufferView(target);
             TypedArray ta = validateIntegerTypedArray(target, false);
             int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
@@ -815,7 +822,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected Object doGeneric(Object maybeTarget, Object index, Object value,
                         @Cached @Shared JSToIndexNode toIndexNode) {
 
-            JSTypedArrayObject target = validateTypedArray(maybeTarget);
+            JSTypedArrayObject target = validateTypedArray(maybeTarget, true);
             TypedArray ta = validateIntegerTypedArray(target, false);
             int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
 
@@ -999,7 +1006,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                         @Cached @Shared JSToIndexNode toIndexNode,
                         @Cached InlinedBranchProfile notSharedArrayBuffer) {
 
-            JSTypedArrayObject target = validateTypedArray(maybeTarget);
+            JSTypedArrayObject target = validateTypedArray(maybeTarget, true);
             TypedArray ta = validateIntegerTypedArray(target, false);
             int intIndex = validateAtomicAccess(typedArrayLength(target), toIndexNode.executeLong(index));
 
