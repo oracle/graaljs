@@ -104,7 +104,11 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
     }
 
     public final boolean isFixedLength() {
-        return (maxByteLength == JSArrayBuffer.FIXED_LENGTH);
+        return (maxByteLength < 0);
+    }
+
+    public final boolean isImmutable() {
+        return (maxByteLength == JSArrayBuffer.IMMUTABLE_BUFFER);
     }
 
     @SuppressWarnings("static-method")

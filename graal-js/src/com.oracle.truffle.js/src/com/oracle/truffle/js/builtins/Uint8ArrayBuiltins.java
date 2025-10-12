@@ -539,6 +539,10 @@ public final class Uint8ArrayBuiltins {
                         @Cached(parameters = {"LAST_CHUNK_HANDLING", "getContext()"}) PropertyGetNode getLastChunkHandlingNode,
                         @Cached TruffleString.ReadCharUTF16Node charAtNode,
                         @Cached TruffleString.EqualNode equalNode) {
+            if (into.getArrayBuffer().isImmutable()) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
             Object opts = getOptionsObjectNode.execute(options);
             TruffleString alphabet = getStringOption(opts, Strings.ALPHABET, ALPHABET_VALUES, BASE64, getAlphabetNode, equalNode);
             boolean base64url = Strings.equals(equalNode, alphabet, BASE64URL);
@@ -618,6 +622,10 @@ public final class Uint8ArrayBuiltins {
         @Specialization(guards = {"isUint8Array(into)"})
         protected final JSObject doUint8Array(JSTypedArrayObject into, TruffleString string,
                         @Cached TruffleString.ReadCharUTF16Node charAtNode) {
+            if (into.getArrayBuffer().isImmutable()) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
             int byteLength = getByteLengthOrThrow(into);
 
             var result = fromHex(string, byteLength, charAtNode);

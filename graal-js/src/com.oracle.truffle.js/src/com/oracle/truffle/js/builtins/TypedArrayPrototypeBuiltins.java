@@ -404,6 +404,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object set(JSTypedArrayObject targetObj, Object array, Object offset,
                         @Cached SetTypedArrayNode setTypedArrayNode,
                         @Cached InlinedBranchProfile errorBranch) {
+            if (targetObj.getArrayBuffer().isImmutable()) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
             long targetOffsetLong = toInteger(offset);
             if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
                 errorBranch.enter(this);
@@ -816,7 +820,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached InlinedConditionProfile sizeIsZero,
                         @Cached InlinedConditionProfile offsetProfile1,
                         @Cached InlinedConditionProfile offsetProfile2) {
-            JSTypedArrayObject sourceTypedArray = validateTypedArray(thisObj);
+            JSTypedArrayObject sourceTypedArray = validateTypedArray(thisObj, false);
             long len = getLength(sourceTypedArray);
             long startPos = begin != Undefined.instance ? JSRuntime.getOffset(toIntegerAsLong.executeLong(begin), len, this, offsetProfile1) : 0;
 
@@ -828,7 +832,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
 
             long size = startPos <= endPos ? endPos - startPos : 0;
-            JSTypedArrayObject resultTypedArray = getArraySpeciesConstructorNode().typedArraySpeciesCreate(sourceTypedArray, JSRuntime.longToIntOrDouble(size));
+            JSTypedArrayObject resultTypedArray = getArraySpeciesConstructorNode().typedArraySpeciesCreateInWriteMode(sourceTypedArray, JSRuntime.longToIntOrDouble(size));
             if (sizeIsZero.profile(this, size > 0)) {
                 checkOutOfBounds(sourceTypedArray);
                 endPos = Math.min(endPos, getLength(sourceTypedArray));
@@ -920,6 +924,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected JSDynamicObject reverse(JSTypedArrayObject thisObj,
                         @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode) {
+            if (thisObj.getArrayBuffer().isImmutable()) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
             checkOutOfBounds(thisObj);
             long len = getLength(thisObj);
             long middle = len / 2L;
@@ -981,7 +989,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached JSToBigIntNode toBigIntNode,
                         @Cached InlinedConditionProfile offsetProfile1,
                         @Cached InlinedConditionProfile offsetProfile2) {
-            JSTypedArrayObject thisJSObj = validateTypedArray(thisObj);
+            JSTypedArrayObject thisJSObj = validateTypedArray(thisObj, true);
             long len = getLength(thisJSObj);
             Object convValue = JSArrayBufferView.isBigIntArrayBufferView(thisJSObj)
                             ? toBigIntNode.execute(value)
@@ -1013,7 +1021,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Cached InlinedConditionProfile isCompareUndefined) {
             checkCompareCallableOrUndefined(compare);
-            JSTypedArrayObject thisArray = validateTypedArray(thisObj);
+            JSTypedArrayObject thisArray = validateTypedArray(thisObj, true);
             int len = typedArrayLengthNode.execute(this, thisArray, getContext());
 
             JSTypedArrayObject resultArray;

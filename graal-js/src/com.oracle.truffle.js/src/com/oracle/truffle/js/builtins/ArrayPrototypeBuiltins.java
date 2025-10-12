@@ -409,8 +409,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
+        protected final Object toObjectOrValidateTypedArray(Object thisObj, boolean writeAccess) {
+            return isTypedArrayImplementation ? validateTypedArray(thisObj, writeAccess) : toObject(thisObj);
+        }
+
         protected final Object toObjectOrValidateTypedArray(Object thisObj) {
-            return isTypedArrayImplementation ? validateTypedArray(thisObj) : toObject(thisObj);
+            return toObjectOrValidateTypedArray(thisObj, false);
         }
 
         protected final boolean isCallable(Object callback) {
@@ -447,12 +451,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         /**
          * ES2016, 22.2.3.5.1 ValidateTypedArray(O).
          */
-        protected final JSTypedArrayObject validateTypedArray(Object obj) {
+        protected final JSTypedArrayObject validateTypedArray(Object obj, boolean writeAccess) {
             if (!JSArrayBufferView.isJSArrayBufferView(obj)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferViewExpected();
             }
             JSTypedArrayObject typedArrayObject = (JSTypedArrayObject) obj;
+            if (writeAccess && typedArrayObject.getArrayBuffer().isImmutable()) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
             if (JSArrayBufferView.isOutOfBounds(typedArrayObject, getContext())) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorOutOfBoundsTypedArray();
@@ -485,17 +493,29 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         protected final Object createEmptyContainer(Object thisObj, long size) {
+            return createEmptyContainer(thisObj, size, false);
+        }
+
+        protected final Object createEmptyContainer(Object thisObj, long size, boolean writeAccessMode) {
             if (isTypedArrayImplementation) {
                 // ValidateTypedArray already performed in the caller.
-                return typedArraySpeciesCreate((JSTypedArrayObject) thisObj, JSRuntime.longToIntOrDouble(size));
+                return typedArraySpeciesCreateImpl(writeAccessMode, (JSTypedArrayObject) thisObj, JSRuntime.longToIntOrDouble(size));
             } else {
                 return arraySpeciesCreate(thisObj, size);
             }
         }
 
         protected final JSTypedArrayObject typedArraySpeciesCreate(JSTypedArrayObject thisObj, Object... args) {
+            return typedArraySpeciesCreateImpl(false, thisObj, args);
+        }
+
+        protected final JSTypedArrayObject typedArraySpeciesCreateInWriteMode(JSTypedArrayObject thisObj, Object... args) {
+            return typedArraySpeciesCreateImpl(true, thisObj, args);
+        }
+
+        private JSTypedArrayObject typedArraySpeciesCreateImpl(boolean writeAccessMode, JSTypedArrayObject thisObj, Object... args) {
             var constr = speciesConstructor(thisObj, getDefaultConstructor(getRealm(), thisObj));
-            return typedArrayCreate(constr, args);
+            return typedArrayCreateImpl(writeAccessMode, constr, args);
         }
 
         protected final JSTypedArrayObject typedArrayCreateSameType(JSTypedArrayObject thisObj, Object... args) {
@@ -507,12 +527,26 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
          * TypedArrayCreateFromConstructor(constructor, argumentList).
          */
         public final JSTypedArrayObject typedArrayCreate(Object constructor, Object... args) {
+            return typedArrayCreateImpl(false, constructor, args);
+        }
+
+        public final JSTypedArrayObject typedArrayCreateInWriteMode(Object constructor, Object... args) {
+            return typedArrayCreateImpl(true, constructor, args);
+        }
+
+        private JSTypedArrayObject typedArrayCreateImpl(boolean writeAccessMode, Object constructor, Object... args) {
             assert isTypedArrayImplementation;
             Object newObject = construct(constructor, args);
             if (!(newObject instanceof JSTypedArrayObject newTypedArray)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferViewExpected();
             }
+
+            if (writeAccessMode && newTypedArray.getArrayBuffer().isImmutable()) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
+
             JSContext context = getJSContext();
             if (JSArrayBufferView.isOutOfBounds(newTypedArray, context)) {
                 errorBranch.enter();
@@ -2206,7 +2240,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private JSTypedArrayObject getTypedResult(JSTypedArrayObject thisJSObj, JSArrayObject resultArray) {
             long resultLen = arrayGetLength(resultArray);
 
-            JSTypedArrayObject typedResult = getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisJSObj, JSRuntime.longToIntOrDouble(resultLen));
+            JSTypedArrayObject typedResult = getArraySpeciesConstructorNode().typedArraySpeciesCreateInWriteMode(thisJSObj, JSRuntime.longToIntOrDouble(resultLen));
             TypedArray typedArray = arrayTypeProfile.profile(JSArrayBufferView.typedArrayGetArrayType(typedResult));
             ScriptArray array = resultArrayTypeProfile.profile(arrayGetArrayType(resultArray));
             for (long i = 0; i < resultLen; i++) {
@@ -2305,7 +2339,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
-            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, length);
+            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, length, true);
             return forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, resultArray);
         }
 
@@ -2926,7 +2960,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached InlinedConditionProfile offsetProfile1,
                         @Cached InlinedConditionProfile offsetProfile2,
                         @Cached InlinedConditionProfile offsetProfile3) {
-            Object obj = toObjectOrValidateTypedArray(thisObj);
+            Object obj = toObjectOrValidateTypedArray(thisObj, true);
             long len = getLength(obj);
             long to = JSRuntime.getOffset(toIntegerAsLong(target), len, this, offsetProfile1);
             long from = JSRuntime.getOffset(toIntegerAsLong(start), len, this, offsetProfile2);

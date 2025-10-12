@@ -334,6 +334,13 @@ public final class DataViewPrototypeBuiltins {
                         @Cached InlinedExactClassProfile bufferTypeProfile,
                         @Cached GetViewByteLengthNode getViewByteLengthNode,
                         @Cached SetBufferElementNode setBufferElement) {
+            JSArrayBufferObject buffer = bufferTypeProfile.profile(this, dataView.getArrayBuffer());
+
+            if (buffer.isImmutable()) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorImmutableBuffer();
+            }
+
             long getIndex = toIndexNode.executeLong(byteOffset);
             Object numberValue = switch (factory) {
                 case BigInt64Array, BigUint64Array -> toBigIntNode.executeBigInteger(value);
@@ -342,7 +349,6 @@ public final class DataViewPrototypeBuiltins {
             };
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
-            JSArrayBufferObject buffer = bufferTypeProfile.profile(this, dataView.getArrayBuffer());
             checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
             int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch, getViewByteLengthNode);
 

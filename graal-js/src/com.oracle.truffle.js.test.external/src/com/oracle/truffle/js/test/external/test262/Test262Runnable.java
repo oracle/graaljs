@@ -227,6 +227,7 @@ public class Test262Runnable extends TestRunnable {
                     "globalThis",
                     "hashbang",
                     "host-gc-required",
+                    "immutable-arraybuffer",
                     "import-assertions",
                     "import-attributes",
                     "import-defer",
@@ -276,7 +277,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "IsHTMLDDA",
                     "explicit-resource-management",
-                    "immutable-arraybuffer",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
@@ -288,6 +288,7 @@ public class Test262Runnable extends TestRunnable {
                     "Math.sumPrecise",
                     "ShadowRealm",
                     "decorators",
+                    "immutable-arraybuffer",
                     "import-defer",
                     "iterator-sequencing",
                     "json-parse-with-source",

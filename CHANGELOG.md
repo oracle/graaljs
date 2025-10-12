@@ -8,6 +8,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 ## Version 25.1.0
 * Added an experimental option `js.crypto` that provides `getRandomValues()` and `randomUUID()` from the [Web Crypto API](https://w3c.github.io/webcrypto/#crypto-interface).
 * Added stable option `js.performance` that provides `performance.now()`, `timeOrigin`, and `toJSON()` from the [Web High Resolution Time API](https://w3c.github.io/hr-time/).
+* Implemented the [`Immutable ArrayBuffers`](https://github.com/tc39/proposal-immutable-arraybuffer) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
 ## Version 25.0.0
 * ECMAScript 2025 mode/features enabled by default.

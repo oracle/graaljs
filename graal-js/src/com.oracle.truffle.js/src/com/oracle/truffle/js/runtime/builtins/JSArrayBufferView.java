@@ -183,9 +183,13 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        JSTypedArrayObject thisArray = (JSTypedArrayObject) thisObj;
+        if (thisArray.getArrayBuffer().isImmutable()) {
+            return false;
+        }
         if (thisObj == receiver) {
             Object numValue = convertValue(thisObj, value);
-            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
+            if (!JSArrayBufferView.isOutOfBounds(thisArray, thisObj.getJSContext())) {
                 typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
             }
             return true;
@@ -203,6 +207,12 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (key instanceof TruffleString name) {
             Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
+                if (((JSTypedArrayObject) thisObj).getArrayBuffer().isImmutable()) {
+                    if (isStrict) {
+                        throw Errors.createTypeErrorImmutableBuffer();
+                    }
+                    return false;
+                }
                 if (thisObj == receiver) {
                     // TypedArraySetElement
                     Object numValue = convertValue(thisObj, value);
@@ -461,10 +471,16 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static boolean defineOwnPropertyIndex(JSDynamicObject thisObj, Number numericIndex, PropertyDescriptor desc) {
+    private boolean defineOwnPropertyIndex(JSDynamicObject thisObj, Number numericIndex, PropertyDescriptor desc) {
         long index = validIntegerIndex(thisObj, numericIndex);
         if (index == -1) {
             return false;
+        }
+        JSTypedArrayObject thisArray = (JSTypedArrayObject) thisObj;
+        if (thisArray.getArrayBuffer().isImmutable()) {
+            Object value = getOwnHelper(thisObj, thisObj, numericIndex.longValue(), null);
+            PropertyDescriptor current = PropertyDescriptor.createData(value, true, false, false);
+            return validateAndApplyImmutablePropertyDescriptorExisting(desc, current);
         }
         if (desc.isAccessorDescriptor()) {
             return false;
@@ -482,12 +498,38 @@ public final class JSArrayBufferView extends JSNonProxy {
             // TypedArraySetElement
             Object value = desc.getValue();
             Object numValue = convertValue(thisObj, value);
-            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
+            if (!JSArrayBufferView.isOutOfBounds(thisArray, thisObj.getJSContext())) {
                 assert index >= 0 && index < JSArrayBufferView.typedArrayGetLength(thisObj);
                 JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, true);
             }
         }
         return true;
+    }
+
+    private static boolean validateAndApplyImmutablePropertyDescriptorExisting(PropertyDescriptor descriptor, PropertyDescriptor currentDesc) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert currentDesc.isFullyPopulatedPropertyDescriptor();
+        if (descriptor.hasNoFields()) {
+            return true;
+        }
+
+        if ((descriptor.hasConfigurable() && descriptor.getConfigurable()) || (descriptor.hasEnumerable() && !descriptor.getEnumerable())) {
+            return false;
+        }
+
+        if (descriptor.isGenericDescriptor()) {
+            return true;
+        } else if (descriptor.isDataDescriptor()) {
+            if (descriptor.hasWritable() && descriptor.getWritable()) {
+                return false;
+            } else if (descriptor.hasValue()) {
+                return JSRuntime.isSameValue(descriptor.getValue(), currentDesc.getValue());
+            } else {
+                return true;
+            }
+        } else {
+            return false;
+        }
     }
 
     @TruffleBoundary
@@ -501,7 +543,8 @@ public final class JSArrayBufferView extends JSNonProxy {
                 if (value == Undefined.instance) {
                     return null;
                 }
-                return PropertyDescriptor.createData(value, true, true, true);
+                boolean mutable = !((JSTypedArrayObject) thisObj).getArrayBuffer().isImmutable();
+                return PropertyDescriptor.createData(value, true, mutable, mutable);
             }
         }
         return ordinaryGetOwnProperty(thisObj, key);
