@@ -334,31 +334,29 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             long relativeStart = toInteger(start);
             long startIndex = negativeBegin.profile(this, relativeStart < 0) ? Math.max(srcLength + relativeStart, 0) : Math.min(relativeStart, srcLength);
             int srcByteOffset = thisObj.getByteOffset();
-            long beginByteOffset = srcByteOffset + startIndex * array.bytesPerElement();
-            Object newLength;
+            int beginByteOffset = (int) (srcByteOffset + startIndex * array.bytesPerElement());
+            JSArrayBufferObject buffer = thisObj.getArrayBuffer();
+            Object[] argumentsList;
             if (thisObj.hasAutoLength() && end == Undefined.instance) {
-                newLength = Undefined.instance;
+                argumentsList = new Object[]{buffer, beginByteOffset};
             } else {
                 long relativeEnd = end == Undefined.instance ? srcLength : toInteger(end);
                 long endIndex = negativeEnd.profile(this, relativeEnd < 0) ? Math.max(srcLength + relativeEnd, 0) : Math.min(relativeEnd, srcLength);
+                int newLength;
                 if (smallerEnd.profile(this, endIndex < startIndex)) {
                     newLength = 0;
                 } else {
                     newLength = (int) (endIndex - startIndex);
                 }
+                argumentsList = new Object[]{buffer, beginByteOffset, newLength};
             }
-            return subarrayImpl(thisObj, (int) beginByteOffset, newLength);
+            return getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisObj, argumentsList);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSArrayBufferView(thisObj)")
         protected JSTypedArrayObject subarrayGeneric(Object thisObj, Object begin0, Object end0) {
             throw Errors.createTypeErrorArrayBufferViewExpected();
-        }
-
-        protected JSTypedArrayObject subarrayImpl(JSTypedArrayObject thisObj, int beginByteOffset, Object newLength) {
-            JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);
-            return getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisObj, arrayBuffer, beginByteOffset, newLength);
         }
 
         protected ArraySpeciesConstructorNode getArraySpeciesConstructorNode() {
