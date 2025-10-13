@@ -6,8 +6,8 @@ local ci = import '../ci.jsonnet';
     cd:: 'graal-js',
     suite_prefix:: 'js', # for build job names
     components+: ['js'],
-    // increase default timelimit on windows and darwin-amd64
-    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:30:00' else '45:00',
+    // increase default timelimit on windows
+    timelimit: if 'os' in self && (self.os == 'windows') then '1:30:00' else '45:00',
     defined_in: std.thisFile,
   },
 
@@ -149,8 +149,7 @@ local ci = import '../ci.jsonnet';
     graalJs + gateTags('default')                                                            + tier2 + ce + {name: 'default-ce'} +
       promoteToTarget(common.tier3, [common.jdklatest + common.linux_aarch64, common.jdklatest + common.windows_amd64]),
     graalJs + gateTags('default')                                                            + tier2 + ee + {name: 'default-ee'} +
-      promoteToTarget(common.tier3, [common.jdklatest + common.darwin_aarch64]) +
-      promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
+      promoteToTarget(common.tier3, [common.jdklatest + common.darwin_aarch64]),
 
     graalJs + gateTags('noic')                                                               + tier3      + {name: 'noic'},
     graalJs + gateTags('directbytebuffer')                                                   + tier3      + {name: 'directbytebuffer'},
@@ -159,18 +158,16 @@ local ci = import '../ci.jsonnet';
     graalJs + gateTags('shareengine')                                                        + tier3      + {name: 'shareengine'},
     graalJs + gateTags('latestversion')                                                      + tier3      + {name: 'latestversion'},
     graalJs + gateTags('instrument')                                                         + tier2      + {name: 'instrument'},
-    graalJs + gateTags('tck')                                                                + tier2      + {name: 'tck'} +
-      excludePlatforms([common.darwin_amd64]), # Timeout/OOME
+    graalJs + gateTags('tck')                                                                + tier2      + {name: 'tck'},
     graalJs + webassemblyTest                                                                + tier2      + {name: 'webassembly'},
     graalJs + nativeImageSmokeTest                                                           + tier2      + {name: 'native-image-smoke-test'},
     graalJs + auxEngineCache                                                                 + tier2 + ee + {name: 'aux-engine-cache'} +
-      excludePlatforms([common.windows_amd64, common.darwin_amd64]), # unsupported on windows, too slow on darwin-amd64
+      excludePlatforms([common.windows_amd64]), # unsupported on windows
 
     // downstream graal gate
     graalJs + downstreamGraal                                                                + tier2      + {name: 'downstream-graal'} +
       includePlatforms([ci.mainGatePlatform]),   # GR-62152: language permissions tool supports only linux
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}              + tier3      + {name: 'downstream-substratevm-enterprise'} +
-      excludePlatforms([common.darwin_amd64]) + # Too slow
       excludePlatforms([common.linux_aarch64]), # Fails on Linux AArch64 with "Creation of the VM failed."
 
     // js.zone-rules-based-time-zones
@@ -179,8 +176,7 @@ local ci = import '../ci.jsonnet';
 
     // PGO profiles
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
-      promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
-      excludePlatforms([common.darwin_amd64]),   # Too slow
+      promoteToTarget(common.postMerge, [ci.mainGatePlatform]),
   ];
     generateBuilds(bs, platforms=ci.jdklatestPlatforms, defaultTarget=common.weekly) +
     # jobs that depend on neither compiler nor substratevm should still run on jdk21
