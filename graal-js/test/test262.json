@@ -2156,16 +2156,16 @@
     "filePath" : "language/statements/class/elements/private-class-field-on-nonextensible-objects.js",
     "status" : "FAIL",
     "statusOverrides" : {
-      "STAGING" : "FAIL"
+      "STAGING" : "PASS"
     },
-    "comment" : "nonextensible-applies-to-private proposal, incorrect test: https://github.com/tc39/test262/issues/4587"
+    "comment" : "nonextensible-applies-to-private proposal"
   }, {
     "filePath" : "language/statements/class/subclass/private-class-field-on-nonextensible-return-override.js",
     "status" : "FAIL",
     "statusOverrides" : {
-      "STAGING" : "FAIL"
+      "STAGING" : "PASS"
     },
-    "comment" : "nonextensible-applies-to-private proposal, incorrect test: https://github.com/tc39/test262/issues/4587"
+    "comment" : "nonextensible-applies-to-private proposal"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-rgsa.js",
     "ecmaVersion" : {
@@ -2269,28 +2269,12 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
   }, {
-    "filePath" : "staging/sm/Math/acosh-exact.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: https://github.com/tc39/test262/issues/4588"
-  }, {
-    "filePath" : "staging/sm/Math/atanh-exact.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: https://github.com/tc39/test262/issues/4588"
-  }, {
     "filePath" : "staging/sm/Math/exp-exact.js",
     "status" : "PASS",
     "statusOverrides" : {
       "AARCH64" : "FAIL"
     },
     "comment" : "The test expects more than the specification. Namely, it expects Math.exp(1) === Math.E, which we fail to satisfy on aarch64"
-  }, {
-    "filePath" : "staging/sm/Math/log1p-exact.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: https://github.com/tc39/test262/issues/4588"
-  }, {
-    "filePath" : "staging/sm/Math/trunc.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: https://github.com/tc39/test262/issues/4588"
   }, {
     "filePath" : "staging/sm/PrivateName/modify-non-extensible.js",
     "status" : "FAIL",
@@ -2368,9 +2352,5 @@
       "minVersion" : 17
     },
     "comment" : "expects uint8array-base64 to be enabled"
-  }, {
-    "filePath" : "staging/top-level-await/tla-hang-entry.js",
-    "status" : "FAIL",
-    "comment" : "Invalid test: uses bare module specifiers instead of relative ones"
   } ]
 }
