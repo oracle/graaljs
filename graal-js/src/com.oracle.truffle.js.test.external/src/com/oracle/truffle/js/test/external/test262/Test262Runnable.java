@@ -264,6 +264,8 @@ public class Test262Runnable extends TestRunnable {
                     "set-methods",
                     "source-phase-imports",
                     "source-phase-imports-module-source",
+                    "stable-array-sort",
+                    "stable-typedarray-sort",
                     "string-trimming",
                     "super",
                     "symbols-as-weakmap-keys",

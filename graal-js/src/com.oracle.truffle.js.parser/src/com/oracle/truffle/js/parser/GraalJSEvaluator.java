@@ -962,12 +962,12 @@ public final class GraalJSEvaluator implements JSParser {
          * [[AsyncEvaluation]] internal slot is unused when its [[EvaluationError]] internal slot is
          * not ~empty~.
          */
-        for (CyclicModuleRecord m : module.getAsyncParentModules()) {
-            asyncModuleExecutionRejected(realm, m, error);
-        }
         if (module.getTopLevelCapability() != null) {
             assert module.getCycleRoot() == module;
             JSFunction.call((JSFunctionObject) module.getTopLevelCapability().getReject(), Undefined.instance, new Object[]{error});
+        }
+        for (CyclicModuleRecord m : module.getAsyncParentModules()) {
+            asyncModuleExecutionRejected(realm, m, error);
         }
         return Undefined.instance;
     }
