@@ -537,8 +537,9 @@ public class NodeFactory {
         return WhileNode.createDesugaredForAwaitOf(loopNode);
     }
 
-    public RepeatingNode createForOfRepeatingNode(JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
-        return WhileNode.createForOfRepeatingNode(nextResultNode, body, writeNextValueNode);
+    public RepeatingNode createForOfRepeatingNode(boolean isForOf, boolean isForOfAsync, JavaScriptNode iteratorNode, JavaScriptNode nextResultNode, JavaScriptNode body,
+                    JSWriteFrameSlotNode writeNextValueNode) {
+        return WhileNode.createForOfRepeatingNode(isForOf, isForOfAsync, iteratorNode, nextResultNode, body, writeNextValueNode);
     }
 
     public RepeatingNode createForRepeatingNode(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode,
