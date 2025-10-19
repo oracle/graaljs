@@ -1,0 +1,25 @@
+// Copyright 2019 the V8 project authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// TODOC: Document what this class is used for.
+extern class PropertyCell extends HeapObject {
+  name: AnyName;
+  property_details_raw: Smi;
+  value: Object;
+  dependent_code: DependentCode;
+}
+
+// Used for const-tracking and slot representation of ScriptContexts.
+extern class ContextSidePropertyCell extends HeapObject {
+  property_details_raw: Smi;
+  dependent_code: DependentCode;
+}
+
+// TODO(victorgomes): Use constexpr generate to ensure that these values are
+// defined in one place.
+const kContextSidePropertyOther: intptr = 0;
+const kContextSidePropertyConst: intptr = 1;
+const kContextSidePropertySmi: intptr = 2;
+const kContextSidePropertyInt32: intptr = 3;
+const kContextSidePropertyHeapNumber: intptr = 4;
