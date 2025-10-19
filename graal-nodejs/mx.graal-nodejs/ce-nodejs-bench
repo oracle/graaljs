@@ -1,5 +1,0 @@
-DYNAMIC_IMPORTS=/substratevm,/wasm
-COMPONENTS=lg,svm,tflsm
-NATIVE_IMAGES=lib:graal-nodejs,lib:jvmcicompiler
-DISABLE_INSTALLABLES=true
-GRAALVM_SKIP_ARCHIVE=true
