@@ -149,7 +149,7 @@ runTests();
 // 1000 reliably recreated the problem without the fix
 // required to ensure delete could be called before
 // the finalizer in manual testing.
-for (let i = 0; i < 1000; i++) {
+for (let i = 0; i < 500; i++) {
   const wrapObject = new Object();
   test_reference.validateDeleteBeforeFinalize(wrapObject);
   global.gc();

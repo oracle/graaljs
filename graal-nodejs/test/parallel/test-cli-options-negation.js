@@ -23,7 +23,7 @@ assert(spawnWithFlags(['--no-max-http-header-size']).stderr.toString().includes(
 
 // Inexistent flags cannot be negated.
 assert(spawnWithFlags(['--no-i-dont-exist']).stderr.toString().includes(
-  'bad option: --no-i-dont-exist',
+  "Unrecognized argument: '--no-i-dont-exist'.",
 ));
 
 function spawnWithFlags(flags) {

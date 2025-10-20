@@ -393,6 +393,10 @@ ChildProcess.prototype.spawn = function spawn(options) {
     this.spawnargs = options.args;
   }
 
+  // (db) we extend 'options' with info for thread-based spawn
+  options.ipc = ipc;
+  options.ipcFd = ipcFd;
+
   const err = this._handle.spawn(options);
 
   // Run-time errors should emit an error, not throw an exception.

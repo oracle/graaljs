@@ -1,4 +1,4 @@
-// Flags: --expose-internals
+// Flags: --expose-internals --ecmascript-version=staging
 
 'use strict';
 

@@ -661,6 +661,8 @@ class V8_EXPORT String : public Name {
    private:
     char* str_;
     size_t length_;
+    void* java_string_;
+    v8::Isolate* isolate_;
   };
 
   /**
@@ -691,6 +693,8 @@ class V8_EXPORT String : public Name {
    private:
     uint16_t* str_;
     uint32_t length_;
+    void* java_string_;
+    v8::Isolate* isolate_;
   };
 
   /**

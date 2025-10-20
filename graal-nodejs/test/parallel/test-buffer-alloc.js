@@ -13,7 +13,7 @@ const {
 // internal limits should be updated if this fails.
 assert.throws(
   () => new Uint8Array(kMaxLength + 1),
-  { message: `Invalid typed array length: ${kMaxLength + 1}` },
+  { message: new RegExp(`Invalid typed array length: ${kMaxLength + 1}|index is too large`) },
 );
 
 const b = Buffer.allocUnsafe(1024);

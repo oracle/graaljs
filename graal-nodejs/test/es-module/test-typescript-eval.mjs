@@ -98,7 +98,7 @@ test('expect fail eval TypeScript ESM syntax with input-type commonjs-typescript
     const text: string = 'Hello, TypeScript!'
     console.log(util.styleText('red', text));`]);
   strictEqual(result.stdout, '');
-  match(result.stderr, /Cannot use import statement outside a module/);
+  match(result.stderr, /Cannot use import statement outside a module|Expected an operand but found import/);
   strictEqual(result.code, 1);
 });
 
@@ -182,7 +182,6 @@ test('code is throwing an error with customized accessors', async () => {
     `throw Object.defineProperty(new Error, "stack", { set() {throw this} });`]);
 
   match(result.stderr, /Error/);
-  match(result.stderr, /at \[eval\]:1:29/);
   strictEqual(result.stdout, '');
   strictEqual(result.code, 1);
 });

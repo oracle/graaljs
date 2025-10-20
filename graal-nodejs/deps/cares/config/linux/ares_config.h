@@ -116,7 +116,9 @@
 #define HAVE_GETNAMEINFO 1
 
 /* Define to 1 if you have `getrandom` */
+#if __has_include(<sys/random.h>)
 #define HAVE_GETRANDOM 1
+#endif
 
 /* Define to 1 if you have `getservbyport_r` */
 #define HAVE_GETSERVBYPORT_R 1
@@ -329,7 +331,9 @@
 #define HAVE_SYS_PARAM_H 1
 
 /* Define to 1 if you have the <sys/random.h> header file. */
+#if __has_include(<sys/random.h>)
 #define HAVE_SYS_RANDOM_H 1
+#endif
 
 /* Define to 1 if you have the <sys/select.h> header file. */
 #define HAVE_SYS_SELECT_H 1

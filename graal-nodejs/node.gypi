@@ -70,15 +70,17 @@
         '_UNICODE=1',
       ],
       'conditions': [
-          ['clang != 1 or use_ccache_win != 1', {
-            'msvs_precompiled_header': 'tools/msvs/pch/node_pch.h',
-            'msvs_precompiled_source': 'tools/msvs/pch/node_pch.cc',
-            'sources': [
-              '<(_msvs_precompiled_header)',
-              '<(_msvs_precompiled_source)',
-            ],
-          }]
-      ]
+        [ 'ninja=="true"', {
+          'msvs_precompiled_header': '../../tools/msvs/pch/node_pch.h',
+        }, {
+          'msvs_precompiled_header': 'tools/msvs/pch/node_pch.h',
+        }],
+      ],
+      'msvs_precompiled_source': 'tools/msvs/pch/node_pch.cc',
+      'sources': [
+        '<(_msvs_precompiled_header)',
+        '<(_msvs_precompiled_source)',
+      ],
     }, { # POSIX
       'defines': [ '__POSIX__' ],
     }],
@@ -156,7 +158,7 @@
           'msvs_settings': {
             'VCLinkerTool': {
               'AdditionalOptions': [
-                '/WHOLEARCHIVE:<(PRODUCT_DIR)/lib/zlib<(STATIC_LIB_SUFFIX)',
+                '/WHOLEARCHIVE:zlib<(STATIC_LIB_SUFFIX)',
               ],
             },
           },
@@ -195,7 +197,7 @@
           'msvs_settings': {
             'VCLinkerTool': {
               'AdditionalOptions': [
-                '/WHOLEARCHIVE:<(PRODUCT_DIR)/lib/libuv<(STATIC_LIB_SUFFIX)',
+                '/WHOLEARCHIVE:libuv<(STATIC_LIB_SUFFIX)',
               ],
             },
           },
@@ -313,7 +315,7 @@
     [ '(OS=="freebsd" or OS=="linux" or OS=="openharmony") and node_shared=="false"'
         ' and force_load=="true"', {
       'ldflags': [
-        '-Wl,-z,noexecstack',
+        '-Wl,-z,noexecstack,--allow-multiple-definition',
         '-Wl,--whole-archive <(v8_base)',
         '-Wl,--no-whole-archive',
       ]
@@ -399,7 +401,7 @@
               'msvs_settings': {
                 'VCLinkerTool': {
                   'AdditionalOptions': [
-                    '/WHOLEARCHIVE:<(PRODUCT_DIR)/lib/<(openssl_product)',
+                    '/WHOLEARCHIVE:<(openssl_product)',
                   ],
                 },
               },

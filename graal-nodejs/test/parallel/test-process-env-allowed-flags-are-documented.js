@@ -71,9 +71,6 @@ const conditionalOpts = [
   }, {
     include: common.hasIntl,
     filter: (opt) => opt === '--icu-data-dir'
-  }, {
-    include: process.features.inspector,
-    filter: (opt) => opt.startsWith('--inspect') || opt === '--debug-port'
   },
 ];
 documented.forEach((opt) => {

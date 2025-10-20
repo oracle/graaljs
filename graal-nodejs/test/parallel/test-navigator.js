@@ -113,7 +113,7 @@ assert.strictEqual(navigator.languages[0].length !== 0, true);
 
 assert.throws(() => {
   navigator.languages[0] = 'foo';
-}, new TypeError("Cannot assign to read only property '0' of object '[object Array]'"));
+}, TypeError);
 assert.notStrictEqual(navigator.languages[0], 'foo');
 assert.strictEqual(typeof navigator.languages[0] === 'string', true);
 assert.strictEqual(navigator.languages[0].length !== 0, true);

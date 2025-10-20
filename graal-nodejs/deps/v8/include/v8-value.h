@@ -542,11 +542,7 @@ V8_INLINE Value* Value::Cast(Data* value) {
 }
 
 bool Value::IsUndefined() const {
-#ifdef V8_ENABLE_CHECKS
   return FullIsUndefined();
-#else
-  return QuickIsUndefined();
-#endif
 }
 
 bool Value::QuickIsUndefined() const {
@@ -563,11 +559,7 @@ bool Value::QuickIsUndefined() const {
 }
 
 bool Value::IsNull() const {
-#ifdef V8_ENABLE_CHECKS
   return FullIsNull();
-#else
-  return QuickIsNull();
-#endif
 }
 
 bool Value::QuickIsNull() const {
@@ -584,11 +576,7 @@ bool Value::QuickIsNull() const {
 }
 
 bool Value::IsNullOrUndefined() const {
-#ifdef V8_ENABLE_CHECKS
   return FullIsNull() || FullIsUndefined();
-#else
-  return QuickIsNullOrUndefined();
-#endif
 }
 
 bool Value::QuickIsNullOrUndefined() const {
@@ -606,11 +594,7 @@ bool Value::QuickIsNullOrUndefined() const {
 }
 
 bool Value::IsTrue() const {
-#if V8_STATIC_ROOTS_BOOL && !defined(V8_ENABLE_CHECKS)
-  return QuickIsTrue();
-#else
   return FullIsTrue();
-#endif
 }
 
 #if V8_STATIC_ROOTS_BOOL
@@ -623,11 +607,7 @@ bool Value::QuickIsTrue() const {
 #endif  // V8_STATIC_ROOTS_BOOL
 
 bool Value::IsFalse() const {
-#if V8_STATIC_ROOTS_BOOL && !defined(V8_ENABLE_CHECKS)
-  return QuickIsFalse();
-#else
   return FullIsFalse();
-#endif
 }
 
 #if V8_STATIC_ROOTS_BOOL
@@ -640,11 +620,7 @@ bool Value::QuickIsFalse() const {
 #endif  // V8_STATIC_ROOTS_BOOL
 
 bool Value::IsString() const {
-#ifdef V8_ENABLE_CHECKS
   return FullIsString();
-#else
-  return QuickIsString();
-#endif
 }
 
 bool Value::QuickIsString() const {

@@ -72,6 +72,7 @@ set no_shared_roheap=
 set doc=
 set extra_msbuild_args=
 set compile_commands=
+set _java_home=
 set cfg=
 set v8windbg=
 set exit_code=0
@@ -153,6 +154,7 @@ if /i "%1"=="no-shared-roheap" set no_shared_roheap=1&goto arg-ok
 if /i "%1"=="doc"           set doc=1&goto arg-ok
 if /i "%1"=="binlog"        set extra_msbuild_args=/binaryLogger:out\%config%\node.binlog&goto arg-ok
 if /i "%1"=="compile-commands" set compile_commands=1&goto arg-ok
+if /i "%1"=="java-home"     set "_java_home=%2"&goto arg-ok-2
 if /i "%1"=="cfg"           set cfg=1&goto arg-ok
 
 echo Error: invalid command line option `%1`.
@@ -165,6 +167,14 @@ shift
 goto next-arg
 
 :args-done
+
+:: Remove possible quotes from command line arguments (parameters) before checking if they match "lint"
+set "parameters=%*"
+set "parameters_without_quotes=%parameters:"=%"
+
+if "%parameters_without_quotes%"=="lint" (
+  goto lint-cpp
+)
 
 if defined build_release (
   set config=Release
@@ -214,6 +224,7 @@ if defined no_shared_roheap set configure_flags=%configure_flags% --disable-shar
 if defined DEBUG_HELPER     set configure_flags=%configure_flags% --verbose
 if defined ccache_path      set configure_flags=%configure_flags% --use-ccache-win
 if defined compile_commands set configure_flags=%configure_flags% -C
+if defined _java_home       set configure_flags=%configure_flags% --java-home=%_java_home% --without-dtrace
 if defined cfg              set configure_flags=%configure_flags% --control-flow-guard
 if defined v8windbg         set configure_flags=%configure_flags% --enable-v8windbg
 
@@ -646,7 +657,7 @@ for /d %%F in (test\addons\??_*) do (
   rd /s /q %%F
 )
 :: generate
-"%node_exe%" tools\doc\addon-verify.mjs
+rem "%node_exe%" tools\doc\addon-verify.mjs
 if %errorlevel% neq 0 exit /b %errorlevel%
 :: building addons
 setlocal

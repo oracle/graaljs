@@ -148,7 +148,7 @@ throws(
     {
       name: 'TypeError',
       message: /Cannot read private member/,
-      stack: new RegExp(`at get ${getter}`),
+      stack: new RegExp(`at (Object\.)?get ${getter}`),
     }
   );
 });

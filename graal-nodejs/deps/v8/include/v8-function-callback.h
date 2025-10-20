@@ -168,12 +168,14 @@ class FunctionCallbackInfo {
   static_assert(ReturnValue<Value>::kIsolateValueIndex ==
                 kIsolateIndex - kReturnValueIndex);
 
+ protected:
   V8_INLINE FunctionCallbackInfo(internal::Address* implicit_args,
                                  internal::Address* values, int length);
 
   // TODO(https://crbug.com/326505377): flatten the v8::FunctionCallbackInfo
   // object to avoid indirect loads through values_ and implicit_args_ and
   // reduce the number of instructions in the CallApiCallback builtin.
+ private:
   internal::Address* implicit_args_;
   internal::Address* values_;
   internal::Address length_;
@@ -306,8 +308,10 @@ class PropertyCallbackInfo {
 
   static constexpr int kSize = kArgsLength * internal::kApiSystemPointerSize;
 
+ public:
   PropertyCallbackInfo() = default;
 
+ private:
   mutable internal::Address args_[kArgsLength];
 };
 
@@ -320,16 +324,13 @@ ReturnValue<T>::ReturnValue(internal::Address* slot) : value_(slot) {}
 
 template <typename T>
 void ReturnValue<T>::SetInternal(internal::Address value) {
-#if V8_STATIC_ROOTS_BOOL
-  using I = internal::Internals;
-  // Ensure that the upper 32-bits are not modified. Compiler should be
-  // able to optimize this to a store of a lower 32-bits of the value.
-  // This is fine since the callback can return only JavaScript values which
-  // are either Smis or heap objects allocated in the main cage.
-  *value_ = I::DecompressTaggedField(*value_, I::CompressTagged(value));
-#else
-  *value_ = value;
-#endif  // V8_STATIC_ROOTS_BOOL
+    if (*value_) {
+      reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+    }
+    *value_ = value;
+    if (*value_) {
+      reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
+    }
 }
 
 template <typename T>
@@ -432,7 +433,10 @@ void ReturnValue<T>::SetNonEmpty(const Local<S> handle) {
 template <typename T>
 void ReturnValue<T>::Set(double i) {
   static_assert(std::is_base_of<T, Number>::value, "type check");
-  SetNonEmpty(Number::New(GetIsolate(), i));
+  using I = internal::Internals;
+  Isolate* isolate = GetIsolate();
+  internal::SaveReturnValue(isolate, i);
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kDoubleReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
@@ -447,49 +451,36 @@ void ReturnValue<T>::Set(int16_t i) {
 template <typename T>
 void ReturnValue<T>::Set(int32_t i) {
   static_assert(std::is_base_of<T, Integer>::value, "type check");
-  if (const auto result = internal::Internals::TryIntegralToSmi(i)) {
-    SetInternal(*result);
-    return;
-  }
-  SetNonEmpty(Integer::New(GetIsolate(), i));
+  using I = internal::Internals;
+  Isolate* isolate = GetIsolate();
+  internal::SaveReturnValue(isolate, i);
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kInt32ReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
 void ReturnValue<T>::Set(int64_t i) {
   static_assert(std::is_base_of<T, Integer>::value, "type check");
-  if (const auto result = internal::Internals::TryIntegralToSmi(i)) {
-    SetInternal(*result);
-    return;
-  }
   SetNonEmpty(Number::New(GetIsolate(), static_cast<double>(i)));
 }
 
 template <typename T>
 void ReturnValue<T>::Set(uint16_t i) {
   static_assert(std::is_base_of<T, Integer>::value, "type check");
-  using I = internal::Internals;
-  static_assert(I::IsValidSmi(std::numeric_limits<uint16_t>::min()));
-  static_assert(I::IsValidSmi(std::numeric_limits<uint16_t>::max()));
-  SetInternal(I::IntegralToSmi(i));
+  Set(static_cast<int32_t>(i));
 }
 
 template <typename T>
 void ReturnValue<T>::Set(uint32_t i) {
   static_assert(std::is_base_of<T, Integer>::value, "type check");
-  if (const auto result = internal::Internals::TryIntegralToSmi(i)) {
-    SetInternal(*result);
-    return;
-  }
-  SetNonEmpty(Integer::NewFromUnsigned(GetIsolate(), i));
+  using I = internal::Internals;
+  Isolate* isolate = GetIsolate();
+  internal::SaveReturnValue(isolate, i);
+  SetNonEmpty(Local<T>::New(isolate, reinterpret_cast<T*> (I::GetRoot(isolate, I::kUint32ReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
 void ReturnValue<T>::Set(uint64_t i) {
   static_assert(std::is_base_of<T, Integer>::value, "type check");
-  if (const auto result = internal::Internals::TryIntegralToSmi(i)) {
-    SetInternal(*result);
-    return;
-  }
   SetNonEmpty(Number::New(GetIsolate(), static_cast<double>(i)));
 }
 
@@ -497,23 +488,8 @@ template <typename T>
 void ReturnValue<T>::Set(bool value) {
   static_assert(std::is_void<T>::value || std::is_base_of<T, Boolean>::value,
                 "type check");
-  using I = internal::Internals;
-#if V8_STATIC_ROOTS_BOOL
-#ifdef V8_ENABLE_CHECKS
-  internal::PerformCastCheck(
-      internal::ValueHelper::SlotAsValue<Value, true>(value_));
-#endif  // V8_ENABLE_CHECKS
-  SetInternal(value ? I::StaticReadOnlyRoot::kTrueValue
-                    : I::StaticReadOnlyRoot::kFalseValue);
-#else
-  int root_index;
-  if (value) {
-    root_index = I::kTrueValueRootIndex;
-  } else {
-    root_index = I::kFalseValueRootIndex;
-  }
-  *value_ = I::GetRoot(GetIsolate(), root_index);
-#endif  // V8_STATIC_ROOTS_BOOL
+  Isolate* isolate = GetIsolate();
+  SetInternal((value ? True(isolate) : False(isolate)).ptr());
 }
 
 template <typename T>
@@ -536,62 +512,26 @@ void ReturnValue<T>::SetDefaultValue() {
 template <typename T>
 void ReturnValue<T>::SetNull() {
   static_assert(std::is_base_of<T, Primitive>::value, "type check");
-  using I = internal::Internals;
-#if V8_STATIC_ROOTS_BOOL
-#ifdef V8_ENABLE_CHECKS
-  internal::PerformCastCheck(
-      internal::ValueHelper::SlotAsValue<Value, true>(value_));
-#endif  // V8_ENABLE_CHECKS
-  SetInternal(I::StaticReadOnlyRoot::kNullValue);
-#else
-  *value_ = I::GetRoot(GetIsolate(), I::kNullValueRootIndex);
-#endif  // V8_STATIC_ROOTS_BOOL
+  SetNonEmpty(Null(GetIsolate()));
 }
 
 template <typename T>
 void ReturnValue<T>::SetUndefined() {
   static_assert(std::is_base_of<T, Primitive>::value, "type check");
-  using I = internal::Internals;
-#if V8_STATIC_ROOTS_BOOL
-#ifdef V8_ENABLE_CHECKS
-  internal::PerformCastCheck(
-      internal::ValueHelper::SlotAsValue<Value, true>(value_));
-#endif  // V8_ENABLE_CHECKS
-  SetInternal(I::StaticReadOnlyRoot::kUndefinedValue);
-#else
-  *value_ = I::GetRoot(GetIsolate(), I::kUndefinedValueRootIndex);
-#endif  // V8_STATIC_ROOTS_BOOL
+  SetNonEmpty(Undefined(GetIsolate()));
 }
 
 template <typename T>
 void ReturnValue<T>::SetFalse() {
   static_assert(std::is_void<T>::value || std::is_base_of<T, Boolean>::value,
                 "type check");
-  using I = internal::Internals;
-#if V8_STATIC_ROOTS_BOOL
-#ifdef V8_ENABLE_CHECKS
-  internal::PerformCastCheck(
-      internal::ValueHelper::SlotAsValue<Value, true>(value_));
-#endif  // V8_ENABLE_CHECKS
-  SetInternal(I::StaticReadOnlyRoot::kFalseValue);
-#else
-  *value_ = I::GetRoot(GetIsolate(), I::kFalseValueRootIndex);
-#endif  // V8_STATIC_ROOTS_BOOL
+  SetNonEmpty(False(GetIsolate()));
 }
 
 template <typename T>
 void ReturnValue<T>::SetEmptyString() {
   static_assert(std::is_base_of<T, String>::value, "type check");
-  using I = internal::Internals;
-#if V8_STATIC_ROOTS_BOOL
-#ifdef V8_ENABLE_CHECKS
-  internal::PerformCastCheck(
-      internal::ValueHelper::SlotAsValue<Value, true>(value_));
-#endif  // V8_ENABLE_CHECKS
-  SetInternal(I::StaticReadOnlyRoot::kEmptyString);
-#else
-  *value_ = I::GetRoot(GetIsolate(), I::kEmptyStringRootIndex);
-#endif  // V8_STATIC_ROOTS_BOOL
+  SetNonEmpty(String::Empty(GetIsolate()));
 }
 
 template <typename T>
@@ -601,8 +541,7 @@ Isolate* ReturnValue<T>::GetIsolate() const {
 
 template <typename T>
 Local<Value> ReturnValue<T>::Get() const {
-  return Local<Value>::New(GetIsolate(),
-                           internal::ValueHelper::SlotAsValue<Value>(value_));
+  return Local<Value>::New(GetIsolate(), internal::CorrectReturnValue(GetIsolate(), *value_));
 }
 
 template <typename T>
@@ -619,25 +558,27 @@ FunctionCallbackInfo<T>::FunctionCallbackInfo(internal::Address* implicit_args,
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::operator[](int i) const {
-  // values_ points to the first argument (not the receiver).
-  if (i < 0 || Length() <= i) return Undefined(GetIsolate());
-  return Local<Value>::FromSlot(values_ + i);
+  Isolate* isolate = GetIsolate();
+   // values_ points to the first argument (not the receiver).
+  if (i < 0 || Length() <= i) return Undefined(isolate);
+  return Local<Value>::New(isolate, *reinterpret_cast<Value**>(values_ + i));
 }
 
 template <typename T>
 Local<Object> FunctionCallbackInfo<T>::This() const {
   // values_ points to the first argument (not the receiver).
-  return Local<Object>::FromSlot(values_ + kThisValuesIndex);
+  return Local<Object>::New(GetIsolate(), *reinterpret_cast<Object**>(values_ - 1));
 }
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::NewTarget() const {
-  return Local<Value>::FromSlot(&implicit_args_[kNewTargetIndex]);
+   return Local<Value>::New(GetIsolate(),
+      reinterpret_cast<Value*>(implicit_args_[kNewTargetIndex]));
 }
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::Data() const {
-  auto target = Local<v8::Data>::FromSlot(&implicit_args_[kTargetIndex]);
+  auto target = Local<Value>::New(GetIsolate(), reinterpret_cast<Value*>(implicit_args_[kTargetIndex]));
   return api_internal::GetFunctionTemplateData(GetIsolate(), target);
 }
 
@@ -668,17 +609,17 @@ Isolate* PropertyCallbackInfo<T>::GetIsolate() const {
 
 template <typename T>
 Local<Value> PropertyCallbackInfo<T>::Data() const {
-  return Local<Value>::FromSlot(&args_[kDataIndex]);
+  return Local<Value>::New(GetIsolate(), reinterpret_cast<Value*>(args_[kDataIndex]));
 }
 
 template <typename T>
 Local<Object> PropertyCallbackInfo<T>::This() const {
-  return Local<Object>::FromSlot(&args_[kThisIndex]);
+  return Local<Object>::New(GetIsolate(), reinterpret_cast<Object*>(args_[kThisIndex]));
 }
 
 template <typename T>
 Local<Object> PropertyCallbackInfo<T>::Holder() const {
-  return Local<Object>::FromSlot(&args_[kHolderIndex]);
+  return Local<Object>::New(GetIsolate(), reinterpret_cast<Object*>(args_[kHolderIndex]));
 }
 
 namespace api_internal {

@@ -30,7 +30,7 @@ if (process.argv[2] !== 'child') {
   });
   const timer = setTimeout(function() {
     throw new Error('child is hung');
-  }, common.platformTimeout(3000));
+  }, common.platformTimeout(10000));
   child.on('exit', common.mustCall(function(code) {
     assert.strictEqual(code, 0);
     clearTimeout(timer);

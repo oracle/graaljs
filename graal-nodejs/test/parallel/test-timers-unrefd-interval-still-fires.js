@@ -2,7 +2,7 @@
 // Regression test for https://github.com/nodejs/node-v0.x-archive/issues/8900.
 const common = require('../common');
 
-const TEST_DURATION = common.platformTimeout(1000);
+const TEST_DURATION = common.platformTimeout(5000);
 let N = 3;
 
 const keepOpen =

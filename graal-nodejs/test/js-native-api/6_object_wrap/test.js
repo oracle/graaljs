@@ -4,7 +4,7 @@ const assert = require('assert');
 const addon = require(`./build/${common.buildType}/myobject`);
 
 const getterOnlyErrorRE =
-  /^TypeError: Cannot set property .* of #<.*> which has only a getter$/;
+  /^TypeError: Cannot set property .* of .* which has only a getter$/;
 
 const valueDescriptor = Object.getOwnPropertyDescriptor(
   addon.MyObject.prototype, 'value');

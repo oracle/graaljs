@@ -877,6 +877,11 @@ class V8_EXPORT Isolate {
    */
   void Dispose();
 
+  // graal-node.js extensions
+  void Dispose(bool exit, int status);
+  void SchedulePauseOnNextStatement();
+  void EnterPolyglotEngine(void* param1, void* param2, void* args, void* exec_args, void (*callback) (void* isolate, void* param1, void* param2, void* args, void* exec_args));
+
   /**
    * Deinitializes the isolate, but does not free the address. The isolate must
    * not be entered by any thread to be deinitializable. Embedders must call

@@ -34,7 +34,7 @@ describe('Module syntax detection', { concurrency: !process.env.TEST_PARALLEL },
         'import.meta.url',
       ]);
 
-      match(stderr, /SyntaxError: Cannot use 'import\.meta' outside a module/);
+      match(stderr, /SyntaxError: Cannot use '?import\.meta'? outside a module/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);
@@ -58,7 +58,7 @@ describe('Module syntax detection', { concurrency: !process.env.TEST_PARALLEL },
         'eval("import \'nonexistent\';");',
       ]);
 
-      match(stderr, /SyntaxError: Cannot use import statement outside a module/);
+      match(stderr, /SyntaxError: .* import/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);
@@ -189,7 +189,7 @@ describe('Module syntax detection', { concurrency: !process.env.TEST_PARALLEL },
           entryPath,
         ]);
 
-        match(stderr, /SyntaxError: Unexpected token 'export'/);
+        match(stderr, /SyntaxError: .* export/);
         strictEqual(stdout, '');
         strictEqual(code, 1);
         strictEqual(signal, null);
@@ -320,7 +320,7 @@ describe('Module syntax detection', { concurrency: !process.env.TEST_PARALLEL },
         'function fn() { const require = 1; const require = 2; } fn();',
       ]);
 
-      match(stderr, /SyntaxError: Identifier 'require' has already been declared/);
+      match(stderr, /SyntaxError: (?:Identifier|Variable) .require. has already been declared/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);
@@ -384,7 +384,7 @@ describe('Module syntax detection', { concurrency: !process.env.TEST_PARALLEL },
         fixtures.path('es-modules/package-without-type/module.js'),
       ]);
 
-      match(stderr, /SyntaxError: Unexpected token 'export'/);
+      match(stderr, /SyntaxError: (Unexpected token 'export'|Expected an operand but found export)/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);

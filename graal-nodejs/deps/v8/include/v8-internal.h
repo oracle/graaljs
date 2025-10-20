@@ -4,6 +4,7 @@
 
 #ifndef INCLUDE_V8_INTERNAL_H_
 #define INCLUDE_V8_INTERNAL_H_
+#define V8_ENABLE_DIRECT_HANDLE 1
 
 #include <stddef.h>
 #include <stdint.h>
@@ -17,6 +18,7 @@
 #include <type_traits>
 
 #include "v8config.h"  // NOLINT(build/include_directory)
+#include "../src/graal/graal_handle_content.h"
 
 // TODO(pkasting): Use <compare>/spaceship unconditionally after dropping
 // support for old libstdc++ versions.
@@ -40,6 +42,7 @@ class Array;
 class Context;
 class Data;
 class Isolate;
+class Value;
 
 namespace internal {
 
@@ -981,6 +984,9 @@ class Internals {
   static const int kTrueValueRootIndex = 7;
   static const int kFalseValueRootIndex = 8;
   static const int kEmptyStringRootIndex = 9;
+  static const int kInt32ReturnValuePlaceholderIndex = 10;
+  static const int kUint32ReturnValuePlaceholderIndex = 11;
+  static const int kDoubleReturnValuePlaceholderIndex = 12;
 
   static const int kNodeClassIdOffset = 1 * kApiSystemPointerSize;
   static const int kNodeFlagsOffset = 1 * kApiSystemPointerSize + 3;
@@ -1611,7 +1617,7 @@ class ValueHelper final {
   static constexpr Address kTaggedNullAddress = 1;
 
   using InternalRepresentationType = internal::Address;
-  static constexpr InternalRepresentationType kEmpty = kTaggedNullAddress;
+  static constexpr InternalRepresentationType kEmpty = kNullAddress;
 #else
   using InternalRepresentationType = internal::Address*;
   static constexpr InternalRepresentationType kEmpty = nullptr;
@@ -1701,7 +1707,9 @@ class HandleHelper final {
   V8_INLINE static bool EqualHandles(const T1& lhs, const T2& rhs) {
     if (lhs.IsEmpty()) return rhs.IsEmpty();
     if (rhs.IsEmpty()) return false;
-    return lhs.ptr() == rhs.ptr();
+    GraalHandleContent* lhs_value = reinterpret_cast<GraalHandleContent*>(lhs.ptr());
+    GraalHandleContent* rhs_value = reinterpret_cast<GraalHandleContent*>(rhs.ptr());
+    return GraalHandleContent::SameData(lhs_value, rhs_value);
   }
 };
 
@@ -1713,6 +1721,10 @@ V8_EXPORT void VerifyHandleIsNonEmpty(bool is_empty);
 // macros.
 void PrintFunctionCallbackInfo(void* function_callback_info);
 void PrintPropertyCallbackInfo(void* property_callback_info);
+
+// graal-node.js extensions
+V8_EXPORT void SaveReturnValue(v8::Isolate* isolate, double value);
+V8_EXPORT v8::Value* CorrectReturnValue(v8::Isolate* isolate, Address value);
 
 }  // namespace internal
 }  // namespace v8

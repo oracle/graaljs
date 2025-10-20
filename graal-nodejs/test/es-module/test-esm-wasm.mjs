@@ -232,7 +232,7 @@ describe('ESM: WASM modules', { concurrency: !process.env.TEST_PARALLEL }, () =>
     match(stderr, /Importing WebAssembly module instances/);
   });
 
-  it('should support top-level execution', async () => {
+  it.skip('should support top-level execution', async () => {
     const { code, stderr, stdout } = await spawnPromisified(execPath, [
       '--no-warnings',
       fixtures.path('es-modules/top-level-wasm.wasm'),

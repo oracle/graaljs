@@ -35,8 +35,9 @@ async function runAsyncTests() {
   // We use IIFE for the obj scope instead of {} to be compatible with
   // non-V8 JS engines that do not support scoped variables.
   (() => {
-    const obj = {};
+    let obj = {};
     test_finalizer.addFinalizerWithJS(obj, () => { js_is_called = true; });
+    obj = null;
   })();
   await gcUntil('ensure JS finalizer called',
                 () => (test_finalizer.getFinalizerCallCount() === 2));

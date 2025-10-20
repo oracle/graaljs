@@ -3428,10 +3428,12 @@ one is included in the list below.
 * `--inspect-publish-uid`
 * `--inspect-wait`
 * `--inspect`
+* `--jvm`
 * `--localstorage-file`
 * `--max-http-header-size`
 * `--max-old-space-size-percentage`
 * `--napi-modules`
+* `--native`
 * `--network-family-autoselection-attempt-timeout`
 * `--no-addons`
 * `--no-async-context-frame`
@@ -3452,6 +3454,7 @@ one is included in the list below.
 * `--openssl-shared-config`
 * `--pending-deprecation`
 * `--permission`
+* `--polyglot`
 * `--preserve-symlinks-main`
 * `--preserve-symlinks`
 * `--prof-process`
@@ -3887,6 +3890,8 @@ documented here:
 
 ### `--jitless`
 
+### `--jvm`
+
 <!-- Anchor to make sure old links find a target -->
 
 <a id="--max-old-space-sizesize-in-megabytes"></a>
@@ -3937,6 +3942,8 @@ for MiB in 16 32 64 128; do
 done
 ```
 
+### `--native`
+
 ### `--perf-basic-prof`
 
 ### `--perf-basic-prof-only-functions`
@@ -3944,6 +3951,8 @@ done
 ### `--perf-prof`
 
 ### `--perf-prof-unwinding-info`
+
+### `--polyglot`
 
 ### `--prof`
 

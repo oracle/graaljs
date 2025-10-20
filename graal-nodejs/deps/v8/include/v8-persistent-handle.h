@@ -42,7 +42,7 @@ V8_EXPORT void MoveGlobalReference(internal::Address** from,
  * isolate.
  */
 template <class T>
-class Eternal : public api_internal::IndirectHandleBase {
+class Eternal : public api_internal::DirectHandleBase {
  public:
   V8_INLINE Eternal() = default;
 
@@ -59,14 +59,14 @@ class Eternal : public api_internal::IndirectHandleBase {
   V8_INLINE Local<T> Get(Isolate* isolate) const {
     // The eternal handle will never go away, so as with the roots, we don't
     // even need to open a handle.
-    return Local<T>::FromSlot(slot());
+    return Local<T>::New(isolate, this->template value<T>());
   }
 
   template <class S>
     requires(std::is_base_of_v<T, S>)
   void Set(Isolate* isolate, Local<S> handle) {
-    slot() =
-        api_internal::Eternalize(isolate, *handle.template UnsafeAs<Value>());
+    ptr_ = reinterpret_cast<internal::Address>(
+        api_internal::Eternalize(isolate, *handle.template UnsafeAs<Value>()));
   }
 };
 
@@ -90,7 +90,7 @@ V8_EXPORT void MakeWeak(internal::Address* location, void* data,
  *
  */
 template <class T>
-class PersistentBase : public api_internal::IndirectHandleBase {
+class PersistentBase : public api_internal::DirectHandleBase {
  public:
   /**
    * If non-empty, destroy the underlying storage cell
@@ -212,7 +212,7 @@ class PersistentBase : public api_internal::IndirectHandleBase {
   V8_INLINE PersistentBase() = default;
 
   V8_INLINE explicit PersistentBase(internal::Address* location)
-      : IndirectHandleBase(location) {}
+      : DirectHandleBase(reinterpret_cast<internal::Address> (location)) {}
 
   V8_INLINE static internal::Address* New(Isolate* isolate, T* that);
 };
@@ -434,21 +434,22 @@ void Persistent<T, M>::Copy(const Persistent<S, M2>& that) {
   static_assert(std::is_base_of<T, S>::value, "type check");
   this->Reset();
   if (that.IsEmpty()) return;
-  this->slot() = api_internal::CopyGlobalReference(that.slot());
+  this->ptr_ = reinterpret_cast<v8::internal::Address> (api_internal::CopyGlobalReference(reinterpret_cast<v8::internal::Address*> (that.ptr())));
+  reinterpret_cast<GraalHandleContent*> (this->ptr_)->ReferenceAdded();
   M::Copy(that, this);
 }
 
 template <class T>
 bool PersistentBase<T>::IsWeak() const {
-  using I = internal::Internals;
   if (this->IsEmpty()) return false;
-  return I::GetNodeState(this->slot()) == I::kNodeStateIsWeakValue;
+  GraalHandleContent* handle = reinterpret_cast<GraalHandleContent*>(ptr());
+  return handle->IsWeak();
 }
 
 template <class T>
 void PersistentBase<T>::Reset() {
   if (this->IsEmpty()) return;
-  api_internal::DisposeGlobal(this->slot());
+  api_internal::DisposeGlobal(reinterpret_cast<internal::Address*> (ptr()));
   this->Clear();
 }
 
@@ -462,7 +463,8 @@ void PersistentBase<T>::Reset(Isolate* isolate, const Local<S>& other) {
   static_assert(std::is_base_of<T, S>::value, "type check");
   Reset();
   if (other.IsEmpty()) return;
-  this->slot() = New(isolate, *other);
+  this->ptr_ = reinterpret_cast<internal::Address>(New(isolate, *other));
+  reinterpret_cast<GraalHandleContent*> (ptr_)->ReferenceAdded();
 }
 
 /**
@@ -476,7 +478,8 @@ void PersistentBase<T>::Reset(Isolate* isolate,
   static_assert(std::is_base_of<T, S>::value, "type check");
   Reset();
   if (other.IsEmpty()) return;
-  this->slot() = New(isolate, other.template value<S>());
+  this->ptr_ = reinterpret_cast<internal::Address>(New(isolate, other.template value<S>()));
+  reinterpret_cast<GraalHandleContent*> (ptr_)->ReferenceAdded();
 }
 
 template <class T>
@@ -493,7 +496,7 @@ V8_INLINE void PersistentBase<T>::SetWeak(
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-function-type"
 #endif
-  api_internal::MakeWeak(this->slot(), parameter,
+  api_internal::MakeWeak(reinterpret_cast<internal::Address*>(this->ptr_), parameter,
                          reinterpret_cast<Callback>(callback), type);
 #if __clang__
 #pragma clang diagnostic pop
@@ -505,40 +508,37 @@ V8_INLINE void PersistentBase<T>::SetWeak(
 
 template <class T>
 void PersistentBase<T>::SetWeak() {
-  api_internal::MakeWeak(&this->slot());
+  api_internal::MakeWeak(reinterpret_cast<internal::Address**>(&this->ptr_));
 }
 
 template <class T>
 template <typename P>
 P* PersistentBase<T>::ClearWeak() {
-  return reinterpret_cast<P*>(api_internal::ClearWeak(this->slot()));
+  return reinterpret_cast<P*>(api_internal::ClearWeak(reinterpret_cast<internal::Address*>(ptr())));
 }
 
 template <class T>
 void PersistentBase<T>::AnnotateStrongRetainer(const char* label) {
-  api_internal::AnnotateStrongRetainer(this->slot(), label);
+  api_internal::AnnotateStrongRetainer(reinterpret_cast<internal::Address*>(ptr()), label);
 }
 
 template <class T>
 void PersistentBase<T>::SetWrapperClassId(uint16_t class_id) {
-  using I = internal::Internals;
-  if (this->IsEmpty()) return;
-  uint8_t* addr = reinterpret_cast<uint8_t*>(slot()) + I::kNodeClassIdOffset;
-  *reinterpret_cast<uint16_t*>(addr) = class_id;
 }
 
 template <class T>
 uint16_t PersistentBase<T>::WrapperClassId() const {
-  using I = internal::Internals;
-  if (this->IsEmpty()) return 0;
-  uint8_t* addr = reinterpret_cast<uint8_t*>(slot()) + I::kNodeClassIdOffset;
-  return *reinterpret_cast<uint16_t*>(addr);
+  return 0;
 }
 
 template <class T>
-Global<T>::Global(Global&& other) : PersistentBase<T>(other.slot()) {
+Global<T>::Global(Global&& other) /*: PersistentBase<T>(other.slot())*/ {
   if (!other.IsEmpty()) {
-    api_internal::MoveGlobalReference(&other.slot(), &this->slot());
+    api_internal::MoveGlobalReference(
+      reinterpret_cast<internal::Address**> (&other.ptr_),
+      reinterpret_cast<internal::Address**> (&this->ptr_)
+    );
+    reinterpret_cast<GraalHandleContent*> (this->ptr_)->ReferenceAdded();
     other.Clear();
   }
 }
@@ -550,8 +550,12 @@ Global<T>& Global<T>::operator=(Global<S>&& rhs) {
   if (this != &rhs) {
     this->Reset();
     if (!rhs.IsEmpty()) {
-      this->slot() = rhs.slot();
-      api_internal::MoveGlobalReference(&rhs.slot(), &this->slot());
+      this->ptr_ = rhs.ptr();
+      api_internal::MoveGlobalReference(
+        reinterpret_cast<internal::Address**> (&rhs.ptr_),
+        reinterpret_cast<internal::Address**> (&this->ptr_)
+      );
+      reinterpret_cast<GraalHandleContent*> (this->ptr_)->ReferenceAdded();
       rhs.Clear();
     }
   }

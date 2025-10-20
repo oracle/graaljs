@@ -34,9 +34,9 @@ function testFastUtf8Write() {
   }
 }
 
-eval('%PrepareFunctionForOptimization(Buffer.prototype.utf8Write)');
+//eval('%PrepareFunctionForOptimization(Buffer.prototype.utf8Write)');
 testFastUtf8Write();
-eval('%OptimizeFunctionOnNextCall(Buffer.prototype.utf8Write)');
+//eval('%OptimizeFunctionOnNextCall(Buffer.prototype.utf8Write)');
 testFastUtf8Write();
 
 if (common.isDebug) {

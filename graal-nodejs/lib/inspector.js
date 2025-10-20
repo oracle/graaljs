@@ -20,10 +20,6 @@ const {
 
 const { isLoopback } = require('internal/net');
 
-const { hasInspector } = internalBinding('config');
-if (!hasInspector)
-  throw new ERR_INSPECTOR_NOT_AVAILABLE();
-
 const EventEmitter = require('events');
 const { queueMicrotask } = require('internal/process/task_queues');
 const { kEmptyObject } = require('internal/util');
@@ -239,3 +235,14 @@ module.exports = {
   Network,
   NetworkResources,
 };
+
+// Use the mockup provided by 'inspect' instrument
+const graalExport = graalExtension;
+if (graalExport) {
+  // The object provided by 'inspect' instrument is a foreign object.
+  // This breaks some use-cases (insertion into WeakMap)
+  // => copy its members into JS object that is used instead.
+  const inspector = {};
+  Object.keys(graalExport).forEach(key => inspector[key] = graalExport[key]);
+  module.exports = inspector;
+}

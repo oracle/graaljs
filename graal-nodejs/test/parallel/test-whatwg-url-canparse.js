@@ -31,9 +31,9 @@ assert.strictEqual(URL.canParse('https://example.org'), true);
   // Since our JS function contains other javascript functions,
   // we need to specify which function we want to optimize. This is why
   // the next line does not optimize "testFastPaths" but "URL.canParse"
-  eval('%PrepareFunctionForOptimization(URL.canParse)');
+//  eval('%PrepareFunctionForOptimization(URL.canParse)');
   testFastPaths();
-  eval('%OptimizeFunctionOnNextCall(URL.canParse)');
+//  eval('%OptimizeFunctionOnNextCall(URL.canParse)');
   testFastPaths();
 
   if (common.isDebug) {

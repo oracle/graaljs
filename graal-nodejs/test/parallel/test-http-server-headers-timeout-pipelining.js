@@ -72,5 +72,5 @@ server.listen(0, common.mustCall(() => {
   // Complete the request
   setTimeout(() => {
     client.write('close\r\n\r\n');
-  }, headersTimeout * 1.5).unref();
+  }, headersTimeout * 2.5).unref();
 }));

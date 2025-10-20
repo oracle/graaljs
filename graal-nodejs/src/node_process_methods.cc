@@ -498,7 +498,11 @@ static void ReallyExit(const FunctionCallbackInfo<Value>& args) {
   if (!code_int.IsNothing()) {
     code = static_cast<ExitCode>(code_int.FromJust());
   }
-  env->Exit(code);
+  if (env->is_main_thread()) {
+    args.GetIsolate()->Dispose(true, static_cast<int>(code));
+  } else {
+    env->Exit(code);
+  }
 }
 
 #if defined __POSIX__ && !defined(__PASE__)

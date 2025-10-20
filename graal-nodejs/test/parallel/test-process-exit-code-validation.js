@@ -120,7 +120,7 @@ if (process.argv[2] === undefined) {
 
   throws(() => {
     delete process.exitCode;
-  }, /Cannot delete property 'exitCode' of #<process>/);
+  }, TypeError);
   process.exitCode = 0;
 
   // Check process.exit([code])

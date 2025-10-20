@@ -884,7 +884,8 @@ int Main(int argc, char* argv[]) {
       }
       root_dir = argv[++i];
     } else {
-      args.emplace_back(argv[i]);
+      std::replace(arg.begin(), arg.end(), '\\', '/');
+      args.emplace_back(arg);
     }
   }
 

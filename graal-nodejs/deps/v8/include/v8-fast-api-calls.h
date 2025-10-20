@@ -501,7 +501,7 @@ struct FastApiCallbackOptions {
   /**
    * The `data` passed to the FunctionTemplate constructor, or `undefined`.
    */
-  v8::Local<v8::Value> data;
+  v8::Value** data;
 };
 
 namespace internal {
