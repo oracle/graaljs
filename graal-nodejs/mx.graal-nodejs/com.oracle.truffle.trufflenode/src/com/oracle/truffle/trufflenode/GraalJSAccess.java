@@ -4260,6 +4260,20 @@ public final class GraalJSAccess {
         }
     }
 
+    public Object dictionaryTemplateNewInstance(Object context, Object names, Object[] values) {
+        JSRealm realm = (JSRealm) context;
+        JSObject object = JSOrdinary.create(realm.getContext(), realm);
+        Object[] nameArray = (Object[]) names;
+        for (int i = 0; i < nameArray.length; i++) {
+            Object value = values[i];
+            if (value != null) {
+                TruffleString key = Strings.fromJavaString((String) nameArray[i]);
+                JSObject.set(object, key, value);
+            }
+        }
+        return object;
+    }
+
     public static class WeakCallback extends WeakReference<Object> {
 
         long data;

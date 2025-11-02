@@ -102,6 +102,7 @@
 #include "graal_boolean-inl.h"
 #include "graal_context-inl.h"
 #include "graal_date-inl.h"
+#include "graal_dictionary_template-inl.h"
 #include "graal_external-inl.h"
 #include "graal_function-inl.h"
 #include "graal_function_template-inl.h"
@@ -4066,13 +4067,11 @@ namespace v8 {
     }
 
     Local<DictionaryTemplate> DictionaryTemplate::New(Isolate* isolate, MemorySpan<const std::string_view> names) {
-        TRACE
-        return Local<DictionaryTemplate>();
+        return GraalDictionaryTemplate::New(isolate, names);
     }
 
     Local<Object> DictionaryTemplate::NewInstance(Local<Context> context, MemorySpan<MaybeLocal<Value>> property_values) {
-        TRACE
-        return Local<Object>();
+        return reinterpret_cast<GraalDictionaryTemplate*> (this)->NewInstance(context, property_values);
     }
 
     String::ValueView::ValueView(Isolate* isolate, Local<v8::String> str) {

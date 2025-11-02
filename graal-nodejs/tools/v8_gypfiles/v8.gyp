@@ -1047,6 +1047,7 @@
         '<(V8_ROOT)/src/graal/graal_boolean.cc',
         '<(V8_ROOT)/src/graal/graal_context.cc',
         '<(V8_ROOT)/src/graal/graal_date.cc',
+        '<(V8_ROOT)/src/graal/graal_dictionary_template.cc',
         '<(V8_ROOT)/src/graal/graal_external.cc',
         '<(V8_ROOT)/src/graal/graal_fixed_array.cc',
         '<(V8_ROOT)/src/graal/graal_function.cc',

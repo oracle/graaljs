@@ -413,6 +413,7 @@ enum GraalAccessMethod {
     fixed_array_get,
     wasm_module_object_get_compiled_module,
     wasm_module_object_from_compiled_module,
+    dictionary_template_new_instance,
 
     count // Should be the last item of GraalAccessMethod
 };

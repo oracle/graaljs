@@ -46,6 +46,7 @@
       { "name": "dateNew" },
       { "name": "dateTimeConfigurationChangeNotification" },
       { "name": "dateValueOf" },
+      { "name": "dictionaryTemplateNewInstance" },
       { "name": "exceptionCreateMessage" },
       { "name": "exceptionError" },
       { "name": "exceptionRangeError" },
