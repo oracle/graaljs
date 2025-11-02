@@ -261,6 +261,10 @@ public final class Options {
                     polyglotOptions.put("js.disable-eval", "true");
                     continue;
                 }
+                if ("js-source-phase-imports".equals(normalizedKey)) {
+                    polyglotOptions.put("js.source-phase-imports", "true");
+                    continue;
+                }
                 if ("allow-natives-syntax".equals(normalizedKey)) {
                     polyglotOptions.put("js.v8-intrinsics", "true");
                     continue;
