@@ -3970,8 +3970,7 @@ namespace v8 {
     }
 
     std::unique_ptr<CppHeap> CppHeap::Create(v8::Platform* platform, const CppHeapCreateParams& params) {
-        TRACE
-        return nullptr;
+        return std::unique_ptr<CppHeap>(new CppHeap());
     }
 
     cppgc::HeapStatistics CppHeap::CollectStatistics(cppgc::HeapStatistics::DetailLevel detail_level) {
