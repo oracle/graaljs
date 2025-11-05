@@ -536,7 +536,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             debugParam = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=" + debugPort;
             options.push_back({const_cast<char*>(debugParam.c_str()), nullptr});
         }
-        options.push_back({const_cast<char*>("-Dtruffle.node.js.verbose=true"), nullptr});
     #endif
 
         const char* no_spawn_options = "NODE_JVM_OPTIONS_NO_SPAWN";
