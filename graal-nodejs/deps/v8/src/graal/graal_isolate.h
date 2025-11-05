@@ -695,6 +695,7 @@ public:
     v8::Local<v8::Value> CorrectReturnValue(v8::internal::Address value);
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
+    v8::CppHeap* GetCppHeap() const;
     void SchedulePauseOnNextStatement();
 
     inline GraalObjectPool<GraalObject>* GetGraalObjectPool() {
@@ -820,6 +821,7 @@ private:
     bool sending_message_;
     v8::Isolate::AbortOnUncaughtExceptionCallback abort_on_uncaught_exception_callback_;
     std::shared_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
+    v8::CppHeap* cpp_heap_;
     int try_catch_count_;
     int function_template_count_;
     bool stack_check_enabled_;

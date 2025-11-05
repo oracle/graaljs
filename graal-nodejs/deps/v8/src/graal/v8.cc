@@ -3965,8 +3965,7 @@ namespace v8 {
     }
 
     CppHeap* Isolate::GetCppHeap() const {
-        TRACE
-        return nullptr;
+        return reinterpret_cast<const GraalIsolate*>(this)->GetCppHeap();
     }
 
     std::unique_ptr<CppHeap> CppHeap::Create(v8::Platform* platform, const CppHeapCreateParams& params) {
