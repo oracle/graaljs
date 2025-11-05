@@ -43,9 +43,11 @@ package com.oracle.truffle.trufflenode;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantFalse;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantUndefined;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.GcBuiltinRoot;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.GetContinuationPreservedEmbedderData;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototype;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototypeGlobal;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.SetBreakPoint;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.SetContinuationPreservedEmbedderData;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
@@ -182,6 +184,7 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
 import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -252,6 +255,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
@@ -321,6 +325,8 @@ public final class GraalJSAccess {
     public static final TruffleString SHEBANG = Strings.constant("#!");
     public static final TruffleString EXECUTION = Strings.constant("execution");
     public static final TruffleString ASYNC = Strings.constant("async");
+    public static final TruffleString GET_CONTINUATION_PRESERVED_EMBEDDER_DATA = Strings.constant("getContinuationPreservedEmbedderData");
+    public static final TruffleString SET_CONTINUATION_PRESERVED_EMBEDDER_DATA = Strings.constant("setContinuationPreservedEmbedderData");
 
     private static final boolean VERBOSE = Boolean.getBoolean("truffle.node.js.verbose");
     private static final boolean USE_NIO_BUFFER = !"false".equals(System.getProperty("node.buffer.nio"));
@@ -334,6 +340,7 @@ public final class GraalJSAccess {
 
     private static final Symbol RESOLVER_RESOLVE = Symbol.createPrivate(RESOLVE);
     private static final Symbol RESOLVER_REJECT = Symbol.createPrivate(REJECT);
+    private static final Symbol CONTINUATION_DATA_SYMBOL = Symbol.createPrivate(Strings.constant("continuationData"));
 
     public static final HiddenKey HOLDER_KEY = new HiddenKey("Holder");
     public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
@@ -3025,7 +3032,46 @@ public final class GraalJSAccess {
         });
         JSDynamicObject traceFunction = JSFunction.create(realm, traceFunctionData);
         JSObject.set(extras, TRACE, traceFunction);
+
+        JSFunctionData getContinuationData = engineCacheData.getOrCreateFunctionData(GetContinuationPreservedEmbedderData, GraalJSAccess::createGetContinuationPreservedEmbedderData);
+        JSDynamicObject getContinuationFunction = JSFunction.create(realm, getContinuationData);
+        JSObject.set(extras, GET_CONTINUATION_PRESERVED_EMBEDDER_DATA, getContinuationFunction);
+
+        JSFunctionData setContinuationData = engineCacheData.getOrCreateFunctionData(SetContinuationPreservedEmbedderData, GraalJSAccess::createSetContinuationPreservedEmbedderData);
+        JSDynamicObject setContinuationFunction = JSFunction.create(realm, setContinuationData);
+        JSObject.set(extras, SET_CONTINUATION_PRESERVED_EMBEDDER_DATA, setContinuationFunction);
+
         return extras;
+    }
+
+    private static JSFunctionData createGetContinuationPreservedEmbedderData(JSContext context) {
+        class GetContinuationPreservedEmbedderData extends JavaScriptRootNode {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return getRealm().getAgent().getAsyncContextMapping().getOrDefault(CONTINUATION_DATA_SYMBOL, Undefined.instance);
+            }
+        }
+        CallTarget callTarget = new GetContinuationPreservedEmbedderData().getCallTarget();
+        return JSFunctionData.createCallOnly(context, callTarget, 0, GET_CONTINUATION_PRESERVED_EMBEDDER_DATA);
+    }
+
+    private static JSFunctionData createSetContinuationPreservedEmbedderData(JSContext context) {
+        class SetContinuationPreservedEmbedderData extends JavaScriptRootNode {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object data = Undefined.instance;
+                Object[] args = frame.getArguments();
+                if (JSArguments.getUserArgumentCount(args) != 0) {
+                    data = JSArguments.getUserArgument(args, 0);
+                }
+                JSAgent agent = getRealm().getAgent();
+                AsyncContext asyncContext = agent.getAsyncContextMapping();
+                agent.asyncContextSwap(asyncContext.withMapping(CONTINUATION_DATA_SYMBOL, data));
+                return Undefined.instance;
+            }
+        }
+        CallTarget callTarget = new SetContinuationPreservedEmbedderData().getCallTarget();
+        return JSFunctionData.createCallOnly(context, callTarget, 1, SET_CONTINUATION_PRESERVED_EMBEDDER_DATA);
     }
 
     public void contextSetPointerInEmbedderData(Object context, int index, long pointer) {

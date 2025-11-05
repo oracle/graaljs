@@ -74,7 +74,9 @@ public final class ContextData {
         GcBuiltinRoot,
         PropertyHandlerPrototype,
         PropertyHandlerPrototypeGlobal,
-        SetBreakPoint;
+        SetBreakPoint,
+        GetContinuationPreservedEmbedderData,
+        SetContinuationPreservedEmbedderData;
 
         static final int LENGTH = FunctionKey.values().length;
     }
