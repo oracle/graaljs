@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,14 +42,16 @@
 #ifndef GRAAL_MODULE_REQUEST_H_
 #define GRAAL_MODULE_REQUEST_H_
 
-#include "graal_handle_content.h"
 #include "graal_isolate.h"
 
-class GraalModuleRequest : public GraalHandleContent {
+#include "graal_data-inl.h"
+
+class GraalModuleRequest : public GraalData {
 public:
     inline static GraalModuleRequest* Allocate(GraalIsolate* isolate, jobject java_module_request);
     v8::Local<v8::String> GetSpecifier() const;
     v8::Local<v8::FixedArray> GetImportAttributes() const;
+    bool IsModuleRequest() const override;
 protected:
     inline GraalModuleRequest(GraalIsolate* isolate, jobject java_module_request);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;

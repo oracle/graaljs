@@ -4172,8 +4172,7 @@ namespace v8 {
     }
 
     bool Data::IsModuleRequest() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalData*>(this)->IsModuleRequest();
     }
 
     AllocationProfile* HeapProfiler::GetAllocationProfile() {
