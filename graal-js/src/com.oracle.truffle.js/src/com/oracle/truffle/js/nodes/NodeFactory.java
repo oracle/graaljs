@@ -1391,8 +1391,8 @@ public class NodeFactory {
         }
     }
 
-    public JavaScriptNode createInvokeCustomMatcherOrThrow(JSContext context, JavaScriptNode matcher, JavaScriptNode subject, JavaScriptNode receiver) {
-        return InvokeCustomMatcherOrThrowNode.create(context, matcher, subject, receiver);
+    public JavaScriptNode createInvokeCustomMatcherOrThrow(JSContext context, JavaScriptNode matcher, JavaScriptNode subject, JavaScriptNode receiver, boolean isStrict) {
+        return InvokeCustomMatcherOrThrowNode.create(context, matcher, subject, receiver, isStrict);
     }
 
     // #####

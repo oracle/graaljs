@@ -27,17 +27,21 @@ public abstract class InvokeCustomMatcherOrThrowNode extends JavaScriptNode {
     @Child @Executed JavaScriptNode subject;
     @Child @Executed JavaScriptNode receiver;
 
-    protected InvokeCustomMatcherOrThrowNode(JSContext context, JavaScriptNode matcher, JavaScriptNode subject, JavaScriptNode receiver) {
+    private final boolean isStrict;
+
+    protected InvokeCustomMatcherOrThrowNode(JSContext context, JavaScriptNode matcher, JavaScriptNode subject, JavaScriptNode receiver, boolean isStrict) {
         this.getCustomMatcherNode = GetMethodNode.create(context, Symbol.SYMBOL_CUSTOM_MATCHER);
         this.callNode = JSFunctionCallNode.createCall();
 
         this.matcher = matcher;
         this.subject = subject;
         this.receiver = receiver;
+
+        this.isStrict = isStrict;
     }
 
-    public static InvokeCustomMatcherOrThrowNode create(JSContext context, JavaScriptNode matcher, JavaScriptNode subject, JavaScriptNode receiver) {
-        return InvokeCustomMatcherOrThrowNodeGen.create(context, matcher, subject, receiver);
+    public static InvokeCustomMatcherOrThrowNode create(JSContext context, JavaScriptNode matcher, JavaScriptNode subject, JavaScriptNode receiver, boolean isStrict) {
+        return InvokeCustomMatcherOrThrowNodeGen.create(context, matcher, subject, receiver, isStrict);
     }
 
     public abstract IteratorRecord execute(Object matcher, Object subject, Object receiver);
@@ -59,7 +63,15 @@ public abstract class InvokeCustomMatcherOrThrowNode extends JavaScriptNode {
         // 3. If f is undefined, throw a TypeError exception.
         if (f == Undefined.instance) {
             errorBranchProfile.enter(this);
-            throw Errors.createTypeError("matcher does not have Symbol.customMatcher method");
+
+            if (this.isStrict) {
+                throw Errors.createTypeError("matcher does not have Symbol.customMatcher method");
+            } else {
+                // this is non-spec behavior, for context see https://github.com/tc39/proposal-extractors/issues/34
+                // attempt to call the matcher as a function to ensure side effects are preserved for backwards compatibility
+                this.callNode.executeCall(JSArguments.create(matcher, matcher, subject, "list", receiver));
+                throw Errors.createReferenceError("cannot assign to function call");
+            }
         }
 
         // 4. Let result be ? Call(f, matcher, « subject, "list", receiver »).

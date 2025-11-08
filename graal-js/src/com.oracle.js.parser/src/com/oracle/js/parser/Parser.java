@@ -244,6 +244,7 @@ public class Parser extends AbstractParser {
     private static final boolean ES2019_OPTIONAL_CATCH_BINDING = Options.getBooleanProperty("parser.optional.catch.binding", true);
     private static final boolean ES2020_CLASS_FIELDS = Options.getBooleanProperty("parser.class.fields", true);
     private static final boolean ES2022_TOP_LEVEL_AWAIT = Options.getBooleanProperty("parser.top.level.await", true);
+    // todo-lw: apparently there is a "new" way to have feature flags, should use that
     private static final boolean ESNEXT_EXTRACTORS = Options.getBooleanProperty("parser.extractors", false);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
@@ -1074,7 +1075,6 @@ public class Parser extends AbstractParser {
         }
         return false;
     }
-
 
     private void verifyDestructuringAssignmentPattern(Expression pattern, String contextString) {
         assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode || pattern instanceof CallNode;
