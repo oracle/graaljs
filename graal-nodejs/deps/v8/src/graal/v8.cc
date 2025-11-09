@@ -4143,8 +4143,18 @@ namespace v8 {
     }
 
     Local<SharedArrayBuffer> SharedArrayBuffer::New(Isolate* isolate, size_t byte_length, BackingStoreInitializationMode initialization_mode) {
-        TRACE
-        return Local<SharedArrayBuffer>();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::array_buffer_new_backing_store, Object, (jlong) byte_length);
+        if (java_buffer == NULL) {
+            // Backing store allocation failed.
+            return Local<SharedArrayBuffer>();
+        }
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        void* data = env->GetDirectBufferAddress(java_buffer);
+        jobject java_store = env->NewGlobalRef(java_buffer);
+        env->DeleteLocalRef(java_buffer);
+        std::unique_ptr<BackingStore> backing_store = std::unique_ptr<BackingStore>(reinterpret_cast<BackingStore*>(new GraalBackingStore(java_store, data, byte_length)));
+        return New(isolate, std::move(backing_store));
     }
 
     bool Module::HasTopLevelAwait() const {
