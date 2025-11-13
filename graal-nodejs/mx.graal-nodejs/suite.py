@@ -1,6 +1,6 @@
 
 suite = {
-  "mxversion" : "7.58.0",
+  "mxversion" : "7.65.0",
   "name" : "graal-nodejs",
   "version" : "25.1.0",
   "release" : False,
@@ -39,6 +39,8 @@ suite = {
   },
 
   "defaultLicense" : "UPL",
+
+  "capture_suite_commit_info": True,
 
   "libraries" : {
     "NASM" : {
