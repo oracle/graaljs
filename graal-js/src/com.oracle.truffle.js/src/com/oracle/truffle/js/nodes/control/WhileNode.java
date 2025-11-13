@@ -40,12 +40,21 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import static com.oracle.truffle.js.nodes.JSGuards.isForeignObject;
+
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -57,6 +66,9 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIteratorObject;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -116,9 +128,10 @@ public final class WhileNode extends StatementNode {
         return new WhileNode(loopNode, ControlFlowRootTag.Type.DoWhileIteration);
     }
 
-    public static RepeatingNode createForOfRepeatingNode(JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
+    public static RepeatingNode createForOfRepeatingNode(boolean isForOf, boolean isForOfAsync, JavaScriptNode iteratorNode, JavaScriptNode nextResultNode, JavaScriptNode body,
+                    JSWriteFrameSlotNode writeNextValueNode) {
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new ForOfRepeatingNode(nextResultNode, nonVoidBody, writeNextValueNode);
+        return ForOfRepeatingNode.create(isForOf, isForOfAsync, iteratorNode, nextResultNode, nonVoidBody, writeNextValueNode);
     }
 
     @Override
@@ -269,18 +282,42 @@ public final class WhileNode extends StatementNode {
     /**
      * For-in/of/await-of loop.
      */
-    static final class ForOfRepeatingNode extends AbstractRepeatingNode implements ResumableNode.WithIntState {
+    public abstract static class ForOfRepeatingNode extends AbstractRepeatingNode implements ResumableNode.WithIntState {
 
+        private Object previousSeenArray;
+        private boolean isSyncForOfOnForeignObject;
+        private long fastForeignArrayIndex;
+
+        @CompilationFinal protected boolean isForOf;
+        @CompilationFinal protected boolean isForOfAsync;
+
+        @Child com.oracle.truffle.js.nodes.interop.ImportValueNode importValueNode = com.oracle.truffle.js.nodes.interop.ImportValueNode.create();
+        @Child JavaScriptNode iteratorNode;
         @Child JavaScriptNode nextResultNode;
         @Child JSWriteFrameSlotNode writeNextValueNode;
         @Child IteratorCompleteNode iteratorCompleteNode = IteratorCompleteNode.create();
         @Child IteratorValueNode iteratorValueNode = IteratorValueNode.create();
 
-        ForOfRepeatingNode(JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
+        public static ForOfRepeatingNode create(boolean isForOf, boolean isForOfAsync, JavaScriptNode iteratorNode, JavaScriptNode nextResultNode, JavaScriptNode body,
+                        JSWriteFrameSlotNode writeNextValueNode) {
+            return WhileNodeFactory.ForOfRepeatingNodeGen.create(isForOf, isForOfAsync, iteratorNode, nextResultNode, body, writeNextValueNode);
+        }
+
+        protected ForOfRepeatingNode(boolean isForOf, boolean isForOfAsync, JavaScriptNode iteratorNode, JavaScriptNode nextResultNode, JavaScriptNode body,
+                        JSWriteFrameSlotNode writeNextValueNode) {
             super(null, body);
+            this.isForOf = isForOf;
+            this.isForOfAsync = isForOfAsync;
+            this.iteratorNode = iteratorNode;
             this.nextResultNode = nextResultNode;
             this.writeNextValueNode = writeNextValueNode;
+            this.fastForeignArrayIndex = 0;
+            this.previousSeenArray = null;
+            this.isSyncForOfOnForeignObject = false;
         }
+
+        @Override
+        public abstract boolean executeBoolean(VirtualFrame frame);
 
         private Object executeNextResult(VirtualFrame frame) {
             return nextResultNode.execute(frame);
@@ -288,6 +325,45 @@ public final class WhileNode extends StatementNode {
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
+            return executeBoolean(frame);
+        }
+
+        @Override
+        public final Object executeRepeatingWithValue(VirtualFrame frame) {
+            return super.executeRepeatingWithValue(frame);
+        }
+
+        @Specialization(guards = {"checkIsSyncForOfOnForeignObject(interop, array)"}, limit = "3")
+        protected boolean doFastForeignArray(VirtualFrame frame,
+                        @Bind("getIteratorTarget(frame)") Object array,
+                        @CachedLibrary("array") InteropLibrary interop) {
+            try {
+                final long arrayLength = interop.getArraySize(array);
+                if (fastForeignArrayIndex >= arrayLength) {
+                    fastForeignArrayIndex = 0;
+                    return false;
+                }
+
+                final Object foreign = interop.readArrayElement(array, fastForeignArrayIndex++);
+                final Object jsValue = importValueNode.executeWithTarget(foreign);
+                writeNextValueNode.executeWrite(frame, jsValue);
+                try {
+                    executeBody(frame);
+                } catch (ReturnException | BreakException e) {
+                    fastForeignArrayIndex = 0;
+                    throw e;
+                } finally {
+                    writeNextValueNode.executeWrite(frame, Undefined.instance);
+                }
+                return true;
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                Errors.shouldNotReachHere(e);
+                return false;
+            }
+        }
+
+        @Specialization
+        protected boolean doGeneric(VirtualFrame frame) {
             Object nextResult = executeNextResult(frame);
             boolean done = iteratorCompleteNode.execute(nextResult);
             Object nextValue = iteratorValueNode.execute(nextResult);
@@ -328,7 +404,9 @@ public final class WhileNode extends StatementNode {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new ForOfRepeatingNode(cloneUninitialized(nextResultNode, materializedTags),
+            return ForOfRepeatingNode.create(isForOf, isForOfAsync,
+                            cloneUninitialized(iteratorNode, materializedTags),
+                            cloneUninitialized(nextResultNode, materializedTags),
                             cloneUninitialized(bodyNode, materializedTags),
                             cloneUninitialized(writeNextValueNode, materializedTags));
         }
@@ -338,9 +416,35 @@ public final class WhileNode extends StatementNode {
             if (!materializationNeeded()) {
                 return this;
             }
-            return new ForOfRepeatingNode(cloneUninitialized(nextResultNode, materializedTags),
+            return ForOfRepeatingNode.create(isForOf, isForOfAsync,
+                            cloneUninitialized(iteratorNode, materializedTags),
+                            cloneUninitialized(nextResultNode, materializedTags),
                             materializeBody(materializedTags),
                             cloneUninitialized(writeNextValueNode, materializedTags));
+        }
+
+        protected boolean checkIsSyncForOfOnForeignObject(InteropLibrary interop, Object array) {
+            if (previousSeenArray != array) {
+                previousSeenArray = array;
+                boolean isForeignObjectResult = isForeignObject(array);
+                boolean hasArrayElementsResult = isForeignObjectResult &&
+                                interop.hasArrayElements(array);
+                isSyncForOfOnForeignObject = isForOf && !isForOfAsync && hasArrayElementsResult;
+            }
+            return isSyncForOfOnForeignObject;
+        }
+
+        protected Object getIteratorTarget(VirtualFrame frame) {
+            Object itRec = iteratorNode.execute(frame);
+            if (itRec instanceof IteratorRecord) {
+                Object it = ((IteratorRecord) itRec).getIterator();
+                if (!(it instanceof JSArrayIteratorObject)) {
+                    return it;
+                }
+                JSArrayIteratorObject arrIter = (JSArrayIteratorObject) it;
+                return arrIter.getIteratedObject();
+            }
+            return itRec;
         }
     }
 }
