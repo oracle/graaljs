@@ -262,12 +262,13 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Shared @Cached JSDoubleToStringNode doubleToString,
                         @Shared @Cached InlinedBranchProfile radixOtherBranch,
                         @Shared @Cached InlinedBranchProfile radixErrorBranch,
-                        @Cached ForeignGetDoubleValueNode getDoubleValue) {
+                        @Cached ForeignGetDoubleValueNode getDoubleValue,
+                        @Cached TruffleString.FromLongNode fromLong) {
             Object radixToUse;
             if (radix == Undefined.instance) {
                 if (thisObj instanceof Long longValue) {
                     // Do not lose precision when toString() is invoked on Long
-                    return Strings.fromLong(longValue);
+                    return Strings.fromLong(fromLong, longValue);
                 }
                 radixToUse = 10;
             } else {

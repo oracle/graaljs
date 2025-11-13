@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -443,6 +443,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached ImportValueNode toJSType,
                         @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Cached TruffleString.FromLongNode fromLong,
                         @Cached InlinedBranchProfile errorBranch) {
             JSDynamicObject result = JSOrdinary.create(getContext(), getRealm());
             try {
@@ -472,7 +473,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         PropertyDescriptor desc = JSInteropUtil.getArrayElementProperty(thisObj, i, interop, toJSType);
                         if (desc != null) {
                             JSDynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
-                            Properties.putWithFlags(putPropDescNode, result, Strings.fromLong(i), propDesc, JSAttributes.configurableEnumerableWritable());
+                            Properties.putWithFlags(putPropDescNode, result, Strings.fromLong(fromLong, i), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
                     }
                 }
@@ -1045,7 +1046,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
                         @Cached ImportValueNode toJSType,
-                        @Cached TruffleString.FromJavaStringNode fromJavaString) {
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Cached TruffleString.FromLongNode fromLong) {
             if (fromInterop.isNull(from)) {
                 return;
             }
@@ -1054,7 +1056,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     long length = JSInteropUtil.getArraySize(from, fromInterop, this);
                     for (long i = 0; i < length; i++) {
                         Object value = toJSType.executeWithTarget(fromInterop.readArrayElement(from, i));
-                        write.executeWithTargetAndIndexAndValue(to, Strings.fromLong(i), value);
+                        write.executeWithTargetAndIndexAndValue(to, Strings.fromLong(fromLong, i), value);
                     }
                 }
                 if (fromInterop.hasMembers(from)) {
