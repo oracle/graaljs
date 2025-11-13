@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -162,7 +162,7 @@ public final class JSInteropUtil {
             return getArraySize(target, interop, null);
         }
         if (interop.hasMembers(target)) {
-            Object result = readMemberOrDefault(target, propertyKey, null, interop, importValue);
+            Object result = readMemberOrDefault(target, propertyKey, null);
             if (result != null) {
                 return result;
             }
@@ -180,15 +180,15 @@ public final class JSInteropUtil {
     }
 
     public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
-        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached());
+        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached(), TruffleString.ToJavaStringNode.getUncached());
     }
 
-    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) {
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, TruffleString.ToJavaStringNode toJavaStringNode) {
         if (!(member instanceof TruffleString memberName)) {
             return defaultValue;
         }
         try {
-            return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString(memberName)));
+            return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString(toJavaStringNode, memberName)));
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return defaultValue;
         }

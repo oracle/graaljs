@@ -880,10 +880,6 @@ public final class Strings {
         return fromCharArray(node, chars, 0, chars.length);
     }
 
-    public static TruffleString fromCharArray(char[] chars, int fromIndex, int length) {
-        return fromCharArray(TruffleString.FromCharArrayUTF16Node.getUncached(), chars, fromIndex, length);
-    }
-
     public static TruffleString fromCharArray(TruffleString.FromCharArrayUTF16Node node, char[] chars, int fromIndex, int length) {
         return node.execute(chars, fromIndex, length);
     }

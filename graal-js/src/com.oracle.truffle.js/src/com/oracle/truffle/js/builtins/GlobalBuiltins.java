@@ -1792,7 +1792,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             @Override
             @TruffleBoundary
             public Object get(JSDynamicObject store) {
-                return JSInteropUtil.readMemberOrDefault(globalContextBindings, key, Undefined.instance, bindingsInterop, ImportValueNode.getUncached());
+                return JSInteropUtil.readMemberOrDefault(globalContextBindings, key, Undefined.instance, bindingsInterop,
+                                ImportValueNode.getUncached(), TruffleString.ToJavaStringNode.getUncached());
             }
 
             @TruffleBoundary
