@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -386,22 +386,20 @@ public final class JSDictionary extends JSNonProxy {
         Shape newRootShape = makeEmptyShapeForNewType(context, currentShape, JSDictionary.INSTANCE, obj);
         assert JSShape.hasExternalProperties(newRootShape.getFlags());
 
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
-
         List<Property> allProperties = currentShape.getPropertyListInternal(true);
         List<Object> archive = new ArrayList<>(allProperties.size());
         for (Property prop : allProperties) {
             Object key = prop.getKey();
-            Object value = Properties.getOrDefault(lib, obj, key, null);
+            Object value = Properties.getOrDefaultUncached(obj, key, null);
             assert value != null;
             archive.add(value);
         }
 
-        lib.resetShape(obj, newRootShape);
+        DynamicObject.ResetShapeNode.getUncached().execute(obj, newRootShape);
 
         int newFlags = currentShape.getFlags() | newRootShape.getFlags();
         if (newRootShape.getFlags() != newFlags) {
-            lib.setShapeFlags(obj, newFlags);
+            DynamicObject.SetShapeFlagsNode.getUncached().execute(obj, newFlags);
         }
 
         EconomicMap<Object, PropertyDescriptor> hashMap = EconomicMap.create();
@@ -412,9 +410,9 @@ public final class JSDictionary extends JSNonProxy {
                 Object value = archive.get(i);
                 if (key instanceof HiddenKey || JSProperty.isProxy(p)) {
                     if (p.getLocation().isConstant()) {
-                        Properties.putConstant(lib, obj, key, value, p.getFlags());
+                        Properties.putConstantUncached(obj, key, value, p.getFlags());
                     } else {
-                        Properties.putWithFlags(lib, obj, key, value, p.getFlags());
+                        Properties.putWithFlagsUncached(obj, key, value, p.getFlags());
                     }
                 } else {
                     hashMap.put(key, toPropertyDescriptor(p, value));

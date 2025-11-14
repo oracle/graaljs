@@ -47,12 +47,10 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Properties;
@@ -118,7 +116,8 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
     public abstract static class CreateObjectWithPrototypeNode extends CreateObjectNode {
         protected final JSClass jsclass;
 
-        @Child private DynamicObjectLibrary protoFlagsNode;
+        @Child private DynamicObject.GetShapeFlagsNode getShapeFlagsNode;
+        @Child private DynamicObject.SetShapeFlagsNode setShapeFlagsNode;
         @CompilationFinal private boolean seenArrayPrototype;
 
         protected CreateObjectWithPrototypeNode(JSContext context, JSClass jsclass) {
@@ -153,7 +152,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final JSObject doOrdinaryInstancePrototype(JSDynamicObject prototype,
-                        @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode) {
+                        @Cached @Shared DynamicObject.PutNode setProtoNode) {
             JSObject object = JSOrdinary.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             handleArrayPrototype(object, prototype);
@@ -162,7 +161,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Specialization(guards = {"isPromiseObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final JSObject doPromiseInstancePrototype(JSDynamicObject prototype,
-                        @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode) {
+                        @Cached @Shared DynamicObject.PutNode setProtoNode) {
             JSObject object = JSPromise.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
@@ -208,15 +207,16 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         private void markAsArrayPrototype(JSObject object) {
-            if (protoFlagsNode == null) {
+            if (getShapeFlagsNode == null || setShapeFlagsNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Only used by member nodes that are guaranteed to be in the same compilation unit,
                 // so a transferToInterpreterAndInvalidate() should be sufficient for this flag.
                 seenArrayPrototype = true;
-                protoFlagsNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+                getShapeFlagsNode = insert(DynamicObject.GetShapeFlagsNode.create());
+                setShapeFlagsNode = insert(DynamicObject.SetShapeFlagsNode.create());
             }
             assert JSOrdinary.isJSOrdinaryObject(object) : object;
-            protoFlagsNode.setShapeFlags(object, protoFlagsNode.getShapeFlags(object) | JSShape.ARRAY_PROTOTYPE_FLAG);
+            setShapeFlagsNode.execute(object, getShapeFlagsNode.execute(object) | JSShape.ARRAY_PROTOTYPE_FLAG);
         }
 
         @Override

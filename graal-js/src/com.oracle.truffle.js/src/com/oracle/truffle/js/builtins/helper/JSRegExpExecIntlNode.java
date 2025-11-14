@@ -51,7 +51,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -78,7 +78,6 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -310,12 +309,12 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         private final JSContext context;
         @Child private PropertySetNode setRegexResultNode;
         @Child private PropertySetNode setRegexOriginalInputNode;
-        @Child private DynamicObjectLibrary setInputNode;
-        @Child private DynamicObjectLibrary setIndexNode;
-        @Child private DynamicObjectLibrary setGroupsNode;
-        @Child private DynamicObjectLibrary setIndicesNode;
-        @Child private DynamicObjectLibrary setIndicesRegexResultNode;
-        @Child private DynamicObjectLibrary setIndicesGroupsNode;
+        @Child private DynamicObject.PutNode setInputNode;
+        @Child private DynamicObject.PutConstantNode setIndexNode;
+        @Child private DynamicObject.PutNode setGroupsNode;
+        @Child private DynamicObject.PutNode setIndicesNode;
+        @Child private DynamicObject.PutNode setIndicesRegexResultNode;
+        @Child private DynamicObject.PutNode setIndicesGroupsNode;
         private final int ecmaScriptVersion;
         @Child private JSToLengthNode toLengthNode;
         @Child private PropertyGetNode getLastIndexNode;
@@ -327,12 +326,12 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             this.ecmaScriptVersion = context.getEcmaScriptVersion();
             this.setRegexResultNode = PropertySetNode.createSetHidden(JSArray.LAZY_REGEX_RESULT_ID, context);
             this.setRegexOriginalInputNode = PropertySetNode.createSetHidden(JSArray.LAZY_REGEX_ORIGINAL_INPUT_ID, context);
-            this.setInputNode = JSObjectUtil.createDispatched(JSRegExp.INPUT);
-            this.setIndexNode = JSObjectUtil.createDispatched(JSRegExp.INDEX);
-            this.setGroupsNode = JSObjectUtil.createDispatched(JSRegExp.GROUPS);
-            this.setIndicesNode = JSObjectUtil.createDispatched(JSRegExp.INDICES);
-            this.setIndicesRegexResultNode = JSObjectUtil.createDispatched(JSArray.LAZY_REGEX_RESULT_ID);
-            this.setIndicesGroupsNode = JSObjectUtil.createDispatched(JSRegExp.GROUPS);
+            this.setInputNode = DynamicObject.PutNode.create();
+            this.setIndexNode = DynamicObject.PutConstantNode.create();
+            this.setGroupsNode = DynamicObject.PutNode.create();
+            this.setIndicesNode = DynamicObject.PutNode.create();
+            this.setIndicesRegexResultNode = DynamicObject.PutNode.create();
+            this.setIndicesGroupsNode = DynamicObject.PutNode.create();
             this.getLastIndexNode = PropertyGetNode.create(JSRegExp.LAST_INDEX, context);
             this.toLengthNode = JSToLengthNode.create();
         }
@@ -458,15 +457,15 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             JSArrayObject resultArray = JSArray.createLazyRegexArray(context, realm, groupCount);
             setRegexResultNode.setValue(resultArray, regexResult);
             setRegexOriginalInputNode.setValue(resultArray, inputStr);
-            setIndexNode.putConstant(resultArray, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault() | JSProperty.PROXY);
-            setInputNode.put(resultArray, JSRegExp.INPUT, inputStr);
-            setGroupsNode.put(resultArray, JSRegExp.GROUPS, groups);
+            setIndexNode.executeWithFlags(resultArray, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault() | JSProperty.PROXY);
+            setInputNode.execute(resultArray, JSRegExp.INPUT, inputStr);
+            setGroupsNode.execute(resultArray, JSRegExp.GROUPS, groups);
             if (context.isOptionRegexpMatchIndices() && hasIndices) {
                 JSDynamicObject indicesGroups = getGroupsObject(regExp, regexResult, inputStr, true);
                 JSArrayObject indicesArray = JSArray.createLazyRegexIndicesArray(context, realm, groupCount);
-                setIndicesRegexResultNode.put(indicesArray, JSRegExp.GROUPS_RESULT_ID, regexResult);
-                setIndicesGroupsNode.put(indicesArray, JSRegExp.GROUPS, indicesGroups);
-                setIndicesNode.put(resultArray, JSRegExp.INDICES, indicesArray);
+                setIndicesRegexResultNode.execute(indicesArray, JSRegExp.GROUPS_RESULT_ID, regexResult);
+                setIndicesGroupsNode.execute(indicesArray, JSRegExp.GROUPS, indicesGroups);
+                setIndicesNode.execute(resultArray, JSRegExp.INDICES, indicesArray);
             }
             return resultArray;
         }

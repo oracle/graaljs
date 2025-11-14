@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,8 +60,7 @@ import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -167,11 +166,12 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isJSOrdinaryObject(targetObject)"})
     protected final boolean doJSOrdinaryObject(JSDynamicObject targetObject, Object key,
                     @Shared @Cached JSToPropertyKeyNode toPropertyKeyNode,
-                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") DynamicObjectLibrary dynamicObjectLib) {
+                    @Shared @Cached DynamicObject.GetPropertyFlagsNode getPropertyFlags,
+                    @Shared @Cached DynamicObject.RemoveKeyNode removeKey) {
         Object propertyKey = toPropertyKeyNode.execute(key);
 
-        Property foundProperty = dynamicObjectLib.getProperty(targetObject, propertyKey);
-        if (foundProperty != null) {
+        int foundProperty = getPropertyFlags.execute(targetObject, propertyKey, JSProperty.MISSING);
+        if (foundProperty != JSProperty.MISSING) {
             if (!JSProperty.isConfigurable(foundProperty)) {
                 if (strict) {
                     throw Errors.createTypeErrorNotConfigurableProperty(propertyKey);
@@ -179,7 +179,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                     return false;
                 }
             }
-            dynamicObjectLib.removeKey(targetObject, propertyKey);
+            removeKey.execute(targetObject, propertyKey);
             return true;
         } else {
             /* the prototype might have a property with that name, but we don't care */
@@ -190,8 +190,9 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization
     protected final boolean doJSGlobalObject(JSGlobalObject targetObject, Object key,
                     @Shared @Cached JSToPropertyKeyNode toPropertyKeyNode,
-                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") DynamicObjectLibrary dynamicObjectLib) {
-        return doJSOrdinaryObject(targetObject, key, toPropertyKeyNode, dynamicObjectLib);
+                    @Shared @Cached DynamicObject.GetPropertyFlagsNode getPropertyFlags,
+                    @Shared @Cached DynamicObject.RemoveKeyNode removeKey) {
+        return doJSOrdinaryObject(targetObject, key, toPropertyKeyNode, getPropertyFlags, removeKey);
     }
 
     @SuppressWarnings("truffle-static-method")

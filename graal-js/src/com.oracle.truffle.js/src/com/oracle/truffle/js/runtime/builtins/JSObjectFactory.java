@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 public abstract class JSObjectFactory {
     protected final JSContext context;
     private final boolean inObjectProto;
-    @CompilationFinal private DynamicObjectLibrary setProto;
+    @CompilationFinal private DynamicObject.PutNode setProto;
 
     public static JSObjectFactory.UnboundProto createUnbound(JSContext context, Shape factory) {
         return new JSObjectFactory.UnboundProto(context, factory);
@@ -172,7 +172,7 @@ public abstract class JSObjectFactory {
     protected void setPrototype(JSDynamicObject obj, JSDynamicObject prototype) {
         if (setProto == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setProto = context.adoptNode(JSObjectUtil.createCached(JSObject.HIDDEN_PROTO, obj));
+            setProto = context.adoptNode(DynamicObject.PutNode.create());
         }
         Properties.put(setProto, obj, JSObject.HIDDEN_PROTO, prototype);
     }

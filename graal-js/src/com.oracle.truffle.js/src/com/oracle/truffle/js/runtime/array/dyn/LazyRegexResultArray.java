@@ -45,7 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetReg
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResultOriginalInput;
 
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.SubstringByteIndexNode;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -73,7 +73,7 @@ public final class LazyRegexResultArray extends AbstractConstantLazyArray {
     }
 
     public static Object materializeGroup(JSContext context, JSDynamicObject object, int index,
-                    DynamicObjectLibrary lazyRegexResultNode, DynamicObjectLibrary lazyRegexResultOriginalInputNode,
+                    DynamicObject.GetNode lazyRegexResultNode, DynamicObject.GetNode lazyRegexResultOriginalInputNode,
                     Node node, SubstringByteIndexNode substringNode, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
         Object[] internalArray = getArray(object);
         if (internalArray[index] == null) {
@@ -86,7 +86,7 @@ public final class LazyRegexResultArray extends AbstractConstantLazyArray {
     }
 
     public ScriptArray createWritable(JSContext context, JSDynamicObject object, long index, Object value,
-                    DynamicObjectLibrary lazyRegexResultNode, DynamicObjectLibrary lazyRegexResultOriginalInputNode,
+                    DynamicObject.GetNode lazyRegexResultNode, DynamicObject.GetNode lazyRegexResultOriginalInputNode,
                     Node node, SubstringByteIndexNode substringNode, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
         for (int i = 0; i < lengthInt(object); i++) {
             materializeGroup(context, object, i, lazyRegexResultNode, lazyRegexResultOriginalInputNode, node,
@@ -104,8 +104,8 @@ public final class LazyRegexResultArray extends AbstractConstantLazyArray {
     public Object getElementInBounds(JSDynamicObject object, int index) {
         final Object[] internalArray = getArray(object);
         if (internalArray[index] == null) {
-            Object regexResult = arrayGetRegexResult(object, DynamicObjectLibrary.getUncached());
-            TruffleString originalInputString = arrayGetRegexResultOriginalInput(object, DynamicObjectLibrary.getUncached());
+            Object regexResult = arrayGetRegexResult(object, DynamicObject.GetNode.getUncached());
+            TruffleString originalInputString = arrayGetRegexResultOriginalInput(object, DynamicObject.GetNode.getUncached());
             internalArray[index] = TRegexMaterializeResult.materializeGroupUncached(regexResult, index, originalInputString);
         }
         return internalArray[index];
@@ -113,9 +113,9 @@ public final class LazyRegexResultArray extends AbstractConstantLazyArray {
 
     @Override
     public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
-        Object regexResult = arrayGetRegexResult(object, DynamicObjectLibrary.getUncached());
+        Object regexResult = arrayGetRegexResult(object, DynamicObject.GetNode.getUncached());
         int length = lengthInt(object);
-        TruffleString originalInputString = arrayGetRegexResultOriginalInput(object, DynamicObjectLibrary.getUncached());
+        TruffleString originalInputString = arrayGetRegexResultOriginalInput(object, DynamicObject.GetNode.getUncached());
         Object[] array = TRegexMaterializeResult.materializeFullUncached(regexResult, length, originalInputString);
         AbstractObjectArray newArray;
         newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, array.length, array.length, array, integrityLevel);

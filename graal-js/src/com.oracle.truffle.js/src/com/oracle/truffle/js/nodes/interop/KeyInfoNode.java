@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,10 +46,8 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -76,7 +74,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * This node implements the {@code isMember*} messages.
  */
-@ImportStatic(Strings.class)
+@ImportStatic({Strings.class, JSProperty.class})
 @GenerateUncached
 public abstract class KeyInfoNode extends JavaScriptBaseNode {
     public static final int READABLE = 1 << 0;
@@ -93,21 +91,23 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
 
     public abstract boolean execute(JSDynamicObject receiver, String key, int query);
 
-    @Specialization(guards = {"!isJSProxy(target)", "property != null"}, limit = "2")
+    @Specialization(guards = {"!isJSProxy(target)", "cachedKey.equals(key)", "propertyFlags != MISSING"}, limit = "2")
     static boolean cachedOwnProperty(JSDynamicObject target, @SuppressWarnings("unused") String key, int query,
                     @Bind Node node,
-                    @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
+                    @Cached("key") @SuppressWarnings("unused") String cachedKey,
+                    @Cached @Shared DynamicObject.GetNode getValue,
+                    @Cached @Shared @SuppressWarnings("unused") DynamicObject.GetPropertyFlagsNode getFlags,
                     @Cached @Shared @SuppressWarnings("unused") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @Bind("fromJavaString(fromJavaStringNode, key)") TruffleString tStringKey,
-                    @Bind("objectLibrary.getProperty(target, tStringKey)") Property property,
+                    @Cached("fromJavaString(fromJavaStringNode, cachedKey)") TruffleString tStringKey,
+                    @Bind("getFlags.execute(target, tStringKey, MISSING)") int propertyFlags,
                     @Cached @Shared IsCallableNode isCallable,
                     @Cached InlinedBranchProfile proxyBranch,
                     @Cached InlinedBranchProfile moduleNamespaceBranch) {
         if ((query & READABLE) != 0) {
             return true;
         }
-        if (JSProperty.isAccessor(property)) {
-            Accessor accessor = (Accessor) Properties.getOrDefault(objectLibrary, target, tStringKey, null);
+        if (JSProperty.isAccessor(propertyFlags)) {
+            Accessor accessor = (Accessor) Properties.getOrDefault(getValue, target, tStringKey, null);
             if ((query & MODIFIABLE) != 0 && accessor.hasSetter()) {
                 return true;
             }
@@ -117,22 +117,22 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
             if ((query & WRITE_SIDE_EFFECTS) != 0 && accessor.hasSetter()) {
                 return true;
             }
-            if ((query & REMOVABLE) != 0 && JSProperty.isConfigurable(property)) {
+            if ((query & REMOVABLE) != 0 && JSProperty.isConfigurable(propertyFlags)) {
                 return true;
             }
         } else {
-            assert JSProperty.isData(property);
-            if ((query & MODIFIABLE) != 0 && JSProperty.isWritable(property)) {
+            assert JSProperty.isData(propertyFlags);
+            if ((query & MODIFIABLE) != 0 && JSProperty.isWritable(propertyFlags)) {
                 return true;
             }
             if ((query & INVOCABLE) != 0) {
-                Object value = Properties.getOrDefault(objectLibrary, target, tStringKey, Undefined.instance);
-                if (JSProperty.isDataSpecial(property)) {
-                    if (JSProperty.isProxy(property)) {
+                Object value = Properties.getOrDefault(getValue, target, tStringKey, Undefined.instance);
+                if (JSProperty.isDataSpecial(propertyFlags)) {
+                    if (JSProperty.isProxy(propertyFlags)) {
                         proxyBranch.enter(node);
                         value = ((PropertyProxy) value).get(target);
                     } else {
-                        assert JSProperty.isModuleNamespaceExport(property) : property;
+                        assert JSProperty.isModuleNamespaceExport(propertyFlags) : propertyFlags;
                         moduleNamespaceBranch.enter(node);
                         value = JSModuleNamespace.getBindingValue((ExportResolution) value);
                     }
@@ -141,7 +141,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
                     return true;
                 }
             }
-            if ((query & REMOVABLE) != 0 && JSProperty.isConfigurable(property)) {
+            if ((query & REMOVABLE) != 0 && JSProperty.isConfigurable(propertyFlags)) {
                 return true;
             }
         }

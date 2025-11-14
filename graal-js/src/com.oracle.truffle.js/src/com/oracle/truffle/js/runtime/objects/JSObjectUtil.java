@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,14 +48,13 @@ import java.util.function.Consumer;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -334,19 +333,17 @@ public final class JSObjectUtil {
             }
         }
 
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
-
         List<Property> allProperties = oldShape.getPropertyListInternal(true);
         List<Object> archive = new ArrayList<>(allProperties.size());
         for (Property prop : allProperties) {
-            Object value = Properties.getOrDefault(lib, object, prop.getKey(), null);
+            Object value = Properties.getOrDefaultUncached(object, prop.getKey(), null);
             archive.add(value);
         }
 
-        lib.resetShape(object, newRootShape);
+        DynamicObject.ResetShapeNode.getUncached().execute(object, newRootShape);
 
         if (newRootShape.getFlags() != oldShape.getFlags()) {
-            lib.setShapeFlags(object, oldShape.getFlags());
+            DynamicObject.SetShapeFlagsNode.getUncached().execute(object, oldShape.getFlags());
         }
 
         for (int i = 0; i < allProperties.size(); i++) {
@@ -357,11 +354,11 @@ public final class JSObjectUtil {
                 int propertyFlags = property.getFlags();
                 if (JSObject.HIDDEN_PROTO.equals(key)) {
                     // Note possible transition from constant shape prototype to instance property
-                    Properties.putWithFlags(lib, object, key, newPrototype, propertyFlags);
+                    Properties.putWithFlagsUncached(object, key, newPrototype, propertyFlags);
                 } else if (property.getLocation().isConstant()) {
-                    Properties.putConstant(lib, object, key, value, propertyFlags);
+                    Properties.putConstantUncached(object, key, value, propertyFlags);
                 } else {
-                    Properties.putWithFlags(lib, object, key, value, propertyFlags);
+                    Properties.putWithFlagsUncached(object, key, value, propertyFlags);
                 }
             }
         }
@@ -463,32 +460,17 @@ public final class JSObjectUtil {
         return Properties.containsKeyUncached(obj, key);
     }
 
-    public static DynamicObjectLibrary createCached(Object key, JSDynamicObject obj) {
-        assert key != null;
-        return DynamicObjectLibrary.getFactory().create(obj);
-    }
-
-    public static DynamicObjectLibrary createDispatched(Object key, int limit) {
-        assert key != null;
-        return DynamicObjectLibrary.getFactory().createDispatched(limit);
-    }
-
-    public static DynamicObjectLibrary createDispatched(Object key) {
-        return createDispatched(key, JSConfig.PropertyCacheLimit);
-    }
-
     public static <T extends JSDynamicObject> T copyProperties(T target, JSDynamicObject source) {
-        DynamicObjectLibrary objectLibrary = DynamicObjectLibrary.getUncached();
         for (Property property : source.getShape().getPropertyListInternal(true)) {
             Object key = property.getKey();
-            if (Properties.containsKey(objectLibrary, target, key)) {
+            if (Properties.containsKeyUncached(target, key)) {
                 continue;
             }
-            Object value = Properties.getOrDefault(objectLibrary, source, key, null);
+            Object value = Properties.getOrDefaultUncached(source, key, null);
             if (property.getLocation().isConstant()) {
-                Properties.putConstant(objectLibrary, target, key, value, property.getFlags());
+                Properties.putConstantUncached(target, key, value, property.getFlags());
             } else {
-                Properties.putWithFlags(objectLibrary, target, key, value, property.getFlags());
+                Properties.putWithFlagsUncached(target, key, value, property.getFlags());
             }
         }
         return target;

@@ -79,7 +79,7 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.Source;
@@ -1763,7 +1763,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     InteropLibrary keyInterop = InteropLibrary.getUncached(hashKey);
                     if (keyInterop.isString(hashKey)) {
                         TruffleString stringKey = Strings.interopAsTruffleString(hashKey, keyInterop);
-                        Object value = DynamicObjectLibrary.getUncached().getOrDefault(globalObject, stringKey, Undefined.instance);
+                        Object value = DynamicObject.GetNode.getUncached().execute(globalObject, stringKey, Undefined.instance);
                         if ((value == Undefined.instance || value instanceof ScriptEngineGlobalScopeBindingsPropertyProxy &&
                                         ((ScriptEngineGlobalScopeBindingsPropertyProxy) value).get(globalObject) == Undefined.instance) &&
                                         !JSObject.getPrototype(globalObject).getShape().hasProperty(stringKey)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,9 +52,8 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -64,7 +63,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -80,6 +78,8 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     @Child @Executed protected JavaScriptNode keyNode;
     protected final JSContext context;
 
+    private static final Object MISSING = null;
+
     public static PrivateFieldGetNode create(JavaScriptNode targetNode, JavaScriptNode keyNode, JSContext context) {
         return PrivateFieldGetNodeGen.create(targetNode, keyNode, context);
     }
@@ -91,13 +91,14 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     }
 
     @SuppressWarnings("truffle-static-method")
-    @Specialization(limit = "3")
+    @Specialization
     Object doField(JSObject target, HiddenKey key,
                     @Bind Node node,
-                    @CachedLibrary("target") DynamicObjectLibrary access,
+                    @Cached DynamicObject.GetNode getField,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
-        if (Properties.containsKey(access, target, key)) {
-            return Properties.getOrDefault(access, target, key, Undefined.instance);
+        Object value = getField.execute(target, key, MISSING);
+        if (value != MISSING) {
+            return value;
         } else {
             errorBranch.enter(node);
             return missing(target, key);

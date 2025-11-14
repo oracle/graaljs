@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -251,7 +251,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         private final BranchProfile errorBranch = BranchProfile.create();
         @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         @Child InteropLibrary readArrayElementLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-        @Child DynamicObjectLibrary getExportedFunctionLib = JSObjectUtil.createDispatched(JSWebAssembly.FUNCTION_ADDRESS);
+        @Child DynamicObject.GetNode getExportedFunction = DynamicObject.GetNode.create();
 
         WasmToJSFunctionAdapterRootNode(JSContext context, WasmFunctionTypeInfo type) {
             super(context.getLanguage(), null, null);
@@ -271,7 +271,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             Object[] frameArguments = frame.getArguments();
             Object[] wasmArgs = convertArgsToWasm(frameArguments, argCount);
 
-            Object export = getExportedFunctionLib.getOrDefault(JSFrameUtil.getFunctionObject(frame), JSWebAssembly.FUNCTION_ADDRESS, null);
+            Object export = getExportedFunction.execute(JSFrameUtil.getFunctionObject(frame), JSWebAssembly.FUNCTION_ADDRESS, null);
             try {
                 Object wasmResult;
                 try {

@@ -50,7 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
@@ -136,7 +136,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
         @Override
         public Object get(JSDynamicObject object) {
-            Object regexResult = arrayGetRegexResult(object, DynamicObjectLibrary.getUncached());
+            Object regexResult = arrayGetRegexResult(object, DynamicObject.GetNode.getUncached());
             return InvokeGetGroupBoundariesMethodNode.getUncached().execute(null, regexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
