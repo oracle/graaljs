@@ -52,14 +52,14 @@ describe('unusual top-level await syntax errors', () => {
   it('should throw the error for unrelated syntax errors', async () => {
     const expression = 'foo bar';
     const wrapperExpressions = [
-      [`function callSyntaxError() {}; callSyntaxError(${expression});`, /missing \) after argument list/],
-      [`if (${expression}) {}`, /Unexpected identifier/],
-      [`{ key: ${expression} }`, /Unexpected identifier/],
-      [`[${expression}]`, /Unexpected identifier/],
-      [`(${expression})`, /Unexpected identifier/],
-      [`const ${expression} = 1;`, /Missing initializer in const declaration/],
-      [`console.log('PI: ' Math.PI);`, /missing \) after argument list/],
-      [`callAwait(await "" "");`, /missing \) after argument list/],
+      [`function callSyntaxError() {}; callSyntaxError(${expression});`, /Expected . but found|missing \) after argument list/],
+      [`if (${expression}) {}`, /Expected . but found|Unexpected identifier/],
+      [`{ key: ${expression} }`, /Expected . but found|Unexpected identifier/],
+      [`[${expression}]`, /Expected comma but found|Unexpected identifier/],
+      [`(${expression})`, /Expected . but found|Unexpected identifier/],
+      [`const ${expression} = 1;`, /'const' declarations must be initialized|Missing initializer in const declaration/],
+      [`console.log('PI: ' Math.PI);`, /Expected ',', got|missing \) after argument list/],
+      [`callAwait(await "" "");`, /Expected ',', got|missing \) after argument list/],
     ];
 
     for (const [wrapperExpression, error] of wrapperExpressions) {
