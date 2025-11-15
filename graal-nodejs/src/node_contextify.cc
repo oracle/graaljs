@@ -1661,8 +1661,9 @@ static const auto throws_only_in_cjs_error_messages =
         "the top level bodies of modules"};
 
 static const auto maybe_top_level_await_errors =
-    std::array<std::string_view, 2>{
+    std::array<std::string_view, 3>{
         "missing ) after argument list",  // example: `func(await 1);`
+        "SyntaxError: Expected",
         "SyntaxError: Unexpected"         // example: `if(await 1)`
     };
 
