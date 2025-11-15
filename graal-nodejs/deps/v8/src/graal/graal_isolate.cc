@@ -842,6 +842,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_set_task_runner, "isolateSetTaskRunner", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_execute_runnable, "isolateExecuteRunnable", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_default_locale, "isolateGetDefaultLocale", "()Ljava/lang/String;")
+    ACCESS_METHOD(GraalAccessMethod::isolate_get_continuation_preserved_embedder_data, "isolateGetContinuationPreservedEmbedderData", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::isolate_set_continuation_preserved_embedder_data, "isolateSetContinuationPreservedEmbedderData", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -1681,4 +1683,23 @@ std::string GraalIsolate::GetDefaultLocale() {
     std::string locale = std::string(chars);
     jni_env_->ReleaseStringUTFChars((jstring) java_locale, chars);
     return locale;
+}
+
+void GraalIsolate::SetContinuationPreservedEmbedderData(v8::Local<v8::Value> data) {
+    jobject java_data;
+    if (data.IsEmpty()) {
+        java_data = NULL;
+    } else {
+        GraalValue* graal_data = reinterpret_cast<GraalValue*> (*data);
+        java_data = graal_data->GetJavaObject();
+    }
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_set_continuation_preserved_embedder_data, java_data);
+}
+
+v8::Local<v8::Value> GraalIsolate::GetContinuationPreservedEmbedderData() {
+    JNI_CALL(jobject, java_data, this, GraalAccessMethod::isolate_get_continuation_preserved_embedder_data, Object);
+    GraalValue* graal_data = GraalValue::FromJavaObject(this, java_data);
+    v8::Value* v8_data = reinterpret_cast<v8::Value*> (graal_data);
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (this);
+    return v8::Local<v8::Value>::New(isolate, v8_data);
 }

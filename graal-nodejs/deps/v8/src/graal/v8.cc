@@ -4049,11 +4049,12 @@ namespace v8 {
 
     void Isolate::SetContinuationPreservedEmbedderData(Local<Value> data) {
         TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetContinuationPreservedEmbedderData(data);
     }
 
     Local<Value> Isolate::GetContinuationPreservedEmbedderData() {
         TRACE
-        return Local<Value>();
+        return reinterpret_cast<GraalIsolate*> (this)->GetContinuationPreservedEmbedderData();
     }
 
     bool v8::ValueSerializer::Delegate::HasCustomHostObject(Isolate* isolate) {

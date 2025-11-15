@@ -230,6 +230,8 @@ enum GraalAccessMethod {
     isolate_set_task_runner,
     isolate_execute_runnable,
     isolate_get_default_locale,
+    isolate_get_continuation_preserved_embedder_data,
+    isolate_set_continuation_preserved_embedder_data,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -681,6 +683,8 @@ public:
     void SetFunctionTemplateFunction(unsigned id, GraalValue* function);
     void SetFunctionTemplateData(unsigned id, GraalValue* data);
     void SetFunctionTemplateCallback(unsigned id, v8::FunctionCallback callback);
+    void SetContinuationPreservedEmbedderData(v8::Local<v8::Value> data);
+    v8::Local<v8::Value> GetContinuationPreservedEmbedderData();
     void ReportAPIFailure(const char* location, const char* message);
     std::string GetDefaultLocale();
 

@@ -3048,7 +3048,7 @@ public final class GraalJSAccess {
         class GetContinuationPreservedEmbedderData extends JavaScriptRootNode {
             @Override
             public Object execute(VirtualFrame frame) {
-                return getRealm().getAgent().getAsyncContextMapping().getOrDefault(CONTINUATION_DATA_SYMBOL, Undefined.instance);
+                return getContinuationPreservedEmbedderData(getRealm());
             }
         }
         CallTarget callTarget = new GetContinuationPreservedEmbedderData().getCallTarget();
@@ -3064,14 +3064,30 @@ public final class GraalJSAccess {
                 if (JSArguments.getUserArgumentCount(args) != 0) {
                     data = JSArguments.getUserArgument(args, 0);
                 }
-                JSAgent agent = getRealm().getAgent();
-                AsyncContext asyncContext = agent.getAsyncContextMapping();
-                agent.asyncContextSwap(asyncContext.withMapping(CONTINUATION_DATA_SYMBOL, data));
+                setContinuationPreservedEmbedderData(getRealm(), data);
                 return Undefined.instance;
             }
         }
         CallTarget callTarget = new SetContinuationPreservedEmbedderData().getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, SET_CONTINUATION_PRESERVED_EMBEDDER_DATA);
+    }
+
+    public Object isolateGetContinuationPreservedEmbedderData() {
+        return getContinuationPreservedEmbedderData(mainJSRealm);
+    }
+
+    private static Object getContinuationPreservedEmbedderData(JSRealm realm) {
+        return realm.getAgent().getAsyncContextMapping().getOrDefault(CONTINUATION_DATA_SYMBOL, Undefined.instance);
+    }
+
+    public void isolateSetContinuationPreservedEmbedderData(Object data) {
+        setContinuationPreservedEmbedderData(mainJSRealm, data == null ? Undefined.instance : data);
+    }
+
+    private static void setContinuationPreservedEmbedderData(JSRealm realm, Object data) {
+        JSAgent agent = realm.getAgent();
+        AsyncContext asyncContext = agent.getAsyncContextMapping();
+        agent.asyncContextSwap(asyncContext.withMapping(CONTINUATION_DATA_SYMBOL, data));
     }
 
     public void contextSetPointerInEmbedderData(Object context, int index, long pointer) {
