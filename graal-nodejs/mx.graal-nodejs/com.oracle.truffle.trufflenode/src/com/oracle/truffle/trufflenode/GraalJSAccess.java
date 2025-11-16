@@ -1043,6 +1043,11 @@ public final class GraalJSAccess {
         return true;
     }
 
+    public void templateSetLazyDataProperty(Object template, Object key, long getterPtr, Object data, int attributes) {
+        int flags = propertyAttributes(attributes);
+        getObjectTemplate(template).addValue(new Value(key, new LazyDataProperty(key, getterPtr, data, flags), flags));
+    }
+
     static class LazyDataProperty extends PropertyProxy {
         private final Object key;
         private final long getterPtr;
@@ -1888,14 +1893,16 @@ public final class GraalJSAccess {
         throw exceptionObjectToException(exceptionObject);
     }
 
-    public void templateSet(Object templateObj, Object name, Object value, int attributes) {
-        ObjectTemplate template;
-        if (templateObj instanceof FunctionTemplate) {
-            template = ((FunctionTemplate) templateObj).getFunctionObjectTemplate();
+    private static ObjectTemplate getObjectTemplate(Object template) {
+        if (template instanceof FunctionTemplate) {
+            return ((FunctionTemplate) template).getFunctionObjectTemplate();
         } else {
-            template = (ObjectTemplate) templateObj;
+            return (ObjectTemplate) template;
         }
-        template.addValue(new Value(name, value, propertyAttributes(attributes)));
+    }
+
+    public void templateSet(Object template, Object name, Object value, int attributes) {
+        getObjectTemplate(template).addValue(new Value(name, value, propertyAttributes(attributes)));
     }
 
     public void templateSetAccessorProperty(Object templateObj, Object name, Object getter, Object setter, int attributes) {
@@ -2148,6 +2155,8 @@ public final class GraalJSAccess {
                 Object getter = (getterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, getterTemplate);
                 Object setter = (setterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, setterTemplate);
                 JSObjectUtil.defineAccessorProperty(context, obj, name, (JSDynamicObject) getter, (JSDynamicObject) setter, attributes);
+            } else if (processedValue instanceof PropertyProxy proxy) {
+                JSObjectUtil.defineProxyProperty(obj, name, proxy, attributes);
             } else {
                 if (name instanceof HiddenKey) {
                     if (!template.hasPropertyHandler()) {

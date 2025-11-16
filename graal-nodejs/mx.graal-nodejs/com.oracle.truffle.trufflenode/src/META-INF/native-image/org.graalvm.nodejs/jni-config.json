@@ -257,6 +257,7 @@
       { "name": "symbolPrivateNew" },
       { "name": "templateSet" },
       { "name": "templateSetAccessorProperty" },
+      { "name": "templateSetLazyDataProperty" },
       { "name": "tryCatchException" },
       { "name": "tryCatchHasTerminated" },
       { "name": "typedArrayLength" },

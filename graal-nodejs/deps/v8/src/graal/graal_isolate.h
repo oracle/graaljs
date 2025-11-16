@@ -234,6 +234,7 @@ enum GraalAccessMethod {
     isolate_set_continuation_preserved_embedder_data,
     template_set,
     template_set_accessor_property,
+    template_set_lazy_data_property,
     object_template_new,
     object_template_new_instance,
     object_template_set_accessor,

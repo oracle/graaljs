@@ -4170,7 +4170,7 @@ namespace v8 {
             PropertyAttribute attribute,
             SideEffectType getter_side_effect_type,
             SideEffectType setter_side_effect_type) {
-        TRACE
+        reinterpret_cast<GraalTemplate*> (this)->SetLazyDataProperty(name, getter, data, attribute);
     }
 
     void Isolate::SetHostImportModuleWithPhaseDynamicallyCallback(HostImportModuleWithPhaseDynamicallyCallback callback) {

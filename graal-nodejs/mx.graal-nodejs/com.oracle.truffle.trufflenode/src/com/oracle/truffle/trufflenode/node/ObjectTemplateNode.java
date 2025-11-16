@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -66,7 +67,10 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -132,6 +136,8 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
                 JavaScriptNode getterNode = JSConstantNode.create(getter);
                 JavaScriptNode setterNode = JSConstantNode.create(setter);
                 members.add(ObjectLiteralNode.newAccessorMember(name, false, attributes, getterNode, setterNode));
+            } else if (propertyValue instanceof PropertyProxy proxy) {
+                members.add(new LazyDataPropertyNode(false, attributes, name, proxy));
             } else if (name instanceof TruffleString || name instanceof Symbol) {
                 members.add(ObjectLiteralNode.newDataMember(name, false, attributes, valueNode));
             } else if (name instanceof HiddenKey) {
@@ -241,4 +247,28 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
             return new SetAccessorSlotNode(setInternalSlotNode.getContext(), cloneUninitialized(functionNode, materializedTags), (HiddenKey) setInternalSlotNode.getKey(), accessorIndex);
         }
     }
+
+    private static final class LazyDataPropertyNode extends ObjectLiteralNode.ObjectLiteralMemberNode {
+        private final Object key;
+        private final PropertyProxy value;
+        @Child private DynamicObjectLibrary dynamicObjectLibrary;
+
+        private LazyDataPropertyNode(boolean isStatic, int attributes, Object key, PropertyProxy value) {
+            super(isStatic, attributes);
+            this.key = key;
+            this.value = value;
+            this.dynamicObjectLibrary = JSObjectUtil.createDispatched(key);
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame, JSObject receiver, JSObject homeObject, JSRealm realm) {
+            dynamicObjectLibrary.putConstant(receiver, key, value, attributes | JSProperty.PROXY);
+        }
+
+        @Override
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new LazyDataPropertyNode(isStatic, attributes, key, value);
+        }
+    }
+
 }

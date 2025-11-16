@@ -55,6 +55,11 @@ public:
             v8::Local<v8::FunctionTemplate> getter,
             v8::Local<v8::FunctionTemplate> setter,
             v8::PropertyAttribute attribute);
+    void SetLazyDataProperty(
+            v8::Local<v8::Name> name,
+            v8::AccessorNameGetterCallback getter,
+            v8::Local<v8::Value> data,
+            v8::PropertyAttribute attribute);
 };
 
 #endif /* GRAAL_TEMPLATE_H_ */
