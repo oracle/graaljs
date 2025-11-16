@@ -134,6 +134,7 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
             return;
         }
         try {
+            status = CyclicModuleRecord.Status.Evaluating;
             evaluationSteps.accept(this);
             evaluationSteps = null;
         } finally {
