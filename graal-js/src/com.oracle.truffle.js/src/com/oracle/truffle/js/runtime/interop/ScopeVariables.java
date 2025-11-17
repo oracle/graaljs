@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
@@ -137,16 +136,16 @@ public final class ScopeVariables implements TruffleObject {
         return true;
     }
 
-    @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasLanguage() {
+    @ExportMessage
+    boolean hasLanguageId() {
         return true;
     }
 
-    @ExportMessage
     @SuppressWarnings("static-method")
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return JavaScriptLanguage.class;
+    @ExportMessage
+    String getLanguageId() {
+        return JavaScriptLanguage.ID;
     }
 
     @ExportMessage
