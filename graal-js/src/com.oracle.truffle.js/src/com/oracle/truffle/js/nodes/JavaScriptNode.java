@@ -67,6 +67,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.interop.ScopeVariables;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -104,6 +105,11 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
         return new JavaScriptNodeWrapper(this, probe);
+    }
+
+    @GenerateWrapper.IncomingConverter
+    public Object convertIncomingValue(Object value) {
+        return JSRuntime.importValue(value);
     }
 
     /**
