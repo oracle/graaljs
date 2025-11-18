@@ -4159,8 +4159,7 @@ namespace v8 {
     }
 
     bool Module::HasTopLevelAwait() const {
-        TRACE
-        return true;
+        return reinterpret_cast<const GraalModule*> (this)->HasTopLevelAwait();
     }
 
     void Template::SetLazyDataProperty(

@@ -4017,6 +4017,10 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
+    public boolean moduleHasTopLevelAwait(Object module) {
+        return (module instanceof CyclicModuleRecord record) && record.hasTLA();
+    }
+
     public boolean moduleIsGraphAsync(Object module) {
         if (!(module instanceof CyclicModuleRecord record)) {
             // synthetic modules are never async

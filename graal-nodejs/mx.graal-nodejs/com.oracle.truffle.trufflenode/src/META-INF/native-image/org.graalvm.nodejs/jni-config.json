@@ -138,6 +138,7 @@
       { "name": "moduleCompile" },
       { "name": "moduleCreateSyntheticModule" },
       { "name": "moduleEvaluate" },
+      { "name": "moduleHasTopLevelAwait" },
       { "name": "moduleInstantiate" },
       { "name": "moduleGetException" },
       { "name": "moduleGetIdentityHash" },

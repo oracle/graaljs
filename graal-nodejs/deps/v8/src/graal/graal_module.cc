@@ -175,6 +175,11 @@ v8::Local<v8::FixedArray> GraalModule::GetModuleRequests() const {
     return v8::Local<v8::FixedArray>::New(v8_isolate, v8_requests);
 }
 
+bool GraalModule::HasTopLevelAwait() const {
+    JNI_CALL(jboolean, java_has_tla, Isolate(), GraalAccessMethod::module_has_top_level_await, Boolean, GetJavaObject());
+    return (bool) java_has_tla;
+}
+
 bool GraalModule::IsGraphAsync() const {
     JNI_CALL(jboolean, java_is_graph_async, Isolate(), GraalAccessMethod::module_is_graph_async, Boolean, GetJavaObject());
     return (bool) java_is_graph_async;
