@@ -3141,7 +3141,7 @@ namespace v8 {
         String::Utf8Value text(reinterpret_cast<Isolate*> (graal_script->Isolate()), graal_script->GetContent());
         uint8_t* copy = new uint8_t[text.length()];
         memcpy(copy, *text, text.length());
-        return new ScriptCompiler::CachedData((const uint8_t*) copy, text.length());
+        return new ScriptCompiler::CachedData((const uint8_t*) copy, text.length(), ScriptCompiler::CachedData::BufferOwned);
     }
 
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCache(Local<UnboundModuleScript> unbound_module_script) {
@@ -3225,7 +3225,7 @@ namespace v8 {
     }
 
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {
-        return new ScriptCompiler::CachedData((const uint8_t*) nullptr, 0);
+        return new ScriptCompiler::CachedData((const uint8_t*) nullptr, 0, ScriptCompiler::CachedData::BufferOwned);
     }
 
     Local<PrimitiveArray> PrimitiveArray::New(Isolate* isolate, int length) {
