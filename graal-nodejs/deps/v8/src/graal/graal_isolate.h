@@ -349,6 +349,8 @@ enum GraalAccessMethod {
     symbol_get_to_primitive,
     symbol_get_to_string_tag,
     symbol_get_unscopables,
+    symbol_get_dispose,
+    symbol_get_async_dispose,
     symbol_private_for_api,
     symbol_private_new,
     promise_result,

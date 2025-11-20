@@ -2338,13 +2338,11 @@ namespace v8 {
     }
 
     Local<Symbol> Symbol::GetDispose(Isolate* isolate) {
-        TRACE
-        return Local<Symbol>();
+        return GraalSymbol::GetDispose(isolate);
     }
 
     Local<Symbol> Symbol::GetAsyncDispose(Isolate* isolate) {
-        TRACE
-        return Local<Symbol>();
+        return GraalSymbol::GetAsyncDispose(isolate);
     }
 
     Local<Symbol> Symbol::For(Isolate* isolate, Local<String> description) {

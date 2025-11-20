@@ -1715,6 +1715,14 @@ public final class GraalJSAccess {
         return Symbol.SYMBOL_UNSCOPABLES;
     }
 
+    public Object symbolGetDispose() {
+        return Symbol.SYMBOL_DISPOSE;
+    }
+
+    public Object symbolGetAsyncDispose() {
+        return Symbol.SYMBOL_ASYNC_DISPOSE;
+    }
+
     public Object symbolFor(Object description) {
         TruffleString stringDesc = (TruffleString) description;
         Map<TruffleString, Symbol> registry = mainJSContext.getSymbolRegistry();
