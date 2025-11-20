@@ -4400,7 +4400,7 @@ public final class GraalJSAccess {
     }
 
     static class ESModuleLoader implements JSModuleLoader {
-        private final Map<ScriptOrModule, Map<TruffleString, AbstractModuleRecord>> cache = new HashMap<>();
+        private final Map<ScriptOrModule, Map<ModuleRequest, AbstractModuleRecord>> cache = new HashMap<>();
         private long resolver;
 
         void setResolver(long resolver) {
@@ -4409,13 +4409,12 @@ public final class GraalJSAccess {
 
         @Override
         public AbstractModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
-            Map<TruffleString, AbstractModuleRecord> referrerCache = cache.get(referrer);
-            TruffleString specifier = moduleRequest.specifier();
+            Map<ModuleRequest, AbstractModuleRecord> referrerCache = cache.get(referrer);
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();
                 cache.put(referrer, referrerCache);
             } else {
-                AbstractModuleRecord cached = referrerCache.get(specifier);
+                AbstractModuleRecord cached = referrerCache.get(moduleRequest);
                 if (cached != null) {
                     return cached;
                 }
@@ -4425,10 +4424,11 @@ public final class GraalJSAccess {
                 System.err.println("Cannot resolve module outside module instantiation!");
                 System.exit(1);
             }
+            TruffleString specifier = moduleRequest.specifier();
             Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, true);
             JSRealm realm = JSRealm.get(null);
             AbstractModuleRecord result = (AbstractModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
-            referrerCache.put(specifier, result);
+            referrerCache.put(moduleRequest, result);
             return result;
         }
     }
