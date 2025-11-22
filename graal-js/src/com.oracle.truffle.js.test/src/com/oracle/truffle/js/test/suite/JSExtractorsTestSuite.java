@@ -50,8 +50,6 @@ public class JSExtractorsTestSuite {
     public static final String PATH_OF_RESOURCES = "src/com.oracle.truffle.js.test/js-extractors";
 
     public static void main(String[] args) throws Exception {
-        // the following line is the reason these tests aren't part of the regular js suite
-        System.setProperty("truffle.js.parser.extractors", "true");
         JSTestRunner.runInMain(JSExtractorsTestSuite.class, args);
     }
 

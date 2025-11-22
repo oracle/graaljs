@@ -132,6 +132,7 @@ public record JSLanguageOptions(
                 boolean arrayElementsAmongMembers,
                 boolean stackTraceAPI,
                 boolean worker,
+                boolean extractors,
                 String locale) {
 
     public static JSLanguageOptions fromOptionValues(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
@@ -217,6 +218,7 @@ public record JSLanguageOptions(
         boolean arrayElementsAmongMembers = options.isArrayElementsAmongMembers();
         boolean stackTraceAPI = options.isStackTraceAPI();
         boolean worker = options.isWorker();
+        boolean extractors = options.isExtractors();
         String locale = options.getLocale();
 
         return new JSLanguageOptions(
@@ -297,6 +299,7 @@ public record JSLanguageOptions(
                         arrayElementsAmongMembers,
                         stackTraceAPI,
                         worker,
+                        extractors,
                         locale);
     }
 

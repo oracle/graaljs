@@ -1,4 +1,8 @@
-load('../js/assert.js');
+/**
+ * @option js.extractors
+ */
+
+load('../assert.js');
 
 // potentially built-in as part of Pattern Matching
 RegExp.prototype[Symbol.customMatcher] = function (value) {

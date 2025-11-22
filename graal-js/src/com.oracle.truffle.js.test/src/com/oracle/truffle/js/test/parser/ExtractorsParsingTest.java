@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.test.parser;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -69,19 +70,9 @@ public class ExtractorsParsingTest {
         return src;
     }
 
-    @Before
-    public void setup() {
-        System.setProperty("truffle.js.parser.extractors", "true");
-    }
-
-    @After
-    public void tearDown() {
-        System.clearProperty("truffle.js.parser.extractors");
-    }
-
     @Test
     public void testBasicExtractorBinding() {
-        try (Context ctx = JSTest.newContextBuilder().build()) {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
             final var src = srcWithBasicCustomMatcher("""
                     const foo = new Foo();
                     
@@ -94,7 +85,7 @@ public class ExtractorsParsingTest {
 
     @Test
     public void testBasicExtractorLetAssignment() {
-        try (Context ctx = JSTest.newContextBuilder().build()) {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
             final var src = srcWithBasicCustomMatcher("""
                     const subject = new Foo();
                     
@@ -106,7 +97,7 @@ public class ExtractorsParsingTest {
 
     @Test
     public void testBasicExtractorConstAssignment() {
-        try (Context ctx = JSTest.newContextBuilder().build()) {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
             final var src = srcWithBasicCustomMatcher("""
                     const subject = new Foo();
                     
@@ -118,7 +109,7 @@ public class ExtractorsParsingTest {
 
     @Test
     public void testNestedExtractor() {
-        try (Context ctx = JSTest.newContextBuilder().build()) {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
             final var src = Source.newBuilder("js", """
                     class C {
                         #f;
@@ -144,7 +135,7 @@ public class ExtractorsParsingTest {
     // todo-lw: failing
     @Test
     public void testNewlineAfterMemberExpression() {
-        try (Context ctx = JSTest.newContextBuilder().build()) {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
             final var src = Source.newBuilder("js", """                 
                     class C {
                         #data;
@@ -168,7 +159,7 @@ public class ExtractorsParsingTest {
 
     @Test
     public void testInvalidExtractorBindingsNew() {
-        try (Context ctx = JSTest.newContextBuilder().build()) {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
             final var src = srcWithBasicCustomMatcher("""
                     const subject = new Foo();
                     
@@ -182,6 +173,31 @@ public class ExtractorsParsingTest {
             } else {
                 Assert.assertTrue("SyntaxError", e.isSyntaxError());
             }
+        }
+    }
+
+    @Test
+    public void testWithObjectDestructuring() {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
+            final var src = srcWithBasicCustomMatcher("""
+                    const subject = { a: 1, b: 2 };
+
+                    const { a: Foo(x), b: Foo(y) } = subject;
+                    """);
+            ctx.eval(src);
+        }
+    }
+
+    @Test
+    public void testAsFunctionParameter() {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
+            final var src = srcWithBasicCustomMatcher("""
+                    const o1 = { o2: { Foo } }
+                    
+                    function f(o1.o2.Foo(a)) {}
+                    f(1);
+                    """);
+            ctx.eval(src);
         }
     }
 }

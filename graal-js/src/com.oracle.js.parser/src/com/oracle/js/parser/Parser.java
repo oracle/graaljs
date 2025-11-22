@@ -244,8 +244,6 @@ public class Parser extends AbstractParser {
     private static final boolean ES2019_OPTIONAL_CATCH_BINDING = Options.getBooleanProperty("parser.optional.catch.binding", true);
     private static final boolean ES2020_CLASS_FIELDS = Options.getBooleanProperty("parser.class.fields", true);
     private static final boolean ES2022_TOP_LEVEL_AWAIT = Options.getBooleanProperty("parser.top.level.await", true);
-    // todo-lw: apparently there is a "new" way to have feature flags, should use that
-    private static final boolean ESNEXT_EXTRACTORS = Options.getBooleanProperty("parser.extractors", false);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
@@ -1071,7 +1069,7 @@ public class Parser extends AbstractParser {
             return ES6_DESTRUCTURING && isES6();
         }
         if (lhs instanceof CallNode) {
-            return ESNEXT_EXTRACTORS;
+            return env.extractors;
         }
         return false;
     }
@@ -2491,7 +2489,6 @@ public class Parser extends AbstractParser {
             }
 
             final boolean isExtracting = binding instanceof CallNode;
-            assert !isExtracting || ESNEXT_EXTRACTORS;
 
             final boolean isDestructuring = !(binding instanceof IdentNode) && !isExtracting;
             if (isDestructuring) {
@@ -2794,7 +2791,7 @@ public class Parser extends AbstractParser {
 
         @Override
         public boolean enterCallNode(CallNode callNode) {
-            if (callNode.isParenthesized() || !ESNEXT_EXTRACTORS) {
+            if (callNode.isParenthesized() || !env.extractors) {
                 throw error(AbstractParser.message(MSG_INVALID_LVALUE), callNode.getToken());
             }
             return handleNodeListWithSpread(callNode.getArgs(), SPREAD_ARGUMENT);

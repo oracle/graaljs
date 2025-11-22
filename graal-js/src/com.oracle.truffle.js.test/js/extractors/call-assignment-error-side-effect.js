@@ -1,6 +1,10 @@
-// https://github.com/tc39/proposal-extractors/issues/34
+/**
+ * @option js.extractors
+ *
+ * https://github.com/tc39/proposal-extractors/issues/34
+ */
 
-load('../js/assert.js');
+load('../assert.js');
 
 let sideEffectHappened = false;
 

@@ -1,4 +1,8 @@
-load('../js/assert.js');
+/**
+ * @option js.extractors
+ */
+
+load('../assert.js');
 
 {
     class C {
@@ -82,22 +86,20 @@ load('../js/assert.js');
     const subject = new C(undefined, 2);
 
     {
-        let x = -1, y = 100;
+        let x = 'value that should be overwritten', y = 100;
         C(x = -1, y) = subject;
         assertSame(-1, x);
         assertSame(2, y);
     }
 
     {
-        const C(x = -1, y) = subject;
-        assertSame(-1, x);
+        const C(x = 'hello world', y) = subject;
+        assertSame('hello world', x);
         assertSame(2, y);
     }
 }
 
 {
-    const [a, ...b] = [1, 2, 3];
-
     class C {
         #first;
         #second;

@@ -1,4 +1,8 @@
-load('../js/assert.js');
+/**
+ * @option js.extractors
+ */
+
+load('../assert.js');
 
 class C {
     #data1;

@@ -1,4 +1,8 @@
-load('../js/assert.js');
+/**
+ * @option js.extractors
+ */
+
+load('../assert.js');
 
 const DateExtractor = {
     [Symbol.customMatcher](value) {
