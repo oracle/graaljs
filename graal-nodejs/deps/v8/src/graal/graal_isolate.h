@@ -371,6 +371,7 @@ enum GraalAccessMethod {
     module_get_module_requests,
     module_request_get_specifier,
     module_request_get_import_assertions,
+    module_request_get_phase,
     module_has_top_level_await,
     module_is_graph_async,
     module_is_source_text_module,

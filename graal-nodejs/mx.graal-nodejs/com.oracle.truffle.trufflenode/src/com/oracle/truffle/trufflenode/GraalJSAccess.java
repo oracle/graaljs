@@ -4077,6 +4077,11 @@ public final class GraalJSAccess {
         return moduleRequestGetImportAssertionsImpl(request, true);
     }
 
+    public int moduleRequestGetPhase(Object moduleRequest) {
+        Module.ImportPhase phase = ((ModuleRequest) moduleRequest).phase();
+        return (phase == Module.ImportPhase.Source) ? 0 /* kSource */ : 1 /* kEvaluation */;
+    }
+
     public void moduleSetSyntheticModuleExport(Object module, Object exportName, Object exportValue) {
         SyntheticModuleRecord syntheticModule = (SyntheticModuleRecord) module;
         syntheticModule.setSyntheticModuleExport((TruffleString) exportName, exportValue);

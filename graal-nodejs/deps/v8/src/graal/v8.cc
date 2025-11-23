@@ -4194,8 +4194,7 @@ namespace v8 {
     }
 
     ModuleImportPhase ModuleRequest::GetPhase() const {
-        TRACE
-        return ModuleImportPhase::kEvaluation;
+        return reinterpret_cast<const GraalModuleRequest*> (this)->GetPhase();
     }
 
     void Object::Wrap(Isolate* isolate, internal::Address wrapper_obj, CppHeapPointerTag tag, void* wrappable) {

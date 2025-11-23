@@ -69,6 +69,12 @@ v8::Local<v8::FixedArray> GraalModuleRequest::GetImportAttributes() const {
     return v8::Local<v8::FixedArray>::New(v8_isolate, v8_assertions);
 }
 
+v8::ModuleImportPhase GraalModuleRequest::GetPhase() const {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jint, java_phase, graal_isolate, GraalAccessMethod::module_request_get_phase, Int, GetJavaObject());
+    return static_cast<v8::ModuleImportPhase> (java_phase);
+}
+
 bool GraalModuleRequest::IsModuleRequest() const {
     return true;
 }

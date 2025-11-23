@@ -51,6 +51,7 @@ public:
     inline static GraalModuleRequest* Allocate(GraalIsolate* isolate, jobject java_module_request);
     v8::Local<v8::String> GetSpecifier() const;
     v8::Local<v8::FixedArray> GetImportAttributes() const;
+    v8::ModuleImportPhase GetPhase() const;
     bool IsModuleRequest() const override;
 protected:
     inline GraalModuleRequest(GraalIsolate* isolate, jobject java_module_request);

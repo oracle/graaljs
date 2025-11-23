@@ -149,6 +149,7 @@
       { "name": "moduleIsGraphAsync" },
       { "name": "moduleIsSourceTextModule" },
       { "name": "moduleRequestGetImportAssertions" },
+      { "name": "moduleRequestGetPhase" },
       { "name": "moduleRequestGetSpecifier" },
       { "name": "moduleSetSyntheticModuleExport" },
       { "name": "nullInstance" },
