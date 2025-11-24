@@ -4171,7 +4171,7 @@ namespace v8 {
     }
 
     void Isolate::SetHostImportModuleWithPhaseDynamicallyCallback(HostImportModuleWithPhaseDynamicallyCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetHostImportModuleWithPhaseDynamicallyCallback(callback);
     }
 
     bool Data::IsValue() const {

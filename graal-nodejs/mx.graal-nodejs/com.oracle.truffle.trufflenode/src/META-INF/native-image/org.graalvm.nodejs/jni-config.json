@@ -369,6 +369,7 @@
       { "name": "notifyImportMetaInitializer" },
       { "name": "executeResolveCallback" },
       { "name": "executeImportModuleDynamicallyCallback" },
+      { "name": "executeImportModuleWithPhaseDynamicallyCallback" },
       { "name": "hasCustomHostObject" },
       { "name": "isHostObject" },
       { "name": "writeHostObject" },

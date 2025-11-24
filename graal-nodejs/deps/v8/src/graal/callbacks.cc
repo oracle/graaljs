@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,6 +115,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
     CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
+    CALLBACK("executeImportModuleWithPhaseDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleWithPhaseDynamicallyCallback),
     CALLBACK("executePrepareStackTraceCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePrepareStackTraceCallback),
     CALLBACK("hasCustomHostObject", "(J)Z", &GraalHasCustomHostObject),
     CALLBACK("isHostObject", "(JLjava/lang/Object;)Z", &GraalIsHostObject),
@@ -816,6 +817,38 @@ jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAc
         v8::Local<v8::Data>::New(v8_isolate, v8_host_defined_options),
         v8::Local<v8::Value>::New(v8_isolate, v8_resource_name),
         v8::Local<v8::String>::New(v8_isolate, v8_specifier),
+        v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_assertions)
+    );
+    if (v8_result.IsEmpty()) {
+        return NULL;
+    } else {
+        v8::Local<v8::Promise> v8_promise = v8_result.ToLocalChecked();
+        GraalPromise* graal_promise = reinterpret_cast<GraalPromise*> (*v8_promise);
+        return env->NewLocalRef(graal_promise->GetJavaObject());
+    }
+}
+
+jobject GraalExecuteImportModuleWithPhaseDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_host_defined_options, jobject java_resource_name, jobject java_specifier, jint java_phase, jobject java_import_assertions) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(v8_isolate);
+    GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
+    GraalData* graal_host_defined_options = GraalFixedArray::Allocate(graal_isolate, java_host_defined_options);
+    GraalString* graal_resource_name = GraalString::Allocate(graal_isolate, java_resource_name);
+    GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
+    GraalFixedArray* graal_import_assertions = GraalFixedArray::Allocate(graal_isolate, java_import_assertions);
+    v8::Context* v8_context = reinterpret_cast<v8::Context*> (graal_context);
+    v8::Data* v8_host_defined_options = reinterpret_cast<v8::Data*> (graal_host_defined_options);
+    v8::Value* v8_resource_name = reinterpret_cast<v8::Value*> (graal_resource_name);
+    v8::String* v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
+    v8::ModuleImportPhase v8_phase = static_cast<v8::ModuleImportPhase> (java_phase);
+    v8::FixedArray* v8_import_assertions = reinterpret_cast<v8::FixedArray*> (graal_import_assertions);
+    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleWithPhaseDynamically(
+        v8::Local<v8::Context>::New(v8_isolate, v8_context),
+        v8::Local<v8::Data>::New(v8_isolate, v8_host_defined_options),
+        v8::Local<v8::Value>::New(v8_isolate, v8_resource_name),
+        v8::Local<v8::String>::New(v8_isolate, v8_specifier),
+        v8_phase,
         v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_assertions)
     );
     if (v8_result.IsEmpty()) {

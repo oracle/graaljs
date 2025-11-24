@@ -476,7 +476,9 @@ public:
     void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
     void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
+    void SetHostImportModuleWithPhaseDynamicallyCallback(v8::HostImportModuleWithPhaseDynamicallyCallback callback);
     v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleWithPhaseDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::ModuleImportPhase phase, v8::Local<v8::FixedArray> import_assertions);
     void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
     v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
     void SetWasmStreamingCallback(v8::WasmStreamingCallback callback);
@@ -880,6 +882,7 @@ private:
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
+    v8::HostImportModuleWithPhaseDynamicallyCallback import_module_with_phase_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
     v8::WasmStreamingCallback wasm_streaming_callback_;

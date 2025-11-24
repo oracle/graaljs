@@ -3517,7 +3517,11 @@ public final class GraalJSAccess {
                 resourceName = Strings.fromJavaString(referrer.getSource().getName());
                 hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
             }
-            return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), importAssertions);
+            if (moduleRequest.phase() == Module.ImportPhase.Evaluation) {
+                return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), importAssertions);
+            }
+            int phase = moduleRequestGetPhaseImpl(moduleRequest);
+            return (JSDynamicObject) NativeAccess.executeImportModuleWithPhaseDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), phase, importAssertions);
         }
     }
 
@@ -4078,7 +4082,11 @@ public final class GraalJSAccess {
     }
 
     public int moduleRequestGetPhase(Object moduleRequest) {
-        Module.ImportPhase phase = ((ModuleRequest) moduleRequest).phase();
+        return moduleRequestGetPhaseImpl((ModuleRequest) moduleRequest);
+    }
+
+    static int moduleRequestGetPhaseImpl(ModuleRequest moduleRequest) {
+        Module.ImportPhase phase = moduleRequest.phase();
         return (phase == Module.ImportPhase.Source) ? 0 /* kSource */ : 1 /* kEvaluation */;
     }
 
