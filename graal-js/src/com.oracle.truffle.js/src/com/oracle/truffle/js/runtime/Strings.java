@@ -867,13 +867,9 @@ public final class Strings {
         return fromJavaString(bi.toString(radix));
     }
 
-    public static TruffleString fromObject(Object o) {
-        return fromJavaString(objectToJavaString(o));
-    }
-
     @TruffleBoundary
-    private static String objectToJavaString(Object o) {
-        return String.valueOf(o);
+    public static TruffleString fromObject(Object o) {
+        return fromJavaString(String.valueOf(o));
     }
 
     public static TruffleString fromCharArray(TruffleString.FromCharArrayUTF16Node node, char[] chars) {

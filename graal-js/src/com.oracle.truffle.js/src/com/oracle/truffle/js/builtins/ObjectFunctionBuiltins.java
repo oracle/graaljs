@@ -1232,43 +1232,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         Object key = members.readArrayElement(keysObj, i);
                         String stringKey = Strings.interopAsString(key);
                         TruffleString tStringKey = Strings.interopAsTruffleString(key);
-                        if (!JSObject.hasOwnProperty(target, tStringKey, targetProfile)) {
-                            if (!extensible) {
-                                throw Errors.createTypeErrorNotExtensible(target, key);
-                            }
-                            JSObjectUtil.defineProxyProperty(target, tStringKey, new ForeignBoundProperty(source, stringKey), JSAttributes.getDefault());
-                        }
+                        bindForeignProperty(target, source, stringKey, tStringKey, extensible);
                         if (hostObject) {
-                            // Special handling of bean properties: when there is "getProp",
-                            // "setProp" or "isProp" but not "prop" in the source then define also
-                            // "prop" in the target (unless the target has "prop" already).
-                            String beanProperty;
-                            if (stringKey.length() > 3 && (stringKey.charAt(0) == 's' || stringKey.charAt(0) == 'g') && stringKey.charAt(1) == 'e' && stringKey.charAt(2) == 't' &&
-                                            Boundaries.characterIsUpperCase(stringKey.charAt(3))) {
-                                beanProperty = beanProperty(stringKey, 3);
-                            } else if (stringKey.length() > 2 && stringKey.charAt(0) == 'i' && stringKey.charAt(1) == 's' && Boundaries.characterIsUpperCase(stringKey.charAt(2))) {
-                                beanProperty = beanProperty(stringKey, 2);
-                            } else {
-                                continue;
-                            }
-                            TruffleString tStringBeanProperty = Strings.fromJavaString(beanProperty);
-                            if (!JSObject.hasOwnProperty(target, tStringBeanProperty, targetProfile) && !interop.isMemberExisting(source, beanProperty)) {
-                                String getKey = beanAccessor("get", beanProperty);
-                                String getter;
-                                if (interop.isMemberExisting(source, getKey)) {
-                                    getter = getKey;
-                                } else {
-                                    String isKey = beanAccessor("is", beanProperty);
-                                    if (interop.isMemberExisting(source, isKey)) {
-                                        getter = isKey;
-                                    } else {
-                                        getter = null;
-                                    }
-                                }
-                                String setKey = beanAccessor("set", beanProperty);
-                                String setter = interop.isMemberExisting(source, setKey) ? setKey : null;
-                                JSObjectUtil.defineProxyProperty(target, tStringBeanProperty, new ForeignBoundBeanProperty(source, getter, setter), JSAttributes.getDefault());
-                            }
+                            bindForeignBeanProperty(target, source, stringKey, interop);
                         }
                     }
                 } catch (UnsupportedMessageException | InvalidArrayIndexException ex) {
@@ -1277,6 +1243,50 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeErrorNotAnObject(target, this);
             }
             return target;
+        }
+
+        @TruffleBoundary
+        private void bindForeignProperty(JSObject target, Object source, String stringKey, TruffleString tStringKey, boolean extensible) {
+            if (!JSObject.hasOwnProperty(target, tStringKey, targetProfile)) {
+                if (!extensible) {
+                    throw Errors.createTypeErrorNotExtensible(target, tStringKey);
+                }
+                JSObjectUtil.defineProxyProperty(target, tStringKey, new ForeignBoundProperty(source, stringKey), JSAttributes.getDefault());
+            }
+        }
+
+        @TruffleBoundary
+        private void bindForeignBeanProperty(JSObject target, Object source, String stringKey, InteropLibrary interop) {
+            // Special handling of bean properties: when there is "getProp",
+            // "setProp" or "isProp" but not "prop" in the source then define also
+            // "prop" in the target (unless the target has "prop" already).
+            String beanProperty;
+            if (stringKey.length() > 3 && (stringKey.charAt(0) == 's' || stringKey.charAt(0) == 'g') && stringKey.charAt(1) == 'e' && stringKey.charAt(2) == 't' &&
+                            Boundaries.characterIsUpperCase(stringKey.charAt(3))) {
+                beanProperty = beanProperty(stringKey, 3);
+            } else if (stringKey.length() > 2 && stringKey.charAt(0) == 'i' && stringKey.charAt(1) == 's' && Boundaries.characterIsUpperCase(stringKey.charAt(2))) {
+                beanProperty = beanProperty(stringKey, 2);
+            } else {
+                return;
+            }
+            TruffleString tStringBeanProperty = Strings.fromJavaString(beanProperty);
+            if (!JSObject.hasOwnProperty(target, tStringBeanProperty, targetProfile) && !interop.isMemberExisting(source, beanProperty)) {
+                String getKey = beanAccessor("get", beanProperty);
+                String getter;
+                if (interop.isMemberExisting(source, getKey)) {
+                    getter = getKey;
+                } else {
+                    String isKey = beanAccessor("is", beanProperty);
+                    if (interop.isMemberExisting(source, isKey)) {
+                        getter = isKey;
+                    } else {
+                        getter = null;
+                    }
+                }
+                String setKey = beanAccessor("set", beanProperty);
+                String setter = interop.isMemberExisting(source, setKey) ? setKey : null;
+                JSObjectUtil.defineProxyProperty(target, tStringBeanProperty, new ForeignBoundBeanProperty(source, getter, setter), JSAttributes.getDefault());
+            }
         }
 
         @Specialization(guards = {"!isJSDynamicObject(source)", "!isForeignObject(source)"})
