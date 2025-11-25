@@ -141,33 +141,33 @@ public final class JSInteropUtil {
     @TruffleBoundary
     public static Object getOrDefault(JSContext context, Object target, Object propertyKey, Object receiver, Object defaultValue) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        InteropLibrary interop = InteropLibrary.getUncached();
+        InteropLibrary targetInterop = InteropLibrary.getUncached(target);
         ImportValueNode importValue = ImportValueNode.getUncached();
-        boolean hasArrayElements = interop.hasArrayElements(target);
+        boolean hasArrayElements = targetInterop.hasArrayElements(target);
         if (hasArrayElements && JSRuntime.isArrayIndex(propertyKey)) {
-            return readArrayElementOrDefault(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), defaultValue, interop, importValue);
+            return readArrayElementOrDefault(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), defaultValue, targetInterop, importValue);
         }
-        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+        if (context.getLanguageOptions().hasForeignHashProperties() && targetInterop.hasHashEntries(target)) {
             try {
-                return readHashEntryOrDefault(target, propertyKey, defaultValue, interop, importValue);
+                return readHashEntryOrDefault(target, propertyKey, defaultValue, targetInterop, importValue);
             } catch (UnknownKeyException ukex) {
                 // fall through: still need to try members
             }
         }
         if (propertyKey instanceof Symbol) {
-            return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, interop);
+            return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, targetInterop);
         }
         TruffleString exportedKeyStr = (TruffleString) propertyKey;
         if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, exportedKeyStr)) {
-            return getArraySize(target, interop, null);
+            return getArraySize(target, targetInterop, null);
         }
-        if (interop.hasMembers(target)) {
-            Object result = readMemberOrDefault(target, propertyKey, null);
+        if (targetInterop.hasMembers(target)) {
+            Object result = readMemberOrDefault(target, propertyKey, null, targetInterop, ImportValueNode.getUncached(), TruffleString.ToJavaStringNode.getUncached());
             if (result != null) {
                 return result;
             }
         }
-        return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, interop);
+        return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, targetInterop);
     }
 
     private static Object maybeReadFromPrototype(JSContext context, Object truffleObject, Object key, Object receiver, Object defaultValue, InteropLibrary interop) {
