@@ -369,6 +369,7 @@ public final class JSDictionary extends JSNonProxy {
         return (EconomicMap<Object, PropertyDescriptor>) JSDynamicObject.getOrNull(obj, HASHMAP_PROPERTY_NAME);
     }
 
+    @SuppressWarnings("deprecation")
     public static void makeDictionaryObject(JSDynamicObject obj, String reason) {
         CompilerAsserts.neverPartOfCompilation();
         assert JSConfig.DictionaryObject;
@@ -395,7 +396,9 @@ public final class JSDictionary extends JSNonProxy {
             archive.add(value);
         }
 
-        DynamicObject.ResetShapeNode.getUncached().execute(obj, newRootShape);
+        // Temporary workaround for GR-71599
+        // DynamicObject.ResetShapeNode.getUncached().execute(obj, newRootShape);
+        com.oracle.truffle.api.object.DynamicObjectLibrary.getUncached().resetShape(obj, newRootShape);
 
         int newFlags = currentShape.getFlags() | newRootShape.getFlags();
         if (newRootShape.getFlags() != newFlags) {

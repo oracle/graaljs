@@ -312,6 +312,7 @@ public final class JSObjectUtil {
         return (JSPrototypeData) JSDynamicObject.getOrNull(obj, PROTOTYPE_DATA);
     }
 
+    @SuppressWarnings("deprecation")
     @TruffleBoundary
     public static void setPrototypeImpl(JSDynamicObject object, JSDynamicObject newPrototype) {
         CompilerAsserts.neverPartOfCompilation();
@@ -340,7 +341,9 @@ public final class JSObjectUtil {
             archive.add(value);
         }
 
-        DynamicObject.ResetShapeNode.getUncached().execute(object, newRootShape);
+        // Temporary workaround for GR-71599
+        // DynamicObject.ResetShapeNode.getUncached().execute(object, newRootShape);
+        com.oracle.truffle.api.object.DynamicObjectLibrary.getUncached().resetShape(object, newRootShape);
 
         if (newRootShape.getFlags() != oldShape.getFlags()) {
             DynamicObject.SetShapeFlagsNode.getUncached().execute(object, oldShape.getFlags());
