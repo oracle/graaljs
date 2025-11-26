@@ -580,6 +580,17 @@ public final class Strings {
         return node.execute(s1, s2, TruffleString.Encoding.UTF_16, JSConfig.LazyStrings);
     }
 
+    public static TruffleString concatAll(TruffleString a, TruffleString b, TruffleString c) {
+        int len = length(a);
+        len += length(b);
+        len += length(c);
+        var sb = builderCreate(len);
+        TruffleStringBuilder.AppendStringNode.getUncached().execute(sb, a);
+        TruffleStringBuilder.AppendStringNode.getUncached().execute(sb, b);
+        TruffleStringBuilder.AppendStringNode.getUncached().execute(sb, c);
+        return TruffleStringBuilder.ToStringNode.getUncached().execute(sb);
+    }
+
     public static TruffleString concatAll(TruffleString s, TruffleString... concat) {
         int len = length(s);
         for (TruffleString c : concat) {
