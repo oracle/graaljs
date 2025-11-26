@@ -44,7 +44,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Locale;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -846,28 +845,6 @@ public final class Strings {
 
     public static TruffleString fromInt(int intValue) {
         return fromLong(intValue);
-    }
-
-    public static TruffleString fromDouble(double d) {
-        return TruffleString.FromJavaStringNode.getUncached().execute(doubleToJavaString(d), TruffleString.Encoding.UTF_16);
-    }
-
-    @TruffleBoundary
-    private static String doubleToJavaString(double d) {
-        return String.valueOf(d);
-    }
-
-    public static TruffleString fromNumber(Number number) {
-        if (number instanceof Integer) {
-            return fromInt(number.intValue());
-        }
-        if (number instanceof Long) {
-            return fromLong(number.longValue());
-        }
-        if (number instanceof Double) {
-            return fromDouble(number.doubleValue());
-        }
-        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @TruffleBoundary
