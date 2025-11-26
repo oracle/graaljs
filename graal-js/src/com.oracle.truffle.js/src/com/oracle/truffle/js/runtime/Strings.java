@@ -870,12 +870,17 @@ public final class Strings {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public static TruffleString fromBigInt(BigInt bi) {
-        return fromJavaString(bi.toString());
+        return fromBigInt(TruffleString.FromJavaStringNode.getUncached(), bi);
     }
 
-    public static TruffleString fromBigInt(BigInt bi, int radix) {
-        return fromJavaString(bi.toString(radix));
+    public static TruffleString fromBigInt(TruffleString.FromJavaStringNode fromJavaStringNode, BigInt bi) {
+        return fromJavaString(fromJavaStringNode, bi.toString());
+    }
+
+    public static TruffleString fromBigInt(TruffleString.FromJavaStringNode fromJavaStringNode, BigInt bi, int radix) {
+        return fromJavaString(fromJavaStringNode, bi.toString(radix));
     }
 
     @TruffleBoundary
@@ -927,8 +932,13 @@ public final class Strings {
         return switchEncodingNode.execute(truffleString, TruffleString.Encoding.UTF_16);
     }
 
+    @TruffleBoundary
     public static BigInt parseBigInt(TruffleString s) {
-        return BigInt.valueOf(toJavaString(s));
+        return parseBigInt(TruffleString.ToJavaStringNode.getUncached(), s);
+    }
+
+    public static BigInt parseBigInt(TruffleString.ToJavaStringNode toJavaString, TruffleString s) {
+        return BigInt.valueOf(toJavaString(toJavaString, s));
     }
 
     public static BigInteger parseBigInteger(TruffleString s, int radix) {

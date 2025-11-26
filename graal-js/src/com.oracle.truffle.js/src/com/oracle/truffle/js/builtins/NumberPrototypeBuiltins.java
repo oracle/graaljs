@@ -180,7 +180,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        protected boolean isRadix10(Object radix) {
+        protected static boolean isRadix10(Object radix) {
             return radix == Undefined.instance || (radix instanceof Integer && ((Integer) radix) == 10);
         }
 
@@ -193,9 +193,10 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSNumberInteger(thisObj)", "isRadix10(radix)"})
-        protected Object toStringIntRadix10(JSNumberObject thisObj, Object radix) {
-            Integer i = (Integer) thisObj.getNumber();
-            return Strings.fromInt(i.intValue());
+        protected Object toStringIntRadix10(JSNumberObject thisObj, Object radix,
+                        @Shared @Cached TruffleString.FromLongNode fromLong) {
+            int i = (int) thisObj.getNumber();
+            return Strings.fromLong(fromLong, i);
         }
 
         @SuppressWarnings("unused")
@@ -217,8 +218,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isRadix10(radix)"})
-        protected Object toStringPrimitiveIntRadix10(int thisInteger, Object radix) {
-            return Strings.fromInt(thisInteger);
+        protected Object toStringPrimitiveIntRadix10(int thisInteger, Object radix,
+                        @Shared @Cached TruffleString.FromLongNode fromLong) {
+            return Strings.fromLong(fromLong, thisInteger);
         }
 
         @SuppressWarnings("unused")
@@ -260,10 +262,10 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Bind Node node,
                         @Shared @Cached JSToIntegerAsIntNode toIntegerNode,
                         @Shared @Cached JSDoubleToStringNode doubleToString,
+                        @Shared @Cached TruffleString.FromLongNode fromLong,
                         @Shared @Cached InlinedBranchProfile radixOtherBranch,
                         @Shared @Cached InlinedBranchProfile radixErrorBranch,
-                        @Cached ForeignGetDoubleValueNode getDoubleValue,
-                        @Cached TruffleString.FromLongNode fromLong) {
+                        @Cached ForeignGetDoubleValueNode getDoubleValue) {
             Object radixToUse;
             if (radix == Undefined.instance) {
                 if (thisObj instanceof Long longValue) {
@@ -321,8 +323,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected static Object doInt(int thisInteger) {
-            return Strings.fromInt(thisInteger);
+        protected static Object doInt(int thisInteger,
+                        @Cached TruffleString.FromLongNode fromLong) {
+            return Strings.fromLong(fromLong, thisInteger);
         }
 
         @Specialization(guards = "isNumber.execute(node, thisNumber)", limit = "1")
