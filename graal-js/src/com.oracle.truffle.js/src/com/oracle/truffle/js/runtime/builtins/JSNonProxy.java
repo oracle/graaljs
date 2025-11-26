@@ -519,7 +519,7 @@ public abstract class JSNonProxy extends JSClass {
                 if (newFlags != oldFlags) {
                     Object key = property.getKey();
                     JSDynamicObject.setPropertyFlags(thisObj, key, newFlags);
-                    assert JSDynamicObject.getPropertyFlags(thisObj, key) == newFlags;
+                    assert JSDynamicObject.getPropertyFlags(thisObj, key, JSProperty.MISSING) == newFlags;
                 }
             }
         }

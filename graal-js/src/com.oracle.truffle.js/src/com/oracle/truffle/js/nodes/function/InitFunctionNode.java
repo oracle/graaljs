@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -52,18 +52,19 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class InitFunctionNode extends JavaScriptBaseNode {
     private final JSFunctionData functionData;
     private final JSContext context;
-    @Child private DynamicObjectLibrary setPrototypeNode;
-    @Child private DynamicObjectLibrary setLengthNode;
-    @Child private DynamicObjectLibrary setNameNode;
-    @Child private DynamicObjectLibrary setArgumentsNode;
-    @Child private DynamicObjectLibrary setCallerNode;
+    @Child private DynamicObject.PutConstantNode setPrototypeNode;
+    @Child private DynamicObject.PutConstantNode setLengthNode;
+    @Child private DynamicObject.PutConstantNode setNameNode;
+    @Child private DynamicObject.PutConstantNode setArgumentsNode;
+    @Child private DynamicObject.PutConstantNode setCallerNode;
+    @Child private DynamicObject.PutNode setArgumentsAccessorNode;
+    @Child private DynamicObject.PutNode setCallerAccessorNode;
     private final int prototypeFlags;
     private final int lengthFlags;
     private final int nameFlags;
@@ -78,35 +79,32 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         if (hasPrototype) {
             int prototypeAttributes = prototypeNotWritable ? JSAttributes.notConfigurableNotEnumerableNotWritable() : JSAttributes.notConfigurableNotEnumerableWritable();
             this.prototypeFlags = prototypeAttributes | JSProperty.PROXY;
-            this.setPrototypeNode = JSObjectUtil.createDispatched(JSObject.PROTOTYPE);
+            this.setPrototypeNode = DynamicObject.PutConstantNode.create();
         } else {
             this.prototypeFlags = 0;
         }
 
         int lengthAttributes = context.getEcmaScriptVersion() < 6 ? JSAttributes.notConfigurableNotEnumerableNotWritable() : JSAttributes.configurableNotEnumerableNotWritable();
         this.lengthFlags = lengthAttributes | JSProperty.PROXY;
-        this.setLengthNode = JSObjectUtil.createDispatched(JSFunction.LENGTH);
+        this.setLengthNode = DynamicObject.PutConstantNode.create();
 
         int nameAttributes = JSAttributes.configurableNotEnumerableNotWritable();
         this.nameFlags = nameAttributes | JSProperty.PROXY;
-        this.setNameNode = JSObjectUtil.createDispatched(JSFunction.NAME);
+        this.setNameNode = DynamicObject.PutConstantNode.create();
 
-        boolean argumentsCaller = false;
         int argumentsCallerAttributes = 0;
         if (context.getEcmaScriptVersion() >= 6) {
             if (!strictProperties) {
-                argumentsCaller = true;
                 argumentsCallerAttributes = JSAttributes.notConfigurableNotEnumerableNotWritable();
+                this.setArgumentsNode = DynamicObject.PutConstantNode.create();
+                this.setCallerNode = DynamicObject.PutConstantNode.create();
             }
         } else {
             if (strictProperties) {
-                argumentsCaller = true;
                 argumentsCallerAttributes = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
+                this.setArgumentsAccessorNode = DynamicObject.PutNode.create();
+                this.setCallerAccessorNode = DynamicObject.PutNode.create();
             }
-        }
-        if (argumentsCaller) {
-            this.setArgumentsNode = JSObjectUtil.createDispatched(JSFunction.ARGUMENTS);
-            this.setCallerNode = JSObjectUtil.createDispatched(JSFunction.CALLER);
         }
         this.argumentsCallerFlags = argumentsCallerAttributes;
     }
@@ -155,8 +153,8 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         } else {
             if (strictProperties) {
                 Accessor throwerAccessor = JSFunction.getRealm(function).getThrowerAccessor();
-                Properties.putWithFlags(setArgumentsNode, function, JSFunction.ARGUMENTS, throwerAccessor, argumentsCallerFlags);
-                Properties.putWithFlags(setCallerNode, function, JSFunction.CALLER, throwerAccessor, argumentsCallerFlags);
+                Properties.putWithFlags(setArgumentsAccessorNode, function, JSFunction.ARGUMENTS, throwerAccessor, argumentsCallerFlags);
+                Properties.putWithFlags(setCallerAccessorNode, function, JSFunction.CALLER, throwerAccessor, argumentsCallerFlags);
             }
         }
 

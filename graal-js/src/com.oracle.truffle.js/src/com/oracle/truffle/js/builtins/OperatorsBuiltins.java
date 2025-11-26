@@ -51,9 +51,8 @@ import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -230,10 +229,10 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization
         protected JSOverloadedOperatorsObject createWithProto(JSObject prototype, OperatorSet operatorSet,
-                        @CachedLibrary(limit = "3") DynamicObjectLibrary setProtoNode,
+                        @Cached DynamicObject.PutNode setProtoNode,
                         @Cached("getShapeWithoutProto()") Shape cachedShape) {
             JSOverloadedOperatorsObject object = JSOverloadedOperatorsObject.create(getContext(), cachedShape, prototype, operatorSet);
-            setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
+            setProtoNode.execute(object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
 

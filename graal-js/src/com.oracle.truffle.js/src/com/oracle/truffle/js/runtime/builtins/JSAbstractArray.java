@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import java.util.TreeMap;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -161,13 +161,13 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return arrayAccess().getAllocationSite(thisObj);
     }
 
-    public static Object arrayGetRegexResult(JSDynamicObject thisObj, DynamicObjectLibrary lazyRegexResult) {
+    public static Object arrayGetRegexResult(JSDynamicObject thisObj, DynamicObject.GetNode getLazyRegexResult) {
         assert JSArray.isJSArray(thisObj);
-        return Properties.getOrDefault(lazyRegexResult, thisObj, LAZY_REGEX_RESULT_ID, null);
+        return Properties.getOrDefault(getLazyRegexResult, thisObj, LAZY_REGEX_RESULT_ID, null);
     }
 
-    public static TruffleString arrayGetRegexResultOriginalInput(JSDynamicObject thisObj, DynamicObjectLibrary lazyRegexResultOriginalInput) {
-        return (TruffleString) Properties.getOrDefault(lazyRegexResultOriginalInput, thisObj, LAZY_REGEX_ORIGINAL_INPUT_ID, null);
+    public static TruffleString arrayGetRegexResultOriginalInput(JSDynamicObject thisObj, DynamicObject.GetNode getLazyRegexResultOriginalInput) {
+        return (TruffleString) Properties.getOrDefault(getLazyRegexResultOriginalInput, thisObj, LAZY_REGEX_ORIGINAL_INPUT_ID, null);
     }
 
     public static final Comparator<Object> DEFAULT_JSARRAY_COMPARATOR = new DefaultJSArrayComparator();

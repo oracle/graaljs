@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,9 +50,8 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -60,7 +59,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -88,12 +86,12 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     }
 
     @SuppressWarnings("truffle-static-method")
-    @Specialization(limit = "3")
+    @Specialization
     Object doField(JSObject target, HiddenKey key, Object value,
                     @Bind Node node,
-                    @CachedLibrary("target") DynamicObjectLibrary access,
+                    @Cached DynamicObject.PutNode putField,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
-        if (!Properties.putIfPresent(access, target, key, value)) {
+        if (!putField.executeIfPresent(target, key, value)) {
             errorBranch.enter(node);
             missing(target, key, value);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.function.InitFunctionNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -130,9 +129,8 @@ public abstract class JSFunctionFactory {
     private static void initES5StrictProperties(JSObject obj, JSRealm realm) {
         int propertyFlags = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
         Accessor throwerAccessor = realm.getThrowerAccessor();
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
-        Properties.putWithFlags(lib, obj, JSFunction.ARGUMENTS, throwerAccessor, propertyFlags);
-        Properties.putWithFlags(lib, obj, JSFunction.CALLER, throwerAccessor, propertyFlags);
+        Properties.putWithFlagsUncached(obj, JSFunction.ARGUMENTS, throwerAccessor, propertyFlags);
+        Properties.putWithFlagsUncached(obj, JSFunction.CALLER, throwerAccessor, propertyFlags);
     }
 
     public final JSFunctionObject createWrapped(JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction) {

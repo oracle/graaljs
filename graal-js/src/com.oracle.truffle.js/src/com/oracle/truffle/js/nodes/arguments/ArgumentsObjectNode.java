@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -72,10 +71,10 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
     private final int leadingArgCount;
     private final JSContext context;
 
-    @Child private DynamicObjectLibrary putLengthNode;
-    @Child private DynamicObjectLibrary putSymbolIteratorNode;
-    @Child private DynamicObjectLibrary putCalleeNode;
-    @Child private DynamicObjectLibrary putCallerNode;
+    @Child private DynamicObject.PutNode putLengthNode;
+    @Child private DynamicObject.PutNode putSymbolIteratorNode;
+    @Child private DynamicObject.PutNode putCalleeNode;
+    @Child private DynamicObject.PutNode putCallerNode;
 
     private static final int THROWER_ACCESSOR_PROPERTY_FLAGS = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
 
@@ -84,10 +83,10 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         this.leadingArgCount = leadingArgCount;
         this.context = context;
 
-        this.putLengthNode = JSObjectUtil.createDispatched(JSArgumentsArray.LENGTH);
-        this.putSymbolIteratorNode = JSObjectUtil.createDispatched(Symbol.SYMBOL_ITERATOR);
-        this.putCalleeNode = JSObjectUtil.createDispatched(JSArgumentsArray.CALLEE);
-        this.putCallerNode = strict && context.getEcmaScriptVersion() < JSConfig.ECMAScript2017 ? JSObjectUtil.createDispatched(JSArgumentsArray.CALLER) : null;
+        this.putLengthNode = DynamicObject.PutNode.create();
+        this.putSymbolIteratorNode = DynamicObject.PutNode.create();
+        this.putCalleeNode = DynamicObject.PutNode.create();
+        this.putCallerNode = strict && context.getEcmaScriptVersion() < JSConfig.ECMAScript2017 ? DynamicObject.PutNode.create() : null;
     }
 
     public static JavaScriptNode create(JSContext context, boolean strict, int leadingArgCount) {

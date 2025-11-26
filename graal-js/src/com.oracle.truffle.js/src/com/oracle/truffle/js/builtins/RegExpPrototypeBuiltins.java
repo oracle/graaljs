@@ -54,10 +54,9 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -1276,7 +1275,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached("create(INDEX, context)") PropertyGetNode getIndexNode,
                             @Cached("create(GROUPS, context)") PropertyGetNode getGroupsNode,
                             @Cached("create(FLAGS, context)") PropertyGetNode getFlagsNode,
-                            @CachedLibrary(limit = "InteropLibraryLimit") DynamicObjectLibrary getLazyRegexResult,
+                            @Cached DynamicObject.GetNode getLazyRegexResult,
                             @Cached("create(LAZY_REGEX_RESULT_ID)") HasHiddenKeyCacheNode hasLazyRegexResult,
                             @Cached("createCall()") JSFunctionCallNode callFunction,
                             @Cached InlinedBranchProfile growProfile,
@@ -1390,7 +1389,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return isLazyResultArray;
             }
 
-            private static int getLazyResultLength(Object obj, int groupNumber, DynamicObjectLibrary lazyRegexResultNode, JSRegExpReplaceNode parent) {
+            private static int getLazyResultLength(Object obj, int groupNumber, DynamicObject.GetNode lazyRegexResultNode, JSRegExpReplaceNode parent) {
                 Object regexResult = JSAbstractArray.arrayGetRegexResult((JSArrayObject) obj, lazyRegexResultNode);
                 return TRegexResultAccessor.captureGroupLength(regexResult, groupNumber, null, parent.getStartNode, parent.getEndNode);
             }

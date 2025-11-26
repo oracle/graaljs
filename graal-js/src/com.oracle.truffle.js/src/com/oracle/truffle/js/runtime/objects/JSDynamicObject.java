@@ -54,7 +54,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -374,7 +373,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     }
 
     public static void setJSClass(JSDynamicObject obj, JSClass jsclass) {
-        DynamicObjectLibrary.getUncached().setDynamicType(obj, jsclass);
+        DynamicObject.SetDynamicTypeNode.getUncached().execute(obj, jsclass);
     }
 
     public static Object getDynamicType(JSDynamicObject obj) {
@@ -402,15 +401,15 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     }
 
     public static void setObjectFlags(JSDynamicObject obj, int flags) {
-        DynamicObjectLibrary.getUncached().setShapeFlags(obj, flags);
+        DynamicObject.SetShapeFlagsNode.getUncached().execute(obj, flags);
     }
 
     public static void setPropertyFlags(JSDynamicObject obj, Object key, int flags) {
         Properties.setPropertyFlagsUncached(obj, key, flags);
     }
 
-    public static int getPropertyFlags(JSDynamicObject obj, Object key) {
-        return Properties.getPropertyUncached(obj, key).getFlags();
+    public static int getPropertyFlags(JSDynamicObject obj, Object key, int defaultValue) {
+        return Properties.getPropertyFlagsUncached(obj, key, defaultValue);
     }
 
     /**
@@ -421,20 +420,18 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
      * @return {@code true} if successful, {@code false} if there was no such property or no change
      *         was made.
      * @see #setPropertyFlags(JSDynamicObject, Object, int)
-     * @see #getPropertyFlags(JSDynamicObject, Object)
+     * @see #getPropertyFlags(JSDynamicObject, Object, int)
      */
     public static boolean updatePropertyFlags(JSDynamicObject obj, Object key, IntUnaryOperator updateFunction) {
-        DynamicObjectLibrary uncached = DynamicObjectLibrary.getUncached();
-        Property property = Properties.getProperty(uncached, obj, key);
-        if (property == null) {
+        int oldFlags = Properties.getPropertyFlagsUncached(obj, key, JSProperty.MISSING);
+        if (oldFlags == JSProperty.MISSING) {
             return false;
         }
-        int oldFlags = property.getFlags();
         int newFlags = updateFunction.applyAsInt(oldFlags);
         if (oldFlags == newFlags) {
             return false;
         }
-        return uncached.setPropertyFlags(obj, key, newFlags);
+        return Properties.setPropertyFlagsUncached(obj, key, newFlags);
     }
 
     public static boolean testProperties(JSDynamicObject obj, Predicate<Property> predicate) {

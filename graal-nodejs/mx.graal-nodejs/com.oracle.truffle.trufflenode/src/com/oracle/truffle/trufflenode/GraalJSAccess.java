@@ -155,7 +155,6 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.source.Source;
@@ -3130,8 +3129,9 @@ public final class GraalJSAccess {
 
     private static long getAlignedPointerFromInternalField(JSDynamicObject target, Object key) {
         try {
-            return DynamicObjectLibrary.getUncached().getLongOrDefault(target, key, 0L);
+            return JSDynamicObject.GetNode.getUncached().executeLong(target, key, 0L);
         } catch (UnexpectedResultException e) {
+            assert false : e;
             return 0L;
         }
     }
@@ -3141,7 +3141,7 @@ public final class GraalJSAccess {
             ((JSOrdinaryObject.InternalFieldLayout) target).setInternalFieldPointer(index, value);
         } else {
             Object key = getInternalFieldKey(index);
-            DynamicObjectLibrary.getUncached().putLong((JSDynamicObject) target, key, value);
+            JSDynamicObject.PutNode.getUncached().execute((JSDynamicObject) target, key, value);
         }
     }
 

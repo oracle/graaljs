@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,9 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNodeFactory.DefineStackPropertyNodeGen;
@@ -58,16 +57,15 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class InitErrorObjectNode extends JavaScriptBaseNode {
     private final JSContext context;
-    @Child private PropertySetNode setException;
-    @Child private PropertySetNode setFormattedStack;
-    @Child private DynamicObjectLibrary setMessage;
-    @Child private DynamicObjectLibrary setErrors;
+    @Child private DynamicObject.PutNode setException;
+    @Child private DynamicObject.PutNode setFormattedStack;
+    @Child private DynamicObject.PutNode setMessage;
+    @Child private DynamicObject.PutNode setErrors;
     @Child private DefineStackPropertyNode defineStackProperty;
     private final boolean defaultColumnNumber;
     @Child private CreateMethodPropertyNode setLineNumber;
@@ -76,8 +74,8 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
 
     private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
         this.context = context;
-        this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
-        this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
+        this.setFormattedStack = DynamicObject.PutNode.create();
+        this.setMessage = DynamicObject.PutNode.create();
         this.defineStackProperty = DefineStackPropertyNode.create();
         this.defaultColumnNumber = defaultColumnNumber;
         if (context.isOptionNashornCompatibilityMode()) {
@@ -115,7 +113,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
 
         setException(errorObj, exception);
         // stack is not formatted until it is accessed
-        setFormattedStack.setValue(errorObj, null);
+        setFormattedStack.execute(errorObj, JSError.FORMATTED_STACK_NAME, null);
         defineStackProperty.execute(errorObj);
 
         if (setLineNumber != null && exception.getJSStackTrace().length > 0) {
@@ -133,9 +131,9 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
             // May be any JSObject when called by Error.captureStackTrace.
             if (setException == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.setException = insert(PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context));
+                this.setException = insert(DynamicObject.PutNode.create());
             }
-            setException.setValue(errorObj, exception);
+            setException.execute(errorObj, JSError.EXCEPTION_PROPERTY_NAME, exception);
         }
     }
 
@@ -147,11 +145,11 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         installErrorCauseNode.executeVoid(errorObj, options);
     }
 
-    private DynamicObjectLibrary setErrorsNode() {
-        DynamicObjectLibrary errorsLib = setErrors;
+    private DynamicObject.PutNode setErrorsNode() {
+        DynamicObject.PutNode errorsLib = setErrors;
         if (errorsLib == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setErrors = errorsLib = insert(JSObjectUtil.createDispatched(JSError.ERRORS_NAME));
+            setErrors = errorsLib = insert(DynamicObject.PutNode.create());
         }
         return errorsLib;
     }
@@ -163,20 +161,21 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
 
         abstract void execute(JSObject errorObj);
 
-        @Specialization(limit = "3")
+        @Specialization
         void doCached(JSObject errorObj,
-                        @CachedLibrary("errorObj") DynamicObjectLibrary objectLibrary) {
-            Property stackProperty = Properties.getProperty(objectLibrary, errorObj, JSError.STACK_NAME);
+                        @Cached DynamicObject.GetPropertyFlagsNode getStackPropertyFlags,
+                        @Cached DynamicObject.PutConstantNode putStackProperty) {
+            int stackPropertyFlags = getStackPropertyFlags.execute(errorObj, JSError.STACK_NAME, JSProperty.MISSING);
             int attrs = JSAttributes.getDefaultNotEnumerable();
-            if (stackProperty != null) {
-                if (!JSProperty.isConfigurable(stackProperty)) {
+            if (stackPropertyFlags != JSProperty.MISSING) {
+                if (!JSProperty.isConfigurable(stackPropertyFlags)) {
                     throw Errors.createTypeErrorCannotRedefineProperty(JSError.STACK_NAME);
                 }
-                if (JSProperty.isEnumerable(stackProperty)) {
+                if (JSProperty.isEnumerable(stackPropertyFlags)) {
                     attrs = JSAttributes.getDefault();
                 }
             }
-            Properties.putConstant(objectLibrary, errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, attrs | JSProperty.PROXY);
+            Properties.putConstant(putStackProperty, errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, attrs | JSProperty.PROXY);
         }
     }
 }
