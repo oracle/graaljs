@@ -540,7 +540,7 @@ public final class Strings {
         return node.execute(longValue, TruffleString.Encoding.UTF_16, true);
     }
 
-    public static TruffleString[] fromJavaStringArray(String... strings) {
+    public static TruffleString[] fromJavaStringArray(String[] strings) {
         TruffleString[] ret = new TruffleString[strings.length];
         for (int i = 0; i < strings.length; i++) {
             ret[i] = fromJavaString(strings[i]);
@@ -1004,20 +1004,8 @@ public final class Strings {
         return node.execute(sb);
     }
 
-    public static String builderToJavaString(TruffleStringBuilderUTF16 sb) {
-        return toJavaString(builderToString(sb));
-    }
-
     public static int builderLength(TruffleStringBuilderUTF16 sb) {
         return sb.byteLength() >> 1;
-    }
-
-    public static TruffleString[] convertJavaStringArray(String[] array) {
-        TruffleString[] ret = new TruffleString[array.length];
-        for (int i = 0; i < array.length; i++) {
-            ret[i] = fromJavaString(array[i]);
-        }
-        return ret;
     }
 
     public static TruffleString addBrackets(TruffleString str) {
