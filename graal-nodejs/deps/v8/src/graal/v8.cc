@@ -4227,8 +4227,7 @@ namespace v8 {
     }
 
     uint64_t Isolate::GetHashSeed() {
-        TRACE
-        return 0;
+        return (uint64_t) this;
     }
 
     MaybeLocal<Array> Array::New(Local<Context> context, size_t length, std::function<MaybeLocal<v8::Value>()> next_value_callback) {
