@@ -4095,20 +4095,24 @@ namespace v8 {
         return this->Utf8Length(isolate);
     }
 
+    #define FLAGS_TO_OPTIONS(flags) ((flags) & WriteFlags::kNullTerminate) ? WriteOptions::NO_OPTIONS : WriteOptions::NO_NULL_TERMINATION
+
     void String::WriteV2(Isolate* isolate, uint32_t offset, uint32_t length,
             uint16_t* buffer, int flags) const {
-        Write(isolate, buffer, offset, length, flags);
+        Write(isolate, buffer, offset, length, FLAGS_TO_OPTIONS(flags));
     }
 
     void String::WriteOneByteV2(Isolate* isolate, uint32_t offset, uint32_t length,
             uint8_t* buffer, int flags) const {
-        WriteOneByte(isolate, buffer, offset, length, flags);
+        WriteOneByte(isolate, buffer, offset, length, FLAGS_TO_OPTIONS(flags));
     }
 
     size_t String::WriteUtf8V2(Isolate* isolate, char* buffer, size_t capacity,
             int flags, size_t* processed_characters_return) const {
-        return this->WriteUtf8(isolate, buffer, capacity, (int*) processed_characters_return, flags);
+        return this->WriteUtf8(isolate, buffer, capacity, (int*) processed_characters_return, FLAGS_TO_OPTIONS(flags));
     }
+
+    #undef FLAGS_TO_OPTIONS
 
     ExternalMemoryAccounter::~ExternalMemoryAccounter() {
         TRACE
