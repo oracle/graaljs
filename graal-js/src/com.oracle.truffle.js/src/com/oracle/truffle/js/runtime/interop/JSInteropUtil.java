@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -141,33 +141,33 @@ public final class JSInteropUtil {
     @TruffleBoundary
     public static Object getOrDefault(JSContext context, Object target, Object propertyKey, Object receiver, Object defaultValue) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        InteropLibrary interop = InteropLibrary.getUncached();
+        InteropLibrary targetInterop = InteropLibrary.getUncached(target);
         ImportValueNode importValue = ImportValueNode.getUncached();
-        boolean hasArrayElements = interop.hasArrayElements(target);
+        boolean hasArrayElements = targetInterop.hasArrayElements(target);
         if (hasArrayElements && JSRuntime.isArrayIndex(propertyKey)) {
-            return readArrayElementOrDefault(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), defaultValue, interop, importValue);
+            return readArrayElementOrDefault(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), defaultValue, targetInterop, importValue);
         }
-        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+        if (context.getLanguageOptions().hasForeignHashProperties() && targetInterop.hasHashEntries(target)) {
             try {
-                return readHashEntryOrDefault(target, propertyKey, defaultValue, interop, importValue);
+                return readHashEntryOrDefault(target, propertyKey, defaultValue, targetInterop, importValue);
             } catch (UnknownKeyException ukex) {
                 // fall through: still need to try members
             }
         }
         if (propertyKey instanceof Symbol) {
-            return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, interop);
+            return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, targetInterop);
         }
         TruffleString exportedKeyStr = (TruffleString) propertyKey;
         if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, exportedKeyStr)) {
-            return getArraySize(target, interop, null);
+            return getArraySize(target, targetInterop, null);
         }
-        if (interop.hasMembers(target)) {
-            Object result = readMemberOrDefault(target, propertyKey, null, interop, importValue);
+        if (targetInterop.hasMembers(target)) {
+            Object result = readMemberOrDefault(target, propertyKey, null, targetInterop, ImportValueNode.getUncached(), TruffleString.ToJavaStringNode.getUncached());
             if (result != null) {
                 return result;
             }
         }
-        return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, interop);
+        return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, targetInterop);
     }
 
     private static Object maybeReadFromPrototype(JSContext context, Object truffleObject, Object key, Object receiver, Object defaultValue, InteropLibrary interop) {
@@ -180,15 +180,15 @@ public final class JSInteropUtil {
     }
 
     public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
-        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached());
+        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached(), TruffleString.ToJavaStringNode.getUncached());
     }
 
-    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) {
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, TruffleString.ToJavaStringNode toJavaStringNode) {
         if (!(member instanceof TruffleString memberName)) {
             return defaultValue;
         }
         try {
-            return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString(memberName)));
+            return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString(toJavaStringNode, memberName)));
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return defaultValue;
         }

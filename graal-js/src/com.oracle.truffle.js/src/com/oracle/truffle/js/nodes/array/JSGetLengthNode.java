@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,13 @@ package com.oracle.truffle.js.nodes.array;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthReadNode;
@@ -109,11 +110,12 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
     @Specialization(guards = "!isJSDynamicObject(target)", limit = "3")
     public double getLengthForeign(Object target,
                     @CachedLibrary("target") InteropLibrary interop,
-                    @Cached ImportValueNode importValueNode) {
+                    @Cached ImportValueNode importValueNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         if (interop.hasArrayElements(target)) {
             return JSInteropUtil.getArraySize(target, interop, this);
         } else {
-            return toLengthDouble(JSInteropUtil.readMemberOrDefault(target, JSAbstractArray.LENGTH, 0, interop, importValueNode));
+            return toLengthDouble(JSInteropUtil.readMemberOrDefault(target, JSAbstractArray.LENGTH, 0, interop, importValueNode, toJavaStringNode));
         }
     }
 

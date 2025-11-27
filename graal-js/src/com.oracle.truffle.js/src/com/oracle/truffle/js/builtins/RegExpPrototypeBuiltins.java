@@ -931,7 +931,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached InteropReadBooleanMemberNode readIgnoreCaseNode,
                             @Cached InteropReadBooleanMemberNode readUnicodeNode,
                             @Cached InteropReadBooleanMemberNode readDotAllNode,
-                            @Cached InteropReadBooleanMemberNode readHasIndicesNode) {
+                            @Cached InteropReadBooleanMemberNode readHasIndicesNode,
+                            @Cached TruffleString.FromCharArrayUTF16Node fromCharArrayUTF16Node) {
                 char[] flags = new char[6];
                 int len = 0;
                 if (TRegexFlagsAccessor.hasIndices(tRegexFlags, node, readHasIndicesNode)) {
@@ -958,7 +959,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (len == 0) {
                     return Strings.EMPTY_STRING;
                 }
-                return Strings.fromCharArray(flags, 0, len);
+                return Strings.fromCharArray(fromCharArrayUTF16Node, flags, 0, len);
             }
         }
 

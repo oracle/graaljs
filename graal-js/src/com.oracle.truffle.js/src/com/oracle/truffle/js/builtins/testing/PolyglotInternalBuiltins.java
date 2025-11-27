@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -278,8 +278,9 @@ public final class PolyglotInternalBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected Object member(TruffleObject obj, TruffleString name,
                         @Shared @Cached ImportValueNode foreignConvert,
-                        @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            return JSInteropUtil.readMemberOrDefault(obj, name, Null.instance, interop, foreignConvert);
+                        @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString) {
+            return JSInteropUtil.readMemberOrDefault(obj, name, Null.instance, interop, foreignConvert, toJavaString);
         }
 
         @Specialization
@@ -303,10 +304,11 @@ public final class PolyglotInternalBuiltins extends JSBuiltinsContainer.SwitchEn
                         @Shared @Cached ImportValueNode foreignConvert,
                         @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Exclusive @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop,
-                        @Cached TruffleString.SwitchEncodingNode switchEncoding) {
+                        @Cached TruffleString.SwitchEncodingNode switchEncoding,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString) {
             try {
                 if (keyInterop.isString(key)) {
-                    return member(obj, Strings.interopAsTruffleString(key, keyInterop, switchEncoding), foreignConvert, interop);
+                    return member(obj, Strings.interopAsTruffleString(key, keyInterop, switchEncoding), foreignConvert, interop, toJavaString);
                 } else if (keyInterop.fitsInInt(key)) {
                     return arrayElement(obj, keyInterop.asInt(key), foreignConvert, interop);
                 }

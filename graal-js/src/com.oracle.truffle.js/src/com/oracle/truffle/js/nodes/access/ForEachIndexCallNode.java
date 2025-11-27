@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
@@ -115,6 +116,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private JSHasPropertyNode hasPropertyNode;
     @Child private ImportValueNode toJSTypeNode;
     @Child private InteropLibrary interop;
+    @Child private TruffleString.ToJavaStringNode toJavaStringNode;
     protected final JSContext context;
     protected final boolean checkHasProperty;
 
@@ -172,14 +174,15 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     }
 
     protected Object foreignRead(Object target, long index, boolean isForeignArray) {
-        if (toJSTypeNode == null) {
+        if (toJSTypeNode == null || toJavaStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toJSTypeNode = insert(ImportValueNode.create());
+            toJavaStringNode = insert(TruffleString.ToJavaStringNode.create());
         }
         if (isForeignArray) {
             return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode);
         } else {
-            return JSInteropUtil.readMemberOrDefault(target, Strings.fromLong(index), Undefined.instance, getInterop(), toJSTypeNode);
+            return JSInteropUtil.readMemberOrDefault(target, Strings.fromLong(index), Undefined.instance, getInterop(), toJSTypeNode, toJavaStringNode);
         }
     }
 

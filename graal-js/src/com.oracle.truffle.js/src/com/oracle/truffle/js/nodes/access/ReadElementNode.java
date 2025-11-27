@@ -1479,6 +1479,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private CachedGetPropertyNode readFromPrototypeNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
+        @Child private TruffleString.ToJavaStringNode toJavaStringNode;
 
         @CompilationFinal private boolean optimistic = true;
 
@@ -1545,7 +1546,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return result;
                 }
             }
-            String stringKey = Strings.toJavaString(exportedKeyStr);
+            String stringKey = toJavaString(exportedKeyStr);
             if (optimistic) {
                 try {
                     return interop.readMember(truffleObject, stringKey);
@@ -1592,11 +1593,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            if (!getterInterop.isMemberInvocable(thisObj, Strings.toJavaString(getterKey))) {
+            String getterNameJS = toJavaString(getterKey);
+            if (!getterInterop.isMemberInvocable(thisObj, getterNameJS)) {
                 return null;
             }
             try {
-                return getterInterop.invokeMember(thisObj, Strings.toJavaString(getterKey), JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                return getterInterop.invokeMember(thisObj, getterNameJS, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                 return null; // try the next fallback
             }
@@ -1651,6 +1653,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
             }
             return toPropertyKeyNode.execute(index);
+        }
+
+        private String toJavaString(TruffleString tString) {
+            if (toJavaStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toJavaStringNode = insert(TruffleString.ToJavaStringNode.create());
+            }
+            return Strings.toJavaString(toJavaStringNode, tString);
         }
     }
 

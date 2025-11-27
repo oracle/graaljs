@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.TryBlockTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
@@ -245,11 +246,13 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
 
     public abstract static class GetErrorObjectNode extends JavaScriptBaseNode {
         @Child private InitErrorObjectNode initErrorObjectNode;
+        @Child private TruffleString.FromJavaStringNode fromJavaStringNode;
         private final JSContext context;
 
         protected GetErrorObjectNode(JSContext context) {
             this.context = context;
             this.initErrorObjectNode = InitErrorObjectNode.create(context, context.isOptionNashornCompatibilityMode());
+            this.fromJavaStringNode = TruffleString.FromJavaStringNode.create();
         }
 
         public static GetErrorObjectNode create(JSContext context) {
@@ -299,7 +302,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
             String message = exception.getRawMessage();
             assert message != null;
             JSErrorObject errorObj = newErrorObject(context, errorRealm, exception.getErrorType());
-            initErrorObjectNode.execute(errorObj, exception, Strings.fromJavaString(message));
+            initErrorObjectNode.execute(errorObj, exception, Strings.fromJavaString(fromJavaStringNode, message));
             exception.setErrorObject(errorObj);
             return errorObj;
         }

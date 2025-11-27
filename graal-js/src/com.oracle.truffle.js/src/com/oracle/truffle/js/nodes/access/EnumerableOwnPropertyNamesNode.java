@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -176,7 +176,8 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
                     @Cached ImportValueNode importValue,
                     @Cached @Exclusive InlinedBranchProfile errorBranch,
                     @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode,
+                    @Cached TruffleString.FromLongNode fromLongNode) {
         try {
             long arraySize = 0;
             if (interop.hasArrayElements(obj)) {
@@ -196,7 +197,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
             if (size > 0) {
                 SimpleArrayList<Object> list = new SimpleArrayList<>((int) size);
                 for (long i = 0; i < arraySize; i++) {
-                    TruffleString key = Strings.fromLong(i);
+                    TruffleString key = Strings.fromLong(fromLongNode, i);
                     Object element;
                     if (values) {
                         Object value = importValue.executeWithTarget(interop.readArrayElement(obj, i));

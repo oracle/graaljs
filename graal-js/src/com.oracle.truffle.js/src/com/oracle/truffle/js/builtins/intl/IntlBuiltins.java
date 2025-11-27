@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,7 +123,7 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
                 canonicalizeLocaleListNode = insert(JSToCanonicalizedLocaleListNode.create(getContext()));
             }
             String[] languageTags = canonicalizeLocaleListNode.executeLanguageTags(locales);
-            return JSArray.createConstant(getContext(), getRealm(), Strings.convertJavaStringArray(languageTags));
+            return JSArray.createConstant(getContext(), getRealm(), Strings.fromJavaStringArray(languageTags));
         }
     }
 
@@ -155,7 +155,7 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
                 errorBranch.enter(this);
                 throw Errors.createRangeErrorFormat("Invalid key : %s", this, key);
             }
-            return JSArray.createConstant(getContext(), getRealm(), Strings.convertJavaStringArray(list));
+            return JSArray.createConstant(getContext(), getRealm(), Strings.fromJavaStringArray(list));
         }
     }
 }

@@ -133,8 +133,9 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected TruffleString doBigInt(BigInt value) {
-        return Strings.fromBigInt(value);
+    protected TruffleString doBigInt(BigInt value,
+                    @Cached TruffleString.FromJavaStringNode fromJavaString) {
+        return Strings.fromBigInt(fromJavaString, value);
     }
 
     @InliningCutoff

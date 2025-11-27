@@ -1566,9 +1566,20 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static long parseArrayIndexIsIndexRaw(Object o) {
-        assert isArrayIndex(o);
-        assert Strings.isTString(o) || o instanceof Number;
-        return parseArrayIndexRaw(o instanceof TruffleString str ? str : Strings.fromNumber((Number) o), TruffleString.ReadCharUTF16Node.getUncached());
+        assert (Strings.isTString(o) || o instanceof Number) && isArrayIndex(o) : o;
+        TruffleString asStr;
+        if (o instanceof TruffleString str) {
+            asStr = str;
+        } else if (o instanceof Integer i) {
+            return i;
+        } else if (o instanceof Long l) {
+            return l;
+        } else if (o instanceof Double d) {
+            asStr = doubleToString(d);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+        return parseArrayIndexRaw(asStr, TruffleString.ReadCharUTF16Node.getUncached());
     }
 
     /**

@@ -74,8 +74,8 @@ import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLoca
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleNumericAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleRegionAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleScriptAccessorNodeGen;
-import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleVariantsAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleToStringNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleVariantsAccessorNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -525,7 +525,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 calendars = new String[]{calendar};
             }
-            return JSArray.createConstantObjectArray(getContext(), getRealm(), Strings.convertJavaStringArray(calendars));
+            return JSArray.createConstantObjectArray(getContext(), getRealm(), Strings.fromJavaStringArray(calendars));
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -552,7 +552,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 collations = new String[]{collation};
             }
-            return JSArray.createConstantObjectArray(getContext(), getRealm(), Strings.convertJavaStringArray(collations));
+            return JSArray.createConstantObjectArray(getContext(), getRealm(), Strings.fromJavaStringArray(collations));
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
