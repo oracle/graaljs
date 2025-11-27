@@ -202,6 +202,7 @@
       { "name": "promiseResolverResolve" },
       { "name": "promiseResult" },
       { "name": "promiseState" },
+      { "name": "promiseThen" },
       { "name": "proxyGetHandler" },
       { "name": "proxyGetTarget" },
       { "name": "proxyIsFunction" },

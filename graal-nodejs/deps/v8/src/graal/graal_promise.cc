@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,4 +104,18 @@ v8::Maybe<bool> GraalPromise::ResolverReject(v8::Promise::Resolver* resolver, v8
 v8::Local<v8::Promise> GraalPromise::ResolverGetPromise(v8::Promise::Resolver* resolver) {
     v8::Promise* v8_promise = reinterpret_cast<v8::Promise*> (resolver);
     return v8::Local<v8::Promise>::New(v8_promise->GetIsolate(), v8_promise);
+}
+
+v8::MaybeLocal<v8::Promise> GraalPromise::Then(v8::Local<v8::Context> context, v8::Local<v8::Function> on_fulfilled, v8::Local<v8::Function> on_rejected) {
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_promise = GetJavaObject();
+    GraalHandleContent* graal_on_fulfilled = reinterpret_cast<GraalHandleContent*> (*on_fulfilled);
+    jobject java_on_fulfilled = graal_on_fulfilled->GetJavaObject();
+    GraalHandleContent* graal_on_rejected = reinterpret_cast<GraalHandleContent*> (*on_rejected);
+    jobject java_on_rejected = graal_on_rejected->GetJavaObject();
+    JNI_CALL(jobject, java_result, graal_isolate, GraalAccessMethod::promise_then, Object, java_promise, java_on_fulfilled, java_on_rejected);
+    GraalPromise* graal_result = GraalPromise::Allocate(graal_isolate, java_result);
+    v8::Promise* v8_result = reinterpret_cast<v8::Promise*> (graal_result);
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    return v8::Local<v8::Promise>::New(v8_isolate, v8_result);
 }

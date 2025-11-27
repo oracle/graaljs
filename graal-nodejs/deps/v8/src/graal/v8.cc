@@ -4270,8 +4270,7 @@ namespace v8 {
     }
 
     MaybeLocal<Promise> Promise::Then(Local<Context> context, Local<Function> on_fulfilled, Local<Function> on_rejected) {
-        TRACE
-        return Local<Promise>();
+        return reinterpret_cast<GraalPromise*> (this)->Then(context, on_fulfilled, on_rejected);
     }
 
     EmbedderGraph::Node* EmbedderGraph::V8Node(const v8::Local<v8::Data>& value) {

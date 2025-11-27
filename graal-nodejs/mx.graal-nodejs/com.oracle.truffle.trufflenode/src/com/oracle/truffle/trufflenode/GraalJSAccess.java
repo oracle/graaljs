@@ -3886,6 +3886,11 @@ public final class GraalJSAccess {
         return JSFunction.call(JSArguments.create(Undefined.instance, resolverFactory, RESOLVER_RESOLVE, RESOLVER_REJECT));
     }
 
+    public Object promiseThen(Object promise, Object onFulfilled, Object onRejected) {
+        Object then = JSRuntime.get(promise, JSPromise.THEN);
+        return JSRuntime.call(then, promise, new Object[]{onFulfilled, onRejected});
+    }
+
     private JSDynamicObject getResolverFactory(Object realm) {
         RealmData data = getRealmEmbedderData(realm);
         JSDynamicObject resolverFactory = data.getResolverFactory();

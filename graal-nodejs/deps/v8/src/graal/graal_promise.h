@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ public:
     bool IsPromise() const override;
     v8::Local<v8::Value> Result();
     v8::Promise::PromiseState State();
+    v8::MaybeLocal<v8::Promise> Then(v8::Local<v8::Context> context, v8::Local<v8::Function> on_fulfilled, v8::Local<v8::Function> on_rejected);
     static v8::MaybeLocal<v8::Promise::Resolver> ResolverNew(v8::Local<v8::Context> context);
     static v8::Maybe<bool> ResolverResolve(v8::Promise::Resolver* resolver, v8::Local<v8::Value> value);
     static v8::Maybe<bool> ResolverReject(v8::Promise::Resolver* resolver, v8::Local<v8::Value> value);
