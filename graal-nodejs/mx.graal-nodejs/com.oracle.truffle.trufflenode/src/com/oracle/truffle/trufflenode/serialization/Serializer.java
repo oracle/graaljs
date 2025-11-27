@@ -265,7 +265,11 @@ public class Serializer {
         } else if (JSDataView.isJSDataView(object)) {
             writeJSDataView((JSDataViewObject) object);
         } else if (JSError.isJSError(object)) {
-            writeJSError((JSErrorObject) object);
+            if (NativeAccess.isHostObject(delegate, object)) {
+                writeHostObject(object);
+            } else {
+                writeJSError((JSErrorObject) object);
+            }
         } else if (JSWebAssemblyModule.isJSWebAssemblyModule(object)) {
             writeJSWebAssemblyModule((JSWebAssemblyModuleObject) object);
         } else if (JSWebAssemblyMemory.isJSWebAssemblyMemory(object)) {
