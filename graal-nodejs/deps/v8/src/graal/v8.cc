@@ -1586,7 +1586,7 @@ namespace v8 {
 
     Location StackFrame::GetLocation() const {
         const GraalStackFrame* graal_frame = reinterpret_cast<const GraalStackFrame*> (this);
-        return Location(graal_frame->GetLineNumber(), graal_frame->GetColumn());
+        return Location(graal_frame->GetLineNumber() - 1, graal_frame->GetColumn() - 1);
     }
 
     Local<String> StackFrame::GetFunctionName() const {
