@@ -5581,7 +5581,7 @@ public class Parser extends AbstractParser {
         final long paramToken = token;
         final int paramLine = line;
         IdentNode ident;
-        if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
+        if (lookaheadIsSimpleFormalParameter() || !(ES6_DESTRUCTURING && isES6())) {
             ident = bindingIdentifier(yield, await, CONTEXT_FUNCTION_PARAMETER);
 
             if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
@@ -5618,6 +5618,18 @@ public class Parser extends AbstractParser {
                 addDestructuringParameter(paramToken, finish, paramLine, pattern, initializer, currentFunction, false);
             }
         }
+    }
+
+    /**
+     * check if this is a "simple" formal parameter; an ident followed by a comma, a closing parenthesis or an assign (default)
+     * i.e. not a binding pattern (in particular an extractor, which also starts with an ident)
+     */
+    private boolean lookaheadIsSimpleFormalParameter() {
+        if (!isBindingIdentifier()) {
+            return false;
+        }
+
+        return lookaheadFindTokenSkippingComments(COMMARIGHT) || lookaheadFindTokenSkippingComments(RPAREN) || lookaheadFindTokenSkippingComments(ASSIGN);
     }
 
     private void functionRestParameter(final TokenType endType, final boolean yield, final boolean await) {
@@ -6742,19 +6754,18 @@ public class Parser extends AbstractParser {
     }
 
     private boolean lookaheadIsArrow() {
-        // find ARROW, skipping over COMMENT
-        int i = 1;
-        for (;;) {
-            TokenType t = T(k + i++);
-            if (t == ARROW) {
-                break;
-            } else if (t == COMMENT) {
-                continue;
-            } else {
+        return lookaheadFindTokenSkippingComments(ARROW);
+    }
+
+    private boolean lookaheadFindTokenSkippingComments(TokenType target) {
+        for (int i = 1;; i++) {
+            TokenType t = T(k + i);
+            if (t == target) {
+                return true;
+            } else if (t != COMMENT) {
                 return false;
             }
         }
-        return true;
     }
 
     /**
