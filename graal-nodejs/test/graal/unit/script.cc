@@ -48,7 +48,7 @@ EXPORT_TO_JS(Compile) {
     Local<Context> context = isolate->GetCurrentContext();
     Local<String> source = args[0].As<String>();
     Local<String> fileName = args[1].As<String>();
-    ScriptOrigin origin(isolate, fileName);
+    ScriptOrigin origin(fileName);
 
     Local<Script> script = Script::Compile(context, source, &origin).ToLocalChecked();
     int id = script->GetUnboundScript()->GetId();
@@ -62,7 +62,7 @@ EXPORT_TO_JS(Run) {
     Local<Context> context = isolate->GetCurrentContext();
     Local<String> source = args[0].As<String>();
     Local<String> fileName = args[1].As<String>();
-    ScriptOrigin origin(isolate, fileName);
+    ScriptOrigin origin(fileName);
 
     Local<Script> script = Script::Compile(context, source, &origin).ToLocalChecked();
     Local<Value> result = script->Run(context).ToLocalChecked();

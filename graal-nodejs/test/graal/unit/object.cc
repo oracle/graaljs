@@ -41,30 +41,6 @@
 
 #define SUITE Object
 
-#ifdef SUITE_INTERNALS
-
-int simpleGetterCallCount = 0;
-int simpleSetterCallCount = 0;
-
-void SimpleAccessorGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info) {
-    Isolate* isolate = info.GetIsolate();
-    simpleGetterCallCount++;
-    Local<String> prefix = String::NewFromUtf8(isolate, "accessor getter called: ", v8::NewStringType::kNormal).ToLocalChecked();
-    info.GetReturnValue().Set(String::Concat(isolate, prefix, property.As<String>()));
-}
-
-void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const PropertyCallbackInfo<void>& info) {
-    Isolate* isolate = info.GetIsolate();
-    Local<Context> context = isolate->GetCurrentContext();
-    simpleSetterCallCount++;
-    Local<Object> obj = info.This();
-    Local<String> key = String::NewFromUtf8(isolate, "mySetValue", v8::NewStringType::kNormal).ToLocalChecked();
-    obj->Set(context, key, value);
-}
-
-#endif
-
-
 // Object::GetOwnPropertyNames
 
 EXPORT_TO_JS(GetOwnPropertyNames) {
@@ -196,38 +172,6 @@ EXPORT_TO_JS(Clone) {
 
     Local<Object> newObj = obj->Clone();
     args.GetReturnValue().Set(newObj);
-}
-
-// Object::SetAccessor
-
-EXPORT_TO_JS(SetAccessor) {
-    Local<Context> context = args.GetIsolate()->GetCurrentContext();
-    Local<Object> obj = args[0].As<Object>();
-    Local<String> key = args[1].As<String>();
-
-    obj->SetAccessor(context, key, SimpleAccessorGetter, SimpleAccessorSetter);
-
-    args.GetReturnValue().Set(true);
-}
-
-EXPORT_TO_JS(SetAccessorNoSetterWritable) {
-    Local<Context> context = args.GetIsolate()->GetCurrentContext();
-    Local<Object> obj = args[0].As<Object>();
-    Local<String> key = args[1].As<String>();
-
-    obj->SetAccessor(context, key, SimpleAccessorGetter);
-
-    args.GetReturnValue().Set(true);
-}
-
-EXPORT_TO_JS(SetAccessorNoSetterReadOnly) {
-    Local<Context> context = args.GetIsolate()->GetCurrentContext();
-    Local<Object> obj = args[0].As<Object>();
-    Local<String> key = args[1].As<String>();
-
-    obj->SetAccessor(context, key, SimpleAccessorGetter, nullptr, MaybeLocal<Value>(), AccessControl::DEFAULT, PropertyAttribute::ReadOnly);
-
-    args.GetReturnValue().Set(true);
 }
 
 EXPORT_TO_JS(GetRealNamedPropertyAttributes) {

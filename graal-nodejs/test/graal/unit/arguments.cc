@@ -49,7 +49,6 @@ void Arguments_Function(const FunctionCallbackInfo<Value>& args) {
     Local<Context> context = isolate->GetCurrentContext();
     args[0].As<Object>()->Set(context, String::NewFromUtf8(isolate, "isConstructCall", v8::NewStringType::kNormal).ToLocalChecked(), constructCall ? True(isolate) : False(isolate));
     args[0].As<Object>()->Set(context, String::NewFromUtf8(isolate, "thisValue", v8::NewStringType::kNormal).ToLocalChecked(), args.This());
-    args[0].As<Object>()->Set(context, String::NewFromUtf8(isolate, "holderValue", v8::NewStringType::kNormal).ToLocalChecked(), args.Holder());
     args.GetReturnValue().Set(args.This());
 }
 

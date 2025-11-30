@@ -43,8 +43,6 @@
 
 #ifdef SUITE_INTERNALS
 
-void SimpleAccessorGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info);
-void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const PropertyCallbackInfo<void>& info);
 void EmptyPropertyEnumeratorCallback(const PropertyCallbackInfo<Array>& info) {};
 
 #endif
@@ -102,17 +100,6 @@ EXPORT_TO_JS(Set) {
     args.GetReturnValue().Set(objectTemplate->NewInstance(context).ToLocalChecked());
 }
 
-// Template::SetAccessor
-
-EXPORT_TO_JS(CreateWithAccessor) {
-    Isolate* isolate = args.GetIsolate();
-    Local<Context> context = isolate->GetCurrentContext();
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
-    Local<Name> name = args[0].As<Name>();
-    objectTemplate->SetAccessor(name, SimpleAccessorGetter, SimpleAccessorSetter);
-    args.GetReturnValue().Set(objectTemplate->NewInstance(context).ToLocalChecked());
-}
-
 // ObjectTemplate::SetHandler
 
 EXPORT_TO_JS(CheckNamedHandlerWithInternalFields) {
@@ -135,7 +122,7 @@ EXPORT_TO_JS(CreateWithEmptyIndexedEnumerator) {
     Isolate* isolate = args.GetIsolate();
     Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
     IndexedPropertyHandlerConfiguration handler(
-            (IndexedPropertyGetterCallback) nullptr, // getter
+            (IndexedPropertyGetterCallbackV2) nullptr, // getter
             nullptr, // setter
             nullptr, // query
             nullptr, // deleter
