@@ -4623,6 +4623,12 @@ struct url_components {
 #endif
 /* end file include/ada/url_components.h */
 
+#if defined(__linux__)
+# define MAYBE_CONSTEXPR
+#else
+# define MAYBE_CONSTEXPR constexpr
+#endif
+
 namespace ada {
 
 struct url_aggregator;
@@ -4762,7 +4768,7 @@ struct url : url_base {
    * @return a newly allocated string.
    * @see https://url.spec.whatwg.org/#dom-url-pathname
    */
-  [[nodiscard]] constexpr std::string_view get_pathname() const noexcept;
+  [[nodiscard]] MAYBE_CONSTEXPR std::string_view get_pathname() const noexcept;
 
   /**
    * Compute the pathname length in bytes without instantiating a view or a
@@ -4986,7 +4992,7 @@ struct url : url_base {
   template <bool has_state_override = false>
   [[nodiscard]] ada_really_inline bool parse_scheme(std::string_view input);
 
-  constexpr void clear_pathname() override;
+  MAYBE_CONSTEXPR void clear_pathname() override;
   constexpr void clear_search() override;
   constexpr void set_protocol_as_file();
 
@@ -5013,13 +5019,13 @@ struct url : url_base {
    * Take the scheme from another URL. The scheme string is moved from the
    * provided url.
    */
-  constexpr void copy_scheme(ada::url &&u) noexcept;
+  MAYBE_CONSTEXPR void copy_scheme(ada::url &&u) noexcept;
 
   /**
    * Take the scheme from another URL. The scheme string is copied from the
    * provided url.
    */
-  constexpr void copy_scheme(const ada::url &u);
+  MAYBE_CONSTEXPR void copy_scheme(const ada::url &u);
 
 };  // struct url
 
@@ -5547,10 +5553,10 @@ class Tokenizer {
       : input(new_input), policy(new_policy) {}
 
   // @see https://urlpattern.spec.whatwg.org/#get-the-next-code-point
-  constexpr void get_next_code_point();
+  MAYBE_CONSTEXPR void get_next_code_point();
 
   // @see https://urlpattern.spec.whatwg.org/#seek-and-get-the-next-code-point
-  constexpr void seek_and_get_next_code_point(size_t index);
+  MAYBE_CONSTEXPR void seek_and_get_next_code_point(size_t index);
 
   // @see https://urlpattern.spec.whatwg.org/#add-a-token
 
@@ -6629,7 +6635,7 @@ inline std::ostream &operator<<(std::ostream &out, const ada::url &u) {
   return path.size();
 }
 
-[[nodiscard]] constexpr std::string_view url::get_pathname() const noexcept {
+[[nodiscard]] MAYBE_CONSTEXPR std::string_view url::get_pathname() const noexcept {
   return path;
 }
 
@@ -6739,7 +6745,7 @@ inline void url::update_base_port(std::optional<uint16_t> input) {
   port = input;
 }
 
-constexpr void url::clear_pathname() { path.clear(); }
+MAYBE_CONSTEXPR void url::clear_pathname() { path.clear(); }
 
 constexpr void url::clear_search() { query = std::nullopt; }
 
@@ -6761,12 +6767,12 @@ inline void url::set_scheme(std::string &&new_scheme) noexcept {
   }
 }
 
-constexpr void url::copy_scheme(ada::url &&u) noexcept {
+MAYBE_CONSTEXPR void url::copy_scheme(ada::url &&u) noexcept {
   non_special_scheme = u.non_special_scheme;
   type = u.type;
 }
 
-constexpr void url::copy_scheme(const ada::url &u) {
+MAYBE_CONSTEXPR void url::copy_scheme(const ada::url &u) {
   non_special_scheme = u.non_special_scheme;
   type = u.type;
 }
@@ -6988,7 +6994,7 @@ struct url_aggregator : url_base {
    * @see https://url.spec.whatwg.org/#dom-url-href
    * @see https://url.spec.whatwg.org/#concept-url-serializer
    */
-  [[nodiscard]] constexpr std::string_view get_href() const noexcept
+  [[nodiscard]] MAYBE_CONSTEXPR std::string_view get_href() const noexcept
       ada_lifetime_bound;
   /**
    * The username getter steps are to return this's URL's username.
@@ -7045,7 +7051,7 @@ struct url_aggregator : url_base {
    * @return a lightweight std::string_view.
    * @see https://url.spec.whatwg.org/#dom-url-pathname
    */
-  [[nodiscard]] constexpr std::string_view get_pathname() const noexcept
+  [[nodiscard]] MAYBE_CONSTEXPR std::string_view get_pathname() const noexcept
       ada_lifetime_bound;
   /**
    * Compute the pathname length in bytes without instantiating a view or a
@@ -7176,7 +7182,7 @@ struct url_aggregator : url_base {
    * To optimize performance, you may indicate how much memory to allocate
    * within this instance.
    */
-  constexpr void reserve(uint32_t capacity);
+  MAYBE_CONSTEXPR void reserve(uint32_t capacity);
 
   ada_really_inline size_t parse_port(
       std::string_view view, bool check_trailing_content) noexcept override;
@@ -7235,7 +7241,7 @@ struct url_aggregator : url_base {
   [[nodiscard]] inline uint32_t retrieve_base_port() const;
   constexpr void clear_hostname();
   constexpr void clear_password();
-  constexpr void clear_pathname() override;
+  MAYBE_CONSTEXPR void clear_pathname() override;
   [[nodiscard]] constexpr bool has_dash_dot() const noexcept;
   void delete_dash_dot();
   inline void consume_prepared_path(std::string_view input);
@@ -7245,7 +7251,7 @@ struct url_aggregator : url_base {
   ada_really_inline uint32_t replace_and_resize(uint32_t start, uint32_t end,
                                                 std::string_view input);
   [[nodiscard]] constexpr bool has_authority() const noexcept;
-  constexpr void set_protocol_as_file();
+  MAYBE_CONSTEXPR void set_protocol_as_file();
   inline void set_scheme(std::string_view new_scheme) noexcept;
   /**
    * Fast function to set the scheme from a view with a colon in the
@@ -7939,7 +7945,7 @@ inline void url_aggregator::clear_hash() {
   ADA_ASSERT_TRUE(validate());
 }
 
-constexpr void url_aggregator::clear_pathname() {
+MAYBE_CONSTEXPR void url_aggregator::clear_pathname() {
   ada_log("url_aggregator::clear_pathname");
   ADA_ASSERT_TRUE(validate());
   uint32_t ending_index = uint32_t(buffer.size());
@@ -8073,7 +8079,7 @@ inline void ada::url_aggregator::add_authority_slashes_if_needed() noexcept {
   ADA_ASSERT_TRUE(validate());
 }
 
-constexpr void ada::url_aggregator::reserve(uint32_t capacity) {
+MAYBE_CONSTEXPR void ada::url_aggregator::reserve(uint32_t capacity) {
   buffer.reserve(capacity);
 }
 
@@ -8150,7 +8156,7 @@ constexpr bool url_aggregator::has_port() const noexcept {
          buffer[components.host_end + 1] == '.';
 }
 
-[[nodiscard]] constexpr std::string_view url_aggregator::get_href()
+[[nodiscard]] MAYBE_CONSTEXPR std::string_view url_aggregator::get_href()
     const noexcept ada_lifetime_bound {
   ada_log("url_aggregator::get_href");
   return buffer;
@@ -8195,7 +8201,7 @@ ada_really_inline size_t url_aggregator::parse_port(
   return consumed;
 }
 
-constexpr void url_aggregator::set_protocol_as_file() {
+MAYBE_CONSTEXPR void url_aggregator::set_protocol_as_file() {
   ada_log("url_aggregator::set_protocol_as_file ");
   ADA_ASSERT_TRUE(validate());
   type = ada::scheme::type::FILE;
@@ -8395,7 +8401,7 @@ constexpr void url_aggregator::set_protocol_as_file() {
   return true;
 }
 
-[[nodiscard]] constexpr std::string_view url_aggregator::get_pathname()
+[[nodiscard]] MAYBE_CONSTEXPR std::string_view url_aggregator::get_pathname()
     const noexcept ada_lifetime_bound {
   ada_log("url_aggregator::get_pathname pathname_start = ",
           components.pathname_start, " buffer.size() = ", buffer.size(),
@@ -9758,7 +9764,7 @@ constexpr bool constructor_string_parser<regex_provider>::is_port_prefix()
   return is_non_special_pattern_char(token_index, ':');
 }
 
-constexpr void Tokenizer::get_next_code_point() {
+MAYBE_CONSTEXPR void Tokenizer::get_next_code_point() {
   ada_log("Tokenizer::get_next_code_point called with index=", next_index);
   ADA_ASSERT_TRUE(next_index < input.size());
   // this assumes that we have a valid, non-truncated UTF-8 stream.
@@ -9805,7 +9811,7 @@ constexpr void Tokenizer::get_next_code_point() {
   next_index += number_bytes;
 }
 
-constexpr void Tokenizer::seek_and_get_next_code_point(size_t new_index) {
+MAYBE_CONSTEXPR void Tokenizer::seek_and_get_next_code_point(size_t new_index) {
   ada_log("Tokenizer::seek_and_get_next_code_point called with new_index=",
           new_index);
   // Set tokenizer's next index to index.
@@ -10555,6 +10561,8 @@ parse_url_pattern(std::variant<std::string_view, url_pattern_init>&& input,
 #endif  // ADA_INCLUDE_URL_PATTERN
 
 }  // namespace ada
+
+#undef MAYBE_CONSTEXPR
 
 #endif  // ADA_IMPLEMENTATION_INL_H
 /* end file include/ada/implementation-inl.h */
