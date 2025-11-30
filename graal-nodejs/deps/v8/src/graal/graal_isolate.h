@@ -214,7 +214,7 @@ enum GraalAccessMethod {
     isolate_get_int_placeholder,
     isolate_get_safe_int_placeholder,
     isolate_get_double_placeholder,
-    isolate_dispose,
+    isolate_deinitialize,
     isolate_enter_polyglot_engine,
     isolate_perform_gc,
     isolate_enable_promise_hook,
@@ -460,8 +460,8 @@ public:
     void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
     void SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback);
     bool AbortOnUncaughtExceptionCallbackValue();
-    void Dispose();
-    void Dispose(bool exit, int status);
+    void Deinitialize();
+    void Deinitialize(bool exit, int status);
     inline double ReadDoubleFromSharedBuffer();
     inline int32_t ReadInt32FromSharedBuffer();
     inline int64_t ReadInt64FromSharedBuffer();

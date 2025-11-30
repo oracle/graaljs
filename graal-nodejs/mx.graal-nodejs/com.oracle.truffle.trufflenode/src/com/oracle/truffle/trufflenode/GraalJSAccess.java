@@ -3378,7 +3378,7 @@ public final class GraalJSAccess {
         return mainJSContext.getLocale().toLanguageTag();
     }
 
-    public void isolateDispose(boolean exit, int status) {
+    public void isolateDeinitialize(boolean exit, int status) {
         agent.setTaskRunnerPointer(0);
         if (exit) {
             exit(status);

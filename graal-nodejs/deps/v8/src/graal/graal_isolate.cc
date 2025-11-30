@@ -826,7 +826,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_get_int_placeholder, "isolateGetIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_safe_int_placeholder, "isolateGetSafeIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_double_placeholder, "isolateGetDoublePlaceholder", "()Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::isolate_dispose, "isolateDispose", "(ZI)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_deinitialize, "isolateDeinitialize", "(ZI)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter_polyglot_engine, "isolateEnterPolyglotEngine", "(JJJJJJ)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_perform_gc, "isolatePerformGC", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_hook, "isolateEnablePromiseHook", "(Z)V")
@@ -1187,16 +1187,16 @@ bool GraalIsolate::AbortOnUncaughtExceptionCallbackValue() {
 
 bool GraalIsolate::abort_on_uncaught_exception_ = false;
 
-void GraalIsolate::Dispose() {
-    Dispose(false, 0);
+void GraalIsolate::Deinitialize() {
+    Deinitialize(false, 0);
 }
 
-void GraalIsolate::Dispose(bool exit, int status) {
+void GraalIsolate::Deinitialize(bool exit, int status) {
     JNIEnv* env = jni_env_;
     jni_env_ = nullptr; // mark the isolate as disposed, see ~GraalHandleContent()
 
     // we do not use JNI_CALL_VOID because jni_env_ is cleared
-    jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_dispose);
+    jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_deinitialize);
     env->functions->CallVoidMethod(env, access_, method_id, exit, status);
 
     // Release global references
@@ -1241,7 +1241,6 @@ void GraalIsolate::Dispose(bool exit, int status) {
     // GraalIsolate is allocated using malloc and placement new,
     // see Isolate::Allocate() and Isolate::Initialize()
     this->~GraalIsolate();
-    free(this);
 }
 
 jobject GraalIsolate::JNIGetObjectFieldOrCall(jobject java_object, GraalAccessField graal_field_id, GraalAccessMethod graal_method_id) {

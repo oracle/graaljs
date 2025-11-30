@@ -484,11 +484,13 @@ namespace v8 {
     }
 
     void Isolate::Dispose() {
-        reinterpret_cast<GraalIsolate*> (this)->Dispose();
+        reinterpret_cast<GraalIsolate*> (this)->Deinitialize();
+        Isolate::Free(this);
     }
 
     void Isolate::Dispose(bool exit, int status) {
-        reinterpret_cast<GraalIsolate*> (this)->Dispose(exit, status);
+        reinterpret_cast<GraalIsolate*> (this)->Deinitialize(exit, status);
+        Isolate::Free(this);
     }
 
     void Isolate::SchedulePauseOnNextStatement() {
@@ -4258,11 +4260,11 @@ namespace v8 {
     }
 
     void Isolate::Deinitialize() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->Deinitialize();
     }
 
     void Isolate::Free(Isolate* isolate) {
-        TRACE
+        free(isolate);
     }
 
     void Promise::MarkAsHandled() {

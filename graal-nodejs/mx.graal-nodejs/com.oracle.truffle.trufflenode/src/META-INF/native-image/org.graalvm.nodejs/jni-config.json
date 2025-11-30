@@ -91,7 +91,7 @@
       { "name": "int8ArrayNew" },
       { "name": "integerNew" },
       { "name": "isolateCancelTerminateExecution" },
-      { "name": "isolateDispose" },
+      { "name": "isolateDeinitialize" },
       { "name": "isolateEnableImportMetaInitializer" },
       { "name": "isolateEnableImportModuleDynamically" },
       { "name": "isolateEnablePrepareStackTraceCallback" },
