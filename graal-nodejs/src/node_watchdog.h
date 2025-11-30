@@ -51,10 +51,12 @@ class Watchdog {
   v8::Isolate* isolate() { return isolate_; }
 
  private:
+#if !defined(_WIN32)
   Watchdog(const Watchdog&) = delete;
   Watchdog& operator=(const Watchdog&) = delete;
   Watchdog(Watchdog&&) = delete;
   Watchdog& operator=(Watchdog&&) = delete;
+#endif
 
   static void Run(void* arg);
   static void Timer(uv_timer_t* timer);
@@ -82,10 +84,12 @@ class SigintWatchdog : public SigintWatchdogBase {
   SignalPropagation HandleSigint() override;
 
  private:
+#if !defined(_WIN32)
   SigintWatchdog(const SigintWatchdog&) = delete;
   SigintWatchdog& operator=(const SigintWatchdog&) = delete;
   SigintWatchdog(SigintWatchdog&&) = delete;
   SigintWatchdog& operator=(SigintWatchdog&&) = delete;
+#endif
 
   v8::Isolate* isolate_;
   bool* received_signal_;
