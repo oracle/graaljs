@@ -734,6 +734,14 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (this)->CreationContext();
     }
 
+    MaybeLocal<Context> Object::GetCreationContext(Isolate* isolate) {
+        return reinterpret_cast<GraalObject*> (this)->CreationContext();
+    }
+
+    Local<Context> Object::GetCreationContextChecked(Isolate* isolate) {
+        return reinterpret_cast<GraalObject*> (this)->CreationContext();
+    }
+
     Maybe<bool> Object::Delete(Local<Context> context, Local<Value> key) {
         return Just(reinterpret_cast<GraalObject*> (this)->Delete(key));
     }
@@ -4424,6 +4432,10 @@ namespace cppgc {
             PersistentNode* node = new PersistentNode();
             node->InitializeAsUsedNode(owner, trace);
             return node;
+        }
+
+        void PersistentRegionLock::AssertLocked() {
+            TRACE
         }
 
         void FatalImpl(const char*, const SourceLocation&) {
