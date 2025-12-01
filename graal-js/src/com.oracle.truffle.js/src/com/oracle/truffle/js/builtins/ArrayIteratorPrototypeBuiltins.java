@@ -42,15 +42,20 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedIntValueProfile;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltinsFactory.ArrayIteratorNextNodeGen;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
@@ -59,6 +64,7 @@ import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -108,27 +114,39 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     public abstract static class ArrayIteratorNextNode extends JSBuiltinNode {
 
+        @Child private CreateIterResultObjectNode createIterResultObjectNode;
+
         protected ArrayIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
+        }
+
+        protected JSObject createIteratorResultObject(Object value, boolean done) {
+            return createIterResultObjectNode.execute(value, done);
         }
 
         @Specialization(guards = {"!isUndefined(array)"})
         JSObject doArrayIterator(JSArrayIteratorObject iterator,
                         @Bind("iterator.getIteratedObject()") Object array,
-                        @Shared @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached ArrayIteratorGetLengthNode getLengthNode,
                         @Cached(inline = true) LongToIntOrDoubleNode toJSIndex,
-                        @Cached InlinedIntValueProfile iterationKindProfile) {
+                        @Cached InlinedIntValueProfile iterationKindProfile,
+                        @Cached InlinedConditionProfile skipLengthCheckBranch) {
             long index = iterator.getNextIndex();
-            int itemKind = iterationKindProfile.profile(this, iterator.getIterationKind());
-            long length = getLengthNode.execute(this, array, getJSContext());
-
-            if (index >= length) {
-                iterator.setIteratedObject(Undefined.instance);
-                return createIterResultObjectNode.execute(Undefined.instance, true);
+            assert index >= 0;
+            if (skipLengthCheckBranch.profile(this, iterator.isSkipGetLength())) {
+                // Already checked in the caller, no need to get the length again.
+                iterator.setSkipGetLength(false);
+            } else {
+                long length = getLengthNode.execute(this, array, getContext());
+                if (index >= length) {
+                    iterator.setIteratedObject(Undefined.instance);
+                    return createIteratorResultObject(Undefined.instance, true);
+                }
             }
 
+            int itemKind = iterationKindProfile.profile(this, iterator.getIterationKind());
             iterator.setNextIndex(index + 1);
             Object indexNumber = null;
             if ((itemKind & JSRuntime.ITERATION_KIND_KEY) != 0) {
@@ -146,13 +164,12 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     result = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{indexNumber, elementValue});
                 }
             }
-            return createIterResultObjectNode.execute(result, false);
+            return createIteratorResultObject(result, false);
         }
 
         @Specialization(guards = {"isUndefined(iterator.getIteratedObject())"})
-        static JSObject doArrayIteratorDetached(@SuppressWarnings("unused") JSArrayIteratorObject iterator,
-                        @Cached("create(getContext())") @Shared CreateIterResultObjectNode createIterResultObjectNode) {
-            return createIterResultObjectNode.execute(Undefined.instance, true);
+        final JSObject doArrayIteratorDetached(@SuppressWarnings("unused") JSArrayIteratorObject iterator) {
+            return createIteratorResultObject(Undefined.instance, true);
         }
 
         @SuppressWarnings("unused")
@@ -161,33 +178,87 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeError("not an Array Iterator");
         }
     }
-}
 
-@GenerateInline
-@GenerateCached(false)
-abstract class ArrayIteratorGetLengthNode extends Node {
+    @GenerateInline
+    @GenerateCached(false)
+    public abstract static class ArrayIteratorGetLengthNode extends JavaScriptBaseNode {
 
-    abstract long execute(Node node, Object array, JSContext context);
+        public abstract long execute(Node node, Object array, JSContext context);
 
-    @Specialization
-    static long doArray(JSArrayObject array, @SuppressWarnings("unused") JSContext context) {
-        return JSArray.arrayGetLength(array);
-    }
-
-    @Specialization
-    static long doTypedArray(Node node, JSTypedArrayObject typedArray, JSContext context,
-                    @Cached TypedArrayLengthNode typedArrayLengthNode,
-                    @Cached InlinedBranchProfile errorBranch) {
-        if (JSArrayBufferView.isOutOfBounds(typedArray, context)) {
-            errorBranch.enter(node);
-            throw Errors.createTypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");
+        @Specialization
+        static long doArray(JSArrayObject array, @SuppressWarnings("unused") JSContext context) {
+            return JSArray.arrayGetLength(array);
         }
-        return typedArrayLengthNode.execute(node, typedArray, context);
+
+        @Specialization
+        static long doTypedArray(Node node, JSTypedArrayObject typedArray, JSContext context,
+                        @Cached TypedArrayLengthNode typedArrayLengthNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (JSArrayBufferView.isOutOfBounds(typedArray, context)) {
+                errorBranch.enter(node);
+                throw Errors.createTypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");
+            }
+            return typedArrayLengthNode.execute(node, typedArray, context);
+        }
+
+        @Fallback
+        static long doArrayLike(Object array, @SuppressWarnings("unused") JSContext context,
+                        @Cached(value = "create(context)", inline = false) JSGetLengthNode getLengthNode) {
+            return getLengthNode.executeLong(array);
+        }
     }
 
-    @Fallback
-    static long doArrayLike(Object array, @SuppressWarnings("unused") JSContext context,
-                    @Cached(value = "create(context)", inline = false) JSGetLengthNode getLengthNode) {
-        return getLengthNode.executeLong(array);
+    /**
+     * Like {@link ArrayIteratorGetLengthNode}, but designed to avoid observable side effects. Only
+     * handles JS arrays, typed arrays, and foreign arrays (assumes getArraySize to well-behaved).
+     * Returns {@value JSRuntime#INVALID_INTEGER_INDEX} for other object types or if getting the
+     * length would throw an error.
+     */
+    @ImportStatic(JSConfig.class)
+    @GenerateInline
+    @GenerateCached(false)
+    public abstract static class ArrayIteratorGetLengthSafeNode extends JavaScriptBaseNode {
+
+        public abstract long execute(Node node, Object array);
+
+        @Specialization
+        static long doArray(JSArrayObject array) {
+            return JSArray.arrayGetLength(array);
+        }
+
+        @Specialization
+        static long doTypedArray(Node node, JSTypedArrayObject typedArray,
+                        @Cached TypedArrayLengthNode typedArrayLengthNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            JSContext context = JSContext.get(node);
+            if (JSArrayBufferView.isOutOfBounds(typedArray, context)) {
+                errorBranch.enter(node);
+                // Must call into the next method to ensure correct stack trace for the error.
+                return JSRuntime.INVALID_INTEGER_INDEX;
+            }
+            return typedArrayLengthNode.execute(node, typedArray, context);
+        }
+
+        @Specialization(guards = "isUndefined(array)")
+        static long doUndefined(@SuppressWarnings("unused") Object array) {
+            // Iterator is already done and detached.
+            return 0L;
+        }
+
+        @Specialization(guards = {"interop.hasArrayElements(array)", "isForeignObject(array)"}, limit = "InteropLibraryLimit")
+        static long doForeignArray(Object array,
+                        @CachedLibrary("array") InteropLibrary interop) {
+            try {
+                return interop.getArraySize(array);
+            } catch (UnsupportedMessageException e) {
+                return JSRuntime.INVALID_INTEGER_INDEX;
+            }
+        }
+
+        @Fallback
+        static long doArrayLike(@SuppressWarnings("unused") Object array) {
+            // Must call into the next method to ensure correct stack trace for length getters.
+            return JSRuntime.INVALID_INTEGER_INDEX;
+        }
     }
 }

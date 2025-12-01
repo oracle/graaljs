@@ -83,8 +83,18 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public final Object execute(VirtualFrame frame) {
         return executeRepeating(frame);
+    }
+
+    @Override
+    public final boolean executeBoolean(VirtualFrame frame) {
+        return executeRepeating(frame);
+    }
+
+    @Override
+    public final Object executeRepeatingWithValue(VirtualFrame frame) {
+        return RepeatingNode.super.executeRepeatingWithValue(frame);
     }
 
     protected boolean materializationNeeded() {
