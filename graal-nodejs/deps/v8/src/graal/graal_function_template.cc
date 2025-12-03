@@ -72,11 +72,10 @@ v8::Local<v8::FunctionTemplate> GraalFunctionTemplate::New(
     GraalValue* graal_data = reinterpret_cast<GraalValue*> (*data);
     if (graal_data == nullptr) {
         graal_data = graal_isolate->GetUndefined();
-    } else {
-        graal_data = reinterpret_cast<GraalValue*>(graal_data->Copy(true));
-        graal_data->MakeWeak();
     }
     jobject java_data = graal_data->GetJavaObject();
+    graal_data = reinterpret_cast<GraalValue*>(graal_data->Copy(true));
+    graal_data->MakeWeak();
     jint java_length = length;
     jboolean is_constructor = behavior == v8::ConstructorBehavior::kAllow;
     jboolean java_single_function = (jboolean) single_function_template;
