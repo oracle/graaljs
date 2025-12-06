@@ -201,6 +201,7 @@ public final class GraalJSParserHelper {
         builder.privateFieldsIn(parserOptions.privateFieldsIn());
         builder.topLevelAwait(parserOptions.topLevelAwait());
         builder.v8Intrinsics(parserOptions.v8Intrinsics());
+        builder.extractors(parserOptions.extractors());
         if (parserOptions.functionStatementError()) {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
         } else {

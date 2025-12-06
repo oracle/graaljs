@@ -2342,6 +2342,7 @@ public class JSRealm {
         putSymbolProperty(symbolFunction, Strings.TO_STRING_TAG, Symbol.SYMBOL_TO_STRING_TAG);
         putSymbolProperty(symbolFunction, Strings.TO_PRIMITIVE, Symbol.SYMBOL_TO_PRIMITIVE);
         putSymbolProperty(symbolFunction, Strings.UNSCOPABLES, Symbol.SYMBOL_UNSCOPABLES);
+        putSymbolProperty(symbolFunction, Strings.CUSTOM_MATCHER, Symbol.SYMBOL_CUSTOM_MATCHER);
     }
 
     private static void putSymbolProperty(JSDynamicObject symbolFunction, TruffleString name, Symbol symbol) {
