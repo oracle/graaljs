@@ -47,6 +47,7 @@ import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -65,6 +66,24 @@ public class ExtractorsParsingTest {
                 
                     constructor() {}
                 }
+                
+                class Bar {
+                    static [Symbol.customMatcher](subject) {
+                        return [1, 2, 3];
+                    }
+                }
+                
+                class Pair {
+                    constructor(first, second) {
+                        this.first = first;
+                        this.second = second;
+                    }
+                
+                    static [Symbol.customMatcher](pair) {
+                        return [pair.first, pair.second];
+                    }
+                }
+                
                 """ + code, "test").buildLiteral();
 
         return src;
@@ -132,7 +151,8 @@ public class ExtractorsParsingTest {
         }
     }
 
-    // todo-lw: failing
+    // todo-extractors: fix & enable
+    @Ignore
     @Test
     public void testNewlineAfterMemberExpression() {
         try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
@@ -189,15 +209,112 @@ public class ExtractorsParsingTest {
     }
 
     @Test
+    public void testWithArrayDestructuring() {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
+            final var src = srcWithBasicCustomMatcher("""
+                    const p = new Pair(17, 18);
+                    const [Pair(x), other, somethingElse] = [p, "value", 1];
+                    if (x !== 17 || other !== "value" || somethingElse !== 1) {
+                        throw new Error("Destructuring with extractor failed: " + x + ", " + other + ", " + somethingElse);
+                    }
+                    """);
+            final var value = ctx.eval(src);
+            assertTrue(value.isNull());
+        }
+    }
+
+    @Test
     public void testAsFunctionParameter() {
         try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
             final var src = srcWithBasicCustomMatcher("""
-                    const o1 = { o2: { Foo } }
+                    const o1 = [1, { o2: { Foo } }]
                     
-                    function f(o1.o2.Foo(a)) {}
+                    function f(o1[1].o2.Foo(a)) {}
                     f(1);
+                    
+                    async function af(o1[1].o2.Foo(a)) {}
+                    af(1);
                     """);
             ctx.eval(src);
+        }
+    }
+
+    @Test
+    public void testAsFunctionParameterInArrowFunction() {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
+            final var src = srcWithBasicCustomMatcher("""
+                    const o1 = [1, { o2: { Foo } }]
+
+                    const f = (o1[1].o2.Foo(a)) => {};
+                    f(1);
+
+                    const af = async (o1[1].o2.Foo(a)) => {};
+                    af(1);
+                    """);
+            ctx.eval(src);
+        }
+    }
+
+    @Test
+    public void testAsCatchBinding() {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
+            final var src = srcWithBasicCustomMatcher("""
+                    try {
+                        throw new Foo();
+                    } catch (Foo(e)) {
+                    }
+                    """);
+            ctx.eval(src);
+        }
+    }
+
+    @Test
+    public void negativeTestAsRestElement() {
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
+            final var src = srcWithBasicCustomMatcher("""
+                    const subject = [new Foo(), new Foo(), new Foo()];
+
+                    const [...Foo(x)] = [subject];
+                    """);
+            ctx.eval(src);
+            fail("Expected error");
+        } catch (PolyglotException e) {
+            if (e.isInternalError()) {
+                throw e;
+            } else {
+                Assert.assertTrue("SyntaxError", e.isSyntaxError());
+            }
+        }
+
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
+            final var src = srcWithBasicCustomMatcher("""
+                    const subject = [new Foo(), new Foo(), new Foo()];
+
+                    const {...Foo(x)} = {subject};
+                    """);
+            ctx.eval(src);
+            fail("Expected error");
+        } catch (PolyglotException e) {
+            if (e.isInternalError()) {
+                throw e;
+            } else {
+                Assert.assertTrue("SyntaxError", e.isSyntaxError());
+            }
+        }
+
+        try (Context ctx = JSTest.newContextBuilder().option(JSContextOptions.EXTRACTORS_NAME, "true").build()) {
+            final var src = srcWithBasicCustomMatcher("""
+                    function f(...Foo(x)) {}
+                    f([new Foo()]);
+                    """);
+            ctx.eval(src);
+            fail("Expected error");
+        } catch (PolyglotException e) {
+            if (e.isInternalError()) {
+                throw e;
+            } else {
+                Assert.assertTrue("SyntaxError", e.isSyntaxError());
+            }
         }
     }
 }

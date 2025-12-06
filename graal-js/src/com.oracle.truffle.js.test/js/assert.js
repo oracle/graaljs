@@ -24,11 +24,12 @@ function assertThrows(fn, errorType, msg) {
     throw Error('error expected for method: ' + fn);
 }
 
-function assertEqual(expected, actual) {
+function assertEqual(expected, actual, message) {
     if (expected != actual) {
         var error = 'Objects not equal - '
                 + 'expected: [' + expected + '] vs. '
-                + 'actual: [' + actual +']';
+                + 'actual: [' + actual +']'
+                + (message ? ' : ' +  message : '');
         throw new Error(error);
     }
 }
@@ -43,11 +44,12 @@ function _isSame(a, b) {
     return (a !== a) && (b !== b);
 }
 
-function assertSame(expected, actual) {
+function assertSame(expected, actual, message) {
     if (!_isSame(expected, actual)) {
         var error = 'Objects not same - '
                 + 'expected: [' + expected + '] vs. '
-                + 'actual: [' + actual +']';
+                + 'actual: [' + actual +']'
+                + (message ? ' : ' +  message : '');
         throw new Error(error);
     }
 }
@@ -60,12 +62,12 @@ function assertSameContent(expected, actual) {
     }
 }
 
-function assertTrue(condition) {
-    assertSame(true, condition);
+function assertTrue(condition, message) {
+    assertSame(true, condition, message);
 }
 
-function assertFalse(condition) {
-    assertSame(false, condition);
+function assertFalse(condition, message) {
+    assertSame(false, condition, message);
 }
 
 function fail(msg) {

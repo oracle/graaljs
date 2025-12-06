@@ -1064,9 +1064,16 @@ public class Parser extends AbstractParser {
         return lhs instanceof CallNode callNode && callNode.isWebCompatAssignmentTargetType();
     }
 
-    private boolean isDestructuringOrExtractorLhs(Expression lhs) {
+    private boolean isDestructuringLhs(Expression lhs) {
         if (lhs instanceof ObjectNode || lhs instanceof ArrayLiteralNode) {
             return ES6_DESTRUCTURING && isES6();
+        }
+        return false;
+    }
+
+    private boolean isDestructuringOrExtractorLhs(Expression lhs) {
+        if (isDestructuringLhs(lhs)) {
+            return true;
         }
         if (lhs instanceof CallNode) {
             return env.extractors;
@@ -2488,10 +2495,8 @@ public class Parser extends AbstractParser {
                 throw error(AbstractParser.message(MSG_INVALID_LVALUE), binding.getToken());
             }
 
-            final boolean isExtracting = binding instanceof CallNode;
-
-            final boolean isDestructuring = !(binding instanceof IdentNode) && !isExtracting;
-            if (isDestructuring) {
+            final boolean isDestructuringOrExtracting = !(binding instanceof IdentNode);
+            if (isDestructuringOrExtracting) {
                 final int finalVarFlags = varFlags | VarNode.IS_DESTRUCTURING;
                 verifyDestructuringBindingPattern(binding, new Consumer<IdentNode>() {
                     @Override
@@ -2519,18 +2524,18 @@ public class Parser extends AbstractParser {
                 next();
 
                 // Get initializer expression. Suppress IN if not statement.
-                if (!isDestructuring) {
+                if (!isDestructuringOrExtracting) {
                     pushDefaultName(binding);
                 }
                 try {
                     init = assignmentExpression(isStatement, yield, await);
                 } finally {
-                    if (!isDestructuring) {
+                    if (!isDestructuringOrExtracting) {
                         popDefaultName();
                     }
                 }
             } else if (isStatement) {
-                if (isDestructuring) {
+                if (isDestructuringOrExtracting) {
                     throw error(AbstractParser.message(MSG_MISSING_DESTRUCTURING_ASSIGNMENT), token);
                 } else if (varType == CONST) {
                     throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) binding).getName()));
@@ -2538,7 +2543,7 @@ public class Parser extends AbstractParser {
                 // else, if we are in a for loop, delay checking until we know the kind of loop
             }
 
-            if (!isDestructuring && !isExtracting) {
+            if (!isDestructuringOrExtracting) {
                 assert init != null || varType != CONST || !isStatement;
                 final IdentNode ident = (IdentNode) binding;
                 if (varType != VAR && ident.getName().equals(LET.getName())) {
@@ -2725,6 +2730,13 @@ public class Parser extends AbstractParser {
             return arrayLiteral(yield, await, CoverExpressionError.IGNORE);
         } else if (type == LBRACE) {
             return objectLiteral(yield, await, CoverExpressionError.IGNORE);
+        } else if (env.extractors && type == IDENT) {
+            final var extractor = leftHandSideExpression(yield, await, CoverExpressionError.DENY);
+            if (extractor instanceof CallNode) {
+                return extractor;
+            } else {
+                throw error(AbstractParser.message(MSG_EXPECTED_BINDING), extractor.getToken());
+            }
         } else {
             throw error(AbstractParser.message(MSG_EXPECTED_BINDING));
         }
@@ -2834,7 +2846,7 @@ public class Parser extends AbstractParser {
             protected void verifySpreadElement(Expression lvalue) {
                 if (lvalue instanceof IdentNode) {
                     enterIdentNode((IdentNode) lvalue);
-                } else if (isDestructuringOrExtractorLhs(lvalue)) {
+                } else if (isDestructuringLhs(lvalue)) {
                     verifyDestructuringBindingPattern(lvalue, identifierCallback);
                 } else {
                     throw error("Expected a valid binding identifier", lvalue.getToken());
@@ -3872,7 +3884,8 @@ public class Parser extends AbstractParser {
                         pattern = null;
                         ifExpression = null;
                     } else {
-                        if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
+                        // If extractors are allowed, bindingPattern may start with an identifier so we need to look ahead
+                        if ((isBindingIdentifier() && (!env.extractors || Token.descType(getToken(k + 1)) == RPAREN)) || !(ES6_DESTRUCTURING && isES6())) {
                             pattern = null;
                             IdentNode catchParameter = bindingIdentifier(yield, await, CONTEXT_CATCH_PARAMETER);
                             exception = catchParameter.setIsCatchParameter();

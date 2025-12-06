@@ -3132,13 +3132,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             receiver = transform(accessNode.getBase());
         }
 
-        final var invokeCustomMatcherOrThrowNode = factory.createInvokeCustomMatcherOrThrow(context, function, assignedValue, receiver, environment.isStrictMode());
+        // It's important to only read from assignedValue once, otherwise we might advance an iterator multiple times
+        VarRef assignedValueTempVar = environment.createTempVar();
+        JavaScriptNode storeAssignedValue = assignedValueTempVar.createWriteNode(assignedValue);
+        JavaScriptNode readAssignedValue = assignedValueTempVar.createReadNode();
+
+        final var invokeCustomMatcherOrThrowNode = factory.createInvokeCustomMatcherOrThrow(context, function, readAssignedValue, receiver, environment.isStrictMode());
 
         final var args = fakeCallNode.getArgs();
         VarRef valueTempVar = environment.createTempVar();
         return createBlock(
+                storeAssignedValue,
                 this.transformDestructuringArrayAssignment(args, invokeCustomMatcherOrThrowNode, valueTempVar, initializationAssignment),
-                valueTempVar.createWriteNode(assignedValue)
+                valueTempVar.createWriteNode(assignedValueTempVar.createReadNode())
         );
     }
 
