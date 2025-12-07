@@ -170,14 +170,14 @@ bool KmacTraits::DeriveBits(Environment* env,
   params_array[params_count] = OSSL_PARAM_construct_end();
 
   // Initialize the MAC context.
-  if (!mac_ctx.init(ncrypto::Buffer<const void>(key_data, key_size),
+  if (!mac_ctx.init(ncrypto::Buffer<const void>{key_data, key_size},
                     params_array)) {
     return false;
   }
 
   // Update with data.
-  if (!mac_ctx.update(ncrypto::Buffer<const void>(params.data.data(),
-                                                  params.data.size()))) {
+  if (!mac_ctx.update(ncrypto::Buffer<const void>{params.data.data(),
+                                                  params.data.size()})) {
     return false;
   }
 
