@@ -109,21 +109,16 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     private static final String EXPORT_TYPE_IMPORT = "import";
     private static final String EXPORT_TYPE_REQUIRE = "require";
     private static final String EXPORT_TYPE_DEFAULT = "default";
-    private static final LinkedList<String> EXPORT_TYPES;
+    private final LinkedList<String> EXPORT_TYPES = new LinkedList<>(
+        List.of(EXPORT_TYPE_GRAALJS, EXPORT_TYPE_IMPORT, EXPORT_TYPE_REQUIRE, EXPORT_TYPE_DEFAULT));
 
-    static {
-        EXPORT_TYPES = new LinkedList<>(
-                List.of(EXPORT_TYPE_GRAALJS, EXPORT_TYPE_IMPORT, EXPORT_TYPE_REQUIRE, EXPORT_TYPE_DEFAULT)
-        );
-    }
-
-    public static void registerPreferredExportType(String exportType) {
+    public void registerPreferredExportType(String exportType) {
         if (!EXPORT_TYPES.contains(exportType)) {
             EXPORT_TYPES.addFirst(exportType);
         }
     }
 
-    public static List<String> getRegisteredExportTypes() {
+    public List<String> getRegisteredExportTypes() {
         return List.copyOf(EXPORT_TYPES);
     }
 
