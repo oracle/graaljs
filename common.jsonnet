@@ -83,7 +83,7 @@ targets +
     capabilities+: ['tmpfs25g', 'x52'],
   },
 
-  linux_aarch64:: common.linux_aarch64 + self.linux_common,
+  linux_aarch64:: common.linux_aarch64_ol8 + self.linux_common,
 
   darwin_aarch64:: common.darwin_aarch64 + self.darwin_common + {
     environment+: {
