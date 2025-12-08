@@ -73,7 +73,7 @@
 #endif
 
 #ifdef NODE_ENABLE_VTUNE_PROFILING
-#include "../deps/v8/src/third_party/vtune/v8-vtune.h"
+#include "../deps/v8/third_party/vtune/v8-vtune.h"
 #endif
 
 #include "large_pages/node_large_page.h"
@@ -780,7 +780,10 @@ static ExitCode ProcessGlobalArgsInternal(std::vector<std::string>* args,
     env_opts->abort_on_uncaught_exception = true;
   }
 
-  v8_args.emplace_back("--js-source-phase-imports");
+  if (std::ranges::find(v8_args, "--no-js-source-phase-imports") ==
+      v8_args.end()) {
+    v8_args.emplace_back("--js-source-phase-imports");
+  }
 
   const DebugOptions& debug_options = env_opts->debug_options();
   auto full_option = [&debug_options](std::string option){

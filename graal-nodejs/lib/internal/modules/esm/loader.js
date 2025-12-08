@@ -34,7 +34,7 @@ const { kEmptyObject } = require('internal/util');
 const {
   compileSourceTextModule,
   getDefaultConditions,
-  forceDefaultLoader,
+  shouldSpawnLoaderHookWorker,
 } = require('internal/modules/esm/utils');
 const { kImplicitTypeAttribute } = require('internal/modules/esm/assert');
 const {
@@ -51,12 +51,13 @@ const {
   urlToFilename,
 } = require('internal/modules/helpers');
 const {
-  resolveHooks,
-  resolveWithHooks,
-  loadHooks,
-  loadWithHooks,
+  resolveHooks: syncResolveHooks,
+  resolveWithHooks: resolveWithSyncHooks,
+  loadHooks: syncLoadHooks,
+  loadWithHooks: loadWithSyncHooks,
+  validateLoadSloppy,
 } = require('internal/modules/customization_hooks');
-let defaultResolve, defaultLoad, defaultLoadSync, importMetaInitializer;
+let defaultResolve, defaultLoadSync, importMetaInitializer;
 
 const { tracingChannel } = require('diagnostics_channel');
 const onImport = tracingChannel('module.import');
@@ -68,7 +69,7 @@ let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
 const { isPromise } = require('internal/util/types');
 
 /**
- * @typedef {import('./hooks.js').HooksProxy} HooksProxy
+ * @typedef {import('./hooks.js').AsyncLoaderHookWorker} AsyncLoaderHookWorker
  * @typedef {import('./module_job.js').ModuleJobBase} ModuleJobBase
  * @typedef {import('url').URL} URL
  */
@@ -123,14 +124,6 @@ function getRaceMessage(filename, parentFilename) {
 }
 
 /**
- * @type {HooksProxy}
- * Multiple loader instances exist for various, specific reasons (see code comments at site).
- * In order to maintain consistency, we use a single worker (sandbox), which must sit apart of an
- * individual loader instance.
- */
-let hooksProxy;
-
-/**
  * @typedef {import('../cjs/loader.js').Module} CJSModule
  */
 
@@ -147,9 +140,21 @@ let hooksProxy;
  */
 
 /**
- * This class covers the base machinery of module loading. To add custom
- * behavior you can pass a customizations object and this object will be
- * used to do the loading/resolving/registration process.
+ * @typedef {{ format: ModuleFormat, source: ModuleSource, translatorKey: string }} TranslateContext
+ */
+
+/**
+ * @typedef {import('./hooks.js').AsyncLoaderHooks} AsyncLoaderHooks
+ * @typedef {import('./hooks.js').AsyncLoaderHooksOnLoaderHookWorker} AsyncLoaderHooksOnLoaderHookWorker
+ * @typedef {import('./hooks.js').AsyncLoaderHooksProxiedToLoaderHookWorker} AsyncLoaderHooksProxiedToLoaderHookWorker
+ */
+
+/**
+ * This class covers the base machinery of module loading. There are two types of loader hooks:
+ * 1. Asynchronous loader hooks, which are run in a separate loader hook worker thread.
+ *    This is configured in #asyncLoaderHooks.
+ * 2. Synchronous loader hooks, which are run in-thread. This is shared with the CJS loader and is
+ *    stored in the cross-module syncResolveHooks and syncLoadHooks arrays.
  */
 class ModuleLoader {
   /**
@@ -180,73 +185,44 @@ class ModuleLoader {
   allowImportMetaResolve;
 
   /**
-   * Customizations to pass requests to.
-   * @type {import('./hooks.js').Hooks}
-   * Note that this value _MUST_ be set with `setCustomizations`
-   * because it needs to copy `customizations.allowImportMetaResolve`
+   * Asynchronous loader hooks to pass requests to.
+   *
+   * Note that this value _MUST_ be set with `#setAsyncLoaderHooks`
+   * because it needs to copy `#asyncLoaderHooks.allowImportMetaResolve`
    *  to this property and failure to do so will cause undefined
    * behavior when invoking `import.meta.resolve`.
-   * @see {ModuleLoader.setCustomizations}
-   * @type {CustomizedModuleLoader}
+   *
+   * When the ModuleLoader is created on a loader hook thread, this is
+   * {@link AsyncLoaderHooksOnLoaderHookWorker}, and its methods directly call out
+   * to loader methods. Otherwise, this is {@link AsyncLoaderHooksProxiedToLoaderHookWorker},
+   * and its methods post messages to the loader thread and possibly block on it.
+   * @see {ModuleLoader.#setAsyncLoaderHooks}
+   * @type {AsyncLoaderHooks}
    */
-  #customizations;
+  #asyncLoaderHooks;
 
-  constructor(customizations) {
-    this.setCustomizations(customizations);
+  constructor(asyncLoaderHooks) {
+    this.#setAsyncLoaderHooks(asyncLoaderHooks);
   }
 
   /**
-   * Change the currently activate customizations for this module
-   * loader to be the provided `customizations`.
+   * Change the currently activate async loader hooks for this module
+   * loader to be the provided `AsyncLoaderHooks`.
    *
    * If present, this class customizes its core functionality to the
-   * `customizations` object, including registration, loading, and resolving.
+   * `AsyncLoaderHooks` object, including registration, loading, and resolving.
    * There are some responsibilities that this class _always_ takes
-   * care of, like validating outputs, so that the customizations object
+   * care of, like validating outputs, so that the AsyncLoaderHooks object
    * does not have to do so.
-   *
-   * The customizations object has the shape:
-   *
-   * ```ts
-   * interface LoadResult {
-   *   format: ModuleFormat;
-   *   source: ModuleSource;
-   * }
-   *
-   * interface ResolveResult {
-   *   format: string;
-   *   url: URL['href'];
-   * }
-   *
-   * interface Customizations {
-   *   allowImportMetaResolve: boolean;
-   *   load(url: string, context: object): Promise<LoadResult>
-   *   resolve(
-   *     originalSpecifier:
-   *     string, parentURL: string,
-   *     importAttributes: Record<string, string>
-   *   ): Promise<ResolveResult>
-   *   resolveSync(
-   *     originalSpecifier:
-   *     string, parentURL: string,
-   *     importAttributes: Record<string, string>
-   *   ) ResolveResult;
-   *   register(specifier: string, parentURL: string): any;
-   *   forceLoadHooks(): void;
-   * }
-   * ```
-   *
-   * Note that this class _also_ implements the `Customizations`
-   * interface, as does `CustomizedModuleLoader` and `Hooks`.
    *
    * Calling this function alters how modules are loaded and should be
    * invoked with care.
-   * @param {CustomizedModuleLoader} customizations
+   * @param {AsyncLoaderHooks} asyncLoaderHooks
    */
-  setCustomizations(customizations) {
-    this.#customizations = customizations;
-    if (customizations) {
-      this.allowImportMetaResolve = customizations.allowImportMetaResolve;
+  #setAsyncLoaderHooks(asyncLoaderHooks) {
+    this.#asyncLoaderHooks = asyncLoaderHooks;
+    if (asyncLoaderHooks) {
+      this.allowImportMetaResolve = asyncLoaderHooks.allowImportMetaResolve;
     } else {
       this.allowImportMetaResolve = true;
     }
@@ -503,18 +479,19 @@ class ModuleLoader {
 
     const loadResult = this.#loadSync(url, { format, importAttributes });
 
+    const formatFromLoad = loadResult.format;
     // Use the synchronous commonjs translator which can deal with cycles.
-    const finalFormat =
-      loadResult.format === 'commonjs' ||
-      loadResult.format === 'commonjs-typescript' ? 'commonjs-sync' : loadResult.format;
+    const translatorKey = (formatFromLoad === 'commonjs' || formatFromLoad === 'commonjs-typescript') ?
+      'commonjs-sync' : formatFromLoad;
 
-    if (finalFormat === 'wasm') {
+    if (translatorKey === 'wasm') {
       assert.fail('WASM is currently unsupported by require(esm)');
     }
 
     const { source } = loadResult;
     const isMain = (parentURL === undefined);
-    const wrap = this.#translate(url, finalFormat, source, parentURL);
+    const translateContext = { format: formatFromLoad, source, translatorKey, __proto__: null };
+    const wrap = this.#translate(url, translateContext, parentURL);
     assert(wrap instanceof ModuleWrap, `Translator used for require(${url}) should not be async`);
 
     if (process.env.WATCH_REPORT_DEPENDENCIES && process.send) {
@@ -523,7 +500,7 @@ class ModuleLoader {
 
     const cjsModule = wrap[imported_cjs_symbol];
     if (cjsModule) {
-      assert(finalFormat === 'commonjs-sync');
+      assert(translatorKey === 'commonjs-sync');
       // Check if the ESM initiating import CJS is being required by the same CJS module.
       if (cjsModule?.[kIsExecuting]) {
         const parentFilename = urlToFilename(parentURL);
@@ -547,22 +524,22 @@ class ModuleLoader {
    * Translate a loaded module source into a ModuleWrap. This is run synchronously,
    * but the translator may return the ModuleWrap in a Promise.
    * @param {string} url URL of the module to be translated.
-   * @param {string} format Format of the module to be translated. This is used to find
-   *   matching translators.
-   * @param {ModuleSource} source Source of the module to be translated.
-   * @param {string|undefined} parentURL URL of the parent module. Undefined if it's the entry point.
+   * @param {TranslateContext} translateContext Context for the translator
+   * @param {string|undefined} parentURL URL of the module initiating the module loading for the first time.
+   *   Undefined if it's the entry point.
    * @returns {ModuleWrap}
    */
-  #translate(url, format, source, parentURL) {
+  #translate(url, translateContext, parentURL) {
+    const { translatorKey, format } = translateContext;
     this.validateLoadResult(url, format);
-    const translator = getTranslators().get(format);
+    const translator = getTranslators().get(translatorKey);
 
     if (!translator) {
-      throw new ERR_UNKNOWN_MODULE_FORMAT(format, url);
+      throw new ERR_UNKNOWN_MODULE_FORMAT(translatorKey, url);
     }
 
-    const result = FunctionPrototypeCall(translator, this, url, source, parentURL === undefined);
-    assert(result instanceof ModuleWrap);
+    const result = FunctionPrototypeCall(translator, this, url, translateContext, parentURL);
+    assert(result instanceof ModuleWrap, `The ${format} module returned is not a ModuleWrap`);
     return result;
   }
 
@@ -575,7 +552,8 @@ class ModuleLoader {
    * @returns {ModuleWrap}
    */
   loadAndTranslateForRequireInImportedCJS(url, loadContext, parentURL) {
-    const { format: formatFromLoad, source } = this.#loadSync(url, loadContext);
+    const loadResult = this.#loadSync(url, loadContext);
+    const formatFromLoad = loadResult.format;
 
     if (formatFromLoad === 'wasm') {  // require(wasm) is not supported.
       throw new ERR_UNKNOWN_MODULE_FORMAT(formatFromLoad, url);
@@ -587,15 +565,16 @@ class ModuleLoader {
       }
     }
 
-    let finalFormat = formatFromLoad;
+    let translatorKey = formatFromLoad;
     if (formatFromLoad === 'commonjs') {
-      finalFormat = 'require-commonjs';
+      translatorKey = 'require-commonjs';
     }
     if (formatFromLoad === 'commonjs-typescript') {
-      finalFormat = 'require-commonjs-typescript';
+      translatorKey = 'require-commonjs-typescript';
     }
 
-    const wrap = this.#translate(url, finalFormat, source, parentURL);
+    const translateContext = { ...loadResult, translatorKey, __proto__: null };
+    const wrap = this.#translate(url, translateContext, parentURL);
     assert(wrap instanceof ModuleWrap, `Translator used for require(${url}) should not be async`);
     return wrap;
   }
@@ -610,8 +589,9 @@ class ModuleLoader {
    */
   loadAndTranslate(url, loadContext, parentURL) {
     const maybePromise = this.load(url, loadContext);
-    const afterLoad = ({ format, source }) => {
-      return this.#translate(url, format, source, parentURL);
+    const afterLoad = (loadResult) => {
+      const translateContext = { ...loadResult, translatorKey: loadResult.format, __proto__: null };
+      return this.#translate(url, translateContext, parentURL);
     };
     if (isPromise(maybePromise)) {
       return maybePromise.then(afterLoad);
@@ -698,18 +678,18 @@ class ModuleLoader {
   }
 
   /**
-   * @see {@link CustomizedModuleLoader.register}
+   * @see {@link AsyncLoaderHooks.register}
    * @returns {any}
    */
   register(specifier, parentURL, data, transferList, isInternal) {
-    if (!this.#customizations) {
-      // `CustomizedModuleLoader` is defined at the bottom of this file and
-      // available well before this line is ever invoked. This is here in
-      // order to preserve the git diff instead of moving the class.
-      // eslint-disable-next-line no-use-before-define
-      this.setCustomizations(new CustomizedModuleLoader());
+    if (!this.#asyncLoaderHooks) {
+      // On the loader hook worker thread, the #asyncLoaderHooks must already have been initialized
+      // to be an instance of AsyncLoaderHooksOnLoaderHookWorker, so this branch can only ever
+      // be hit on a non-loader-hook thread that will talk to the loader hook worker thread.
+      const { AsyncLoaderHooksProxiedToLoaderHookWorker } = require('internal/modules/esm/hooks');
+      this.#setAsyncLoaderHooks(new AsyncLoaderHooksProxiedToLoaderHookWorker());
     }
-    return this.#customizations.register(`${specifier}`, `${parentURL}`, data, transferList, isInternal);
+    return this.#asyncLoaderHooks.register(`${specifier}`, `${parentURL}`, data, transferList, isInternal);
   }
 
   /**
@@ -724,12 +704,12 @@ class ModuleLoader {
    */
   resolve(specifier, parentURL, importAttributes) {
     specifier = `${specifier}`;
-    if (resolveHooks.length) {
+    if (syncResolveHooks.length) {
       // Has module.registerHooks() hooks, use the synchronous variant that can handle both hooks.
       return this.resolveSync(specifier, parentURL, importAttributes);
     }
-    if (this.#customizations) {  // Only has module.register hooks.
-      return this.#customizations.resolve(specifier, parentURL, importAttributes);
+    if (this.#asyncLoaderHooks) {  // Only has module.register hooks.
+      return this.#asyncLoaderHooks.resolve(specifier, parentURL, importAttributes);
     }
     return this.#cachedDefaultResolve(specifier, {
       __proto__: null,
@@ -787,8 +767,8 @@ class ModuleLoader {
    * @returns {{ format: string, url: string }}
    */
   #resolveAndMaybeBlockOnLoaderThread(specifier, context) {
-    if (this.#customizations) {
-      return this.#customizations.resolveSync(specifier, context.parentURL, context.importAttributes);
+    if (this.#asyncLoaderHooks) {
+      return this.#asyncLoaderHooks.resolveSync(specifier, context.parentURL, context.importAttributes);
     }
     return this.#cachedDefaultResolve(specifier, context);
   }
@@ -808,10 +788,10 @@ class ModuleLoader {
    */
   resolveSync(specifier, parentURL, importAttributes = { __proto__: null }) {
     specifier = `${specifier}`;
-    if (resolveHooks.length) {
+    if (syncResolveHooks.length) {
       // Has module.registerHooks() hooks, chain the asynchronous hooks in the default step.
-      return resolveWithHooks(specifier, parentURL, importAttributes, this.#defaultConditions,
-                              this.#resolveAndMaybeBlockOnLoaderThread.bind(this));
+      return resolveWithSyncHooks(specifier, parentURL, importAttributes, this.#defaultConditions,
+                                  this.#resolveAndMaybeBlockOnLoaderThread.bind(this));
     }
     return this.#resolveAndMaybeBlockOnLoaderThread(specifier, {
       __proto__: null,
@@ -829,16 +809,16 @@ class ModuleLoader {
    * @returns {Promise<{ format: ModuleFormat, source: ModuleSource }> | { format: ModuleFormat, source: ModuleSource }}
    */
   load(url, context) {
-    if (loadHooks.length) {
+    if (syncLoadHooks.length) {
       // Has module.registerHooks() hooks, use the synchronous variant that can handle both hooks.
       return this.#loadSync(url, context);
     }
-    if (this.#customizations) {
-      return this.#customizations.load(url, context);
+    if (this.#asyncLoaderHooks) {
+      return this.#asyncLoaderHooks.load(url, context);
     }
 
-    defaultLoad ??= require('internal/modules/esm/load').defaultLoad;
-    return defaultLoad(url, context);
+    defaultLoadSync ??= require('internal/modules/esm/load').defaultLoadSync;
+    return defaultLoadSync(url, context);
   }
 
   /**
@@ -849,8 +829,8 @@ class ModuleLoader {
    * @returns {{ format: ModuleFormat, source: ModuleSource }}
    */
   #loadAndMaybeBlockOnLoaderThread(url, context) {
-    if (this.#customizations) {
-      return this.#customizations.loadSync(url, context);
+    if (this.#asyncLoaderHooks) {
+      return this.#asyncLoaderHooks.loadSync(url, context);
     }
     defaultLoadSync ??= require('internal/modules/esm/load').defaultLoadSync;
     return defaultLoadSync(url, context);
@@ -868,12 +848,12 @@ class ModuleLoader {
    * @returns {{ format: ModuleFormat, source: ModuleSource }}
    */
   #loadSync(url, context) {
-    if (loadHooks.length) {
+    if (syncLoadHooks.length) {
       // Has module.registerHooks() hooks, chain the asynchronous hooks in the default step.
       // TODO(joyeecheung): construct the ModuleLoadContext in the loaders directly instead
       // of converting them from plain objects in the hooks.
-      return loadWithHooks(url, context.format, context.importAttributes, this.#defaultConditions,
-                           this.#loadAndMaybeBlockOnLoaderThread.bind(this));
+      return loadWithSyncHooks(url, context.format, context.importAttributes, this.#defaultConditions,
+                               this.#loadAndMaybeBlockOnLoaderThread.bind(this), validateLoadSloppy);
     }
     return this.#loadAndMaybeBlockOnLoaderThread(url, context);
   }
@@ -885,8 +865,8 @@ class ModuleLoader {
   }
 
   importMetaInitialize(meta, context) {
-    if (this.#customizations) {
-      return this.#customizations.importMetaInitialize(meta, context, this);
+    if (this.#asyncLoaderHooks) {
+      return this.#asyncLoaderHooks.importMetaInitialize(meta, context, this);
     }
     importMetaInitializer ??= require('internal/modules/esm/initialize_import_meta').initializeImportMeta;
     meta = importMetaInitializer(meta, context, this);
@@ -894,94 +874,29 @@ class ModuleLoader {
   }
 
   /**
+   * Block until the async loader hooks have been initialized.
+   *
    * No-op when no hooks have been supplied.
    */
-  forceLoadHooks() {
-    this.#customizations?.forceLoadHooks();
+  waitForAsyncLoaderHookInitialization() {
+    this.#asyncLoaderHooks?.waitForLoaderHookInitialization();
   }
 }
 ObjectSetPrototypeOf(ModuleLoader.prototype, null);
-
-class CustomizedModuleLoader {
-
-  allowImportMetaResolve = true;
-
-  /**
-   * Instantiate a module loader that uses user-provided custom loader hooks.
-   */
-  constructor() {
-    getHooksProxy();
-  }
-
-  /**
-   * Register some loader specifier.
-   * @param {string} originalSpecifier The specified URL path of the loader to
-   *   be registered.
-   * @param {string} parentURL The parent URL from where the loader will be
-   *   registered if using it package name as specifier
-   * @param {any} [data] Arbitrary data to be passed from the custom loader
-   *   (user-land) to the worker.
-   * @param {any[]} [transferList] Objects in `data` that are changing ownership
-   * @param {boolean} [isInternal] For internal loaders that should not be publicly exposed.
-   * @returns {{ format: string, url: URL['href'] }}
-   */
-  register(originalSpecifier, parentURL, data, transferList, isInternal) {
-    return hooksProxy.makeSyncRequest('register', transferList, originalSpecifier, parentURL, data, isInternal);
-  }
-
-  /**
-   * Resolve the location of the module.
-   * @param {string} originalSpecifier The specified URL path of the module to
-   *   be resolved.
-   * @param {string} [parentURL] The URL path of the module's parent.
-   * @param {ImportAttributes} importAttributes Attributes from the import
-   *   statement or expression.
-   * @returns {{ format: string, url: URL['href'] }}
-   */
-  resolve(originalSpecifier, parentURL, importAttributes) {
-    return hooksProxy.makeAsyncRequest('resolve', undefined, originalSpecifier, parentURL, importAttributes);
-  }
-
-  resolveSync(originalSpecifier, parentURL, importAttributes) {
-    // This happens only as a result of `import.meta.resolve` calls, which must be sync per spec.
-    return hooksProxy.makeSyncRequest('resolve', undefined, originalSpecifier, parentURL, importAttributes);
-  }
-
-  /**
-   * Provide source that is understood by one of Node's translators.
-   * @param {URL['href']} url The URL/path of the module to be loaded
-   * @param {object} [context] Metadata about the module
-   * @returns {Promise<{ format: ModuleFormat, source: ModuleSource }>}
-   */
-  load(url, context) {
-    return hooksProxy.makeAsyncRequest('load', undefined, url, context);
-  }
-  loadSync(url, context) {
-    return hooksProxy.makeSyncRequest('load', undefined, url, context);
-  }
-
-  importMetaInitialize(meta, context, loader) {
-    hooksProxy.importMetaInitialize(meta, context, loader);
-  }
-
-  forceLoadHooks() {
-    hooksProxy.waitForWorker();
-  }
-}
 
 let emittedLoaderFlagWarning = false;
 /**
  * A loader instance is used as the main entry point for loading ES modules. Currently, this is a singleton; there is
  * only one used for loading the main module and everything in its dependency graph, though separate instances of this
  * class might be instantiated as part of bootstrap for other purposes.
+ * @param {AsyncLoaderHooksOnLoaderHookWorker|undefined} [asyncLoaderHooks]
+ *   Only provided when run on the loader hook thread.
  * @returns {ModuleLoader}
  */
-function createModuleLoader() {
-  let customizations = null;
-  // Don't spawn a new worker if custom loaders are disabled. For instance, if
-  // we're already in a worker thread created by instantiating
-  // CustomizedModuleLoader; doing so would cause an infinite loop.
-  if (!forceDefaultLoader()) {
+function createModuleLoader(asyncLoaderHooks) {
+  // Don't spawn a new loader hook worker if we are already in a loader hook worker to avoid infinite recursion.
+  if (shouldSpawnLoaderHookWorker()) {
+    assert(asyncLoaderHooks === undefined, 'asyncLoaderHooks should only be provided on the loader hook thread itself');
     const userLoaderPaths = getOptionValue('--experimental-loader');
     if (userLoaderPaths.length > 0) {
       if (!emittedLoaderFlagWarning) {
@@ -1003,42 +918,35 @@ function createModuleLoader() {
         );
         emittedLoaderFlagWarning = true;
       }
-      customizations = new CustomizedModuleLoader();
+      const { AsyncLoaderHooksProxiedToLoaderHookWorker } = require('internal/modules/esm/hooks');
+      asyncLoaderHooks = new AsyncLoaderHooksProxiedToLoaderHookWorker();
     }
   }
 
-  return new ModuleLoader(customizations);
-}
-
-
-/**
- * Get the HooksProxy instance. If it is not defined, then create a new one.
- * @returns {HooksProxy}
- */
-function getHooksProxy() {
-  if (!hooksProxy) {
-    const { HooksProxy } = require('internal/modules/esm/hooks');
-    hooksProxy = new HooksProxy();
-  }
-
-  return hooksProxy;
+  return new ModuleLoader(asyncLoaderHooks);
 }
 
 let cascadedLoader;
 
 /**
  * This is a singleton ESM loader that integrates the loader hooks, if any.
- * It it used by other internal built-ins when they need to load ESM code
+ * It it used by other internal built-ins when they need to load user-land ESM code
  * while also respecting hooks.
  * When built-ins need access to this loader, they should do
  * require('internal/module/esm/loader').getOrInitializeCascadedLoader()
  * lazily only right before the loader is actually needed, and don't do it
  * in the top-level, to avoid circular dependencies.
+ * @param {AsyncLoaderHooksOnLoaderHookWorker|undefined} [asyncLoaderHooks]
+ *   Only provided when run on the loader hook thread.
  * @returns {ModuleLoader}
  */
-function getOrInitializeCascadedLoader() {
-  cascadedLoader ??= createModuleLoader();
+function getOrInitializeCascadedLoader(asyncLoaderHooks) {
+  cascadedLoader ??= createModuleLoader(asyncLoaderHooks);
   return cascadedLoader;
+}
+
+function isCascadedLoaderInitialized() {
+  return cascadedLoader !== undefined;
 }
 
 /**
@@ -1085,7 +993,7 @@ function register(specifier, parentURL = undefined, options) {
 
 module.exports = {
   createModuleLoader,
-  getHooksProxy,
   getOrInitializeCascadedLoader,
+  isCascadedLoaderInitialized,
   register,
 };

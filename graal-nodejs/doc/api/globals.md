@@ -274,6 +274,12 @@ added: v16.0.0
 
 Global alias for [`buffer.atob()`][].
 
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/util-is)):
+
+```bash
+npx codemod@latest @nodejs/buffer-atob-btoa
+```
+
 ## Class: `BroadcastChannel`
 
 <!-- YAML
@@ -821,7 +827,7 @@ navigator.locks.request('shared_resource', { mode: 'shared' }, async (lock) => {
 });
 ```
 
-See [`worker.locks`][] for detailed API documentation.
+See [`worker_threads.locks`][] for detailed API documentation.
 
 ## Class: `PerformanceEntry`
 
@@ -1369,7 +1375,7 @@ A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 [`setTimeout`]: timers.md#settimeoutcallback-delay-args
 [`structuredClone`]: https://developer.mozilla.org/en-US/docs/Web/API/structuredClone
 [`window.navigator`]: https://developer.mozilla.org/en-US/docs/Web/API/Window/navigator
-[`worker.locks`]: worker_threads.md#workerlocks
+[`worker_threads.locks`]: worker_threads.md#worker_threadslocks
 [browser `LockManager`]: https://developer.mozilla.org/en-US/docs/Web/API/LockManager
 [buffer section]: buffer.md
 [built-in objects]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects
