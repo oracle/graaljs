@@ -432,7 +432,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                 // 11.6 Otherwise, if packageSubpath is equal to ".", then
                 // 11.6.1 If pjson.main is a string, then return the URL resolution of main in
                 // packageURL.
-                if (pjson != null && pjson.hasMainProperty()) {
+                if (pjson != null && pjson.hasModuleProperty()) {
+                    TruffleString main = pjson.getModuleProperty();
+                    return packageUrl.resolve(main.toString());
+                } else if (pjson != null && pjson.hasMainProperty()) {
                     TruffleString main = pjson.getMainProperty();
                     return packageUrl.resolve(main.toString());
                 } else {
@@ -546,6 +549,14 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         public boolean hasExportsProperty() {
             return hasNonNullProperty(jsonObj, EXPORTS_PROPERTY_NAME);
         }
+        
+        public boolean hasModuleProperty() {
+            if (JSObject.hasProperty(jsonObj, PACKAGE_JSON_MODULE_PROPERTY_NAME)) {
+                Object value = JSObject.get(jsonObj, PACKAGE_JSON_MODULE_PROPERTY_NAME);
+                return Strings.isTString(value);
+            }
+            return false;
+        }
 
         public boolean hasMainProperty() {
             if (JSObject.hasProperty(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME)) {
@@ -555,6 +566,12 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             return false;
         }
 
+        public TruffleString getModuleProperty() {
+            assert hasMainProperty();
+            Object value = JSObject.get(jsonObj, PACKAGE_JSON_MODULE_PROPERTY_NAME);
+            return (TruffleString) value;
+        }
+        
         public TruffleString getMainProperty() {
             assert hasMainProperty();
             Object value = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
