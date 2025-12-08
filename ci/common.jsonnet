@@ -300,6 +300,7 @@ local common_json = import "../common.json";
 
     graalnodejs:: {
       local this = self,
+      capabilities+: if self.os == "darwin" then ["!darwin_bigsur", "!darwin_monterey", "!darwin_ventura"] else [],
       packages+: if self.os == "linux" then {
         cmake: "==3.22.2",
       } else {},
