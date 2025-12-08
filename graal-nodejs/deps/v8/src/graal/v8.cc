@@ -4290,6 +4290,29 @@ namespace v8 {
         return nullptr;
     }
 
+    Isolate* Isolate::Allocate(const IsolateGroup& group) {
+        return Isolate::Allocate();
+    }
+
+    bool IsolateGroup::CanCreateNewGroups() {
+        return false;
+    }
+
+    IsolateGroup IsolateGroup::Create() {
+        std::abort();
+    }
+
+    IsolateGroup IsolateGroup::GetDefault() {
+        IsolateGroup group(nullptr);
+        return group;
+    }
+
+    IsolateGroup::IsolateGroup(internal::IsolateGroup*&& isolate_group) : isolate_group_(isolate_group) {
+    }
+
+    IsolateGroup::~IsolateGroup() {
+    }
+
     void Array::CheckCast(v8::Value* obj) {}
     void ArrayBuffer::CheckCast(v8::Value* obj) {}
     void ArrayBufferView::CheckCast(v8::Value* obj) {}
