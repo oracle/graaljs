@@ -110,7 +110,6 @@ expected.beforePreExec = new Set([
   'NativeModule internal/mime',
   'NativeModule internal/modules/esm/utils',
   'Internal Binding worker',
-  'NativeModule internal/graal/wasm',
   'NativeModule internal/modules/run_main',
   'NativeModule internal/net',
   'NativeModule internal/dns/utils',
@@ -118,6 +117,7 @@ expected.beforePreExec = new Set([
 
 expected.atRunTime = new Set([
   'NativeModule internal/process/pre_execution',
+  'NativeModule internal/graal/wasm',
 ]);
 
 const { isMainThread } = require('worker_threads');
