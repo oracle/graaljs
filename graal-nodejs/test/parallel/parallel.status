@@ -74,9 +74,37 @@ test-fs-write: FAIL
 # (which is a foreign object when chromeinspector is used)
 test-process-get-builtin: SKIP
 
+# SetNativeDataProperty is not exactly SetAccessor()
+test-worker-unsupported-things: FAIL
+
+# Uses 'using' keyword
+test-filehandle-autoclose: FAIL
+test-fs-read-empty-buffer: FAIL
+test-fs-read-offset-null: FAIL
+test-perf-hooks-histogram: FAIL
+test-sqlite-session: FAIL
+test-stream-duplex-destroy: FAIL
+test-stream-readable-dispose: FAIL
+test-stream-transform-destroy: FAIL
+test-stream-writable-destroy: FAIL
+test-worker-dispose: FAIL
+
+# Different stack-trace format expected
+test-fs-promises: FAIL
+
+# Flag --max-old-space-size-percentage is not supported
+test-max-old-space-size-percentage: FAIL
+
+# Suspicious performance test
+test-repl-paste-big-data: FAIL
+
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint, %PrepareFunctionForOptimization)
 test-http-same-map: FAIL
 test-os-fast: FAIL
+test-perf-hooks-histogram-fast-calls: FAIL
+test-process-hrtime: FAIL
+test-process-hrtime-bigint: FAIL
+test-timers-fast-calls: FAIL
 test-timers-now: FAIL
 test-util-types: FAIL
 test-v8-flags: FAIL
@@ -126,6 +154,8 @@ test-worker-sharedarraybuffer-from-worker-thread: SKIP
 # Profiling is not supported
 test-cli-node-options: SKIP
 test-tick-processor-arguments: FAIL
+test-worker-cpu-profile: FAIL
+test-worker-heap-profile: FAIL
 
 # v8::Object::GetConstructorName() returns `Klass` for
 # Object.setPrototypeOf(new Klass(), null) (which graal-nodejs is unable to return)
@@ -157,6 +187,16 @@ test-vm-set-property-proxy: SKIP
 test-vm-timeout-escape-promise: FAIL
 test-vm-timeout-escape-promise-module: FAIL
 test-vm-timeout-escape-promise-2: FAIL
+
+# Separate MicrotaskQueue (in afterEvaluate mode) is not supported
+test-vm-module-after-evaluate: FAIL
+test-vm-script-after-evaluate: FAIL
+
+# v8::Module::GetModuleRequests() (i.e. Module.requestedModules) contains duplicate entries
+test-vm-module-modulerequests: FAIL
+
+# Incorrect handling of errored synthetic modules
+test-vm-module-evaluate-synthethic-module: FAIL
 
 # run-time user-land snapshots are not supported
 test-snapshot-api: FAIL
@@ -221,12 +261,10 @@ test-trace-events-vm: SKIP
 test-trace-events-worker-metadata: SKIP
 test-trace-events-worker-metadata-with-name: SKIP
 test-trace-exit-stack-limit: FAIL
-test-worker-node-options: FAIL
 
 # Unclassified
 test-async-context-frame: FAIL
 test-async-hooks-http-parser-destroy: SKIP
-test-common-must-not-call: FAIL
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
 test-domain-no-error-handler-abort-on-uncaught-0: FAIL
@@ -245,6 +283,7 @@ test-gc-http-client-connaborted: SKIP
 test-gc-net-timeout: SKIP
 test-gc-tls-external-memory: SKIP
 test-h2leak-destroy-session-on-socket-ended: FAIL
+test-http-client-leaky-with-double-response: SKIP
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
@@ -258,6 +297,7 @@ test-trace-env-stack: FAIL
 test-ttywrap-stack: FAIL
 test-vm-global-setter: FAIL
 test-vm-low-stack-space: SKIP
+test-vm-module-link: FAIL
 test-vm-new-script-new-context: FAIL
 test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP

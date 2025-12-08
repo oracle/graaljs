@@ -21,6 +21,12 @@ test-esm-detect-ambiguous            : FAIL
 test-esm-tla-unfinished              : FAIL
 test-require-module-tla-print-execution: FAIL
 
+# Uses js-string builtins + different error messages
+test-esm-wasm                        : FAIL
+
+# Different output for TypeScript SyntaxError
+test-typescript-eval                 : FAIL
+
 # Unclassified
 test-require-module-tla              : SKIP
 

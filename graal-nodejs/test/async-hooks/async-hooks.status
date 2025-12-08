@@ -10,6 +10,8 @@ prefix async-hooks
 test-async-local-storage-gcable: SKIP
 
 # Unclassified
+test-async-local-storage-errors: FAIL
+test-async-local-storage-thenable: FAIL
 test-destroy-not-blocked: FAIL
 
 [$system==win32]

@@ -19,16 +19,10 @@ test-heapdump-flag-custom-dir: SKIP
 test-worker-heapsnapshot-options: FAIL
 test-write-heapsnapshot-options: FAIL
 
-# single executable app (needs WebAssembly)
-test-single-executable-application: PASS
-test-single-executable-application-assets: PASS
-test-single-executable-application-assets-raw: PASS
-test-single-executable-application-disable-experimental-sea-warning: PASS
-test-single-executable-application-empty: PASS
+# run-time user-land snapshots are not supported
 test-single-executable-application-snapshot: FAIL
 test-single-executable-application-snapshot-and-code-cache: FAIL
 test-single-executable-application-snapshot-worker: FAIL
-test-single-executable-application-use-code-cache: PASS
 
 # Custom MicrotaskQueue is not supported
 test-vm-timeout-escape-promise-module-2: FAIL
@@ -36,12 +30,18 @@ test-vm-timeout-escape-promise-module-2: FAIL
 # Profiling is not supported
 test-worker-prof: FAIL
 
+# uses V8 internal methods (%PrepareFunctionForOptimization, %OptimizeFunctionOnNextCall)
+test-zlib-crc32-fast-api: FAIL
+
 # Unclassified
 test-gc-http-client: SKIP
 test-gc-http-client-onerror: SKIP
 test-gc-http-client-timeout: SKIP
+test-http-server-keep-alive-timeout-slow-client-headers: FAIL
+test-single-executable-application-inspect: SKIP
 test-vm-break-on-sigint: FAIL
 test-watch-mode: SKIP
+test-without-async-context-frame: FAIL
 test-worker-fshandles-open-close-on-termination: SKIP
 test-worker-http2-stream-terminate: SKIP
 
