@@ -4234,10 +4234,12 @@ namespace v8 {
 
     CpuProfilingResult CpuProfiler::Start(CpuProfilingOptions options, std::unique_ptr<DiscardedSamplesDelegate> delegate) {
         TRACE
+        return {0, CpuProfilingStatus::kErrorTooManyProfilers};
     }
 
     bool HeapProfiler::StartSamplingHeapProfiler(uint64_t sample_interval, int stack_depth, SamplingFlags flags) {
         TRACE
+        return false;
     }
 
     uint64_t Isolate::GetHashSeed() {
