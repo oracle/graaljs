@@ -369,6 +369,7 @@ public final class Strings {
     public static final TruffleString ID_PROPERTY_NAME = constant("id");
     public static final TruffleString ENV_PROPERTY_NAME = constant("env");
     public static final TruffleString PACKAGE_JSON_MAIN_PROPERTY_NAME = constant("main");
+    public static final TruffleString PACKAGE_JSON_MODULE_PROPERTY_NAME = constant("module");
     public static final TruffleString PACKAGE_JSON_TYPE_PROPERTY_NAME = TYPE;
 
     /* Test262 */
