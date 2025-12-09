@@ -49,7 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
@@ -251,18 +250,18 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
     private static final class LazyDataPropertyNode extends ObjectLiteralNode.ObjectLiteralMemberNode {
         private final Object key;
         private final PropertyProxy value;
-        @Child private DynamicObjectLibrary dynamicObjectLibrary;
+        @Child private DynamicObject.PutConstantNode putConstantNode;
 
         private LazyDataPropertyNode(boolean isStatic, int attributes, Object key, PropertyProxy value) {
             super(isStatic, attributes);
             this.key = key;
             this.value = value;
-            this.dynamicObjectLibrary = JSObjectUtil.createDispatched(key);
+            this.putConstantNode = DynamicObject.PutConstantNode.create();
         }
 
         @Override
         public void executeVoid(VirtualFrame frame, JSObject receiver, JSObject homeObject, JSRealm realm) {
-            dynamicObjectLibrary.putConstant(receiver, key, value, attributes | JSProperty.PROXY);
+            putConstantNode.executeWithFlags(receiver, key, value, attributes | JSProperty.PROXY);
         }
 
         @Override
