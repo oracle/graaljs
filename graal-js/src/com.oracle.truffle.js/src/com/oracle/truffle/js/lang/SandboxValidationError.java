@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.lang;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -66,14 +65,14 @@ public final class SandboxValidationError extends AbstractTruffleException {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    public boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    public Class<? extends TruffleLanguage<?>> getLanguage() {
-        return JavaScriptLanguage.class;
+    String getLanguageId() {
+        return JavaScriptLanguage.ID;
     }
 
     @TruffleBoundary

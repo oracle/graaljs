@@ -44,7 +44,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Locale;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -542,7 +541,7 @@ public final class Strings {
         return node.execute(longValue, TruffleString.Encoding.UTF_16, true);
     }
 
-    public static TruffleString[] fromJavaStringArray(String... strings) {
+    public static TruffleString[] fromJavaStringArray(String[] strings) {
         TruffleString[] ret = new TruffleString[strings.length];
         for (int i = 0; i < strings.length; i++) {
             ret[i] = fromJavaString(strings[i]);
@@ -580,6 +579,17 @@ public final class Strings {
 
     public static TruffleString concat(TruffleString.ConcatNode node, TruffleString s1, TruffleString s2) {
         return node.execute(s1, s2, TruffleString.Encoding.UTF_16, JSConfig.LazyStrings);
+    }
+
+    public static TruffleString concatAll(TruffleString a, TruffleString b, TruffleString c) {
+        int len = length(a);
+        len += length(b);
+        len += length(c);
+        var sb = builderCreate(len);
+        TruffleStringBuilder.AppendStringNode.getUncached().execute(sb, a);
+        TruffleStringBuilder.AppendStringNode.getUncached().execute(sb, b);
+        TruffleStringBuilder.AppendStringNode.getUncached().execute(sb, c);
+        return TruffleStringBuilder.ToStringNode.getUncached().execute(sb);
     }
 
     public static TruffleString concatAll(TruffleString s, TruffleString... concat) {
@@ -839,51 +849,26 @@ public final class Strings {
         return fromLong(intValue);
     }
 
-    public static TruffleString fromDouble(double d) {
-        return TruffleString.FromJavaStringNode.getUncached().execute(doubleToJavaString(d), TruffleString.Encoding.UTF_16);
-    }
-
     @TruffleBoundary
-    private static String doubleToJavaString(double d) {
-        return String.valueOf(d);
-    }
-
-    public static TruffleString fromNumber(Number number) {
-        if (number instanceof Integer) {
-            return fromInt(number.intValue());
-        }
-        if (number instanceof Long) {
-            return fromLong(number.longValue());
-        }
-        if (number instanceof Double) {
-            return fromDouble(number.doubleValue());
-        }
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
     public static TruffleString fromBigInt(BigInt bi) {
-        return fromJavaString(bi.toString());
+        return fromBigInt(TruffleString.FromJavaStringNode.getUncached(), bi);
     }
 
-    public static TruffleString fromBigInt(BigInt bi, int radix) {
-        return fromJavaString(bi.toString(radix));
+    public static TruffleString fromBigInt(TruffleString.FromJavaStringNode fromJavaStringNode, BigInt bi) {
+        return fromJavaString(fromJavaStringNode, bi.toString());
     }
 
-    public static TruffleString fromObject(Object o) {
-        return fromJavaString(objectToJavaString(o));
+    public static TruffleString fromBigInt(TruffleString.FromJavaStringNode fromJavaStringNode, BigInt bi, int radix) {
+        return fromJavaString(fromJavaStringNode, bi.toString(radix));
     }
 
     @TruffleBoundary
-    private static String objectToJavaString(Object o) {
-        return String.valueOf(o);
+    public static TruffleString fromObject(Object o) {
+        return fromJavaString(String.valueOf(o));
     }
 
     public static TruffleString fromCharArray(TruffleString.FromCharArrayUTF16Node node, char[] chars) {
         return fromCharArray(node, chars, 0, chars.length);
-    }
-
-    public static TruffleString fromCharArray(char[] chars, int fromIndex, int length) {
-        return fromCharArray(TruffleString.FromCharArrayUTF16Node.getUncached(), chars, fromIndex, length);
     }
 
     public static TruffleString fromCharArray(TruffleString.FromCharArrayUTF16Node node, char[] chars, int fromIndex, int length) {
@@ -926,8 +911,13 @@ public final class Strings {
         return switchEncodingNode.execute(truffleString, TruffleString.Encoding.UTF_16);
     }
 
+    @TruffleBoundary
     public static BigInt parseBigInt(TruffleString s) {
-        return BigInt.valueOf(toJavaString(s));
+        return parseBigInt(TruffleString.ToJavaStringNode.getUncached(), s);
+    }
+
+    public static BigInt parseBigInt(TruffleString.ToJavaStringNode toJavaString, TruffleString s) {
+        return BigInt.valueOf(toJavaString(toJavaString, s));
     }
 
     public static BigInteger parseBigInteger(TruffleString s, int radix) {
@@ -1014,20 +1004,8 @@ public final class Strings {
         return node.execute(sb);
     }
 
-    public static String builderToJavaString(TruffleStringBuilderUTF16 sb) {
-        return toJavaString(builderToString(sb));
-    }
-
     public static int builderLength(TruffleStringBuilderUTF16 sb) {
         return sb.byteLength() >> 1;
-    }
-
-    public static TruffleString[] convertJavaStringArray(String[] array) {
-        TruffleString[] ret = new TruffleString[array.length];
-        for (int i = 0; i < array.length; i++) {
-            ret[i] = fromJavaString(array[i]);
-        }
-        return ret;
     }
 
     public static TruffleString addBrackets(TruffleString str) {

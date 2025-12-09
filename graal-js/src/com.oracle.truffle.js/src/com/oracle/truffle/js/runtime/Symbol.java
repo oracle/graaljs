@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -231,14 +230,14 @@ public final class Symbol implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return JavaScriptLanguage.class;
+    String getLanguageId() {
+        return JavaScriptLanguage.ID;
     }
 
     @ExportMessage

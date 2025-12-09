@@ -47,7 +47,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import java.util.Comparator;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -1313,27 +1312,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             // objects like ProxyArray/ProxyObjects may have one.
             InteropLibrary interop = getInterop();
             try {
-                return !interop.hasLanguage(arrayObj) || (interop.getLanguage(arrayObj) == getHostLanguageClass());
+                return !interop.hasLanguageId(arrayObj) || (interop.getLanguageId(arrayObj).equals("host"));
             } catch (UnsupportedMessageException umex) {
                 throw CompilerDirectives.shouldNotReachHere();
             }
-        }
-
-        @CompilationFinal private Class<?> hostLanguageClass;
-
-        private Class<?> getHostLanguageClass() {
-            if (hostLanguageClass == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                try {
-                    hostLanguageClass = InteropLibrary.getUncached().getLanguage(getRealm().getEnv().asGuestValue(new Object()));
-                } catch (UnsupportedMessageException umex) {
-                    throw CompilerDirectives.shouldNotReachHere();
-                } catch (UnsupportedOperationException uoex) {
-                    // Fallback: asGuestValue() is not supported in a spawned isolate.
-                    hostLanguageClass = Object.class;
-                }
-            }
-            return hostLanguageClass;
         }
 
         @Specialization

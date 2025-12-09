@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberToP
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberToStringNodeGen;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltinsFactory.JSNumberValueOfNodeGen;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.IsNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSDoubleToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
@@ -143,18 +144,33 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         return JSRuntime.doubleValue(obj.getNumber());
     }
 
-    protected static double getDoubleValue(InteropLibrary interop, Object obj) {
-        assert JSGuards.isForeignObjectOrNumber(obj);
-        try {
-            if (interop.fitsInDouble(obj)) {
-                return interop.asDouble(obj);
-            } else if (interop.fitsInBigInteger(obj)) {
-                return BigInt.doubleValueOf(interop.asBigInteger(obj));
+    @ImportStatic(JSConfig.class)
+    protected abstract static class ForeignGetDoubleValueNode extends JavaScriptBaseNode {
+
+        abstract double execute(Object foreignNumber);
+
+        @Specialization(limit = "InteropLibraryLimit")
+        static double getDouble(Object obj,
+                        @Bind Node node,
+                        @CachedLibrary("obj") InteropLibrary interop,
+                        @Cached InlinedBranchProfile notANumberBranch,
+                        @Cached InlinedBranchProfile errorBranch) {
+            assert JSGuards.isForeignObjectOrNumber(obj) : obj;
+            try {
+                if (interop.fitsInDouble(obj)) {
+                    return interop.asDouble(obj);
+                } else if (interop.fitsInLong(obj)) {
+                    return interop.asLong(obj);
+                } else if (interop.fitsInBigInteger(obj)) {
+                    return BigInt.doubleValueOf(interop.asBigInteger(obj));
+                }
+            } catch (UnsupportedMessageException ex) {
+                errorBranch.enter(node);
+                throw Errors.createTypeErrorUnboxException(obj, ex, interop);
             }
-        } catch (UnsupportedMessageException ex) {
-            throw Errors.createTypeErrorUnboxException(obj, ex, interop);
+            notANumberBranch.enter(node);
+            throw Errors.createTypeErrorNotANumber(obj);
         }
-        throw Errors.createTypeErrorNotANumber(obj);
     }
 
     @ImportStatic({JSConfig.class})
@@ -164,7 +180,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        protected boolean isRadix10(Object radix) {
+        protected static boolean isRadix10(Object radix) {
             return radix == Undefined.instance || (radix instanceof Integer && ((Integer) radix) == 10);
         }
 
@@ -177,9 +193,10 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSNumberInteger(thisObj)", "isRadix10(radix)"})
-        protected Object toStringIntRadix10(JSNumberObject thisObj, Object radix) {
-            Integer i = (Integer) thisObj.getNumber();
-            return Strings.fromInt(i.intValue());
+        protected Object toStringIntRadix10(JSNumberObject thisObj, Object radix,
+                        @Shared @Cached TruffleString.FromLongNode fromLong) {
+            int i = (int) thisObj.getNumber();
+            return Strings.fromLong(fromLong, i);
         }
 
         @SuppressWarnings("unused")
@@ -201,8 +218,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isRadix10(radix)"})
-        protected Object toStringPrimitiveIntRadix10(int thisInteger, Object radix) {
-            return Strings.fromInt(thisInteger);
+        protected Object toStringPrimitiveIntRadix10(int thisInteger, Object radix,
+                        @Shared @Cached TruffleString.FromLongNode fromLong) {
+            return Strings.fromLong(fromLong, thisInteger);
         }
 
         @SuppressWarnings("unused")
@@ -239,25 +257,27 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @SuppressWarnings("truffle-static-method")
-        @Specialization(guards = "isForeignObjectOrNumber(thisObj)", limit = "InteropLibraryLimit")
+        @Specialization(guards = "isForeignObjectOrNumber(thisObj)")
         protected Object toStringForeignObject(Object thisObj, Object radix,
                         @Bind Node node,
                         @Shared @Cached JSToIntegerAsIntNode toIntegerNode,
                         @Shared @Cached JSDoubleToStringNode doubleToString,
+                        @Shared @Cached TruffleString.FromLongNode fromLong,
                         @Shared @Cached InlinedBranchProfile radixOtherBranch,
                         @Shared @Cached InlinedBranchProfile radixErrorBranch,
-                        @CachedLibrary("thisObj") InteropLibrary interop) {
+                        @Cached ForeignGetDoubleValueNode getDoubleValue) {
             Object radixToUse;
             if (radix == Undefined.instance) {
                 if (thisObj instanceof Long longValue) {
                     // Do not lose precision when toString() is invoked on Long
-                    return Strings.fromLong(longValue);
+                    return Strings.fromLong(fromLong, longValue);
                 }
                 radixToUse = 10;
             } else {
                 radixToUse = radix;
             }
-            return toStringWithRadix(getDoubleValue(interop, thisObj), radixToUse,
+            double doubleValue = getDoubleValue.execute(thisObj);
+            return toStringWithRadix(doubleValue, radixToUse,
                             node, toIntegerNode, doubleToString, radixOtherBranch, radixErrorBranch);
         }
 
@@ -303,8 +323,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected static Object doInt(int thisInteger) {
-            return Strings.fromInt(thisInteger);
+        protected static Object doInt(int thisInteger,
+                        @Cached TruffleString.FromLongNode fromLong) {
+            return Strings.fromLong(fromLong, thisInteger);
         }
 
         @Specialization(guards = "isNumber.execute(node, thisNumber)", limit = "1")
@@ -316,10 +337,11 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSRuntime.doubleToString(d);
         }
 
-        @Specialization(guards = "isForeignObjectOrNumber(thisObj)", limit = "InteropLibraryLimit")
+        @Specialization(guards = "isForeignObjectOrNumber(thisObj)")
         protected static Object doForeign(Object thisObj,
-                        @CachedLibrary("thisObj") InteropLibrary interop) {
-            return JSRuntime.doubleToString(getDoubleValue(interop, thisObj));
+                        @Cached ForeignGetDoubleValueNode getDoubleValue) {
+            double doubleValue = getDoubleValue.execute(thisObj);
+            return JSRuntime.doubleToString(doubleValue);
         }
 
         @Fallback
@@ -366,10 +388,10 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSNumberFormat.format(numberFormatObj, doubleValue);
         }
 
-        @Specialization(guards = "isForeignObjectOrNumber(thisObj)", limit = "InteropLibraryLimit")
+        @Specialization(guards = "isForeignObjectOrNumber(thisObj)")
         protected TruffleString toLocaleStringForeignObject(Object thisObj, Object locales, Object options,
-                        @CachedLibrary("thisObj") InteropLibrary interop) {
-            double doubleValue = getDoubleValue(interop, thisObj);
+                        @Cached ForeignGetDoubleValueNode getDoubleValue) {
+            double doubleValue = getDoubleValue.execute(thisObj);
             JSNumberFormatObject numberFormatObj = createNumberFormat(locales, options);
             return JSNumberFormat.format(numberFormatObj, doubleValue);
         }
@@ -401,10 +423,10 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toDouble.executeDouble(thisNumber);
         }
 
-        @Specialization(guards = "isForeignObjectOrNumber(thisNumber)", limit = "InteropLibraryLimit")
+        @Specialization(guards = "isForeignObjectOrNumber(thisNumber)")
         protected static double valueOfForeignObject(Object thisNumber,
-                        @CachedLibrary("thisNumber") InteropLibrary interop) {
-            return getDoubleValue(interop, thisNumber);
+                        @Cached ForeignGetDoubleValueNode getDoubleValue) {
+            return getDoubleValue.execute(thisNumber);
         }
 
         @Fallback
@@ -446,7 +468,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @SuppressWarnings("truffle-static-method")
-        @Specialization(guards = "isForeignObjectOrNumber(thisNumber)", limit = "InteropLibraryLimit")
+        @Specialization(guards = "isForeignObjectOrNumber(thisNumber)")
         protected Object toFixedForeignObject(Object thisNumber, Object fractionDigits,
                         @Bind Node node,
                         @Shared @Cached JSToIntegerAsIntNode toIntegerNode,
@@ -454,8 +476,8 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Shared @Cached InlinedBranchProfile digitsErrorBranch,
                         @Shared @Cached InlinedBranchProfile nanBranch,
                         @Shared @Cached InlinedConditionProfile dtoaOrString,
-                        @CachedLibrary("thisNumber") InteropLibrary interop) {
-            double doubleValue = getDoubleValue(interop, thisNumber);
+                        @Cached ForeignGetDoubleValueNode getDoubleValue) {
+            double doubleValue = getDoubleValue.execute(thisNumber);
             int digits = toIntegerNode.executeInt(fractionDigits);
             return toFixedIntl(doubleValue, digits,
                             node, doubleToString, digitsErrorBranch, nanBranch, dtoaOrString);
@@ -530,21 +552,21 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toExponential(doubleValue, digits, this, digitsErrorBranch);
         }
 
-        @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "isUndefined(fractionDigits)"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "isUndefined(fractionDigits)"})
         protected Object toExponentialForeignObjectUndefined(Object thisNumber, @SuppressWarnings("unused") Object fractionDigits,
-                        @CachedLibrary("thisNumber") InteropLibrary interop) {
-            double doubleValue = getDoubleValue(interop, thisNumber);
+                        @Shared @Cached ForeignGetDoubleValueNode getDoubleValue) {
+            double doubleValue = getDoubleValue.execute(thisNumber);
             return toExponentialStandard(doubleValue);
         }
 
         @SuppressWarnings("truffle-static-method")
-        @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "!isUndefined(fractionDigits)"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "!isUndefined(fractionDigits)"})
         protected Object toExponentialForeignObject(Object thisNumber, Object fractionDigits,
                         @Bind Node node,
                         @Shared @Cached InlinedBranchProfile digitsErrorBranch,
                         @Shared @Cached JSToIntegerAsIntNode toIntegerNode,
-                        @CachedLibrary("thisNumber") InteropLibrary interop) {
-            double doubleValue = getDoubleValue(interop, thisNumber);
+                        @Shared @Cached ForeignGetDoubleValueNode getDoubleValue) {
+            double doubleValue = getDoubleValue.execute(thisNumber);
             int digits = toIntegerNode.executeInt(fractionDigits);
             return toExponential(doubleValue, digits, node, digitsErrorBranch);
         }
@@ -629,21 +651,22 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toPrecisionIntl(thisNumberVal, lPrecision, this, errorBranch);
         }
 
-        @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "isUndefined(precision)"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "isUndefined(precision)"})
         protected Object toPrecisionForeignObjectUndefined(Object thisNumber, @SuppressWarnings("unused") Object precision,
                         @Shared @Cached JSToStringNode toStringNode,
-                        @CachedLibrary("thisNumber") InteropLibrary interop) {
-            return toStringNode.executeString(getDoubleValue(interop, thisNumber));
+                        @Shared @Cached ForeignGetDoubleValueNode getDoubleValue) {
+            double doubleValue = getDoubleValue.execute(thisNumber);
+            return toStringNode.executeString(doubleValue);
         }
 
         @SuppressWarnings("truffle-static-method")
-        @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "!isUndefined(precision)"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isForeignObjectOrNumber(thisNumber)", "!isUndefined(precision)"})
         protected Object toPrecisionForeignObject(Object thisNumber, Object precision,
                         @Bind Node node,
                         @Shared @Cached JSToNumberNode toNumberNode,
                         @Shared @Cached InlinedBranchProfile errorBranch,
-                        @CachedLibrary("thisNumber") InteropLibrary interop) {
-            double thisNumberVal = getDoubleValue(interop, thisNumber);
+                        @Shared @Cached ForeignGetDoubleValueNode getDoubleValue) {
+            double thisNumberVal = getDoubleValue.execute(thisNumber);
             long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
             return toPrecisionIntl(thisNumberVal, lPrecision, node, errorBranch);
         }

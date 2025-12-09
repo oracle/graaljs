@@ -53,7 +53,7 @@ import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -568,48 +568,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    public static final class BooleanPropertySetNode extends LinkedPropertySetNode {
-
-        private final com.oracle.truffle.api.object.BooleanLocation location;
-
-        public BooleanPropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
-            super(shapeCheck);
-            this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
-            assert JSProperty.isData(property) && JSProperty.isWritable(property) : property;
-        }
-
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            if (value instanceof Boolean) {
-                JSDynamicObject store = receiverCheck.getStore(thisObj);
-                try {
-                    location.setBoolean(store, (boolean) value, receiverCheck.getShape());
-                } catch (com.oracle.truffle.api.object.FinalLocationException e) {
-                    throw Errors.shouldNotReachHere(e);
-                }
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        @Override
-        protected boolean setValueBoolean(Object thisObj, boolean value, Object receiver, PropertySetNode root, boolean guard) {
-            JSDynamicObject store = receiverCheck.getStore(thisObj);
-            try {
-                location.setBoolean(store, value, receiverCheck.getShape());
-                return true;
-            } catch (com.oracle.truffle.api.object.FinalLocationException e) {
-                throw Errors.shouldNotReachHere(e);
-            }
-        }
-
-        @Override
-        protected boolean acceptsValue(Object value) {
-            return value instanceof Boolean;
-        }
-    }
-
     public static final class AccessorPropertySetNode extends LinkedPropertySetNode {
         private final boolean isStrict;
         private final Location location;
@@ -643,11 +601,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     public static class DataPropertyPutWithoutFlagsNode extends LinkedPropertySetNode {
-        @Child protected DynamicObjectLibrary objectLib;
+        @Child protected DynamicObject.PutNode putNode;
 
-        public DataPropertyPutWithoutFlagsNode(Object key, ReceiverCheckNode receiverCheck) {
+        public DataPropertyPutWithoutFlagsNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            this.objectLib = JSObjectUtil.createDispatched(key);
+            this.putNode = DynamicObject.PutNode.create();
         }
 
         protected static JSDynamicObject getStore(Object thisObj) {
@@ -657,53 +615,53 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             JSDynamicObject store = getStore(thisObj);
-            objectLib.put(store, root.key, value);
+            putNode.execute(store, root.key, value);
             return true;
         }
 
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
             JSDynamicObject store = getStore(thisObj);
-            objectLib.putInt(store, root.key, value);
+            putNode.execute(store, root.key, value);
             return true;
         }
 
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
             JSDynamicObject store = getStore(thisObj);
-            objectLib.putDouble(store, root.key, value);
+            putNode.execute(store, root.key, value);
             return true;
         }
     }
 
     public static class DataPropertyPutWithFlagsNode extends LinkedPropertySetNode {
-        @Child protected DynamicObjectLibrary objectLib;
+        @Child protected DynamicObject.PutNode putNode;
 
-        protected DataPropertyPutWithFlagsNode(Object key, ReceiverCheckNode receiverCheck) {
+        protected DataPropertyPutWithFlagsNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            this.objectLib = JSObjectUtil.createDispatched(key);
+            this.putNode = DynamicObject.PutNode.create();
         }
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             JSDynamicObject store = (JSDynamicObject) thisObj;
-            this.objectLib.putWithFlags(store, root.key, value, root.getAttributeFlags());
+            putNode.executeWithFlags(store, root.key, value, root.getAttributeFlags());
             return true;
         }
     }
 
     public static class DataPropertyPutConstantNode extends LinkedPropertySetNode {
-        @Child protected DynamicObjectLibrary objectLib;
+        @Child protected DynamicObject.PutConstantNode putConstant;
 
-        protected DataPropertyPutConstantNode(Object key, ReceiverCheckNode receiverCheck) {
+        protected DataPropertyPutConstantNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            this.objectLib = JSObjectUtil.createDispatched(key);
+            this.putConstant = DynamicObject.PutConstantNode.create();
         }
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             JSDynamicObject store = (JSDynamicObject) thisObj;
-            this.objectLib.putConstant(store, root.key, value, root.getAttributeFlags());
+            putConstant.executeWithFlags(store, root.key, value, root.getAttributeFlags());
             return true;
         }
     }
@@ -1059,7 +1017,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         // when it is possible to do so (i.e. when it is configurable)
         if (isOwnProperty()) {
             if (JSAttributes.isConfigurable(property.getFlags()) && property.getFlags() != JSAttributes.configurableEnumerableWritable()) {
-                return new DataPropertyPutWithFlagsNode(key, shapeCheck);
+                return new DataPropertyPutWithFlagsNode(shapeCheck);
             } else if (!JSAttributes.isConfigurable(property.getFlags()) && JSAttributes.isConfigurable(getAttributeFlags())) {
                 return new ReadOnlyPropertySetNode(shapeCheck, isStrict(), property);
             }
@@ -1100,8 +1058,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new IntPropertySetNode(property, shapeCheck);
             } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
                 return new DoublePropertySetNode(property, shapeCheck);
-            } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
-                return new BooleanPropertySetNode(property, shapeCheck);
             } else {
                 return new ObjectPropertySetNode(property, shapeCheck);
             }
@@ -1116,13 +1072,13 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         }
         if (isDeclaration()) {
-            return new DataPropertyPutConstantNode(key, shapeCheck);
+            return new DataPropertyPutConstantNode(shapeCheck);
         } else if (getAttributeFlags() == 0) {
             // new property and flags=0 means we can use put without flags
             // must not use this node if the property already exists and we want to change the flags
-            return new DataPropertyPutWithoutFlagsNode(key, shapeCheck);
+            return new DataPropertyPutWithoutFlagsNode(shapeCheck);
         } else {
-            return new DataPropertyPutWithFlagsNode(key, shapeCheck);
+            return new DataPropertyPutWithFlagsNode(shapeCheck);
         }
     }
 
@@ -1130,7 +1086,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         assert JSProperty.isData(property) && JSProperty.isWritable(property);
         assert property == oldShape.getProperty(key);
 
-        return new DataPropertyPutWithoutFlagsNode(key, shapeCheck);
+        return new DataPropertyPutWithoutFlagsNode(shapeCheck);
     }
 
     private SetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, JSDynamicObject proto, int depth) {
@@ -1249,8 +1205,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return new IntPropertySetNode(property, shapeCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
             return new DoublePropertySetNode(property, shapeCheck);
-        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
-            return new BooleanPropertySetNode(property, shapeCheck);
         } else {
             return new ObjectPropertySetNode(property, shapeCheck);
         }

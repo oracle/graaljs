@@ -55,7 +55,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -1006,7 +1005,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         while (store != null) {
             // check for obsolete shape
-            if (DynamicObjectLibrary.getUncached().updateShape(store)) {
+            if (DynamicObject.UpdateShapeNode.getUncached().execute(store)) {
                 return retryCache();
             }
 
@@ -1020,7 +1019,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (JSConfig.MergeShapes && cachedCount > 0) {
                 // check if we're creating unnecessary polymorphism due to compatible types
                 if (tryMergeShapes(cacheShape, currentHead)) {
-                    DynamicObjectLibrary.getUncached().updateShape(store);
+                    DynamicObject.UpdateShapeNode.getUncached().execute(store);
                     return retryCache();
                 }
             }

@@ -417,6 +417,7 @@ public class JSRealm {
     @CompilationFinal private JSDynamicObject javaPackageToPrimitiveFunction;
 
     private final JSDynamicObject arrayProtoValuesIterator;
+    private final JSFunctionObject arrayIteratorNextMethod;
     @CompilationFinal private JSFunctionObject typedArrayConstructor;
     @CompilationFinal private JSDynamicObject typedArrayPrototype;
 
@@ -794,6 +795,7 @@ public class JSRealm {
         }
 
         this.arrayIteratorPrototype = es6 ? JSArrayIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
+        this.arrayIteratorNextMethod = es6 ? (JSFunctionObject) JSDynamicObject.getOrDefault(arrayIteratorPrototype, Strings.NEXT, null) : null;
         this.setIteratorPrototype = es6 ? JSSetIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
         this.mapIteratorPrototype = es6 ? JSMapIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
         this.stringIteratorPrototype = es6 ? JSStringIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
@@ -2479,6 +2481,10 @@ public class JSRealm {
 
     public JSDynamicObject getArrayProtoValuesIterator() {
         return arrayProtoValuesIterator;
+    }
+
+    public JSFunctionObject getArrayIteratorNextMethod() {
+        return arrayIteratorNextMethod;
     }
 
     private JSDynamicObject createReflect() {

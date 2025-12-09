@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-  "mxversion" : "7.58.0",
+  "mxversion" : "7.65.0",
 
   "name" : "graal-js",
 
@@ -25,7 +25,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "6dbb52bc8f96db54652486d034405a3ee8a96ee5",
+           "version" : "fecd17c81c7bd50347dfe9a5c8efc30a907201cf",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
@@ -50,12 +50,9 @@ suite = {
 
   "defaultLicense" : "UPL",
 
-  "libraries" : {
-    "NETBEANS_PROFILER" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/org-netbeans-lib-profiler-8.2-201609300101.jar"],
-      "digest" : "sha512:8238c5985036cdcd6a361426cfe0b980709ed4e73a46aa18fce16acf029ada23fa18a18edc54fb444fffba33f498a8582f499c0229e849c475621758c463a632",
-    },
+  "capture_suite_commit_info": True,
 
+  "libraries" : {
     "TESTNASHORN" : {
       "digest" : "sha512:0ccae1ea92fd8bd24ebedb0d0f77d3a81c6afb079a1a294adc296bd12d6b2c5e079b3e959cc0acb8b35b6b81a906a42f6d7a2338a6e4d33306fcfdc5fa2d462d",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testnashorn-e118c818dbf8.tar.bz2"],
@@ -243,20 +240,6 @@ suite = {
       "spotbugs" : "false",
 #     checkstyle and spotbugs turned off to keep the source aligned
 #     with the original nashorn version as much as possible
-      "javaCompliance" : "17+",
-      "workingSets" : "Truffle,JavaScript",
-    },
-
-    "com.oracle.truffle.js.stats" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "NETBEANS_PROFILER",
-        "truffle:TRUFFLE_API",
-      ],
-      "jacoco" : "include",
-      "checkstyle" : "com.oracle.truffle.js",
-      "spotbugs" : "true",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
@@ -660,17 +643,6 @@ suite = {
       "mainClass" : "com.oracle.truffle.js.snapshot.SnapshotTool",
       "distDependencies" : [
         "GRAALJS",
-      ],
-      "maven" : False,
-    },
-
-    "TRUFFLE_STATS" : {
-      "subDir" : "src",
-      "mainClass" : "com.oracle.truffle.js.stats.heap.HeapDumpAnalyzer",
-      "dependencies" : ["com.oracle.truffle.js.stats"],
-      "distDependencies" : [
-        "NETBEANS_PROFILER",
-        "truffle:TRUFFLE_API",
       ],
       "maven" : False,
     },

@@ -247,6 +247,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             this.getName = getName;
         }
 
+        @TruffleBoundary
         @Specialization
         protected Object clazz(Object obj) {
             if (obj == null) {
@@ -348,19 +349,22 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 Strings.builderAppend(sb, key);
                 if (desc.isDataDescriptor()) {
                     Object value = JSObject.get(object, key);
-                    if (JSDynamicObject.isJSDynamicObject(value)) {
-                        if ((JSGuards.isJSOrdinaryObject(value) || JSGlobal.isJSGlobalObject(value)) && !key.equals(JSObject.CONSTRUCTOR)) {
+                    TruffleString valueStr;
+                    if (value instanceof JSDynamicObject valueObj) {
+                        if ((JSGuards.isJSOrdinaryObject(valueObj) || JSGlobal.isJSGlobalObject(valueObj)) && !key.equals(JSObject.CONSTRUCTOR)) {
                             if (level < levelStop && !key.equals(JSObject.CONSTRUCTOR)) {
-                                value = debugPrint((JSDynamicObject) value, level + 1, levelStop);
+                                valueStr = debugPrint(valueObj, level + 1, levelStop);
                             } else {
-                                value = Strings.EMPTY_OBJECT_DOTS;
+                                valueStr = Strings.EMPTY_OBJECT_DOTS;
                             }
                         } else {
-                            value = JSObject.getJSClass((JSDynamicObject) value);
+                            valueStr = Strings.fromJavaString(JSObject.getJSClass(valueObj).toString());
                         }
+                    } else {
+                        valueStr = Strings.fromObject(value);
                     }
                     Strings.builderAppend(sb, Strings.COLON_SPACE);
-                    Strings.builderAppend(sb, Strings.fromObject(value));
+                    Strings.builderAppend(sb, valueStr);
                 }
                 if (!key.equals(properties.get(properties.size() - 1))) {
                     Strings.builderAppend(sb, ',');

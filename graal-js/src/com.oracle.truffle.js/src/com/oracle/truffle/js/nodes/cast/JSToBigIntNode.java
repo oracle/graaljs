@@ -129,9 +129,10 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected static BigInt doString(Node node, TruffleString value) {
+        protected static BigInt doString(Node node, TruffleString value,
+                        @Cached TruffleString.ToJavaStringNode toJavaString) {
             try {
-                return Strings.parseBigInt(value);
+                return Strings.parseBigInt(toJavaString, value);
             } catch (NumberFormatException e) {
                 throw Errors.createErrorCannotConvertToBigInt(JSErrorType.SyntaxError, value, node);
             }
@@ -195,8 +196,9 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected static BigInt doString(Node node, TruffleString value) {
-            return JSPrimitiveToBigIntNode.doString(node, value);
+        protected static BigInt doString(Node node, TruffleString value,
+                        @Cached TruffleString.ToJavaStringNode toJavaString) {
+            return JSPrimitiveToBigIntNode.doString(node, value, toJavaString);
         }
     }
 }

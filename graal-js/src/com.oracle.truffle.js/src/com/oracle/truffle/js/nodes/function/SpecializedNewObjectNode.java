@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,7 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -150,7 +149,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
     public JSDynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") JSDynamicObject target, Object prototype,
-                    @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode,
+                    @Cached @Shared DynamicObject.PutNode setProtoNode,
                     @Cached(value = "getClassIfJSObject(prototype)") Class<?> prototypeClass,
                     @Cached("getShapeWithoutProto()") @Shared Shape cachedShape) {
         return createWithProto(target, (JSObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
@@ -158,7 +157,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()"})
     public JSDynamicObject createWithProto(@SuppressWarnings("unused") JSDynamicObject target, JSObject prototype,
-                    @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode,
+                    @Cached @Shared DynamicObject.PutNode setProtoNode,
                     @Cached("getShapeWithoutProto()") @Shared Shape cachedShape) {
         JSRealm realm = getRealm();
         if (isAsyncGenerator) {
@@ -167,7 +166,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
             return JSGenerator.create(context, realm, prototype);
         }
         JSDynamicObject object = JSOrdinary.create(context, cachedShape, prototype);
-        setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
+        setProtoNode.execute(object, JSObject.HIDDEN_PROTO, prototype);
         return object;
     }
 

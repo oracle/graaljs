@@ -2195,7 +2195,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             wrappedBody = factory.createIteratorCloseWrapper(context, wrappedBody, iteratorVar.createReadNode(), false);
         }
 
-        RepeatingNode repeatingNode = factory.createForOfRepeatingNode(iteratorNext, wrappedBody,
+        RepeatingNode repeatingNode = factory.createForOfRepeatingNode(iteratorVar.createReadNode(), iteratorNext, wrappedBody,
                         (JSWriteFrameSlotNode) nextResultVar.createWriteNode(null));
         LoopNode loopNode = factory.createLoopNode(repeatingNode);
         JavaScriptNode whileNode = forNode.isForOf()

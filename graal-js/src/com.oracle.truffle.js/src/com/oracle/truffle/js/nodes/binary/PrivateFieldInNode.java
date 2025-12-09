@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -67,10 +66,10 @@ public abstract class PrivateFieldInNode extends JSBinaryNode {
         return PrivateFieldInNodeGen.create(left, right);
     }
 
-    @Specialization(limit = "3")
+    @Specialization
     protected boolean doInstance(HiddenKey needle, JSObject haystack,
-                    @CachedLibrary("haystack") DynamicObjectLibrary access) {
-        return access.containsKey(haystack, needle);
+                    @Cached DynamicObject.ContainsKeyNode containsKey) {
+        return containsKey.execute(haystack, needle);
     }
 
     @Specialization
@@ -80,7 +79,8 @@ public abstract class PrivateFieldInNode extends JSBinaryNode {
 
     @Fallback
     @SuppressWarnings("unused")
-    protected boolean doFallback(Object needle, Object haystack, @Cached IsObjectNode isObjectNode) {
+    protected boolean doFallback(Object needle, Object haystack,
+                    @Cached IsObjectNode isObjectNode) {
         if (isObjectNode.executeBoolean(haystack)) {
             return false;
         }

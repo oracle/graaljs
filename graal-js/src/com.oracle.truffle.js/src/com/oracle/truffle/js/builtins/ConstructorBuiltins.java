@@ -74,7 +74,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.Source;
@@ -2448,14 +2448,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     public abstract static class ConstructAggregateErrorNode extends ConstructWithNewTargetNode {
         @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
         @Child private InitErrorObjectNode initErrorObjectNode;
-        @Child private DynamicObjectLibrary setMessage;
+        @Child private DynamicObject.PutNode setMessage;
         @Child private InstallErrorCauseNode installErrorCauseNode;
 
         public ConstructAggregateErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
             this.stackTraceLimitNode = ErrorStackTraceLimitNode.create();
             this.initErrorObjectNode = InitErrorObjectNode.create(context);
-            this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
+            this.setMessage = DynamicObject.PutNode.create();
         }
 
         @Specialization
@@ -2475,7 +2475,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 messageAsJavaString = null;
             } else {
                 message = toStringNode.executeString(messageObj);
-                setMessage.putWithFlags(errorObj, JSError.MESSAGE, message, JSError.MESSAGE_ATTRIBUTES);
+                setMessage.executeWithFlags(errorObj, JSError.MESSAGE, message, JSError.MESSAGE_ATTRIBUTES);
                 messageAsJavaString = Strings.toJavaString(message);
             }
 

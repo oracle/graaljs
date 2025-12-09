@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Properties;
@@ -60,8 +60,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @GenerateUncached
 public abstract class FromPropertyDescriptorNode extends JavaScriptBaseNode {
 
-    protected static final int SHAPE_LIMIT = 6;
-
     protected FromPropertyDescriptorNode() {
     }
 
@@ -69,12 +67,12 @@ public abstract class FromPropertyDescriptorNode extends JavaScriptBaseNode {
 
     @Specialization
     final JSDynamicObject toJSObject(PropertyDescriptor desc, JSContext context,
-                    @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putValueNode,
-                    @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putWritableNode,
-                    @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putGetNode,
-                    @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putSetNode,
-                    @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putEnumerableNode,
-                    @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putConfigurableNode) {
+                    @Cached DynamicObject.PutNode putValueNode,
+                    @Cached DynamicObject.PutNode putWritableNode,
+                    @Cached DynamicObject.PutNode putGetNode,
+                    @Cached DynamicObject.PutNode putSetNode,
+                    @Cached DynamicObject.PutNode putEnumerableNode,
+                    @Cached DynamicObject.PutNode putConfigurableNode) {
         if (desc == null) {
             return Undefined.instance;
         }

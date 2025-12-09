@@ -43,12 +43,16 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.Set;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins.ArrayIteratorGetLengthSafeNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -57,6 +61,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIteratorObject;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -116,9 +122,9 @@ public final class WhileNode extends StatementNode {
         return new WhileNode(loopNode, ControlFlowRootTag.Type.DoWhileIteration);
     }
 
-    public static RepeatingNode createForOfRepeatingNode(JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
+    public static RepeatingNode createForOfRepeatingNode(JavaScriptNode iteratorNode, JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new ForOfRepeatingNode(nextResultNode, nonVoidBody, writeNextValueNode);
+        return ForOfRepeatingNode.create(iteratorNode, nextResultNode, nonVoidBody, writeNextValueNode);
     }
 
     @Override
@@ -267,28 +273,70 @@ public final class WhileNode extends StatementNode {
     }
 
     /**
-     * For-in/of/await-of loop.
+     * For-in/for-of/for-await-of loop body.
      */
-    static final class ForOfRepeatingNode extends AbstractRepeatingNode implements ResumableNode.WithIntState {
+    abstract static class ForOfRepeatingNode extends AbstractRepeatingNode implements ResumableNode.WithIntState {
 
+        @Child JavaScriptNode iteratorNode;
         @Child JavaScriptNode nextResultNode;
         @Child JSWriteFrameSlotNode writeNextValueNode;
         @Child IteratorCompleteNode iteratorCompleteNode = IteratorCompleteNode.create();
         @Child IteratorValueNode iteratorValueNode = IteratorValueNode.create();
 
-        ForOfRepeatingNode(JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
+        ForOfRepeatingNode(JavaScriptNode iteratorNode, JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
             super(null, body);
+            this.iteratorNode = iteratorNode;
             this.nextResultNode = nextResultNode;
             this.writeNextValueNode = writeNextValueNode;
         }
 
-        private Object executeNextResult(VirtualFrame frame) {
-            return nextResultNode.execute(frame);
+        static ForOfRepeatingNode create(JavaScriptNode iteratorNode, JavaScriptNode nextResultNode, JavaScriptNode body, JSWriteFrameSlotNode writeNextValueNode) {
+            return WhileNodeFactory.ForOfRepeatingNodeGen.create(iteratorNode, nextResultNode, body, writeNextValueNode);
         }
 
-        @Override
-        public boolean executeRepeating(VirtualFrame frame) {
-            Object nextResult = executeNextResult(frame);
+        /**
+         * Specialization for the built-in Array Iterator that supports normal arrays, typed arrays,
+         * and foreign arrays and skips creating iterator result objects when the iterator is done,
+         * so as to avoid control flow merges between undefined and primitive values that can cause
+         * unnecessary boxing allocations in compiled code. For all other objects, or when getting
+         * the length would throw an error (in which case length will be -1), we fall back to the
+         * generic case so that the Array Iterator next method is visible on the call stack.
+         *
+         * This specialization will only trigger for {@code for-of} loops, since {@code for-in} uses
+         * a different iterator and {@code for-await-of} is invoked via {@link #resume}.
+         */
+        @Specialization(guards = {"isArrayIterator(iteratorRecord)", "length >= 0"}, limit = "1")
+        protected boolean doArrayIterator(VirtualFrame frame,
+                        @Bind("getIteratorRecord(frame)") @SuppressWarnings("unused") IteratorRecord iteratorRecord,
+                        @Cached @SuppressWarnings("unused") ArrayIteratorGetLengthSafeNode getLengthNode,
+                        @Bind("getArrayIterator(iteratorRecord)") JSArrayIteratorObject arrayIterator,
+                        @Bind("getLengthNode.execute($node, arrayIterator.getIteratedObject())") long length) {
+            long index = arrayIterator.getNextIndex();
+            if (index >= length) {
+                arrayIterator.setIteratedObject(Undefined.instance);
+                return false;
+            }
+
+            /*
+             * Call the "next" method as usual to advance the iterator and get the next result, but
+             * skip getting the length again and checking if (index >= length). Also skip getting
+             * the "done" property since it's side-effect-free for built-in iterator result objects.
+             */
+            arrayIterator.setSkipGetLength(true);
+            Object nextResult = nextResultNode.execute(frame);
+            Object nextValue = iteratorValueNode.execute(nextResult);
+            writeNextValueNode.executeWrite(frame, nextValue);
+            try {
+                executeBody(frame);
+            } finally {
+                writeNextValueNode.executeWrite(frame, Undefined.instance);
+            }
+            return true;
+        }
+
+        @Specialization(replaces = "doArrayIterator")
+        protected boolean doGeneric(VirtualFrame frame) {
+            Object nextResult = nextResultNode.execute(frame);
             boolean done = iteratorCompleteNode.execute(nextResult);
             Object nextValue = iteratorValueNode.execute(nextResult);
             if (done) {
@@ -307,7 +355,7 @@ public final class WhileNode extends StatementNode {
         public Object resume(VirtualFrame frame, int stateSlot) {
             int state = getStateAsIntAndReset(frame, stateSlot);
             if (state == 0) {
-                Object nextResult = executeNextResult(frame);
+                Object nextResult = nextResultNode.execute(frame);
                 boolean done = iteratorCompleteNode.execute(nextResult);
                 Object nextValue = iteratorValueNode.execute(nextResult);
                 if (done) {
@@ -328,7 +376,9 @@ public final class WhileNode extends StatementNode {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new ForOfRepeatingNode(cloneUninitialized(nextResultNode, materializedTags),
+            return ForOfRepeatingNode.create(
+                            cloneUninitialized(iteratorNode, materializedTags),
+                            cloneUninitialized(nextResultNode, materializedTags),
                             cloneUninitialized(bodyNode, materializedTags),
                             cloneUninitialized(writeNextValueNode, materializedTags));
         }
@@ -338,9 +388,24 @@ public final class WhileNode extends StatementNode {
             if (!materializationNeeded()) {
                 return this;
             }
-            return new ForOfRepeatingNode(cloneUninitialized(nextResultNode, materializedTags),
+            return ForOfRepeatingNode.create(
+                            cloneUninitialized(iteratorNode, materializedTags),
+                            cloneUninitialized(nextResultNode, materializedTags),
                             materializeBody(materializedTags),
                             cloneUninitialized(writeNextValueNode, materializedTags));
+        }
+
+        protected final IteratorRecord getIteratorRecord(VirtualFrame frame) {
+            return (IteratorRecord) iteratorNode.execute(frame);
+        }
+
+        protected final boolean isArrayIterator(IteratorRecord iterator) {
+            return iterator.getIterator() instanceof JSArrayIteratorObject &&
+                            iterator.getNextMethod() == getRealm().getArrayIteratorNextMethod();
+        }
+
+        protected static JSArrayIteratorObject getArrayIterator(IteratorRecord iterator) {
+            return (JSArrayIteratorObject) iterator.getIterator();
         }
     }
 }

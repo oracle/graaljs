@@ -46,8 +46,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -60,7 +60,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -73,9 +73,9 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -137,16 +137,16 @@ public final class ScopeVariables implements TruffleObject {
         return true;
     }
 
-    @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasLanguage() {
+    @ExportMessage
+    boolean hasLanguageId() {
         return true;
     }
 
-    @ExportMessage
     @SuppressWarnings("static-method")
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return JavaScriptLanguage.class;
+    @ExportMessage
+    String getLanguageId() {
+        return JavaScriptLanguage.ID;
     }
 
     @ExportMessage
@@ -356,19 +356,22 @@ public final class ScopeVariables implements TruffleObject {
                         @Cached("member") String cachedMember,
                         // We cache the member's write node for fast-path access
                         @Cached(value = "findSlot(member, receiver)") ResolvedSlot resolvedSlot,
-                        @Cached(value = "findWriteNode(resolvedSlot)") WriteNode writeNode) throws UnknownIdentifierException {
-            doWrite(receiver, cachedMember, value, writeNode, resolvedSlot);
+                        @Cached(value = "findWriteNode(resolvedSlot)") WriteNode writeNode,
+                        @Cached @Shared ImportValueNode importNode) throws UnknownIdentifierException {
+            doWrite(receiver, cachedMember, value, writeNode, resolvedSlot, importNode);
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static void doGeneric(ScopeVariables receiver, String member, Object value) throws UnknownIdentifierException {
+        static void doGeneric(ScopeVariables receiver, String member, Object value,
+                        @Cached @Shared ImportValueNode importNode) throws UnknownIdentifierException {
             ResolvedSlot resolvedSlot = findSlot(member, receiver);
             WriteNode writeNode = findWriteNode(resolvedSlot);
-            doWrite(receiver, member, value, writeNode, resolvedSlot);
+            doWrite(receiver, member, value, writeNode, resolvedSlot, importNode);
         }
 
-        private static void doWrite(ScopeVariables receiver, String member, Object value, WriteNode writeNode, ResolvedSlot resolvedSlot) throws UnknownIdentifierException {
+        private static void doWrite(ScopeVariables receiver, String member, Object value, WriteNode writeNode, ResolvedSlot resolvedSlot, ImportValueNode importNode)
+                        throws UnknownIdentifierException {
             if (writeNode == null) {
                 throw UnknownIdentifierException.create(member);
             }
@@ -376,7 +379,7 @@ public final class ScopeVariables implements TruffleObject {
             if (frame == null) {
                 throw UnknownIdentifierException.create(member);
             }
-            writeNode.executeWrite((VirtualFrame) frame, value);
+            writeNode.executeWrite((VirtualFrame) frame, importNode.executeWithTarget(value));
         }
     }
 
@@ -499,7 +502,7 @@ public final class ScopeVariables implements TruffleObject {
 
             class EvalRead extends JavaScriptNode {
                 @Child JavaScriptNode getDynamicScope = readDynamicScope;
-                @Child DynamicObjectLibrary objectLibrary;
+                @Child DynamicObject.GetNode getNode;
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -507,17 +510,17 @@ public final class ScopeVariables implements TruffleObject {
                     if (!JSRuntime.isObject(scope)) {
                         return Undefined.instance;
                     }
-                    DynamicObjectLibrary lib = objectLibrary;
-                    if (lib == null) {
+                    DynamicObject.GetNode get = getNode;
+                    if (get == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         if (getParent() != null) {
-                            lib = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+                            get = insert(DynamicObject.GetNode.create());
                         } else {
-                            lib = DynamicObjectLibrary.getUncached();
+                            get = DynamicObject.GetNode.getUncached();
                         }
-                        objectLibrary = lib;
+                        getNode = get;
                     }
-                    return Properties.getOrDefault(lib, scope, key, Undefined.instance);
+                    return Properties.getOrDefault(get, scope, key, Undefined.instance);
                 }
             }
             return new EvalRead();
@@ -529,7 +532,7 @@ public final class ScopeVariables implements TruffleObject {
 
             class EvalWrite extends JavaScriptNode implements WriteNode {
                 @Child JavaScriptNode getDynamicScope = readDynamicScope;
-                @Child DynamicObjectLibrary objectLibrary;
+                @Child DynamicObject.PutNode putNode;
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -542,17 +545,17 @@ public final class ScopeVariables implements TruffleObject {
                     if (!JSRuntime.isObject(scope)) {
                         return;
                     }
-                    DynamicObjectLibrary lib = objectLibrary;
-                    if (lib == null) {
+                    DynamicObject.PutNode put = putNode;
+                    if (put == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         if (getParent() != null) {
-                            lib = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+                            put = insert(DynamicObject.PutNode.create());
                         } else {
-                            lib = DynamicObjectLibrary.getUncached();
+                            put = DynamicObject.PutNode.getUncached();
                         }
-                        objectLibrary = lib;
+                        putNode = put;
                     }
-                    lib.putIfPresent(scope, key, value);
+                    Properties.putIfPresent(putNode, scope, key, value);
                 }
 
                 @Override
@@ -604,7 +607,7 @@ public final class ScopeVariables implements TruffleObject {
                 } else if (ScopeFrameNode.EVAL_SCOPE_IDENTIFIER.equals(slotName)) {
                     JSDynamicObject evalScope = (JSDynamicObject) targetFrame.getObject(slot);
                     if (JSRuntime.isObject(evalScope)) {
-                        if (DynamicObjectLibrary.getUncached().containsKey(evalScope, member)) {
+                        if (DynamicObject.ContainsKeyNode.getUncached().execute(evalScope, member)) {
                             return new DynamicScopeResolvedSlot(member, slot, frameLevel, effectiveScopeLevel, frameDescriptor);
                         }
                     }

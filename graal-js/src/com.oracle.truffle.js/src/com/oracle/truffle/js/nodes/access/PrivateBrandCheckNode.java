@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,12 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Properties;
@@ -77,10 +77,10 @@ public abstract class PrivateBrandCheckNode extends JSTargetableNode {
         this.brandNode = brandNode;
     }
 
-    @Specialization(limit = "3")
+    @Specialization
     Object doInstance(JSObject target, HiddenKey brandKey,
-                    @CachedLibrary("target") DynamicObjectLibrary access) {
-        if (Properties.containsKey(access, target, brandKey)) {
+                    @Cached DynamicObject.ContainsKeyNode containsKey) {
+        if (Properties.containsKey(containsKey, target, brandKey)) {
             return target;
         } else {
             return denied(target, brandKey);

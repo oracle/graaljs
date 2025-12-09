@@ -45,7 +45,6 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -498,14 +497,14 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean hasLanguage() {
+    boolean hasLanguageId() {
         return true;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return JavaScriptLanguage.class;
+    String getLanguageId() {
+        return JavaScriptLanguage.ID;
     }
 
     @TruffleBoundary

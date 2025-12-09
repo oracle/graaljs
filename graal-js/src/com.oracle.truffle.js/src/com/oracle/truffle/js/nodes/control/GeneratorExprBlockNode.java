@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
@@ -57,56 +58,53 @@ public final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
         return new GeneratorExprBlockNode(statements, stateSlot);
     }
 
+    @ExplodeLoop
     @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        int index = getStateAndReset(frame);
-        assert index < getStatements().length;
-        return block.executeBoolean(frame, index);
+        int startIndex = getStateAndReset(frame);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            executeVoid(frame, stmts[i], i, startIndex);
+        }
+        try {
+            return stmts[last].executeBoolean(frame);
+        } catch (YieldException e) {
+            setState(frame, last);
+            throw e;
+        }
     }
 
+    @ExplodeLoop
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        int index = getStateAndReset(frame);
-        assert index < getStatements().length;
-        return block.executeInt(frame, index);
+        int startIndex = getStateAndReset(frame);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            executeVoid(frame, stmts[i], i, startIndex);
+        }
+        try {
+            return stmts[last].executeInt(frame);
+        } catch (YieldException e) {
+            setState(frame, last);
+            throw e;
+        }
     }
 
+    @ExplodeLoop
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        int index = getStateAndReset(frame);
-        assert index < getStatements().length;
-        return block.executeDouble(frame, index);
-    }
-
-    @Override
-    public boolean executeBoolean(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        assert index == getStatements().length - 1;
-        try {
-            return node.executeBoolean(frame);
-        } catch (YieldException e) {
-            setState(frame, index);
-            throw e;
+        int startIndex = getStateAndReset(frame);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            executeVoid(frame, stmts[i], i, startIndex);
         }
-    }
-
-    @Override
-    public int executeInt(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        assert index == getStatements().length - 1;
         try {
-            return node.executeInt(frame);
+            return stmts[last].executeDouble(frame);
         } catch (YieldException e) {
-            setState(frame, index);
-            throw e;
-        }
-    }
-
-    @Override
-    public double executeDouble(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        assert index == getStatements().length - 1;
-        try {
-            return node.executeDouble(frame);
-        } catch (YieldException e) {
-            setState(frame, index);
+            setState(frame, last);
             throw e;
         }
     }

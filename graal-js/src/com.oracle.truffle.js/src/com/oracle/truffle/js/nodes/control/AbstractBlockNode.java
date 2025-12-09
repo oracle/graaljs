@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,43 +44,44 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.BlockNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 
-public abstract class AbstractBlockNode extends StatementNode implements SequenceNode, BlockNode.ElementExecutor<JavaScriptNode> {
-    @Child protected BlockNode<JavaScriptNode> block;
+public abstract class AbstractBlockNode extends StatementNode implements SequenceNode {
+
+    @Children protected final JavaScriptNode[] statements;
 
     @SuppressWarnings("this-escape")
     protected AbstractBlockNode(JavaScriptNode[] statements) {
-        this.block = BlockNode.create(statements, this);
+        this.statements = statements;
     }
 
     @Override
     public final JavaScriptNode[] getStatements() {
-        return block.getElements();
+        return statements;
     }
 
+    @ExplodeLoop
     @Override
     public void executeVoid(VirtualFrame frame) {
-        block.executeVoid(frame, BlockNode.NO_ARGUMENT);
+        JavaScriptNode[] stmts = statements;
+        for (int i = 0; i < stmts.length; ++i) {
+            stmts[i].executeVoid(frame);
+        }
     }
 
+    @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
-        return block.executeGeneric(frame, BlockNode.NO_ARGUMENT);
-    }
-
-    @Override
-    public void executeVoid(VirtualFrame frame, JavaScriptNode node, int index, int argument) {
-        node.executeVoid(frame);
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame, JavaScriptNode node, int index, int argument) {
-        return node.execute(frame);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            stmts[i].executeVoid(frame);
+        }
+        return stmts[last].execute(frame);
     }
 
     /**

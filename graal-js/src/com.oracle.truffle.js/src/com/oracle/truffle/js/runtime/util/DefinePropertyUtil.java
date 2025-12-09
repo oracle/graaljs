@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,12 @@ package com.oracle.truffle.js.runtime.util;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -218,7 +218,7 @@ public final class DefinePropertyUtil {
         } else {
             if (currentDesc.isDataDescriptor() && descriptor.isDataDescriptor() && currentProperty.getFlags() == newAttr) {
                 if (descriptor.hasValue()) {
-                    boolean present = DynamicObjectLibrary.getUncached().putIfPresent(thisObj, key, descriptor.getValue());
+                    boolean present = Properties.putIfPresentUncached(thisObj, key, descriptor.getValue());
                     assert present : key;
                 }
             } else if (currentDesc.isAccessorDescriptor() && descriptor.isAccessorDescriptor()) {
@@ -237,7 +237,7 @@ public final class DefinePropertyUtil {
                     }
 
                     if (currentProperty.getFlags() == newAttr) {
-                        boolean present = DynamicObjectLibrary.getUncached().putIfPresent(thisObj, key, newAccessor);
+                        boolean present = Properties.putIfPresentUncached(thisObj, key, newAccessor);
                         assert present : key;
                     } else {
                         JSObjectUtil.defineAccessorProperty(thisObj, key, newAccessor, newAttr);

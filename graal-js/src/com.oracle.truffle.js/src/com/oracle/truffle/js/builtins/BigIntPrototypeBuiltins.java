@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -113,58 +112,43 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         return null;
     }
 
-    public abstract static class JSBigIntOperation extends JSBuiltinNode {
-
-        @Child private JSToIntegerAsIntNode toIntegerNode;
-
-        public JSBigIntOperation(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        protected JSException noBigIntFailure(Object value) {
-            throw Errors.createTypeError(JSRuntime.safeToString(value) + " is not a BigInt");
-        }
-
-        protected int toIntegerAsInt(Object target) {
-            if (toIntegerNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntegerNode = insert(JSToIntegerAsIntNode.create());
-            }
-            return toIntegerNode.executeInt(target);
-        }
+    @TruffleBoundary
+    static JSException noBigIntFailure(Object value) {
+        throw Errors.createTypeError(JSRuntime.safeToString(value) + " is not a BigInt");
     }
 
-    public abstract static class JSBigIntToStringNode extends JSBigIntOperation {
+    public abstract static class JSBigIntToStringNode extends JSBuiltinNode {
 
         public JSBigIntToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @SuppressWarnings("unused")
         @Specialization(guards = {"isUndefined(radix)"})
-        protected TruffleString toStringBigIntRadix10(BigInt thisObj, Object radix,
-                        @Cached @Shared InlinedBranchProfile radixErrorBranch) {
-            return toStringImpl(thisObj, 10, radixErrorBranch);
+        protected TruffleString toStringBigIntRadix10(BigInt thisObj, @SuppressWarnings("unused") Object radix,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) {
+            return Strings.fromBigInt(fromJavaString, thisObj, 10);
         }
 
         @Specialization(guards = {"!isUndefined(radix)"})
         protected TruffleString toStringBigInt(BigInt thisObj, Object radix,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaString,
+                        @Cached @Shared JSToIntegerAsIntNode toInteger,
                         @Cached @Shared InlinedBranchProfile radixErrorBranch) {
-            return toStringImpl(thisObj, radix, radixErrorBranch);
+            return toStringImpl(thisObj, radix, fromJavaString, toInteger, radixErrorBranch);
         }
 
-        @SuppressWarnings("unused")
         @Specialization(guards = {"isUndefined(radix)"})
-        protected TruffleString toStringRadix10(JSBigIntObject thisObj, Object radix,
-                        @Cached @Shared InlinedBranchProfile radixErrorBranch) {
-            return toStringImpl(JSBigInt.valueOf(thisObj), 10, radixErrorBranch);
+        protected TruffleString toStringRadix10(JSBigIntObject thisObj, @SuppressWarnings("unused") Object radix,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) {
+            return Strings.fromBigInt(fromJavaString, JSBigInt.valueOf(thisObj), 10);
         }
 
         @Specialization(guards = {"!isUndefined(radix)"})
         protected TruffleString toString(JSBigIntObject thisObj, Object radix,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaString,
+                        @Cached @Shared JSToIntegerAsIntNode toInteger,
                         @Cached @Shared InlinedBranchProfile radixErrorBranch) {
-            return toStringImpl(JSBigInt.valueOf(thisObj), radix, radixErrorBranch);
+            return toStringImpl(JSBigInt.valueOf(thisObj), radix, fromJavaString, toInteger, radixErrorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -173,17 +157,20 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeError("BigInt.prototype.toString requires that 'this' be a BigInt");
         }
 
-        private TruffleString toStringImpl(BigInt numberVal, Object radix, InlinedBranchProfile radixErrorBranch) {
-            int radixVal = toIntegerAsInt(radix);
+        private TruffleString toStringImpl(BigInt numberVal, Object radix,
+                        TruffleString.FromJavaStringNode fromJavaString,
+                        JSToIntegerAsIntNode toIntegerAsInt,
+                        InlinedBranchProfile radixErrorBranch) {
+            int radixVal = toIntegerAsInt.executeInt(radix);
             if (radixVal < 2 || radixVal > 36) {
                 radixErrorBranch.enter(this);
                 throw Errors.createRangeError("toString() expects radix in range 2-36");
             }
-            return Strings.fromBigInt(numberVal, radixVal);
+            return Strings.fromBigInt(fromJavaString, numberVal, radixVal);
         }
     }
 
-    public abstract static class JSBigIntToLocaleStringIntlNode extends JSBigIntOperation {
+    public abstract static class JSBigIntToLocaleStringIntlNode extends JSBuiltinNode {
 
         @Child InitializeNumberFormatNode initNumberFormatNode;
 
@@ -219,24 +206,22 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     }
 
-    public abstract static class JSBigIntToLocaleStringNode extends JSBigIntOperation {
+    public abstract static class JSBigIntToLocaleStringNode extends JSBuiltinNode {
 
         public JSBigIntToLocaleStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected TruffleString toLocaleStringBigInt(BigInt thisObj) {
-            return toLocaleStringImpl(thisObj);
+        protected TruffleString toLocaleStringBigInt(BigInt thisObj,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) {
+            return Strings.fromBigInt(fromJavaString, thisObj);
         }
 
         @Specialization
-        protected TruffleString toLocaleStringJSBigInt(JSBigIntObject thisObj) {
-            return toLocaleStringImpl(JSBigInt.valueOf(thisObj));
-        }
-
-        private static TruffleString toLocaleStringImpl(BigInt bi) {
-            return Strings.fromBigInt(bi);
+        protected TruffleString toLocaleStringJSBigInt(JSBigIntObject thisObj,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) {
+            return Strings.fromBigInt(fromJavaString, JSBigInt.valueOf(thisObj));
         }
 
         @Fallback
@@ -245,7 +230,7 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
-    public abstract static class JSBigIntValueOfNode extends JSBigIntOperation {
+    public abstract static class JSBigIntValueOfNode extends JSBuiltinNode {
 
         public JSBigIntValueOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

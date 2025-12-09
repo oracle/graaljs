@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -56,6 +57,7 @@ public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
         int index = 0;
         if (frame.isInt(stateSlot)) {
             index = frame.getInt(stateSlot);
+            assert index < statements.length;
         } else {
             assert frame.isObject(stateSlot) && frame.getObject(stateSlot) == Undefined.instance;
         }
@@ -67,21 +69,33 @@ public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
         frame.setInt(stateSlot, index);
     }
 
+    @ExplodeLoop
     @Override
     public void executeVoid(VirtualFrame frame) {
-        int index = getStateAndReset(frame);
-        assert index < getStatements().length;
-        block.executeVoid(frame, index);
+        int startIndex = getStateAndReset(frame);
+        JavaScriptNode[] stmts = statements;
+        for (int i = 0; i < stmts.length; ++i) {
+            executeVoid(frame, stmts[i], i, startIndex);
+        }
     }
 
+    @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
-        int index = getStateAndReset(frame);
-        assert index < getStatements().length;
-        return block.executeGeneric(frame, index);
+        int startIndex = getStateAndReset(frame);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            executeVoid(frame, stmts[i], i, startIndex);
+        }
+        try {
+            return stmts[last].execute(frame);
+        } catch (YieldException e) {
+            setState(frame, last);
+            throw e;
+        }
     }
 
-    @Override
     public void executeVoid(VirtualFrame frame, JavaScriptNode node, int index, int startIndex) {
         if (index < startIndex) {
             return;
@@ -94,14 +108,4 @@ public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
         }
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame, JavaScriptNode node, int index, int startIndex) {
-        assert index == getStatements().length - 1;
-        try {
-            return node.execute(frame);
-        } catch (YieldException e) {
-            setState(frame, index);
-            throw e;
-        }
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,14 +45,14 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Properties;
@@ -72,8 +72,8 @@ public final class DynamicScopeWrapper implements TruffleObject {
         this.scope = scope;
     }
 
-    boolean isConst(TruffleString name, DynamicObjectLibrary access) {
-        return JSProperty.isConst(Properties.getProperty(access, scope, name));
+    boolean isConst(TruffleString name, DynamicObject.GetPropertyFlagsNode access) {
+        return JSProperty.isConst(access.execute(scope, name, 0));
     }
 
     @SuppressWarnings("static-method")
@@ -85,11 +85,12 @@ public final class DynamicScopeWrapper implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                    @CachedLibrary("this.scope") DynamicObjectLibrary access) {
+                    @Cached DynamicObject.GetKeyArrayNode getKeyArray,
+                    @Cached @Shared DynamicObject.GetNode getValue) {
         List<String> keys = new ArrayList<>();
-        for (Object key : access.getKeyArray(scope)) {
+        for (Object key : getKeyArray.execute(scope)) {
             if (key instanceof TruffleString name) {
-                Object value = Properties.getOrDefault(access, scope, name, null);
+                Object value = Properties.getOrDefault(getValue, scope, name, null);
                 if (value != null && value != Dead.instance()) {
                     keys.add(Strings.toJavaString(name));
                 }
@@ -100,14 +101,14 @@ public final class DynamicScopeWrapper implements TruffleObject {
 
     @ExportMessage
     boolean isMemberReadable(String name,
-                    @Cached @Cached.Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this.scope") DynamicObjectLibrary access) {
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode,
+                    @Cached @Shared DynamicObject.GetNode getValue) {
         TruffleString tsName = Strings.fromJavaString(fromJavaStringNode, name);
-        return isMemberReadableIntl(tsName, access);
+        return isMemberReadableIntl(tsName, getValue);
     }
 
-    private boolean isMemberReadableIntl(TruffleString tsName, DynamicObjectLibrary access) {
-        Object value = Properties.getOrDefault(access, scope, tsName, null);
+    private boolean isMemberReadableIntl(TruffleString tsName, DynamicObject.GetNode getValue) {
+        Object value = Properties.getOrDefault(getValue, scope, tsName, null);
         if (value == null || value == Dead.instance()) {
             return false;
         }
@@ -116,10 +117,11 @@ public final class DynamicScopeWrapper implements TruffleObject {
 
     @ExportMessage
     boolean isMemberModifiable(String name,
-                    @Cached @Cached.Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this.scope") DynamicObjectLibrary access) {
+                    @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
+                    @Cached @Shared DynamicObject.GetNode getValue,
+                    @Cached @Shared DynamicObject.GetPropertyFlagsNode getFlags) {
         TruffleString tsName = Strings.fromJavaString(fromJavaStringNode, name);
-        return isMemberReadableIntl(tsName, access) && !isConst(tsName, access);
+        return isMemberReadableIntl(tsName, getValue) && !isConst(tsName, getFlags);
     }
 
     @SuppressWarnings("static-method")
@@ -130,11 +132,11 @@ public final class DynamicScopeWrapper implements TruffleObject {
 
     @ExportMessage
     Object readMember(String name,
-                    @Cached @Cached.Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this.scope") DynamicObjectLibrary access,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode,
+                    @Cached @Shared DynamicObject.GetNode getValue,
                     @Cached ExportValueNode exportValueNode) throws UnknownIdentifierException {
         TruffleString tsName = Strings.fromJavaString(fromJavaStringNode, name);
-        Object value = Properties.getOrDefault(access, scope, tsName, null);
+        Object value = Properties.getOrDefault(getValue, scope, tsName, null);
         if (value == null || value == Dead.instance()) {
             throw UnknownIdentifierException.create(name);
         } else {
@@ -144,14 +146,16 @@ public final class DynamicScopeWrapper implements TruffleObject {
 
     @ExportMessage
     void writeMember(String name, Object value,
-                    @Cached @Cached.Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this.scope") DynamicObjectLibrary access) throws UnsupportedMessageException, UnknownIdentifierException {
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode,
+                    @Cached @Shared DynamicObject.GetNode getValue,
+                    @Cached @Shared DynamicObject.GetPropertyFlagsNode getFlags,
+                    @Cached DynamicObject.PutNode setValue) throws UnsupportedMessageException, UnknownIdentifierException {
         TruffleString tsName = Strings.fromJavaString(fromJavaStringNode, name);
-        Object curValue = Properties.getOrDefault(access, scope, tsName, null);
+        Object curValue = Properties.getOrDefault(getValue, scope, tsName, null);
         if (curValue == null || curValue == Dead.instance()) {
             throw UnknownIdentifierException.create(name);
-        } else if (!isConst(tsName, access)) {
-            Properties.putIfPresent(access, scope, tsName, value);
+        } else if (!isConst(tsName, getFlags)) {
+            Properties.putIfPresent(setValue, scope, tsName, value);
         } else {
             throw UnsupportedMessageException.create();
         }

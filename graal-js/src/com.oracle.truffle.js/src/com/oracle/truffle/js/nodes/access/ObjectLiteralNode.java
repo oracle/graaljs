@@ -47,16 +47,15 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -339,7 +338,7 @@ public final class ObjectLiteralNode extends JavaScriptNode {
 
     private abstract static class CachingObjectLiteralMemberNode extends ClassElementNode {
         protected final Object name;
-        @Child private DynamicObjectLibrary dynamicObjectLibrary;
+        @Child private DynamicObject.PutNode putNode;
 
         CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes, boolean isFieldOrStaticBlock) {
             super(isStatic, attributes, isFieldOrStaticBlock, false);
@@ -351,15 +350,15 @@ public final class ObjectLiteralNode extends JavaScriptNode {
             return name;
         }
 
-        protected final DynamicObjectLibrary dynamicObjectLibrary() {
-            DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary;
-            if (dynamicObjectLib == null) {
+        protected final DynamicObject.PutNode putNode() {
+            DynamicObject.PutNode put = this.putNode;
+            if (put == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSContext context = getLanguage().getJSContext();
-                dynamicObjectLibrary = dynamicObjectLib = insert(JSObjectUtil.createDispatched(name, context.getPropertyCacheLimit()));
+                this.putNode = put = insert(DynamicObject.PutNode.create());
                 JSObjectUtil.checkForNoSuchPropertyOrMethod(context, name);
             }
-            return dynamicObjectLib;
+            return put;
         }
     }
 
@@ -390,7 +389,7 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         private static final String ACCESSOR_STORAGE = " accessor storage";
         private static final HiddenKey STORAGE_KEY_MAGIC = new HiddenKey(":storage-key-magic");
 
-        @Child private PropertySetNode backingStorageMagicSetNode;
+        @Child private DynamicObject.PutNode backingStorageMagicSetNode;
 
         private final JSFunctionData getterFunctionData;
         private final JSFunctionData setterFunctionData;
@@ -400,7 +399,7 @@ public final class ObjectLiteralNode extends JavaScriptNode {
             JSContext context = getLanguage().getJSContext();
             this.setterFunctionData = createAutoAccessorSetFunctionData(context);
             this.getterFunctionData = createAutoAccessorGetFunctionData(context);
-            this.backingStorageMagicSetNode = PropertySetNode.createSetHidden(STORAGE_KEY_MAGIC, context);
+            this.backingStorageMagicSetNode = DynamicObject.PutNode.create();
         }
 
         @Override
@@ -418,10 +417,10 @@ public final class ObjectLiteralNode extends JavaScriptNode {
             executeWithGetterSetter(homeObject, classElement.getKey(), classElement.getGetter(), classElement.getSetter());
         }
 
-        private static HiddenKey checkAutoAccessorTarget(VirtualFrame frame, PropertyGetNode getMagicNode, DynamicObjectLibrary storageLibrary, Object thiz) {
-            Object function = JSFrameUtil.getFunctionObject(frame);
-            HiddenKey backingStorageKey = (HiddenKey) getMagicNode.getValue(function);
-            if (!(thiz instanceof JSObject) || !storageLibrary.containsKey((JSObject) thiz, backingStorageKey)) {
+        private static HiddenKey checkAutoAccessorTarget(VirtualFrame frame, DynamicObject.GetNode getMagicNode, DynamicObject.ContainsKeyNode containsBackingStorageKey, Object thiz) {
+            JSFunctionObject function = JSFrameUtil.getFunctionObject(frame);
+            HiddenKey backingStorageKey = (HiddenKey) getMagicNode.execute(function, STORAGE_KEY_MAGIC, Undefined.instance);
+            if (!(thiz instanceof JSObject jsObject) || !containsBackingStorageKey.execute(jsObject, backingStorageKey)) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createTypeError("Bad auto-accessor target.");
             }
@@ -431,16 +430,17 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         private static JSFunctionData createAutoAccessorSetFunctionData(JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-                @Child private PropertyGetNode getStorageKeyNode = PropertyGetNode.createGetHidden(STORAGE_KEY_MAGIC, context);
-                @Child private DynamicObjectLibrary storageLibrary = DynamicObjectLibrary.getFactory().createDispatched(5);
+                @Child private DynamicObject.GetNode getStorageKeyNode = DynamicObject.GetNode.create();
+                @Child private DynamicObject.ContainsKeyNode containsBackingStorageKey = DynamicObject.ContainsKeyNode.create();
+                @Child private DynamicObject.PutNode setBackingStorage = DynamicObject.PutNode.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
-                    HiddenKey backingStorageKey = checkAutoAccessorTarget(frame, getStorageKeyNode, storageLibrary, thiz);
+                    HiddenKey backingStorageKey = checkAutoAccessorTarget(frame, getStorageKeyNode, containsBackingStorageKey, thiz);
                     Object[] args = frame.getArguments();
                     Object value = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                    storageLibrary.put((DynamicObject) thiz, backingStorageKey, value);
+                    setBackingStorage.execute((DynamicObject) thiz, backingStorageKey, value);
                     return value;
                 }
             }.getCallTarget();
@@ -450,24 +450,25 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         private static JSFunctionData createAutoAccessorGetFunctionData(JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-                @Child private PropertyGetNode getStorageKeyNode = PropertyGetNode.createGetHidden(STORAGE_KEY_MAGIC, context);
-                @Child private DynamicObjectLibrary storageLibrary = DynamicObjectLibrary.getFactory().createDispatched(5);
+                @Child private DynamicObject.GetNode getStorageKeyNode = DynamicObject.GetNode.create();
+                @Child private DynamicObject.ContainsKeyNode containsBackingStorageKey = DynamicObject.ContainsKeyNode.create();
+                @Child private DynamicObject.GetNode getBackingStorage = DynamicObject.GetNode.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
-                    HiddenKey backingStorageKey = checkAutoAccessorTarget(frame, getStorageKeyNode, storageLibrary, thiz);
-                    return storageLibrary.getOrDefault((DynamicObject) thiz, backingStorageKey, Undefined.instance);
+                    HiddenKey backingStorageKey = checkAutoAccessorTarget(frame, getStorageKeyNode, containsBackingStorageKey, thiz);
+                    return getBackingStorage.execute((JSObject) thiz, backingStorageKey, Undefined.instance);
                 }
             }.getCallTarget();
             return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
         }
 
         private void executeWithGetterSetter(JSObject obj, Object key, Object getterV, Object setterV) {
-            DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
+            DynamicObject.PutNode putMember = putNode();
             checkNoElementsAssumption(obj, key);
             Accessor accessor = new Accessor(getterV, setterV);
-            dynamicObjectLib.putWithFlags(obj, key, accessor, attributes | JSProperty.ACCESSOR);
+            putMember.executeWithFlags(obj, key, accessor, attributes | JSProperty.ACCESSOR);
         }
 
         @Override
@@ -477,13 +478,13 @@ public final class ObjectLiteralNode extends JavaScriptNode {
 
         public JSFunctionObject createAutoAccessorSetter(HiddenKey backingStorageKey, JSRealm realm) {
             JSFunctionObject functionObject = JSFunction.create(realm, setterFunctionData);
-            backingStorageMagicSetNode.setValue(functionObject, backingStorageKey);
+            backingStorageMagicSetNode.execute(functionObject, STORAGE_KEY_MAGIC, backingStorageKey);
             return functionObject;
         }
 
         public JSFunctionObject createAutoAccessorGetter(HiddenKey backingStorageKey, JSRealm realm) {
             JSFunctionObject functionObject = JSFunction.create(realm, getterFunctionData);
-            backingStorageMagicSetNode.setValue(functionObject, backingStorageKey);
+            backingStorageMagicSetNode.execute(functionObject, STORAGE_KEY_MAGIC, backingStorageKey);
             return functionObject;
         }
 
@@ -527,9 +528,9 @@ public final class ObjectLiteralNode extends JavaScriptNode {
             if (isFieldOrStaticBlock) {
                 return;
             }
-            DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
+            DynamicObject.PutNode putMember = putNode();
             checkNoElementsAssumption(obj, key);
-            dynamicObjectLib.putWithFlags(obj, key, value, attributes);
+            putMember.executeWithFlags(obj, key, value, attributes);
         }
 
         @Override
@@ -541,11 +542,17 @@ public final class ObjectLiteralNode extends JavaScriptNode {
     public static class ObjectLiteralAccessorMemberNode extends CachingObjectLiteralMemberNode {
         @Child protected JavaScriptNode getterNode;
         @Child protected JavaScriptNode setterNode;
+        @Child private DynamicObject.GetPropertyFlagsNode getPropertyFlagsNode;
+        @Child private DynamicObject.GetNode getAccessorNode;
 
         ObjectLiteralAccessorMemberNode(Object name, boolean isStatic, int attributes, JavaScriptNode getter, JavaScriptNode setter) {
             super(name, isStatic, attributes, false);
             this.getterNode = getter;
             this.setterNode = setter;
+            if (getter == null || setter == null) {
+                this.getPropertyFlagsNode = DynamicObject.GetPropertyFlagsNode.create();
+                this.getAccessorNode = DynamicObject.GetNode.create();
+            }
         }
 
         public boolean hasGetter() {
@@ -598,22 +605,22 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         }
 
         private void execute(JSObject obj, Object getterV, Object setterV) {
-            DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
+            DynamicObject.PutNode putMember = putNode();
             checkNoElementsAssumption(obj, name);
 
             Object getter = getterV;
             Object setter = setterV;
 
-            if ((getterNode == null || setterNode == null) && JSProperty.isAccessor(dynamicObjectLib.getPropertyFlagsOrDefault(obj, name, 0))) {
+            if ((getterNode == null || setterNode == null) && JSProperty.isAccessor(getPropertyFlagsNode.execute(obj, name, 0))) {
                 // No full accessor information and there is an accessor property already
                 // => merge the new and existing accessor functions
-                Accessor existing = (Accessor) dynamicObjectLib.getOrDefault(obj, name, null);
+                Accessor existing = (Accessor) getAccessorNode.execute(obj, name, null);
                 getter = (getter == null) ? existing.getGetter() : getter;
                 setter = (setter == null) ? existing.getSetter() : setter;
             }
             Accessor accessor = new Accessor(getter, setter);
 
-            dynamicObjectLib.putWithFlags(obj, name, accessor, attributes | JSProperty.ACCESSOR);
+            putMember.executeWithFlags(obj, name, accessor, attributes | JSProperty.ACCESSOR);
         }
 
         @Override
@@ -640,13 +647,13 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isFieldOrStaticBlock", "!isAnonymousFunctionDefinition", "setFunctionName==null", "!isMethodNode(valueNode)"}, limit = "3")
+        @Specialization(guards = {"!isFieldOrStaticBlock", "!isAnonymousFunctionDefinition", "setFunctionName==null", "!isMethodNode(valueNode)"})
         public final void doNoFieldNoFunctionDef(VirtualFrame frame, JSObject receiver, JSObject homeObject, JSRealm realm,
-                        @CachedLibrary("receiver") DynamicObjectLibrary dynamicObject) {
+                        @Cached DynamicObject.PutNode putMember) {
             Object key = evaluateKey(frame);
             Object value = valueNode.execute(frame);
             checkNoElementsAssumption(receiver, key);
-            dynamicObject.putWithFlags(receiver, key, value, attributes | (JSRuntime.isPrivateSymbol(key) ? JSAttributes.NOT_ENUMERABLE : 0));
+            putMember.executeWithFlags(receiver, key, value, attributes | (JSRuntime.isPrivateSymbol(key) ? JSAttributes.NOT_ENUMERABLE : 0));
         }
 
         @SuppressWarnings("unused")
@@ -1052,7 +1059,7 @@ public final class ObjectLiteralNode extends JavaScriptNode {
 
         @Child private JavaScriptNode valueNode;
         @Child private JavaScriptNode storageKeyNode;
-        @Child private PropertySetNode backingStorageMagicSetNode;
+        @Child private DynamicObject.PutNode backingStorageMagicSetNode;
 
         private final int privateBrandSlotIndex;
         private final JSFunctionData getterFunctionData;
@@ -1065,7 +1072,7 @@ public final class ObjectLiteralNode extends JavaScriptNode {
             this.storageKeyNode = storageKeyNode;
             this.privateBrandSlotIndex = privateBrandSlot;
             JSContext context = getLanguage().getJSContext();
-            this.backingStorageMagicSetNode = PropertySetNode.createSetHidden(STORAGE_KEY_MAGIC, context);
+            this.backingStorageMagicSetNode = DynamicObject.PutNode.create();
             this.setterFunctionData = createAutoAccessorSetFunctionData(context);
             this.getterFunctionData = createAutoAccessorGetFunctionData(context);
         }
@@ -1090,10 +1097,10 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         public void defineClassElement(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord classElement) {
         }
 
-        private static HiddenKey checkAutoAccessorTarget(VirtualFrame frame, PropertyGetNode getStorageKeyNode, DynamicObjectLibrary storageLibrary, Object thiz) {
-            Object function = JSFrameUtil.getFunctionObject(frame);
-            HiddenKey backingStorageKey = (HiddenKey) getStorageKeyNode.getValue(function);
-            if (!(thiz instanceof JSObject) || !storageLibrary.containsKey((JSObject) thiz, backingStorageKey)) {
+        private static HiddenKey checkAutoAccessorTarget(VirtualFrame frame, DynamicObject.GetNode getStorageKeyNode, DynamicObject.ContainsKeyNode containsBackingStorageKey, Object thiz) {
+            JSFunctionObject function = JSFrameUtil.getFunctionObject(frame);
+            HiddenKey backingStorageKey = (HiddenKey) getStorageKeyNode.execute(function, STORAGE_KEY_MAGIC, Undefined.instance);
+            if (!(thiz instanceof JSObject jsObject) || !containsBackingStorageKey.execute(jsObject, backingStorageKey)) {
                 throw Errors.createTypeError("Bad auto-accessor target.");
             }
             return backingStorageKey;
@@ -1102,14 +1109,15 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         private static JSFunctionData createAutoAccessorGetFunctionData(JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-                @Child private PropertyGetNode getStorageKeyNode = PropertyGetNode.createGetHidden(STORAGE_KEY_MAGIC, context);
-                @Child private DynamicObjectLibrary storageLibrary = DynamicObjectLibrary.getFactory().createDispatched(5);
+                @Child private DynamicObject.GetNode getStorageKeyNode = DynamicObject.GetNode.create();
+                @Child private DynamicObject.ContainsKeyNode containsBackingStorageKey = DynamicObject.ContainsKeyNode.create();
+                @Child private DynamicObject.GetNode getBackingStorage = DynamicObject.GetNode.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
-                    HiddenKey backingStorageKey = checkAutoAccessorTarget(frame, getStorageKeyNode, storageLibrary, thiz);
-                    return storageLibrary.getOrDefault((JSObject) thiz, backingStorageKey, Undefined.instance);
+                    HiddenKey backingStorageKey = checkAutoAccessorTarget(frame, getStorageKeyNode, containsBackingStorageKey, thiz);
+                    return getBackingStorage.execute((JSObject) thiz, backingStorageKey, Undefined.instance);
                 }
             }.getCallTarget();
             return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
@@ -1118,16 +1126,17 @@ public final class ObjectLiteralNode extends JavaScriptNode {
         private static JSFunctionData createAutoAccessorSetFunctionData(JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-                @Child private PropertyGetNode getStorageKeyNode = PropertyGetNode.createGetHidden(STORAGE_KEY_MAGIC, context);
-                @Child private DynamicObjectLibrary storageLibrary = DynamicObjectLibrary.getFactory().createDispatched(5);
+                @Child private DynamicObject.GetNode getStorageKeyNode = DynamicObject.GetNode.create();
+                @Child private DynamicObject.ContainsKeyNode containsBackingStorageKey = DynamicObject.ContainsKeyNode.create();
+                @Child private DynamicObject.PutNode setBackingStorage = DynamicObject.PutNode.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
-                    HiddenKey backingStorageKey = checkAutoAccessorTarget(frame, getStorageKeyNode, storageLibrary, thiz);
+                    HiddenKey backingStorageKey = checkAutoAccessorTarget(frame, getStorageKeyNode, containsBackingStorageKey, thiz);
                     Object[] args = frame.getArguments();
                     Object value = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                    storageLibrary.put((JSObject) thiz, backingStorageKey, value);
+                    setBackingStorage.execute((JSObject) thiz, backingStorageKey, value);
                     return value;
                 }
             }.getCallTarget();
@@ -1136,13 +1145,13 @@ public final class ObjectLiteralNode extends JavaScriptNode {
 
         public JSFunctionObject createAutoAccessorGetter(HiddenKey backingStorageKey, JSRealm realm) {
             JSFunctionObject functionObject = JSFunction.create(realm, getterFunctionData);
-            backingStorageMagicSetNode.setValue(functionObject, backingStorageKey);
+            backingStorageMagicSetNode.execute(functionObject, STORAGE_KEY_MAGIC, backingStorageKey);
             return functionObject;
         }
 
         public JSFunctionObject createAutoAccessorSetter(HiddenKey backingStorageKey, JSRealm realm) {
             JSFunctionObject functionObject = JSFunction.create(realm, setterFunctionData);
-            backingStorageMagicSetNode.setValue(functionObject, backingStorageKey);
+            backingStorageMagicSetNode.execute(functionObject, STORAGE_KEY_MAGIC, backingStorageKey);
             return functionObject;
         }
 

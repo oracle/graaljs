@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.BlockNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
@@ -57,34 +57,37 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
         return filterStatements(statements, true);
     }
 
+    @ExplodeLoop
     @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeBoolean(frame, BlockNode.NO_ARGUMENT);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            stmts[i].executeVoid(frame);
+        }
+        return stmts[last].executeBoolean(frame);
     }
 
+    @ExplodeLoop
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeInt(frame, BlockNode.NO_ARGUMENT);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            stmts[i].executeVoid(frame);
+        }
+        return stmts[last].executeInt(frame);
     }
 
+    @ExplodeLoop
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeDouble(frame, BlockNode.NO_ARGUMENT);
-    }
-
-    @Override
-    public boolean executeBoolean(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        return node.executeBoolean(frame);
-    }
-
-    @Override
-    public int executeInt(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        return node.executeInt(frame);
-    }
-
-    @Override
-    public double executeDouble(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        return node.executeDouble(frame);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            stmts[i].executeVoid(frame);
+        }
+        return stmts[last].executeDouble(frame);
     }
 
     @Override

@@ -62,7 +62,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -115,7 +115,6 @@ import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -700,55 +699,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return finalValue;
             } else {
                 return location.getDouble(receiverCheck.getStore(thisObj), guard);
-            }
-        }
-    }
-
-    public static final class BooleanPropertyGetNode extends LinkedPropertyGetNode {
-
-        private final com.oracle.truffle.api.object.BooleanLocation location;
-
-        public BooleanPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(receiverCheck);
-            assert JSProperty.isData(property);
-            this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
-        }
-
-        @Override
-        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return getValueBoolean(thisObj, receiver, root, guard);
-        }
-
-        @Override
-        protected boolean getValueBoolean(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            return location.getBoolean(receiverCheck.getStore(thisObj), guard);
-        }
-    }
-
-    public static final class FinalBooleanPropertyGetNode extends AbstractFinalPropertyGetNode {
-
-        private final boolean finalValue;
-        private final com.oracle.truffle.api.object.BooleanLocation location;
-
-        public FinalBooleanPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, boolean value, JSDynamicObject expectedObj) {
-            super(property, shapeCheck, expectedObj);
-            assert JSProperty.isData(property);
-            this.finalValue = value;
-            this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
-        }
-
-        @Override
-        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return getValueBoolean(thisObj, receiver, root, guard);
-        }
-
-        @Override
-        protected boolean getValueBoolean(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            if (isValidFinalAssumption()) {
-                assert assertFinalValue(finalValue, thisObj, root);
-                return finalValue;
-            } else {
-                return location.getBoolean(receiverCheck.getStore(thisObj), guard);
             }
         }
     }
@@ -1676,7 +1626,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class LazyRegexResultIndexPropertyGetNode extends LinkedPropertyGetNode {
 
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode readStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
-        @Child private DynamicObjectLibrary readLazyRegexResult = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_RESULT_ID);
+        @Child private DynamicObject.GetNode readLazyRegexResult = DynamicObject.GetNode.create();
 
         public LazyRegexResultIndexPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
@@ -1847,8 +1797,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return new IntPropertyGetNode(property, receiverCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
             return new DoublePropertyGetNode(property, receiverCheck);
-        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
-            return new BooleanPropertyGetNode(property, receiverCheck);
         } else if (JSProperty.isModuleNamespaceExport(property)) {
             if (((JSModuleNamespaceObject) store).isDeferred()) {
                 return new DeferredModuleNamespacePropertyGetNode(property, receiverCheck);
@@ -1888,16 +1836,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         JSDynamicObject constObjOrNull = isConstantObjectFinal ? thisObj : null;
         try {
             if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
-                int intValue = DynamicObjectLibrary.getUncached().getIntOrDefault(store, key, null);
+                int intValue = DynamicObject.GetNode.getUncached().executeInt(store, key, null);
                 return new FinalIntPropertyGetNode(property, finalShapeCheckNode, intValue, constObjOrNull);
             } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
-                double doubleValue = DynamicObjectLibrary.getUncached().getDoubleOrDefault(store, key, null);
+                double doubleValue = DynamicObject.GetNode.getUncached().executeDouble(store, key, null);
                 return new FinalDoublePropertyGetNode(property, finalShapeCheckNode, doubleValue, constObjOrNull);
-            } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
-                boolean boolValue = (boolean) DynamicObjectLibrary.getUncached().getOrDefault(store, key, null);
-                return new FinalBooleanPropertyGetNode(property, finalShapeCheckNode, boolValue, constObjOrNull);
             } else {
-                Object value = Objects.requireNonNull(DynamicObjectLibrary.getUncached().getOrDefault(store, key, null));
+                Object value = Objects.requireNonNull(DynamicObject.GetNode.getUncached().execute(store, key, null));
                 return new FinalObjectPropertyGetNode(property, finalShapeCheckNode, value, constObjOrNull);
             }
         } catch (UnexpectedResultException ex) {
@@ -2079,8 +2024,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return new IntPropertyGetNode(property, receiverCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
             return new DoublePropertyGetNode(property, receiverCheck);
-        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
-            return new BooleanPropertyGetNode(property, receiverCheck);
         } else {
             return new ObjectPropertyGetNode(property, receiverCheck);
         }

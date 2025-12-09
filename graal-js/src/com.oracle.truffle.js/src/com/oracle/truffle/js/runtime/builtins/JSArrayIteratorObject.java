@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,20 +42,23 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSArrayIteratorObject extends JSNonProxyObject {
 
-    private final int iterationKind;
+    private final byte iterationKind;
     private Object iteratedObject;
     private long nextIndex;
+    private boolean skipGetLength;
 
     protected JSArrayIteratorObject(Shape shape, JSDynamicObject proto, Object iteratedObject, long nextIndex, int iterationKind) {
         super(shape, proto);
-        this.iterationKind = iterationKind;
+        this.iterationKind = (byte) iterationKind;
         this.iteratedObject = iteratedObject;
         this.nextIndex = nextIndex;
+        assert iterationKind == JSRuntime.ITERATION_KIND_KEY || iterationKind == JSRuntime.ITERATION_KIND_VALUE || iterationKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
     }
 
     public int getIterationKind() {
@@ -81,5 +84,13 @@ public final class JSArrayIteratorObject extends JSNonProxyObject {
     @Override
     public TruffleString getClassName() {
         return JSArrayIterator.CLASS_NAME;
+    }
+
+    public boolean isSkipGetLength() {
+        return skipGetLength;
+    }
+
+    public void setSkipGetLength(boolean skip) {
+        this.skipGetLength = skip;
     }
 }

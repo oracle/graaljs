@@ -54,7 +54,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -92,7 +92,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -202,8 +201,8 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private HasPropertyCacheNode hasFunctionLengthNode;
         @Child private PropertyGetNode getFunctionLengthNode;
         @Child private PropertyGetNode getFunctionNameNode;
-        @Child private DynamicObjectLibrary functionLengthLib;
-        @Child private DynamicObjectLibrary functionNameLib;
+        @Child private DynamicObject.GetPropertyFlagsNode functionLengthGetPropertyFlags;
+        @Child private DynamicObject.GetPropertyFlagsNode functionNameGetPropertyFlags;
         private final ConditionProfile hasFunctionLengthProfile = ConditionProfile.create();
         private final ConditionProfile hasIntegerFunctionLengthProfile = ConditionProfile.create();
         private final ConditionProfile isJSFunctionProfile = ConditionProfile.create();
@@ -212,8 +211,8 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.hasFunctionLengthNode = HasPropertyCacheNode.create(JSFunction.LENGTH, context, true);
             this.getFunctionLengthNode = PropertyGetNode.create(JSFunction.LENGTH, false, context);
             this.getFunctionNameNode = PropertyGetNode.create(JSFunction.NAME, false, context);
-            this.functionLengthLib = JSObjectUtil.createDispatched(JSFunction.LENGTH);
-            this.functionNameLib = JSObjectUtil.createDispatched(JSFunction.NAME);
+            this.functionLengthGetPropertyFlags = DynamicObject.GetPropertyFlagsNode.create();
+            this.functionNameGetPropertyFlags = DynamicObject.GetPropertyFlagsNode.create();
         }
 
         @NeverDefault
@@ -223,7 +222,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         public void execute(JSFunctionObject boundFunction, JSFunctionObject targetFunction, TruffleString prefix, int argCount) {
             if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(targetFunction))) {
-                if (!JSProperty.isProxy(functionLengthLib.getPropertyFlagsOrDefault(targetFunction, Strings.LENGTH, 0))) {
+                if (!JSProperty.isProxy(functionLengthGetPropertyFlags.execute(targetFunction, Strings.LENGTH, 0))) {
                     // The Get node serves as an implicit branch profile.
                     copyLength(boundFunction, targetFunction, argCount);
                 } else {
@@ -237,7 +236,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             // If the target has name proxy property, the name can be lazily computed.
-            if (!JSProperty.isProxy(functionNameLib.getPropertyFlagsOrDefault(targetFunction, Strings.NAME, 0))) {
+            if (!JSProperty.isProxy(functionNameGetPropertyFlags.execute(targetFunction, Strings.NAME, 0))) {
                 // The Get node serves as an implicit branch profile.
                 copyName(boundFunction, targetFunction, prefix);
             }
