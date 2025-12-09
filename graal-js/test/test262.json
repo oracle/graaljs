@@ -2169,13 +2169,13 @@
   }, {
     "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic-rgsa.js",
     "ecmaVersion" : {
-      "minVersion" : 17
+      "minVersion" : 18
     },
     "comment" : "Expects islamic-rgsa calendar to be unsupported"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/islamic-calendars-islamic.js",
     "ecmaVersion" : {
-      "minVersion" : 17
+      "minVersion" : 18
     },
     "comment" : "Expects islamic calendar to be unsupported"
   }, {

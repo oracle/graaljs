@@ -112,7 +112,7 @@ public final class Uint8ArrayBuiltins {
 
         @Override
         public int getECMAScriptVersion() {
-            return JSConfig.StagingECMAScriptVersion;
+            return JSConfig.ECMAScript2026;
         }
 
         @Override
