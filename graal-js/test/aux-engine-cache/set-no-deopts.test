@@ -11,6 +11,8 @@
 #
 > mkdir ${TMP_DIR}/set
 > cd ${TMP_DIR}/set
->[0?] js --native --experimental-options --engine.TraceCache --engine.CacheStore=${TMP_DIR}/set.image  ${TEST_DIR}/resources/set.js
+>[0?] js --experimental-options --engine.TraceCache --engine.CacheStore=${TMP_DIR}/set.image ${TEST_DIR}/resources/set.js
+# [GR-70746] Work around transient deopts due to speculative guard movement
+>[0?] js --experimental-options --engine.TraceCache --engine.Cache=${TMP_DIR}/set.image ${TEST_DIR}/resources/set.js
 # Here, we assert that the output is empty (i.e., no compilations/deopts happen)
-> js --native --experimental-options --vm.XX:+TraceDeoptimizationDetails --engine.TraceCompilation --engine.CacheLoad=${TMP_DIR}/set.image ${TEST_DIR}/resources/set.js
+> js --experimental-options --vm.XX:+TraceDeoptimizationDetails --engine.TraceCompilation --engine.CacheLoad=${TMP_DIR}/set.image ${TEST_DIR}/resources/set.js
