@@ -395,14 +395,8 @@ void SigintWatchdogHelper::Unregister(SigintWatchdogBase* wd) {
 
   auto it = std::ranges::find(watchdogs_, wd);
 
-#if defined(_WIN32)
-  if (it != watchdogs_.end()) {
-    watchdogs_.erase(it);
-  }
-#else
   CHECK_NE(it, watchdogs_.end());
   watchdogs_.erase(it);
-#endif
 }
 
 

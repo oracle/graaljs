@@ -759,12 +759,21 @@ void ModuleWrap::Evaluate(const FunctionCallbackInfo<Value>& args) {
   bool received_signal = false;
   MaybeLocal<Value> result;
   {
-    auto wd = timeout != -1
-                  ? std::make_optional<Watchdog>(isolate, timeout, &timed_out)
-                  : std::nullopt;
-    auto swd = break_on_sigint ? std::make_optional<SigintWatchdog>(
-                                     isolate, &received_signal)
-                               : std::nullopt;
+    auto wd = ([isolate](int64_t timeout, bool* timed_out_ptr) -> std::optional<Watchdog> {
+      if (timeout != -1) {
+        return std::make_optional<Watchdog>(isolate, timeout, timed_out_ptr);
+      } else {
+        return std::nullopt;
+      }
+    })(timeout, &timed_out);
+
+    auto swd = ([isolate](bool break_on_sigint, bool* received_signal_ptr) -> std::optional<SigintWatchdog> {
+      if (break_on_sigint) {
+        return std::make_optional<SigintWatchdog>(isolate, received_signal_ptr);
+      } else {
+        return std::nullopt;
+      }
+    })(break_on_sigint, &received_signal);
 
     result = module->Evaluate(context);
 
