@@ -60,6 +60,9 @@ import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -687,7 +690,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
                         @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode,
                         @Cached @Shared InlinedConditionProfile bothArraysBranch,
-                        @Cached @Shared InlinedBranchProfile sameArrayBranch) {
+                        @Cached @Shared InlinedBranchProfile sameArrayBranch,
+                        @Cached @Shared CopyTypedArrayElementsFromInteropBufferNode copyTypedArrayElementsFromInteropBufferNode) {
             int sourceByteLength = sourceLength * sourceElementSize;
             if (bothArraysBranch.profile(node, targetType.isArray() && sourceType.isArray())) {
                 byte[] sourceByteArray = JSArrayBuffer.getByteArray(sourceBuffer);
@@ -719,12 +723,18 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 targetByteBuffer = Boundaries.byteBufferWrap(JSArrayBuffer.getByteArray(targetBuffer));
             }
             // if buffers are distinct, try to perform a bulk copy
-            if (distinctBuffers && (sourceByteBuffer != null && targetByteBuffer != null)) {
-                Boundaries.byteBufferPutSlice(
-                                targetByteBuffer, targetByteIndex,
-                                sourceByteBuffer, sourceByteIndex,
-                                sourceByteIndex + sourceByteLength);
-                return;
+            if (distinctBuffers) {
+                if (sourceByteBuffer != null && targetByteBuffer != null) {
+                    Boundaries.byteBufferPutSlice(
+                                    targetByteBuffer, targetByteIndex,
+                                    sourceByteBuffer, sourceByteIndex,
+                                    sourceByteIndex + sourceByteLength);
+                    return;
+                }
+                if (sourceType.isInterop() && targetByteBuffer != null && targetByteBuffer.hasArray()) {
+                    copyTypedArrayElementsFromInteropBufferNode.execute(node, sourceBuffer, sourceByteIndex, targetByteBuffer, targetByteIndex, sourceByteLength);
+                    return;
+                }
             }
 
             // if we could not do a bulk copy, perform a bytewise copy
@@ -764,6 +774,27 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 Object value = getBufferElementNode.execute(node, sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian, sourceFactory, sourceByteBuffer);
                 setBufferElementNode.execute(node, targetBuffer, targetByteIndex + i * targetElementSize, littleEndian, value, targetFactory, targetByteBuffer);
                 TruffleSafepoint.poll(node);
+            }
+        }
+    }
+
+    @GenerateCached(false)
+    @GenerateInline
+    @ImportStatic(JSConfig.class)
+    abstract static class CopyTypedArrayElementsFromInteropBufferNode extends JavaScriptBaseNode {
+
+        abstract void execute(Node node, JSArrayBufferObject sourceBuffer, int sourceByteIndex, ByteBuffer targetByteBuffer, int targetByteIndex, int byteLength);
+
+        @Specialization
+        static void doReadBuffer(JSArrayBufferObject sourceBuffer, int sourceByteIndex,
+                        ByteBuffer targetByteBuffer, int targetByteIndex,
+                        int byteLength,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interopLibrary) {
+            assert targetByteBuffer.hasArray();
+            try {
+                interopLibrary.readBuffer(sourceBuffer, sourceByteIndex, targetByteBuffer.array(), targetByteBuffer.arrayOffset() + targetByteIndex, byteLength);
+            } catch (InvalidBufferOffsetException | UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
