@@ -72,9 +72,13 @@ for %%a in (%*) do (
   )
 )
 
+if not defined npm_package_config_node_gyp_nodedir (
+  set "npm_package_config_node_gyp_nodedir=%node_dir:~10%"
+)
+
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%node_exe%" %node_args% "%parent_bin_dir%/npm/bin/npx-cli.js" %node_dir% %prog_args%
+"%node_exe%" %node_args% "%parent_bin_dir%/npm/bin/npx-cli.js" %prog_args%
 
 exit /b %errorlevel%
 
