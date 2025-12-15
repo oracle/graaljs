@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -86,7 +85,7 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
     @Specialization
     protected long doDouble(double value,
                     @Cached @Shared InlinedBranchProfile negativeIndexBranch,
-                    @Cached @Exclusive InlinedBranchProfile tooLargeIndexBranch) {
+                    @Cached @Shared InlinedBranchProfile tooLargeIndexBranch) {
         long integerIndex = (long) value;
         if (integerIndex < 0) {
             negativeIndexBranch.enter(this);

@@ -1640,7 +1640,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Specialization(replaces = {"doStringIntegerIndex"})
         protected void doString(Object target, Object index, Object value, Object receiver, WriteElementNode root,
                         @Cached @Shared InlinedConditionProfile isImmutable,
-                        @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
+                        @Cached @Shared ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
             long longIndex = toArrayIndexNode.executeLong(this, index);

@@ -1350,7 +1350,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Specialization
         protected Object doString(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
                         @Cached @Shared InlinedConditionProfile stringIndexInBounds,
-                        @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
+                        @Cached @Shared ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
             long longIndex = toArrayIndexNode.executeLong(this, index);

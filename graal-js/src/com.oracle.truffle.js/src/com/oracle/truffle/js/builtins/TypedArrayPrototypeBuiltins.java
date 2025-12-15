@@ -53,7 +53,6 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -435,11 +434,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         void setTypedArrayFromTypedArray(JSTypedArrayObject targetObj, JSTypedArrayObject array, int targetOffset, JSContext context,
-                        @Cached CopyTypedArrayElementsNode copyTypedArrayElementsNode,
+                        @Shared @Cached CopyTypedArrayElementsNode copyTypedArrayElementsNode,
                         @Shared @Cached TypedArrayLengthNode typedArrayLengthNode,
                         @Shared @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile sameBufferProf,
-                        @Cached InlinedConditionProfile isDirectProf) {
+                        @Shared @Cached InlinedConditionProfile sameBufferProf,
+                        @Shared @Cached InlinedConditionProfile isDirectProf) {
             checkOutOfBounds(array, context, errorBranch, this);
             TypedArray sourceArray = array.getArrayType();
             TypedArray targetArray = targetObj.getArrayType();
@@ -685,8 +684,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         boolean distinctBuffers,
                         @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
                         @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode,
-                        @Cached InlinedConditionProfile bothArraysBranch,
-                        @Cached @Exclusive InlinedBranchProfile sameArrayBranch) {
+                        @Cached @Shared InlinedConditionProfile bothArraysBranch,
+                        @Cached @Shared InlinedBranchProfile sameArrayBranch) {
             int sourceByteLength = sourceLength * sourceElementSize;
             if (bothArraysBranch.profile(node, targetType.isArray() && sourceType.isArray())) {
                 byte[] sourceByteArray = JSArrayBuffer.getByteArray(sourceBuffer);
@@ -750,7 +749,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @SuppressWarnings("unused") boolean distinctBuffers,
                         @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
                         @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode,
-                        @Cached @Exclusive InlinedBranchProfile errorBranch) {
+                        @Cached @Shared InlinedBranchProfile errorBranch) {
             if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
                 errorBranch.enter(node);
                 throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(node);

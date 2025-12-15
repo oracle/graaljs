@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,8 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -92,9 +91,9 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
                     @Cached @Shared InlinedConditionProfile isFastNonWhitespace,
                     @Cached @Shared InlinedConditionProfile isFastWhitespace,
                     @Cached TruffleString.SubstringByteIndexNode substringNode,
-                    @Cached InlinedBranchProfile startsWithWhitespaceBranch,
-                    @Cached InlinedBranchProfile endsWithWhitespaceBranch,
-                    @Cached @Exclusive InlinedConditionProfile isEmpty) {
+                    @Cached @Shared InlinedBranchProfile startsWithWhitespaceBranch,
+                    @Cached @Shared InlinedBranchProfile endsWithWhitespaceBranch,
+                    @Cached @Shared InlinedConditionProfile isEmpty) {
         int len = Strings.length(string);
         int firstIdx = 0;
         if (isWhiteSpace(readRawNode, string, 0, this, isFastNonWhitespace, isFastWhitespace)) {

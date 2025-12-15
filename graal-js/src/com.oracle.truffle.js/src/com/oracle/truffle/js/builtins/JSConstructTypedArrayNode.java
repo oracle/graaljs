@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -268,7 +267,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Specialization(guards = {"!isUndefined(newTarget)"})
     protected JSDynamicObject doTypedArray(JSDynamicObject newTarget, JSTypedArrayObject arrayBufferView, Object byteOffset0, Object length0,
                     @Cached @Shared InlinedBranchProfile errorBranch,
-                    @Cached @Exclusive InlinedConditionProfile bulkCopyProfile) {
+                    @Cached @Shared InlinedConditionProfile bulkCopyProfile) {
         JSDynamicObject proto = getPrototypeFromConstructorView(newTarget);
 
         if (JSArrayBufferView.isOutOfBounds(arrayBufferView, getContext())) {
@@ -362,14 +361,14 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * argument and the Type of the first argument is Object and that object does not have either a
      * [[TypedArrayName]] or an [[ArrayBufferData]] internal slot.
      */
-    @SuppressWarnings({"truffle-static-method", "truffle-interpreted-performance"})
+    @SuppressWarnings({"truffle-static-method"})
     @Specialization(guards = {"!isUndefined(newTarget)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
     protected JSDynamicObject doObject(JSDynamicObject newTarget, JSObject object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
                     @Bind Node node,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
-                    @Cached @Exclusive InlinedConditionProfile isIterableProfile,
+                    @Cached @Shared InlinedConditionProfile isIterableProfile,
                     @Cached("createWriteOwn()") @Shared WriteElementNode writeOwnNode,
-                    @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
+                    @Cached @Shared GetIteratorFromMethodNode getIteratorFromMethodNode,
                     @Cached IterableToListNode iterableToListNode,
                     @Cached @Shared InlinedBranchProfile errorBranch,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,

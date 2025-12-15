@@ -141,7 +141,8 @@ public final class TRegexUtil {
         public abstract Object execute(Node node, Object obj, String key);
 
         @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
-        static Object read(Object obj, String key, @CachedLibrary("obj") InteropLibrary objs) {
+        static Object read(Object obj, String key,
+                        @CachedLibrary("obj") InteropLibrary objs) {
             try {
                 return objs.readMember(obj, key);
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
@@ -166,7 +167,9 @@ public final class TRegexUtil {
         public abstract int execute(Node node, Object obj, String key);
 
         @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
-        static int read(Node node, Object obj, String key, @Cached InteropToIntNode coerceNode, @CachedLibrary("obj") InteropLibrary objs) {
+        static int read(Node node, Object obj, String key,
+                        @Cached InteropToIntNode coerceNode,
+                        @CachedLibrary("obj") InteropLibrary objs) {
             try {
                 return coerceNode.execute(node, objs.readMember(obj, key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
@@ -183,7 +186,10 @@ public final class TRegexUtil {
         public abstract int[] execute(Node node, Object obj, String key);
 
         @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
-        static int[] read(Node node, Object obj, String key, @Cached InteropToIntNode coerceNode, @CachedLibrary("obj") InteropLibrary objs, @CachedLibrary(limit = "1") InteropLibrary arrays) {
+        static int[] read(Node node, Object obj, String key,
+                        @Cached InteropToIntNode coerceNode,
+                        @CachedLibrary("obj") InteropLibrary objs,
+                        @CachedLibrary(limit = "1") InteropLibrary arrays) {
             try {
                 Object interopArray = objs.readMember(obj, key);
                 int length = (int) arrays.getArraySize(interopArray);

@@ -98,7 +98,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
 
     @Specialization
     protected ByteSequence exportTypedArray(JSTypedArrayObject typedArray,
-                    @Cached ArrayBufferViewGetByteLengthNode getByteLengthNode,
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getByteLengthNode,
                     @Cached @Shared InlinedBranchProfile errorBranch) {
         int offset = JSArrayBufferView.getByteOffset(typedArray, context);
         int length = getByteLengthNode.executeInt(this, typedArray, context);
