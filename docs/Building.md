@@ -37,9 +37,9 @@ Building the Node.js support is optional, and requires additional tools, see fut
     For the further steps you need to be in either of those directories (we assume you cd'ed to the `graal-js` directory).
 
 4. setup your environment:
-    - assuming you build with JDK11 or newer:
+    - assuming you build with JDK21 or newer:
         ```bash
-        export JAVA_HOME=[path to JDK11+]
+        export JAVA_HOME=[path to JDK21+]
         ```
 5. (optional) clone or update the dependent repositories:
     ```bash
