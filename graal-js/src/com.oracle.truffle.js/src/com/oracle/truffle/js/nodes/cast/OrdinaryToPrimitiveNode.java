@@ -63,7 +63,6 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -228,6 +227,6 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     public static boolean isJavaArray(Object object, InteropLibrary interop) {
-        return JSRealm.get(interop).getEnv().isHostObject(object) && interop.hasArrayElements(object) && interop.isMemberReadable(object, "length");
+        return interop.isHostObject(object) && interop.hasArrayElements(object) && interop.isMemberReadable(object, "length");
     }
 }

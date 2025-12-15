@@ -46,7 +46,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -1570,8 +1569,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         private Object tryGetters(Object thisObj, TruffleString key, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = getRealm().getEnv();
-            if (env.isHostObject(thisObj)) {
+            if (interop.isHostObject(thisObj)) {
                 Object result = tryInvokeGetter(thisObj, Strings.GET, key);
                 if (result != null) {
                     return result;

@@ -1225,7 +1225,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (interop.hasMembers(source)) {
                 try {
                     boolean extensible = JSObject.isExtensible(target, targetProfile);
-                    boolean hostObject = getRealm().getEnv().isHostObject(source);
+                    boolean hostObject = interop.isHostObject(source);
                     Object keysObj = interop.getMembers(source);
                     long size = members.getArraySize(keysObj);
                     for (int i = 0; i < size; i++) {
