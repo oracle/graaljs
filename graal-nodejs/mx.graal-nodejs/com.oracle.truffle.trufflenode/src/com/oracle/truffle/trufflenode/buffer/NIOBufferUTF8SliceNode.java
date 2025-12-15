@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,10 +107,11 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
                     @Cached @Shared TruffleString.FromByteArrayNode fromByteArrayNode,
                     @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode,
                     @CachedLibrary(limit = "1") InteropLibrary asByteBufferInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary hostInterop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bufferInterop) {
         JSArrayBufferObject arrayBuffer = target.getArrayBuffer();
         ByteBuffer rawBuffer;
-        ByteBuffer maybeRawBuffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(arrayBuffer, asByteBufferInterop, getRealm());
+        ByteBuffer maybeRawBuffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(arrayBuffer, asByteBufferInterop, hostInterop, getRealm());
         if (maybeRawBuffer != null) {
             // We have direct read access to the backing ByteBuffer.
             rawBuffer = maybeRawBuffer;

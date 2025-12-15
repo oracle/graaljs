@@ -426,7 +426,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
     abstract static class SetTypedArrayNode extends JavaScriptBaseNode {
 
         @Child private InteropLibrary interopLibrary;
-        @Child private InteropLibrary getByteBufferInterop;
+        @Child private InteropLibrary asByteBufferInterop;
+        @Child private InteropLibrary hostInterop;
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToBigIntNode toBigIntNode;
 
@@ -586,11 +587,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         private ByteBuffer getByteBufferFromInteropBuffer(JSArrayBufferObject interopBuffer) {
-            if (getByteBufferInterop == null) {
+            if (asByteBufferInterop == null || hostInterop == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
+                asByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
+                hostInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            return JSInteropUtil.jsInteropBufferAsByteBuffer(interopBuffer, getByteBufferInterop, getRealm());
+            return JSInteropUtil.jsInteropBufferAsByteBuffer(interopBuffer, asByteBufferInterop, hostInterop, getRealm());
         }
 
         private JSArrayBufferObject cloneArrayBuffer(JSArrayBufferObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset, JSContext context,
@@ -804,7 +806,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class TypedArraySliceNode extends JSArrayOperation {
 
-        @Child private InteropLibrary getByteBufferInterop;
+        @Child private InteropLibrary asByteBufferInterop;
+        @Child private InteropLibrary hostInterop;
 
         public TypedArraySliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, true);
@@ -869,11 +872,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         private ByteBuffer getByteBufferFromInteropBuffer(JSArrayBufferObject interopBuffer) {
-            if (getByteBufferInterop == null) {
+            if (asByteBufferInterop == null || hostInterop == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
+                asByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
+                hostInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            return JSInteropUtil.jsInteropBufferAsByteBuffer(interopBuffer, getByteBufferInterop, getRealm());
+            return JSInteropUtil.jsInteropBufferAsByteBuffer(interopBuffer, asByteBufferInterop, hostInterop, getRealm());
         }
     }
 

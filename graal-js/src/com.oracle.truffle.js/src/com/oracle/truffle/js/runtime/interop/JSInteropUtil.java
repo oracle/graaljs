@@ -603,24 +603,22 @@ public final class JSInteropUtil {
         return sb.toString();
     }
 
-    public static ByteBuffer jsInteropBufferAsByteBuffer(JSArrayBufferObject interopArrayBuffer, InteropLibrary interop, JSRealm realm) {
-        assert JSArrayBuffer.isJSInteropArrayBuffer(interopArrayBuffer);
+    public static ByteBuffer jsInteropBufferAsByteBuffer(JSArrayBufferObject interopArrayBuffer, InteropLibrary asByteBufferInterop, InteropLibrary hostInterop, JSRealm realm) {
         Object interopBuffer = JSArrayBuffer.getInteropBuffer(interopArrayBuffer);
         if (interopBuffer == null) {
             assert JSArrayBuffer.isDetachedBuffer(interopArrayBuffer);
             return null;
         }
-        return foreignInteropBufferAsByteBuffer(interopBuffer, interop, realm);
+        return foreignInteropBufferAsByteBuffer(interopBuffer, asByteBufferInterop, hostInterop, realm);
     }
 
-    public static ByteBuffer foreignInteropBufferAsByteBuffer(Object foreignInteropBuffer, InteropLibrary asByteBufferInterop, JSRealm realm) {
+    public static ByteBuffer foreignInteropBufferAsByteBuffer(Object foreignInteropBuffer, InteropLibrary asByteBufferInterop, InteropLibrary hostInterop, JSRealm realm) {
         Object memAsByteBuffer = realm.getWASMMemAsByteBuffer();
         if (memAsByteBuffer == null) {
             return null;
         }
         try {
             Object bufferObject = asByteBufferInterop.execute(memAsByteBuffer, foreignInteropBuffer);
-            InteropLibrary hostInterop = InteropLibrary.getUncached(bufferObject);
             if (hostInterop.isHostObject(bufferObject)) {
                 Object buffer = hostInterop.asHostObject(bufferObject);
                 if (buffer instanceof ByteBuffer) {
