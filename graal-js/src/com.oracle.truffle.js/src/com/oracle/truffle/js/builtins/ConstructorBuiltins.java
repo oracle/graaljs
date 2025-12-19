@@ -56,7 +56,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -2739,21 +2738,21 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         public abstract JSDynamicObject execute(JSDynamicObject newTarget, Object target, Object handler);
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class ConstructJavaImporterNode extends JSBuiltinNode {
         public ConstructJavaImporterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject constructJavaImporter(Object[] args) {
+        protected JSDynamicObject constructJavaImporter(Object[] args,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             JSRealm realm = getRealm();
-            TruffleLanguage.Env env = realm.getEnv();
             SimpleArrayList<Object> imports = new SimpleArrayList<>(args.length);
             for (Object anImport : args) {
                 if (JavaPackage.isJavaPackage(anImport)) {
                     imports.addUnchecked(anImport);
-                } else if (env.isHostObject(anImport)) {
-                    InteropLibrary interop = InteropLibrary.getUncached(anImport);
+                } else if (interop.isHostObject(anImport)) {
                     if (interop.isMetaObject(anImport)) {
                         imports.addUnchecked(anImport);
                     }

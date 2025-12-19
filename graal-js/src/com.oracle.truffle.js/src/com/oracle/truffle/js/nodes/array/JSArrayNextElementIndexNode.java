@@ -110,7 +110,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
     public long nextWithHolesUncached(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached @Shared InlinedConditionProfile isPlusOne,
-                    @Cached InlinedExactClassProfile arrayTypeProfile) {
+                    @Cached @Shared InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray arrayType = arrayTypeProfile.profile(this, getArrayType(object));
         return holesArrayImpl(object, currentIndex, length, arrayType, this, nextElementIndexNode, isPlusOne);

@@ -315,8 +315,9 @@ public class TextEncoderBuiltins {
         protected final long doInteropBuffer(TruffleString string, JSTypedArrayObject destination, int destOffset, int maxLength,
                         @Cached @Shared ArrayBufferViewGetByteLengthNode getTypedArrayByteLengthNode,
                         @CachedLibrary(limit = "1") InteropLibrary asByteBufferInterop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary hostInterop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bufferInterop) {
-            ByteBuffer rawBuffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(destination.getArrayBuffer(), asByteBufferInterop, getRealm());
+            ByteBuffer rawBuffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(destination.getArrayBuffer(), asByteBufferInterop, hostInterop, getRealm());
             if (rawBuffer != null && rawBuffer.isReadOnly()) {
                 // If we don't have direct write access to the backing ByteBuffer,
                 // write to the foreign buffer object using InteropLibrary.

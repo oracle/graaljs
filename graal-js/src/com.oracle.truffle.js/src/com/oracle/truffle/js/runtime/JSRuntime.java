@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -236,17 +235,14 @@ public final class JSRuntime {
                 return JSFunction.TYPE_NAME;
             }
             return JSOrdinary.TYPE_NAME;
-        } else if (value instanceof TruffleObject) {
-            assert !(value instanceof Symbol);
-            JSRealm realm = JSRealm.get(null);
-            if (realm.getContext().isOptionNashornCompatibilityMode()) {
-                TruffleLanguage.Env env = realm.getEnv();
-                if (env.isHostSymbol(value)) {
+        } else if (value instanceof TruffleObject object) {
+            assert !isJSNative(value) : value;
+            InteropLibrary interop = InteropLibrary.getUncached(object);
+            if (JSRealm.get(null).getContext().isOptionNashornCompatibilityMode()) {
+                if (interop.isHostObject(object) && interop.isScope(object)) {
                     return JSFunction.TYPE_NAME;
                 }
             }
-            TruffleObject object = (TruffleObject) value;
-            InteropLibrary interop = InteropLibrary.getUncached();
             if (interop.isBoolean(object)) {
                 return JSBoolean.TYPE_NAME;
             } else if (interop.isString(object)) {
@@ -961,7 +957,7 @@ public final class JSRuntime {
                     unboxed = interop.asDouble(value);
                 }
                 return JSRuntime.toDisplayString(unboxed, allowSideEffects, format);
-            } else if ((JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
+            } else if (InteropLibrary.getUncached().isHostObject(value)) {
                 return hostObjectToString(value, interop);
             } else if (interop.isMetaObject(value)) {
                 return Strings.interopAsTruffleString(interop.getMetaQualifiedName(value));

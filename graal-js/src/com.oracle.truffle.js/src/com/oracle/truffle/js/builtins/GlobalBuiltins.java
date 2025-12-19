@@ -69,6 +69,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -1464,11 +1465,15 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Object loadTruffleObject(Object scriptObj, Object[] args,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             JSRealm realm = getRealm();
-            TruffleLanguage.Env env = realm.getEnv();
-            if (env.isHostObject(scriptObj)) {
-                if (getContext().isOptionNashornCompatibilityMode() && env.asHostObject(scriptObj) instanceof URL) {
-                    return loadURL(realm, (URL) env.asHostObject(scriptObj));
-                } else if (interop.isMemberInvocable(scriptObj, "getPath")) {
+            if (interop.isHostObject(scriptObj)) {
+                try {
+                    if (getContext().isOptionNashornCompatibilityMode() && interop.asHostObject(scriptObj) instanceof URL url) {
+                        return loadURL(realm, url);
+                    }
+                } catch (UnsupportedMessageException | HeapIsolationException e) {
+                    throw Errors.createTypeErrorInteropException(scriptObj, e, "asHostObject", this);
+                }
+                if (interop.isMemberInvocable(scriptObj, "getPath")) {
                     // argument is most likely a java.io.File
                     return loadFile(realm, fileGetPath(scriptObj, interop));
                 }

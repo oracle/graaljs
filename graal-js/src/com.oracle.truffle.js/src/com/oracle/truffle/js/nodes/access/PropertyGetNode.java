@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -1172,8 +1171,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()` or `javaObj.isXyz()`.
         private Object tryGetters(Object thisObj, PropertyGetNode root) {
             assert context.isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = getRealm().getEnv();
-            if (env.isHostObject(thisObj)) {
+            if (interop.isHostObject(thisObj)) {
                 Object result = tryInvokeGetter(thisObj, Strings.GET, root);
                 if (result != null) {
                     return result;

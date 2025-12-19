@@ -90,7 +90,7 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
             return JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
         } else {
             synchronized (wasmMemory) {
-                ByteBuffer buffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(wasmMemory, lib, realm);
+                ByteBuffer buffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(wasmMemory, lib, lib, realm);
                 if (buffer == null) {
                     throw Errors.createTypeError("No ByteBuffer exposed from WebAssembly memory");
                 }

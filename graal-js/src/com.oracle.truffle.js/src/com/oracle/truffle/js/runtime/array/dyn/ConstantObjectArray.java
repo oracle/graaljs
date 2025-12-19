@@ -77,8 +77,9 @@ public final class ConstantObjectArray extends AbstractConstantArray {
 
     @Override
     public boolean hasElement(JSDynamicObject object, long index) {
-        if (index >= 0 && index < getArray(object).length) {
-            return !holes || getArray(object)[(int) index] != null;
+        Object[] array = getArray(object);
+        if (index >= 0 && index < array.length) {
+            return !holes || array[(int) index] != null;
         }
         return false;
     }

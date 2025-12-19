@@ -726,8 +726,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected TruffleString substringGeneric(Object thisObj, Object start, Object end,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached JSToNumberNode toNumber2Node,
-                        @Cached @Exclusive InlinedConditionProfile startUndefined,
-                        @Cached @Exclusive InlinedConditionProfile endUndefined,
+                        @Cached @Shared InlinedConditionProfile startUndefined,
+                        @Cached @Shared InlinedConditionProfile endUndefined,
                         @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
                         @Cached @Shared InlinedConditionProfile startLowerEnd) {
             requireObjectCoercible(thisObj);
@@ -763,8 +763,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected TruffleString substringGeneric(Object thisObj, Object start, Object end,
                             @Cached JSToNumberNode toNumberNode,
                             @Cached JSToNumberNode toNumber2Node,
-                            @Cached @Exclusive InlinedConditionProfile startUndefined,
-                            @Cached @Exclusive InlinedConditionProfile endUndefined,
+                            @Cached @Shared InlinedConditionProfile startUndefined,
+                            @Cached @Shared InlinedConditionProfile endUndefined,
                             @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
                             @Cached @Shared InlinedConditionProfile startLowerEnd) {
                 throw rewriteToCall();
@@ -946,13 +946,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isES6OrNewer()")
         protected Object splitES5(Object thisObj, Object separator, Object limitObj,
-                        @Cached @Exclusive InlinedBranchProfile isUndefinedBranch,
-                        @Cached @Exclusive InlinedBranchProfile isRegexpBranch,
-                        @Cached @Exclusive InlinedBranchProfile isStringBranch,
+                        @Cached @Shared InlinedBranchProfile isUndefinedBranch,
+                        @Cached @Shared InlinedBranchProfile isRegexpBranch,
+                        @Cached @Shared InlinedBranchProfile isStringBranch,
                         @Cached @Shared StringSplitter stringSplitter,
-                        @Cached RegExpSplitter regexpSplitter,
+                        @Cached @Shared RegExpSplitter regexpSplitter,
                         @Cached @Shared InlinedConditionProfile zeroLimit,
-                        @Cached TRegexUtil.InteropReadIntMemberNode readGroupCount) {
+                        @Cached @Shared TRegexUtil.InteropReadIntMemberNode readGroupCount) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int limit = getLimit(limitObj);
@@ -986,8 +986,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached IsObjectNode isObject,
                         @Cached @Shared StringSplitter stringSplitter,
                         @Cached @Shared InlinedConditionProfile zeroLimit,
-                        @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
-                        @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
+                        @Cached @Shared InlinedConditionProfile isSpecialProfile,
+                        @Cached @Shared InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(this, isObject.executeBoolean(separator))) {
                 Object splitter = getMethod(separator, Symbol.SYMBOL_SPLIT);
@@ -1337,9 +1337,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
                         @Cached IsCallableNode isCallableNode,
-                        @Cached @Exclusive InlinedBranchProfile dollarProfile,
-                        @Cached InlinedConditionProfile isSpecialProfile,
-                        @Cached InlinedConditionProfile callSpecialProfile) {
+                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached @Shared InlinedConditionProfile isSpecialProfile,
+                        @Cached @Shared InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(node, isObject.executeBoolean(searchValue))) {
                 Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
@@ -2607,7 +2607,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = {"sliceStringIntInt", "sliceObjectIntInt", "sliceStringIntUndefined"})
         protected Object sliceGeneric(Object thisObj, Object start, Object end,
-                        @Cached @Exclusive InlinedConditionProfile isUndefined,
+                        @Cached @Shared InlinedConditionProfile isUndefined,
                         @Cached @Shared InlinedConditionProfile canReturnEmpty,
                         @Cached @Shared InlinedConditionProfile offsetProfile1,
                         @Cached @Shared InlinedConditionProfile offsetProfile2) {

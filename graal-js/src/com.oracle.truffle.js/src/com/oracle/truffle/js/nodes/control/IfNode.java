@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -171,7 +171,7 @@ public abstract class IfNode extends AbstractIfNode {
 
     @Specialization
     protected Object doBoolean(VirtualFrame frame, boolean conditionResult,
-                    @Cached @Shared InlinedCountingConditionProfile conditionProfile) {
+                    @Shared @Cached InlinedCountingConditionProfile conditionProfile) {
         if (conditionProfile.profile(this, conditionResult)) {
             if (thenPart != null) {
                 return thenPart.execute(frame);
@@ -189,8 +189,8 @@ public abstract class IfNode extends AbstractIfNode {
 
     @Specialization(replaces = "doBoolean")
     protected Object doObject(VirtualFrame frame, Object conditionResult,
-                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
-                    @Cached @Shared InlinedCountingConditionProfile conditionProfile) {
+                    @Shared @Cached(inline = true) JSToBooleanNode toBooleanNode,
+                    @Shared @Cached InlinedCountingConditionProfile conditionProfile) {
         boolean booleanResult = toBooleanNode.executeBoolean(this, conditionResult);
         return doBoolean(frame, booleanResult, conditionProfile);
     }

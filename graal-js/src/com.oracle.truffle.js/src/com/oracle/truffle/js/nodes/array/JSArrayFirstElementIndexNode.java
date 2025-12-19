@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,7 +110,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
     public long doWithHolesUncached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached @Shared InlinedConditionProfile isZero,
-                    @Cached InlinedExactClassProfile arrayTypeProfile) {
+                    @Cached @Shared InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray array = arrayTypeProfile.profile(this, getArrayType(object));
         return holesArrayImpl(object, length, array, this, nextElementIndexNode, isZero);

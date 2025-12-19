@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,11 +55,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -185,7 +187,7 @@ public abstract class JSNewNode extends JavaScriptNode {
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                     @Cached ExportValueNode convert,
                     @Cached ImportValueNode toJSType,
-                    @Cached InlinedConditionProfile isHostClassProf,
+                    @Cached InlinedBranchProfile hostClassBranch,
                     @Cached InlinedConditionProfile isAbstractProf) {
         Object newTarget = target;
         int count = arguments.getCount(frame);
@@ -197,11 +199,16 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
 
         if (!JSConfig.SubstrateVM && context.isOptionNashornCompatibilityMode()) {
-            TruffleLanguage.Env env = getRealm().getEnv();
-            if (isHostClassProf.profile(node, count == 1 && env.isHostObject(target) && env.asHostObject(target) instanceof Class<?>)) {
-                Class<?> javaType = (Class<?>) env.asHostObject(target);
-                if (isAbstractProf.profile(node, Modifier.isAbstract(javaType.getModifiers()) && !javaType.isArray())) {
-                    newTarget = extend(javaType, env);
+            if (count == 1 && interop.isHostObject(target)) {
+                try {
+                    if (interop.asHostObject(target) instanceof Class<?> javaType) {
+                        hostClassBranch.enter(node);
+                        if (isAbstractProf.profile(node, Modifier.isAbstract(javaType.getModifiers()) && !javaType.isArray())) {
+                            newTarget = extend(javaType, getRealm().getEnv());
+                        }
+                    }
+                } catch (UnsupportedMessageException | HeapIsolationException e) {
+                    throw Errors.createTypeErrorInteropException(target, e, "asHostObject", this);
                 }
             }
         }

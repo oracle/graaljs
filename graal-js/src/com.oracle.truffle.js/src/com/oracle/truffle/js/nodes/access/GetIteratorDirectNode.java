@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -84,10 +83,9 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
                     @Cached(value = "createGetNextNode()", uncached = "getNullNode()", inline = false) @Shared PropertyGetNode getNextMethodNode,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         JSRealm realm = JSRealm.get(this);
-        TruffleLanguage.Env env = realm.getEnv();
         // java.util.Iterator.next() does not have the needed semantics
         // => use next() method from the prototype
-        if (env.isHostObject(obj) && interop.isIterator(obj)) {
+        if (interop.isHostObject(obj) && interop.isIterator(obj)) {
             JSDynamicObject prototype = realm.getForeignIteratorPrototype();
             Object nextMethod = (getNextMethodNode == null) ? JSObject.get(prototype, Strings.NEXT) : getNextMethodNode.getValue(prototype);
             return IteratorRecord.create(obj, nextMethod, false);

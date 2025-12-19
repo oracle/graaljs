@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -303,7 +302,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
                         @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
                         @Cached @Shared InlinedConditionProfile isConstructorProfile,
-                        @Cached @Exclusive InlinedConditionProfile isAsyncProfile,
+                        @Cached @Shared InlinedConditionProfile isAsyncProfile,
                         @Cached @Shared InlinedConditionProfile setProtoProfile) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
@@ -322,7 +321,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached ForeignObjectPrototypeNode foreignPrototypeNode,
                         @Cached IsConstructorNode isConstructorNode,
                         @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
-                        @Cached @Exclusive InlinedConditionProfile isProxyProfile,
+                        @Cached @Shared InlinedConditionProfile isProxyProfile,
                         @Cached @Shared InlinedConditionProfile isConstructorProfile,
                         @Cached @Shared InlinedConditionProfile setProtoProfile) {
             JSRealm realm = JSRuntime.getFunctionRealm(thisObj, JSRealm.get(this));

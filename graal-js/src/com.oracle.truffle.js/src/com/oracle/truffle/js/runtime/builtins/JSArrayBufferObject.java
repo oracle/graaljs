@@ -813,7 +813,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
             @Specialization
             public static ByteBuffer getContents(JSArrayBufferObject.Interop arrayBuffer,
                             @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared InteropLibrary interop) {
-                return arrayBuffer.isDetached() ? null : JSInteropUtil.foreignInteropBufferAsByteBuffer(arrayBuffer.getInteropBuffer(), interop, JSRealm.get(interop));
+                return arrayBuffer.isDetached() ? null : JSInteropUtil.foreignInteropBufferAsByteBuffer(arrayBuffer.getInteropBuffer(), interop, interop, JSRealm.get(interop));
             }
         }
 

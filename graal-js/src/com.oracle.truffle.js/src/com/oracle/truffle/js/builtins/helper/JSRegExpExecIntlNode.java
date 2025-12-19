@@ -118,7 +118,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     @Specialization
     protected final Object doRegExp(JSRegExpObject regExp, TruffleString input,
                     @Cached("create(context)") JSRegExpExecBuiltinNode builtinExec,
-                    @Cached InlinedConditionProfile isPristineProfile,
+                    @Cached @Shared InlinedConditionProfile isPristineProfile,
                     @Cached @Shared InlinedConditionProfile isCallableProfile,
                     @Cached @Shared InlinedConditionProfile validResultProfile) {
         if (context.getEcmaScriptVersion() >= 6) {

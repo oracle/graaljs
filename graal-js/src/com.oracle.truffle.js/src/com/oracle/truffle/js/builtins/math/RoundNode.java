@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -137,16 +136,16 @@ public abstract class RoundNode extends MathOperation {
 
     @Specialization(guards = {"!isCornercase(value)"}, replaces = "roundDoubleInt")
     protected double roundDouble(double value,
-                    @Cached @Exclusive InlinedConditionProfile profileA,
-                    @Cached @Exclusive InlinedConditionProfile profileB,
+                    @Cached @Shared InlinedConditionProfile largeValueBranch,
+                    @Cached @Shared InlinedConditionProfile minusZeroBranch,
                     @Cached @Shared InlinedConditionProfile shiftProfile,
                     @Cached @Shared InlinedBranchProfile negativeLongBitsProfile) {
         long longValue = round(value,
                         this, shiftProfile, negativeLongBitsProfile);
-        if (profileA.profile(this, longValue == Long.MIN_VALUE || longValue == Long.MAX_VALUE)) {
+        if (largeValueBranch.profile(this, longValue == Long.MIN_VALUE || longValue == Long.MAX_VALUE)) {
             // The value is too large to have a fractional part (i.e. is rounded already)
             return value;
-        } else if (profileB.profile(this, longValue == 0 && value < 0)) {
+        } else if (minusZeroBranch.profile(this, longValue == 0 && value < 0)) {
             return -0.0;
         } else {
             return longValue;
