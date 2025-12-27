@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -73,6 +74,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -355,19 +357,22 @@ public final class ScopeVariables implements TruffleObject {
                         @Cached("member") String cachedMember,
                         // We cache the member's write node for fast-path access
                         @Cached(value = "findSlot(member, receiver)") ResolvedSlot resolvedSlot,
-                        @Cached(value = "findWriteNode(resolvedSlot)") WriteNode writeNode) throws UnknownIdentifierException {
-            doWrite(receiver, cachedMember, value, writeNode, resolvedSlot);
+                        @Cached(value = "findWriteNode(resolvedSlot)") WriteNode writeNode,
+                        @Cached @Shared ImportValueNode importNode) throws UnknownIdentifierException {
+            doWrite(receiver, cachedMember, value, writeNode, resolvedSlot, importNode);
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        static void doGeneric(ScopeVariables receiver, String member, Object value) throws UnknownIdentifierException {
+        static void doGeneric(ScopeVariables receiver, String member, Object value,
+                        @Cached @Shared ImportValueNode importNode) throws UnknownIdentifierException {
             ResolvedSlot resolvedSlot = findSlot(member, receiver);
             WriteNode writeNode = findWriteNode(resolvedSlot);
-            doWrite(receiver, member, value, writeNode, resolvedSlot);
+            doWrite(receiver, member, value, writeNode, resolvedSlot, importNode);
         }
 
-        private static void doWrite(ScopeVariables receiver, String member, Object value, WriteNode writeNode, ResolvedSlot resolvedSlot) throws UnknownIdentifierException {
+        private static void doWrite(ScopeVariables receiver, String member, Object value, WriteNode writeNode, ResolvedSlot resolvedSlot, ImportValueNode importNode)
+                        throws UnknownIdentifierException {
             if (writeNode == null) {
                 throw UnknownIdentifierException.create(member);
             }
@@ -375,7 +380,7 @@ public final class ScopeVariables implements TruffleObject {
             if (frame == null) {
                 throw UnknownIdentifierException.create(member);
             }
-            writeNode.executeWrite((VirtualFrame) frame, value);
+            writeNode.executeWrite((VirtualFrame) frame, importNode.executeWithTarget(value));
         }
     }
 
