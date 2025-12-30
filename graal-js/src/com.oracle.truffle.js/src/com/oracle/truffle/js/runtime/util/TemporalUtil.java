@@ -1568,13 +1568,13 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static ISODateRecord balanceISODate(int year, int month, int day) {
-        if (year < -1000000 || 1000000 < year || day < -ISO_DATE_MAX_UTC_OFFSET_DAYS || ISO_DATE_MAX_UTC_OFFSET_DAYS < day) {
-            // This check is sometimes performed only after AddISODate in the spec.
-            // We do it earlier to avoid having to deal with non-finite epoch days.
-            // This is OK since all callers would throw a RangeError immediately after anyway.
+        long epochDays = JSDate.isoDateToEpochDays(year, month - 1, day);
+        if (Math.abs(epochDays) > ISO_DATE_MAX_UTC_OFFSET_DAYS) {
+            // Off-spec branch: results that large would be refused
+            // by callers of BalanceISODate() anyway and this shortcut
+            // allows us not to deal with (too much) out-of-range dates below.
             throw Errors.createRangeError("Date outside of supported range");
         }
-        long epochDays = JSDate.isoDateToEpochDays(year, month - 1, day);
         long ms = epochDays * JSDate.MS_PER_DAY;
         return createISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
     }
