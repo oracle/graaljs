@@ -4172,6 +4172,10 @@ namespace v8 {
         return New(isolate, std::move(backing_store));
     }
 
+    MaybeLocal<SharedArrayBuffer> SharedArrayBuffer::MaybeNew(Isolate* isolate, size_t byte_length, BackingStoreInitializationMode initialization_mode) {
+        return New(isolate, byte_length, initialization_mode);
+    }
+
     bool Module::HasTopLevelAwait() const {
         return reinterpret_cast<const GraalModule*> (this)->HasTopLevelAwait();
     }
