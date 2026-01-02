@@ -402,18 +402,35 @@ function stringify(body) {
 }
 
 /**
- * Enable on-disk compiled cache for all user modules being complied in the current Node.js instance
+ * Enable on-disk compiled cache for all user modules being compiled in the current Node.js instance
  * after this method is called.
- * If cacheDir is undefined, defaults to the NODE_MODULE_CACHE environment variable.
- * If NODE_MODULE_CACHE isn't set, default to path.join(os.tmpdir(), 'node-compile-cache').
- * @param {string|undefined} cacheDir
+ * This method accepts either:
+ * - A string: path to the cache directory.
+ * - An options object `{directory?: string, portable?: boolean}`:
+ *   - `directory`: A string path to the cache directory.
+ *   - `portable`: If `portable` is true, the cache directory will be considered relative.
+ *     Defaults to `NODE_COMPILE_CACHE_PORTABLE === '1'`.
+ * If cache directory is undefined, it defaults to the `NODE_COMPILE_CACHE` environment variable.
+ * If `NODE_COMPILE_CACHE` isn't set, it defaults to `path.join(os.tmpdir(), 'node-compile-cache')`.
+ * @param {string | { directory?: string, portable?: boolean } | undefined} options
  * @returns {{status: number, message?: string, directory?: string}}
  */
-function enableCompileCache(cacheDir) {
-  if (cacheDir === undefined) {
-    cacheDir = join(lazyTmpdir(), 'node-compile-cache');
+function enableCompileCache(options) {
+  let portable;
+  let directory;
+
+  if (typeof options === 'object' && options !== null) {
+    ({ directory, portable } = options);
+  } else {
+    directory = options;
   }
-  const nativeResult = _enableCompileCache(cacheDir);
+  if (directory === undefined) {
+    directory = process.env.NODE_COMPILE_CACHE || join(lazyTmpdir(), 'node-compile-cache');
+  }
+  if (portable === undefined) {
+    portable = process.env.NODE_COMPILE_CACHE_PORTABLE === '1';
+  }
+  const nativeResult = _enableCompileCache(directory, portable);
   const result = { status: nativeResult[0] };
   if (nativeResult[1]) {
     result.message = nativeResult[1];

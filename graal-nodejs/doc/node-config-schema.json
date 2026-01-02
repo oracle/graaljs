@@ -45,6 +45,9 @@
             }
           ]
         },
+        "allow-inspector": {
+          "type": "boolean"
+        },
         "allow-wasi": {
           "type": "boolean"
         },
@@ -166,9 +169,6 @@
           "type": "boolean"
         },
         "experimental-sqlite": {
-          "type": "boolean"
-        },
-        "experimental-strip-types": {
           "type": "boolean"
         },
         "experimental-transform-types": {
@@ -354,6 +354,9 @@
         },
         "stack-trace-limit": {
           "type": "number"
+        },
+        "strip-types": {
+          "type": "boolean"
         },
         "test-coverage-branches": {
           "type": "number"
@@ -722,6 +725,35 @@
           "type": "number"
         },
         "test-update-snapshots": {
+          "type": "boolean"
+        }
+      }
+    },
+    "watch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "watch": {
+          "type": "boolean"
+        },
+        "watch-kill-signal": {
+          "type": "string"
+        },
+        "watch-path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string",
+                "minItems": 1
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "watch-preserve-output": {
           "type": "boolean"
         }
       }

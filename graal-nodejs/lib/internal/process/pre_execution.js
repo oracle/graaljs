@@ -621,6 +621,7 @@ function initializePermission() {
     const warnFlags = [
       '--allow-addons',
       '--allow-child-process',
+      '--allow-inspector',
       '--allow-wasi',
       '--allow-worker',
     ];

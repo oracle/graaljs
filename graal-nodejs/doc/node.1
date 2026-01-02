@@ -85,6 +85,9 @@ Allow using native addons when using the permission model.
 .It Fl -allow-child-process
 Allow spawning process when using the permission model.
 .
+.It Fl -allow-inspector
+Allow inspector access when using the permission model.
+.
 .It Fl -allow-wasi
 Allow execution of WASI when using the permission model.
 .
@@ -210,8 +213,8 @@ Disable top-level await keyword support in REPL.
 .It Fl -no-experimental-sqlite
 Disable the experimental node:sqlite module.
 .
-.It Fl -no-experimental-strip-types
-Disable experimental type-stripping for TypeScript files.
+.It Fl -no-strip-types
+Disable type-stripping for TypeScript files.
 .
 .It Fl -experimental-vm-modules
 Enable experimental ES module support in VM module.
@@ -722,6 +725,13 @@ Alias for NODE_DISABLE_COLORS
 Enable the
 .Sy module compile cache
 for the Node.js instance.
+.
+.It Ev NODE_COMPILE_CACHE_PORTABLE
+When set to '1' or 'true', the
+.Sy module compile cache
+will be hit as long as the location of the modules relative to the cache directory remain
+consistent. This can be used in conjunction with .Ev NODE_COMPILE_CACHE
+to enable portable on-disk caching.
 .
 .It Ev NODE_DEBUG Ar modules...
 Comma-separated list of core modules that should print debug information.

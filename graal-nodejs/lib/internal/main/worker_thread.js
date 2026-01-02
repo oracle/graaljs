@@ -11,9 +11,6 @@ const {
   ObjectDefineProperty,
   PromisePrototypeThen,
   RegExpPrototypeExec,
-  globalThis: {
-    SharedArrayBuffer,
-  },
 } = primordials;
 
 const {
@@ -128,23 +125,21 @@ port.on('message', (message) => {
     require('internal/worker').assignEnvironmentData(environmentData);
     setupMainThreadPort(mainThreadPort);
 
-    if (SharedArrayBuffer !== undefined) {
-      // The counter is only passed to the workers created by the main thread,
-      // not to workers created by other workers.
-      let cachedCwd = '';
-      let lastCounter = -1;
-      const originalCwd = process.cwd;
+    // The counter is only passed to the workers created by the main thread,
+    // not to workers created by other workers.
+    let cachedCwd = '';
+    let lastCounter = -1;
+    const originalCwd = process.cwd;
 
-      process.cwd = function() {
-        const currentCounter = AtomicsLoad(cwdCounter, 0);
-        if (currentCounter === lastCounter)
-          return cachedCwd;
-        lastCounter = currentCounter;
-        cachedCwd = originalCwd();
+    process.cwd = function() {
+      const currentCounter = AtomicsLoad(cwdCounter, 0);
+      if (currentCounter === lastCounter)
         return cachedCwd;
-      };
-      workerIo.sharedCwdCounter = cwdCounter;
-    }
+      lastCounter = currentCounter;
+      cachedCwd = originalCwd();
+      return cachedCwd;
+    };
+    workerIo.sharedCwdCounter = cwdCounter;
 
     const isLoaderHookWorker = (filename === 'internal/modules/esm/worker' && doEval === 'internal');
     if (!isLoaderHookWorker) {
@@ -180,7 +175,7 @@ port.on('message', (message) => {
           value: filename,
         });
         ArrayPrototypeSplice(process.argv, 1, 0, name);
-        const tsEnabled = getOptionValue('--experimental-strip-types');
+        const tsEnabled = getOptionValue('--strip-types');
         const inputType = getOptionValue('--input-type');
 
         if (inputType === 'module-typescript' && tsEnabled) {

@@ -249,7 +249,7 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
     } else if (test_runner_force_exit) {
       errors->push_back("either --watch or --test-force-exit "
                         "can be used, not both");
-    } else if (!test_runner && (argv->size() < 1 || (*argv)[1].empty())) {
+    } else if (!test_runner && watch_mode_paths.empty() && argv->size() < 1) {
       errors->push_back("--watch requires specifying a file");
     }
 
@@ -614,6 +614,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--allow-child-process",
             "allow use of child process when any permissions are set",
             &EnvironmentOptions::allow_child_process,
+            kAllowedInEnvvar);
+  AddOption("--allow-inspector",
+            "allow use of inspector when any permissions are set",
+            &EnvironmentOptions::allow_inspector,
             kAllowedInEnvvar);
   AddOption("--allow-wasi",
             "allow wasi when any permissions are set",
@@ -1012,20 +1016,26 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--watch",
             "run in watch mode",
             &EnvironmentOptions::watch_mode,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kWatchNamespace);
   AddOption("--watch-path",
             "path to watch",
             &EnvironmentOptions::watch_mode_paths,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            OptionNamespaces::kWatchNamespace);
   AddOption("--watch-kill-signal",
             "kill signal to send to the process on watch mode restarts"
             "(default: SIGTERM)",
             &EnvironmentOptions::watch_mode_kill_signal,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            OptionNamespaces::kWatchNamespace);
   AddOption("--watch-preserve-output",
             "preserve outputs on watch mode restart",
             &EnvironmentOptions::watch_mode_preserve_output,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            false,
+            OptionNamespaces::kWatchNamespace);
   Implies("--watch-path", "--watch");
   AddOption("--check",
             "syntax check script without executing",
@@ -1056,17 +1066,18 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "ES module to preload (option can be repeated)",
             &EnvironmentOptions::preload_esm_modules,
             kAllowedInEnvvar);
-  AddOption("--experimental-strip-types",
-            "Experimental type-stripping for TypeScript files.",
-            &EnvironmentOptions::experimental_strip_types,
+  AddOption("--strip-types",
+            "Type-stripping for TypeScript files.",
+            &EnvironmentOptions::strip_types,
             kAllowedInEnvvar,
             true);
+  AddAlias("--experimental-strip-types", "--strip-types");
   AddOption("--experimental-transform-types",
             "enable transformation of TypeScript-only"
             "syntax into JavaScript code",
             &EnvironmentOptions::experimental_transform_types,
             kAllowedInEnvvar);
-  Implies("--experimental-transform-types", "--experimental-strip-types");
+  Implies("--experimental-transform-types", "--strip-types");
   Implies("--experimental-transform-types", "--enable-source-maps");
   AddOption("--interactive",
             "always enter the REPL even if stdin does not appear "
