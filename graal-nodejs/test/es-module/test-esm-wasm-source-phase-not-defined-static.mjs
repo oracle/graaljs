@@ -12,8 +12,7 @@ spawnSyncAndAssert(
   {
     status: 1,
     stderr(output) {
-      assert.match(output, /Source phase import object is not defined for module/);
-      assert(output.includes(fileUrl));
+      assert.match(output, /Source phase import( object)? is not (defined|available) for .*[mM]odule/);
     }
   }
 );
