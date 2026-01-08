@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -193,6 +193,8 @@ public class JSModuleRecord extends CyclicModuleRecord {
                 if (exportEntry.getImportName().equals(Module.STAR_NAME)) {
                     // Assert: module does not provide the direct binding for this export.
                     return ExportResolution.resolved(importedModule, Module.NAMESPACE_EXPORT_BINDING_NAME);
+                } else if (exportEntry.getImportName().equals(Module.SOURCE_IMPORT_NAME)) {
+                    return ExportResolution.resolved(importedModule, Module.SOURCE_IMPORT_NAME);
                 } else {
                     // Assert: module imports a specific binding for this export.
                     return importedModule.resolveExport(exportEntry.getImportName(), resolveSet);
