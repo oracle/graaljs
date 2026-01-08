@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,7 +89,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     public abstract Object execute(ExportResolution resolution);
 
-    @Specialization(guards = {"!resolution.isNamespace()",
+    @Specialization(guards = {"!resolution.isNamespace()", "!resolution.isSource()",
                     "frameDescriptor == resolution.getModule().getFrameDescriptor()",
                     "equals(equalNode, bindingName, resolution.getBindingName())"}, limit = "1")
     static Object doCached(ExportResolution.Resolved resolution,
@@ -106,7 +106,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    @Specialization(guards = {"!resolution.isNamespace()"}, replaces = {"doCached"})
+    @Specialization(guards = {"!resolution.isNamespace()", "!resolution.isSource()"}, replaces = {"doCached"})
     final Object doUncached(ExportResolution.Resolved resolution) {
         AbstractModuleRecord module = resolution.getModule();
         assert !(module instanceof CyclicModuleRecord cyclicModule) || cyclicModule.isLinked() : module;
@@ -140,6 +140,11 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
             slowPath.enter(this);
             return module.getModuleNamespace(ImportPhase.Evaluation);
         }
+    }
+
+    @Specialization(guards = {"resolution.isSource()"})
+    static Object doSource(ExportResolution.Resolved resolution) {
+        return resolution.getModule().getModuleSource();
     }
 
     @Specialization
