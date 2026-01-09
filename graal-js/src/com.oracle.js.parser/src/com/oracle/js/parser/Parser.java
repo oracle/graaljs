@@ -1046,7 +1046,7 @@ public class Parser extends AbstractParser {
                         throw invalidLHSError(lhs);
                     }
                     break;
-                } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
+                } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringOrExtractorLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
                     verifyDestructuringAssignmentPattern(lhs, CONTEXT_ASSIGNMENT_TARGET);
                     break;
                 } else if (!(isWebCompatAssignmentTargetType(lhs) && (opType == ASSIGN || opType.isAssignmentOperator()))) {
@@ -1071,8 +1071,18 @@ public class Parser extends AbstractParser {
         return false;
     }
 
+    private boolean isDestructuringOrExtractorLhs(Expression lhs) {
+        if (isDestructuringLhs(lhs)) {
+            return true;
+        }
+        if (lhs instanceof CallNode) {
+            return env.extractors;
+        }
+        return false;
+    }
+
     private void verifyDestructuringAssignmentPattern(Expression pattern, String contextString) {
-        assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode;
+        assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode || pattern instanceof CallNode;
         pattern.accept(new VerifyDestructuringPatternNodeVisitor(new LexicalContext()) {
             @Override
             protected void verifySpreadElement(Expression lvalue) {
@@ -2479,10 +2489,14 @@ public class Parser extends AbstractParser {
             final int varLine = line;
             final long varToken = Token.recast(token, varType);
 
-            // Get name of var.
-            final Expression binding = bindingIdentifierOrPattern(yield, await, CONTEXT_VARIABLE_NAME);
-            final boolean isDestructuring = !(binding instanceof IdentNode);
-            if (isDestructuring) {
+            // Get left hand side.
+            final Expression binding = leftHandSideExpression(yield, await, CoverExpressionError.DENY);
+            if (binding.tokenType() == TokenType.NEW) {
+                throw error(AbstractParser.message(MSG_INVALID_LVALUE), binding.getToken());
+            }
+
+            final boolean isDestructuringOrExtracting = !(binding instanceof IdentNode);
+            if (isDestructuringOrExtracting) {
                 final int finalVarFlags = varFlags | VarNode.IS_DESTRUCTURING;
                 verifyDestructuringBindingPattern(binding, new Consumer<IdentNode>() {
                     @Override
@@ -2510,18 +2524,18 @@ public class Parser extends AbstractParser {
                 next();
 
                 // Get initializer expression. Suppress IN if not statement.
-                if (!isDestructuring) {
+                if (!isDestructuringOrExtracting) {
                     pushDefaultName(binding);
                 }
                 try {
                     init = assignmentExpression(isStatement, yield, await);
                 } finally {
-                    if (!isDestructuring) {
+                    if (!isDestructuringOrExtracting) {
                         popDefaultName();
                     }
                 }
             } else if (isStatement) {
-                if (isDestructuring) {
+                if (isDestructuringOrExtracting) {
                     throw error(AbstractParser.message(MSG_MISSING_DESTRUCTURING_ASSIGNMENT), token);
                 } else if (varType == CONST) {
                     throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) binding).getName()));
@@ -2529,7 +2543,7 @@ public class Parser extends AbstractParser {
                 // else, if we are in a for loop, delay checking until we know the kind of loop
             }
 
-            if (!isDestructuring) {
+            if (!isDestructuringOrExtracting) {
                 assert init != null || varType != CONST || !isStatement;
                 final IdentNode ident = (IdentNode) binding;
                 if (varType != VAR && ident.getName().equals(LET.getName())) {
@@ -2716,6 +2730,13 @@ public class Parser extends AbstractParser {
             return arrayLiteral(yield, await, CoverExpressionError.IGNORE);
         } else if (type == LBRACE) {
             return objectLiteral(yield, await, CoverExpressionError.IGNORE);
+        } else if (env.extractors && type == IDENT) {
+            final var extractor = leftHandSideExpression(yield, await, CoverExpressionError.DENY);
+            if (extractor instanceof CallNode) {
+                return extractor;
+            } else {
+                throw error(AbstractParser.message(MSG_EXPECTED_BINDING), extractor.getToken());
+            }
         } else {
             throw error(AbstractParser.message(MSG_EXPECTED_BINDING));
         }
@@ -2743,22 +2764,7 @@ public class Parser extends AbstractParser {
                 if (((ArrayLiteralNode) literalNode).hasSpread() && ((ArrayLiteralNode) literalNode).hasTrailingComma()) {
                     throw error("Rest element must be last", literalNode.getElementExpressions().get(literalNode.getElementExpressions().size() - 1).getToken());
                 }
-                boolean restElement = false;
-                for (Expression element : literalNode.getElementExpressions()) {
-                    if (element != null) {
-                        if (restElement) {
-                            throw error("Unexpected element after rest element", element.getToken());
-                        }
-                        if (element.isTokenType(SPREAD_ARRAY)) {
-                            restElement = true;
-                            Expression lvalue = ((UnaryNode) element).getExpression();
-                            verifySpreadElement(lvalue);
-                        } else {
-                            element.accept(this);
-                        }
-                    }
-                }
-                return false;
+                return handleNodeListWithSpread(literalNode.getElementExpressions(), SPREAD_ARRAY);
             } else {
                 return enterDefault(literalNode);
             }
@@ -2771,23 +2777,7 @@ public class Parser extends AbstractParser {
             if (objectNode.isParenthesized()) {
                 throw error(AbstractParser.message(MSG_INVALID_LVALUE), objectNode.getToken());
             }
-            boolean restElement = false;
-            for (PropertyNode property : objectNode.getElements()) {
-                if (property != null) {
-                    if (restElement) {
-                        throw error("Unexpected element after rest element", property.getToken());
-                    }
-                    Expression key = property.getKey();
-                    if (key.isTokenType(SPREAD_OBJECT)) {
-                        restElement = true;
-                        Expression lvalue = ((UnaryNode) key).getExpression();
-                        verifySpreadElement(lvalue);
-                    } else {
-                        property.accept(this);
-                    }
-                }
-            }
-            return false;
+            return this.handleNodeListWithSpread(objectNode.getElements(), SPREAD_OBJECT);
         }
 
         @Override
@@ -2810,6 +2800,39 @@ public class Parser extends AbstractParser {
                 return enterDefault(binaryNode);
             }
         }
+
+        @Override
+        public boolean enterCallNode(CallNode callNode) {
+            if (callNode.isParenthesized() || !env.extractors) {
+                throw error(AbstractParser.message(MSG_INVALID_LVALUE), callNode.getToken());
+            }
+            return handleNodeListWithSpread(callNode.getArgs(), SPREAD_ARGUMENT);
+        }
+
+        private boolean handleNodeListWithSpread(List<? extends Node> nodes, TokenType acceptableSpreadToken) {
+            boolean encounteredSpread = false;
+
+            for (final var node : nodes) {
+                if (node == null) {
+                    continue;
+                }
+                if (encounteredSpread) {
+                    throw error("Unexpected element after rest element", node.getToken());
+                }
+
+                final var key = node instanceof PropertyNode ? ((PropertyNode) node).getKey() : node;
+                if (key.isTokenType(acceptableSpreadToken)) {
+                    encounteredSpread = true;
+
+                    final var lvalue = ((UnaryNode) key).getExpression();
+                    verifySpreadElement(lvalue);
+                } else {
+                    node.accept(this);
+                }
+            }
+
+            return false;
+        }
     }
 
     /**
@@ -2817,7 +2840,7 @@ public class Parser extends AbstractParser {
      * declarations.
      */
     private void verifyDestructuringBindingPattern(Expression pattern, Consumer<IdentNode> identifierCallback) {
-        assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode;
+        assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode || pattern instanceof CallNode;
         pattern.accept(new VerifyDestructuringPatternNodeVisitor(new LexicalContext()) {
             @Override
             protected void verifySpreadElement(Expression lvalue) {
@@ -3076,8 +3099,8 @@ public class Parser extends AbstractParser {
                                 throw error(AbstractParser.message(MSG_MANY_VARS_IN_FOR_IN_LOOP, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.secondBinding.getToken());
                             }
                             init = varDeclList.firstBinding;
-                            assert init instanceof IdentNode || isDestructuringLhs(init) : init;
-                            if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != IN || varType != VAR || isDestructuringLhs(init))) {
+                            assert init instanceof IdentNode || isDestructuringOrExtractorLhs(init) : init;
+                            if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != IN || varType != VAR || isDestructuringOrExtractorLhs(init))) {
                                 /*
                                  * ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression).
                                  * Invalid in ES6, but allowed in non-strict mode if no ES6 features
@@ -3154,7 +3177,7 @@ public class Parser extends AbstractParser {
             return true;
         } else if (init instanceof AccessNode || init instanceof IndexNode) {
             return !((BaseNode) init).isOptional();
-        } else if (isDestructuringLhs(init)) {
+        } else if (isDestructuringOrExtractorLhs(init)) {
             verifyDestructuringAssignmentPattern(init, contextString);
             return true;
         } else {
@@ -3861,7 +3884,8 @@ public class Parser extends AbstractParser {
                         pattern = null;
                         ifExpression = null;
                     } else {
-                        if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
+                        // If extractors are allowed, bindingPattern may start with an identifier so we need to look ahead
+                        if ((isBindingIdentifier() && (!env.extractors || Token.descType(getToken(k + 1)) == RPAREN)) || !(ES6_DESTRUCTURING && isES6())) {
                             pattern = null;
                             IdentNode catchParameter = bindingIdentifier(yield, await, CONTEXT_CATCH_PARAMETER);
                             exception = catchParameter.setIsCatchParameter();
@@ -5087,7 +5111,7 @@ public class Parser extends AbstractParser {
      * This helps report the first error location for cases like: <code>({x=i}[{y=j}])</code>.
      */
     private void verifyPrimaryExpression(Expression lhs, CoverExpressionError coverExpression) {
-        if (coverExpression != CoverExpressionError.DENY && coverExpression.hasError() && isDestructuringLhs(lhs)) {
+        if (coverExpression != CoverExpressionError.DENY && coverExpression.hasError() && isDestructuringOrExtractorLhs(lhs)) {
             /**
              * These token types indicate that the preceding PrimaryExpression is part of an
              * unfinished MemberExpression or other LeftHandSideExpression, which also means that it
@@ -5570,7 +5594,7 @@ public class Parser extends AbstractParser {
         final long paramToken = token;
         final int paramLine = line;
         IdentNode ident;
-        if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
+        if (lookaheadIsSimpleFormalParameter() || !(ES6_DESTRUCTURING && isES6())) {
             ident = bindingIdentifier(yield, await, CONTEXT_FUNCTION_PARAMETER);
 
             if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
@@ -5607,6 +5631,18 @@ public class Parser extends AbstractParser {
                 addDestructuringParameter(paramToken, finish, paramLine, pattern, initializer, currentFunction, false);
             }
         }
+    }
+
+    /**
+     * check if this is a "simple" formal parameter; an ident followed by a comma, a closing parenthesis or an assign (default)
+     * i.e. not a binding pattern (in particular an extractor, which also starts with an ident)
+     */
+    private boolean lookaheadIsSimpleFormalParameter() {
+        if (!isBindingIdentifier()) {
+            return false;
+        }
+
+        return lookaheadFindTokenSkippingComments(COMMARIGHT) || lookaheadFindTokenSkippingComments(RPAREN) || lookaheadFindTokenSkippingComments(ASSIGN);
     }
 
     private void functionRestParameter(final TokenType endType, final boolean yield, final boolean await) {
@@ -5683,7 +5719,7 @@ public class Parser extends AbstractParser {
     }
 
     private void addDestructuringParameter(long paramToken, int paramFinish, int paramLine, Expression target, Expression initializer, ParserContextFunctionNode function, boolean isRest) {
-        assert isDestructuringLhs(target);
+        assert isDestructuringOrExtractorLhs(target);
         // desugar to: target := (param === undefined) ? initializer : param;
         // we use an special positional parameter node not subjected to TDZ rules;
         // thereby, we forego the need for a synthetic param symbol to refer to the passed value.
@@ -6440,7 +6476,7 @@ public class Parser extends AbstractParser {
         assert !(exprLhs instanceof ExpressionList);
 
         if (type.isAssignment()) {
-            if (canBeAssignmentPattern && !isDestructuringLhs(exprLhs)) {
+            if (canBeAssignmentPattern && !isDestructuringOrExtractorLhs(exprLhs)) {
                 // If LHS is not an AssignmentPattern, verify that it is a valid expression.
                 verifyExpression(coverExprLhs);
             }
@@ -6592,7 +6628,7 @@ public class Parser extends AbstractParser {
             return;
         }
         final int functionLine = function.getLineNumber();
-        if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr) || paramListExpr.isTokenType(SPREAD_ARGUMENT)) {
+        if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringOrExtractorLhs(paramListExpr) || paramListExpr.isTokenType(SPREAD_ARGUMENT)) {
             convertArrowParameter(paramListExpr, 0, functionLine, function);
         } else if (paramListExpr instanceof BinaryNode && Token.descType(paramListExpr.getToken()) == COMMARIGHT) {
             List<Expression> params = new ArrayList<>();
@@ -6645,7 +6681,7 @@ public class Parser extends AbstractParser {
 
                 addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
                 return;
-            } else if (isDestructuringLhs(lhs)) {
+            } else if (isDestructuringOrExtractorLhs(lhs)) {
                 // binding pattern with initializer
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine);
 
@@ -6653,7 +6689,7 @@ public class Parser extends AbstractParser {
             } else {
                 throw error(AbstractParser.message(MSG_INVALID_ARROW_PARAMETER), paramToken);
             }
-        } else if (isDestructuringLhs(param)) {
+        } else if (isDestructuringOrExtractorLhs(param)) {
             // binding pattern
             long paramToken = param.getToken();
 
@@ -6669,7 +6705,7 @@ public class Parser extends AbstractParser {
             if (restParam instanceof IdentNode) {
                 IdentNode ident = ((IdentNode) restParam).setIsRestParameter();
                 convertArrowParameter(ident, index, paramLine, currentFunction);
-            } else if (isDestructuringLhs(restParam)) {
+            } else if (isDestructuringOrExtractorLhs(restParam)) {
                 verifyDestructuringParameterBindingPattern(restParam, restParam.getToken(), paramLine);
                 addDestructuringParameter(restParam.getToken(), restParam.getFinish(), paramLine, restParam, null, currentFunction, true);
             } else {
@@ -6731,19 +6767,18 @@ public class Parser extends AbstractParser {
     }
 
     private boolean lookaheadIsArrow() {
-        // find ARROW, skipping over COMMENT
-        int i = 1;
-        for (;;) {
-            TokenType t = T(k + i++);
-            if (t == ARROW) {
-                break;
-            } else if (t == COMMENT) {
-                continue;
-            } else {
+        return lookaheadFindTokenSkippingComments(ARROW);
+    }
+
+    private boolean lookaheadFindTokenSkippingComments(TokenType target) {
+        for (int i = 1;; i++) {
+            TokenType t = T(k + i);
+            if (t == target) {
+                return true;
+            } else if (t != COMMENT) {
                 return false;
             }
         }
-        return true;
     }
 
     /**

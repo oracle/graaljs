@@ -733,6 +733,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> TEXT_ENCODING = new OptionKey<>(false);
     @CompilationFinal private boolean textEncoding;
 
+    public static final String EXTRACTORS_NAME = JS_OPTION_PREFIX + "extractors";
+    @Option(name = EXTRACTORS_NAME, category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL, help = "Support for Extractors proposal")
+    public static final OptionKey<Boolean> EXTRACTORS = new OptionKey<>(false);
+    @CompilationFinal private boolean extractors;
+
     private static OptionType<Integer> integerRange(int min, int max) {
         return new OptionType<>("Integer", sv -> {
             try {
@@ -847,6 +852,7 @@ public final class JSContextOptions {
         this.stackTraceAPI = STACK_TRACE_API.hasBeenSet(optionValues) ? readBooleanOption(STACK_TRACE_API) : (v8CompatibilityMode || nashornCompatibilityMode);
         this.worker = WORKER.hasBeenSet(optionValues) ? readBooleanOption(WORKER) : testV8Mode;
         this.textEncoding = readBooleanOption(TEXT_ENCODING);
+        this.extractors = readBooleanOption(EXTRACTORS);
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -1352,6 +1358,10 @@ public final class JSContextOptions {
 
     public boolean isWorker() {
         return worker;
+    }
+
+    public boolean isExtractors() {
+        return extractors;
     }
 
 }

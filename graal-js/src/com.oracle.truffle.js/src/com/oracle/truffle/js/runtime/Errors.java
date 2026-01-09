@@ -1053,4 +1053,9 @@ public final class Errors {
     public static JSException createRangeErrorEncodingNotSupported(TruffleString encoding) {
         return Errors.createRangeError("Unsupported encoding: " + encoding);
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorInvalidCustomMatcherReturnValue(Object value, Node originatingNode) {
+        return Errors.createTypeError("[Symbol.customMatcher] must return an object, got: " + JSRuntime.safeToString(value), originatingNode);
+    }
 }

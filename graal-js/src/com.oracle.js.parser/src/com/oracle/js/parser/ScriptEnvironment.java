@@ -133,6 +133,9 @@ public final class ScriptEnvironment {
     /** Are source phase imports enabled. */
     final boolean sourcePhaseImports;
 
+    /** Are extractors enabled. */
+    final boolean extractors;
+
     public ScriptEnvironment(boolean strict,
                     int ecmaScriptVersion,
                     boolean emptyStatements,
@@ -149,6 +152,7 @@ public final class ScriptEnvironment {
                     boolean privateFieldsIn,
                     boolean topLevelAwait,
                     boolean v8Intrinsics,
+                    boolean extractors,
                     FunctionStatementBehavior functionStatementBehavior) {
         this.constAsVar = constAsVar;
         this.emptyStatements = emptyStatements;
@@ -167,6 +171,7 @@ public final class ScriptEnvironment {
         this.privateFieldsIn = privateFieldsIn;
         this.topLevelAwait = topLevelAwait;
         this.v8Intrinsics = v8Intrinsics;
+        this.extractors = extractors;
     }
 
     public boolean isStrict() {
@@ -195,6 +200,7 @@ public final class ScriptEnvironment {
         private boolean privateFieldsIn = false;
         private boolean topLevelAwait = false;
         private boolean v8Intrinsics = false;
+        private boolean extractors = false;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
 
         private Builder() {
@@ -284,9 +290,14 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder extractors(boolean extractors) {
+            this.extractors = extractors;
+            return this;
+        }
+
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior);
+                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, extractors, functionStatementBehavior);
         }
     }
 }
