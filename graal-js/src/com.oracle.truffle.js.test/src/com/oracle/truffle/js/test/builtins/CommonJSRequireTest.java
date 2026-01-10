@@ -695,10 +695,9 @@ public class CommonJSRequireTest {
     }
 
     @Test
-    public void dontImportCommonJs() throws IOException {
-        final String src = "import('with-package').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: Unsupported file extension: '" + getTestRootFolderUrl() + "node_modules/with-package/alternative-index.js'\n";
-        runAndExpectOutput(src, out);
+    public void dynamicImportCommonJs() throws IOException {
+        final String src = "import('with-package').then(x => {console.log(x.foo)}).catch(console.log);";
+        runAndExpectOutput(src, "42\n");
     }
 
     @Test
@@ -803,5 +802,175 @@ public class CommonJSRequireTest {
             }
             assertEquals(expectedMessage, t.getMessage());
         }
+    }
+
+    @Test
+    public void importModuleFromExportsFieldSimple() throws IOException {
+        final String src = "import {name} from 'exports-in-package-json-simple'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "index\n", options);
+    }
+
+    @Test
+    public void importModuleFromExportsFieldSimpleThrow() {
+        final String src = "import {name} from 'exports-in-package-json-simple/index.js'; console.log('should throw')";
+        final String expectedMessage = "TypeError: Package subpath is not defined by \"exports\" field: './index.js'";
+        Map<String, String> options = getDefaultOptions();
+        try {
+            runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "index\n", options);
+            assert false;
+        } catch (Throwable t) {
+            if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
+                throw new AssertionError("Unexpected exception " + t);
+            }
+            assertEquals(expectedMessage, t.getMessage());
+        }
+    }
+
+    @Test
+    public void subpathImports() throws IOException {
+        final String src = "import {name} from 'subpath-imports'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "dep\n", options);
+    }
+
+    @Test
+    public void subpathImportsExternal() throws IOException {
+        final String src = "import {name} from 'subpath-imports/external'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "dep-external\n", options);
+    }
+
+    @Test
+    public void importModuleFromExportsField() throws IOException {
+        final String src = "import {name} from 'exports-in-package-json'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "index\n", options);
+    }
+
+    @Test
+    public void importModuleFromExportsField2() throws IOException {
+        final String src = "import {name} from 'exports-in-package-json/feature.js'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "graaljs\n", options);
+    }
+
+    @Test
+    public void importModuleCustomCondition() throws IOException {
+        final String src = "import {name} from 'exports-in-package-json/feature.js'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        options.put("js.commonjs-require-user-conditions", "browser,node");
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "node\n", options);
+    }
+
+    @Test
+    public void importModuleFromExportsPriorityThrow() {
+        final String src = "import {name} from 'exports-in-package-json/feature-noncompatible.js'; console.log('should throw')";
+        final String expectedMessage = "TypeError: Package subpath is not defined by \"exports\" field: './feature-noncompatible.js'";
+        Map<String, String> options = getDefaultOptions();
+        try {
+            runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "", options);
+            assert false;
+        } catch (Throwable t) {
+            if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
+                throw new AssertionError("Unexpected exception " + t);
+            }
+            assertEquals(expectedMessage, t.getMessage());
+        }
+    }
+
+    @Test
+    public void importModuleFromExportsNotExported() {
+        final String src = "import {name} from 'exports-in-package-json/not-exported.js'; console.log('should throw')";
+        final String expectedMessage = "TypeError: Package subpath is not defined by \"exports\" field: './not-exported.js'";
+        Map<String, String> options = getDefaultOptions();
+        try {
+            runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "", options);
+            assert false;
+        } catch (Throwable t) {
+            if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
+                throw new AssertionError("Unexpected exception " + t);
+            }
+            assertEquals(expectedMessage, t.getMessage());
+        }
+    }
+
+    @Test
+    public void importModulePatternWithoutExtension() throws IOException{
+        final String src = "import {name} from 'exports-subpath-extensions/lib/index'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "index\n", options);
+    }
+
+    @Test
+    public void importModulePatternWithExtension() throws IOException{
+        final String src = "import {name} from 'exports-subpath-extensions/lib/index.js'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "index\n", options);
+
+    }
+
+    private Source subpathPatternTestBuildSrc(String name){
+          try {
+              String src = "import {name} from 'exports-subpath-pattern" + (name == "" ? "" : "/" + name) + "'; console.log(name)";
+              return Source.newBuilder(ID, src, "test.mjs").build();
+          } catch (IOException e) {
+              throw new AssertionError("Unexpected exception " + e);
+          }
+    }
+
+    @Test
+    public void importModuleSubpathPattern() throws IOException {
+        var options = getDefaultOptions();
+        runAndExpectOutput(this.subpathPatternTestBuildSrc("src/main.js"), "dest-main\n", options);
+    }
+
+    @Test
+    public void importModuleSubpathPatternWithConditional() throws IOException {
+        var options = getDefaultOptions();
+        runAndExpectOutput(this.subpathPatternTestBuildSrc("src-feature/feature.js"), "dest-feature-graaljs\n", options);
+    }
+
+    @Test
+    public void importModuleSubpathPatternThrow() {
+        var options = getDefaultOptions();
+        final String expectedMessage = "TypeError: Module not found: 'exports-subpath-pattern/src-feature/nonexistence.js'";
+        try {
+            runAndExpectOutput(this.subpathPatternTestBuildSrc("src-feature/nonexistence.js"), "", options);
+            assert false;
+        } catch (Throwable t){
+            if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
+                throw new AssertionError("Unexpected exception " + t);
+            }
+            assertEquals(expectedMessage, t.getMessage());
+        }
+    }
+
+    @Test
+    public void importModuleNestExports() throws IOException{
+        final String src = "import {name} from 'exports-nested/feature.js'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "esm-graaljs\n", options);
+    }
+
+    @Test
+    public void importModuleFromExportsArray() throws IOException {
+        final String src = "import {name} from 'exports-nested/exports-array'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "esm-node\n", options);
+    }
+
+    @Test
+    public void importModuleNestExportsShouldDefault() throws IOException{
+        final String src = "import {name} from 'exports-nested/should-default.js'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "esm-default\n", options);
+    }
+
+    @Test
+    public void importModuleExportsDefaultToCjs() throws IOException {
+        final String src = "import {name} from 'exports-nested/should-default-cjs'; console.log(name)";
+        Map<String, String> options = getDefaultOptions();
+        runAndExpectOutput(Source.newBuilder(ID, src, "test.mjs").build(), "cjs-default\n", options);
     }
 }

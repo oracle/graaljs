@@ -362,6 +362,7 @@ public final class Strings {
     public static final TruffleString DIRNAME_VAR_NAME = constant("__dirname");
     public static final TruffleString MODULE_PROPERTY_NAME = MODULE;
     public static final TruffleString EXPORTS_PROPERTY_NAME = constant("exports");
+    public static final TruffleString IMPORTS_PROPERTY_NAME = constant("imports");
     public static final TruffleString REQUIRE_PROPERTY_NAME = constant("require");
     public static final TruffleString RESOLVE_PROPERTY_NAME = RESOLVE;
     public static final TruffleString LOADED_PROPERTY_NAME = constant("loaded");
