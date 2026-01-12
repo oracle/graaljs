@@ -2421,14 +2421,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-export-star-as-from-and-import-star-as-and-export.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-star-as-and-export.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
     "filePath" : "language/module-code/top-level-await/syntax/for-await-expr-nested.js",
     "status" : "PASS",
     "statusOverrides" : {
