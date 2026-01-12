@@ -2157,10 +2157,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
-    "filePath" : "built-ins/ThrowTypeError/distinct-cross-realm.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
