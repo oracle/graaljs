@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -673,13 +673,11 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class JSLocaleGetWeekInfoNode extends JSBuiltinNode {
         @Child CreateDataPropertyNode createFirstDayNode;
         @Child CreateDataPropertyNode createWeekendNode;
-        @Child CreateDataPropertyNode createMinimalDaysNode;
 
         public JSLocaleGetWeekInfoNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.createFirstDayNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_FIRST_DAY);
             this.createWeekendNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_WEEKEND);
-            this.createMinimalDaysNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_MINIMAL_DAYS);
         }
 
         @Specialization
@@ -694,7 +692,6 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 firstDay = fw;
             }
-            int minimalDays = weekData.minimalDaysInFirstWeek;
 
             SimpleArrayList<Integer> weekendList = new SimpleArrayList<>(7);
             int weekendCease = weekData.weekendCease;
@@ -717,7 +714,6 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             JSObject weekInfo = JSOrdinary.create(context, realm);
             createFirstDayNode.executeVoid(weekInfo, firstDay);
             createWeekendNode.executeVoid(weekInfo, weekend);
-            createMinimalDaysNode.executeVoid(weekInfo, minimalDays);
             return weekInfo;
         }
 

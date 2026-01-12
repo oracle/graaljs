@@ -2213,10 +2213,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Locale/prototype/getWeekInfo/output-object-keys.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
     "status" : "PASS",
     "statusOverrides" : {
