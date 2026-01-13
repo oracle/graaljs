@@ -454,9 +454,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             this, doubleToString, digitsErrorBranch, nanBranch, dtoaOrString);
         }
 
-        @Specialization(guards = "isNumber.execute(this, thisNumber)", limit = "1")
+        @Specialization(guards = "isNumber.execute(this, thisNumber)")
         protected Object toFixedJava(Object thisNumber, Object fractionDigits,
-                        @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
+                        @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToIntegerAsIntNode toIntegerNode,
                         @Shared @Cached JSDoubleToStringNode doubleToString,
                         @Shared @Cached InlinedBranchProfile digitsErrorBranch,

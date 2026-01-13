@@ -315,7 +315,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             } else if (Unit.MILLISECOND == smallestUnit) {
                 maximum = TemporalUtil.MS_PER_DAY;
             } else if (Unit.MICROSECOND == smallestUnit) {
-                maximum = TemporalUtil.MS_PER_DAY * 1000;
+                maximum = TemporalUtil.MS_PER_DAY * 1000L;
             } else {
                 assert Unit.NANOSECOND == smallestUnit;
                 maximum = TemporalUtil.NS_PER_DAY_LONG;

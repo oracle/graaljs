@@ -178,7 +178,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSArrayObject arrayObj, int length,
-                        @Cached InlinedConditionProfile sealedProfile,
+                        @Cached @Shared InlinedConditionProfile sealedProfile,
                         @Cached @Shared ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
@@ -224,7 +224,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSArrayObject arrayObj, int length,
-                        @Cached InlinedConditionProfile mustDeleteProfile,
+                        @Cached @Shared InlinedConditionProfile mustDeleteProfile,
                         @Cached @Shared ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);

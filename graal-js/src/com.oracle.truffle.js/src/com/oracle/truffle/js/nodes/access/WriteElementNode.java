@@ -47,7 +47,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -1640,7 +1639,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Specialization(replaces = {"doStringIntegerIndex"})
         protected void doString(Object target, Object index, Object value, Object receiver, WriteElementNode root,
                         @Cached @Shared InlinedConditionProfile isImmutable,
-                        @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
+                        @Cached @Shared ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
             long longIndex = toArrayIndexNode.executeLong(this, index);
@@ -1858,8 +1857,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         private boolean tryInvokeSetter(Object thisObj, TruffleString key, Object value, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = getRealm().getEnv();
-            if (env.isHostObject(thisObj)) {
+            if (interop.isHostObject(thisObj)) {
                 TruffleString setterKey = PropertyCacheNode.getAccessorKey(Strings.SET, key);
                 if (setterKey == null) {
                     return false;

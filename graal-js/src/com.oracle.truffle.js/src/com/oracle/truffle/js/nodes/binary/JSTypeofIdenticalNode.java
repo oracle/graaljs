@@ -48,7 +48,6 @@ import com.oracle.js.parser.ir.BinaryNode;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.UnaryNode;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -58,9 +57,9 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
@@ -357,15 +356,12 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     private boolean isFunction(Object value, InteropLibrary interop) {
-        return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
+        return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value, interop);
     }
 
-    private boolean isHostSymbolInNashornCompatMode(Object value) {
+    private boolean isHostSymbolInNashornCompatMode(Object value, InteropLibrary interop) {
         if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
-            TruffleLanguage.Env env = getRealm().getEnv();
-            if (env.isHostSymbol(value)) {
-                return true;
-            }
+            return interop.isHostObject(value) && interop.isScope(value);
         }
         return false;
     }

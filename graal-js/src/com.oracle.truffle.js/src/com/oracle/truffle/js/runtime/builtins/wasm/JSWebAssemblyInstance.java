@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -378,20 +378,21 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         wasmValue = createHostFunction(value, parseWasmFunctionTypeInfo(context, typeInfo));
                     }
                 } else if (Strings.equals(Strings.GLOBAL, externType)) {
-                    boolean isNumber = JSRuntime.isNumber(value);
-                    boolean isBigInt = JSRuntime.isBigInt(value);
-                    if (isNumber || context.getLanguageOptions().wasmBigInt() && isBigInt) {
+                    if (JSWebAssemblyGlobal.isJSWebAssemblyGlobal(value)) {
+                        wasmValue = ((JSWebAssemblyGlobalObject) value).getWASMGlobal();
+                    } else {
                         TruffleString valueTypeStr = asTString(descriptorInterop.readMember(descriptor, "type"));
                         WebAssemblyValueType valueType = WebAssemblyValueType.lookupType(valueTypeStr.toJavaStringUncached());
-                        boolean isI64 = valueType == WebAssemblyValueType.i64;
-                        if (!context.getLanguageOptions().wasmBigInt() && isI64) {
-                            throw createLinkErrorImport(i, module, name, "Can't import the value of i64 WebAssembly.Global");
+                        if (valueType == WebAssemblyValueType.i64) {
+                            if (!context.getLanguageOptions().wasmBigInt()) {
+                                throw createLinkErrorImport(i, module, name, "Can't import the value of i64 WebAssembly.Global");
+                            }
+                            if (!JSRuntime.isBigInt(value)) {
+                                throw createLinkErrorImport(i, module, name, "Value of valtype i64 must be BigInt");
+                            }
                         }
-                        if (isI64 && isNumber) {
-                            throw createLinkErrorImport(i, module, name, "Value of valtype i64 must be BigInt");
-                        }
-                        if (!isI64 && isBigInt) {
-                            throw createLinkErrorImport(i, module, name, "BigInt can only be stored in valtype i64");
+                        if ((valueType == WebAssemblyValueType.i32 || valueType == WebAssemblyValueType.f32 || valueType == WebAssemblyValueType.f64) && !JSRuntime.isNumber(value)) {
+                            throw createLinkErrorImport(i, module, name, "Value of valtype i32, f32 and f64 must be Number");
                         }
                         if (valueType == WebAssemblyValueType.v128) {
                             throw createLinkErrorImport(i, module, name, "Values of valtype v128 cannot be imported from JS");
@@ -403,10 +404,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
                         }
-                    } else if (JSWebAssemblyGlobal.isJSWebAssemblyGlobal(value)) {
-                        wasmValue = ((JSWebAssemblyGlobalObject) value).getWASMGlobal();
-                    } else {
-                        throw createLinkErrorImport(i, module, name, "Imported value is not a WebAssembly.Global object");
                     }
                 } else if (Strings.equals(Strings.MEMORY, externType)) {
                     if (JSWebAssemblyMemory.isJSWebAssemblyMemory(value)) {

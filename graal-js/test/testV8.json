@@ -62,6 +62,10 @@
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/locale/locale-info-check-return-types.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test: expects minimalDays in getWeekInfo()"
+  }, {
     "filePath" : "intl/localematcher/bestfit-supplemental-files.js",
     "status" : "FAIL",
     "comment" : "localeMatcher best fit"

@@ -1411,7 +1411,7 @@ public final class GraalJSAccess {
 
         if (unsafeWasmMemory) {
             // Try to get a direct ByteBuffer view of a WebAssembly Memory.
-            ByteBuffer byteBuffer = JSInteropUtil.jsInteropBufferAsByteBuffer(interopArrayBuffer, InteropLibrary.getUncached(), mainJSRealm);
+            ByteBuffer byteBuffer = JSInteropUtil.jsInteropBufferAsByteBuffer(interopArrayBuffer, InteropLibrary.getUncached(), InteropLibrary.getUncached(), mainJSRealm);
             if (byteBuffer != null && byteBuffer.isDirect()) {
                 return byteBuffer;
             }

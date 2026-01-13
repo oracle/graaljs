@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.unary;
 import java.util.Set;
 
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -186,19 +185,16 @@ public abstract class TypeOfNode extends JSUnaryNode {
         } else if (interop.isNumber(operand)) {
             return JSNumber.TYPE_NAME;
         }
-        if (interop.isExecutable(operand) || interop.isInstantiable(operand) || isHostSymbolInNashornCompatMode(operand)) {
+        if (interop.isExecutable(operand) || interop.isInstantiable(operand) || isHostSymbolInNashornCompatMode(operand, interop)) {
             return JSFunction.TYPE_NAME;
         } else {
             return JSOrdinary.TYPE_NAME;
         }
     }
 
-    private boolean isHostSymbolInNashornCompatMode(Object value) {
+    private boolean isHostSymbolInNashornCompatMode(Object value, InteropLibrary interop) {
         if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
-            TruffleLanguage.Env env = getRealm().getEnv();
-            if (env.isHostSymbol(value)) {
-                return true;
-            }
+            return interop.isHostObject(value) && interop.isScope(value);
         }
         return false;
     }

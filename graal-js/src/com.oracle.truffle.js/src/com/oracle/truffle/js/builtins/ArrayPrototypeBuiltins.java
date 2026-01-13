@@ -52,7 +52,6 @@ import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -995,9 +994,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object shiftWithoutHoles(JSArrayObject thisObj,
                         @Shared @Cached("createHasHolesOrUnused()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
-                        @Cached InlinedExactClassProfile arrayTypeProfile,
+                        @Shared @Cached InlinedExactClassProfile arrayTypeProfile,
                         @Shared @Cached InlinedConditionProfile lengthIsZero,
-                        @Cached @Exclusive InlinedConditionProfile lengthLargerOne) {
+                        @Shared @Cached InlinedConditionProfile lengthLargerOne) {
             long len = getLength(thisObj);
 
             if (lengthIsZero.profile(this, len == 0)) {
@@ -2701,8 +2700,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected final Object sort(Object thisObj, final Object comparefn,
-                        @Exclusive @Cached InlinedConditionProfile isJSObject,
-                        @Exclusive @Cached InlinedBranchProfile growProfile,
+                        @Shared @Cached InlinedConditionProfile isJSObject,
+                        @Shared @Cached InlinedBranchProfile growProfile,
                         @Shared @Cached InlinedConditionProfile isSparse,
                         @Shared @Cached InlinedConditionProfile compareProfile) {
             checkCompareCallableOrUndefined(comparefn);

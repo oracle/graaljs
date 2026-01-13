@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,15 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -56,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  * Modified version of {@link JSToObjectNode} that throws if the legacy {@code with} statement is
  * used with a host object. For Nashorn compatibility.
  */
+@ImportStatic(JSConfig.class)
 public abstract class WithStatementToObjectNode extends JSUnaryNode {
 
     protected WithStatementToObjectNode(JavaScriptNode operand) {
@@ -68,7 +73,8 @@ public abstract class WithStatementToObjectNode extends JSUnaryNode {
 
     @Specialization
     protected Object doDefault(Object value,
-                    @Cached JSToObjectNode toObjectNode) {
+                    @Cached JSToObjectNode toObjectNode,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         assert getLanguage().getJSContext().isOptionNashornCompatibilityMode();
         Object result;
         try {
@@ -76,7 +82,7 @@ public abstract class WithStatementToObjectNode extends JSUnaryNode {
         } catch (JSException ex) {
             throw createTypeErrorNotObjectCoercible(value);
         }
-        if (getRealm().getEnv().isHostObject(value)) {
+        if (interop.isHostObject(value)) {
             throw Errors.createTypeError("Cannot apply \"with\" to non script object. Consider using \"with(Object.bindProperties({}, nonScriptObject))\".", this);
         }
         return result;

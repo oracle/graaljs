@@ -264,7 +264,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         @Specialization(guards = "!getContext().isOptionNashornCompatibilityMode()")
         boolean getMultilineEager(
                         @Bind Node node,
-                        @Cached GetStaticRegExpResultNode getResultNode,
+                        @Cached @Shared GetStaticRegExpResultNode getResultNode,
                         @Cached @Shared TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
                         @Cached @Shared TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getMultilineFlag) {
             Object compiledRegex = getRealm().getStaticRegexResultCompiledRegex();

@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -54,6 +53,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.HeapIsolationException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -73,7 +73,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -251,9 +250,7 @@ public abstract class JSToPrimitiveNode extends ToPrimitiveBaseNode {
         if (exoticToPrimProfile.profile(node, !JSRuntime.isNullOrUndefined(exoticToPrim))) {
             result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, hint.getHintName()));
         } else {
-            JSRealm realm = JSRealm.get(node);
-            TruffleLanguage.Env env = realm.getEnv();
-            if (env.isHostObject(object)) {
+            if (interop.isHostObject(object)) {
                 Object maybeResult = JSToPrimitiveNode.tryHostObjectToPrimitive(object, hint, interop);
                 if (maybeResult != null) {
                     return maybeResult;
@@ -288,11 +285,11 @@ public abstract class JSToPrimitiveNode extends ToPrimitiveBaseNode {
         try {
             String qualifiedName = InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
             if (JavaScriptLanguage.get(interop).getJSContext().isOptionNashornCompatibilityMode() && qualifiedName.endsWith("[]")) {
-                Object hostObject = JSRealm.get(interop).getEnv().asHostObject(object);
+                Object hostObject = interop.asHostObject(object);
                 qualifiedName = ((Class<?>) hostObject).getName();
             }
             return Strings.fromJavaString("class " + qualifiedName);
-        } catch (UnsupportedMessageException e) {
+        } catch (UnsupportedMessageException | HeapIsolationException e) {
             throw Errors.createTypeErrorInteropException(object, e, "getTypeName", interop);
         }
     }
