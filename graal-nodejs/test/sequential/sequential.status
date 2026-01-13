@@ -31,6 +31,7 @@ test-vm-timeout-escape-promise-module-2: FAIL
 test-worker-prof: FAIL
 
 # uses V8 internal methods (%PrepareFunctionForOptimization, %OptimizeFunctionOnNextCall)
+test-crypto-timing-safe-equal-fast: FAIL
 test-zlib-crc32-fast-api: FAIL
 
 # Unclassified

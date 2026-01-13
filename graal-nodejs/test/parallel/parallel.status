@@ -13,6 +13,9 @@ test-aborted-util: FAIL
 test-worker-data-url: FAIL
 
 # Triggers stack-overflow that may not be handled well
+test-async-hooks-stack-overflow: SKIP
+test-async-hooks-stack-overflow-nested-async: SKIP
+test-async-hooks-stack-overflow-try-catch: SKIP
 test-async-wrap-pop-id-during-load: SKIP
 test-promise-reject-callback-exception: SKIP
 test-ttywrap-stack: SKIP
@@ -92,6 +95,9 @@ test-worker-dispose: FAIL
 # Different stack-trace format expected
 test-fs-promises: FAIL
 
+# V8 option --enable-sharedarraybuffer-per-context is not supported
+test-internal-util-construct-sab: FAIL
+
 # Flag --max-old-space-size-percentage is not supported
 test-max-old-space-size-percentage: FAIL
 
@@ -154,6 +160,7 @@ test-worker-sharedarraybuffer-from-worker-thread: SKIP
 # Profiling is not supported
 test-cli-node-options: SKIP
 test-tick-processor-arguments: FAIL
+test-v8-cpu-profile: FAIL
 test-worker-cpu-profile: FAIL
 test-worker-heap-profile: FAIL
 
