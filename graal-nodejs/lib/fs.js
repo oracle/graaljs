@@ -62,7 +62,6 @@ const {
 } = constants;
 
 const pathModule = require('path');
-const { isAbsolute } = pathModule;
 const { isArrayBufferView } = require('internal/util/types');
 
 const binding = internalBinding('fs');
@@ -1247,6 +1246,11 @@ function rmSync(path, options) {
 function fdatasync(fd, callback) {
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
+
+  if (permission.isEnabled()) {
+    callback(new ERR_ACCESS_DENIED('fdatasync API is disabled when Permission Model is enabled.'));
+    return;
+  }
   binding.fdatasync(fd, req);
 }
 
@@ -1258,6 +1262,9 @@ function fdatasync(fd, callback) {
  * @returns {void}
  */
 function fdatasyncSync(fd) {
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('fdatasync API is disabled when Permission Model is enabled.');
+  }
   binding.fdatasync(fd);
 }
 
@@ -1271,6 +1278,10 @@ function fdatasyncSync(fd) {
 function fsync(fd, callback) {
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
+  if (permission.isEnabled()) {
+    callback(new ERR_ACCESS_DENIED('fsync API is disabled when Permission Model is enabled.'));
+    return;
+  }
   binding.fsync(fd, req);
 }
 
@@ -1281,6 +1292,9 @@ function fsync(fd, callback) {
  * @returns {void}
  */
 function fsyncSync(fd) {
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('fsync API is disabled when Permission Model is enabled.');
+  }
   binding.fsync(fd);
 }
 
@@ -1786,18 +1800,12 @@ function symlink(target, path, type, callback) {
     validateOneOf(type, 'type', ['dir', 'file', 'junction', null, undefined]);
   }
 
-  if (permission.isEnabled()) {
-    // The permission model's security guarantees fall apart in the presence of
-    // relative symbolic links. Thus, we have to prevent their creation.
-    if (BufferIsBuffer(target)) {
-      if (!isAbsolute(BufferToString(target))) {
-        callback(new ERR_ACCESS_DENIED('relative symbolic link target'));
-        return;
-      }
-    } else if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
-      callback(new ERR_ACCESS_DENIED('relative symbolic link target'));
-      return;
-    }
+  // Due to the nature of Node.js runtime, symlinks has different edge cases that can bypass
+  // the permission model security guarantees. Thus, this API is disabled unless fs.read
+  // and fs.write permission has been given.
+  if (permission.isEnabled() && !permission.has('fs')) {
+    callback(new ERR_ACCESS_DENIED('fs.symlink API requires full fs.read and fs.write permissions.'));
+    return;
   }
 
   target = getValidatedPath(target, 'target');
@@ -1861,16 +1869,11 @@ function symlinkSync(target, path, type) {
     }
   }
 
-  if (permission.isEnabled()) {
-    // The permission model's security guarantees fall apart in the presence of
-    // relative symbolic links. Thus, we have to prevent their creation.
-    if (BufferIsBuffer(target)) {
-      if (!isAbsolute(BufferToString(target))) {
-        throw new ERR_ACCESS_DENIED('relative symbolic link target');
-      }
-    } else if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
-      throw new ERR_ACCESS_DENIED('relative symbolic link target');
-    }
+  // Due to the nature of Node.js runtime, symlinks has different edge cases that can bypass
+  // the permission model security guarantees. Thus, this API is disabled unless fs.read
+  // and fs.write permission has been given.
+  if (permission.isEnabled() && !permission.has('fs')) {
+    throw new ERR_ACCESS_DENIED('fs.symlink API requires full fs.read and fs.write permissions.');
   }
 
   target = getValidatedPath(target, 'target');
@@ -2211,6 +2214,11 @@ function futimes(fd, atime, mtime, callback) {
   mtime = toUnixTimestamp(mtime, 'mtime');
   callback = makeCallback(callback);
 
+  if (permission.isEnabled()) {
+    callback(new ERR_ACCESS_DENIED('futimes API is disabled when Permission Model is enabled.'));
+    return;
+  }
+
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.futimes(fd, atime, mtime, req);
@@ -2226,6 +2234,10 @@ function futimes(fd, atime, mtime, callback) {
  * @returns {void}
  */
 function futimesSync(fd, atime, mtime) {
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('futimes API is disabled when Permission Model is enabled.');
+  }
+
   binding.futimes(
     fd,
     toUnixTimestamp(atime, 'atime'),
