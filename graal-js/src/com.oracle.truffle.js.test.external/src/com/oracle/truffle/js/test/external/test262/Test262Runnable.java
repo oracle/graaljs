@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -277,8 +277,10 @@ public class Test262Runnable extends TestRunnable {
                     "well-formed-json-stringify",
     });
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
+                    "Intl.Era-monthcode",
                     "IsHTMLDDA",
                     "explicit-resource-management",
+                    "joint-iteration",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{

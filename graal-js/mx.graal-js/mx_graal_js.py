@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ _suite = mx.suite('graal-js')
 TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
-TEST262_REV = "a6f910b8ab9b46e9fcb4432bcbdd34a85c4be64f"
+TEST262_REV = "f85c9511a380b9abb2877c42cc47e8fce06d56c5"
 
 # Git repository of V8
 TESTV8_REPO = "https://" + "github.com/v8/v8.git"

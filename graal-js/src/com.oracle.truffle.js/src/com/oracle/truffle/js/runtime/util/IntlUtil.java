@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -194,7 +194,6 @@ public final class IntlUtil {
     public static final String MILLISECONDS = "milliseconds";
     public static final String MILLISECONDS_DISPLAY = "millisecondsDisplay";
     public static final String MIN2 = "min2";
-    public static final String MINIMAL_DAYS = "minimalDays";
     public static final String MINIMUM_FRACTION_DIGITS = "minimumFractionDigits";
     public static final String MINIMUM_INTEGER_DIGITS = "minimumIntegerDigits";
     public static final String MINIMUM_SIGNIFICANT_DIGITS = "minimumSignificantDigits";
@@ -319,7 +318,6 @@ public final class IntlUtil {
     public static final TruffleString KEY_MICROSECONDS_DISPLAY = Strings.constant(MICROSECONDS_DISPLAY);
     public static final TruffleString KEY_MILLISECONDS = Strings.constant(MILLISECONDS);
     public static final TruffleString KEY_MILLISECONDS_DISPLAY = Strings.constant(MILLISECONDS_DISPLAY);
-    public static final TruffleString KEY_MINIMAL_DAYS = Strings.constant(MINIMAL_DAYS);
     public static final TruffleString KEY_MINIMUM_FRACTION_DIGITS = Strings.constant(MINIMUM_FRACTION_DIGITS);
     public static final TruffleString KEY_MINIMUM_INTEGER_DIGITS = Strings.constant(MINIMUM_INTEGER_DIGITS);
     public static final TruffleString KEY_MINIMUM_SIGNIFICANT_DIGITS = Strings.constant(MINIMUM_SIGNIFICANT_DIGITS);
