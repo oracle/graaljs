@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
@@ -112,7 +113,6 @@ import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
 public class Serializer {
     static final byte VERSION = (byte) 0xFF; // SerializationTag::kVersion
     static final byte LATEST_VERSION = (byte) 15; // kLatestVersion
-    static final String NATIVE_UTF16_ENCODING = (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) ? "UTF-16BE" : "UTF-16LE";
 
     public static final TruffleString COULD_NOT_BE_CLONED = Strings.constant(" could not be cloned.");
     public static final TruffleString HASH_BRACKETS_OBJECT = Strings.constant("#<Object>");
@@ -130,13 +130,11 @@ public class Serializer {
     /** Determines whether {@code ArrayBuffer}s should be serialized as host objects. */
     private boolean treatArrayBufferViewsAsHostObjects;
 
-    private final Env env;
     private final GraalJSAccess access;
     private final boolean hasCustomHostObject;
 
-    public Serializer(Env env, GraalJSAccess access, long delegate) {
+    public Serializer(GraalJSAccess access, long delegate) {
         this.delegate = delegate;
-        this.env = env;
         this.access = access;
         this.hasCustomHostObject = NativeAccess.hasCustomHostObject(delegate);
     }
@@ -206,8 +204,14 @@ public class Serializer {
             writeBigIntContents((BigInt) value);
         } else if (value instanceof Symbol) {
             NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(value), COULD_NOT_BE_CLONED));
-        } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
-            writeSharedJavaObject(env.asHostObject(value));
+        } else if (InteropLibrary.getUncached().isHostObject(value) && access.getCurrentMessagePortData() != null) {
+            Object hostObject;
+            try {
+                hostObject = InteropLibrary.getUncached().asHostObject(value);
+            } catch (InteropException iex) {
+                throw CompilerDirectives.shouldNotReachHere(iex);
+            }
+            writeSharedJavaObject(hostObject);
         } else if (value instanceof Long) {
             if (access.getCurrentMessagePortData() != null) {
                 writeSharedJavaObject(value);
