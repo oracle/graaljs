@@ -2202,6 +2202,10 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "intl402/Intl/supportedValuesOf/currencies-accepted-by-DisplayNames.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Intl/supportedValuesOf/timeZones-include-non-continental.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-05-08"
@@ -2232,6 +2236,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/inLeapYear/chinese-calendar-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/inLeapYear/dangi-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2244,6 +2252,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/monthsInYear/chinese-calendar-leap-days.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/monthsInYear/dangi-calendar-leap-days.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2251,6 +2263,18 @@
     "filePath" : "intl402/Temporal/PlainDate/prototype/since/leap-year-since.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/subtract/chinese-calendar-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/subtract/dangi-calendar-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/with/chinese-calendar-leap-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
   }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/with/dangi-calendar-leap-dates.js",
     "status" : "FAIL",
@@ -2264,6 +2288,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/inLeapYear/chinese-calendar-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/inLeapYear/dangi-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2275,6 +2303,10 @@
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/monthCode/dangi-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/monthsInYear/chinese-calendar-leap-days.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/monthsInYear/dangi-calendar-leap-days.js",
     "status" : "FAIL",
@@ -2288,9 +2320,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/with/chinese-calendar-leap-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/with/dangi-calendar-leap-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainMonthDay/from/chinese-calendar-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
   }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/from/dangi-calendar-dates.js",
     "status" : "FAIL",
@@ -2312,6 +2352,18 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/from/reference-day-chinese.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/inLeapYear/chinese-calendar-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/inLeapYear/dangi-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2324,9 +2376,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/monthsInYear/chinese-calendar-leap-days.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/monthsInYear/dangi-calendar-leap-days.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/with/chinese-calendar-leap-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/with/dangi-calendar-leap-dates.js",
     "status" : "FAIL",
@@ -2340,6 +2400,18 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/from/calendar-not-supporting-eras.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/links.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/inLeapYear/chinese-calendar-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/inLeapYear/dangi-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2352,6 +2424,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/monthsInYear/chinese-calendar-leap-days.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/monthsInYear/dangi-calendar-leap-days.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2363,6 +2439,10 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/hourcycle.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/with/chinese-calendar-leap-dates.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 78.2 update"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/with/dangi-calendar-leap-dates.js",
     "status" : "FAIL",
