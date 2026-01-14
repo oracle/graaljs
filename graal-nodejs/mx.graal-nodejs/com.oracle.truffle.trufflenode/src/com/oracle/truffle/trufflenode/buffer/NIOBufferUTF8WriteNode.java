@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,11 +92,10 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             maxLength = bufferLen - destOffset;
         } else {
             maxLength = toIntNode.executeInt(bytes);
-            if (maxLength < 0) {
+            if (maxLength < 0 || bufferLen - destOffset < maxLength) {
                 errorBranch.enter();
                 throw lengthOutOfBounds();
             }
-            maxLength = Math.min(bufferLen - destOffset, maxLength);
         }
         assert maxLength >= 0 : maxLength;
         if (maxLength == 0) {

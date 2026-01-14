@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,8 @@ function expectedErrorValidator(ExpectedError, expectedCode, expectedMessage) {
 }
 
 const RangeErrorOutOfRange = expectedErrorValidator(RangeError, "ERR_OUT_OF_RANGE", "Index out of range");
-const RangeErrorBufferOutOfBounds = expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS", '"offset" is outside of buffer bounds');
+const RangeErrorBufferOutOfBounds_Offset = expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS", '"offset" is outside of buffer bounds');
+const RangeErrorBufferOutOfBounds_Length = expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS", '"length" is outside of buffer bounds');
 const TypeErrorNotBuffer = expectedErrorValidator(TypeError, "ERR_INVALID_ARG_TYPE", "argument must be a buffer");
 const TypeErrorNotString = expectedErrorValidator(TypeError, "ERR_INVALID_ARG_TYPE", "argument must be a string");
 
@@ -64,13 +65,15 @@ const TypedArrays = [
 ];
 
 describe('Buffer.utf8Write', function() {
-    it('should write if length is >> than input string', function() {
-        assert.strictEqual(Buffer.alloc(10).utf8Write('abc', 0, 100), 3);
+    it('should fail if length is >> than input string', function() {
+        assert.throws(() => {
+            assert.strictEqual(Buffer.alloc(10).utf8Write('abc', 0, 100), 3);
+        }, RangeErrorBufferOutOfBounds_Length);
     });
     it('should fail with negative offset', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write('abc', -5, 1)
-        }, RangeErrorBufferOutOfBounds);
+        }, RangeErrorBufferOutOfBounds_Offset);
     });
     it('should use string length as default argument', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('abc'), 3);
@@ -81,17 +84,17 @@ describe('Buffer.utf8Write', function() {
     it('should fail if string len is negative', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write('abc', 0, -1)
-        }, expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS", '"length" is outside of buffer bounds'));
+        }, RangeErrorBufferOutOfBounds_Length);
     });
     it('should fail with out of bounds offset', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write('abc', 11, 1)
-        }, RangeErrorBufferOutOfBounds);
+        }, RangeErrorBufferOutOfBounds_Offset);
     });
     it('should fail with out of bounds offset #2', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write('abc', 11, -1)
-        }, RangeErrorBufferOutOfBounds);
+        }, RangeErrorBufferOutOfBounds_Offset);
     });
     it('should report tot bytes for utf8 values', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('½½½', 0, 2), 2);
@@ -105,7 +108,7 @@ describe('Buffer.utf8Write', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('abc', 0, 0), 0);
     });
     it('should handle offset correctly', function() {
-        assert.strictEqual(Buffer.from(new ArrayBuffer(20), 0, 10).utf8Write('abcdefghi', 5, 9), 5);
+        assert.strictEqual(Buffer.from(new ArrayBuffer(20), 0, 10).utf8Write('abcdefghi', 5), 5);
     });
     it('should write correct buffer size', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('abcdefghijklmnopqrstuvwxyz', true), 9);
@@ -123,7 +126,9 @@ describe('Buffer.utf8Write', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('½½½'), 6);
     });
     it('should handle int overflow', function() {
-        assert.strictEqual(Buffer.alloc(10).utf8Write('a', 1, 0xffffffff), 1);
+        assert.throws(() => {
+            assert.strictEqual(Buffer.alloc(10).utf8Write('a', 1, 0xffffffff), 1);
+        }, RangeErrorBufferOutOfBounds_Length);
     });
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Write.length, 1);
