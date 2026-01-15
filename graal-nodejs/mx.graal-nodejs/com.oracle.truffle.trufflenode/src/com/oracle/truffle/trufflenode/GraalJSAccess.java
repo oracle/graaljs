@@ -3506,7 +3506,7 @@ public final class GraalJSAccess {
     private static final class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
         @Override
         public JSDynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
-            Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
+            Object importAttributes = moduleRequestGetImportAttributesImpl(moduleRequest, false);
             Object resourceName;
             Object hostDefinedOptions;
             if (referrer == null) {
@@ -3518,10 +3518,10 @@ public final class GraalJSAccess {
                 hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
             }
             if (moduleRequest.phase() == Module.ImportPhase.Evaluation) {
-                return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), importAssertions);
+                return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), importAttributes);
             }
             int phase = moduleRequestGetPhaseImpl(moduleRequest);
-            return (JSDynamicObject) NativeAccess.executeImportModuleWithPhaseDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), phase, importAssertions);
+            return (JSDynamicObject) NativeAccess.executeImportModuleWithPhaseDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), phase, importAttributes);
         }
     }
 
@@ -4069,7 +4069,7 @@ public final class GraalJSAccess {
         return ((ModuleRequest) moduleRequest).specifier();
     }
 
-    private static Object[] moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
+    private static Object[] moduleRequestGetImportAttributesImpl(ModuleRequest request, boolean withSourceOffset) {
         List<Object> attributes = new ArrayList<>();
         for (Map.Entry<TruffleString, TruffleString> entry : request.attributes().entrySet()) {
             attributes.add(entry.getKey());
@@ -4081,9 +4081,9 @@ public final class GraalJSAccess {
         return attributes.toArray();
     }
 
-    public Object moduleRequestGetImportAssertions(Object moduleRequest) {
+    public Object moduleRequestGetImportAttributes(Object moduleRequest) {
         ModuleRequest request = (ModuleRequest) moduleRequest;
-        return moduleRequestGetImportAssertionsImpl(request, true);
+        return moduleRequestGetImportAttributesImpl(request, true);
     }
 
     public int moduleRequestGetPhase(Object moduleRequest) {
@@ -4450,9 +4450,9 @@ public final class GraalJSAccess {
                 System.exit(1);
             }
             TruffleString specifier = moduleRequest.specifier();
-            Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, true);
+            Object importAttributes = moduleRequestGetImportAttributesImpl(moduleRequest, true);
             JSRealm realm = JSRealm.get(null);
-            AbstractModuleRecord result = (AbstractModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
+            AbstractModuleRecord result = (AbstractModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAttributes, referrer);
             referrerCache.put(moduleRequest, result);
             return result;
         }

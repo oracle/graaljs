@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -146,11 +146,11 @@ public final class NativeAccess {
 
     public static native void notifyImportMetaInitializer(Object importMeta, Object module);
 
-    public static native Object executeResolveCallback(long callback, Object context, Object specifier, Object importAssertions, Object referrer);
+    public static native Object executeResolveCallback(long callback, Object context, Object specifier, Object importAttributes, Object referrer);
 
-    public static native Object executeImportModuleDynamicallyCallback(Object context, Object hostDefinedOptions, Object resourceName, Object specifier, Object importAssertions);
+    public static native Object executeImportModuleDynamicallyCallback(Object context, Object hostDefinedOptions, Object resourceName, Object specifier, Object importAttributes);
 
-    public static native Object executeImportModuleWithPhaseDynamicallyCallback(Object context, Object hostDefinedOptions, Object resourceName, Object specifier, int phase, Object importAssertions);
+    public static native Object executeImportModuleWithPhaseDynamicallyCallback(Object context, Object hostDefinedOptions, Object resourceName, Object specifier, int phase, Object importAttributes);
 
     public static native Object executePrepareStackTraceCallback(Object context, Object error, Object structuredStackTrace);
 

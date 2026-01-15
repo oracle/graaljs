@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -983,7 +983,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::module_set_synthetic_module_export, "moduleSetSyntheticModuleExport", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::module_get_module_requests, "moduleGetModuleRequests", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_request_get_specifier, "moduleRequestGetSpecifier", "(Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::module_request_get_import_assertions, "moduleRequestGetImportAssertions", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::module_request_get_import_attributes, "moduleRequestGetImportAttributes", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_request_get_phase, "moduleRequestGetPhase", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::module_has_top_level_await, "moduleHasTopLevelAwait", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::module_is_graph_async, "moduleIsGraphAsync", "(Ljava/lang/Object;)Z")
@@ -1509,17 +1509,17 @@ void GraalIsolate::SetHostImportModuleWithPhaseDynamicallyCallback(v8::HostImpor
     import_module_with_phase_dynamically = callback;
 }
 
-v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions) {
+v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_attributes) {
     if (import_module_dynamically != nullptr) {
-        return import_module_dynamically(context, host_defined_options, resource_name, specifier, import_assertions);
+        return import_module_dynamically(context, host_defined_options, resource_name, specifier, import_attributes);
     } else {
         return v8::MaybeLocal<v8::Promise>();
     }
 }
 
-v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleWithPhaseDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::ModuleImportPhase phase, v8::Local<v8::FixedArray> import_assertions) {
+v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleWithPhaseDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::ModuleImportPhase phase, v8::Local<v8::FixedArray> import_attributes) {
     if (import_module_with_phase_dynamically != nullptr) {
-        return import_module_with_phase_dynamically(context, host_defined_options, resource_name, specifier, phase, import_assertions);
+        return import_module_with_phase_dynamically(context, host_defined_options, resource_name, specifier, phase, import_attributes);
     } else {
         return v8::MaybeLocal<v8::Promise>();
     }

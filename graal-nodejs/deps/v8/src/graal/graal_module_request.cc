@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,11 +62,11 @@ v8::Local<v8::String> GraalModuleRequest::GetSpecifier() const {
 
 v8::Local<v8::FixedArray> GraalModuleRequest::GetImportAttributes() const {
     GraalIsolate* graal_isolate = Isolate();
-    JNI_CALL(jobject, java_assertions, graal_isolate, GraalAccessMethod::module_request_get_import_assertions, Object, GetJavaObject());
-    GraalFixedArray* graal_assertions = GraalFixedArray::Allocate(graal_isolate, java_assertions);
-    v8::FixedArray* v8_assertions = reinterpret_cast<v8::FixedArray*> (graal_assertions);
+    JNI_CALL(jobject, java_attributes, graal_isolate, GraalAccessMethod::module_request_get_import_attributes, Object, GetJavaObject());
+    GraalFixedArray* graal_attributes = GraalFixedArray::Allocate(graal_isolate, java_attributes);
+    v8::FixedArray* v8_attributes = reinterpret_cast<v8::FixedArray*> (graal_attributes);
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
-    return v8::Local<v8::FixedArray>::New(v8_isolate, v8_assertions);
+    return v8::Local<v8::FixedArray>::New(v8_isolate, v8_attributes);
 }
 
 v8::ModuleImportPhase GraalModuleRequest::GetPhase() const {

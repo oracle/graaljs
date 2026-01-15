@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -371,7 +371,7 @@ enum GraalAccessMethod {
     module_set_synthetic_module_export,
     module_get_module_requests,
     module_request_get_specifier,
-    module_request_get_import_assertions,
+    module_request_get_import_attributes,
     module_request_get_phase,
     module_has_top_level_await,
     module_is_graph_async,
@@ -478,8 +478,8 @@ public:
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
     void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
     void SetHostImportModuleWithPhaseDynamicallyCallback(v8::HostImportModuleWithPhaseDynamicallyCallback callback);
-    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
-    v8::MaybeLocal<v8::Promise> NotifyImportModuleWithPhaseDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::ModuleImportPhase phase, v8::Local<v8::FixedArray> import_assertions);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_attributes);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleWithPhaseDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::ModuleImportPhase phase, v8::Local<v8::FixedArray> import_attributes);
     void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
     v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
     void SetWasmStreamingCallback(v8::WasmStreamingCallback callback);
