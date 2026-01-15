@@ -8,6 +8,7 @@ const {
   ArrayPrototypePush,
   ArrayPrototypeReduce,
   ArrayPrototypeSome,
+  JSONParse,
   MathFloor,
   MathMax,
   MathMin,
@@ -27,8 +28,8 @@ const {
 } = primordials;
 
 const { AsyncResource } = require('async_hooks');
-const { relative, sep } = require('path');
-const { createWriteStream } = require('fs');
+const { relative, sep, resolve } = require('path');
+const { createWriteStream, readFileSync } = require('fs');
 const { pathToFileURL } = require('internal/url');
 const { getOptionValue } = require('internal/options');
 const { green, yellow, red, white, shouldColorize } = require('internal/util/colors');
@@ -41,7 +42,12 @@ const {
   kIsNodeError,
 } = require('internal/errors');
 const { compose } = require('stream');
-const { validateInteger } = require('internal/validators');
+const {
+  validateInteger,
+  validateFunction,
+} = require('internal/validators');
+const { validatePath } = require('internal/fs/utils');
+const { kEmptyObject } = require('internal/util');
 
 const coverageColors = {
   __proto__: null,
@@ -55,7 +61,7 @@ const kRegExpPattern = /^\/(.*)\/([a-z]*)$/;
 
 const kPatterns = ['test', 'test/**/*', 'test-*', '*[._-]test'];
 const kFileExtensions = ['js', 'mjs', 'cjs'];
-if (getOptionValue('--experimental-strip-types')) {
+if (getOptionValue('--strip-types')) {
   ArrayPrototypePush(kFileExtensions, 'ts', 'mts', 'cts');
 }
 const kDefaultPattern = `**/{${ArrayPrototypeJoin(kPatterns, ',')}}.{${ArrayPrototypeJoin(kFileExtensions, ',')}}`;
@@ -124,7 +130,7 @@ const kBuiltinReporters = new SafeMap([
   ['lcov', 'internal/test_runner/reporter/lcov'],
 ]);
 
-const kDefaultReporter = process.stdout.isTTY ? 'spec' : 'tap';
+const kDefaultReporter = 'spec';
 const kDefaultDestination = 'stdout';
 
 function tryBuiltinReporter(name) {
@@ -143,6 +149,20 @@ function shouldColorizeTestFiles(destinations) {
     const destination = kBuiltinDestinations.get(destinations[index]);
     return destination && shouldColorize(destination);
   });
+}
+
+function parsePreviousRuns(rerunFailuresFilePath) {
+  let data;
+  try {
+    data = readFileSync(rerunFailuresFilePath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      data = '[]';
+    } else {
+      throw err;
+    }
+  }
+  return JSONParse(data);
 }
 
 async function getReportersMap(reporters, destinations) {
@@ -196,8 +216,11 @@ function parseCommandLine() {
   const sourceMaps = getOptionValue('--enable-source-maps');
   const updateSnapshots = getOptionValue('--test-update-snapshots');
   const watch = getOptionValue('--watch');
+  const timeout = getOptionValue('--test-timeout') || Infinity;
+  const rerunFailuresFilePath = getOptionValue('--test-rerun-failures');
   const isChildProcess = process.env.NODE_TEST_CONTEXT === 'child';
   const isChildProcessV8 = process.env.NODE_TEST_CONTEXT === 'child-v8';
+  let globalSetupPath;
   let concurrency;
   let coverageExcludeGlobs;
   let coverageIncludeGlobs;
@@ -211,7 +234,6 @@ function parseCommandLine() {
   let shard;
   let testNamePatterns = mapPatternFlagToRegExArray('--test-name-pattern');
   let testSkipPatterns = mapPatternFlagToRegExArray('--test-skip-pattern');
-  let timeout;
 
   if (isChildProcessV8) {
     kBuiltinReporters.set('v8-serializer', 'internal/test_runner/reporter/v8-serializer');
@@ -223,6 +245,7 @@ function parseCommandLine() {
   } else {
     destinations = getOptionValue('--test-reporter-destination');
     reporters = getOptionValue('--test-reporter');
+    globalSetupPath = getOptionValue('--test-global-setup');
     if (reporters.length === 0 && destinations.length === 0) {
       ArrayPrototypePush(reporters, kDefaultReporter);
     }
@@ -241,8 +264,7 @@ function parseCommandLine() {
   }
 
   if (isTestRunner) {
-    isolation = getOptionValue('--experimental-test-isolation');
-    timeout = getOptionValue('--test-timeout') || Infinity;
+    isolation = getOptionValue('--test-isolation');
 
     if (isolation === 'none') {
       concurrency = 1;
@@ -271,7 +293,6 @@ function parseCommandLine() {
       };
     }
   } else {
-    timeout = Infinity;
     concurrency = 1;
     const testNamePatternFlag = getOptionValue('--test-name-pattern');
     only = getOptionValue('--test-only');
@@ -287,6 +308,11 @@ function parseCommandLine() {
 
   if (coverage) {
     coverageExcludeGlobs = getOptionValue('--test-coverage-exclude');
+    if (!coverageExcludeGlobs || coverageExcludeGlobs.length === 0) {
+      // TODO(pmarchini): this default should follow something similar to c8 defaults
+      // Default exclusions should be also exported to be used by other tools / users
+      coverageExcludeGlobs = [kDefaultPattern];
+    }
     coverageIncludeGlobs = getOptionValue('--test-coverage-include');
 
     branchCoverage = getOptionValue('--test-coverage-branches');
@@ -298,9 +324,12 @@ function parseCommandLine() {
     validateInteger(functionCoverage, '--test-coverage-functions', 0, 100);
   }
 
+  if (rerunFailuresFilePath) {
+    validatePath(rerunFailuresFilePath, '--test-rerun-failures');
+  }
+
   const setup = reporterScope.bind(async (rootReporter) => {
     const reportersMap = await getReportersMap(reporters, destinations);
-
     for (let i = 0; i < reportersMap.length; i++) {
       const { reporter, destination } = reportersMap[i];
       compose(rootReporter, reporter).pipe(destination);
@@ -325,6 +354,7 @@ function parseCommandLine() {
     only,
     reporters,
     setup,
+    globalSetupPath,
     shard,
     sourceMaps,
     testNamePatterns,
@@ -332,6 +362,7 @@ function parseCommandLine() {
     timeout,
     updateSnapshots,
     watch,
+    rerunFailuresFilePath,
   };
 
   return globalTestOptions;
@@ -594,6 +625,27 @@ function getCoverageReport(pad, summary, symbol, color, table) {
   return report;
 }
 
+async function setupGlobalSetupTeardownFunctions(globalSetupPath, cwd) {
+  let globalSetupFunction;
+  let globalTeardownFunction;
+  if (globalSetupPath) {
+    validatePath(globalSetupPath, 'options.globalSetupPath');
+    const fileURL = pathToFileURL(resolve(cwd, globalSetupPath));
+    const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
+    const globalSetupModule = await cascadedLoader
+      .import(fileURL, pathToFileURL(cwd + sep).href, kEmptyObject);
+    if (globalSetupModule.globalSetup) {
+      validateFunction(globalSetupModule.globalSetup, 'globalSetupModule.globalSetup');
+      globalSetupFunction = globalSetupModule.globalSetup;
+    }
+    if (globalSetupModule.globalTeardown) {
+      validateFunction(globalSetupModule.globalTeardown, 'globalSetupModule.globalTeardown');
+      globalTeardownFunction = globalSetupModule.globalTeardown;
+    }
+  }
+  return { __proto__: null, globalSetupFunction, globalTeardownFunction };
+}
+
 module.exports = {
   convertStringToRegExp,
   countCompletedTest,
@@ -604,4 +656,6 @@ module.exports = {
   reporterScope,
   shouldColorizeTestFiles,
   getCoverageReport,
+  setupGlobalSetupTeardownFunctions,
+  parsePreviousRuns,
 };

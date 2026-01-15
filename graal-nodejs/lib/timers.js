@@ -25,6 +25,7 @@ const {
   MathTrunc,
   ObjectDefineProperties,
   ObjectDefineProperty,
+  SymbolDispose,
   SymbolToPrimitive,
 } = primordials;
 
@@ -44,19 +45,14 @@ const {
   },
   kRefed,
   kHasPrimitive,
-  getTimerDuration,
   timerListMap,
   timerListQueue,
   immediateQueue,
-  active,
-  unrefActive,
   insert,
   knownTimersById,
 } = require('internal/timers');
 const {
   promisify: { custom: customPromisify },
-  deprecate,
-  SymbolDispose,
 } = require('internal/util');
 let debug = require('internal/util/debuglog').debuglog('timer', (fn) => {
   debug = fn;
@@ -67,7 +63,6 @@ let timersPromises;
 let timers;
 
 const {
-  destroyHooksExist,
   // The needed emit*() functions.
   emitDestroy,
 } = require('internal/async_hooks');
@@ -82,9 +77,7 @@ function unenroll(item) {
   if (item[kHasPrimitive])
     delete knownTimersById[item[async_id_symbol]];
 
-  // Fewer checks may be possible, but these cover everything.
-  if (destroyHooksExist() && item[async_id_symbol] !== undefined)
-    emitDestroy(item[async_id_symbol]);
+  emitDestroy(item[async_id_symbol]);
 
   L.remove(item);
 
@@ -108,20 +101,6 @@ function unenroll(item) {
 
   // If active is called later, then we want to make sure not to insert again
   item._idleTimeout = -1;
-}
-
-// Make a regular object able to act as a timer by setting some properties.
-// This function does not start the timer, see `active()`.
-// Using existing objects as timers slightly reduces object overhead.
-function enroll(item, msecs) {
-  msecs = getTimerDuration(msecs, 'msecs');
-
-  // If this item was already in a list somewhere
-  // then we should unenroll it from that
-  if (item._idleNext) unenroll(item);
-
-  L.init(item);
-  item._idleTimeout = msecs;
 }
 
 
@@ -245,7 +224,7 @@ ObjectDefineProperty(setImmediate, customPromisify, {
  * @returns {void}
  */
 function clearImmediate(immediate) {
-  if (!immediate || immediate._destroyed)
+  if (!immediate?._onImmediate || immediate._destroyed)
     return;
 
   immediateInfo[kCount]--;
@@ -257,9 +236,7 @@ function clearImmediate(immediate) {
   }
   immediate[kRefed] = null;
 
-  if (destroyHooksExist() && immediate[async_id_symbol] !== undefined) {
-    emitDestroy(immediate[async_id_symbol]);
-  }
+  emitDestroy(immediate[async_id_symbol]);
 
   immediate._onImmediate = null;
 
@@ -277,23 +254,6 @@ module.exports = timers = {
   clearImmediate,
   setInterval,
   clearInterval,
-  _unrefActive: deprecate(
-    unrefActive,
-    'timers._unrefActive() is deprecated.' +
-    ' Please use timeout.refresh() instead.',
-    'DEP0127'),
-  active: deprecate(
-    active,
-    'timers.active() is deprecated. Please use timeout.refresh() instead.',
-    'DEP0126'),
-  unenroll: deprecate(
-    unenroll,
-    'timers.unenroll() is deprecated. Please use clearTimeout instead.',
-    'DEP0096'),
-  enroll: deprecate(
-    enroll,
-    'timers.enroll() is deprecated. Please use setTimeout instead.',
-    'DEP0095'),
 };
 
 ObjectDefineProperties(timers, {

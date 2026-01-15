@@ -2,22 +2,25 @@
 
 const {
   ArrayBufferPrototypeSlice,
+  FunctionPrototypeCall,
   MathCeil,
   ObjectDefineProperty,
   SafeSet,
+  TypedArrayPrototypeGetBuffer,
   Uint8Array,
 } = primordials;
 
 const { Buffer } = require('buffer');
 
 const {
+  DHBitsJob,
   DiffieHellman: _DiffieHellman,
   DiffieHellmanGroup: _DiffieHellmanGroup,
   ECDH: _ECDH,
   ECDHBitsJob,
   ECDHConvertKey: _ECDHConvertKey,
-  statelessDH,
   kCryptoJobAsync,
+  kCryptoJobSync,
 } = internalBinding('crypto');
 
 const {
@@ -32,6 +35,7 @@ const {
 } = require('internal/errors');
 
 const {
+  validateFunction,
   validateInt32,
   validateObject,
   validateString,
@@ -48,6 +52,8 @@ const {
 
 const {
   KeyObject,
+  kAlgorithm,
+  kKeyType,
 } = require('internal/crypto/keys');
 
 const {
@@ -268,8 +274,11 @@ function getFormat(format) {
 
 const dhEnabledKeyTypes = new SafeSet(['dh', 'ec', 'x448', 'x25519']);
 
-function diffieHellman(options) {
+function diffieHellman(options, callback) {
   validateObject(options, 'options');
+
+  if (callback !== undefined)
+    validateFunction(callback, 'callback');
 
   const { privateKey, publicKey } = options;
   if (!(privateKey instanceof KeyObject))
@@ -293,7 +302,24 @@ function diffieHellman(options) {
                                           `${privateType} and ${publicType}`);
   }
 
-  return statelessDH(privateKey[kHandle], publicKey[kHandle]);
+  const job = new DHBitsJob(
+    callback ? kCryptoJobAsync : kCryptoJobSync,
+    publicKey[kHandle],
+    privateKey[kHandle]);
+
+  if (!callback) {
+    const { 0: err, 1: secret } = job.run();
+    if (err !== undefined)
+      throw err;
+
+    return Buffer.from(secret);
+  }
+
+  job.ondone = (error, secret) => {
+    if (error) return FunctionPrototypeCall(callback, job, error);
+    FunctionPrototypeCall(callback, job, null, Buffer.from(secret));
+  };
+  job.run();
 }
 
 let masks;
@@ -302,20 +328,20 @@ let masks;
 async function ecdhDeriveBits(algorithm, baseKey, length) {
   const { 'public': key } = algorithm;
 
-  if (baseKey.type !== 'private') {
+  if (baseKey[kKeyType] !== 'private') {
     throw lazyDOMException(
       'baseKey must be a private key', 'InvalidAccessError');
   }
 
-  if (key.algorithm.name !== baseKey.algorithm.name) {
+  if (key[kAlgorithm].name !== baseKey[kAlgorithm].name) {
     throw lazyDOMException(
       'The public and private keys must be of the same type',
       'InvalidAccessError');
   }
 
   if (
-    key.algorithm.name === 'ECDH' &&
-    key.algorithm.namedCurve !== baseKey.algorithm.namedCurve
+    key[kAlgorithm].name === 'ECDH' &&
+    key[kAlgorithm].namedCurve !== baseKey[kAlgorithm].namedCurve
   ) {
     throw lazyDOMException('Named curve mismatch', 'InvalidAccessError');
   }
@@ -349,7 +375,7 @@ async function ecdhDeriveBits(algorithm, baseKey, length) {
 
   const masked = new Uint8Array(slice);
   masked[sliceLength - 1] = masked[sliceLength - 1] & masks[mod];
-  return masked.buffer;
+  return TypedArrayPrototypeGetBuffer(masked);
 }
 
 module.exports = {

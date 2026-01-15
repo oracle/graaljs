@@ -1,12 +1,10 @@
 'use strict';
 
-const common = require('../common');
+require('../common');
 const { spawnSyncAndAssert } = require('../common/child_process');
 const tmpdir = require('../common/tmpdir');
 const fs = require('fs');
 const assert = require('assert');
-
-common.skipIf32Bits();
 
 // When the test fails this helper can be modified to write outputs
 // differently and aid debugging.

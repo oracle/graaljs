@@ -7,7 +7,11 @@
 <!-- YAML
 added: v8.5.0
 changes:
-  - version: v22.12.0
+  - version:
+    - v23.1.0
+    - v22.12.0
+    - v20.18.3
+    - v18.20.5
     pr-url: https://github.com/nodejs/node/pull/55333
     description: Import attributes are no longer experimental.
   - version: v22.0.0
@@ -122,14 +126,13 @@ Node.js has two module systems: [CommonJS][] modules and ECMAScript modules.
 
 Authors can tell Node.js to interpret JavaScript as an ES module via the `.mjs`
 file extension, the `package.json` [`"type"`][] field with a value `"module"`,
-the [`--input-type`][] flag with a value of `"module"`, or the
-[`--experimental-default-type`][] flag with a value of `"module"`. These are
-explicit markers of code being intended to run as an ES module.
+or the [`--input-type`][] flag with a value of `"module"`. These are explicit
+markers of code being intended to run as an ES module.
 
-Inversely, authors can tell Node.js to interpret JavaScript as CommonJS via the
-`.cjs` file extension, the `package.json` [`"type"`][] field with a value
-`"commonjs"`, the [`--input-type`][] flag with a value of `"commonjs"`, or the
-[`--experimental-default-type`][] flag with a value of `"commonjs"`.
+Inversely, authors can explicitly tell Node.js to interpret JavaScript as
+CommonJS via the `.cjs` file extension, the `package.json` [`"type"`][] field
+with a value `"commonjs"`, or the [`--input-type`][] flag with a value of
+`"commonjs"`.
 
 When code lacks explicit markers for either module system, Node.js will inspect
 the source code of a module to look for ES module syntax. If such syntax is
@@ -329,14 +332,21 @@ syncBuiltinESMExports();
 fs.readFileSync === readFileSync;
 ```
 
+> When importing built-in modules, all the named exports (i.e. properties of the module exports object)
+> are populated even if they are not individually accessed.
+> This can make initial imports of built-in modules slightly slower compared to loading them with
+> `require()` or `process.getBuiltinModule()`, where the module exports object is evaluated immediately,
+> but some of its properties may only be initialized when first accessed individually.
+
 ## `import()` expressions
 
-[Dynamic `import()`][] is supported in both CommonJS and ES modules. In CommonJS
-modules it can be used to load ES modules.
+[Dynamic `import()`][] provides an asynchronous way to import modules. It is
+supported in both CommonJS and ES modules, and can be used to load both CommonJS
+and ES modules.
 
 ## `import.meta`
 
-* {Object}
+* Type: {Object}
 
 The `import.meta` meta property is an `Object` that contains the following
 properties. It is only supported in ES modules.
@@ -348,12 +358,12 @@ added:
   - v21.2.0
   - v20.11.0
 changes:
-  - version: v22.16.0
+  - version: v24.0.0
     pr-url: https://github.com/nodejs/node/pull/58011
     description: This property is no longer experimental.
 -->
 
-* {string} The directory name of the current module.
+* Type: {string} The directory name of the current module.
 
 This is the same as the [`path.dirname()`][] of the [`import.meta.filename`][].
 
@@ -366,12 +376,12 @@ added:
   - v21.2.0
   - v20.11.0
 changes:
-  - version: v22.16.0
+  - version: v24.0.0
     pr-url: https://github.com/nodejs/node/pull/58011
     description: This property is no longer experimental.
 -->
 
-* {string} The full absolute path and filename of the current module, with
+* Type: {string} The full absolute path and filename of the current module, with
   symlinks resolved.
 
 This is the same as the [`url.fileURLToPath()`][] of the [`import.meta.url`][].
@@ -381,7 +391,7 @@ This is the same as the [`url.fileURLToPath()`][] of the [`import.meta.url`][].
 
 ### `import.meta.url`
 
-* {string} The absolute `file:` URL of the module.
+* Type: {string} The absolute `file:` URL of the module.
 
 This is defined exactly the same as it is in browsers providing the URL of the
 current module file.
@@ -391,6 +401,35 @@ This enables useful patterns such as relative file loading:
 ```js
 import { readFileSync } from 'node:fs';
 const buffer = readFileSync(new URL('./data.proto', import.meta.url));
+```
+
+### `import.meta.main`
+
+<!-- YAML
+added:
+  - v24.2.0
+-->
+
+> Stability: 1.0 - Early development
+
+* Type: {boolean} `true` when the current module is the entry point of the current process; `false` otherwise.
+
+Equivalent to `require.main === module` in CommonJS.
+
+Analogous to Python's `__name__ == "__main__"`.
+
+```js
+export function foo() {
+  return 'Hello, world';
+}
+
+function main() {
+  const message = foo();
+  console.log(message);
+}
+
+if (import.meta.main) main();
+// `foo` can be imported from another module without possible side-effects from `main`
 ```
 
 ### `import.meta.resolve(specifier)`
@@ -480,7 +519,30 @@ See [Loading ECMAScript modules using `require()`][] for details.
 
 ### CommonJS Namespaces
 
+<!-- YAML
+added: v14.13.0
+changes:
+  - version: v23.0.0
+    pr-url: https://github.com/nodejs/node/pull/53848
+    description: Added `'module.exports'` export marker to CJS namespaces.
+-->
+
 CommonJS modules consist of a `module.exports` object which can be of any type.
+
+To support this, when importing CommonJS from an ECMAScript module, a namespace
+wrapper for the CommonJS module is constructed, which always provides a
+`default` export key pointing to the CommonJS `module.exports` value.
+
+In addition, a heuristic static analysis is performed against the source text of
+the CommonJS module to get a best-effort static list of exports to provide on
+the namespace from values on `module.exports`. This is necessary since these
+namespaces must be constructed prior to the evaluation of the CJS module.
+
+These CommonJS namespace objects also provide the `default` export as a
+`'module.exports'` named export, in order to unambiguously indicate that their
+representation in CommonJS uses this value, and not the namespace value. This
+mirrors the semantics of the handling of the `'module.exports'` export name in
+[`require(esm)`][] interop support.
 
 When importing a CommonJS module, it can be reliably imported using the ES
 module default import or its corresponding sugar syntax:
@@ -489,9 +551,7 @@ module default import or its corresponding sugar syntax:
 
 ```js
 import { default as cjs } from 'cjs';
-
-// The following import statement is "syntax sugar" (equivalent but sweeter)
-// for `{ default as cjsSugar }` in the above import statement:
+// Identical to the above
 import cjsSugar from 'cjs';
 
 console.log(cjs);
@@ -500,10 +560,6 @@ console.log(cjs === cjsSugar);
 //   <module.exports>
 //   true
 ```
-
-The ECMAScript Module Namespace representation of a CommonJS module is always
-a namespace with a `default` export key pointing to the CommonJS
-`module.exports` value.
 
 This Module Namespace Exotic Object can be directly observed either when using
 `import * as m from 'cjs'` or a dynamic import:
@@ -515,7 +571,7 @@ import * as m from 'cjs';
 console.log(m);
 console.log(m === await import('cjs'));
 // Prints:
-//   [Module] { default: <module.exports> }
+//   [Module] { default: <module.exports>, 'module.exports': <module.exports> }
 //   true
 ```
 
@@ -546,7 +602,12 @@ console.log(cjs);
 
 import * as m from './cjs.cjs';
 console.log(m);
-// Prints: [Module] { default: { name: 'exported' }, name: 'exported' }
+// Prints:
+//   [Module] {
+//     default: { name: 'exported' },
+//     'module.exports': { name: 'exported' },
+//     name: 'exported'
+//   }
 ```
 
 As can be seen from the last example of the Module Namespace Exotic Object being
@@ -587,6 +648,10 @@ These CommonJS variables are not available in ES modules.
 They can instead be loaded with [`module.createRequire()`][] or
 [`process.dlopen`][].
 
+#### No `require.main`
+
+To replace `require.main === module`, there is the [`import.meta.main`][] API.
+
 #### No `require.resolve`
 
 Relative resolution can be handled via `new URL('./local', import.meta.url)`.
@@ -617,7 +682,11 @@ separate cache.
 
 <!-- YAML
 changes:
-  - version: v22.12.0
+  - version:
+    - v23.1.0
+    - v22.12.0
+    - v20.18.3
+    - v18.20.5
     pr-url: https://github.com/nodejs/node/pull/55333
     description: JSON modules are no longer experimental.
 -->
@@ -639,29 +708,145 @@ imported from the same path.
 
 ## Wasm modules
 
-> Stability: 1 - Experimental
+<!-- YAML
+changes:
+  - version: v24.5.0
+    pr-url: https://github.com/nodejs/node/pull/57038
+    description: Wasm modules no longer require the `--experimental-wasm-modules` flag.
+-->
 
-Importing WebAssembly modules is supported under the
-`--experimental-wasm-modules` flag, allowing any `.wasm` files to be
-imported as normal modules while also supporting their module imports.
+Importing both WebAssembly module instances and WebAssembly source phase
+imports is supported.
 
-This integration is in line with the
+Both of these integrations are in line with the
 [ES Module Integration Proposal for WebAssembly][].
 
-For example, an `index.mjs` containing:
+### Wasm Source Phase Imports
+
+> Stability: 1.2 - Release candidate
+
+<!-- YAML
+added: v24.0.0
+-->
+
+The [Source Phase Imports][] proposal allows the `import source` keyword
+combination to import a `WebAssembly.Module` object directly, instead of getting
+a module instance already instantiated with its dependencies.
+
+This is useful when needing custom instantiations for Wasm, while still
+resolving and loading it through the ES module integration.
+
+For example, to create multiple instances of a module, or to pass custom imports
+into a new instance of `library.wasm`:
 
 ```js
-import * as M from './module.wasm';
+import source libraryModule from './library.wasm';
+
+const instance1 = await WebAssembly.instantiate(libraryModule, importObject1);
+
+const instance2 = await WebAssembly.instantiate(libraryModule, importObject2);
+```
+
+In addition to the static source phase, there is also a dynamic variant of the
+source phase via the `import.source` dynamic phase import syntax:
+
+```js
+const dynamicLibrary = await import.source('./library.wasm');
+
+const instance = await WebAssembly.instantiate(dynamicLibrary, importObject);
+```
+
+### JavaScript String Builtins
+
+> Stability: 1.2 - Release candidate
+
+<!-- YAML
+added: v24.5.0
+-->
+
+When importing WebAssembly modules, the
+[WebAssembly JS String Builtins Proposal][] is automatically enabled through the
+ESM Integration. This allows WebAssembly modules to directly use efficient
+compile-time string builtins from the `wasm:js-string` namespace.
+
+For example, the following Wasm module exports a string `getLength` function using
+the `wasm:js-string` `length` builtin:
+
+```text
+(module
+  ;; Compile-time import of the string length builtin.
+  (import "wasm:js-string" "length" (func $string_length (param externref) (result i32)))
+
+  ;; Define getLength, taking a JS value parameter assumed to be a string,
+  ;; calling string length on it and returning the result.
+  (func $getLength (param $str externref) (result i32)
+    local.get $str
+    call $string_length
+  )
+
+  ;; Export the getLength function.
+  (export "getLength" (func $get_length))
+)
+```
+
+```js
+import { getLength } from './string-len.wasm';
+getLength('foo'); // Returns 3.
+```
+
+Wasm builtins are compile-time imports that are linked during module compilation
+rather than during instantiation. They do not behave like normal module graph
+imports and they cannot be inspected via `WebAssembly.Module.imports(mod)`
+or virtualized unless recompiling the module using the direct
+`WebAssembly.compile` API with string builtins disabled.
+
+Importing a module in the source phase before it has been instantiated will also
+use the compile-time builtins automatically:
+
+```js
+import source mod from './string-len.wasm';
+const { exports: { getLength } } = await WebAssembly.instantiate(mod, {});
+getLength('foo'); // Also returns 3.
+```
+
+### Wasm Instance Phase Imports
+
+> Stability: 1.1 - Active development
+
+Instance imports allow any `.wasm` files to be imported as normal modules,
+supporting their module imports in turn.
+
+For example, an `index.js` containing:
+
+```js
+import * as M from './library.wasm';
 console.log(M);
 ```
 
 executed under:
 
 ```bash
-node --experimental-wasm-modules index.mjs
+node index.mjs
 ```
 
-would provide the exports interface for the instantiation of `module.wasm`.
+would provide the exports interface for the instantiation of `library.wasm`.
+
+### Reserved Wasm Namespaces
+
+<!-- YAML
+added: v24.5.0
+-->
+
+When importing WebAssembly module instances, they cannot use import module
+names or import/export names that start with reserved prefixes:
+
+* `wasm-js:` - reserved in all module import names, module names and export
+  names.
+* `wasm:` - reserved in module import names and export names (imported module
+  names are allowed in order to support future builtin polyfills).
+
+Importing a module using the above reserved names will throw a
+`WebAssembly.LinkError`.
 
 <i id="esm_experimental_top_level_await"></i>
 
@@ -1020,31 +1205,33 @@ _isImports_, _conditions_)
 >    1. Return _"commonjs"_.
 > 4. If _url_ ends in _".json"_, then
 >    1. Return _"json"_.
-> 5. If `--experimental-wasm-modules` is enabled and _url_ ends in
+> 5. If _url_ ends in
 >    _".wasm"_, then
 >    1. Return _"wasm"_.
-> 6. Let _packageURL_ be the result of **LOOKUP\_PACKAGE\_SCOPE**(_url_).
-> 7. Let _pjson_ be the result of **READ\_PACKAGE\_JSON**(_packageURL_).
-> 8. Let _packageType_ be **null**.
-> 9. If _pjson?.type_ is _"module"_ or _"commonjs"_, then
->    1. Set _packageType_ to _pjson.type_.
-> 10. If _url_ ends in _".js"_, then
+> 6. If `--experimental-addon-modules` is enabled and _url_ ends in
+>    _".node"_, then
+>    1. Return _"addon"_.
+> 7. Let _packageURL_ be the result of **LOOKUP\_PACKAGE\_SCOPE**(_url_).
+> 8. Let _pjson_ be the result of **READ\_PACKAGE\_JSON**(_packageURL_).
+> 9. Let _packageType_ be **null**.
+> 10. If _pjson?.type_ is _"module"_ or _"commonjs"_, then
+>     1. Set _packageType_ to _pjson.type_.
+> 11. If _url_ ends in _".js"_, then
 >     1. If _packageType_ is not **null**, then
 >        1. Return _packageType_.
 >     2. If the result of **DETECT\_MODULE\_SYNTAX**(_source_) is true, then
 >        1. Return _"module"_.
 >     3. Return _"commonjs"_.
-> 11. If _url_ does not have any extension, then
->     1. If _packageType_ is _"module"_ and `--experimental-wasm-modules` is
->        enabled and the file at _url_ contains the header for a WebAssembly
->        module, then
+> 12. If _url_ does not have any extension, then
+>     1. If _packageType_ is _"module"_ and the file at _url_ contains the
+>        "application/wasm" content type header for a WebAssembly module, then
 >        1. Return _"wasm"_.
 >     2. If _packageType_ is not **null**, then
 >        1. Return _packageType_.
 >     3. If the result of **DETECT\_MODULE\_SYNTAX**(_source_) is true, then
 >        1. Return _"module"_.
 >     4. Return _"commonjs"_.
-> 12. Return **undefined** (will throw during load phase).
+> 13. Return **undefined** (will throw during load phase).
 
 **LOOKUP\_PACKAGE\_SCOPE**(_url_)
 
@@ -1099,17 +1286,19 @@ resolution for ESM specifiers is [commonjs-extension-resolution-loader][].
 [Loading ECMAScript modules using `require()`]: modules.md#loading-ecmascript-modules-using-require
 [Module customization hooks]: module.md#customization-hooks
 [Node.js Module Resolution And Loading Algorithm]: #resolution-algorithm-specification
+[Source Phase Imports]: https://github.com/tc39/proposal-source-phase-imports
 [Terminology]: #terminology
 [URL]: https://url.spec.whatwg.org/
+[WebAssembly JS String Builtins Proposal]: https://github.com/WebAssembly/js-string-builtins
 [`"exports"`]: packages.md#exports
 [`"type"`]: packages.md#type
-[`--experimental-default-type`]: cli.md#--experimental-default-typetype
 [`--input-type`]: cli.md#--input-typetype
 [`data:` URLs]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs
 [`export`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
 [`import()`]: #import-expressions
 [`import.meta.dirname`]: #importmetadirname
 [`import.meta.filename`]: #importmetafilename
+[`import.meta.main`]: #importmetamain
 [`import.meta.resolve`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import.meta/resolve
 [`import.meta.url`]: #importmetaurl
 [`import`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import
@@ -1118,6 +1307,7 @@ resolution for ESM specifiers is [commonjs-extension-resolution-loader][].
 [`package.json`]: packages.md#nodejs-packagejson-field-definitions
 [`path.dirname()`]: path.md#pathdirnamepath
 [`process.dlopen`]: process.md#processdlopenmodule-filename-flags
+[`require(esm)`]: modules.md#loading-ecmascript-modules-using-require
 [`url.fileURLToPath()`]: url.md#urlfileurltopathurl-options
 [cjs-module-lexer]: https://github.com/nodejs/cjs-module-lexer/tree/2.0.0
 [commonjs-extension-resolution-loader]: https://github.com/nodejs/loaders-test/tree/main/commonjs-extension-resolution-loader

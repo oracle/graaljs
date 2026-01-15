@@ -26,8 +26,8 @@ Module.constants = constants;
 Module.enableCompileCache = enableCompileCache;
 Module.findPackageJSON = findPackageJSON;
 Module.flushCompileCache = flushCompileCache;
-Module.stripTypeScriptTypes = stripTypeScriptTypes;
 Module.getCompileCacheDir = getCompileCacheDir;
+Module.stripTypeScriptTypes = stripTypeScriptTypes;
 
 // SourceMap APIs
 Module.findSourceMap = findSourceMap;

@@ -5,10 +5,12 @@
 #ifndef V8_HEAP_FREE_LIST_H_
 #define V8_HEAP_FREE_LIST_H_
 
+#include <atomic>
+
 #include "src/base/macros.h"
 #include "src/common/globals.h"
 #include "src/heap/allocation-result.h"
-#include "src/heap/mutable-page.h"
+#include "src/heap/mutable-page-metadata.h"
 #include "src/objects/free-space.h"
 #include "src/objects/map.h"
 #include "src/utils/utils.h"
@@ -49,6 +51,9 @@ class FreeListCategory {
     next_ = nullptr;
   }
 
+  // Unlinks the category from the freelist.
+  void Unlink(FreeList* owner);
+  // Resets all the fields of the category.
   void Reset(FreeList* owner);
 
   void RepairFreeList(Heap* heap);
@@ -158,6 +163,7 @@ class FreeList {
       size_t size_in_bytes) = 0;
 
   virtual void Reset();
+  virtual void ResetForNonBlackAllocatedPages();
 
   // Return the number of bytes available on the free list.
   size_t Available() {
@@ -169,16 +175,22 @@ class FreeList {
   void IncreaseAvailableBytes(size_t bytes) { available_ += bytes; }
   void DecreaseAvailableBytes(size_t bytes) { available_ -= bytes; }
 
-  size_t wasted_bytes() const { return wasted_bytes_; }
-  void increase_wasted_bytes(size_t bytes) { wasted_bytes_ += bytes; }
-  void decrease_wasted_bytes(size_t bytes) { wasted_bytes_ -= bytes; }
+  size_t wasted_bytes() const {
+    return wasted_bytes_.load(std::memory_order_relaxed);
+  }
+  void increase_wasted_bytes(size_t bytes) {
+    wasted_bytes_.fetch_add(bytes, std::memory_order_relaxed);
+  }
+  void decrease_wasted_bytes(size_t bytes) {
+    wasted_bytes_.fetch_sub(bytes, std::memory_order_relaxed);
+  }
 
   inline bool IsEmpty();
 
   // Used after booting the VM.
   void RepairLists(Heap* heap);
 
-  V8_EXPORT_PRIVATE size_t EvictFreeListItems(PageMetadata* page);
+  V8_EXPORT_PRIVATE void EvictFreeListItems(PageMetadata* page);
 
   int number_of_categories() { return number_of_categories_; }
   FreeListCategoryType last_category() { return last_category_; }
@@ -265,7 +277,7 @@ class FreeList {
   size_t available_ = 0;
   // Number of wasted bytes in this free list that are not available for
   // allocation.
-  size_t wasted_bytes_ = 0;
+  std::atomic<size_t> wasted_bytes_ = 0;
 
   friend class FreeListCategory;
   friend class PageMetadata;
@@ -350,6 +362,7 @@ class V8_EXPORT_PRIVATE FreeListManyCached : public FreeListMany {
   size_t Free(const WritableFreeSpace& free_space, FreeMode mode) override;
 
   void Reset() override;
+  void ResetForNonBlackAllocatedPages() override;
 
   bool AddCategory(FreeListCategory* category) override;
   void RemoveCategory(FreeListCategory* category) override;

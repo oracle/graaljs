@@ -27,6 +27,7 @@
 #include <type_traits>  // std::remove_reference
 #include "base_object_types.h"
 #include "memory_tracker.h"
+#include "util.h"
 #include "v8.h"
 
 namespace node {
@@ -84,6 +85,11 @@ class BaseObject : public MemoryRetainer {
   static inline BaseObject* FromJSObject(v8::Local<v8::Value> object);
   template <typename T>
   static inline T* FromJSObject(v8::Local<v8::Value> object);
+  // Global alias for FromJSObject() to avoid churn.
+  template <typename T>
+  static inline T* Unwrap(v8::Local<v8::Value> obj) {
+    return BaseObject::FromJSObject<T>(obj);
+  }
 
   // Make the `v8::Global` a weak reference and, `delete` this object once
   // the JS object has been garbage collected and there are no (strong)
@@ -98,8 +104,6 @@ class BaseObject : public MemoryRetainer {
   // i.e. whether is can be deleted by GC once no strong BaseObjectPtrs refer
   // to it anymore.
   inline bool IsWeakOrDetached() const;
-
-  inline v8::EmbedderGraph::Node::Detachedness GetDetachedness() const override;
 
   // Utility to create a FunctionTemplate with one internal field (used for
   // the `BaseObject*` pointer) and a constructor that initializes that field
@@ -123,11 +127,6 @@ class BaseObject : public MemoryRetainer {
   // BaseObject once that is torn down. This can only be called when there is
   // a BaseObjectPtr to this object.
   inline void Detach();
-
-  static inline v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
-      Environment* env);
-  static v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
-      IsolateData* isolate_data);
 
   // Interface for transferring BaseObject instances using the .postMessage()
   // method of MessagePorts (and, by extension, Workers).
@@ -186,8 +185,7 @@ class BaseObject : public MemoryRetainer {
 
  private:
   v8::Local<v8::Object> WrappedObject() const override;
-  bool IsRootNode() const override;
-  static void DeleteMe(void* data);
+  void DeleteMe();
 
   // persistent_handle_ needs to be at a fixed offset from the start of the
   // class because it is used by src/node_postmortem_metadata.cc to calculate
@@ -232,13 +230,21 @@ class BaseObject : public MemoryRetainer {
 
   Realm* realm_;
   PointerData* pointer_data_ = nullptr;
+  ListNode<BaseObject> base_object_list_node_;
+
+  friend class BaseObjectList;
 };
 
-// Global alias for FromJSObject() to avoid churn.
-template <typename T>
-inline T* Unwrap(v8::Local<v8::Value> obj) {
-  return BaseObject::FromJSObject<T>(obj);
-}
+class BaseObjectList
+    : public ListHead<BaseObject, &BaseObject::base_object_list_node_>,
+      public MemoryRetainer {
+ public:
+  void Cleanup();
+
+  SET_MEMORY_INFO_NAME(BaseObjectList)
+  SET_SELF_SIZE(BaseObjectList)
+  void MemoryInfo(node::MemoryTracker* tracker) const override;
+};
 
 #define ASSIGN_OR_RETURN_UNWRAP(ptr, obj, ...)                                 \
   do {                                                                         \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2328,7 +2328,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(receiver, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
-    private static void setupPredefinedSymbols(JSDynamicObject symbolFunction) {
+    private void setupPredefinedSymbols(JSDynamicObject symbolFunction) {
         putSymbolProperty(symbolFunction, Strings.HAS_INSTANCE, Symbol.SYMBOL_HAS_INSTANCE);
         putSymbolProperty(symbolFunction, Strings.IS_CONCAT_SPREADABLE, Symbol.SYMBOL_IS_CONCAT_SPREADABLE);
         putSymbolProperty(symbolFunction, Strings.ITERATOR, Symbol.SYMBOL_ITERATOR);
@@ -2342,6 +2342,10 @@ public class JSRealm {
         putSymbolProperty(symbolFunction, Strings.TO_STRING_TAG, Symbol.SYMBOL_TO_STRING_TAG);
         putSymbolProperty(symbolFunction, Strings.TO_PRIMITIVE, Symbol.SYMBOL_TO_PRIMITIVE);
         putSymbolProperty(symbolFunction, Strings.UNSCOPABLES, Symbol.SYMBOL_UNSCOPABLES);
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2026) {
+            putSymbolProperty(symbolFunction, Strings.DISPOSE, Symbol.SYMBOL_DISPOSE);
+            putSymbolProperty(symbolFunction, Strings.ASYNC_DISPOSE, Symbol.SYMBOL_ASYNC_DISPOSE);
+        }
     }
 
     private static void putSymbolProperty(JSDynamicObject symbolFunction, TruffleString name, Symbol symbol) {

@@ -9,6 +9,7 @@
 
 namespace node {
 
+using ncrypto::Digest;
 using v8::FunctionCallbackInfo;
 using v8::Int32;
 using v8::JustVoid;
@@ -88,21 +89,21 @@ Maybe<void> PBKDF2Traits::AdditionalConfig(
   CHECK(args[offset + 4]->IsString());  // digest_name
 
   params->iterations = args[offset + 2].As<Int32>()->Value();
-  if (params->iterations < 0) {
+  if (params->iterations < 0) [[unlikely]] {
     THROW_ERR_OUT_OF_RANGE(env, "iterations must be <= %d", INT_MAX);
     return Nothing<void>();
   }
 
   params->length = args[offset + 3].As<Int32>()->Value();
-  if (params->length < 0) {
+  if (params->length < 0) [[unlikely]] {
     THROW_ERR_OUT_OF_RANGE(env, "length must be <= %d", INT_MAX);
     return Nothing<void>();
   }
 
   Utf8Value name(args.GetIsolate(), args[offset + 4]);
-  params->digest = ncrypto::getDigestByName(name.ToStringView());
-  if (params->digest == nullptr) {
-    THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid digest: %s", *name);
+  params->digest = Digest::FromName(*name);
+  if (!params->digest) [[unlikely]] {
+    THROW_ERR_CRYPTO_INVALID_DIGEST(env, "Invalid digest: %s", name);
     return Nothing<void>();
   }
 
@@ -127,6 +128,7 @@ bool PBKDF2Traits::DeriveBits(Environment* env,
                             params.length);
 
   if (!dp) return false;
+  DCHECK(!dp.isSecure());
   *out = ByteSource::Allocated(dp.release());
   return true;
 }

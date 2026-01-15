@@ -7,8 +7,8 @@ const {
   AtomicsAdd,
   Float64Array,
   FunctionPrototypeBind,
-  JSONStringify,
   MathMax,
+  NumberMAX_SAFE_INTEGER,
   ObjectEntries,
   Promise,
   PromiseResolve,
@@ -19,10 +19,10 @@ const {
   String,
   StringPrototypeTrim,
   Symbol,
+  SymbolAsyncDispose,
   SymbolFor,
   TypedArrayPrototypeFill,
   Uint32Array,
-  globalThis: { SharedArrayBuffer },
 } = primordials;
 
 const EventEmitter = require('events');
@@ -40,6 +40,7 @@ const {
   ERR_WORKER_INVALID_EXEC_ARGV,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
+  ERR_OPERATION_FAILED,
 } = errorCodes;
 
 const workerIo = require('internal/worker/io');
@@ -59,8 +60,11 @@ const {
 const { createMainThreadPort, destroyMainThreadPort } = require('internal/worker/messaging');
 const { deserializeError } = require('internal/error_serdes');
 const { fileURLToPath, isURL, pathToFileURL } = require('internal/url');
-const { kEmptyObject } = require('internal/util');
-const { validateArray, validateString } = require('internal/validators');
+const {
+  constructSharedArrayBuffer,
+  kEmptyObject,
+} = require('internal/util');
+const { validateArray, validateString, validateObject, validateNumber } = require('internal/validators');
 const {
   throwIfBuildingSnapshot,
 } = require('internal/v8/startup_snapshot');
@@ -70,6 +74,7 @@ const {
   isInternalThread,
   resourceLimits: resourceLimitsRaw,
   threadId,
+  threadName,
   Worker: WorkerImpl,
   kMaxYoungGenerationSizeMb,
   kMaxOldGenerationSizeMb,
@@ -102,9 +107,8 @@ let cwdCounter;
 
 const environmentData = new SafeMap();
 
-// SharedArrayBuffers can be disabled with --enable-sharedarraybuffer-per-context.
-if (isMainThread && SharedArrayBuffer !== undefined) {
-  cwdCounter = new Uint32Array(new SharedArrayBuffer(4));
+if (isMainThread) {
+  cwdCounter = new Uint32Array(constructSharedArrayBuffer(4));
   const originalChdir = process.chdir;
   process.chdir = function(path) {
     AtomicsAdd(cwdCounter, 0, 1);
@@ -128,6 +132,66 @@ function assignEnvironmentData(data) {
   data.forEach((value, key) => {
     environmentData.set(key, value);
   });
+}
+
+class CPUProfileHandle {
+  #worker = null;
+  #id = null;
+  #promise = null;
+
+  constructor(worker, id) {
+    this.#worker = worker;
+    this.#id = id;
+  }
+
+  stop() {
+    if (this.#promise) {
+      return this.#promise;
+    }
+    const stopTaker = this.#worker[kHandle]?.stopCpuProfile(this.#id);
+    return this.#promise = new Promise((resolve, reject) => {
+      if (!stopTaker) return reject(new ERR_WORKER_NOT_RUNNING());
+      stopTaker.ondone = (err, profile) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(profile);
+      };
+    });
+  };
+
+  async [SymbolAsyncDispose]() {
+    await this.stop();
+  }
+}
+
+class HeapProfileHandle {
+  #worker = null;
+  #promise = null;
+
+  constructor(worker) {
+    this.#worker = worker;
+  }
+
+  stop() {
+    if (this.#promise) {
+      return this.#promise;
+    }
+    const stopTaker = this.#worker[kHandle]?.stopHeapProfile();
+    return this.#promise = new Promise((resolve, reject) => {
+      if (!stopTaker) return reject(new ERR_WORKER_NOT_RUNNING());
+      stopTaker.ondone = (err, profile) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(profile);
+      };
+    });
+  };
+
+  async [SymbolAsyncDispose]() {
+    await this.stop();
+  }
 }
 
 class Worker extends EventEmitter {
@@ -166,8 +230,8 @@ class Worker extends EventEmitter {
       doEval = 'classic';
     } else if (isURL(filename) && filename.protocol === 'data:') {
       url = null;
-      doEval = 'module';
-      filename = `import ${JSONStringify(`${filename}`)}`;
+      doEval = 'data-url';
+      filename = `${filename}`;
     } else {
       doEval = false;
       if (isURL(filename)) {
@@ -204,7 +268,7 @@ class Worker extends EventEmitter {
         options.env);
     }
 
-    let name = '';
+    let name = 'WorkerThread';
     if (options.name) {
       validateString(options.name, 'options.name');
       name = StringPrototypeTrim(options.name);
@@ -407,6 +471,10 @@ class Worker extends EventEmitter {
     });
   }
 
+  async [SymbolAsyncDispose]() {
+    await this.terminate();
+  }
+
   ref() {
     if (this[kHandle] === null) return;
 
@@ -425,6 +493,12 @@ class Worker extends EventEmitter {
     if (this[kHandle] === null) return -1;
 
     return this[kHandle].threadId;
+  }
+
+  get threadName() {
+    if (this[kHandle] === null) return null;
+
+    return this[kHandle].threadName;
   }
 
   get stdin() {
@@ -467,6 +541,64 @@ class Worker extends EventEmitter {
       if (!taker) return reject(new ERR_WORKER_NOT_RUNNING());
       taker.ondone = (handle) => {
         resolve(handle);
+      };
+    });
+  }
+
+  cpuUsage(prev) {
+    if (prev) {
+      validateObject(prev, 'prev');
+      validateNumber(prev.user, 'prev.user', 0, NumberMAX_SAFE_INTEGER);
+      validateNumber(prev.system, 'prev.system', 0, NumberMAX_SAFE_INTEGER);
+    }
+    if (process.platform === 'sunos') {
+      throw new ERR_OPERATION_FAILED('worker.cpuUsage() is not available on SunOS');
+    }
+    const taker = this[kHandle]?.cpuUsage();
+    return new Promise((resolve, reject) => {
+      if (!taker) return reject(new ERR_WORKER_NOT_RUNNING());
+      taker.ondone = (err, current) => {
+        if (err !== null) {
+          return reject(err);
+        }
+        if (prev) {
+          resolve({
+            user: current.user - prev.user,
+            system: current.system - prev.system,
+          });
+        } else {
+          resolve({
+            user: current.user,
+            system: current.system,
+          });
+        }
+      };
+    });
+  }
+
+  // TODO(theanarkh): add options, such as sample_interval, CpuProfilingMode
+  startCpuProfile() {
+    const startTaker = this[kHandle]?.startCpuProfile();
+    return new Promise((resolve, reject) => {
+      if (!startTaker) return reject(new ERR_WORKER_NOT_RUNNING());
+      startTaker.ondone = (err, id) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(new CPUProfileHandle(this, id));
+      };
+    });
+  }
+
+  startHeapProfile() {
+    const startTaker = this[kHandle]?.startHeapProfile();
+    return new Promise((resolve, reject) => {
+      if (!startTaker) return reject(new ERR_WORKER_NOT_RUNNING());
+      startTaker.ondone = (err) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(new HeapProfileHandle(this));
       };
     });
   }
@@ -560,6 +692,7 @@ module.exports = {
   getEnvironmentData,
   assignEnvironmentData,
   threadId,
+  threadName,
   InternalWorker,
   Worker,
 };

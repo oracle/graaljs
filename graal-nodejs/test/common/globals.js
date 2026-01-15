@@ -65,6 +65,9 @@ const intrinsics = new Set([
   'Atomics',
   'WebAssembly',
   'Iterator',
+  'SuppressedError',
+  'DisposableStack',
+  'AsyncDisposableStack',
 ]);
 
 if (global.gc) {
@@ -94,6 +97,7 @@ const webIdlExposedWildcard = new Set([
   'TextDecoder',
   'AbortController',
   'AbortSignal',
+  'CustomEvent',
   'EventTarget',
   'Event',
   'URL',
@@ -141,6 +145,7 @@ const webIdlExposedWindow = new Set([
   'Response',
   'WebSocket',
   'EventSource',
+  'CloseEvent',
 ]);
 
 const nodeGlobals = new Set([

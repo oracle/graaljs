@@ -22,7 +22,7 @@ namespace v8 {
 namespace internal {
 
 class JSGraph;
-class Graph;
+class TFGraph;
 
 namespace compiler {
 
@@ -281,7 +281,7 @@ class V8_EXPORT_PRIVATE GraphAssembler {
   GraphAssembler(
       MachineGraph* jsgraph, Zone* zone,
       BranchSemantics default_branch_semantics,
-      base::Optional<NodeChangedCallback> node_changed_callback = base::nullopt,
+      std::optional<NodeChangedCallback> node_changed_callback = std::nullopt,
       bool mark_loop_exits = false);
   virtual ~GraphAssembler();
   virtual SimplifiedOperatorBuilder* simplified() { UNREACHABLE(); }
@@ -332,15 +332,19 @@ class V8_EXPORT_PRIVATE GraphAssembler {
   Node* UniqueIntPtrConstant(intptr_t value);
   Node* Float64Constant(double value);
   Node* ExternalConstant(ExternalReference ref);
+  Node* IsolateField(IsolateFieldId id);
 
   Node* Projection(int index, Node* value, Node* ctrl = nullptr);
 
   Node* Parameter(int index);
 
   Node* LoadFramePointer();
+
+  Node* LoadRootRegister();
+
 #if V8_ENABLE_WEBASSEMBLY
   Node* LoadStackPointer();
-  Node* SetStackPointer(Node* sp, wasm::FPRelativeScope fp_scope);
+  Node* SetStackPointer(Node* sp);
 #endif
 
   Node* LoadHeapNumberValue(Node* heap_number);
@@ -503,6 +507,8 @@ class V8_EXPORT_PRIVATE GraphAssembler {
   void GotoIfNot(Node* condition,
                  detail::GraphAssemblerLabelForVars<Vars...>* label, Vars...);
 
+  void RuntimeAbort(AbortReason reason);
+
   bool HasActiveBlock() const {
     // This is false if the current block has been terminated (e.g. by a Goto or
     // Unreachable). In that case, a new label must be bound before we can
@@ -556,7 +562,7 @@ class V8_EXPORT_PRIVATE GraphAssembler {
   V8_INLINE Node* AddClonedNode(Node* node);
 
   MachineGraph* mcgraph() const { return mcgraph_; }
-  Graph* graph() const { return mcgraph_->graph(); }
+  TFGraph* graph() const { return mcgraph_->graph(); }
   Zone* temp_zone() const { return temp_zone_; }
   CommonOperatorBuilder* common() const { return mcgraph()->common(); }
   MachineOperatorBuilder* machine() const { return mcgraph()->machine(); }
@@ -650,7 +656,7 @@ class V8_EXPORT_PRIVATE GraphAssembler {
   Node* control_;
   // {node_changed_callback_} should be called when a node outside the
   // subgraph created by the graph assembler changes.
-  base::Optional<NodeChangedCallback> node_changed_callback_;
+  std::optional<NodeChangedCallback> node_changed_callback_;
 
   // Inline reducers enable reductions to be performed to nodes as they are
   // added to the graph with the graph assembler.
@@ -950,7 +956,7 @@ class V8_EXPORT_PRIVATE JSGraphAssembler : public GraphAssembler {
   JSGraphAssembler(
       JSHeapBroker* broker, JSGraph* jsgraph, Zone* zone,
       BranchSemantics branch_semantics,
-      base::Optional<NodeChangedCallback> node_changed_callback = base::nullopt,
+      std::optional<NodeChangedCallback> node_changed_callback = std::nullopt,
       bool mark_loop_exits = false)
       : GraphAssembler(jsgraph, zone, branch_semantics, node_changed_callback,
                        mark_loop_exits),
@@ -961,7 +967,7 @@ class V8_EXPORT_PRIVATE JSGraphAssembler : public GraphAssembler {
     outermost_catch_scope_.set_gasm(this);
   }
 
-  Node* SmiConstant(int32_t value);
+  TNode<Smi> SmiConstant(int32_t value);
   TNode<HeapObject> HeapConstant(Handle<HeapObject> object);
   TNode<Object> Constant(ObjectRef ref);
   TNode<Number> NumberConstant(double value);
@@ -1024,10 +1030,16 @@ class V8_EXPORT_PRIVATE JSGraphAssembler : public GraphAssembler {
   TNode<Boolean> ObjectIsCallable(TNode<Object> value);
   TNode<Boolean> ObjectIsSmi(TNode<Object> value);
   TNode<Boolean> ObjectIsUndetectable(TNode<Object> value);
+  Node* BooleanNot(Node* cond);
+  Node* CheckSmi(Node* value, const FeedbackSource& feedback = {});
+  Node* CheckNumber(Node* value, const FeedbackSource& feedback = {});
+  Node* CheckNumberFitsInt32(Node* value, const FeedbackSource& feedback = {});
   Node* CheckIf(Node* cond, DeoptimizeReason reason,
                 const FeedbackSource& feedback = {});
   Node* Assert(Node* cond, const char* condition_string = "",
                const char* file = "", int line = -1);
+  void Assert(TNode<Word32T> cond, const char* condition_string = "",
+              const char* file = "", int line = -1);
   TNode<Boolean> NumberIsFloat64Hole(TNode<Number> value);
   TNode<Boolean> ToBoolean(TNode<Object> value);
   TNode<Object> ConvertTaggedHoleToUndefined(TNode<Object> value);
@@ -1049,6 +1061,12 @@ class V8_EXPORT_PRIVATE JSGraphAssembler : public GraphAssembler {
   TNode<Number> ArrayBufferViewByteLength(
       TNode<JSArrayBufferView> array_buffer_view, InstanceType instance_type,
       std::set<ElementsKind> elements_kinds_candidates, TNode<Context> context);
+  // Load just the detached bit on a TypedArray or DataView. For the full
+  // detached and out-of-bounds check on TypedArrays, please use
+  // CheckIfTypedArrayWasDetachedOrOutOfBounds.
+  TNode<Word32T> ArrayBufferDetachedBit(TNode<HeapObject> buffer);
+  TNode<Word32T> ArrayBufferViewDetachedBit(
+      TNode<JSArrayBufferView> array_buffer_view);
   // Computes the length for a given {typed_array}. If the set of possible
   // ElementsKinds is known statically pass as {elements_kinds_candidates} to
   // allow the assembler to generate more efficient code. Pass an empty
@@ -1059,7 +1077,7 @@ class V8_EXPORT_PRIVATE JSGraphAssembler : public GraphAssembler {
       std::set<ElementsKind> elements_kinds_candidates, TNode<Context> context);
   // Performs the full detached check. This includes fixed-length RABs whos
   // underlying buffer has been shrunk OOB.
-  void CheckIfTypedArrayWasDetached(
+  void CheckIfTypedArrayWasDetachedOrOutOfBounds(
       TNode<JSTypedArray> typed_array,
       std::set<ElementsKind> elements_kinds_candidates,
       const FeedbackSource& feedback);
@@ -1068,7 +1086,7 @@ class V8_EXPORT_PRIVATE JSGraphAssembler : public GraphAssembler {
 
   TNode<Object> JSCallRuntime1(
       Runtime::FunctionId function_id, TNode<Object> arg0,
-      TNode<Context> context, base::Optional<FrameState> frame_state,
+      TNode<Context> context, std::optional<FrameState> frame_state,
       Operator::Properties properties = Operator::kNoProperties);
   TNode<Object> JSCallRuntime2(Runtime::FunctionId function_id,
                                TNode<Object> arg0, TNode<Object> arg1,
@@ -1391,6 +1409,15 @@ class V8_EXPORT_PRIVATE JSGraphAssembler : public GraphAssembler {
   template <typename T>
   IfBuilder1<T, Word32T> MachineSelectIf(TNode<Word32T> cond) {
     return {this, cond, false};
+  }
+  template <typename T>
+  TNode<T> MachineSelect(TNode<Word32T> cond, TNode<T> true_value,
+                         TNode<T> false_value,
+                         BranchHint hint = BranchHint::kNone) {
+    return TNode<T>::UncheckedCast(AddNode(
+        graph()->NewNode(common()->Select(T::kMachineRepresentation, hint,
+                                          BranchSemantics::kMachine),
+                         cond, true_value, false_value)));
   }
 
  protected:

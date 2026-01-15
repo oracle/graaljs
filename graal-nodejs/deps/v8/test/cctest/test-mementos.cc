@@ -43,16 +43,17 @@ static void SetUpNewSpaceWithPoisonedMementoAtTop() {
   heap::InvokeMajorGC(heap);
 
   // Allocate a string, the GC may suspect a memento behind the string.
-  Handle<SeqOneByteString> string =
+  DirectHandle<SeqOneByteString> string =
       isolate->factory()->NewRawOneByteString(12).ToHandleChecked();
   CHECK(!(*string).is_null());
 
   // Create an allocation memento behind the string with a garbage allocation
   // site pointer.
-  Tagged<AllocationMemento> memento = AllocationMemento::unchecked_cast(
+  Tagged<AllocationMemento> memento = UncheckedCast<AllocationMemento>(
       Tagged<Object>(heap->NewSpaceTop() + kHeapObjectTag));
   memento->set_map_after_allocation(
-      ReadOnlyRoots(heap).allocation_memento_map(), SKIP_WRITE_BARRIER);
+      isolate, ReadOnlyRoots(heap).allocation_memento_map(),
+      SKIP_WRITE_BARRIER);
 
   // Using this accessor as we're writing an invalid tagged pointer.
   Tagged_t poison = kHeapObjectTag;

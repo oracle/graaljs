@@ -165,6 +165,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     extraimagebuilderarguments:: build.extraimagebuilderarguments,
     build_dependencies:: build.build_dependencies,
     name: "build-" + artifactName,
+    packages+: build.packages,
     run+: [
       mx_base_cmd + ["sversions"],
       mx_base_cmd + ["graalvm-show"],

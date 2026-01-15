@@ -30,7 +30,7 @@ const {
   hexWrite,
   ucs2Write,
   utf8WriteStatic,
-  getZeroFillToggle,
+  createUnsafeArrayBuffer,
 } = internalBinding('buffer');
 
 const {
@@ -953,14 +953,7 @@ function writeFloatBackwards(val, offset = 0) {
   return offset;
 }
 
-class FastBuffer extends Uint8Array {
-  // Using an explicit constructor here is necessary to avoid relying on
-  // `Array.prototype[Symbol.iterator]`, which can be mutated by users.
-  // eslint-disable-next-line no-useless-constructor
-  constructor(bufferOrLength, byteOffset, length) {
-    super(bufferOrLength, byteOffset, length);
-  }
-}
+class FastBuffer extends Uint8Array {}
 
 function addBufferPrototypeMethods(proto) {
   proto.readBigUInt64LE = readBigUInt64LE;
@@ -1036,33 +1029,33 @@ function addBufferPrototypeMethods(proto) {
   proto.hexSlice = hexSlice;
   proto.ucs2Slice = ucs2Slice;
   proto.utf8Slice = utf8Slice;
-  proto.asciiWrite = function asciiWrite(string, offset = 0, length = this.byteLength) {
+  proto.asciiWrite = function asciiWrite(string, offset = 0, length = this.byteLength - offset) {
     if (offset < 0 || offset > this.byteLength) {
       throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');
     }
-    if (length < 0) {
+    if (length < 0 || length > this.byteLength - offset) {
       throw new ERR_BUFFER_OUT_OF_BOUNDS('length');
     }
     return asciiWriteStatic(this, string, offset, length);
   };
   proto.base64Write = base64Write;
   proto.base64urlWrite = base64urlWrite;
-  proto.latin1Write = function latin1Write(string, offset = 0, length = this.byteLength) {
+  proto.latin1Write = function latin1Write(string, offset = 0, length = this.byteLength - offset) {
     if (offset < 0 || offset > this.byteLength) {
       throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');
     }
-    if (length < 0) {
+    if (length < 0 || length > this.byteLength - offset) {
       throw new ERR_BUFFER_OUT_OF_BOUNDS('length');
     }
     return latin1WriteStatic(this, string, offset, length);
   };
   proto.hexWrite = hexWrite;
   proto.ucs2Write = ucs2Write;
-  proto.utf8Write = function utf8Write(string, offset = 0, length = this.byteLength) {
+  proto.utf8Write = function utf8Write(string, offset = 0, length = this.byteLength - offset) {
     if (offset < 0 || offset > this.byteLength) {
       throw new ERR_BUFFER_OUT_OF_BOUNDS('offset');
     }
-    if (length < 0) {
+    if (length < 0 || length > this.byteLength - offset) {
       throw new ERR_BUFFER_OUT_OF_BOUNDS('length');
     }
     return utf8WriteStatic(this, string, offset, length);
@@ -1086,26 +1079,14 @@ function isMarkedAsUntransferable(obj) {
   return obj[untransferable_object_private_symbol] !== undefined;
 }
 
-// A toggle used to access the zero fill setting of the array buffer allocator
-// in C++.
-// |zeroFill| can be undefined when running inside an isolate where we
-// do not own the ArrayBuffer allocator.  Zero fill is always on in that case.
-let zeroFill = getZeroFillToggle();
 function createUnsafeBuffer(size) {
-  zeroFill[0] = 0;
-  try {
+  if (size <= 64) {
+    // Allocated in heap, doesn't call backing store anyway
+    // This is the same that the old impl did implicitly, but explicit now
     return new FastBuffer(size);
-  } finally {
-    zeroFill[0] = 1;
   }
-}
 
-// The connection between the JS land zero fill toggle and the
-// C++ one in the NodeArrayBufferAllocator gets lost if the toggle
-// is deserialized from the snapshot, because V8 owns the underlying
-// memory of this toggle. This resets the connection.
-function reconnectZeroFillToggle() {
-  zeroFill = getZeroFillToggle();
+  return new FastBuffer(createUnsafeArrayBuffer(size));
 }
 
 module.exports = {
@@ -1116,5 +1097,4 @@ module.exports = {
   createUnsafeBuffer,
   readUInt16BE,
   readUInt32BE,
-  reconnectZeroFillToggle,
 };

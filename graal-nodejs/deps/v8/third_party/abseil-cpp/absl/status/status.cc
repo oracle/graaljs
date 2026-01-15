@@ -96,10 +96,6 @@ absl::Nonnull<const std::string*> Status::EmptyString() {
   return kEmpty.get();
 }
 
-#ifdef ABSL_INTERNAL_NEED_REDUNDANT_CONSTEXPR_DECL
-constexpr const char Status::kMovedFromString[];
-#endif
-
 absl::Nonnull<const std::string*> Status::MovedFromString() {
   static const absl::NoDestructor<std::string> kMovedFrom(kMovedFromString);
   return kMovedFrom.get();
@@ -273,14 +269,12 @@ StatusCode ErrnoToStatusCode(int error_number) {
     case EFAULT:        // Bad address
     case EILSEQ:        // Illegal byte sequence
     case ENOPROTOOPT:   // Protocol not available
-    case ENOSTR:        // Not a STREAM
     case ENOTSOCK:      // Not a socket
     case ENOTTY:        // Inappropriate I/O control operation
     case EPROTOTYPE:    // Protocol wrong type for socket
     case ESPIPE:        // Invalid seek
       return StatusCode::kInvalidArgument;
     case ETIMEDOUT:  // Connection timed out
-    case ETIME:      // Timer expired
       return StatusCode::kDeadlineExceeded;
     case ENODEV:  // No such device
     case ENOENT:  // No such file or directory
@@ -339,9 +333,7 @@ StatusCode ErrnoToStatusCode(int error_number) {
     case EMLINK:   // Too many links
     case ENFILE:   // Too many open files in system
     case ENOBUFS:  // No buffer space available
-    case ENODATA:  // No message is available on the STREAM read queue
     case ENOMEM:   // Not enough space
-    case ENOSR:    // No STREAM resources
 #ifdef EUSERS
     case EUSERS:  // Too many users
 #endif

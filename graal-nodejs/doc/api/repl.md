@@ -625,7 +625,7 @@ The `replServer.displayPrompt()` method readies the REPL instance for input
 from the user, printing the configured `prompt` to a new line in the `output`
 and resuming the `input` to accept new input.
 
-When multi-line input is being entered, an ellipsis is printed rather than the
+When multi-line input is being entered, a pipe `'|'` is printed rather than the
 'prompt'.
 
 When `preserveCursor` is `true`, the cursor placement will not be reset to `0`.
@@ -645,14 +645,35 @@ buffered but not yet executed. This method is primarily intended to be
 called from within the action function for commands registered using the
 `replServer.defineCommand()` method.
 
-### `replServer.setupHistory(historyPath, callback)`
+### `replServer.setupHistory(historyConfig, callback)`
 
 <!-- YAML
 added: v11.10.0
+changes:
+  - version: v24.2.0
+    pr-url: https://github.com/nodejs/node/pull/58225
+    description: Updated the `historyConfig` parameter to accept an object
+                 with `filePath`, `size`, `removeHistoryDuplicates` and
+                 `onHistoryFileLoaded` properties.
 -->
 
-* `historyPath` {string} the path to the history file
+* `historyConfig` {Object|string} the path to the history file
+  If it is a string, it is the path to the history file.
+  If it is an object, it can have the following properties:
+  * `filePath` {string} the path to the history file
+  * `size` {number} Maximum number of history lines retained. To disable
+    the history set this value to `0`. This option makes sense only if
+    `terminal` is set to `true` by the user or by an internal `output` check,
+    otherwise the history caching mechanism is not initialized at all.
+    **Default:** `30`.
+  * `removeHistoryDuplicates` {boolean} If `true`, when a new input line added
+    to the history list duplicates an older one, this removes the older line
+    from the list. **Default:** `false`.
+  * `onHistoryFileLoaded` {Function} called when history writes are ready or upon error
+    * `err` {Error}
+    * `repl` {repl.REPLServer}
 * `callback` {Function} called when history writes are ready or upon error
+  (Optional if provided as `onHistoryFileLoaded` in `historyConfig`)
   * `err` {Error}
   * `repl` {repl.REPLServer}
 
@@ -666,12 +687,12 @@ with REPL instances programmatically.
 
 <!-- YAML
 added: v14.5.0
-deprecated: v22.16.0
+deprecated: v24.0.0
 -->
 
 > Stability: 0 - Deprecated. Use [`module.builtinModules`][] instead.
 
-* {string\[]}
+* Type: {string\[]}
 
 A list of the names of some Node.js modules, e.g., `'http'`.
 
@@ -680,6 +701,18 @@ A list of the names of some Node.js modules, e.g., `'http'`.
 <!-- YAML
 added: v0.1.91
 changes:
+  - version: v24.1.0
+    pr-url: https://github.com/nodejs/node/pull/58003
+    description: Added the possibility to add/edit/remove multilines
+                 while adding a multiline command.
+  - version: v24.0.0
+    pr-url: https://github.com/nodejs/node/pull/57400
+    description: The multi-line indicator is now "|" instead of "...".
+                 Added support for multi-line history.
+                 It is now possible to "fix" multi-line commands with syntax errors
+                 by visiting the history and editing the command.
+                 When visiting the multiline history from an old node version,
+                 the multiline structure is not preserved.
   - version:
      - v13.4.0
      - v12.17.0

@@ -19,9 +19,9 @@
 #include "src/compiler/backend/loong64/instruction-codes-loong64.h"
 #elif V8_TARGET_ARCH_X64
 #include "src/compiler/backend/x64/instruction-codes-x64.h"
-#elif V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64
+#elif V8_TARGET_ARCH_PPC64
 #include "src/compiler/backend/ppc/instruction-codes-ppc.h"
-#elif V8_TARGET_ARCH_S390
+#elif V8_TARGET_ARCH_S390X
 #include "src/compiler/backend/s390/instruction-codes-s390.h"
 #elif V8_TARGET_ARCH_RISCV32 || V8_TARGET_ARCH_RISCV64
 #include "src/compiler/backend/riscv/instruction-codes-riscv.h"
@@ -124,11 +124,13 @@ inline RecordWriteMode WriteBarrierKindToRecordWriteMode(
   V(ArchTailCallCodeObject)                                                \
   V(ArchTailCallAddress)                                                   \
   IF_WASM(V, ArchTailCallWasm)                                             \
+  IF_WASM(V, ArchTailCallWasmIndirect)                                     \
   /* Update IsTailCall if further TailCall opcodes are added */            \
                                                                            \
   V(ArchCallCodeObject)                                                    \
   V(ArchCallJSFunction)                                                    \
   IF_WASM(V, ArchCallWasmFunction)                                         \
+  IF_WASM(V, ArchCallWasmFunctionIndirect)                                 \
   V(ArchCallBuiltinPointer)                                                \
   /* Update IsCallWithDescriptorFlags if further Call opcodes are added */ \
                                                                            \
@@ -136,6 +138,7 @@ inline RecordWriteMode WriteBarrierKindToRecordWriteMode(
   V(ArchSaveCallerRegisters)                                               \
   V(ArchRestoreCallerRegisters)                                            \
   V(ArchCallCFunction)                                                     \
+  V(ArchCallCFunctionWithFrameState)                                       \
   V(ArchPrepareTailCall)                                                   \
   V(ArchJmp)                                                               \
   V(ArchBinarySearchSwitch)                                                \
@@ -222,13 +225,15 @@ enum FlagsMode {
   kFlags_set = 3,
   kFlags_trap = 4,
   kFlags_select = 5,
+  kFlags_conditional_set = 6,
+  kFlags_conditional_branch = 7,
 };
 
 V8_EXPORT_PRIVATE std::ostream& operator<<(std::ostream& os,
                                            const FlagsMode& fm);
 
 // The condition of flags continuation (see below).
-enum FlagsCondition {
+enum FlagsCondition : uint8_t {
   kEqual,
   kNotEqual,
   kSignedLessThan,
@@ -287,6 +292,8 @@ inline size_t AtomicWidthSize(AtomicWidth width) {
   UNREACHABLE();
 }
 
+static constexpr int kLazyDeoptOnThrowSentinel = -1;
+
 // The InstructionCode is an opaque, target-specific integer that encodes what
 // code to emit for an instruction in the code generator. It is not interesting
 // to the register allocator, as the inputs and flags on the instructions
@@ -313,8 +320,8 @@ using InstructionCode = uint32_t;
 //                              AddressingModeField
 //                              FlagsModeField
 //                              FlagsConditionField
-// DeoptImmedArgsCountField    | ParamField   | MiscField
-// DeoptFrameStateOffsetField  | FPParamField |
+// DeoptImmedArgsCountField    | ParamField      | MiscField
+// DeoptFrameStateOffsetField  | FPParamField    |
 //
 // Notably, AccessModeField can follow any of several sequences of fields.
 

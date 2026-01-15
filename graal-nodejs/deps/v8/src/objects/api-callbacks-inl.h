@@ -6,12 +6,14 @@
 #define V8_OBJECTS_API_CALLBACKS_INL_H_
 
 #include "src/objects/api-callbacks.h"
+// Include the non-inl header before the rest of the headers.
 
 #include "src/heap/heap-write-barrier-inl.h"
 #include "src/heap/heap-write-barrier.h"
 #include "src/objects/foreign-inl.h"
 #include "src/objects/js-objects-inl.h"
 #include "src/objects/name.h"
+#include "src/objects/oddball.h"
 #include "src/objects/templates.h"
 
 // Has to be the last include (doesn't have include guards):
@@ -80,8 +82,6 @@ bool AccessorInfo::has_setter(Isolate* isolate) {
   return setter(isolate) != kNullAddress;
 }
 
-BIT_FIELD_ACCESSORS(AccessorInfo, flags, is_special_data_property,
-                    AccessorInfo::IsSpecialDataPropertyBit)
 BIT_FIELD_ACCESSORS(AccessorInfo, flags, replace_on_access,
                     AccessorInfo::ReplaceOnAccessBit)
 BIT_FIELD_ACCESSORS(AccessorInfo, flags, is_sloppy, AccessorInfo::IsSloppyBit)
@@ -116,6 +116,7 @@ BOOL_ACCESSORS(InterceptorInfo, flags, non_masking, NonMaskingBit::kShift)
 BOOL_ACCESSORS(InterceptorInfo, flags, is_named, NamedBit::kShift)
 BOOL_ACCESSORS(InterceptorInfo, flags, has_no_side_effect,
                HasNoSideEffectBit::kShift)
+// TODO(ishell): remove once all the Api changes are done.
 BOOL_ACCESSORS(InterceptorInfo, flags, has_new_callbacks_signature,
                HasNewCallbacksSignatureBit::kShift)
 

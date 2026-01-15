@@ -33,9 +33,9 @@ const {
 
 const { spawn } = require('child_process');
 const { finished } = require('internal/streams/end-of-stream');
-const { resolve } = require('path');
+const { resolve, sep, isAbsolute } = require('path');
 const { DefaultDeserializer, DefaultSerializer } = require('v8');
-const { getOptionValue } = require('internal/options');
+const { getOptionValue, getOptionsAsFlagsFromBinding } = require('internal/options');
 const { Interface } = require('internal/readline/interface');
 const { deserializeError } = require('internal/error_serdes');
 const { Buffer } = require('buffer');
@@ -56,13 +56,13 @@ const {
   validateObject,
   validateOneOf,
   validateInteger,
+  validateString,
   validateStringArray,
 } = require('internal/validators');
 const { getInspectPort, isUsingInspector, isInspectorMessage } = require('internal/util/inspector');
 const { isRegExp } = require('internal/util/types');
 const { pathToFileURL } = require('internal/url');
 const {
-  getCWDURL,
   kEmptyObject,
 } = require('internal/util');
 const { kEmitMessage } = require('internal/test_runner/tests_stream');
@@ -87,6 +87,8 @@ const {
 } = require('internal/test_runner/utils');
 const { Glob } = require('internal/fs/glob');
 const { once } = require('events');
+const { validatePath } = require('internal/fs/utils');
+const { loadPreloadModules } = require('internal/process/pre_execution');
 const {
   triggerUncaughtException,
   exitCodes: { kGenericUserError },
@@ -96,8 +98,17 @@ let debug = require('internal/util/debuglog').debuglog('test_runner', (fn) => {
 });
 
 const kIsolatedProcessName = Symbol('kIsolatedProcessName');
-const kFilterArgs = ['--test', '--experimental-test-coverage', '--watch'];
-const kFilterArgValues = ['--test-reporter', '--test-reporter-destination'];
+const kFilterArgs = [
+  '--test',
+  '--experimental-test-coverage',
+  '--watch',
+  '--experimental-default-config-file',
+];
+const kFilterArgValues = [
+  '--test-reporter',
+  '--test-reporter-destination',
+  '--experimental-config-file',
+];
 const kDiagnosticsFilterArgs = ['tests', 'suites', 'pass', 'fail', 'cancelled', 'skipped', 'todo', 'duration_ms'];
 
 const kCanceledTests = new SafeSet()
@@ -136,36 +147,46 @@ function getRunArgs(path, { forceExit,
                             testSkipPatterns,
                             only,
                             argv: suppliedArgs,
-                            execArgv }) {
-  const argv = ArrayPrototypeFilter(process.execArgv, filterExecArgv);
+                            execArgv,
+                            rerunFailuresFilePath,
+                            root: { timeout },
+                            cwd }) {
+  const processNodeOptions = getOptionsAsFlagsFromBinding();
+  const runArgs = ArrayPrototypeFilter(processNodeOptions, filterExecArgv);
   if (forceExit === true) {
-    ArrayPrototypePush(argv, '--test-force-exit');
+    ArrayPrototypePush(runArgs, '--test-force-exit');
   }
   if (isUsingInspector()) {
-    ArrayPrototypePush(argv, `--inspect-port=${getInspectPort(inspectPort)}`);
+    ArrayPrototypePush(runArgs, `--inspect-port=${getInspectPort(inspectPort)}`);
   }
   if (testNamePatterns != null) {
-    ArrayPrototypeForEach(testNamePatterns, (pattern) => ArrayPrototypePush(argv, `--test-name-pattern=${pattern}`));
+    ArrayPrototypeForEach(testNamePatterns, (pattern) => ArrayPrototypePush(runArgs, `--test-name-pattern=${pattern}`));
   }
   if (testSkipPatterns != null) {
-    ArrayPrototypeForEach(testSkipPatterns, (pattern) => ArrayPrototypePush(argv, `--test-skip-pattern=${pattern}`));
+    ArrayPrototypeForEach(testSkipPatterns, (pattern) => ArrayPrototypePush(runArgs, `--test-skip-pattern=${pattern}`));
   }
   if (only === true) {
-    ArrayPrototypePush(argv, '--test-only');
+    ArrayPrototypePush(runArgs, '--test-only');
+  }
+  if (timeout != null) {
+    ArrayPrototypePush(runArgs, `--test-timeout=${timeout}`);
+  }
+  if (rerunFailuresFilePath) {
+    ArrayPrototypePush(runArgs, `--test-rerun-failures=${rerunFailuresFilePath}`);
   }
 
-  ArrayPrototypePushApply(argv, execArgv);
+  ArrayPrototypePushApply(runArgs, execArgv);
 
   if (path === kIsolatedProcessName) {
-    ArrayPrototypePush(argv, '--test');
-    ArrayPrototypePushApply(argv, ArrayPrototypeSlice(process.argv, 1));
+    ArrayPrototypePush(runArgs, '--test');
+    ArrayPrototypePushApply(runArgs, ArrayPrototypeSlice(process.argv, 1));
   } else {
-    ArrayPrototypePush(argv, path);
+    ArrayPrototypePush(runArgs, path);
   }
 
-  ArrayPrototypePushApply(argv, suppliedArgs);
+  ArrayPrototypePushApply(runArgs, suppliedArgs);
 
-  return argv;
+  return runArgs;
 }
 
 const serializer = new DefaultSerializer();
@@ -190,6 +211,7 @@ class FileTest extends Test {
       column: 1,
       file: resolve(this.name),
     };
+    this.timeout = null;
   }
 
   #skipReporting() {
@@ -477,6 +499,7 @@ function watchFiles(testFiles, opts) {
       // Reset the topLevel counter
       opts.root.harness.counters.topLevel = 0;
     }
+
     await runningSubtests.get(file);
     runningSubtests.set(file, runTestFile(file, filesWatcher, opts));
   }
@@ -493,14 +516,20 @@ function watchFiles(testFiles, opts) {
       // When file renamed (created / deleted) we need to update the watcher
       if (newFileName) {
         owners = new SafeSet().add(newFileName);
-        watcher.filterFile(resolve(newFileName), owners);
+        const resolveFileName = isAbsolute(newFileName) ? newFileName : resolve(opts.cwd, newFileName);
+        watcher.filterFile(resolveFileName, owners);
       }
 
       if (!newFileName && previousFileName) {
         return; // Avoid rerunning files when file deleted
       }
     }
+    // Reset the root start time to recalculate the duration
+    // of the run
+    opts.root.clearExecutionTime();
+    opts.root.reporter[kEmitMessage]('test:watch:restarted');
 
+    // Restart test files
     if (opts.isolation === 'none') {
       PromisePrototypeThen(restartTestFile(kIsolatedProcessName), undefined, (error) => {
         triggerUncaughtException(error, true /* fromPromise */);
@@ -553,6 +582,7 @@ function run(options = kEmptyObject) {
     isolation = 'process',
     watch,
     setup,
+    globalSetupPath,
     only,
     globPatterns,
     coverage = false,
@@ -561,6 +591,8 @@ function run(options = kEmptyObject) {
     functionCoverage = 0,
     execArgv = [],
     argv = [],
+    cwd = process.cwd(),
+    rerunFailuresFilePath,
   } = options;
 
   if (files != null) {
@@ -585,10 +617,16 @@ function run(options = kEmptyObject) {
     validateArray(globPatterns, 'options.globPatterns');
   }
 
+  validateString(cwd, 'options.cwd');
+
   if (globPatterns?.length > 0 && files?.length > 0) {
     throw new ERR_INVALID_ARG_VALUE(
       'options.globPatterns', globPatterns, 'is not supported when specifying \'options.files\'',
     );
+  }
+
+  if (rerunFailuresFilePath) {
+    validatePath(rerunFailuresFilePath, 'options.rerunFailuresFilePath');
   }
 
   if (shard != null) {
@@ -659,6 +697,10 @@ function run(options = kEmptyObject) {
   validateStringArray(argv, 'options.argv');
   validateStringArray(execArgv, 'options.execArgv');
 
+  if (globalSetupPath != null) {
+    validatePath(globalSetupPath, 'options.globalSetupPath');
+  }
+
   const rootTestOptions = { __proto__: null, concurrency, timeout, signal };
   const globalOptions = {
     __proto__: null,
@@ -669,16 +711,16 @@ function run(options = kEmptyObject) {
     coverage,
     coverageExcludeGlobs,
     coverageIncludeGlobs,
+    rerunFailuresFilePath,
     lineCoverage: lineCoverage,
     branchCoverage: branchCoverage,
     functionCoverage: functionCoverage,
+    cwd,
+    globalSetupPath,
   };
   const root = createTestTree(rootTestOptions, globalOptions);
-
-  // This const should be replaced by a run option in the future.
-  const cwd = process.cwd();
-
   let testFiles = files ?? createTestFileList(globPatterns, cwd);
+  const { isTestRunner } = globalOptions;
 
   if (shard) {
     testFiles = ArrayPrototypeFilter(testFiles, (_, index) => index % shard.total === shard.index - 1);
@@ -703,6 +745,7 @@ function run(options = kEmptyObject) {
     isolation,
     argv,
     execArgv,
+    rerunFailuresFilePath,
   };
 
   if (isolation === 'process') {
@@ -730,7 +773,8 @@ function run(options = kEmptyObject) {
     };
   } else if (isolation === 'none') {
     if (watch) {
-      filesWatcher = watchFiles(testFiles, opts);
+      const absoluteTestFiles = ArrayPrototypeMap(testFiles, (file) => (isAbsolute(file) ? file : resolve(cwd, file)));
+      filesWatcher = watchFiles(absoluteTestFiles, opts);
       runFiles = async () => {
         root.harness.bootstrapPromise = null;
         root.harness.buildPromise = null;
@@ -743,12 +787,24 @@ function run(options = kEmptyObject) {
         const { promise, resolve: finishBootstrap } = PromiseWithResolvers();
 
         await root.runInAsyncScope(async () => {
-          const parentURL = getCWDURL().href;
+          const parentURL = pathToFileURL(cwd + sep).href;
           const cascadedLoader = esmLoader.getOrInitializeCascadedLoader();
           let topLevelTestCount = 0;
 
-          root.harness.bootstrapPromise = promise;
+          root.harness.bootstrapPromise = root.harness.bootstrapPromise ?
+            SafePromiseAllReturnVoid([root.harness.bootstrapPromise, promise]) :
+            promise;
 
+          // We need to setup the user modules in the test runner if we are running with
+          // --test-isolation=none and --test in order to avoid loading the user modules
+          // BEFORE the creation of the root test (that would cause them to get lost).
+          if (isTestRunner) {
+            // If we are not coming from the test runner entry point, the user-required and imported
+            // modules have already been loaded.
+            // Since it's possible to delete modules from require.cache, a CommonJS module
+            // could otherwise be executed twice.
+            loadPreloadModules();
+          }
           const userImports = getOptionValue('--import');
           for (let i = 0; i < userImports.length; i++) {
             await cascadedLoader.import(userImports[i], parentURL, kEmptyObject);
@@ -756,7 +812,7 @@ function run(options = kEmptyObject) {
 
           for (let i = 0; i < testFiles.length; ++i) {
             const testFile = testFiles[i];
-            const fileURL = pathToFileURL(testFile);
+            const fileURL = pathToFileURL(resolve(cwd, testFile));
             const parent = i === 0 ? undefined : parentURL;
             let threw = false;
             let importError;
@@ -792,12 +848,15 @@ function run(options = kEmptyObject) {
         debug('beginning test execution');
         root.entryFile = null;
         finishBootstrap();
-        root.processPendingSubtests();
+        return root.processPendingSubtests();
       };
     }
   }
 
   const runChain = async () => {
+    if (root.harness?.bootstrapPromise) {
+      await root.harness.bootstrapPromise;
+    }
     if (typeof setup === 'function') {
       await setup(root.reporter);
     }

@@ -44,13 +44,11 @@ class V8_EXPORT_PRIVATE JSIntrinsicLowering final
   Reduction ReduceDeoptimizeNow(Node* node);
   Reduction ReduceCreateJSGeneratorObject(Node* node);
   Reduction ReduceGeneratorClose(Node* node);
-  Reduction ReduceAsyncFunctionAwaitCaught(Node* node);
-  Reduction ReduceAsyncFunctionAwaitUncaught(Node* node);
+  Reduction ReduceAsyncFunctionAwait(Node* node);
   Reduction ReduceAsyncFunctionEnter(Node* node);
   Reduction ReduceAsyncFunctionReject(Node* node);
   Reduction ReduceAsyncFunctionResolve(Node* node);
-  Reduction ReduceAsyncGeneratorAwaitCaught(Node* node);
-  Reduction ReduceAsyncGeneratorAwaitUncaught(Node* node);
+  Reduction ReduceAsyncGeneratorAwait(Node* node);
   Reduction ReduceAsyncGeneratorReject(Node* node);
   Reduction ReduceAsyncGeneratorResolve(Node* node);
   Reduction ReduceAsyncGeneratorYieldWithAwait(Node* node);
@@ -82,7 +80,7 @@ class V8_EXPORT_PRIVATE JSIntrinsicLowering final
                    int stack_parameter_count,
                    enum FrameStateFlag frame_state_flag = kNeedsFrameState);
 
-  Graph* graph() const;
+  TFGraph* graph() const;
   JSGraph* jsgraph() const { return jsgraph_; }
   JSHeapBroker* broker() const { return broker_; }
   Isolate* isolate() const;

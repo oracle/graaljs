@@ -11,8 +11,8 @@ namespace internal {
 
 BUILTIN(CallAsyncModuleFulfilled) {
   HandleScope handle_scope(isolate);
-  Handle<SourceTextModule> module = Handle<SourceTextModule>(
-      SourceTextModule::cast(isolate->context()->get(
+  Handle<SourceTextModule> module(
+      Cast<SourceTextModule>(isolate->context()->get(
           SourceTextModule::ExecuteAsyncModuleContextSlots::kModule)),
       isolate);
   if (SourceTextModule::AsyncModuleExecutionFulfilled(isolate, module)
@@ -28,14 +28,14 @@ BUILTIN(CallAsyncModuleFulfilled) {
 
 BUILTIN(CallAsyncModuleRejected) {
   HandleScope handle_scope(isolate);
-  Handle<SourceTextModule> module = Handle<SourceTextModule>(
-      SourceTextModule::cast(isolate->context()->get(
+  DirectHandle<SourceTextModule> module(
+      Cast<SourceTextModule>(isolate->context()->get(
           SourceTextModule::ExecuteAsyncModuleContextSlots::kModule)),
       isolate);
 
   // Arguments should be an exception object, with receiver.
   DCHECK_EQ(args.length(), 2);
-  Handle<Object> exception(args.at(1));
+  DirectHandle<Object> exception(args.at(1));
   SourceTextModule::AsyncModuleExecutionRejected(isolate, module, exception);
   return ReadOnlyRoots(isolate).undefined_value();
 }

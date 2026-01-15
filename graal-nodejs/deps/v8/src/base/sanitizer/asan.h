@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// AddressSanitizer support.
-
 #ifndef V8_BASE_SANITIZER_ASAN_H_
 #define V8_BASE_SANITIZER_ASAN_H_
+
+// AddressSanitizer support.
 
 #include <type_traits>
 
@@ -80,5 +80,15 @@ class AsanUnpoisonScope final {
 };
 
 #endif  // !V8_USE_ADDRESS_SANITIZER
+
+#ifdef V8_USE_HWADDRESS_SANITIZER
+
+#define DISABLE_HWASAN __attribute__((no_sanitize("hwaddress")))
+
+#else  // !V8_USE_HWADDRESS_SANITIZER
+
+#define DISABLE_HWASAN
+
+#endif  // !V8_USE_HWADDRESS_SANITIZER
 
 #endif  // V8_BASE_SANITIZER_ASAN_H_

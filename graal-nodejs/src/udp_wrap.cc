@@ -35,6 +35,7 @@ using errors::TryCatchScope;
 using v8::Array;
 using v8::ArrayBuffer;
 using v8::BackingStore;
+using v8::BackingStoreInitializationMode;
 using v8::Boolean;
 using v8::Context;
 using v8::DontDelete;
@@ -56,7 +57,7 @@ using v8::Value;
 namespace {
 template <int (*fn)(uv_udp_t*, int)>
 void SetLibuvInt32(const FunctionCallbackInfo<Value>& args) {
-  UDPWrap* wrap = Unwrap<UDPWrap>(args.This());
+  UDPWrap* wrap = BaseObject::Unwrap<UDPWrap>(args.This());
   if (wrap == nullptr) {
     args.GetReturnValue().Set(UV_EBADF);
     return;
@@ -354,7 +355,7 @@ void UDPWrap::Open(const FunctionCallbackInfo<Value>& args) {
   ASSIGN_OR_RETURN_UNWRAP(
       &wrap, args.This(), args.GetReturnValue().Set(UV_EBADF));
   CHECK(args[0]->IsNumber());
-  int fd = static_cast<int>(args[0].As<Integer>()->Value());
+  int fd = FromV8Value<int>(args[0]);
   int err = uv_udp_open(&wrap->handle_, fd);
 
   args.GetReturnValue().Set(err);
@@ -759,7 +760,8 @@ void UDPWrap::OnRecv(ssize_t nread,
   } else if (static_cast<size_t>(nread) != bs->ByteLength()) {
     CHECK_LE(static_cast<size_t>(nread), bs->ByteLength());
     std::unique_ptr<BackingStore> old_bs = std::move(bs);
-    bs = ArrayBuffer::NewBackingStore(isolate, nread);
+    bs = ArrayBuffer::NewBackingStore(
+        isolate, nread, BackingStoreInitializationMode::kUninitialized);
     memcpy(bs->Data(), old_bs->Data(), nread);
   }
 

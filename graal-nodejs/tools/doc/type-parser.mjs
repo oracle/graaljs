@@ -1,14 +1,16 @@
-const jsDocPrefix = 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/';
+const mdnPrefix = 'https://developer.mozilla.org/en-US/docs/Web';
+const jsDocPrefix = `${mdnPrefix}/JavaScript/`;
 
 const jsDataStructuresUrl = `${jsDocPrefix}Data_structures`;
 const jsPrimitives = {
-  boolean: 'Boolean',
-  integer: 'Number', // Not a primitive, used for clarification.
-  null: 'Null',
-  number: 'Number',
-  string: 'String',
-  symbol: 'Symbol',
-  undefined: 'Undefined',
+  boolean: 'boolean',
+  integer: 'number', // Not a primitive, used for clarification.
+  null: 'null',
+  number: 'number',
+  string: 'string',
+  symbol: 'symbol',
+  undefined: 'undefined',
+  bigint: 'bigint',
 };
 
 const jsGlobalObjectsUrl = `${jsDocPrefix}Reference/Global_Objects/`;
@@ -32,8 +34,7 @@ const customTypesMap = {
   'AbortController': 'globals.html#class-abortcontroller',
   'AbortSignal': 'globals.html#class-abortsignal',
 
-  'ArrayBufferView':
-    'https://developer.mozilla.org/en-US/docs/Web/API/ArrayBufferView',
+  'ArrayBufferView': `${mdnPrefix}/API/ArrayBufferView`,
 
   'AsyncIterator': 'https://tc39.github.io/ecma262/#sec-asynciterator-interface',
 
@@ -43,9 +44,10 @@ const customTypesMap = {
 
   'AsyncGeneratorFunction': 'https://tc39.es/proposal-async-iteration/#sec-asyncgeneratorfunction-constructor',
 
-  'bigint': `${jsDocPrefix}Reference/Global_Objects/BigInt`,
   'WebAssembly.Instance':
     `${jsDocPrefix}Reference/Global_Objects/WebAssembly/Instance`,
+  'WebAssembly.Memory':
+    `${jsDocPrefix}Reference/Global_Objects/WebAssembly/Memory`,
 
   'Blob': 'buffer.html#class-blob',
   'File': 'buffer.html#class-file',
@@ -75,8 +77,8 @@ const customTypesMap = {
 
   'cluster.Worker': 'cluster.html#class-worker',
 
-  'Cipher': 'crypto.html#class-cipher',
-  'Decipher': 'crypto.html#class-decipher',
+  'Cipheriv': 'crypto.html#class-cipheriv',
+  'Decipheriv': 'crypto.html#class-decipheriv',
   'DiffieHellman': 'crypto.html#class-diffiehellman',
   'DiffieHellmanGroup': 'crypto.html#class-diffiehellmangroup',
   'ECDH': 'crypto.html#class-ecdh',
@@ -91,16 +93,21 @@ const customTypesMap = {
   'CryptoKey': 'webcrypto.html#class-cryptokey',
   'CryptoKeyPair': 'webcrypto.html#class-cryptokeypair',
   'Crypto': 'webcrypto.html#class-crypto',
+  'EncapsulatedBits': 'webcrypto.html#class-encapsulatedbits',
+  'EncapsulatedKey': 'webcrypto.html#class-encapsulatedkey',
   'SubtleCrypto': 'webcrypto.html#class-subtlecrypto',
+  'Template Literal':
+    `${jsDocPrefix}Reference/Template_literals`,
   'RsaOaepParams': 'webcrypto.html#class-rsaoaepparams',
   'AesCtrParams': 'webcrypto.html#class-aesctrparams',
   'AesCbcParams': 'webcrypto.html#class-aescbcparams',
   'AesDerivedKeyParams': 'webcrypto.html#class-aesderivedkeyparams',
-  'AesGcmParams': 'webcrypto.html#class-aesgcmparams',
+  'AeadParams': 'webcrypto.html#class-aeadparams',
   'EcdhKeyDeriveParams': 'webcrypto.html#class-ecdhkeyderiveparams',
   'HkdfParams': 'webcrypto.html#class-hkdfparams',
   'KeyAlgorithm': 'webcrypto.html#class-keyalgorithm',
   'Pbkdf2Params': 'webcrypto.html#class-pbkdf2params',
+  'Argon2Params': 'webcrypto.html#class-argon2params',
   'HmacKeyAlgorithm': 'webcrypto.html#class-hmackeyalgorithm',
   'HmacKeyGenParams': 'webcrypto.html#class-hmackeygenparams',
   'AesKeyAlgorithm': 'webcrypto.html#class-aeskeyalgorithm',
@@ -117,7 +124,12 @@ const customTypesMap = {
   'HmacImportParams': 'webcrypto.html#class-hmacimportparams',
   'EcdsaParams': 'webcrypto.html#class-ecdsaparams',
   'RsaPssParams': 'webcrypto.html#class-rsapssparams',
-  'Ed448Params': 'webcrypto.html#class-ed448params',
+  'ContextParams': 'webcrypto.html#class-contextparams',
+  'CShakeParams': 'webcrypto.html#class-cshakeparams',
+  'KmacImportParams': 'webcrypto.html#class-kmacimportparams',
+  'KmacKeyAlgorithm': 'webcrypto.html#class-kmackeyalgorithm',
+  'KmacKeyGenParams': 'webcrypto.html#class-kmackeygenparams',
+  'KmacParams': 'webcrypto.html#class-kmacparams',
 
   'dgram.Socket': 'dgram.html#class-dgramsocket',
 
@@ -136,6 +148,14 @@ const customTypesMap = {
   'Event': 'events.html#class-event',
   'CustomEvent': 'events.html#class-customevent',
   'EventListener': 'events.html#event-listener',
+
+  'CloseEvent': `${mdnPrefix}/API/CloseEvent`,
+  'EventSource': `${mdnPrefix}/API/EventSource`,
+  'MessageEvent': `${mdnPrefix}/API/MessageEvent`,
+
+  'DOMException': `${mdnPrefix}/API/DOMException`,
+  'Storage': `${mdnPrefix}/API/Storage`,
+  'WebSocket': `${mdnPrefix}/API/WebSocket`,
 
   'FileHandle': 'fs.html#class-filehandle',
   'fs.Dir': 'fs.html#class-fsdir',
@@ -157,6 +177,7 @@ const customTypesMap = {
   'ClientHttp2Session': 'http2.html#class-clienthttp2session',
   'ClientHttp2Stream': 'http2.html#class-clienthttp2stream',
   'HTTP/2 Headers Object': 'http2.html#headers-object',
+  'HTTP/2 Raw Headers': 'http2.html#raw-headers',
   'HTTP/2 Settings Object': 'http2.html#settings-object',
   'http2.Http2ServerRequest': 'http2.html#class-http2http2serverrequest',
   'http2.Http2ServerResponse':
@@ -214,6 +235,7 @@ const customTypesMap = {
 
   'Session': 'sqlite.html#class-session',
   'StatementSync': 'sqlite.html#class-statementsync',
+  'SQLTagStore': 'sqlite.html#class-sqltagstore',
 
   'Stream': 'stream.html#stream',
   'stream.Duplex': 'stream.html#class-streamduplex',
@@ -248,6 +270,7 @@ const customTypesMap = {
   'vm.Module': 'vm.html#class-vmmodule',
   'vm.Script': 'vm.html#class-vmscript',
   'vm.SourceTextModule': 'vm.html#class-vmsourcetextmodule',
+  'ModuleRequest': 'vm.html#type-modulerequest',
   'vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER':
       'vm.html#vmconstantsuse_main_context_default_loader',
   'vm.constants.DONT_CONTEXTIFY':
@@ -297,6 +320,38 @@ const customTypesMap = {
   'Response': 'https://developer.mozilla.org/en-US/docs/Web/API/Response',
   'Request': 'https://developer.mozilla.org/en-US/docs/Web/API/Request',
   'Disposable': 'https://tc39.es/proposal-explicit-resource-management/#sec-disposable-interface',
+
+  'quic.QuicEndpoint': 'quic.html#class-quicendpoint',
+  'quic.QuicEndpoint.Stats': 'quic.html#class-quicendpointstats',
+  'quic.QuicSession': 'quic.html#class-quicsession',
+  'quic.QuicSession.Stats': 'quic.html#class-quicsessionstats',
+  'quic.QuicStream': 'quic.html#class-quicstream',
+  'quic.QuicStream.Stats': 'quic.html#class-quicstreamstats',
+  'quic.EndpointOptions': 'quic.html#type-endpointoptions',
+  'quic.SessionOptions': 'quic.html#type-sessionoptions',
+  'quic.ApplicationOptions': 'quic.html#type-applicationoptions',
+  'quic.TlsOptions': 'quic.html#type-tlsoptions',
+  'quic.TransportParams': 'quic.html#type-transportparams',
+  'quic.OnSessionCallback': 'quic.html#callback-onsessioncallback',
+  'quic.OnStreamCallback': 'quic.html#callback-onstreamcallback',
+  'quic.OnDatagramCallback': 'quic.html#callback-ondatagramcallback',
+  'quic.OnDatagramStatusCallback': 'quic.html#callback-ondatagramstatuscallback',
+  'quic.OnPathValidationCallback': 'quic.html#callback-onpathvalidationcallback',
+  'quic.OnSessionTicketCallback': 'quic.html#callback-onsessionticketcallback',
+  'quic.OnVersionNegotiationCallback': 'quic.html#callback-onversionnegotiationcallback',
+  'quic.OnHandshakeCallback': 'quic.html#callback-onhandshakecallback',
+  'quic.OnBlockedCallback': 'quic.html#callback-onblockedcallback',
+  'quic.OnStreamErrorCallback': 'quic.html#callback-onstreamerrorcallback',
+  'quic.OnHeadersCallback': 'quic.html#callback-onheaderscallback',
+  'quic.OnTrailersCallback': 'quic.html#callback-ontrailerscallback',
+  'quic.OnPullCallback': 'quic.html#callback-onpullcallback',
+
+  'Lock': 'worker_threads.html#class-lock',
+  'LockManager': 'worker_threads.html#class-lockmanager',
+  'LockManagerSnapshot': 'https://developer.mozilla.org/en-US/docs/Web/API/LockManagerSnapshot',
+  'CPUProfileHandle': 'v8.html#class-cpuprofilehandle',
+  'HeapProfileHandle': 'v8.html#class-heapprofilehandle',
+  'SyncCPUProfileHandle': 'v8.html#class-synccpuprofilehandle',
 };
 
 const arrayPart = /(?:\[])+$/;

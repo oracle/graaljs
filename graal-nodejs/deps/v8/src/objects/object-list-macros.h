@@ -68,7 +68,6 @@ namespace internal {
   V(ClosureFeedbackCellArray)                 \
   V(Code)                                     \
   V(Context)                                  \
-  V(ExternalPointerArray)                     \
   V(ExternalString)                           \
   V(FeedbackMetadata)                         \
   V(FeedbackVector)                           \
@@ -80,6 +79,7 @@ namespace internal {
   V(PreparseData)                             \
   V(PropertyArray)                            \
   V(ProtectedFixedArray)                      \
+  V(ProtectedWeakFixedArray)                  \
   V(RegExpMatchInfo)                          \
   V(ScopeInfo)                                \
   V(ScriptContextTable)                       \
@@ -89,6 +89,7 @@ namespace internal {
   V(ThinString)                               \
   V(TrustedByteArray)                         \
   V(TrustedFixedArray)                        \
+  V(TrustedWeakFixedArray)                    \
   V(UncompiledDataWithoutPreparseData)        \
   V(WeakArrayList)                            \
   V(WeakFixedArray)                           \
@@ -99,22 +100,15 @@ namespace internal {
 // TODO(jgruber): Move more types to SIMPLE_HEAP_OBJECT_LIST_GENERATOR.
 #define HEAP_OBJECT_ORDINARY_TYPE_LIST_BASE(V)  \
   V(AbstractCode)                               \
-  V(AccessCheckNeeded)                          \
   V(AccessorInfo)                               \
   V(AllocationSite)                             \
-  V(AlwaysSharedSpaceJSObject)                  \
   V(BigInt)                                     \
   V(BigIntBase)                                 \
-  V(BigIntWrapper)                              \
   V(Boolean)                                    \
-  V(BooleanWrapper)                             \
-  V(ExternalPointerArray)                       \
-  V(Callable)                                   \
   V(Cell)                                       \
   V(CompilationCacheTable)                      \
   V(ConsString)                                 \
-  V(Constructor)                                \
-  V(ConstTrackingLetCell)                       \
+  V(ContextSidePropertyCell)                    \
   V(Context)                                    \
   V(CoverageInfo)                               \
   V(DataHandler)                                \
@@ -131,14 +125,12 @@ namespace internal {
   V(FeedbackMetadata)                           \
   V(FeedbackVector)                             \
   V(FunctionTemplateInfo)                       \
-  V(Filler)                                     \
   V(FixedArrayBase)                             \
   V(FixedArrayExact)                            \
   V(Foreign)                                    \
   V(FreeSpace)                                  \
   V(GcSafeCode)                                 \
   V(GlobalDictionary)                           \
-  V(HandlerTable)                               \
   V(HeapNumber)                                 \
   V(InternalizedString)                         \
   V(JSArgumentsObject)                          \
@@ -154,12 +146,13 @@ namespace internal {
   V(JSBoundFunction)                            \
   V(JSCollection)                               \
   V(JSCollectionIterator)                       \
-  V(JSContextExtensionObject)                   \
   V(JSCustomElementsObject)                     \
   V(JSDataView)                                 \
   V(JSDataViewOrRabGsabDataView)                \
   V(JSDate)                                     \
-  V(JSError)                                    \
+  V(JSDisposableStackBase)                      \
+  V(JSSyncDisposableStack)                      \
+  V(JSAsyncDisposableStack)                     \
   V(JSExternalObject)                           \
   V(JSFinalizationRegistry)                     \
   V(JSFunction)                                 \
@@ -178,6 +171,7 @@ namespace internal {
   V(JSMessageObject)                            \
   V(JSModuleNamespace)                          \
   V(JSObject)                                   \
+  V(JSAPIObjectWithEmbedderSlots)               \
   V(JSObjectWithEmbedderSlots)                  \
   V(JSPrimitiveWrapper)                         \
   V(JSPromise)                                  \
@@ -214,7 +208,6 @@ namespace internal {
   V(JSWrappedFunction)                          \
   V(LoadHandler)                                \
   V(Map)                                        \
-  V(MapCache)                                   \
   V(MegaDomHandler)                             \
   V(Module)                                     \
   V(Microtask)                                  \
@@ -224,7 +217,6 @@ namespace internal {
   V(NativeContext)                              \
   V(NormalizedMapCache)                         \
   V(NumberDictionary)                           \
-  V(NumberWrapper)                              \
   V(ObjectHashSet)                              \
   V(ObjectHashTable)                            \
   V(ObjectTemplateInfo)                         \
@@ -234,14 +226,12 @@ namespace internal {
   V(OrderedHashMap)                             \
   V(OrderedHashSet)                             \
   V(OrderedNameDictionary)                      \
-  V(OSROptimizedCodeCache)                      \
   V(PreparseData)                               \
   V(PrimitiveHeapObject)                        \
   V(PromiseReactionJobTask)                     \
   V(PropertyArray)                              \
   V(PropertyCell)                               \
   V(ScopeInfo)                                  \
-  V(ScriptWrapper)                              \
   V(SeqOneByteString)                           \
   V(SeqString)                                  \
   V(SeqTwoByteString)                           \
@@ -257,13 +247,12 @@ namespace internal {
   V(String)                                     \
   V(StringSet)                                  \
   V(RegisteredSymbolTable)                      \
-  V(StringWrapper)                              \
   V(Struct)                                     \
   V(SwissNameDictionary)                        \
   V(Symbol)                                     \
-  V(SymbolWrapper)                              \
   V(SyntheticModule)                            \
   V(TemplateInfo)                               \
+  V(TemplateInfoWithProperties)                 \
   V(TemplateLiteralObject)                      \
   V(ThinString)                                 \
   V(TransitionArray)                            \
@@ -277,31 +266,21 @@ namespace internal {
   V(TurboshaftWord64RangeType)                  \
   V(TurboshaftWord64SetType)                    \
   V(TurboshaftWord64Type)                       \
-  V(UncompiledData)                             \
-  V(UncompiledDataWithPreparseData)             \
-  V(UncompiledDataWithoutPreparseData)          \
-  V(UncompiledDataWithPreparseDataAndJob)       \
-  V(UncompiledDataWithoutPreparseDataWithJob)   \
-  V(Undetectable)                               \
-  V(UniqueName)                                 \
   IF_WASM(V, WasmArray)                         \
-  IF_WASM(V, WasmCapiFunctionData)              \
   IF_WASM(V, WasmContinuationObject)            \
   IF_WASM(V, WasmExceptionPackage)              \
-  IF_WASM(V, WasmExportedFunctionData)          \
-  IF_WASM(V, WasmFunctionData)                  \
   IF_WASM(V, WasmFuncRef)                       \
   IF_WASM(V, WasmGlobalObject)                  \
   IF_WASM(V, WasmInstanceObject)                \
-  IF_WASM(V, WasmInternalFunction)              \
-  IF_WASM(V, WasmJSFunctionData)                \
   IF_WASM(V, WasmMemoryObject)                  \
+  IF_WASM(V, WasmMemoryMapDescriptor)           \
   IF_WASM(V, WasmModuleObject)                  \
   IF_WASM(V, WasmNull)                          \
   IF_WASM(V, WasmObject)                        \
   IF_WASM(V, WasmResumeData)                    \
   IF_WASM(V, WasmStruct)                        \
   IF_WASM(V, WasmSuspenderObject)               \
+  IF_WASM(V, WasmSuspendingObject)              \
   IF_WASM(V, WasmTableObject)                   \
   IF_WASM(V, WasmTagObject)                     \
   IF_WASM(V, WasmTypeInfo)                      \
@@ -310,6 +289,28 @@ namespace internal {
   V(WeakCell)                                   \
   TORQUE_DEFINED_CLASS_LIST(V)                  \
   SIMPLE_HEAP_OBJECT_LIST1(V)
+
+// These are artificial object types which don't have properly defined classes
+// but exist for the sake of type checking, for example IsCallable().
+#define VIRTUAL_OBJECT_TYPE_LIST(V) \
+  V(AccessCheckNeeded)              \
+  V(AlwaysSharedSpaceJSObject)      \
+  V(BigIntWrapper)                  \
+  V(BooleanWrapper)                 \
+  V(Callable)                       \
+  V(Constructor)                    \
+  V(Filler)                         \
+  V(HandlerTable)                   \
+  V(JSContextExtensionObject)       \
+  V(JSError)                        \
+  V(MapCache)                       \
+  V(NumberWrapper)                  \
+  V(OSROptimizedCodeCache)          \
+  V(ScriptWrapper)                  \
+  V(StringWrapper)                  \
+  V(SymbolWrapper)                  \
+  V(UniqueName)                     \
+  V(Undetectable)
 
 #ifdef V8_INTL_SUPPORT
 #define HEAP_OBJECT_ORDINARY_TYPE_LIST(V) \
@@ -324,6 +325,8 @@ namespace internal {
   V(JSNumberFormat)                       \
   V(JSPluralRules)                        \
   V(JSRelativeTimeFormat)                 \
+  V(JSSegmentDataObject)                  \
+  V(JSSegmentDataObjectWithIsWordLike)    \
   V(JSSegmentIterator)                    \
   V(JSSegmenter)                          \
   V(JSSegments)
@@ -340,22 +343,42 @@ namespace internal {
 
 #define ABSTRACT_TRUSTED_OBJECT_LIST_GENERATOR(APPLY, V) \
   APPLY(V, TrustedObject, TRUSTED_OBJECT)                \
-  APPLY(V, ExposedTrustedObject, EXPOSED_TRUSTED_OBJECT)
+  APPLY(V, ExposedTrustedObject, EXPOSED_TRUSTED_OBJECT) \
+  APPLY(V, UncompiledData, UNCOMPILED_DATA)              \
+  IF_WASM(APPLY, V, WasmFunctionData, WASM_FUNCTION_DATA)
 
 // Concrete trusted objects. These must:
 // - (Transitively) inherit from TrustedObject
 // - Have a unique instance type
 // - Define a custom body descriptor
-#define CONCRETE_TRUSTED_OBJECT_LIST_GENERATOR(APPLY, V)       \
-  APPLY(V, BytecodeArray, BYTECODE_ARRAY)                      \
-  APPLY(V, Code, CODE)                                         \
-  APPLY(V, InstructionStream, INSTRUCTION_STREAM)              \
-  APPLY(V, InterpreterData, INTERPRETER_DATA)                  \
-  APPLY(V, ProtectedFixedArray, PROTECTED_FIXED_ARRAY)         \
-  APPLY(V, TrustedByteArray, TRUSTED_BYTE_ARRAY)               \
-  APPLY(V, TrustedFixedArray, TRUSTED_FIXED_ARRAY)             \
-  IF_WASM(APPLY, V, WasmApiFunctionRef, WASM_API_FUNCTION_REF) \
-  IF_WASM(APPLY, V, WasmDispatchTable, WASM_DISPATCH_TABLE)    \
+#define CONCRETE_TRUSTED_OBJECT_LIST_GENERATOR(APPLY, V)                       \
+  APPLY(V, BytecodeArray, BYTECODE_ARRAY)                                      \
+  APPLY(V, Code, CODE)                                                         \
+  APPLY(V, InstructionStream, INSTRUCTION_STREAM)                              \
+  APPLY(V, InterpreterData, INTERPRETER_DATA)                                  \
+  APPLY(V, UncompiledDataWithPreparseData, UNCOMPILED_DATA_WITH_PREPARSE_DATA) \
+  APPLY(V, UncompiledDataWithoutPreparseData,                                  \
+        UNCOMPILED_DATA_WITHOUT_PREPARSE_DATA)                                 \
+  APPLY(V, UncompiledDataWithPreparseDataAndJob,                               \
+        UNCOMPILED_DATA_WITH_PREPARSE_DATA_AND_JOB)                            \
+  APPLY(V, UncompiledDataWithoutPreparseDataWithJob,                           \
+        UNCOMPILED_DATA_WITHOUT_PREPARSE_DATA_WITH_JOB)                        \
+  APPLY(V, SharedFunctionInfoWrapper, SHARED_FUNCTION_INFO_WRAPPER)            \
+  APPLY(V, ProtectedFixedArray, PROTECTED_FIXED_ARRAY)                         \
+  APPLY(V, ProtectedWeakFixedArray, PROTECTED_WEAK_FIXED_ARRAY)                \
+  APPLY(V, TrustedByteArray, TRUSTED_BYTE_ARRAY)                               \
+  APPLY(V, TrustedFixedArray, TRUSTED_FIXED_ARRAY)                             \
+  APPLY(V, TrustedForeign, TRUSTED_FOREIGN)                                    \
+  APPLY(V, TrustedWeakFixedArray, TRUSTED_WEAK_FIXED_ARRAY)                    \
+  APPLY(V, AtomRegExpData, ATOM_REG_EXP_DATA)                                  \
+  APPLY(V, IrRegExpData, IR_REG_EXP_DATA)                                      \
+  APPLY(V, RegExpData, REG_EXP_DATA)                                           \
+  IF_WASM(APPLY, V, WasmImportData, WASM_IMPORT_DATA)                          \
+  IF_WASM(APPLY, V, WasmCapiFunctionData, WASM_CAPI_FUNCTION_DATA)             \
+  IF_WASM(APPLY, V, WasmDispatchTable, WASM_DISPATCH_TABLE)                    \
+  IF_WASM(APPLY, V, WasmExportedFunctionData, WASM_EXPORTED_FUNCTION_DATA)     \
+  IF_WASM(APPLY, V, WasmJSFunctionData, WASM_JS_FUNCTION_DATA)                 \
+  IF_WASM(APPLY, V, WasmInternalFunction, WASM_INTERNAL_FUNCTION)              \
   IF_WASM(APPLY, V, WasmTrustedInstanceData, WASM_TRUSTED_INSTANCE_DATA)
 
 #define TRUSTED_OBJECT_LIST1_ADAPTER(V, Name, NAME) V(Name)
@@ -384,6 +407,7 @@ namespace internal {
   V(AwaitContext)                            \
   V(BlockContext)                            \
   V(CallableApiObject)                       \
+  V(CallableJSFunction)                      \
   V(CallableJSProxy)                         \
   V(CatchContext)                            \
   V(DebugEvaluateContext)                    \
@@ -402,11 +426,12 @@ namespace internal {
   V(JSSetKeyValueIterator)                   \
   V(JSSetValueIterator)                      \
   V(JSSpecialApiObject)                      \
+  V(MaybeReadOnlyJSObject)                   \
   V(ModuleContext)                           \
   V(NonNullForeign)                          \
   V(ScriptContext)                           \
   V(WithContext)                             \
-  V(JSPrototype)                             \
+  V(JSInternalPrototypeBase)                 \
   V(JSObjectPrototype)                       \
   V(JSRegExpPrototype)                       \
   V(JSPromisePrototype)                      \
@@ -433,6 +458,7 @@ namespace internal {
 
 #define HEAP_OBJECT_TYPE_LIST(V)    \
   HEAP_OBJECT_ORDINARY_TYPE_LIST(V) \
+  VIRTUAL_OBJECT_TYPE_LIST(V)       \
   HEAP_OBJECT_TRUSTED_TYPE_LIST(V)  \
   HEAP_OBJECT_TEMPLATE_TYPE_LIST(V) \
   HEAP_OBJECT_SPECIALIZED_TYPE_LIST(V)
@@ -468,6 +494,7 @@ namespace internal {
 HEAP_OBJECT_ORDINARY_TYPE_LIST(DEF_FWD_DECLARATION)
 HEAP_OBJECT_TRUSTED_TYPE_LIST(DEF_FWD_DECLARATION)
 HEAP_OBJECT_SPECIALIZED_TYPE_LIST(DEF_FWD_DECLARATION)
+VIRTUAL_OBJECT_TYPE_LIST(DEF_FWD_DECLARATION)
 #undef DEF_FWD_DECLARATION
 
 }  // namespace internal

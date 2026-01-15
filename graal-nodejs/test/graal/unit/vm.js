@@ -165,7 +165,7 @@ describe('vm', function () {
                 .then(() => first.evaluate())
                 .then(() => mid.evaluate()) // checks the execution result of mid again
                 .then(() => console.log('OK'));`;
-        
+
         var result = spawnSync(process.execPath, [
             '--experimental-vm-modules',
             '--no-warnings=ExperimentalWarning',

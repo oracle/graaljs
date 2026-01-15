@@ -61,6 +61,8 @@ public:
     static v8::Local<v8::Symbol> GetToPrimitive(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> GetToStringTag(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> GetUnscopables(v8::Isolate* isolate);
+    static v8::Local<v8::Symbol> GetDispose(v8::Isolate* isolate);
+    static v8::Local<v8::Symbol> GetAsyncDispose(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> For(v8::Isolate* isolate, v8::Local<v8::String> description);
     static v8::Local<v8::Symbol> ForApi(v8::Isolate* isolate, v8::Local<v8::String> description);
     static v8::Local<v8::Private> PrivateForApi(v8::Isolate* isolate, v8::Local<v8::String> description);

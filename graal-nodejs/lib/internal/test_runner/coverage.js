@@ -27,8 +27,8 @@ const {
 } = require('fs');
 const { setupCoverageHooks } = require('internal/util');
 const { tmpdir } = require('os');
-const { join, resolve, relative, matchesGlob } = require('path');
-const { fileURLToPath } = require('internal/url');
+const { join, resolve, relative } = require('path');
+const { fileURLToPath, URL } = require('internal/url');
 const { kMappings, SourceMap } = require('internal/source_map/source_map');
 const {
   codes: {
@@ -36,6 +36,9 @@ const {
     ERR_SOURCE_MAP_MISSING_SOURCE,
   },
 } = require('internal/errors');
+const { matchGlobPattern } = require('internal/fs/glob');
+const { constants: { kMockSearchParam } } = require('internal/test_runner/mock/loader');
+
 const kCoverageFileRegex = /^coverage-(\d+)-(\d{13})-(\d+)\.json$/;
 const kIgnoreRegex = /\/\* node:coverage ignore next (?<count>\d+ )?\*\//;
 const kLineEndingRegex = /\r?\n$/u;
@@ -59,18 +62,10 @@ class CoverageLine {
 class TestCoverage {
   constructor(coverageDirectory,
               originalCoverageDirectory,
-              workingDirectory,
-              excludeGlobs,
-              includeGlobs,
-              sourceMaps,
-              thresholds) {
+              options) {
     this.coverageDirectory = coverageDirectory;
     this.originalCoverageDirectory = originalCoverageDirectory;
-    this.workingDirectory = workingDirectory;
-    this.excludeGlobs = excludeGlobs;
-    this.includeGlobs = includeGlobs;
-    this.sourceMaps = sourceMaps;
-    this.thresholds = thresholds;
+    this.options = options;
   }
 
   #sourceLines = new SafeMap();
@@ -143,7 +138,7 @@ class TestCoverage {
     const coverage = this.getCoverageFromDirectory();
     const coverageSummary = {
       __proto__: null,
-      workingDirectory: this.workingDirectory,
+      workingDirectory: this.options.cwd,
       files: [],
       totals: {
         __proto__: null,
@@ -157,7 +152,12 @@ class TestCoverage {
         coveredBranchPercent: 0,
         coveredFunctionPercent: 0,
       },
-      thresholds: this.thresholds,
+      thresholds: {
+        __proto__: null,
+        line: this.options.lineCoverage,
+        branch: this.options.branchCoverage,
+        function: this.options.functionCoverage,
+      },
     };
 
     if (!coverage) {
@@ -348,7 +348,7 @@ class TestCoverage {
   mapCoverageWithSourceMap(coverage) {
     const { result } = coverage;
     const sourceMapCache = coverage['source-map-cache'];
-    if (!this.sourceMaps || !sourceMapCache) {
+    if (!this.options.sourceMaps || !sourceMapCache) {
       return result;
     }
     const newResult = new SafeMap();
@@ -471,22 +471,35 @@ class TestCoverage {
     if (!StringPrototypeStartsWith(url, 'file:')) return true;
 
     const absolutePath = fileURLToPath(url);
-    const relativePath = relative(this.workingDirectory, absolutePath);
+    const relativePath = relative(this.options.cwd, absolutePath);
+    const {
+      coverageExcludeGlobs: excludeGlobs,
+      coverageIncludeGlobs: includeGlobs,
+    } = this.options;
 
     // This check filters out files that match the exclude globs.
-    if (this.excludeGlobs?.length > 0) {
-      for (let i = 0; i < this.excludeGlobs.length; ++i) {
-        if (matchesGlob(relativePath, this.excludeGlobs[i]) ||
-            matchesGlob(absolutePath, this.excludeGlobs[i])) return true;
+    if (excludeGlobs?.length > 0) {
+      for (let i = 0; i < excludeGlobs.length; ++i) {
+        if (
+          matchGlobPattern(relativePath, excludeGlobs[i]) ||
+          matchGlobPattern(absolutePath, excludeGlobs[i])
+        ) return true;
       }
     }
 
     // This check filters out files that do not match the include globs.
-    if (this.includeGlobs?.length > 0) {
-      for (let i = 0; i < this.includeGlobs.length; ++i) {
-        if (matchesGlob(relativePath, this.includeGlobs[i]) ||
-            matchesGlob(absolutePath, this.includeGlobs[i])) return false;
+    if (includeGlobs?.length > 0) {
+      for (let i = 0; i < includeGlobs.length; ++i) {
+        if (
+          matchGlobPattern(relativePath, includeGlobs[i]) ||
+          matchGlobPattern(absolutePath, includeGlobs[i])
+        ) return false;
       }
+      return true;
+    }
+
+    const searchParams = new URL(url).searchParams;
+    if (searchParams.get(kMockSearchParam)) {
       return true;
     }
 
@@ -505,14 +518,13 @@ function sortCoverageFiles(a, b) {
 
 function setupCoverage(options) {
   let originalCoverageDirectory = process.env.NODE_V8_COVERAGE;
-  const cwd = process.cwd();
 
   // If NODE_V8_COVERAGE was already specified, convert it to an absolute path
   // and store it for later. The test runner will use a temporary directory
   // so that no preexisting coverage files interfere with the results of the
   // coverage report. Then, once the coverage is computed, move the coverage
   // files back to the original NODE_V8_COVERAGE directory.
-  originalCoverageDirectory &&= resolve(cwd, originalCoverageDirectory);
+  originalCoverageDirectory &&= resolve(options.cwd, originalCoverageDirectory);
 
   const coverageDirectory = mkdtempSync(join(tmpdir(), 'node-coverage-'));
   const enabled = setupCoverageHooks(coverageDirectory);
@@ -528,16 +540,7 @@ function setupCoverage(options) {
   return new TestCoverage(
     coverageDirectory,
     originalCoverageDirectory,
-    cwd,
-    options.coverageExcludeGlobs,
-    options.coverageIncludeGlobs,
-    options.sourceMaps,
-    {
-      __proto__: null,
-      line: options.lineCoverage,
-      branch: options.branchCoverage,
-      function: options.functionCoverage,
-    },
+    options,
   );
 }
 

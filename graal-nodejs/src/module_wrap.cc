@@ -22,6 +22,7 @@ using errors::TryCatchScope;
 using node::contextify::ContextifyContext;
 using v8::Array;
 using v8::ArrayBufferView;
+using v8::Boolean;
 using v8::Context;
 using v8::Data;
 using v8::EscapableHandleScope;
@@ -45,6 +46,7 @@ using v8::MemorySpan;
 using v8::Message;
 using v8::MicrotaskQueue;
 using v8::Module;
+using v8::ModuleImportPhase;
 using v8::ModuleRequest;
 using v8::Name;
 using v8::Nothing;
@@ -54,6 +56,8 @@ using v8::ObjectTemplate;
 using v8::PrimitiveArray;
 using v8::Promise;
 using v8::PromiseRejectEvent;
+using v8::PropertyAttribute;
+using v8::PropertyCallbackInfo;
 using v8::ScriptCompiler;
 using v8::ScriptOrigin;
 using v8::String;
@@ -62,6 +66,77 @@ using v8::UnboundModuleScript;
 using v8::Undefined;
 using v8::Value;
 
+inline bool DataIsString(Local<Data> data) {
+  return data->IsValue() && data.As<Value>()->IsString();
+}
+
+void ModuleCacheKey::MemoryInfo(MemoryTracker* tracker) const {
+  tracker->TrackField("specifier", specifier);
+  tracker->TrackField("import_attributes", import_attributes);
+}
+
+std::string ModuleCacheKey::ToString() const {
+  std::string result = "ModuleCacheKey(\"" + specifier + "\"";
+  if (!import_attributes.empty()) {
+    result += ", {";
+    bool first = true;
+    for (const auto& attr : import_attributes) {
+      if (first) {
+        first = false;
+      } else {
+        result += ", ";
+      }
+      result += attr.first + ": " + attr.second;
+    }
+    result += "}";
+  }
+  result += ")";
+  return result;
+}
+
+template <int elements_per_attribute>
+ModuleCacheKey ModuleCacheKey::From(Local<Context> context,
+                                    Local<String> specifier,
+                                    Local<FixedArray> import_attributes) {
+  CHECK_EQ(import_attributes->Length() % elements_per_attribute, 0);
+  Isolate* isolate = context->GetIsolate();
+  std::size_t h1 = specifier->GetIdentityHash();
+  size_t num_attributes = import_attributes->Length() / elements_per_attribute;
+  ImportAttributeVector attributes;
+  attributes.reserve(num_attributes);
+
+  std::size_t h2 = 0;
+
+  for (int i = 0; i < import_attributes->Length();
+       i += elements_per_attribute) {
+    DCHECK(DataIsString(import_attributes->Get(context, i)));
+    DCHECK(DataIsString(import_attributes->Get(context, i + 1)));
+
+    Local<String> v8_key = import_attributes->Get(context, i).As<String>();
+    Local<String> v8_value =
+        import_attributes->Get(context, i + 1).As<String>();
+    Utf8Value key_utf8(isolate, v8_key);
+    Utf8Value value_utf8(isolate, v8_value);
+
+    attributes.emplace_back(key_utf8.ToString(), value_utf8.ToString());
+    h2 ^= v8_key->GetIdentityHash();
+    h2 ^= v8_value->GetIdentityHash();
+  }
+
+  // Combine the hashes using a simple XOR and bit shift to reduce
+  // collisions. Note that the hash does not guarantee uniqueness.
+  std::size_t hash = h1 ^ (h2 << 1);
+
+  Utf8Value utf8_specifier(isolate, specifier);
+  return ModuleCacheKey{utf8_specifier.ToString(), attributes, hash};
+}
+
+ModuleCacheKey ModuleCacheKey::From(Local<Context> context,
+                                    Local<ModuleRequest> v8_request) {
+  return From(
+      context, v8_request->GetSpecifier(), v8_request->GetImportAttributes());
+}
+
 ModuleWrap::ModuleWrap(Realm* realm,
                        Local<Object> object,
                        Local<Module> module,
@@ -69,21 +144,36 @@ ModuleWrap::ModuleWrap(Realm* realm,
                        Local<Object> context_object,
                        Local<Value> synthetic_evaluation_step)
     : BaseObject(realm, object),
+      url_(Utf8Value(realm->isolate(), url).ToString()),
       module_(realm->isolate(), module),
       module_hash_(module->GetIdentityHash()) {
   realm->env()->hash_to_module_map.emplace(module_hash_, this);
 
   object->SetInternalField(kModuleSlot, module);
-  object->SetInternalField(kURLSlot, url);
+  object->SetInternalField(kModuleSourceObjectSlot,
+                           v8::Undefined(realm->isolate()));
   object->SetInternalField(kSyntheticEvaluationStepsSlot,
                            synthetic_evaluation_step);
   object->SetInternalField(kContextObjectSlot, context_object);
+  object->SetInternalField(kLinkedRequestsSlot,
+                           v8::Undefined(realm->isolate()));
 
   if (!synthetic_evaluation_step->IsUndefined()) {
     synthetic_ = true;
+    // Synthetic modules have no dependencies.
+    linked_ = true;
   }
   MakeWeak();
   module_.SetWeak();
+
+  HandleScope scope(realm->isolate());
+  Local<Context> context = realm->context();
+  Local<FixedArray> requests = module->GetModuleRequests();
+  for (int i = 0; i < requests->Length(); i++) {
+    ModuleCacheKey module_cache_key = ModuleCacheKey::From(
+        context, requests->Get(context, i).As<ModuleRequest>());
+    resolve_cache_[module_cache_key] = i;
+  }
 }
 
 ModuleWrap::~ModuleWrap() {
@@ -102,6 +192,30 @@ Local<Context> ModuleWrap::context() const {
   // before the ModuleWrap constructor completes.
   CHECK(obj->IsObject());
   return obj.As<Object>()->GetCreationContextChecked();
+}
+
+ModuleWrap* ModuleWrap::GetLinkedRequest(uint32_t index) {
+  DCHECK(IsLinked());
+  Isolate* isolate = env()->isolate();
+  EscapableHandleScope scope(isolate);
+  Local<Data> linked_requests_data =
+      object()->GetInternalField(kLinkedRequestsSlot);
+  DCHECK(linked_requests_data->IsValue() &&
+         linked_requests_data.As<Value>()->IsArray());
+  Local<Array> requests = linked_requests_data.As<Array>();
+
+  CHECK_LT(index, requests->Length());
+
+  Local<Value> module_value;
+  if (!requests->Get(context(), index).ToLocal(&module_value)) {
+    return nullptr;
+  }
+  CHECK(module_value->IsObject());
+  Local<Object> module_object = module_value.As<Object>();
+
+  ModuleWrap* module_wrap;
+  ASSIGN_OR_RETURN_UNWRAP(&module_wrap, module_object, nullptr);
+  return module_wrap;
 }
 
 ModuleWrap* ModuleWrap::GetFromModule(Environment* env,
@@ -130,7 +244,7 @@ Maybe<bool> ModuleWrap::CheckUnsettledTopLevelAwait() {
     return Just(true);
   }
 
-  if (!module->IsGraphAsync()) {  // There is no TLA, no need to check.
+  if (!HasAsyncGraph()) {  // There is no TLA, no need to check.
     return Just(true);
   }
 
@@ -151,6 +265,16 @@ Maybe<bool> ModuleWrap::CheckUnsettledTopLevelAwait() {
   }
 
   return Just(false);
+}
+
+bool ModuleWrap::HasAsyncGraph() {
+  if (!has_async_graph_.has_value()) {
+    Isolate* isolate = env()->isolate();
+    HandleScope scope(isolate);
+
+    has_async_graph_ = module_.Get(isolate)->IsGraphAsync();
+  }
+  return has_async_graph_.value();
 }
 
 Local<PrimitiveArray> ModuleWrap::GetHostDefinedOptions(
@@ -306,6 +430,13 @@ void ModuleWrap::New(const FunctionCallbackInfo<Value>& args) {
       }
 
       if (that->Set(context,
+                    realm->env()->has_top_level_await_string(),
+                    Boolean::New(isolate, module->HasTopLevelAwait()))
+              .IsNothing()) {
+        return;
+      }
+
+      if (that->Set(context,
                     realm->env()->source_url_string(),
                     module->GetUnboundModuleScript()->GetSourceURL())
               .IsNothing()) {
@@ -319,6 +450,13 @@ void ModuleWrap::New(const FunctionCallbackInfo<Value>& args) {
         return;
       }
     }
+  }
+
+  if (that->Set(context,
+                realm->isolate_data()->synthetic_string(),
+                Boolean::New(isolate, synthetic))
+          .IsNothing()) {
+    return;
   }
 
   if (!that->Set(context, realm->isolate_data()->url_string(), url)
@@ -419,6 +557,17 @@ MaybeLocal<Module> ModuleWrap::CompileSourceTextModule(
   return scope.Escape(module);
 }
 
+ModulePhase to_phase_constant(ModuleImportPhase phase) {
+  switch (phase) {
+    case ModuleImportPhase::kEvaluation:
+      return kEvaluationPhase;
+    case ModuleImportPhase::kSource:
+      return kSourcePhase;
+    default:
+      UNREACHABLE();
+  }
+}
+
 static Local<Object> createImportAttributesContainer(
     Realm* realm,
     Isolate* isolate,
@@ -430,20 +579,31 @@ static Local<Object> createImportAttributesContainer(
   LocalVector<Value> values(isolate, num_attributes);
 
   for (int i = 0; i < raw_attributes->Length(); i += elements_per_attribute) {
+    Local<Data> key = raw_attributes->Get(realm->context(), i);
+    Local<Data> value = raw_attributes->Get(realm->context(), i + 1);
+    DCHECK(DataIsString(key));
+    DCHECK(DataIsString(value));
+
     int idx = i / elements_per_attribute;
-    names[idx] = raw_attributes->Get(realm->context(), i).As<Name>();
-    values[idx] = raw_attributes->Get(realm->context(), i + 1).As<Value>();
+    names[idx] = key.As<String>();
+    values[idx] = value.As<String>();
   }
 
-  return Object::New(
+  Local<Object> attributes = Object::New(
       isolate, Null(isolate), names.data(), values.data(), num_attributes);
+  attributes->SetIntegrityLevel(realm->context(), v8::IntegrityLevel::kFrozen)
+      .Check();
+  return attributes;
 }
 
 static Local<Array> createModuleRequestsContainer(
     Realm* realm, Isolate* isolate, Local<FixedArray> raw_requests) {
+  EscapableHandleScope scope(isolate);
+  Local<Context> context = realm->context();
   LocalVector<Value> requests(isolate, raw_requests->Length());
 
   for (int i = 0; i < raw_requests->Length(); i++) {
+    DCHECK(raw_requests->Get(context, i)->IsModuleRequest());
     Local<ModuleRequest> module_request =
         raw_requests->Get(realm->context(), i).As<ModuleRequest>();
 
@@ -454,24 +614,28 @@ static Local<Array> createModuleRequestsContainer(
     Local<FixedArray> raw_attributes = module_request->GetImportAttributes();
     Local<Object> attributes =
         createImportAttributesContainer(realm, isolate, raw_attributes, 3);
+    ModuleImportPhase phase = module_request->GetPhase();
 
     Local<Name> names[] = {
         realm->isolate_data()->specifier_string(),
         realm->isolate_data()->attributes_string(),
+        realm->isolate_data()->phase_string(),
     };
     Local<Value> values[] = {
         specifier,
         attributes,
+        Integer::New(isolate, to_phase_constant(phase)),
     };
     DCHECK_EQ(arraysize(names), arraysize(values));
 
     Local<Object> request =
         Object::New(isolate, Null(isolate), names, values, arraysize(names));
+    request->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen).Check();
 
     requests[i] = request;
   }
 
-  return Array::New(isolate, requests.data(), requests.size());
+  return scope.Escape(Array::New(isolate, requests.data(), requests.size()));
 }
 
 void ModuleWrap::GetModuleRequests(const FunctionCallbackInfo<Value>& args) {
@@ -487,43 +651,48 @@ void ModuleWrap::GetModuleRequests(const FunctionCallbackInfo<Value>& args) {
       realm, isolate, module->GetModuleRequests()));
 }
 
-// moduleWrap.link(specifiers, moduleWraps)
+// moduleWrap.link(moduleWraps)
 void ModuleWrap::Link(const FunctionCallbackInfo<Value>& args) {
-  Realm* realm = Realm::GetCurrent(args);
   Isolate* isolate = args.GetIsolate();
+  Realm* realm = Realm::GetCurrent(args);
   Local<Context> context = realm->context();
 
   ModuleWrap* dependent;
   ASSIGN_OR_RETURN_UNWRAP(&dependent, args.This());
 
-  CHECK_EQ(args.Length(), 2);
+  CHECK_EQ(args.Length(), 1);
 
-  Local<Array> specifiers = args[0].As<Array>();
-  Local<Array> modules = args[1].As<Array>();
-  CHECK_EQ(specifiers->Length(), modules->Length());
+  Local<FixedArray> requests =
+      dependent->module_.Get(isolate)->GetModuleRequests();
+  Local<Array> modules = args[0].As<Array>();
+  CHECK_EQ(modules->Length(), static_cast<uint32_t>(requests->Length()));
 
-  std::vector<Global<Value>> specifiers_buffer;
-  if (FromV8Array(context, specifiers, &specifiers_buffer).IsNothing()) {
-    return;
+  for (int i = 0; i < requests->Length(); i++) {
+    ModuleCacheKey module_cache_key = ModuleCacheKey::From(
+        context, requests->Get(context, i).As<ModuleRequest>());
+    DCHECK(dependent->resolve_cache_.contains(module_cache_key));
+
+    Local<Value> module_i;
+    Local<Value> module_cache_i;
+    uint32_t coalesced_index = dependent->resolve_cache_[module_cache_key];
+    if (!modules->Get(context, i).ToLocal(&module_i) ||
+        !modules->Get(context, coalesced_index).ToLocal(&module_cache_i) ||
+        !module_i->StrictEquals(module_cache_i)) {
+      // If the module is different from the one of the same request, throw an
+      // error.
+      THROW_ERR_MODULE_LINK_MISMATCH(
+          realm->env(),
+          "Module request '%s' at index %d must be linked "
+          "to the same module requested at index %d",
+          module_cache_key.ToString(),
+          i,
+          coalesced_index);
+      return;
+    }
   }
-  std::vector<Global<Value>> modules_buffer;
-  if (FromV8Array(context, modules, &modules_buffer).IsNothing()) {
-    return;
-  }
 
-  for (uint32_t i = 0; i < specifiers->Length(); i++) {
-    Local<String> specifier_str =
-        specifiers_buffer[i].Get(isolate).As<String>();
-    Local<Object> module_object = modules_buffer[i].Get(isolate).As<Object>();
-
-    CHECK(
-        realm->isolate_data()->module_wrap_constructor_template()->HasInstance(
-            module_object));
-
-    Utf8Value specifier(isolate, specifier_str);
-    dependent->resolve_cache_[specifier.ToString()].Reset(isolate,
-                                                          module_object);
-  }
+  args.This()->SetInternalField(kLinkedRequestsSlot, modules);
+  dependent->linked_ = true;
 }
 
 void ModuleWrap::Instantiate(const FunctionCallbackInfo<Value>& args) {
@@ -533,21 +702,28 @@ void ModuleWrap::Instantiate(const FunctionCallbackInfo<Value>& args) {
   ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
   Local<Context> context = obj->context();
   Local<Module> module = obj->module_.Get(isolate);
-  TryCatchScope try_catch(realm->env());
-  USE(module->InstantiateModule(context, ResolveModuleCallback));
+  Environment* env = realm->env();
 
-  // clear resolve cache on instantiate
-  obj->resolve_cache_.clear();
-
-  if (try_catch.HasCaught() && !try_catch.HasTerminated()) {
-    CHECK(!try_catch.Message().IsEmpty());
-    CHECK(!try_catch.Exception().IsEmpty());
-    AppendExceptionLine(realm->env(),
-                        try_catch.Exception(),
-                        try_catch.Message(),
-                        ErrorHandlingMode::MODULE_ERROR);
-    try_catch.ReThrow();
+  if (!obj->IsLinked()) {
+    THROW_ERR_VM_MODULE_LINK_FAILURE(env, "module is not linked");
     return;
+  }
+
+  {
+    TryCatchScope try_catch(env);
+    USE(module->InstantiateModule(
+        context, ResolveModuleCallback, ResolveSourceCallback));
+
+    if (try_catch.HasCaught() && !try_catch.HasTerminated()) {
+      CHECK(!try_catch.Message().IsEmpty());
+      CHECK(!try_catch.Exception().IsEmpty());
+      AppendExceptionLine(env,
+                          try_catch.Exception(),
+                          try_catch.Message(),
+                          ErrorHandlingMode::MODULE_ERROR);
+      try_catch.ReThrow();
+      return;
+    }
   }
 }
 
@@ -582,24 +758,66 @@ void ModuleWrap::Evaluate(const FunctionCallbackInfo<Value>& args) {
   bool timed_out = false;
   bool received_signal = false;
   MaybeLocal<Value> result;
-  auto run = [&]() {
-    MaybeLocal<Value> result = module->Evaluate(context);
-    if (!result.IsEmpty() && microtask_queue)
+  {
+    auto wd = ([isolate](int64_t timeout, bool* timed_out_ptr) -> std::optional<Watchdog> {
+      if (timeout != -1) {
+        return std::make_optional<Watchdog>(isolate, timeout, timed_out_ptr);
+      } else {
+        return std::nullopt;
+      }
+    })(timeout, &timed_out);
+
+    auto swd = ([isolate](bool break_on_sigint, bool* received_signal_ptr) -> std::optional<SigintWatchdog> {
+      if (break_on_sigint) {
+        return std::make_optional<SigintWatchdog>(isolate, received_signal_ptr);
+      } else {
+        return std::nullopt;
+      }
+    })(break_on_sigint, &received_signal);
+
+    result = module->Evaluate(context);
+
+    Local<Value> res;
+    if (result.ToLocal(&res) && microtask_queue) {
+      DCHECK(res->IsPromise());
+
+      // To address https://github.com/nodejs/node/issues/59541 when the
+      // module has its own separate microtask queue in microtaskMode
+      // "afterEvaluate", we avoid returning a promise built inside the
+      // module's own context.
+      //
+      // Instead, we build a promise in the outer context, which we resolve
+      // with {result}, then we checkpoint the module's own queue, and finally
+      // we return the outer-context promise.
+      //
+      // If we simply returned the inner promise {result} directly, per
+      // https://tc39.es/ecma262/#sec-newpromiseresolvethenablejob, the outer
+      // context, when resolving a promise coming from a different context,
+      // would need to enqueue a task (known as a thenable job task) onto the
+      // queue of that different context (the module's context). But this queue
+      // will normally not be checkpointed after evaluate() returns.
+      //
+      // This means that the execution flow in the outer context would
+      // silently fall through at the statement (in lib/internal/vm/module.js):
+      //   await this[kWrap].evaluate(timeout, breakOnSigint)
+      //
+      // This is true for any promises created inside the module's context
+      // and made available to the outer context, as the node:vm doc explains.
+      //
+      // We must handle this particular return value differently to make it
+      // possible to await on the result of evaluate().
+      Local<Context> outer_context = isolate->GetCurrentContext();
+      Local<Promise::Resolver> resolver;
+      if (!Promise::Resolver::New(outer_context).ToLocal(&resolver)) {
+        result = {};
+      }
+      if (resolver->Resolve(outer_context, res).IsNothing()) {
+        result = {};
+      }
+      result = resolver->GetPromise();
+
       microtask_queue->PerformCheckpoint(isolate);
-    return result;
-  };
-  if (break_on_sigint && timeout != -1) {
-    Watchdog wd(isolate, timeout, &timed_out);
-    SigintWatchdog swd(isolate, &received_signal);
-    result = run();
-  } else if (break_on_sigint) {
-    SigintWatchdog swd(isolate, &received_signal);
-    result = run();
-  } else if (timeout != -1) {
-    Watchdog wd(isolate, timeout, &timed_out);
-    result = run();
-  } else {
-    result = run();
+    }
   }
 
   if (result.IsEmpty()) {
@@ -630,39 +848,6 @@ void ModuleWrap::Evaluate(const FunctionCallbackInfo<Value>& args) {
   if (result.ToLocal(&res)) {
     args.GetReturnValue().Set(res);
   }
-}
-
-void ModuleWrap::InstantiateSync(const FunctionCallbackInfo<Value>& args) {
-  Realm* realm = Realm::GetCurrent(args);
-  Isolate* isolate = args.GetIsolate();
-  ModuleWrap* obj;
-  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
-  Local<Context> context = obj->context();
-  Local<Module> module = obj->module_.Get(isolate);
-  Environment* env = realm->env();
-
-  {
-    TryCatchScope try_catch(env);
-    USE(module->InstantiateModule(context, ResolveModuleCallback));
-
-    // clear resolve cache on instantiate
-    obj->resolve_cache_.clear();
-
-    if (try_catch.HasCaught() && !try_catch.HasTerminated()) {
-      CHECK(!try_catch.Message().IsEmpty());
-      CHECK(!try_catch.Exception().IsEmpty());
-      AppendExceptionLine(env,
-                          try_catch.Exception(),
-                          try_catch.Message(),
-                          ErrorHandlingMode::MODULE_ERROR);
-      try_catch.ReThrow();
-      return;
-    }
-  }
-
-  // TODO(joyeecheung): record Module::HasTopLevelAwait() in every ModuleWrap
-  // and infer the asynchronicity from a module's children during linking.
-  args.GetReturnValue().Set(module->IsGraphAsync());
 }
 
 Maybe<void> ThrowIfPromiseRejected(Realm* realm, Local<Promise> promise) {
@@ -730,7 +915,7 @@ void ModuleWrap::EvaluateSync(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
-  if (module->IsGraphAsync()) {
+  if (obj->HasAsyncGraph()) {
     CHECK(env->options()->print_required_tla);
     auto stalled_messages =
         std::get<1>(module->GetStalledTopLevelAwaitMessages(isolate));
@@ -752,33 +937,6 @@ void ModuleWrap::EvaluateSync(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(module->GetModuleNamespace());
 }
 
-void ModuleWrap::GetNamespaceSync(const FunctionCallbackInfo<Value>& args) {
-  Realm* realm = Realm::GetCurrent(args);
-  Isolate* isolate = args.GetIsolate();
-  ModuleWrap* obj;
-  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
-  Local<Module> module = obj->module_.Get(isolate);
-
-  switch (module->GetStatus()) {
-    case Module::Status::kUninstantiated:
-    case Module::Status::kInstantiating:
-      return realm->env()->ThrowError(
-          "Cannot get namespace, module has not been instantiated");
-    case Module::Status::kInstantiated:
-    case Module::Status::kEvaluated:
-    case Module::Status::kErrored:
-      break;
-    case Module::Status::kEvaluating:
-      UNREACHABLE();
-  }
-
-  if (module->IsGraphAsync()) {
-    return THROW_ERR_REQUIRE_ASYNC_MODULE(realm->env(), args[0], args[1]);
-  }
-  Local<Value> result = module->GetModuleNamespace();
-  args.GetReturnValue().Set(result);
-}
-
 void ModuleWrap::GetNamespace(const FunctionCallbackInfo<Value>& args) {
   Realm* realm = Realm::GetCurrent(args);
   Isolate* isolate = args.GetIsolate();
@@ -786,23 +944,45 @@ void ModuleWrap::GetNamespace(const FunctionCallbackInfo<Value>& args) {
   ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
 
   Local<Module> module = obj->module_.Get(isolate);
-
-  switch (module->GetStatus()) {
-    case Module::Status::kUninstantiated:
-    case Module::Status::kInstantiating:
-      return realm->env()->ThrowError(
-          "cannot get namespace, module has not been instantiated");
-    case Module::Status::kInstantiated:
-    case Module::Status::kEvaluating:
-    case Module::Status::kEvaluated:
-    case Module::Status::kErrored:
-      break;
-    default:
-      UNREACHABLE();
+  if (module->GetStatus() < Module::kInstantiated) {
+    return THROW_ERR_MODULE_NOT_INSTANTIATED(realm->env());
   }
 
   Local<Value> result = module->GetModuleNamespace();
   args.GetReturnValue().Set(result);
+}
+
+void ModuleWrap::SetModuleSourceObject(
+    const FunctionCallbackInfo<Value>& args) {
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+
+  CHECK_EQ(args.Length(), 1);
+  CHECK(args[0]->IsObject());
+  CHECK(obj->object()
+            ->GetInternalField(kModuleSourceObjectSlot)
+            .As<Value>()
+            ->IsUndefined());
+
+  obj->object()->SetInternalField(kModuleSourceObjectSlot, args[0]);
+}
+
+void ModuleWrap::GetModuleSourceObject(
+    const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+
+  CHECK_EQ(args.Length(), 0);
+  Local<Value> module_source_object =
+      obj->object()->GetInternalField(kModuleSourceObjectSlot).As<Value>();
+
+  if (module_source_object->IsUndefined()) {
+    THROW_ERR_SOURCE_PHASE_NOT_DEFINED(isolate, obj->url_);
+    return;
+  }
+
+  args.GetReturnValue().Set(module_source_object);
 }
 
 void ModuleWrap::GetStatus(const FunctionCallbackInfo<Value>& args) {
@@ -815,16 +995,6 @@ void ModuleWrap::GetStatus(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(module->GetStatus());
 }
 
-void ModuleWrap::IsGraphAsync(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-  ModuleWrap* obj;
-  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
-
-  Local<Module> module = obj->module_.Get(isolate);
-
-  args.GetReturnValue().Set(module->IsGraphAsync());
-}
-
 void ModuleWrap::GetError(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
   ModuleWrap* obj;
@@ -834,7 +1004,64 @@ void ModuleWrap::GetError(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(module->GetException());
 }
 
+void ModuleWrap::HasAsyncGraph(Local<Name> property,
+                               const PropertyCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  Environment* env = Environment::GetCurrent(isolate);
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+
+  Local<Module> module = obj->module_.Get(isolate);
+  if (module->GetStatus() < Module::kInstantiated) {
+    return THROW_ERR_MODULE_NOT_INSTANTIATED(env);
+  }
+
+  args.GetReturnValue().Set(obj->HasAsyncGraph());
+}
+
+// static
 MaybeLocal<Module> ModuleWrap::ResolveModuleCallback(
+    Local<Context> context,
+    Local<String> specifier,
+    Local<FixedArray> import_attributes,
+    Local<Module> referrer) {
+  ModuleWrap* resolved_module;
+  if (!ResolveModule(context, specifier, import_attributes, referrer)
+           .To(&resolved_module)) {
+    return {};
+  }
+  DCHECK_NOT_NULL(resolved_module);
+  return resolved_module->module_.Get(context->GetIsolate());
+}
+
+// static
+MaybeLocal<Object> ModuleWrap::ResolveSourceCallback(
+    Local<Context> context,
+    Local<String> specifier,
+    Local<FixedArray> import_attributes,
+    Local<Module> referrer) {
+  ModuleWrap* resolved_module;
+  if (!ResolveModule(context, specifier, import_attributes, referrer)
+           .To(&resolved_module)) {
+    return {};
+  }
+  DCHECK_NOT_NULL(resolved_module);
+
+  Local<Value> module_source_object =
+      resolved_module->object()
+          ->GetInternalField(ModuleWrap::kModuleSourceObjectSlot)
+          .As<Value>();
+  if (module_source_object->IsUndefined()) {
+    THROW_ERR_SOURCE_PHASE_NOT_DEFINED(context->GetIsolate(),
+                                       resolved_module->url_);
+    return {};
+  }
+  CHECK(module_source_object->IsObject());
+  return module_source_object.As<Object>();
+}
+
+// static
+Maybe<ModuleWrap*> ModuleWrap::ResolveModule(
     Local<Context> context,
     Local<String> specifier,
     Local<FixedArray> import_attributes,
@@ -843,43 +1070,50 @@ MaybeLocal<Module> ModuleWrap::ResolveModuleCallback(
   Environment* env = Environment::GetCurrent(context);
   if (env == nullptr) {
     THROW_ERR_EXECUTION_ENVIRONMENT_NOT_AVAILABLE(isolate);
-    return MaybeLocal<Module>();
+    return Nothing<ModuleWrap*>();
   }
+  // Check that the referrer is not yet been instantiated.
+  DCHECK(referrer->GetStatus() <= Module::kInstantiated);
 
-  Utf8Value specifier_utf8(isolate, specifier);
-  std::string specifier_std(*specifier_utf8, specifier_utf8.length());
+  ModuleCacheKey cache_key =
+      ModuleCacheKey::From(context, specifier, import_attributes);
 
-  ModuleWrap* dependent = GetFromModule(env, referrer);
+  ModuleWrap* dependent = ModuleWrap::GetFromModule(env, referrer);
   if (dependent == nullptr) {
     THROW_ERR_VM_MODULE_LINK_FAILURE(
-        env, "request for '%s' is from invalid module", specifier_std);
-    return MaybeLocal<Module>();
+        env, "request for '%s' is from invalid module", cache_key.specifier);
+    return Nothing<ModuleWrap*>();
+  }
+  if (!dependent->IsLinked()) {
+    THROW_ERR_VM_MODULE_LINK_FAILURE(env,
+                                     "request for '%s' can not be resolved on "
+                                     "module '%s' that is not linked",
+                                     cache_key.specifier,
+                                     dependent->url_);
+    return Nothing<ModuleWrap*>();
   }
 
-  if (dependent->resolve_cache_.count(specifier_std) != 1) {
+  auto it = dependent->resolve_cache_.find(cache_key);
+  if (it == dependent->resolve_cache_.end()) {
     THROW_ERR_VM_MODULE_LINK_FAILURE(
-        env, "request for '%s' is not in cache", specifier_std);
-    return MaybeLocal<Module>();
+        env,
+        "request for '%s' is not cached on module '%s'",
+        cache_key.specifier,
+        dependent->url_);
+    return Nothing<ModuleWrap*>();
   }
 
-  Local<Object> module_object =
-      dependent->resolve_cache_[specifier_std].Get(isolate);
-  if (module_object.IsEmpty() || !module_object->IsObject()) {
-    THROW_ERR_VM_MODULE_LINK_FAILURE(
-        env, "request for '%s' did not return an object", specifier_std);
-    return MaybeLocal<Module>();
-  }
-
-  ModuleWrap* module;
-  ASSIGN_OR_RETURN_UNWRAP(&module, module_object, MaybeLocal<Module>());
-  return module->module_.Get(isolate);
+  ModuleWrap* module_wrap = dependent->GetLinkedRequest(it->second);
+  CHECK_NOT_NULL(module_wrap);
+  return Just(module_wrap);
 }
 
-static MaybeLocal<Promise> ImportModuleDynamically(
+static MaybeLocal<Promise> ImportModuleDynamicallyWithPhase(
     Local<Context> context,
     Local<Data> host_defined_options,
     Local<Value> resource_name,
     Local<String> specifier,
+    ModuleImportPhase phase,
     Local<FixedArray> import_attributes) {
   Isolate* isolate = context->GetIsolate();
   Environment* env = Environment::GetCurrent(context);
@@ -917,6 +1151,7 @@ static MaybeLocal<Promise> ImportModuleDynamically(
   Local<Value> import_args[] = {
       id,
       Local<Value>(specifier),
+      Integer::New(isolate, to_phase_constant(phase)),
       attributes,
       resource_name,
   };
@@ -941,6 +1176,20 @@ static MaybeLocal<Promise> ImportModuleDynamically(
   return handle_scope.Escape(resolver->GetPromise());
 }
 
+static MaybeLocal<Promise> ImportModuleDynamically(
+    Local<Context> context,
+    Local<Data> host_defined_options,
+    Local<Value> resource_name,
+    Local<String> specifier,
+    Local<FixedArray> import_attributes) {
+  return ImportModuleDynamicallyWithPhase(context,
+                                          host_defined_options,
+                                          resource_name,
+                                          specifier,
+                                          ModuleImportPhase::kEvaluation,
+                                          import_attributes);
+}
+
 void ModuleWrap::SetImportModuleDynamicallyCallback(
     const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
@@ -953,6 +1202,8 @@ void ModuleWrap::SetImportModuleDynamicallyCallback(
   realm->set_host_import_module_dynamically_callback(import_callback);
 
   isolate->SetHostImportModuleDynamicallyCallback(ImportModuleDynamically);
+  isolate->SetHostImportModuleWithPhaseDynamicallyCallback(
+      ImportModuleDynamicallyWithPhase);
 }
 
 void ModuleWrap::HostInitializeImportMetaObjectCallback(
@@ -1171,19 +1422,25 @@ void ModuleWrap::CreatePerIsolateProperties(IsolateData* isolate_data,
 
   SetProtoMethod(isolate, tpl, "link", Link);
   SetProtoMethod(isolate, tpl, "getModuleRequests", GetModuleRequests);
-  SetProtoMethod(isolate, tpl, "instantiateSync", InstantiateSync);
-  SetProtoMethod(isolate, tpl, "evaluateSync", EvaluateSync);
-  SetProtoMethod(isolate, tpl, "getNamespaceSync", GetNamespaceSync);
   SetProtoMethod(isolate, tpl, "instantiate", Instantiate);
+  SetProtoMethod(isolate, tpl, "evaluateSync", EvaluateSync);
   SetProtoMethod(isolate, tpl, "evaluate", Evaluate);
   SetProtoMethod(isolate, tpl, "setExport", SetSyntheticExport);
+  SetProtoMethod(isolate, tpl, "setModuleSourceObject", SetModuleSourceObject);
+  SetProtoMethod(isolate, tpl, "getModuleSourceObject", GetModuleSourceObject);
   SetProtoMethodNoSideEffect(
       isolate, tpl, "createCachedData", CreateCachedData);
   SetProtoMethodNoSideEffect(isolate, tpl, "getNamespace", GetNamespace);
   SetProtoMethodNoSideEffect(isolate, tpl, "getStatus", GetStatus);
-  SetProtoMethodNoSideEffect(isolate, tpl, "isGraphAsync", IsGraphAsync);
   SetProtoMethodNoSideEffect(isolate, tpl, "getError", GetError);
   SetConstructorFunction(isolate, target, "ModuleWrap", tpl);
+
+  tpl->InstanceTemplate()->SetLazyDataProperty(
+      FIXED_ONE_BYTE_STRING(isolate, "hasAsyncGraph"),
+      HasAsyncGraph,
+      Local<Value>(),
+      PropertyAttribute::DontEnum);
+
   isolate_data->set_module_wrap_constructor_template(tpl);
 
   SetMethod(isolate,
@@ -1207,18 +1464,21 @@ void ModuleWrap::CreatePerContextProperties(Local<Object> target,
                                             void* priv) {
   Realm* realm = Realm::GetCurrent(context);
   Isolate* isolate = realm->isolate();
-#define V(name)                                                                \
+#define V(enum_type, name)                                                     \
   target                                                                       \
       ->Set(context,                                                           \
             FIXED_ONE_BYTE_STRING(isolate, #name),                             \
-            Integer::New(isolate, Module::Status::name))                       \
+            Integer::New(isolate, enum_type::name))                            \
       .FromJust()
-  V(kUninstantiated);
-  V(kInstantiating);
-  V(kInstantiated);
-  V(kEvaluating);
-  V(kEvaluated);
-  V(kErrored);
+  V(Module::Status, kUninstantiated);
+  V(Module::Status, kInstantiating);
+  V(Module::Status, kInstantiated);
+  V(Module::Status, kEvaluating);
+  V(Module::Status, kEvaluated);
+  V(Module::Status, kErrored);
+
+  V(ModulePhase, kEvaluationPhase);
+  V(ModulePhase, kSourcePhase);
 #undef V
 }
 
@@ -1228,17 +1488,17 @@ void ModuleWrap::RegisterExternalReferences(
 
   registry->Register(Link);
   registry->Register(GetModuleRequests);
-  registry->Register(InstantiateSync);
   registry->Register(EvaluateSync);
-  registry->Register(GetNamespaceSync);
   registry->Register(Instantiate);
   registry->Register(Evaluate);
   registry->Register(SetSyntheticExport);
+  registry->Register(SetModuleSourceObject);
+  registry->Register(GetModuleSourceObject);
   registry->Register(CreateCachedData);
   registry->Register(GetNamespace);
   registry->Register(GetStatus);
   registry->Register(GetError);
-  registry->Register(IsGraphAsync);
+  registry->Register(HasAsyncGraph);
 
   registry->Register(CreateRequiredModuleFacade);
 

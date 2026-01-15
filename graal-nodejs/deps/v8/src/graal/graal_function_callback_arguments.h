@@ -50,10 +50,9 @@ namespace v8 {
     namespace internal {
         class FunctionCallbackArguments {
             public:
-                static constexpr int kHolderIndex = FunctionCallbackInfo<v8::Value>::kHolderIndex;
                 static constexpr int kIsolateIndex = FunctionCallbackInfo<v8::Value>::kIsolateIndex;
                 static constexpr int kReturnValueIndex = FunctionCallbackInfo<v8::Value>::kReturnValueIndex;
-                static constexpr int kDataIndex = FunctionCallbackInfo<v8::Value>::kDataIndex;
+                static constexpr int kTargetIndex = FunctionCallbackInfo<v8::Value>::kTargetIndex;
                 static constexpr int kNewTargetIndex = FunctionCallbackInfo<v8::Value>::kNewTargetIndex;
                 static constexpr int kArgsLength = FunctionCallbackInfo<v8::Value>::kArgsLength;
         };

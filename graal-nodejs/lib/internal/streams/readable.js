@@ -32,6 +32,7 @@ const {
   Promise,
   SafeSet,
   Symbol,
+  SymbolAsyncDispose,
   SymbolAsyncIterator,
   SymbolSpecies,
   TypedArrayPrototypeSet,
@@ -43,9 +44,6 @@ Readable.ReadableState = ReadableState;
 const EE = require('events');
 const { Stream, prependListener } = require('internal/streams/legacy');
 const { Buffer } = require('buffer');
-const {
-  SymbolAsyncDispose,
-} = require('internal/util');
 
 const {
   addAbortSignal,
@@ -855,7 +853,7 @@ function emitReadable_(stream) {
 // However, if we're not ended, or reading, and the length < hwm,
 // then go ahead and try to read some more preemptively.
 function maybeReadMore(stream, state) {
-  if ((state[kState] & (kReadingMore | kConstructed)) === kConstructed) {
+  if ((state[kState] & (kReadingMore | kReading | kConstructed)) === kConstructed) {
     state[kState] |= kReadingMore;
     process.nextTick(maybeReadMore_, stream, state);
   }
@@ -1006,10 +1004,15 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
   src.on('data', ondata);
   function ondata(chunk) {
     debug('ondata');
-    const ret = dest.write(chunk);
-    debug('dest.write', ret);
-    if (ret === false) {
-      pause();
+    try {
+      const ret = dest.write(chunk);
+      debug('dest.write', ret);
+
+      if (ret === false) {
+        pause();
+      }
+    } catch (error) {
+      dest.destroy(error);
     }
   }
 

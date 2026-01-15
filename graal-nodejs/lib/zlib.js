@@ -49,7 +49,7 @@ const {
 } = require('internal/errors');
 const { Transform, finished } = require('stream');
 const {
-  deprecate,
+  deprecateInstantiation,
 } = require('internal/util');
 const {
   isArrayBufferView,
@@ -203,7 +203,10 @@ const FLUSH_BOUND_IDX_NORMAL = 0;
 const FLUSH_BOUND_IDX_BROTLI = 1;
 const FLUSH_BOUND_IDX_ZSTD = 2;
 
-// The base class for all Zlib-style streams.
+/**
+ * The base class for all Zlib-style streams.
+ * @class
+ */
 function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
   let chunkSize = Z_DEFAULT_CHUNK;
   let maxOutputLength = kMaxLength;
@@ -282,26 +285,8 @@ ObjectDefineProperty(ZlibBase.prototype, '_closed', {
   },
 });
 
-// `bytesRead` made sense as a name when looking from the zlib engine's
-// perspective, but it is inconsistent with all other streams exposed by Node.js
-// that have this concept, where it stands for the number of bytes read
-// *from* the stream (that is, net.Socket/tls.Socket & file system streams).
-ObjectDefineProperty(ZlibBase.prototype, 'bytesRead', {
-  __proto__: null,
-  configurable: true,
-  enumerable: true,
-  get: deprecate(function() {
-    return this.bytesWritten;
-  }, 'zlib.bytesRead is deprecated and will change its meaning in the ' +
-     'future. Use zlib.bytesWritten instead.', 'DEP0108'),
-  set: deprecate(function(value) {
-    this.bytesWritten = value;
-  }, 'Setting zlib.bytesRead is deprecated. ' +
-     'This feature will be removed in the future.', 'DEP0108'),
-});
-
 /**
- * @this ZlibBase
+ * @this {ZlibBase}
  * @returns {void}
  */
 ZlibBase.prototype.reset = function() {
@@ -309,13 +294,21 @@ ZlibBase.prototype.reset = function() {
   return this._handle.reset();
 };
 
-// This is the _flush function called by the transform class,
-// internally, when the last chunk has been written.
+/**
+ * @this {ZlibBase}
+ * This is the _flush function called by the transform class,
+ * internally, when the last chunk has been written.
+ * @returns {void}
+ */
 ZlibBase.prototype._flush = function(callback) {
   this._transform(Buffer.alloc(0), '', callback);
 };
 
-// Force Transform compat behavior.
+/**
+ * @this {ZlibBase}
+ * Force Transform compat behavior.
+ * @returns {void}
+ */
 ZlibBase.prototype._final = function(callback) {
   callback();
 };
@@ -368,7 +361,7 @@ ZlibBase.prototype.flush = function(kind, callback) {
 };
 
 /**
- * @this import('stream').Transform
+ * @this {import('stream').Transform}
  * @param {(err?: Error) => any} [callback]
  */
 ZlibBase.prototype.close = function(callback) {
@@ -727,32 +720,36 @@ Zlib.prototype.params = function params(level, strategy, callback) {
 // generic zlib
 // minimal 2-byte header
 function Deflate(opts) {
-  if (!(this instanceof Deflate))
-    return new Deflate(opts);
+  if (!(this instanceof Deflate)) {
+    return deprecateInstantiation(Deflate, 'DEP0184', opts);
+  }
   ReflectApply(Zlib, this, [opts, DEFLATE]);
 }
 ObjectSetPrototypeOf(Deflate.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Deflate, Zlib);
 
 function Inflate(opts) {
-  if (!(this instanceof Inflate))
-    return new Inflate(opts);
+  if (!(this instanceof Inflate)) {
+    return deprecateInstantiation(Inflate, 'DEP0184', opts);
+  }
   ReflectApply(Zlib, this, [opts, INFLATE]);
 }
 ObjectSetPrototypeOf(Inflate.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Inflate, Zlib);
 
 function Gzip(opts) {
-  if (!(this instanceof Gzip))
-    return new Gzip(opts);
+  if (!(this instanceof Gzip)) {
+    return deprecateInstantiation(Gzip, 'DEP0184', opts);
+  }
   ReflectApply(Zlib, this, [opts, GZIP]);
 }
 ObjectSetPrototypeOf(Gzip.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Gzip, Zlib);
 
 function Gunzip(opts) {
-  if (!(this instanceof Gunzip))
-    return new Gunzip(opts);
+  if (!(this instanceof Gunzip)) {
+    return deprecateInstantiation(Gunzip, 'DEP0184', opts);
+  }
   ReflectApply(Zlib, this, [opts, GUNZIP]);
 }
 ObjectSetPrototypeOf(Gunzip.prototype, Zlib.prototype);
@@ -760,24 +757,27 @@ ObjectSetPrototypeOf(Gunzip, Zlib);
 
 function DeflateRaw(opts) {
   if (opts && opts.windowBits === 8) opts.windowBits = 9;
-  if (!(this instanceof DeflateRaw))
-    return new DeflateRaw(opts);
+  if (!(this instanceof DeflateRaw)) {
+    return deprecateInstantiation(DeflateRaw, 'DEP0184', opts);
+  }
   ReflectApply(Zlib, this, [opts, DEFLATERAW]);
 }
 ObjectSetPrototypeOf(DeflateRaw.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(DeflateRaw, Zlib);
 
 function InflateRaw(opts) {
-  if (!(this instanceof InflateRaw))
-    return new InflateRaw(opts);
+  if (!(this instanceof InflateRaw)) {
+    return deprecateInstantiation(InflateRaw, 'DEP0184', opts);
+  }
   ReflectApply(Zlib, this, [opts, INFLATERAW]);
 }
 ObjectSetPrototypeOf(InflateRaw.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(InflateRaw, Zlib);
 
 function Unzip(opts) {
-  if (!(this instanceof Unzip))
-    return new Unzip(opts);
+  if (!(this instanceof Unzip)) {
+    return deprecateInstantiation(Unzip, 'DEP0184', opts);
+  }
   ReflectApply(Zlib, this, [opts, UNZIP]);
 }
 ObjectSetPrototypeOf(Unzip.prototype, Zlib.prototype);
@@ -842,16 +842,18 @@ ObjectSetPrototypeOf(Brotli.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Brotli, Zlib);
 
 function BrotliCompress(opts) {
-  if (!(this instanceof BrotliCompress))
-    return new BrotliCompress(opts);
+  if (!(this instanceof BrotliCompress)) {
+    return deprecateInstantiation(BrotliCompress, 'DEP0184', opts);
+  }
   ReflectApply(Brotli, this, [opts, BROTLI_ENCODE]);
 }
 ObjectSetPrototypeOf(BrotliCompress.prototype, Brotli.prototype);
 ObjectSetPrototypeOf(BrotliCompress, Brotli);
 
 function BrotliDecompress(opts) {
-  if (!(this instanceof BrotliDecompress))
-    return new BrotliDecompress(opts);
+  if (!(this instanceof BrotliDecompress)) {
+    return deprecateInstantiation(BrotliDecompress, 'DEP0184', opts);
+  }
   ReflectApply(Brotli, this, [opts, BROTLI_DECODE]);
 }
 ObjectSetPrototypeOf(BrotliDecompress.prototype, Brotli.prototype);
@@ -891,12 +893,15 @@ class Zstd extends ZlibBase {
     const pledgedSrcSize = opts?.pledgedSrcSize ?? undefined;
 
     const writeState = new Uint32Array(2);
+
     handle.init(
       initParamsArray,
       pledgedSrcSize,
       writeState,
       processCallback,
+      opts?.dictionary && isArrayBufferView(opts.dictionary) ? opts.dictionary : undefined,
     );
+
     super(opts, mode, handle, zstdDefaultOpts);
     this._writeState = writeState;
   }

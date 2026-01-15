@@ -21,7 +21,6 @@ using v8::IntegrityLevel;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Object;
-using v8::String;
 using v8::Value;
 
 namespace permission {
@@ -34,24 +33,20 @@ static void Has(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   CHECK(args[0]->IsString());
 
-  String::Utf8Value utf8_deny_scope(env->isolate(), args[0]);
-  if (*utf8_deny_scope == nullptr) {
-    return;
-  }
-
-  const std::string deny_scope = *utf8_deny_scope;
+  const std::string deny_scope = Utf8Value(env->isolate(), args[0]).ToString();
   PermissionScope scope = Permission::StringToPermission(deny_scope);
   if (scope == PermissionScope::kPermissionsRoot) {
     return args.GetReturnValue().Set(false);
   }
 
   if (args.Length() > 1 && !args[1]->IsUndefined()) {
-    String::Utf8Value utf8_arg(env->isolate(), args[1]);
-    if (*utf8_arg == nullptr) {
+    Utf8Value utf8_arg(env->isolate(), args[1]);
+    if (utf8_arg.length() == 0) {
+      args.GetReturnValue().Set(false);
       return;
     }
     return args.GetReturnValue().Set(
-        env->permission()->is_granted(env, scope, *utf8_arg));
+        env->permission()->is_granted(env, scope, utf8_arg.ToStringView()));
   }
 
   return args.GetReturnValue().Set(env->permission()->is_granted(env, scope));
@@ -84,6 +79,7 @@ Permission::Permission() : enabled_(false) {
   std::shared_ptr<PermissionBase> inspector =
       std::make_shared<InspectorPermission>();
   std::shared_ptr<PermissionBase> wasi = std::make_shared<WASIPermission>();
+  std::shared_ptr<PermissionBase> addon = std::make_shared<AddonPermission>();
 #define V(Name, _, __, ___)                                                    \
   nodes_.insert(std::make_pair(PermissionScope::k##Name, fs));
   FILESYSTEM_PERMISSIONS(V)
@@ -103,6 +99,10 @@ Permission::Permission() : enabled_(false) {
 #define V(Name, _, __, ___)                                                    \
   nodes_.insert(std::make_pair(PermissionScope::k##Name, wasi));
   WASI_PERMISSIONS(V)
+#undef V
+#define V(Name, _, __, ___)                                                    \
+  nodes_.insert(std::make_pair(PermissionScope::k##Name, addon));
+  ADDON_PERMISSIONS(V)
 #undef V
 }
 

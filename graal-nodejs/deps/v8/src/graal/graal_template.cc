@@ -41,6 +41,7 @@
 
 #include "graal_function_template.h"
 #include "graal_isolate.h"
+#include "graal_primitive.h"
 #include "graal_template.h"
 #include "graal_value.h"
 
@@ -61,4 +62,22 @@ void GraalTemplate::SetAccessorProperty(
     jobject java_setter = setter.IsEmpty() ? nullptr : reinterpret_cast<GraalFunctionTemplate*> (*setter)->GetJavaObject();
     jint java_attributes = static_cast<jint> (attributes);
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::template_set_accessor_property, GetJavaObject(), java_name, java_getter, java_setter, java_attributes);
+}
+
+void GraalTemplate::SetLazyDataProperty(
+        v8::Local<v8::Name> name,
+        v8::AccessorNameGetterCallback getter,
+        v8::Local<v8::Value> data,
+        v8::PropertyAttribute attribute) {
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_key = reinterpret_cast<GraalValue*> (*name)->GetJavaObject();
+    jlong java_getter = (jlong) getter;
+    jobject java_data;
+    if (data.IsEmpty()) {
+        java_data = graal_isolate->GetUndefined()->GetJavaObject();
+    } else {
+        java_data = reinterpret_cast<GraalValue*> (*data)->GetJavaObject();
+    }
+    jint java_attrs = attribute;
+    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::template_set_lazy_data_property, GetJavaObject(), java_key, java_getter, java_data, java_attrs);
 }

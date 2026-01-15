@@ -64,4 +64,8 @@ if [ "$(uname -s)" == "SunOS" ]; then
 fi
 export PATH
 
-exec "${bin_dir}/node" "${NODE_ARGS[@]}" "${parent_bin_dir}/npm/bin/npm-cli.js" "${NODE_DIR}" "${PROGRAM_ARGS[@]}"
+if [ "${npm_package_config_node_gyp_nodedir+set}" != set ]; then
+  export npm_package_config_node_gyp_nodedir="${NODE_DIR:10}"
+fi
+
+exec "${bin_dir}/node" "${NODE_ARGS[@]}" "${parent_bin_dir}/npm/bin/npm-cli.js" "${PROGRAM_ARGS[@]}"

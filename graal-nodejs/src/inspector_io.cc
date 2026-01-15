@@ -286,6 +286,11 @@ void InspectorIo::ThreadMain(void* io) {
 }
 
 void InspectorIo::ThreadMain() {
+  int thread_name_error = uv_thread_setname("InspectorIo");
+  if (!thread_name_error) [[unlikely]] {
+    per_process::Debug(node::DebugCategory::INSPECTOR_SERVER,
+                       "Failed to set thread name for Inspector\n");
+  }
   uv_loop_t loop;
   loop.data = nullptr;
   int err = uv_loop_init(&loop);
@@ -348,6 +353,9 @@ std::optional<std::string> InspectorIoDelegate::GetTargetSessionId(
   std::string_view view(message.data(), message.size());
   std::unique_ptr<protocol::DictionaryValue> value =
       protocol::DictionaryValue::cast(JsonUtil::parseJSON(view));
+  if (!value) {
+    return std::nullopt;
+  }
   protocol::String target_session_id;
   protocol::Value* target_session_id_value = value->get("sessionId");
   if (target_session_id_value) {

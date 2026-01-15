@@ -49,6 +49,8 @@ if (!hasOpenSSL3) {
   documented.delete('--openssl-shared-config');
 }
 
+const isV8Sandboxed = process.config.variables.v8_enable_sandbox;
+
 // Filter out options that are conditionally present.
 const conditionalOpts = [
   {
@@ -71,6 +73,9 @@ const conditionalOpts = [
   }, {
     include: common.hasIntl,
     filter: (opt) => opt === '--icu-data-dir'
+  }, {
+    include: !isV8Sandboxed,
+    filter: (opt) => ['--secure-heap', '--secure-heap-min'].includes(opt)
   },
 ];
 documented.forEach((opt) => {
@@ -114,6 +119,10 @@ const undocumented = difference(process.allowedNodeEnvironmentFlags,
 assert(undocumented.delete('--debug-arraybuffer-allocations'));
 assert(undocumented.delete('--no-debug-arraybuffer-allocations'));
 assert(undocumented.delete('--es-module-specifier-resolution'));
+assert(undocumented.delete('--experimental-fetch'));
+assert(undocumented.delete('--experimental-wasm-modules'));
+assert(undocumented.delete('--experimental-global-customevent'));
+assert(undocumented.delete('--experimental-global-webcrypto'));
 assert(undocumented.delete('--experimental-report'));
 assert(undocumented.delete('--experimental-worker'));
 assert(undocumented.delete('--node-snapshot'));
@@ -123,6 +132,10 @@ assert(undocumented.delete('--verify-base-objects'));
 assert(undocumented.delete('--no-verify-base-objects'));
 assert(undocumented.delete('--trace-promises'));
 assert(undocumented.delete('--no-trace-promises'));
+assert(undocumented.delete('--experimental-quic'));
+if (common.hasQuic) {
+  assert(undocumented.delete('--no-experimental-quic'));
+}
 
 // Remove negated versions of the flags.
 for (const flag of undocumented) {

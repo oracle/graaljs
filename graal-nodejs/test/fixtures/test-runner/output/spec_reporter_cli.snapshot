@@ -60,15 +60,14 @@
  callback called twice in future tick (*ms)
  callback async throw (*ms)
  callback async throw after done (*ms)
- only is set but not in only mode
+ only is set on subtests but not in only mode
    running subtest 1 (*ms)
    running subtest 2 (*ms)
    'only' and 'runOnly' require the --test-only command-line option.
    running subtest 3 (*ms)
    'only' and 'runOnly' require the --test-only command-line option.
    running subtest 4 (*ms)
- only is set but not in only mode (*ms)
- 'only' and 'runOnly' require the --test-only command-line option.
+ only is set on subtests but not in only mode (*ms)
  custom inspect symbol fail (*ms)
  custom inspect symbol that throws fail (*ms)
  subtest sync throw fails
@@ -94,9 +93,9 @@
  Error: Test "callback async throw after done" at test/fixtures/test-runner/output/output.js:269:1 generated asynchronous activity after the test ended. This activity created the error "Error: thrown from callback async throw after done" and would have caused the test to fail, but instead triggered an uncaughtException event.
  tests 76
  suites 0
- pass 35
- fail 25
- cancelled 3
+ pass 37
+ fail 24
+ cancelled 2
  skipped 9
  todo 4
  duration_ms *
@@ -175,7 +174,8 @@
     code: 'ERR_ASSERTION',
     actual: true,
     expected: false,
-    operator: 'strictEqual'
+    operator: 'strictEqual',
+    diff: 'simple'
   }
 
 *
@@ -206,10 +206,6 @@
 *
  sync throw non-error fail (*ms)
   Symbol(thrown symbol from sync throw non-error fail)
-
-*
- +long running (*ms)
-  'test did not finish before its parent and was cancelled'
 
 *
  sync skip option is false fail (*ms)
@@ -364,7 +360,8 @@
     code: 'ERR_ASSERTION',
     actual: { foo: 1, bar: 1, boo: [ 1 ], baz: { date: 1970-01-01T00:00:00.000Z, null: null, number: 1, string: 'Hello', undefined: undefined } },
     expected: { boo: [ 1 ], baz: { date: 1970-01-01T00:00:00.000Z, null: null, number: 1, string: 'Hello', undefined: undefined }, circular: <ref *1> { bar: 2, c: [Circular *1] } },
-    operator: 'deepEqual'
+    operator: 'deepEqual',
+    diff: 'simple'
   }
 
 *

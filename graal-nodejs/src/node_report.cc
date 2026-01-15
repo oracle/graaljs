@@ -22,6 +22,7 @@
 #include <ctime>
 #include <cwctype>
 #include <fstream>
+#include <ranges>
 
 constexpr int NODE_REPORT_VERSION = 5;
 constexpr int NANOS_PER_SEC = 1000 * 1000 * 1000;
@@ -232,11 +233,11 @@ static void WriteNodeReport(Isolate* isolate,
     size_t expected_results = 0;
 
     env->ForEachWorker([&](Worker* w) {
-      expected_results += w->RequestInterrupt([&](Environment* env) {
+      expected_results += w->RequestInterrupt([&, w = w](Environment* env) {
         std::ostringstream os;
-
-        GetNodeReport(
-            env, "Worker thread subreport", trigger, Local<Value>(), os);
+        std::string name =
+            "Worker thread subreport [" + std::string(w->name()) + "]";
+        GetNodeReport(env, name.c_str(), trigger, Local<Value>(), os);
 
         Mutex::ScopedLock lock(workers_mutex);
         worker_infos.emplace_back(os.str());
@@ -439,10 +440,14 @@ static Maybe<std::string> ErrorToString(Isolate* isolate,
   } else if (!error->IsObject()) {
     maybe_str = error->ToString(context);
   } else if (error->IsObject()) {
-    MaybeLocal<Value> stack = error.As<Object>()->Get(
-        context, FIXED_ONE_BYTE_STRING(isolate, "stack"));
-    if (!stack.IsEmpty() && stack.ToLocalChecked()->IsString()) {
-      maybe_str = stack.ToLocalChecked().As<String>();
+    Local<Value> stack;
+    if (!error.As<Object>()
+             ->Get(context, FIXED_ONE_BYTE_STRING(isolate, "stack"))
+             .ToLocal(&stack)) {
+      return Nothing<std::string>();
+    }
+    if (stack->IsString()) {
+      maybe_str = stack.As<String>();
     }
   }
 
@@ -450,8 +455,7 @@ static Maybe<std::string> ErrorToString(Isolate* isolate,
   if (!maybe_str.ToLocal(&js_str)) {
     return Nothing<std::string>();
   }
-  String::Utf8Value sv(isolate, js_str);
-  return Just<>(std::string(*sv, sv.length()));
+  return Just(Utf8Value(isolate, js_str).ToString());
 }
 
 static void PrintEmptyJavaScriptStack(JSONWriter* writer) {
@@ -470,7 +474,8 @@ static void PrintJavaScriptStack(JSONWriter* writer,
                                  const char* trigger) {
   HandleScope scope(isolate);
   Local<v8::StackTrace> stack;
-  if (!GetCurrentStackTrace(isolate, MAX_FRAME_COUNT).ToLocal(&stack)) {
+  if (!GetCurrentStackTrace(isolate, MAX_FRAME_COUNT).ToLocal(&stack) ||
+      stack->GetFrameCount() == 0) {
     PrintEmptyJavaScriptStack(writer);
     return;
   }
@@ -496,7 +501,7 @@ static void PrintJavaScriptStack(JSONWriter* writer,
     const int column = frame->GetColumn();
 
     std::string stack_line = SPrintF(
-        "at %s (%s:%d:%d)", *function_name, *script_name, line_number, column);
+        "at %s (%s:%d:%d)", function_name, script_name, line_number, column);
     writer->json_element(stack_line);
   }
   writer->json_arrayend();
@@ -533,7 +538,7 @@ static void PrintJavaScriptErrorStack(JSONWriter* writer,
     line = ss.find('\n');
     while (line != -1) {
       l = ss.substr(0, line);
-      l.erase(l.begin(), std::find_if(l.begin(), l.end(), [](int ch) {
+      l.erase(l.begin(), std::ranges::find_if(l, [](int ch) {
                 return !std::iswspace(ch);
               }));
       writer->json_element(l);
@@ -752,7 +757,6 @@ static void PrintSystemInformation(JSONWriter* writer) {
 
   writer->json_objectstart("userLimits");
   struct rlimit limit;
-  std::string soft, hard;
 
   for (size_t i = 0; i < arraysize(rlimit_strings); i++) {
     if (getrlimit(rlimit_strings[i].id, &limit) == 0) {
@@ -788,29 +792,9 @@ static void PrintLoadedLibraries(JSONWriter* writer) {
 
 // Obtain and report the node and subcomponent version strings.
 static void PrintComponentVersions(JSONWriter* writer) {
-  std::stringstream buf;
-
   writer->json_objectstart("componentVersions");
 
-#define V(key) +1
-  std::pair<std::string_view, std::string_view>
-      versions_array[NODE_VERSIONS_KEYS(V)];
-#undef V
-  auto* slot = &versions_array[0];
-
-#define V(key)                                                                 \
-  do {                                                                         \
-    *slot++ = std::pair<std::string_view, std::string_view>(                   \
-        #key, per_process::metadata.versions.key);                             \
-  } while (0);
-  NODE_VERSIONS_KEYS(V)
-#undef V
-
-  std::sort(&versions_array[0],
-            &versions_array[arraysize(versions_array)],
-            [](auto& a, auto& b) { return a.first < b.first; });
-
-  for (const auto& version : versions_array) {
+  for (const auto& version : per_process::metadata.versions.pairs()) {
     writer->json_keyvalue(version.first, version.second);
   }
 
@@ -875,7 +859,7 @@ std::string TriggerNodeReport(Isolate* isolate,
       THROW_IF_INSUFFICIENT_PERMISSIONS(
           env,
           permission::PermissionScope::kFileSystemWrite,
-          std::string_view(Environment::GetCwd(env->exec_path())),
+          Environment::GetCwd(env->exec_path()),
           filename);
     }
   }

@@ -18,7 +18,7 @@ namespace internal {
 #if defined(V8_EXTERNAL_CODE_SPACE) || defined(V8_ENABLE_SANDBOX)
 // When V8_EXTERNAL_CODE_SPACE or V8_ENABLE_SANDBOX is enabled, comparing
 // objects in the code- or trusted space with "regular" objects by looking only
-// at compressed values it not correct. Full pointers must be compared instead.
+// at compressed values is not correct. Full pointers must be compared instead.
 bool V8_EXPORT_PRIVATE CheckObjectComparisonAllowed(Address a, Address b);
 #endif
 
@@ -32,11 +32,6 @@ bool V8_EXPORT_PRIVATE CheckObjectComparisonAllowed(Address a, Address b);
 template <HeapObjectReferenceType kRefType, typename StorageType>
 class TaggedImpl {
  public:
-  // Compressed TaggedImpl are never used for external InstructionStream
-  // pointers, so we can use this shorter alias for calling decompression
-  // functions.
-  using CompressionScheme = V8HeapCompressionScheme;
-
   static_assert(std::is_same<StorageType, Address>::value ||
                     std::is_same<StorageType, Tagged_t>::value,
                 "StorageType must be either Address or Tagged_t");
@@ -148,6 +143,12 @@ class TaggedImpl {
     return kCanBeWeak ? HAS_STRONG_HEAP_OBJECT_TAG(ptr_) : !IsSmi();
   }
 
+  // Returns true if this tagged value is a strong pointer to a HeapObject, or a
+  // Smi.
+  constexpr inline bool IsStrongOrSmi() const {
+    return !kCanBeWeak || !HAS_WEAK_HEAP_OBJECT_TAG(ptr_);
+  }
+
   // Returns true if this tagged value is a weak pointer to a HeapObject.
   constexpr inline bool IsWeak() const {
     return IsWeakOrCleared() && !IsCleared();
@@ -158,6 +159,17 @@ class TaggedImpl {
   constexpr inline bool IsWeakOrCleared() const {
     return kCanBeWeak && HAS_WEAK_HEAP_OBJECT_TAG(ptr_);
   }
+
+#ifdef V8_COMPRESS_POINTERS
+  // Returns true if this tagged value is a pointer to an object in the given
+  // cage base.
+  constexpr inline bool IsInMainCageBase() {
+    DCHECK(!IsSmi());
+    using S = V8HeapCompressionScheme;
+    return S::GetPtrComprCageBaseAddress(ptr_) ==
+           S::GetPtrComprCageBaseAddress(S::base());
+  }
+#endif  // V8_COMPRESS_POINTERS
 
   //
   // The following set of methods get HeapObject out of the tagged value
@@ -214,7 +226,7 @@ class TaggedImpl {
   Tagged<T> cast() const {
     CHECK(kIsFull);
     DCHECK(!HAS_WEAK_HEAP_OBJECT_TAG(ptr_));
-    return T::cast(Tagged<Object>(ptr_));
+    return Cast<T>(Tagged<Object>(ptr_));
   }
 
  protected:
@@ -223,7 +235,10 @@ class TaggedImpl {
 
  private:
   friend class CompressedObjectSlot;
+  friend class CompressedMaybeObjectSlot;
   friend class FullObjectSlot;
+  friend class FullMaybeObjectSlot;
+  friend class FullHeapObjectSlot;
 
   StorageType ptr_;
 };

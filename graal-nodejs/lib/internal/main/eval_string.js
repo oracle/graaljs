@@ -32,18 +32,15 @@ const code = getOptionValue('--eval');
 const print = getOptionValue('--print');
 const shouldLoadESM = getOptionValue('--import').length > 0 || getOptionValue('--experimental-loader').length > 0;
 const inputType = getOptionValue('--input-type');
-const tsEnabled = getOptionValue('--experimental-strip-types');
-if (inputType === 'module' ||
-  (getOptionValue('--experimental-default-type') === 'module' && inputType !== 'commonjs')) {
+const tsEnabled = getOptionValue('--strip-types');
+if (inputType === 'module') {
   evalModuleEntryPoint(code, print);
 } else if (inputType === 'module-typescript' && tsEnabled) {
   parseAndEvalModuleTypeScript(code, print);
 } else {
   // For backward compatibility, we want the identifier crypto to be the
   // `node:crypto` module rather than WebCrypto.
-  const isUsingCryptoIdentifier =
-    getOptionValue('--experimental-global-webcrypto') &&
-    RegExpPrototypeExec(/\bcrypto\b/, code) !== null;
+  const isUsingCryptoIdentifier = RegExpPrototypeExec(/\bcrypto\b/, code) !== null;
   const shouldDefineCrypto = isUsingCryptoIdentifier && internalBinding('config').hasOpenSSL;
 
   if (isUsingCryptoIdentifier && !shouldDefineCrypto) {

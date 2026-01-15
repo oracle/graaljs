@@ -1,5 +1,4 @@
 // Copyright 2023 the V8 project authors. All rights reserved.
-//
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,12 +20,10 @@ class Hole : public HeapObject {
  public:
   inline void set_raw_numeric_value(uint64_t bits);
 
-  DECL_CAST(Hole)
-
   DECL_VERIFIER(Hole)
 
-  static inline void Initialize(Isolate* isolate, Handle<Hole> hole,
-                                Handle<HeapNumber> numeric_value);
+  static inline void Initialize(Isolate* isolate, DirectHandle<Hole> hole,
+                                DirectHandle<HeapNumber> numeric_value);
 
   // Currently, we allow optimized code to treat holes as HeapNumbers to avoid
   // conditional branching. This works by making Hole::kRawNumericValueOffset

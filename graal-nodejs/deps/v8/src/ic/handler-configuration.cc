@@ -26,11 +26,11 @@ Tagged<Smi> SetBitFieldValue(Isolate* isolate, Tagged<Smi> smi_handler,
 // TODO(ishell): Remove templatezation once we move common bits from
 // Load/StoreHandler to the base class.
 template <typename ICHandler, bool fill_handler = true>
-int InitPrototypeChecksImpl(Isolate* isolate, Handle<ICHandler> handler,
+int InitPrototypeChecksImpl(Isolate* isolate, DirectHandle<ICHandler> handler,
                             Tagged<Smi>* smi_handler,
-                            Handle<Map> lookup_start_object_map,
-                            MaybeObjectHandle data1,
-                            MaybeObjectHandle maybe_data2) {
+                            DirectHandle<Map> lookup_start_object_map,
+                            MaybeObjectDirectHandle data1,
+                            MaybeObjectDirectHandle maybe_data2) {
   int data_size = 1;
   // Holder-is-receiver case itself does not add entries unless there is an
   // optional data2 value provided.
@@ -48,7 +48,7 @@ int InitPrototypeChecksImpl(Isolate* isolate, Handle<ICHandler> handler,
     // So we record the original native context to which this handler
     // corresponds.
     if (fill_handler) {
-      Handle<Context> native_context = isolate->native_context();
+      DirectHandle<Context> native_context = isolate->native_context();
       handler->set_data2(MakeWeak(*native_context));
     } else {
       // Enable access checks on the lookup start object.
@@ -90,21 +90,21 @@ int InitPrototypeChecksImpl(Isolate* isolate, Handle<ICHandler> handler,
 // If the |holder| is an empty handle then the full prototype chain is
 // checked.
 template <typename ICHandler>
-int GetHandlerDataSize(Isolate* isolate, Tagged<Smi>* smi_handler,
-                       Handle<Map> lookup_start_object_map,
-                       MaybeObjectHandle data1,
-                       MaybeObjectHandle maybe_data2 = MaybeObjectHandle()) {
+int GetHandlerDataSize(
+    Isolate* isolate, Tagged<Smi>* smi_handler,
+    DirectHandle<Map> lookup_start_object_map, MaybeObjectDirectHandle data1,
+    MaybeObjectDirectHandle maybe_data2 = MaybeObjectDirectHandle()) {
   DCHECK_NOT_NULL(smi_handler);
   return InitPrototypeChecksImpl<ICHandler, false>(
-      isolate, Handle<ICHandler>(), smi_handler, lookup_start_object_map, data1,
-      maybe_data2);
+      isolate, DirectHandle<ICHandler>(), smi_handler, lookup_start_object_map,
+      data1, maybe_data2);
 }
 
 template <typename ICHandler>
-void InitPrototypeChecks(Isolate* isolate, Handle<ICHandler> handler,
-                         Handle<Map> lookup_start_object_map,
-                         MaybeObjectHandle data1,
-                         MaybeObjectHandle maybe_data2 = MaybeObjectHandle()) {
+void InitPrototypeChecks(
+    Isolate* isolate, DirectHandle<ICHandler> handler,
+    DirectHandle<Map> lookup_start_object_map, MaybeObjectDirectHandle data1,
+    MaybeObjectDirectHandle maybe_data2 = MaybeObjectDirectHandle()) {
   InitPrototypeChecksImpl<ICHandler, true>(
       isolate, handler, nullptr, lookup_start_object_map, data1, maybe_data2);
 }
@@ -113,12 +113,12 @@ void InitPrototypeChecks(Isolate* isolate, Handle<ICHandler> handler,
 
 // static
 Handle<Object> LoadHandler::LoadFromPrototype(
-    Isolate* isolate, Handle<Map> lookup_start_object_map,
-    Handle<JSReceiver> holder, Tagged<Smi> smi_handler,
-    MaybeObjectHandle maybe_data1, MaybeObjectHandle maybe_data2) {
-  MaybeObjectHandle data1;
+    Isolate* isolate, DirectHandle<Map> lookup_start_object_map,
+    DirectHandle<JSReceiver> holder, Tagged<Smi> smi_handler,
+    MaybeObjectDirectHandle maybe_data1, MaybeObjectDirectHandle maybe_data2) {
+  MaybeObjectDirectHandle data1;
   if (maybe_data1.is_null()) {
-    data1 = MaybeObjectHandle::Weak(holder);
+    data1 = MaybeObjectDirectHandle::Weak(holder);
   } else {
     data1 = maybe_data1;
   }
@@ -126,30 +126,31 @@ Handle<Object> LoadHandler::LoadFromPrototype(
   int data_size = GetHandlerDataSize<LoadHandler>(
       isolate, &smi_handler, lookup_start_object_map, data1, maybe_data2);
 
-  Handle<Object> validity_cell = Map::GetOrCreatePrototypeChainValidityCell(
-      lookup_start_object_map, isolate);
+  DirectHandle<UnionOf<Smi, Cell>> validity_cell =
+      Map::GetOrCreatePrototypeChainValidityCell(lookup_start_object_map,
+                                                 isolate);
 
   Handle<LoadHandler> handler = isolate->factory()->NewLoadHandler(data_size);
 
   handler->set_smi_handler(smi_handler);
   handler->set_validity_cell(*validity_cell);
-  InitPrototypeChecks(isolate, handler, lookup_start_object_map, data1,
-                      maybe_data2);
+  InitPrototypeChecks(isolate, direct_handle(handler), lookup_start_object_map,
+                      data1, maybe_data2);
   return handler;
 }
 
 // static
-Handle<Object> LoadHandler::LoadFullChain(Isolate* isolate,
-                                          Handle<Map> lookup_start_object_map,
-                                          const MaybeObjectHandle& holder,
-                                          Handle<Smi> smi_handler_handle) {
+Handle<Object> LoadHandler::LoadFullChain(
+    Isolate* isolate, DirectHandle<Map> lookup_start_object_map,
+    const MaybeObjectDirectHandle& holder, Handle<Smi> smi_handler_handle) {
   Tagged<Smi> smi_handler = *smi_handler_handle;
-  MaybeObjectHandle data1 = holder;
+  MaybeObjectDirectHandle data1 = holder;
   int data_size = GetHandlerDataSize<LoadHandler>(
       isolate, &smi_handler, lookup_start_object_map, data1);
 
-  Handle<Object> validity_cell = Map::GetOrCreatePrototypeChainValidityCell(
-      lookup_start_object_map, isolate);
+  DirectHandle<UnionOf<Smi, Cell>> validity_cell =
+      Map::GetOrCreatePrototypeChainValidityCell(lookup_start_object_map,
+                                                 isolate);
   if (IsSmi(*validity_cell)) {
     DCHECK_EQ(1, data_size);
     // Lookup on lookup start object isn't supported in case of a simple smi
@@ -163,7 +164,8 @@ Handle<Object> LoadHandler::LoadFullChain(Isolate* isolate,
 
   handler->set_smi_handler(smi_handler);
   handler->set_validity_cell(*validity_cell);
-  InitPrototypeChecks(isolate, handler, lookup_start_object_map, data1);
+  InitPrototypeChecks(isolate, direct_handle(handler), lookup_start_object_map,
+                      data1);
   return handler;
 }
 
@@ -190,7 +192,7 @@ KeyedAccessStoreMode StoreHandler::GetKeyedAccessStoreMode(
   if (IsSmi(handler)) {
     int const raw_handler = handler.ToSmi().value();
     Kind const kind = KindBits::decode(raw_handler);
-    // All the handlers except the Slow Handler that use the
+    // All the handlers except the Slow Handler that use tshe
     // KeyedAccessStoreMode, compute it using KeyedAccessStoreModeForBuiltin
     // method. Hence if any other Handler get to this path, just return
     // KeyedAccessStoreMode::kInBounds.
@@ -206,10 +208,12 @@ KeyedAccessStoreMode StoreHandler::GetKeyedAccessStoreMode(
 
 // static
 Handle<Object> StoreHandler::StoreElementTransition(
-    Isolate* isolate, Handle<Map> receiver_map, Handle<Map> transition,
-    KeyedAccessStoreMode store_mode, MaybeHandle<Object> prev_validity_cell) {
-  Handle<Object> code = ElementsTransitionAndStoreBuiltin(isolate, store_mode);
-  Handle<Object> validity_cell;
+    Isolate* isolate, DirectHandle<Map> receiver_map,
+    DirectHandle<Map> transition, KeyedAccessStoreMode store_mode,
+    MaybeDirectHandle<UnionOf<Smi, Cell>> prev_validity_cell) {
+  DirectHandle<Code> code =
+      ElementsTransitionAndStoreBuiltin(isolate, store_mode);
+  DirectHandle<UnionOf<Smi, Cell>> validity_cell;
   if (!prev_validity_cell.ToHandle(&validity_cell)) {
     validity_cell =
         Map::GetOrCreatePrototypeChainValidityCell(receiver_map, isolate);
@@ -228,7 +232,7 @@ MaybeObjectHandle StoreHandler::StoreOwnTransition(Isolate* isolate,
 #ifdef DEBUG
   if (!is_dictionary_map) {
     InternalIndex descriptor = transition_map->LastAdded();
-    Handle<DescriptorArray> descriptors(
+    DirectHandle<DescriptorArray> descriptors(
         transition_map->instance_descriptors(isolate), isolate);
     PropertyDetails details = descriptors->GetDetails(descriptor);
     if (descriptors->GetKey(descriptor)->IsPrivate()) {
@@ -261,7 +265,7 @@ MaybeObjectHandle StoreHandler::StoreTransition(Isolate* isolate,
 #ifdef DEBUG
   if (!is_dictionary_map) {
     InternalIndex descriptor = transition_map->LastAdded();
-    Handle<DescriptorArray> descriptors(
+    DirectHandle<DescriptorArray> descriptors(
         transition_map->instance_descriptors(isolate), isolate);
     // Private fields must be added via StoreOwnTransition handler.
     DCHECK(!descriptors->GetKey(descriptor)->IsPrivateName());
@@ -279,7 +283,7 @@ MaybeObjectHandle StoreHandler::StoreTransition(Isolate* isolate,
   DCHECK(!transition_map->is_access_check_needed());
 
   // Get validity cell value if it is necessary for the handler.
-  Handle<Object> validity_cell;
+  DirectHandle<UnionOf<Smi, Cell>> validity_cell;
   if (is_dictionary_map || !transition_map->IsPrototypeValidityCellValid()) {
     validity_cell =
         Map::GetOrCreatePrototypeChainValidityCell(transition_map, isolate);
@@ -307,12 +311,12 @@ MaybeObjectHandle StoreHandler::StoreTransition(Isolate* isolate,
 
 // static
 Handle<Object> StoreHandler::StoreThroughPrototype(
-    Isolate* isolate, Handle<Map> receiver_map, Handle<JSReceiver> holder,
-    Tagged<Smi> smi_handler, MaybeObjectHandle maybe_data1,
-    MaybeObjectHandle maybe_data2) {
-  MaybeObjectHandle data1;
+    Isolate* isolate, DirectHandle<Map> receiver_map,
+    DirectHandle<JSReceiver> holder, Tagged<Smi> smi_handler,
+    MaybeObjectDirectHandle maybe_data1, MaybeObjectDirectHandle maybe_data2) {
+  MaybeObjectDirectHandle data1;
   if (maybe_data1.is_null()) {
-    data1 = MaybeObjectHandle::Weak(holder);
+    data1 = MaybeObjectDirectHandle::Weak(holder);
   } else {
     data1 = maybe_data1;
   }
@@ -320,14 +324,15 @@ Handle<Object> StoreHandler::StoreThroughPrototype(
   int data_size = GetHandlerDataSize<StoreHandler>(
       isolate, &smi_handler, receiver_map, data1, maybe_data2);
 
-  Handle<Object> validity_cell =
+  DirectHandle<UnionOf<Smi, Cell>> validity_cell =
       Map::GetOrCreatePrototypeChainValidityCell(receiver_map, isolate);
 
   Handle<StoreHandler> handler = isolate->factory()->NewStoreHandler(data_size);
 
   handler->set_smi_handler(smi_handler);
   handler->set_validity_cell(*validity_cell);
-  InitPrototypeChecks(isolate, handler, receiver_map, data1, maybe_data2);
+  InitPrototypeChecks(isolate, direct_handle(handler), receiver_map, data1,
+                      maybe_data2);
   return handler;
 }
 
@@ -338,13 +343,13 @@ MaybeObjectHandle StoreHandler::StoreGlobal(Handle<PropertyCell> cell) {
 
 // static
 Handle<Object> StoreHandler::StoreProxy(Isolate* isolate,
-                                        Handle<Map> receiver_map,
+                                        DirectHandle<Map> receiver_map,
                                         Handle<JSProxy> proxy,
-                                        Handle<JSReceiver> receiver) {
+                                        DirectHandle<JSReceiver> receiver) {
   Handle<Smi> smi_handler = StoreProxy(isolate);
   if (receiver.is_identical_to(proxy)) return smi_handler;
   return StoreThroughPrototype(isolate, receiver_map, proxy, *smi_handler,
-                               MaybeObjectHandle::Weak(proxy));
+                               MaybeObjectDirectHandle::Weak(proxy));
 }
 
 bool LoadHandler::CanHandleHolderNotLookupStart(Tagged<Object> handler) {
@@ -418,9 +423,6 @@ void PrintSmiLoadHandler(int raw_handler, std::ostream& os) {
     case LoadHandler::Kind::kApiGetter:
       os << "kApiGetter";
       break;
-    case LoadHandler::Kind::kApiGetterHolderIsPrototype:
-      os << "kApiGetterHolderIsPrototype";
-      break;
     case LoadHandler::Kind::kInterceptor:
       os << "kInterceptor";
       break;
@@ -464,9 +466,8 @@ void PrintSmiStoreHandler(int raw_handler, std::ostream& os) {
          << StoreHandler::FieldIndexBits::decode(raw_handler);
       break;
     }
-    case StoreHandler::Kind::kAccessor:
-      os << "kAccessor, descriptor = "
-         << StoreHandler::DescriptorBits::decode(raw_handler);
+    case StoreHandler::Kind::kAccessorFromPrototype:
+      os << "kAccessorFromPrototype";
       break;
     case StoreHandler::Kind::kNativeDataProperty:
       os << "kNativeDataProperty, descriptor = "
@@ -474,9 +475,6 @@ void PrintSmiStoreHandler(int raw_handler, std::ostream& os) {
       break;
     case StoreHandler::Kind::kApiSetter:
       os << "kApiSetter";
-      break;
-    case StoreHandler::Kind::kApiSetterHolderIsPrototype:
-      os << "kApiSetterHolderIsPrototype";
       break;
     case StoreHandler::Kind::kGlobalProxy:
       os << "kGlobalProxy";
@@ -516,12 +514,12 @@ void LoadHandler::PrintHandler(Tagged<Object> handler, std::ostream& os) {
     os << ")";
   } else if (IsCode(handler)) {
     os << "LoadHandler(Code)("
-       << Builtins::name(Code::cast(handler)->builtin_id()) << ")";
+       << Builtins::name(Cast<Code>(handler)->builtin_id()) << ")";
   } else if (IsSymbol(handler)) {
-    os << "LoadHandler(Symbol)(" << Brief(Symbol::cast(handler)) << ")";
+    os << "LoadHandler(Symbol)(" << Brief(Cast<Symbol>(handler)) << ")";
   } else if (IsLoadHandler(handler)) {
-    Tagged<LoadHandler> load_handler = LoadHandler::cast(handler);
-    int raw_handler = Smi::cast(load_handler->smi_handler()).value();
+    Tagged<LoadHandler> load_handler = Cast<LoadHandler>(handler);
+    int raw_handler = Cast<Smi>(load_handler->smi_handler()).value();
     os << "LoadHandler(do access check on lookup start object = "
        << DoAccessCheckOnLookupStartObjectBits::decode(raw_handler)
        << ", lookup on lookup start object = "
@@ -556,13 +554,13 @@ void StoreHandler::PrintHandler(Tagged<Object> handler, std::ostream& os) {
     os << ")" << std::endl;
   } else if (IsStoreHandler(handler)) {
     os << "StoreHandler(";
-    Tagged<StoreHandler> store_handler = StoreHandler::cast(handler);
+    Tagged<StoreHandler> store_handler = Cast<StoreHandler>(handler);
     if (IsCode(store_handler->smi_handler())) {
-      Tagged<Code> code = Code::cast(store_handler->smi_handler());
+      Tagged<Code> code = Cast<Code>(store_handler->smi_handler());
       os << "builtin = ";
       ShortPrint(code, os);
     } else {
-      int raw_handler = Smi::cast(store_handler->smi_handler()).value();
+      int raw_handler = Cast<Smi>(store_handler->smi_handler()).value();
       os << "do access check on lookup start object = "
          << DoAccessCheckOnLookupStartObjectBits::decode(raw_handler)
          << ", lookup on lookup start object = "
@@ -588,7 +586,7 @@ void StoreHandler::PrintHandler(Tagged<Object> handler, std::ostream& os) {
     os << "StoreHandler(field transition to " << Brief(handler) << ")"
        << std::endl;
   } else if (IsCode(handler)) {
-    Tagged<Code> code = Code::cast(handler);
+    Tagged<Code> code = Cast<Code>(handler);
     os << "StoreHandler(builtin = ";
     ShortPrint(code, os);
     os << ")" << std::endl;

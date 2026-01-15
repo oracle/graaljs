@@ -22,11 +22,13 @@
 #include "src/common/globals.h"
 
 #if defined(V8_USE_SIPHASH)
-#include "src/third_party/siphash/halfsiphash.h"
+#include "third_party/siphash/halfsiphash.h"
 #endif
 
 #if defined(V8_OS_AIX)
 #include <fenv.h>  // NOLINT(build/c++11)
+
+#include "src/wasm/float16.h"
 #endif
 
 #ifdef _MSC_VER
@@ -39,7 +41,7 @@
 #endif
 
 #ifdef __SSE3__
-#include <immintrin.h>
+#include <pmmintrin.h>
 #endif
 
 #if defined(V8_TARGET_ARCH_ARM64) && \
@@ -87,9 +89,10 @@ T JSMin(T x, T y) {
 }
 
 // Returns the absolute value of its argument.
-template <typename T,
-          typename = typename std::enable_if<std::is_signed<T>::value>::type>
-typename std::make_unsigned<T>::type Abs(T a) {
+template <typename T>
+typename std::make_unsigned<T>::type Abs(T a)
+  requires std::is_signed<T>::value
+{
   // This is a branch-free implementation of the absolute value function and is
   // described in Warren's "Hacker's Delight", chapter 2. It avoids undefined
   // behavior with the arithmetic negation operation on signed values as well.
@@ -242,6 +245,16 @@ inline T RoundingAverageUnsigned(T a, T b) {
     LIST_MACRO(DEFINE_ONE_FIELD_OFFSET)                        \
   };
 
+#define DEFINE_ONE_FIELD_OFFSET_PURE_NAME(CamelName, Size, ...) \
+  k##CamelName##Offset,                                         \
+      k##CamelName##OffsetEnd = k##CamelName##Offset + (Size)-1,
+
+#define DEFINE_FIELD_OFFSET_CONSTANTS_WITH_PURE_NAME(StartOffset, LIST_MACRO) \
+  enum {                                                                      \
+    LIST_MACRO##_StartOffset = StartOffset - 1,                               \
+    LIST_MACRO(DEFINE_ONE_FIELD_OFFSET_PURE_NAME)                             \
+  };
+
 // Size of the field defined by DEFINE_FIELD_OFFSET_CONSTANTS
 #define FIELD_SIZE(Name) (Name##End + 1 - Name)
 
@@ -387,9 +400,13 @@ V8_INLINE bool SimdMemEqual(const Char* lhs, const Char* rhs, size_t count,
 
 #elif defined(V8_OPTIMIZE_WITH_NEON)
 
+// We intentionally use misaligned read/writes for NEON intrinsics, disable
+// alignment sanitization explicitly.
 template <typename Char>
-V8_INLINE bool SimdMemEqual(const Char* lhs, const Char* rhs, size_t count,
-                            size_t order) {
+V8_INLINE V8_CLANG_NO_SANITIZE("alignment") bool SimdMemEqual(const Char* lhs,
+                                                              const Char* rhs,
+                                                              size_t count,
+                                                              size_t order) {
   static_assert(sizeof(Char) == 1);
   DCHECK_GE(order, 5);
 
@@ -407,12 +424,13 @@ V8_INLINE bool SimdMemEqual(const Char* lhs, const Char* rhs, size_t count,
   }
 
   // count: [33, ...]
-  const auto lhs0 = vld1q_u8(lhs);
-  const auto rhs0 = vld1q_u8(rhs);
-  const auto xored = veorq_u8(lhs0, rhs0);
-  if (static_cast<bool>(
-          vgetq_lane_u64(vreinterpretq_u64_u8(vpmaxq_u8(xored, xored)), 0)))
+  const auto first_lhs0 = vld1q_u8(lhs);
+  const auto first_rhs0 = vld1q_u8(rhs);
+  const auto first_xored = veorq_u8(first_lhs0, first_rhs0);
+  if (static_cast<bool>(vgetq_lane_u64(
+          vreinterpretq_u64_u8(vpmaxq_u8(first_xored, first_xored)), 0))) {
     return false;
+  }
   for (size_t i = count % sizeof(uint8x16_t); i < count;
        i += sizeof(uint8x16_t)) {
     const auto lhs0 = vld1q_u8(lhs + i);
@@ -800,6 +818,13 @@ T FpOpWorkaround(T input, T value) {
   }
   return value;
 }
+
+template <>
+inline Float16 FpOpWorkaround(Float16 input, Float16 value) {
+  float result = FpOpWorkaround(input.ToFloat32(), value.ToFloat32());
+  return Float16::FromFloat32(result);
+}
+
 #endif
 
 V8_EXPORT_PRIVATE bool PassesFilter(base::Vector<const char> name,

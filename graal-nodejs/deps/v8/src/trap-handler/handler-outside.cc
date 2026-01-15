@@ -40,9 +40,7 @@ constexpr bool kEnableSlowChecks = false;
 #endif
 }  // namespace
 
-namespace v8 {
-namespace internal {
-namespace trap_handler {
+namespace v8::internal::trap_handler {
 
 constexpr size_t kInitialCodeObjectSize = 1024;
 constexpr size_t kCodeObjectGrowthFactor = 2;
@@ -122,8 +120,10 @@ CodeProtectionInfo* CreateHandlerData(
   data->size = size;
   data->num_protected_instructions = num_protected_instructions;
 
-  memcpy(data->instructions, protected_instructions,
-         num_protected_instructions * sizeof(ProtectedInstructionData));
+  if (num_protected_instructions > 0) {
+    memcpy(data->instructions, protected_instructions,
+           num_protected_instructions * sizeof(ProtectedInstructionData));
+  }
 
   return data;
 }
@@ -231,6 +231,52 @@ void ReleaseHandlerData(int index) {
   free(data);
 }
 
+bool RegisterV8Sandbox(uintptr_t base, size_t size) {
+  SandboxRecordsLock lock;
+
+#ifdef DEBUG
+  for (SandboxRecord* current = gSandboxRecordsHead; current != nullptr;
+       current = current->next) {
+    TH_DCHECK(current->base != base);
+  }
+#endif
+
+  SandboxRecord* new_record =
+      reinterpret_cast<SandboxRecord*>(malloc(sizeof(SandboxRecord)));
+  if (new_record == nullptr) {
+    return false;
+  }
+
+  new_record->base = base;
+  new_record->size = size;
+  new_record->next = gSandboxRecordsHead;
+  gSandboxRecordsHead = new_record;
+  return true;
+}
+
+void UnregisterV8Sandbox(uintptr_t base, size_t size) {
+  SandboxRecordsLock lock;
+
+  SandboxRecord* current = gSandboxRecordsHead;
+  SandboxRecord* previous = nullptr;
+  while (current != nullptr) {
+    if (current->base == base) {
+      break;
+    }
+    previous = current;
+    current = current->next;
+  }
+
+  TH_CHECK(current != nullptr);
+  TH_CHECK(current->size == size);
+  if (previous) {
+    previous->next = current->next;
+  } else {
+    gSandboxRecordsHead = current->next;
+  }
+  free(current);
+}
+
 int* GetThreadInWasmThreadLocalAddress() { return &g_thread_in_wasm_code; }
 
 size_t GetRecoveredTrapCount() {
@@ -271,6 +317,10 @@ bool EnableTrapHandler(bool use_v8_handler) {
 
 void SetLandingPad(uintptr_t landing_pad) { gLandingPad.store(landing_pad); }
 
-}  // namespace trap_handler
-}  // namespace internal
-}  // namespace v8
+#if defined(BUILDING_V8_SHARED_PRIVATE) || defined(USING_V8_SHARED_PRIVATE)
+void AssertThreadNotInWasm() {
+  TH_DCHECK(!g_is_trap_handler_enabled || !g_thread_in_wasm_code);
+}
+#endif
+
+}  // namespace v8::internal::trap_handler

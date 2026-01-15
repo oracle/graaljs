@@ -5,19 +5,22 @@
 #ifndef V8_OBJECTS_INSTRUCTION_STREAM_INL_H_
 #define V8_OBJECTS_INSTRUCTION_STREAM_INL_H_
 
+#include "src/objects/instruction-stream.h"
+// Include the non-inl header before the rest of the headers.
+
+#include <optional>
+
 #include "src/common/ptr-compr-inl.h"
+#include "src/heap/heap-layout-inl.h"
 #include "src/heap/heap-write-barrier-inl.h"
 #include "src/objects/code.h"
-#include "src/objects/instruction-stream.h"
 #include "src/objects/objects-inl.h"  // For HeapObject::IsInstructionStream.
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
 
-namespace v8 {
-namespace internal {
+namespace v8::internal {
 
-CAST_ACCESSOR(InstructionStream)
 OBJECT_CONSTRUCTORS_IMPL(InstructionStream, TrustedObject)
 NEVER_READ_ONLY_SPACE_IMPL(InstructionStream)
 
@@ -39,7 +42,7 @@ Address InstructionStream::constant_pool() const { return kNullAddress; }
 // static
 Tagged<InstructionStream> InstructionStream::Initialize(
     Tagged<HeapObject> self, Tagged<Map> map, uint32_t body_size,
-    int constant_pool_offset, Tagged<ByteArray> reloc_info) {
+    int constant_pool_offset, Tagged<TrustedByteArray> reloc_info) {
   {
     WritableJitAllocation writable_allocation =
         ThreadIsolation::RegisterInstructionStreamAllocation(
@@ -61,8 +64,9 @@ Tagged<InstructionStream> InstructionStream::Initialize(
     writable_allocation.WriteHeaderSlot<Smi, kCodeOffset>(Smi::zero(),
                                                           kReleaseStore);
 
-    DCHECK(!ObjectInYoungGeneration(reloc_info));
-    writable_allocation.WriteHeaderSlot<ByteArray, kRelocationInfoOffset>(
+    DCHECK(!HeapLayout::InYoungGeneration(reloc_info));
+    writable_allocation.WriteProtectedPointerHeaderSlot<TrustedByteArray,
+                                                        kRelocationInfoOffset>(
         reloc_info, kRelaxedStore);
 
     // Clear header padding
@@ -73,14 +77,16 @@ Tagged<InstructionStream> InstructionStream::Initialize(
                                    TrailingPaddingSizeFor(body_size));
   }
 
+  Tagged<InstructionStream> istream = Cast<InstructionStream>(self);
+
   // We want to keep the code minimal that runs with write access to a JIT
   // allocation, so trigger the write barriers after the WritableJitAllocation
   // went out of scope.
-  SLOW_DCHECK(!WriteBarrier::IsRequired(self, map));
-  CONDITIONAL_WRITE_BARRIER(self, kRelocationInfoOffset, reloc_info,
-                            UPDATE_WRITE_BARRIER);
+  SLOW_DCHECK(!WriteBarrier::IsRequired(istream, map));
+  CONDITIONAL_PROTECTED_POINTER_WRITE_BARRIER(*istream, kRelocationInfoOffset,
+                                              reloc_info, UPDATE_WRITE_BARRIER);
 
-  return InstructionStream::cast(self);
+  return istream;
 }
 
 // Copy from compilation artifacts stored in CodeDesc to the target on-heap
@@ -114,10 +120,10 @@ Tagged<InstructionStream> InstructionStream::Initialize(
 // InstructionStream contains all instructions and inline metadata, and a
 // pointer to the relocation info byte array.
 void InstructionStream::Finalize(Tagged<Code> code,
-                                 Tagged<ByteArray> reloc_info, CodeDesc desc,
-                                 Heap* heap) {
+                                 Tagged<TrustedByteArray> reloc_info,
+                                 CodeDesc desc, Heap* heap) {
   DisallowGarbageCollection no_gc;
-  base::Optional<WriteBarrierPromise> promise;
+  std::optional<WriteBarrierPromise> promise;
 
   // Copy the relocation info first before we unlock the Jit allocation.
   // TODO(sroettger): reloc info should live in protected memory.
@@ -129,7 +135,7 @@ void InstructionStream::Finalize(Tagged<Code> code,
     WritableJitAllocation writable_allocation =
         ThreadIsolation::LookupJitAllocation(
             address(), InstructionStream::SizeFor(body_size()),
-            ThreadIsolation::JitAllocationType::kInstructionStream);
+            ThreadIsolation::JitAllocationType::kInstructionStream, true);
 
     // Copy code and inline metadata.
     static_assert(InstructionStream::kOnHeapBodyIsContiguous);
@@ -146,9 +152,8 @@ void InstructionStream::Finalize(Tagged<Code> code,
                                      code->constant_pool(), no_gc));
 
     // Publish the code pointer after the istream has been fully initialized.
-    // TODO(sroettger): this write should go through writable_allocation. At
-    // this point, set_code could probably be removed entirely.
-    set_code(code, kReleaseStore);
+    writable_allocation.WriteProtectedPointerHeaderSlot<Code, kCodeOffset>(
+        code, kReleaseStore);
   }
 
   // Trigger the write barriers after we dropped the JIT write permissions.
@@ -171,28 +176,20 @@ Address InstructionStream::body_end() const {
 
 Tagged<Object> InstructionStream::raw_code(AcquireLoadTag tag) const {
   Tagged<Object> value = RawProtectedPointerField(kCodeOffset).Acquire_Load();
-  DCHECK(!ObjectInYoungGeneration(value));
-  DCHECK(IsSmi(value) || IsTrustedSpaceObject(HeapObject::cast(value)));
+  DCHECK(!HeapLayout::InYoungGeneration(value));
+  DCHECK(IsSmi(value) || HeapLayout::InTrustedSpace(Cast<HeapObject>(value)));
   return value;
 }
 
 Tagged<Code> InstructionStream::code(AcquireLoadTag tag) const {
-  return Code::cast(raw_code(tag));
-}
-
-void InstructionStream::set_code(Tagged<Code> value, ReleaseStoreTag tag) {
-  DCHECK(!ObjectInYoungGeneration(value));
-  DCHECK(IsTrustedSpaceObject(value));
-  WriteProtectedPointerField(kCodeOffset, value, tag);
-  CONDITIONAL_PROTECTED_POINTER_WRITE_BARRIER(*this, kCodeOffset, value,
-                                              UPDATE_WRITE_BARRIER);
+  return Cast<Code>(raw_code(tag));
 }
 
 bool InstructionStream::TryGetCode(Tagged<Code>* code_out,
                                    AcquireLoadTag tag) const {
   Tagged<Object> maybe_code = raw_code(tag);
   if (maybe_code == Smi::zero()) return false;
-  *code_out = Code::cast(maybe_code);
+  *code_out = Cast<Code>(maybe_code);
   return true;
 }
 
@@ -200,27 +197,23 @@ bool InstructionStream::TryGetCodeUnchecked(Tagged<Code>* code_out,
                                             AcquireLoadTag tag) const {
   Tagged<Object> maybe_code = raw_code(tag);
   if (maybe_code == Smi::zero()) return false;
-  *code_out = Code::unchecked_cast(maybe_code);
+  *code_out = UncheckedCast<Code>(maybe_code);
   return true;
 }
 
-Tagged<ByteArray> InstructionStream::relocation_info() const {
-  PtrComprCageBase cage_base = main_cage_base();
-  Tagged<ByteArray> value =
-      TaggedField<ByteArray, kRelocationInfoOffset>::load(cage_base, *this);
-  DCHECK(!ObjectInYoungGeneration(value));
-  return value;
+Tagged<TrustedByteArray> InstructionStream::relocation_info() const {
+  return Cast<TrustedByteArray>(
+      ReadProtectedPointerField(kRelocationInfoOffset));
 }
 
 Address InstructionStream::instruction_start() const {
   return field_address(kHeaderSize);
 }
 
-Tagged<ByteArray> InstructionStream::unchecked_relocation_info() const {
-  PtrComprCageBase cage_base = main_cage_base();
-  return ByteArray::unchecked_cast(
-      TaggedField<HeapObject, kRelocationInfoOffset>::Acquire_Load(cage_base,
-                                                                   *this));
+Tagged<TrustedByteArray> InstructionStream::unchecked_relocation_info() const {
+  Tagged<Object> value =
+      RawProtectedPointerField(kRelocationInfoOffset).Acquire_Load();
+  return UncheckedCast<TrustedByteArray>(value);
 }
 
 uint8_t* InstructionStream::relocation_start() const {
@@ -253,7 +246,7 @@ Tagged<InstructionStream> InstructionStream::FromTargetAddress(
       HeapObject::FromAddress(address - InstructionStream::kHeaderSize);
   // Unchecked cast because we can't rely on the map currently not being a
   // forwarding pointer.
-  return InstructionStream::unchecked_cast(code);
+  return UncheckedCast<InstructionStream>(code);
 }
 
 // static
@@ -264,7 +257,7 @@ Tagged<InstructionStream> InstructionStream::FromEntryAddress(
       HeapObject::FromAddress(code_entry - InstructionStream::kHeaderSize);
   // Unchecked cast because we can't rely on the map currently not being a
   // forwarding pointer.
-  return InstructionStream::unchecked_cast(code);
+  return UncheckedCast<InstructionStream>(code);
 }
 
 // static
@@ -276,8 +269,7 @@ PtrComprCageBase InstructionStream::main_cage_base() {
 #endif
 }
 
-}  // namespace internal
-}  // namespace v8
+}  // namespace v8::internal
 
 #include "src/objects/object-macros-undef.h"
 

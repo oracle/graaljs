@@ -69,7 +69,6 @@ public:
             v8::AccessorNameGetterCallback getter,
             v8::AccessorNameSetterCallback setter,
             v8::MaybeLocal<v8::Value> data,
-            v8::AccessControl settings,
             v8::PropertyAttribute attributes);
     int InternalFieldCount();
     void SetInternalField(int index, v8::Local<v8::Data> value);

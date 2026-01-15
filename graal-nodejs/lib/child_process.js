@@ -43,6 +43,7 @@ const {
   StringPrototypeIncludes,
   StringPrototypeSlice,
   StringPrototypeToUpperCase,
+  SymbolDispose,
 } = primordials;
 
 const {
@@ -51,7 +52,6 @@ const {
   getSystemErrorName,
   kEmptyObject,
   promisify,
-  SymbolDispose,
 } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 let debug = require('internal/util/debuglog').debuglog(
@@ -94,6 +94,8 @@ const {
 } = child_process;
 
 const MAX_BUFFER = 1024 * 1024;
+
+const permission = require('internal/process/permission');
 
 const isZOS = process.platform === 'os390';
 let addAbortListener;
@@ -536,6 +538,32 @@ function copyProcessEnvToEnv(env, name, optionEnv) {
   }
 }
 
+let permissionModelFlagsToCopy;
+
+function getPermissionModelFlagsToCopy() {
+  if (permissionModelFlagsToCopy === undefined) {
+    permissionModelFlagsToCopy = [...permission.availableFlags(), '--permission'];
+  }
+  return permissionModelFlagsToCopy;
+}
+
+function copyPermissionModelFlagsToEnv(env, key, args) {
+  // Do not override if permission was already passed to file
+  if (args.includes('--permission') || (env[key] && env[key].indexOf('--permission') !== -1)) {
+    return;
+  }
+
+  const flagsToCopy = getPermissionModelFlagsToCopy();
+  for (const arg of process.execArgv) {
+    for (const flag of flagsToCopy) {
+      if (arg.startsWith(flag)) {
+        env[key] = `${env[key] ? env[key] + ' ' + arg : arg}`;
+      }
+    }
+  }
+}
+
+let emittedDEP0190Already = false;
 function normalizeSpawnArguments(file, args, options) {
   validateString(file, 'file');
   validateArgumentNullCheck(file, 'file');
@@ -612,7 +640,16 @@ function normalizeSpawnArguments(file, args, options) {
 
   if (options.shell) {
     validateArgumentNullCheck(options.shell, 'options.shell');
-    const command = ArrayPrototypeJoin([file, ...args], ' ');
+    if (args.length > 0 && !emittedDEP0190Already) {
+      process.emitWarning(
+        'Passing args to a child process with shell option true can lead to security ' +
+        'vulnerabilities, as the arguments are not escaped, only concatenated.',
+        'DeprecationWarning',
+        'DEP0190');
+      emittedDEP0190Already = true;
+    }
+
+    const command = args.length > 0 ? `${file} ${ArrayPrototypeJoin(args, ' ')}` : file;
     // Set the shell, switches, and commands.
     if (process.platform === 'win32') {
       if (typeof options.shell === 'string')
@@ -643,7 +680,8 @@ function normalizeSpawnArguments(file, args, options) {
     ArrayPrototypeUnshift(args, file);
   }
 
-  const env = options.env || process.env;
+  // Shallow copy to guarantee changes won't impact process.env
+  const env = options.env || { ...process.env };
   const envPairs = [];
 
   // process.env.NODE_V8_COVERAGE always propagates, making it possible to
@@ -661,6 +699,10 @@ function normalizeSpawnArguments(file, args, options) {
     copyProcessEnvToEnv(env, 'LIBPATH', options.env);
     copyProcessEnvToEnv(env, '_EDC_SIG_DFLT', options.env);
     copyProcessEnvToEnv(env, '_EDC_SUSV3', options.env);
+  }
+
+  if (permission.isEnabled()) {
+    copyPermissionModelFlagsToEnv(env, 'NODE_OPTIONS', args);
   }
 
   let envKeys = [];

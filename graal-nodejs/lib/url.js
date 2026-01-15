@@ -22,10 +22,12 @@
 'use strict';
 
 const {
+  ArrayPrototypeJoin,
   Boolean,
   Int8Array,
   ObjectAssign,
   ObjectKeys,
+  StringPrototypeAt,
   StringPrototypeCharCodeAt,
   StringPrototypeIndexOf,
   StringPrototypeReplaceAll,
@@ -33,6 +35,7 @@ const {
   decodeURIComponent,
 } = primordials;
 
+const { URLPattern } = internalBinding('url_pattern');
 const { toASCII } = internalBinding('encoding_binding');
 const { encodeStr, hexTable } = require('internal/querystring');
 const querystring = require('querystring');
@@ -49,6 +52,7 @@ const {
 // This ensures setURLConstructor() is called before the native
 // URL::ToObject() method is used.
 const { spliceOne } = require('internal/util');
+const { isInsideNodeModules } = internalBinding('util');
 
 // WHATWG URL implementation provided by internal/url
 const {
@@ -57,6 +61,7 @@ const {
   domainToASCII,
   domainToUnicode,
   fileURLToPath,
+  fileURLToPathBuffer,
   pathToFileURL: _pathToFileURL,
   urlToHttpOptions,
   unsafeProtocol,
@@ -65,8 +70,6 @@ const {
 } = require('internal/url');
 
 const bindingUrl = internalBinding('url');
-
-const { getOptionValue } = require('internal/options');
 
 // Original url.parse() API
 
@@ -128,7 +131,7 @@ const {
 let urlParseWarned = false;
 
 function urlParse(url, parseQueryString, slashesDenoteHost) {
-  if (!urlParseWarned && getOptionValue('--pending-deprecation')) {
+  if (!urlParseWarned && !isInsideNodeModules(100, true)) {
     urlParseWarned = true;
     process.emitWarning(
       '`url.parse()` behavior is not standardized and prone to ' +
@@ -922,7 +925,7 @@ Url.prototype.resolveObject = function resolveObject(relative) {
   // If a url ENDs in . or .., then it must get a trailing slash.
   // however, if it ends in anything else non-slashy,
   // then it must NOT get a trailing slash.
-  let last = srcPath.slice(-1)[0];
+  let last = srcPath[srcPath.length - 1];
   const hasTrailingSlash = (
     ((result.host || relative.host || srcPath.length > 1) &&
     (last === '.' || last === '..')) || last === '');
@@ -955,7 +958,7 @@ Url.prototype.resolveObject = function resolveObject(relative) {
     srcPath.unshift('');
   }
 
-  if (hasTrailingSlash && (srcPath.join('/').slice(-1) !== '/')) {
+  if (hasTrailingSlash && StringPrototypeAt(ArrayPrototypeJoin(srcPath, '/'), -1) !== '/') {
     srcPath.push('');
   }
 
@@ -1033,6 +1036,7 @@ module.exports = {
 
   // WHATWG API
   URL,
+  URLPattern,
   URLSearchParams,
   domainToASCII,
   domainToUnicode,
@@ -1040,5 +1044,6 @@ module.exports = {
   // Utilities
   pathToFileURL,
   fileURLToPath,
+  fileURLToPathBuffer,
   urlToHttpOptions,
 };

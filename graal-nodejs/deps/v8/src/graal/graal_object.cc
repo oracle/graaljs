@@ -166,7 +166,6 @@ v8::Maybe<bool> GraalObject::SetAccessor(
         v8::AccessorNameGetterCallback getter,
         v8::AccessorNameSetterCallback setter,
         v8::MaybeLocal<v8::Value> data,
-        v8::AccessControl settings,
         v8::PropertyAttribute attributes) {
     jobject java_name = reinterpret_cast<GraalValue*> (*name)->GetJavaObject();
     jlong java_getter = (jlong) getter;

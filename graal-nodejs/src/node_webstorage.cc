@@ -42,7 +42,6 @@ using v8::PropertyDescriptor;
 using v8::PropertyHandlerFlags;
 using v8::String;
 using v8::Uint32;
-using v8::Undefined;
 using v8::Value;
 
 #define THROW_SQLITE_ERROR(env, r)                                             \
@@ -532,7 +531,7 @@ template <typename T>
 static bool ShouldIntercept(Local<Name> property,
                             const PropertyCallbackInfo<T>& info) {
   Environment* env = Environment::GetCurrent(info);
-  Local<Value> proto = info.This()->GetPrototype();
+  Local<Value> proto = info.This()->GetPrototypeV2();
 
   if (proto->IsObject()) {
     bool has_prop;
@@ -561,8 +560,6 @@ static Intercepted StorageGetter(Local<Name> property,
 
   if (storage->Load(property).ToLocal(&result) && !result->IsNull()) {
     info.GetReturnValue().Set(result);
-  } else {
-    info.GetReturnValue().Set(Undefined(info.GetIsolate()));
   }
 
   return Intercepted::kYes;
@@ -574,8 +571,8 @@ static Intercepted StorageSetter(Local<Name> property,
   Storage* storage;
   ASSIGN_OR_RETURN_UNWRAP(&storage, info.This(), Intercepted::kNo);
 
-  if (storage->Store(property, value).IsJust()) {
-    info.GetReturnValue().Set(value);
+  if (storage->Store(property, value).IsNothing()) {
+    info.GetReturnValue().SetFalse();
   }
 
   return Intercepted::kYes;
@@ -741,11 +738,10 @@ static void Initialize(Local<Object> target,
 
   Local<FunctionTemplate> length_getter =
       FunctionTemplate::New(isolate, StorageLengthGetter);
-  ctor_tmpl->PrototypeTemplate()->SetAccessorProperty(
-      FIXED_ONE_BYTE_STRING(isolate, "length"),
-      length_getter,
-      Local<FunctionTemplate>(),
-      DontDelete);
+  ctor_tmpl->PrototypeTemplate()->SetAccessorProperty(env->length_string(),
+                                                      length_getter,
+                                                      Local<FunctionTemplate>(),
+                                                      DontDelete);
 
   SetProtoMethod(isolate, ctor_tmpl, "clear", Clear);
   SetProtoMethodNoSideEffect(isolate, ctor_tmpl, "getItem", GetItem);

@@ -17,7 +17,9 @@ class RegExpMacroAssemblerTracer: public RegExpMacroAssembler {
   RegExpMacroAssemblerTracer(Isolate* isolate, RegExpMacroAssembler* assembler);
   ~RegExpMacroAssemblerTracer() override;
   void AbortedCodeGeneration() override;
-  int stack_limit_slack() override { return assembler_->stack_limit_slack(); }
+  int stack_limit_slack_slot_count() override {
+    return assembler_->stack_limit_slack_slot_count();
+  }
   bool CanReadUnaligned() const override {
     return assembler_->CanReadUnaligned();
   }
@@ -30,7 +32,7 @@ class RegExpMacroAssemblerTracer: public RegExpMacroAssembler {
                               Label* on_equal) override;
   void CheckCharacterGT(base::uc16 limit, Label* on_greater) override;
   void CheckCharacterLT(base::uc16 limit, Label* on_less) override;
-  void CheckGreedyLoop(Label* on_tos_equals_current_position) override;
+  void CheckFixedLengthLoop(Label* on_tos_equals_current_position) override;
   void CheckAtStart(int cp_offset, Label* on_at_start) override;
   void CheckNotAtStart(int cp_offset, Label* on_not_at_start) override;
   void CheckNotBackReference(int start_reg, bool read_backward,
@@ -53,11 +55,18 @@ class RegExpMacroAssemblerTracer: public RegExpMacroAssembler {
   bool CheckCharacterNotInRangeArray(const ZoneList<CharacterRange>* ranges,
                                      Label* on_not_in_range) override;
   void CheckBitInTable(Handle<ByteArray> table, Label* on_bit_set) override;
+  bool SkipUntilBitInTableUseSimd(int advance_by) override {
+    return assembler_->SkipUntilBitInTableUseSimd(advance_by);
+  }
+  void SkipUntilBitInTable(int cp_offset, Handle<ByteArray> table,
+                           Handle<ByteArray> nibble_table,
+                           int advance_by) override;
   void CheckPosition(int cp_offset, Label* on_outside_input) override;
   bool CheckSpecialClassRanges(StandardCharacterSet type,
                                Label* on_no_match) override;
   void Fail() override;
-  Handle<HeapObject> GetCode(Handle<String> source) override;
+  DirectHandle<HeapObject> GetCode(DirectHandle<String> source,
+                                   RegExpFlags flags) override;
   void GoTo(Label* label) override;
   void IfRegisterGE(int reg, int comparand, Label* if_ge) override;
   void IfRegisterLT(int reg, int comparand, Label* if_lt) override;

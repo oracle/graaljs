@@ -135,7 +135,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         public int getECMAScriptVersion() {
             return switch (this) {
                 case of, from -> JSConfig.ECMAScript2015;
-                case fromAsync -> JSConfig.StagingECMAScriptVersion;
+                case fromAsync -> JSConfig.ECMAScript2026;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }

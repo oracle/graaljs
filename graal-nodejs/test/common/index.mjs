@@ -16,6 +16,7 @@ const {
   getBufferSources,
   getTTYfd,
   hasCrypto,
+  hasInspector,
   hasSQLite,
   hasIntl,
   hasIPv6,
@@ -36,7 +37,7 @@ const {
   mustNotMutateObjectDeep,
   mustSucceed,
   nodeProcessAborted,
-  parseTestFlags,
+  parseTestMetadata,
   PIPE,
   platformTimeout,
   printSkipMessage,
@@ -47,6 +48,7 @@ const {
   skipIfInspectorDisabled,
   skipIfSQLiteMissing,
   spawnPromisified,
+  sleepSync,
 } = common;
 
 const getPort = () => common.PORT;
@@ -66,6 +68,7 @@ export {
   getPort,
   getTTYfd,
   hasCrypto,
+  hasInspector,
   hasSQLite,
   hasIntl,
   hasIPv6,
@@ -86,7 +89,7 @@ export {
   mustNotMutateObjectDeep,
   mustSucceed,
   nodeProcessAborted,
-  parseTestFlags,
+  parseTestMetadata,
   PIPE,
   platformTimeout,
   printSkipMessage,
@@ -97,4 +100,5 @@ export {
   skipIfInspectorDisabled,
   skipIfSQLiteMissing,
   spawnPromisified,
+  sleepSync,
 };

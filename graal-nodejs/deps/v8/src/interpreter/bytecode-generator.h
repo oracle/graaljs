@@ -50,7 +50,7 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
   Handle<BytecodeArray> FinalizeBytecode(IsolateT* isolate,
                                          Handle<Script> script);
   template <typename IsolateT>
-  Handle<TrustedByteArray> FinalizeSourcePositionTable(IsolateT* isolate);
+  DirectHandle<TrustedByteArray> FinalizeSourcePositionTable(IsolateT* isolate);
 
   // Check if hint2 is same or the subtype of hint1.
   static bool IsSameOrSubTypeHint(TypeHint hint1, TypeHint hint2) {
@@ -73,7 +73,7 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
   void VisitModuleDeclarations(Declaration::List* declarations);
   void VisitGlobalDeclarations(Declaration::List* declarations);
   void VisitDeclarations(Declaration::List* declarations);
-  void VisitStatements(const ZonePtrList<Statement>* statments);
+  void VisitStatements(const ZonePtrList<Statement>* statments, int start = 0);
 
  private:
   class AccumulatorPreservingScope;
@@ -100,6 +100,7 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
   class RegisterAllocationScope;
   class TestResultScope;
   class TopLevelDeclarationsBuilder;
+  class DisposablesStackScope;
   class ValueResultScope;
 
   using ToBooleanMode = BytecodeArrayBuilder::ToBooleanMode;
@@ -109,7 +110,7 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
 
   // An assignment has to evaluate its LHS before its RHS, but has to assign to
   // the LHS after both evaluations are done. This class stores the data
-  // computed in the LHS evaulation that has to live across the RHS evaluation,
+  // computed in the LHS evaluation that has to live across the RHS evaluation,
   // and is used in the actual LHS assignment.
   class AssignmentLhsData {
    public:
@@ -197,7 +198,16 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
   };
 
   void GenerateBytecodeBody();
-  void GenerateBytecodeBodyWithoutImplicitFinalReturn();
+
+  void GenerateBaseConstructorBody();
+  void GenerateDerivedConstructorBody();
+  void GenerateAsyncFunctionBody();
+  void GenerateAsyncGeneratorFunctionBody();
+
+  void GenerateBodyPrologue();
+  void GenerateBodyStatements(int start = 0);
+  void GenerateBodyStatementsWithoutImplicitFinalReturn(int start = 0);
+
   template <typename IsolateT>
   void AllocateDeferredConstants(IsolateT* isolate, Handle<Script> script);
 
@@ -282,8 +292,9 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
 
   void SetVariableInRegister(Variable* var, Register reg);
 
-  Variable* GetVariableInAccumulator();
+  Variable* GetPotentialVariableInAccumulator();
 
+  void AddDisposableValue(VariableMode mode);
   void BuildVariableLoad(Variable* variable, HoleCheckMode hole_check_mode,
                          TypeofMode typeof_mode = TypeofMode::kNotInside);
   void BuildVariableLoadForAccumulatorValue(
@@ -381,6 +392,7 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
                                          Register instance);
   void BuildGeneratorObjectVariableInitialization();
   void VisitBlockDeclarationsAndStatements(Block* stmt);
+  void VisitBlockMaybeDispose(Block* stmt);
   void VisitLiteralAccessor(LiteralProperty* property, Register value_out);
   void VisitForInAssignment(Expression* expr);
   void VisitModuleNamespaceImports();
@@ -442,6 +454,8 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
                        FinallyBodyFunc finally_body_func,
                        HandlerTable::CatchPrediction catch_prediction,
                        TryFinallyStatement* stmt_for_coverage = nullptr);
+  template <typename WrappedFunc>
+  void BuildDisposeScope(WrappedFunc wrapped_func, bool has_await_using);
 
   template <typename ExpressionFunc>
   void BuildOptionalChain(ExpressionFunc expression_func);
@@ -511,6 +525,7 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
                                            : ToBooleanMode::kConvertToBoolean;
   }
 
+  inline Register incoming_new_target() const;
   inline Register generator_object() const;
 
   inline BytecodeArrayBuilder* builder() { return &builder_; }
@@ -572,6 +587,14 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
     current_for_in_scope_ = for_in_scope;
   }
 
+  Register current_disposables_stack() const {
+    SBXCHECK(current_disposables_stack_.is_valid());
+    return current_disposables_stack_;
+  }
+  void set_current_disposables_stack(Register disposables_stack) {
+    current_disposables_stack_ = disposables_stack;
+  }
+
   LocalIsolate* local_isolate_;
   Zone* zone_;
   BytecodeArrayBuilder builder_;
@@ -598,12 +621,14 @@ class BytecodeGenerator final : public AstVisitor<BytecodeGenerator> {
   ZoneVector<std::pair<ClassLiteral*, size_t>> class_literals_;
   ZoneVector<std::pair<GetTemplateObject*, size_t>> template_objects_;
   ZoneVector<Variable*> vars_in_hole_check_bitmap_;
+  ZoneVector<std::pair<Call*, Scope*>> eval_calls_;
 
   ControlScope* execution_control_;
   ContextScope* execution_context_;
   ExpressionResultScope* execution_result_;
 
   Register incoming_new_target_or_generator_;
+  Register current_disposables_stack_;
 
   BytecodeLabels* optional_chaining_null_labels_;
 

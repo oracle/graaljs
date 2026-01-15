@@ -1,7 +1,14 @@
 #include "network_agent.h"
+#include <string>
+#include "debug_utils-inl.h"
+#include "env-inl.h"
+#include "inspector/network_resource_manager.h"
 #include "inspector/protocol_helper.h"
 #include "network_inspector.h"
+#include "node_metadata.h"
 #include "util-inl.h"
+#include "uv.h"
+#include "v8-context.h"
 #include "v8.h"
 
 namespace node {
@@ -17,6 +24,8 @@ using v8::Nothing;
 using v8::Object;
 using v8::Uint8Array;
 using v8::Value;
+
+constexpr size_t kDefaultMaxTotalBufferSize = 100 * 1024 * 1024;  // 100MB
 
 // Get a protocol string property from the object.
 Maybe<protocol::String> ObjectGetProtocolString(v8::Local<v8::Context> context,
@@ -66,6 +75,20 @@ Maybe<int> ObjectGetInt(v8::Local<v8::Context> context,
     return Nothing<int>();
   }
   return Just(value.As<v8::Int32>()->Value());
+}
+
+// Get a protocol bool property from the object.
+Maybe<bool> ObjectGetBool(v8::Local<v8::Context> context,
+                          Local<Object> object,
+                          const char* property) {
+  HandleScope handle_scope(context->GetIsolate());
+  Local<Value> value;
+  if (!object->Get(context, OneByteString(context->GetIsolate(), property))
+           .ToLocal(&value) ||
+      !value->IsBoolean()) {
+    return Nothing<bool>();
+  }
+  return Just(value.As<v8::Boolean>()->Value());
 }
 
 // Get an object property from the object.
@@ -134,10 +157,13 @@ std::unique_ptr<protocol::Network::Request> createRequestFromObject(
   if (!headers) {
     return {};
   }
+  bool has_post_data =
+      ObjectGetBool(context, request, "hasPostData").FromMaybe(false);
 
   return protocol::Network::Request::create()
       .setUrl(url)
       .setMethod(method)
+      .setHasPostData(has_post_data)
       .setHeaders(std::move(headers))
       .build();
 }
@@ -169,15 +195,10 @@ std::unique_ptr<protocol::Network::Response> createResponseFromObject(
     return {};
   }
 
-  protocol::String mimeType;
-  if (!ObjectGetProtocolString(context, response, "mimeType").To(&mimeType)) {
-    mimeType = protocol::String("");
-  }
-
-  protocol::String charset = protocol::String();
-  if (!ObjectGetProtocolString(context, response, "charset").To(&charset)) {
-    charset = protocol::String("");
-  }
+  protocol::String mimeType =
+      ObjectGetProtocolString(context, response, "mimeType").FromMaybe("");
+  protocol::String charset =
+      ObjectGetProtocolString(context, response, "charset").FromMaybe("");
 
   return protocol::Network::Response::create()
       .setUrl(url)
@@ -189,14 +210,109 @@ std::unique_ptr<protocol::Network::Response> createResponseFromObject(
       .build();
 }
 
-NetworkAgent::NetworkAgent(NetworkInspector* inspector,
-                           v8_inspector::V8Inspector* v8_inspector)
-    : inspector_(inspector), v8_inspector_(v8_inspector) {
+std::unique_ptr<protocol::Network::WebSocketResponse> createWebSocketResponse(
+    v8::Local<v8::Context> context, Local<Object> response) {
+  HandleScope handle_scope(context->GetIsolate());
+  int status;
+  if (!ObjectGetInt(context, response, "status").To(&status)) {
+    return {};
+  }
+  protocol::String statusText;
+  if (!ObjectGetProtocolString(context, response, "statusText")
+           .To(&statusText)) {
+    return {};
+  }
+  Local<Object> headers_obj;
+  if (!ObjectGetObject(context, response, "headers").ToLocal(&headers_obj)) {
+    return {};
+  }
+  std::unique_ptr<protocol::Network::Headers> headers =
+      createHeadersFromObject(context, headers_obj);
+  if (!headers) {
+    return {};
+  }
+
+  return protocol::Network::WebSocketResponse::create()
+      .setStatus(status)
+      .setStatusText(statusText)
+      .setHeaders(std::move(headers))
+      .build();
+}
+
+NetworkAgent::NetworkAgent(
+    NetworkInspector* inspector,
+    v8_inspector::V8Inspector* v8_inspector,
+    Environment* env,
+    std::shared_ptr<NetworkResourceManager> network_resource_manager)
+    : inspector_(inspector),
+      v8_inspector_(v8_inspector),
+      env_(env),
+      network_resource_manager_(std::move(network_resource_manager)),
+      requests_(kDefaultMaxTotalBufferSize) {
   event_notifier_map_["requestWillBeSent"] = &NetworkAgent::requestWillBeSent;
   event_notifier_map_["responseReceived"] = &NetworkAgent::responseReceived;
   event_notifier_map_["loadingFailed"] = &NetworkAgent::loadingFailed;
   event_notifier_map_["loadingFinished"] = &NetworkAgent::loadingFinished;
+  event_notifier_map_["dataSent"] = &NetworkAgent::dataSent;
   event_notifier_map_["dataReceived"] = &NetworkAgent::dataReceived;
+  event_notifier_map_["webSocketCreated"] = &NetworkAgent::webSocketCreated;
+  event_notifier_map_["webSocketClosed"] = &NetworkAgent::webSocketClosed;
+  event_notifier_map_["webSocketHandshakeResponseReceived"] =
+      &NetworkAgent::webSocketHandshakeResponseReceived;
+}
+
+void NetworkAgent::webSocketCreated(v8::Local<v8::Context> context,
+                                    v8::Local<v8::Object> params) {
+  protocol::String request_id;
+  if (!ObjectGetProtocolString(context, params, "requestId").To(&request_id)) {
+    return;
+  }
+  protocol::String url;
+  if (!ObjectGetProtocolString(context, params, "url").To(&url)) {
+    return;
+  }
+  std::unique_ptr<protocol::Network::Initiator> initiator =
+      protocol::Network::Initiator::create()
+          .setType(protocol::Network::Initiator::TypeEnum::Script)
+          .setStack(
+              v8_inspector_->captureStackTrace(true)->buildInspectorObject(0))
+          .build();
+  frontend_->webSocketCreated(request_id, url, std::move(initiator));
+}
+
+void NetworkAgent::webSocketClosed(v8::Local<v8::Context> context,
+                                   v8::Local<v8::Object> params) {
+  protocol::String request_id;
+  if (!ObjectGetProtocolString(context, params, "requestId").To(&request_id)) {
+    return;
+  }
+  double timestamp;
+  if (!ObjectGetDouble(context, params, "timestamp").To(&timestamp)) {
+    return;
+  }
+  frontend_->webSocketClosed(request_id, timestamp);
+}
+
+void NetworkAgent::webSocketHandshakeResponseReceived(
+    v8::Local<v8::Context> context, v8::Local<v8::Object> params) {
+  protocol::String request_id;
+  if (!ObjectGetProtocolString(context, params, "requestId").To(&request_id)) {
+    return;
+  }
+  double timestamp;
+  if (!ObjectGetDouble(context, params, "timestamp").To(&timestamp)) {
+    return;
+  }
+  Local<Object> response_obj;
+  if (!ObjectGetObject(context, params, "response").ToLocal(&response_obj)) {
+    return;
+  }
+  auto response = createWebSocketResponse(context, response_obj);
+  if (!response) {
+    return;
+  }
+  frontend_->webSocketHandshakeResponseReceived(
+      request_id, timestamp, std::move(response));
 }
 
 void NetworkAgent::emitNotification(v8::Local<v8::Context> context,
@@ -215,8 +331,15 @@ void NetworkAgent::Wire(protocol::UberDispatcher* dispatcher) {
   protocol::Network::Dispatcher::wire(dispatcher, this);
 }
 
-protocol::DispatchResponse NetworkAgent::enable() {
+protocol::DispatchResponse NetworkAgent::enable(
+    std::optional<int> in_maxTotalBufferSize,
+    std::optional<int> in_maxResourceBufferSize) {
   inspector_->Enable();
+  requests_ = RequestsBuffer(
+      in_maxTotalBufferSize.value_or(kDefaultMaxTotalBufferSize));
+  if (in_maxResourceBufferSize) {
+    max_resource_buffer_size_ = *in_maxResourceBufferSize;
+  }
   return protocol::DispatchResponse::Success();
 }
 
@@ -225,28 +348,130 @@ protocol::DispatchResponse NetworkAgent::disable() {
   return protocol::DispatchResponse::Success();
 }
 
-protocol::DispatchResponse NetworkAgent::streamResourceContent(
-    const protocol::String& in_requestId, protocol::Binary* out_bufferedData) {
-  if (!requests_.contains(in_requestId)) {
+protocol::DispatchResponse NetworkAgent::getRequestPostData(
+    const protocol::String& in_requestId, protocol::String* out_postData) {
+  auto request_entry = requests_.cfind(in_requestId);
+  if (request_entry == requests_.end()) {
     // Request not found, ignore it.
     return protocol::DispatchResponse::InvalidParams("Request not found");
   }
 
-  auto& it = requests_[in_requestId];
-
-  it.is_streaming = true;
+  if (!request_entry->second.is_request_finished) {
+    // Request not finished yet.
+    return protocol::DispatchResponse::InvalidParams(
+        "Request data is not finished yet");
+  }
+  if (request_entry->second.request_charset == Charset::kBinary) {
+    // The protocol does not support binary request bodies yet.
+    return protocol::DispatchResponse::ServerError(
+        "Unable to serialize binary request body");
+  }
+  // If the response is UTF-8, we return it as a concatenated string.
+  CHECK_EQ(request_entry->second.request_charset, Charset::kUTF8);
 
   // Concat response bodies.
-  *out_bufferedData = protocol::Binary::concat(it.response_data_blobs);
-  // Clear buffered data.
-  it.response_data_blobs.clear();
+  protocol::Binary buf =
+      protocol::Binary::concat(request_entry->second.request_data_blobs());
+  *out_postData = protocol::StringUtil::fromUTF8(buf.data(), buf.size());
+  return protocol::DispatchResponse::Success();
+}
 
-  if (it.is_finished) {
+protocol::DispatchResponse NetworkAgent::getResponseBody(
+    const protocol::String& in_requestId,
+    protocol::String* out_body,
+    bool* out_base64Encoded) {
+  auto request_entry = requests_.cfind(in_requestId);
+  if (request_entry == requests_.end()) {
+    // Request not found, ignore it.
+    return protocol::DispatchResponse::InvalidParams("Request not found");
+  }
+
+  if (request_entry->second.is_streaming) {
+    // Streaming request, data is not buffered.
+    return protocol::DispatchResponse::InvalidParams(
+        "Response body of the request is been streamed");
+  }
+
+  if (!request_entry->second.is_response_finished) {
+    // Response not finished yet.
+    return protocol::DispatchResponse::InvalidParams(
+        "Response data is not finished yet");
+  }
+
+  // Concat response bodies.
+  protocol::Binary buf =
+      protocol::Binary::concat(request_entry->second.response_data_blobs());
+  if (request_entry->second.response_charset == Charset::kBinary) {
+    // If the response is binary, we return base64 encoded data.
+    *out_body = buf.toBase64();
+    *out_base64Encoded = true;
+  } else if (request_entry->second.response_charset == Charset::kUTF8) {
+    // If the response is UTF-8, we return it as a concatenated string.
+    *out_body = protocol::StringUtil::fromUTF8(buf.data(), buf.size());
+    *out_base64Encoded = false;
+  } else {
+    UNREACHABLE("Response charset not implemented");
+  }
+
+  requests_.erase(request_entry);
+  return protocol::DispatchResponse::Success();
+}
+
+protocol::DispatchResponse NetworkAgent::streamResourceContent(
+    const protocol::String& in_requestId, protocol::Binary* out_bufferedData) {
+  bool is_response_finished = false;
+  {
+    auto it = requests_.find(in_requestId);
+    if (it == requests_.end()) {
+      // Request not found, ignore it.
+      return protocol::DispatchResponse::InvalidParams("Request not found");
+    }
+    auto& request_entry = it->second;
+
+    request_entry.is_streaming = true;
+
+    // Concat response bodies.
+    *out_bufferedData =
+        protocol::Binary::concat(request_entry.response_data_blobs());
+    // Clear buffered data.
+    request_entry.clear_response_data_blobs();
+    is_response_finished = request_entry.is_response_finished;
+  }
+
+  if (is_response_finished) {
     // If the request is finished, remove the entry.
     requests_.erase(in_requestId);
   }
-
   return protocol::DispatchResponse::Success();
+}
+
+protocol::DispatchResponse NetworkAgent::loadNetworkResource(
+    const protocol::String& in_url,
+    std::unique_ptr<protocol::Network::LoadNetworkResourcePageResult>*
+        out_resource) {
+  if (!env_->options()->experimental_inspector_network_resource) {
+    return protocol::DispatchResponse::ServerError(
+        "Network resource loading is not enabled. This feature is "
+        "experimental and requires --experimental-inspector-network-resource "
+        "flag to be set.");
+  }
+  CHECK_NOT_NULL(network_resource_manager_);
+  std::string data = network_resource_manager_->Get(in_url);
+  bool found = !data.empty();
+  if (found) {
+    auto result = protocol::Network::LoadNetworkResourcePageResult::create()
+                      .setSuccess(true)
+                      .setStream(in_url)
+                      .build();
+    *out_resource = std::move(result);
+    return protocol::DispatchResponse::Success();
+  } else {
+    auto result = protocol::Network::LoadNetworkResourcePageResult::create()
+                      .setSuccess(false)
+                      .build();
+    *out_resource = std::move(result);
+    return protocol::DispatchResponse::Success();
+  }
 }
 
 void NetworkAgent::requestWillBeSent(v8::Local<v8::Context> context,
@@ -263,6 +488,8 @@ void NetworkAgent::requestWillBeSent(v8::Local<v8::Context> context,
   if (!ObjectGetDouble(context, params, "wallTime").To(&wall_time)) {
     return;
   }
+  protocol::String charset =
+      ObjectGetProtocolString(context, params, "charset").FromMaybe("");
   Local<v8::Object> request_obj;
   if (!ObjectGetObject(context, params, "request").ToLocal(&request_obj)) {
     return;
@@ -280,17 +507,22 @@ void NetworkAgent::requestWillBeSent(v8::Local<v8::Context> context,
               v8_inspector_->captureStackTrace(true)->buildInspectorObject(0))
           .build();
 
+  if (requests_.contains(request_id)) {
+    // Duplicate entry, ignore it.
+    return;
+  }
+
+  auto request_charset = charset == "utf-8" ? Charset::kUTF8 : Charset::kBinary;
+  requests_.emplace(request_id,
+                    RequestEntry(timestamp,
+                                 request_charset,
+                                 request->getHasPostData(),
+                                 max_resource_buffer_size_));
   frontend_->requestWillBeSent(request_id,
                                std::move(request),
                                std::move(initiator),
                                timestamp,
                                wall_time);
-
-  if (requests_.contains(request_id)) {
-    // Duplicate entry, ignore it.
-    return;
-  }
-  requests_.emplace(request_id, RequestEntry{timestamp, false, false, {}});
 }
 
 void NetworkAgent::responseReceived(v8::Local<v8::Context> context,
@@ -316,6 +548,13 @@ void NetworkAgent::responseReceived(v8::Local<v8::Context> context,
     return;
   }
 
+  auto request_entry = requests_.find(request_id);
+  if (request_entry == requests_.end()) {
+    // No entry found. Ignore it.
+    return;
+  }
+  request_entry->second.response_charset =
+      response->getCharset() == "utf-8" ? Charset::kUTF8 : Charset::kBinary;
   frontend_->responseReceived(request_id, timestamp, type, std::move(response));
 }
 
@@ -356,7 +595,7 @@ void NetworkAgent::loadingFinished(v8::Local<v8::Context> context,
 
   frontend_->loadingFinished(request_id, timestamp);
 
-  auto request_entry = requests_.find(request_id);
+  auto request_entry = requests_.cfind(request_id);
   if (request_entry == requests_.end()) {
     // No entry found. Ignore it.
     return;
@@ -366,12 +605,12 @@ void NetworkAgent::loadingFinished(v8::Local<v8::Context> context,
     // Streaming finished, remove the entry.
     requests_.erase(request_id);
   } else {
-    request_entry->second.is_finished = true;
+    requests_.find(request_id)->second.is_response_finished = true;
   }
 }
 
-void NetworkAgent::dataReceived(v8::Local<v8::Context> context,
-                                v8::Local<v8::Object> params) {
+void NetworkAgent::dataSent(v8::Local<v8::Context> context,
+                            v8::Local<v8::Object> params) {
   protocol::String request_id;
   if (!ObjectGetProtocolString(context, params, "requestId").To(&request_id)) {
     return;
@@ -383,6 +622,39 @@ void NetworkAgent::dataReceived(v8::Local<v8::Context> context,
     return;
   }
 
+  bool is_finished =
+      ObjectGetBool(context, params, "finished").FromMaybe(false);
+  if (is_finished) {
+    request_entry->second.is_request_finished = true;
+    return;
+  }
+
+  double timestamp;
+  if (!ObjectGetDouble(context, params, "timestamp").To(&timestamp)) {
+    return;
+  }
+  int data_length;
+  if (!ObjectGetInt(context, params, "dataLength").To(&data_length)) {
+    return;
+  }
+  Local<Object> data_obj;
+  if (!ObjectGetObject(context, params, "data").ToLocal(&data_obj)) {
+    return;
+  }
+  if (!data_obj->IsUint8Array()) {
+    return;
+  }
+  Local<Uint8Array> data = data_obj.As<Uint8Array>();
+  auto data_bin = protocol::Binary::fromUint8Array(data);
+  request_entry->second.push_request_data_blob(data_bin);
+}
+
+void NetworkAgent::dataReceived(v8::Local<v8::Context> context,
+                                v8::Local<v8::Object> params) {
+  protocol::String request_id;
+  if (!ObjectGetProtocolString(context, params, "requestId").To(&request_id)) {
+    return;
+  }
   double timestamp;
   if (!ObjectGetDouble(context, params, "timestamp").To(&timestamp)) {
     return;
@@ -406,11 +678,17 @@ void NetworkAgent::dataReceived(v8::Local<v8::Context> context,
   Local<Uint8Array> data = data_obj.As<Uint8Array>();
   auto data_bin = protocol::Binary::fromUint8Array(data);
 
-  if (request_entry->second.is_streaming) {
+  auto it = requests_.find(request_id);
+  if (it == requests_.end()) {
+    // No entry found. Ignore it.
+    return;
+  }
+  auto& request_entry = it->second;
+  if (request_entry.is_streaming) {
     frontend_->dataReceived(
         request_id, timestamp, data_length, encoded_data_length, data_bin);
   } else {
-    requests_[request_id].response_data_blobs.push_back(data_bin);
+    request_entry.push_response_data_blob(data_bin);
   }
 }
 

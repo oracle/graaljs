@@ -85,6 +85,10 @@ export default [
           message: "Use `const { ByteLengthQueuingStrategy } = require('internal/webstreams/queuingstrategies')` instead of the global.",
         },
         {
+          name: 'CloseEvent',
+          message: "Use `const { CloseEvent } = require('internal/deps/undici/undici');` instead of the global.",
+        },
+        {
           name: 'CompressionStream',
           message: "Use `const { CompressionStream } = require('internal/webstreams/compression')` instead of the global.",
         },
@@ -217,10 +221,10 @@ export default [
           message: 'Use `const { ShadowRealm } = globalThis;` instead of the global.',
         },
         // SharedArrayBuffer is not available in primordials because it can be
-        // disabled with --no-harmony-sharedarraybuffer CLI flag.
+        // disabled with --enable-sharedarraybuffer-per-context CLI flag.
         {
           name: 'SharedArrayBuffer',
-          message: 'Use `const { SharedArrayBuffer } = globalThis;` instead of the global.',
+          message: "Use `const { constructSharedArrayBuffer } = require('internal/util');` instead of the global.",
         },
         {
           name: 'TextDecoder',
@@ -352,10 +356,21 @@ export default [
           name: 'SubtleCrypto',
           message: "Use `const { SubtleCrypto } = require('internal/crypto/webcrypto');` instead of the global.",
         },
-        // Float16Array is not available in primordials because it's only available with --js-float16array CLI flag.
+        // Float16Array is not available in primordials because it can be
+        // disabled with --no-js-float16array CLI flag.
         {
           name: 'Float16Array',
           message: 'Use `const { Float16Array } = globalThis;` instead of the global.',
+        },
+        // DisposableStack and AsyncDisposableStack are not available in primordials because they can be
+        // disabled with --no-js-explicit-resource-management CLI flag.
+        {
+          name: 'DisposableStack',
+          message: 'Use `const { DisposableStack } = globalThis;` instead of the global.',
+        },
+        {
+          name: 'AsyncDisposableStack',
+          message: 'Use `const { AsyncDisposableStack } = globalThis;` instead of the global.',
         },
       ],
       'no-restricted-modules': [
@@ -444,7 +459,7 @@ export default [
           into: 'Safe',
         },
         { name: 'String' },
-        { name: 'Symbol', polyfilled: ['asyncDispose', 'dispose'] },
+        { name: 'Symbol' },
         { name: 'SyntaxError' },
         { name: 'TypeError' },
         { name: 'Uint16Array' },
@@ -508,6 +523,18 @@ export default [
           message: 'Do not use prototype primordials in this file.',
         },
       ],
+    },
+  },
+  {
+    files: [
+      'lib/internal/per_context/domexception.js',
+    ],
+    languageOptions: {
+      globals: {
+        // Parameters passed to internal modules.
+        privateSymbols: 'readonly',
+        perIsolateSymbols: 'readonly',
+      },
     },
   },
 ];

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,6 +115,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
     CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
+    CALLBACK("executeImportModuleWithPhaseDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleWithPhaseDynamicallyCallback),
     CALLBACK("executePrepareStackTraceCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePrepareStackTraceCallback),
     CALLBACK("hasCustomHostObject", "(J)Z", &GraalHasCustomHostObject),
     CALLBACK("isHostObject", "(JLjava/lang/Object;)Z", &GraalIsHostObject),
@@ -403,11 +404,11 @@ jobject GraalExecuteAccessorGetter(JNIEnv* env, jclass nativeAccess, jlong point
     v8::HandleScope scope(v8_isolate);
 
     GraalValue* graal_name = GraalValue::FromJavaObject(isolate, name);
-    v8::String* property_name = reinterpret_cast<v8::String*> (graal_name);
+    v8::Name* property_name = reinterpret_cast<v8::Name*> (graal_name);
 
     GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
-    v8::AccessorGetterCallback callback = (v8::AccessorGetterCallback)pointer;
-    callback(v8::Local<v8::String>::New(v8_isolate, property_name), info);
+    v8::AccessorNameGetterCallback callback = (v8::AccessorNameGetterCallback)pointer;
+    callback(v8::Local<v8::Name>::New(v8_isolate, property_name), info);
 
     v8::ReturnValue<v8::Value> value = info.GetReturnValue();
     return isolate->CorrectReturnValue(**reinterpret_cast<GraalValue***> (&value), isolate->GetUndefined()->GetJavaObject());
@@ -419,16 +420,16 @@ void GraalExecuteAccessorSetter(JNIEnv* env, jclass nativeAccess, jlong pointer,
     v8::HandleScope scope(v8_isolate);
 
     GraalValue* graal_name = GraalValue::FromJavaObject(isolate, name);
-    v8::String* property_name = reinterpret_cast<v8::String*> (graal_name);
+    v8::Name* property_name = reinterpret_cast<v8::Name*> (graal_name);
 
     jobject java_value = env->GetObjectArrayElement(arguments, 2);
     GraalValue* graal_value = GraalValue::FromJavaObject(isolate, java_value);
     v8::Value* property_value = reinterpret_cast<v8::Value*> (graal_value);
 
     GraalPropertyCallbackInfo<void> info = GraalPropertyCallbackInfo<void>::New(isolate, arguments, 0, data, holder);
-    v8::AccessorSetterCallback callback = (v8::AccessorSetterCallback)pointer;
+    v8::AccessorNameSetterCallback callback = (v8::AccessorNameSetterCallback)pointer;
     callback(
-        v8::Local<v8::String>::New(v8_isolate, property_name),
+        v8::Local<v8::Name>::New(v8_isolate, property_name),
         v8::Local<v8::Value>::New(v8_isolate, property_value),
         info
     );
@@ -770,22 +771,22 @@ void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject 
     );
 }
 
-jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_specifier, jobject java_import_assertions, jobject java_referrer) {
+jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_specifier, jobject java_import_attributes, jobject java_referrer) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     v8::HandleScope scope(v8_isolate);
     GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
     GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
-    GraalFixedArray* graal_import_assertions = GraalFixedArray::Allocate(graal_isolate, java_import_assertions);
+    GraalFixedArray* graal_import_attributes = GraalFixedArray::Allocate(graal_isolate, java_import_attributes);
     GraalModule* graal_referrer = GraalModule::Allocate(graal_isolate, java_referrer);
     v8::Context* v8_context = reinterpret_cast<v8::Context*> (graal_context);
     v8::String* v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
-    v8::FixedArray* v8_import_assertions = reinterpret_cast<v8::FixedArray*> (graal_import_assertions);
+    v8::FixedArray* v8_import_attributes = reinterpret_cast<v8::FixedArray*> (graal_import_attributes);
     v8::Module* v8_referrer = reinterpret_cast<v8::Module*> (graal_referrer);
     v8::MaybeLocal<v8::Module> v8_result = ((v8::Module::ResolveModuleCallback) callback)(
         v8::Local<v8::Context>::New(v8_isolate, v8_context),
         v8::Local<v8::String>::New(v8_isolate, v8_specifier),
-        v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_assertions),
+        v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_attributes),
         v8::Local<v8::Module>::New(v8_isolate, v8_referrer)
     );
     if (v8_result.IsEmpty()) {
@@ -797,7 +798,7 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
     }
 }
 
-jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_host_defined_options, jobject java_resource_name, jobject java_specifier, jobject java_import_assertions) {
+jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_host_defined_options, jobject java_resource_name, jobject java_specifier, jobject java_import_attributes) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     v8::HandleScope scope(v8_isolate);
@@ -805,18 +806,50 @@ jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAc
     GraalData* graal_host_defined_options = GraalFixedArray::Allocate(graal_isolate, java_host_defined_options);
     GraalString* graal_resource_name = GraalString::Allocate(graal_isolate, java_resource_name);
     GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
-    GraalFixedArray* graal_import_assertions = GraalFixedArray::Allocate(graal_isolate, java_import_assertions);
+    GraalFixedArray* graal_import_attributes = GraalFixedArray::Allocate(graal_isolate, java_import_attributes);
     v8::Context* v8_context = reinterpret_cast<v8::Context*> (graal_context);
     v8::Data* v8_host_defined_options = reinterpret_cast<v8::Data*> (graal_host_defined_options);
     v8::Value* v8_resource_name = reinterpret_cast<v8::Value*> (graal_resource_name);
     v8::String* v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
-    v8::FixedArray* v8_import_assertions = reinterpret_cast<v8::FixedArray*> (graal_import_assertions);
+    v8::FixedArray* v8_import_attributes = reinterpret_cast<v8::FixedArray*> (graal_import_attributes);
     v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(
         v8::Local<v8::Context>::New(v8_isolate, v8_context),
         v8::Local<v8::Data>::New(v8_isolate, v8_host_defined_options),
         v8::Local<v8::Value>::New(v8_isolate, v8_resource_name),
         v8::Local<v8::String>::New(v8_isolate, v8_specifier),
-        v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_assertions)
+        v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_attributes)
+    );
+    if (v8_result.IsEmpty()) {
+        return NULL;
+    } else {
+        v8::Local<v8::Promise> v8_promise = v8_result.ToLocalChecked();
+        GraalPromise* graal_promise = reinterpret_cast<GraalPromise*> (*v8_promise);
+        return env->NewLocalRef(graal_promise->GetJavaObject());
+    }
+}
+
+jobject GraalExecuteImportModuleWithPhaseDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_host_defined_options, jobject java_resource_name, jobject java_specifier, jint java_phase, jobject java_import_attributes) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(v8_isolate);
+    GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
+    GraalData* graal_host_defined_options = GraalFixedArray::Allocate(graal_isolate, java_host_defined_options);
+    GraalString* graal_resource_name = GraalString::Allocate(graal_isolate, java_resource_name);
+    GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
+    GraalFixedArray* graal_import_attributes = GraalFixedArray::Allocate(graal_isolate, java_import_attributes);
+    v8::Context* v8_context = reinterpret_cast<v8::Context*> (graal_context);
+    v8::Data* v8_host_defined_options = reinterpret_cast<v8::Data*> (graal_host_defined_options);
+    v8::Value* v8_resource_name = reinterpret_cast<v8::Value*> (graal_resource_name);
+    v8::String* v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
+    v8::ModuleImportPhase v8_phase = static_cast<v8::ModuleImportPhase> (java_phase);
+    v8::FixedArray* v8_import_attributes = reinterpret_cast<v8::FixedArray*> (graal_import_attributes);
+    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleWithPhaseDynamically(
+        v8::Local<v8::Context>::New(v8_isolate, v8_context),
+        v8::Local<v8::Data>::New(v8_isolate, v8_host_defined_options),
+        v8::Local<v8::Value>::New(v8_isolate, v8_resource_name),
+        v8::Local<v8::String>::New(v8_isolate, v8_specifier),
+        v8_phase,
+        v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_attributes)
     );
     if (v8_result.IsEmpty()) {
         return NULL;

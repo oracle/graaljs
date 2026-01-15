@@ -10,6 +10,7 @@
 
 const {
   ObjectDefineProperty,
+  ObjectGetOwnPropertyDescriptor,
   globalThis,
 } = primordials;
 
@@ -18,7 +19,13 @@ const {
   defineLazyProperties,
   defineReplaceableLazyAttribute,
   exposeLazyInterfaces,
+  exposeInterface,
 } = require('internal/util');
+
+const {
+  ERR_INVALID_THIS,
+  ERR_NO_CRYPTO,
+} = require('internal/errors').codes;
 
 // https://html.spec.whatwg.org/multipage/webappapis.html#windoworworkerglobalscope
 const timers = require('timers');
@@ -57,8 +64,9 @@ exposeLazyInterfaces(globalThis, 'perf_hooks', [
 defineReplaceableLazyAttribute(globalThis, 'perf_hooks', ['performance']);
 
 // https://w3c.github.io/FileAPI/#creating-revoking
-const { installObjectURLMethods } = require('internal/url');
+const { installObjectURLMethods, URLPattern } = require('internal/url');
 installObjectURLMethods();
+exposeInterface(globalThis, 'URLPattern', URLPattern);
 
 let fetchImpl;
 // https://fetch.spec.whatwg.org/#fetch-method
@@ -81,7 +89,7 @@ ObjectDefineProperty(globalThis, 'fetch', {
 // https://fetch.spec.whatwg.org/#request-class
 // https://fetch.spec.whatwg.org/#response-class
 exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', [
-  'FormData', 'Headers', 'Request', 'Response', 'MessageEvent',
+  'FormData', 'Headers', 'Request', 'Response', 'MessageEvent', 'CloseEvent',
 ]);
 
 // https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events.org/
@@ -93,3 +101,29 @@ exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', ['EventSource', 
 internalBinding('wasm_web_api').setImplementation((streamState, source) => {
   require('internal/wasm_web_api').wasmStreamingCallback(streamState, source);
 });
+
+// WebCryptoAPI
+if (internalBinding('config').hasOpenSSL) {
+  defineReplaceableLazyAttribute(
+    globalThis,
+    'internal/crypto/webcrypto',
+    ['crypto'],
+    false,
+    function cryptoThisCheck() {
+      if (this !== globalThis && this != null)
+        throw new ERR_INVALID_THIS(
+          'nullish or must be the global object');
+    },
+  );
+  exposeLazyInterfaces(
+    globalThis, 'internal/crypto/webcrypto',
+    ['Crypto', 'CryptoKey', 'SubtleCrypto'],
+  );
+} else {
+  ObjectDefineProperty(globalThis, 'crypto',
+                       { __proto__: null, ...ObjectGetOwnPropertyDescriptor({
+                         get crypto() {
+                           throw new ERR_NO_CRYPTO();
+                         },
+                       }, 'crypto') });
+}

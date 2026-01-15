@@ -5,8 +5,10 @@
 #ifndef V8_HEAP_EVACUATION_ALLOCATOR_INL_H_
 #define V8_HEAP_EVACUATION_ALLOCATOR_INL_H_
 
-#include "src/common/globals.h"
 #include "src/heap/evacuation-allocator.h"
+// Include the non-inl header before the rest of the headers.
+
+#include "src/common/globals.h"
 #include "src/heap/spaces-inl.h"
 
 namespace v8 {
@@ -15,6 +17,7 @@ namespace internal {
 AllocationResult EvacuationAllocator::Allocate(AllocationSpace space,
                                                int object_size,
                                                AllocationAlignment alignment) {
+  DCHECK_IMPLIES(!shared_space_allocator_, space != SHARED_SPACE);
   object_size = ALIGN_TO_ALLOCATION_ALIGNMENT(object_size);
   switch (space) {
     case NEW_SPACE:

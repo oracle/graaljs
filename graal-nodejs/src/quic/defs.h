@@ -39,7 +39,7 @@ bool SetOption(Environment* env,
   if (!object->Get(env->context(), name).ToLocal(&value)) return false;
   if (!value->IsUndefined()) {
     Utf8Value utf8(env->isolate(), value);
-    options->*member = *utf8;
+    options->*member = utf8.ToString();
   }
   return true;
 }
@@ -68,14 +68,14 @@ bool SetOption(Environment* env,
     if (!value->IsUint32()) {
       Utf8Value nameStr(env->isolate(), name);
       THROW_ERR_INVALID_ARG_VALUE(
-          env, "The %s option must be an uint32", *nameStr);
+          env, "The %s option must be an uint32", nameStr);
       return false;
     }
     v8::Local<v8::Uint32> num;
     if (!value->ToUint32(env->context()).ToLocal(&num)) {
       Utf8Value nameStr(env->isolate(), name);
       THROW_ERR_INVALID_ARG_VALUE(
-          env, "The %s option must be an uint32", *nameStr);
+          env, "The %s option must be an uint32", nameStr);
       return false;
     }
     options->*member = num->Value();
@@ -95,7 +95,7 @@ bool SetOption(Environment* env,
     if (!value->IsBigInt() && !value->IsNumber()) {
       Utf8Value nameStr(env->isolate(), name);
       THROW_ERR_INVALID_ARG_VALUE(
-          env, "option %s must be a bigint or number", *nameStr);
+          env, "option %s must be a bigint or number", nameStr);
       return false;
     }
     DCHECK_IMPLIES(!value->IsBigInt(), value->IsNumber());
@@ -106,14 +106,14 @@ bool SetOption(Environment* env,
       val = value.As<v8::BigInt>()->Uint64Value(&lossless);
       if (!lossless) {
         Utf8Value label(env->isolate(), name);
-        THROW_ERR_INVALID_ARG_VALUE(env, "option %s is out of range", *label);
+        THROW_ERR_INVALID_ARG_VALUE(env, "option %s is out of range", label);
         return false;
       }
     } else {
       double dbl = value.As<v8::Number>()->Value();
       if (dbl < 0) {
         Utf8Value label(env->isolate(), name);
-        THROW_ERR_INVALID_ARG_VALUE(env, "option %s is out of range", *label);
+        THROW_ERR_INVALID_ARG_VALUE(env, "option %s is out of range", label);
         return false;
       }
       val = static_cast<uint64_t>(dbl);
@@ -211,6 +211,15 @@ enum class DatagramStatus : uint8_t {
   ACKNOWLEDGED,
   LOST,
 };
+
+#define CC_ALGOS(V)                                                            \
+  V(RENO, reno)                                                                \
+  V(CUBIC, cubic)                                                              \
+  V(BBR, bbr)
+
+#define V(name, _) static constexpr auto CC_ALGO_##name = NGTCP2_CC_ALGO_##name;
+CC_ALGOS(V)
+#undef V
 
 constexpr uint64_t NGTCP2_APP_NOERROR = 65280;
 constexpr size_t kDefaultMaxPacketLength = NGTCP2_MAX_UDP_PAYLOAD_SIZE;

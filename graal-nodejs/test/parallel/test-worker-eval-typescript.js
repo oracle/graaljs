@@ -17,22 +17,22 @@ const cjsHelloWorld = `
     parentPort.postMessage(foo);
 `;
 
-const flags = ['--experimental-strip-types', '--disable-warning=ExperimentalWarning'];
+const disableTypeScriptWarningFlag = '--disable-warning=ExperimentalWarning';
 
 test('Worker eval module typescript without input-type', async () => {
-  const w = new Worker(esmHelloWorld, { eval: true, execArgv: [...flags] });
+  const w = new Worker(esmHelloWorld, { eval: true, execArgv: [disableTypeScriptWarningFlag] });
   assert.deepStrictEqual(await once(w, 'message'), ['Hello, World!']);
 });
 
 test('Worker eval module typescript with --input-type=module-typescript', async () => {
   const w = new Worker(esmHelloWorld, { eval: true, execArgv: ['--input-type=module-typescript',
-                                                               ...flags] });
+                                                               disableTypeScriptWarningFlag] });
   assert.deepStrictEqual(await once(w, 'message'), ['Hello, World!']);
 });
 
 test('Worker eval module typescript with --input-type=commonjs-typescript', async () => {
   const w = new Worker(esmHelloWorld, { eval: true, execArgv: ['--input-type=commonjs-typescript',
-                                                               ...flags] });
+                                                               disableTypeScriptWarningFlag] });
 
   const [err] = await once(w, 'error');
   assert.strictEqual(err.name, 'SyntaxError');
@@ -41,26 +41,26 @@ test('Worker eval module typescript with --input-type=commonjs-typescript', asyn
 
 test('Worker eval module typescript with --input-type=module', async () => {
   const w = new Worker(esmHelloWorld, { eval: true, execArgv: ['--input-type=module',
-                                                               ...flags] });
+                                                               disableTypeScriptWarningFlag] });
   const [err] = await once(w, 'error');
   assert.strictEqual(err.name, 'SyntaxError');
   assert.match(err.message, /Missing initializer in const declaration|Missing assignment to constant/);
 });
 
 test('Worker eval commonjs typescript without input-type', async () => {
-  const w = new Worker(cjsHelloWorld, { eval: true, execArgv: [...flags] });
+  const w = new Worker(cjsHelloWorld, { eval: true, execArgv: [disableTypeScriptWarningFlag] });
   assert.deepStrictEqual(await once(w, 'message'), ['Hello, World!']);
 });
 
 test('Worker eval commonjs typescript with --input-type=commonjs-typescript', async () => {
   const w = new Worker(cjsHelloWorld, { eval: true, execArgv: ['--input-type=commonjs-typescript',
-                                                               ...flags] });
+                                                               disableTypeScriptWarningFlag] });
   assert.deepStrictEqual(await once(w, 'message'), ['Hello, World!']);
 });
 
 test('Worker eval commonjs typescript with --input-type=module-typescript', async () => {
   const w = new Worker(cjsHelloWorld, { eval: true, execArgv: ['--input-type=module-typescript',
-                                                               ...flags] });
+                                                               disableTypeScriptWarningFlag] });
   const [err] = await once(w, 'error');
   assert.strictEqual(err.name, 'ReferenceError');
   assert.match(err.message, /require is not defined in ES module scope, you can use import instead/);

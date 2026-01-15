@@ -56,6 +56,10 @@ namespace v8 {
                 static constexpr int kDataIndex = v8::PropertyCallbackInfo<v8::Value>::kDataIndex;
                 static constexpr int kThisIndex = v8::PropertyCallbackInfo<v8::Value>::kThisIndex;
                 static constexpr int kArgsLength = v8::PropertyCallbackInfo<v8::Value>::kArgsLength;
+                template<typename T>
+                static inline Address* getArguments(v8::PropertyCallbackInfo<T>* info) {
+                    return info->args_;
+                }
         };
     }
 }
@@ -82,8 +86,6 @@ private:
 
     GraalPropertyCallbackInfo(const GraalPropertyCallbackInfo&) = delete;
     GraalPropertyCallbackInfo& operator=(const GraalPropertyCallbackInfo&) = delete;
-
-    void* values_[v8::internal::PropertyCallbackArguments::kArgsLength];
 };
 
 extern template class GraalPropertyCallbackInfo<v8::Value>;

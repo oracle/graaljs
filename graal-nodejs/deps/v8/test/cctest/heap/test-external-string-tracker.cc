@@ -6,6 +6,7 @@
 #include "src/api/api.h"
 #include "src/execution/isolate.h"
 #include "src/heap/heap-inl.h"
+#include "src/heap/heap-layout-inl.h"
 #include "src/heap/spaces.h"
 #include "src/objects/objects-inl.h"
 #include "test/cctest/cctest.h"
@@ -116,7 +117,8 @@ TEST(ExternalString_ExternalBackingStoreSizeIncreasesMarkCompact) {
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::String> es = v8::String::NewExternalOneByte(
         isolate, new TestOneByteResource(i::StrDup(TEST_STR))).ToLocalChecked();
-    v8::internal::Handle<v8::internal::String> esh = v8::Utils::OpenHandle(*es);
+    v8::internal::DirectHandle<v8::internal::String> esh =
+        v8::Utils::OpenDirectHandle(*es);
 
     PageMetadata* page_before_gc = PageMetadata::FromHeapObject(*esh);
     heap::ForceEvacuationCandidate(page_before_gc);
@@ -168,8 +170,8 @@ TEST(ExternalString_ExternalBackingStoreSizeIncreasesAfterExternalization) {
     // Trigger full GC so that the newly allocated string moves to old gen.
     heap::InvokeAtomicMajorGC(heap);
 
-    bool success =
-        str->MakeExternal(new TestOneByteResource(i::StrDup(TEST_STR)));
+    bool success = str->MakeExternal(
+        isolate, new TestOneByteResource(i::StrDup(TEST_STR)));
     CHECK(success);
 
     CHECK_EQ(str->Length(), heap->old_space()->ExternalBackingStoreBytes(type) -
@@ -212,7 +214,7 @@ TEST(ExternalString_PromotedThinString) {
     i::Handle<i::String> isymbol1 = factory->InternalizeString(string1);
     CHECK(IsInternalizedString(*isymbol1));
     CHECK(IsExternalString(*string1));
-    CHECK(!heap->InYoungGeneration(*isymbol1));
+    CHECK(!HeapLayout::InYoungGeneration(*isymbol1));
 
     // Collect thin string. References to the thin string will be updated to
     // point to the actual external string in the old space.

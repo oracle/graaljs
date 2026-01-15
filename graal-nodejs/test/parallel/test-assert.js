@@ -491,7 +491,26 @@ test('Custom errors', () => {
 });
 
 test('Verify that throws() and doesNotThrow() throw on non-functions', () => {
-  const testBlockTypeError = (method, fn) => {
+  [
+    [assert.throws, 'string'],
+    [assert.doesNotThrow, 'string'],
+    [assert.throws, 1],
+    [assert.doesNotThrow, 1],
+    [assert.throws, true],
+    [assert.doesNotThrow, true],
+    [assert.throws, false],
+    [assert.doesNotThrow, false],
+    [assert.throws, []],
+    [assert.doesNotThrow, []],
+    [assert.throws, {}],
+    [assert.doesNotThrow, {}],
+    [assert.throws, /foo/],
+    [assert.doesNotThrow, /foo/],
+    [assert.throws, null],
+    [assert.doesNotThrow, null],
+    [assert.throws, undefined],
+    [assert.doesNotThrow, undefined],
+  ].forEach(([method, fn]) => {
     assert.throws(
       () => method(fn),
       {
@@ -501,26 +520,7 @@ test('Verify that throws() and doesNotThrow() throw on non-functions', () => {
                  invalidArgTypeHelper(fn)
       }
     );
-  };
-
-  testBlockTypeError(assert.throws, 'string');
-  testBlockTypeError(assert.doesNotThrow, 'string');
-  testBlockTypeError(assert.throws, 1);
-  testBlockTypeError(assert.doesNotThrow, 1);
-  testBlockTypeError(assert.throws, true);
-  testBlockTypeError(assert.doesNotThrow, true);
-  testBlockTypeError(assert.throws, false);
-  testBlockTypeError(assert.doesNotThrow, false);
-  testBlockTypeError(assert.throws, []);
-  testBlockTypeError(assert.doesNotThrow, []);
-  testBlockTypeError(assert.throws, {});
-  testBlockTypeError(assert.doesNotThrow, {});
-  testBlockTypeError(assert.throws, /foo/);
-  testBlockTypeError(assert.doesNotThrow, /foo/);
-  testBlockTypeError(assert.throws, null);
-  testBlockTypeError(assert.doesNotThrow, null);
-  testBlockTypeError(assert.throws, undefined);
-  testBlockTypeError(assert.doesNotThrow, undefined);
+  });
 });
 
 test('https://github.com/nodejs/node/issues/3275', () => {
@@ -582,6 +582,7 @@ test('NaN is handled correctly', () => {
 });
 
 test('Test strict assert', () => {
+  // eslint-disable-next-line node-core/must-call-assert
   const { strict } = require('assert');
 
   strict.throws(() => strict.equal(1, true), strict.AssertionError);
@@ -624,7 +625,7 @@ test('Test strict assert', () => {
       code: 'ERR_ASSERTION',
       constructor: strict.AssertionError,
       message: 'The expression evaluated to a falsy value:\n\n  ' +
-               "strict.ok(\n    typeof 123 === 'string'\n  )\n"
+               'strict.ok(\n'
     }
   );
   Error.stackTraceLimit = tmpLimit;
@@ -801,7 +802,7 @@ test('Test strict assert', () => {
     '\n' +
     '+ {}\n' +
     '- {\n' +
-    '-   [Symbol(nodejs.util.inspect.custom)]: [Function (anonymous)],\n' +
+    '-   Symbol(nodejs.util.inspect.custom): [Function (anonymous)],\n' +
     "-   loop: 'forever'\n" +
     '- }\n'
   });
@@ -1017,20 +1018,20 @@ test('Additional asserts', () => {
     }
   );
 
-  // Works in eval.
+  // Works in eval. Source code in eval can be shown.
   assert.throws(
     () => new Function('assert', 'assert(1 === 2);')(assert),
     {
       code: 'ERR_ASSERTION',
       constructor: assert.AssertionError,
-      message: 'false == true'
+      message: 'The expression evaluated to a falsy value:\n\n  assert(1 === 2)\n'
     }
   );
   assert.throws(
     () => eval('console.log("FOO");\nassert.ok(1 === 2);'),
     {
       code: 'ERR_ASSERTION',
-      message: 'false == true'
+      message: 'The expression evaluated to a falsy value:\n\n  assert.ok(1 === 2)\n'
     }
   );
 
@@ -1592,6 +1593,7 @@ test('Additional assert', () => {
 });
 
 test('assert/strict exists', () => {
+  // eslint-disable-next-line node-core/must-call-assert
   assert.strictEqual(require('assert/strict'), assert.strict);
 });
 

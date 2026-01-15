@@ -76,7 +76,6 @@
 #include "v8-platform.h"  // NOLINT(build/include_order)
 #include "node_version.h"  // NODE_MODULE_VERSION
 
-#define NAPI_EXPERIMENTAL
 #include "node_api.h"
 
 #include <functional>
@@ -375,10 +374,6 @@ enum OptionEnvvarSettings {
   // Disallow the options to be set via the environment variable, like
   // `NODE_OPTIONS`.
   kDisallowedInEnvvar = 1,
-  // Deprecated, use kAllowedInEnvvar instead.
-  kAllowedInEnvironment = kAllowedInEnvvar,
-  // Deprecated, use kDisallowedInEnvvar instead.
-  kDisallowedInEnvironment = kDisallowedInEnvvar,
 };
 
 // Process the arguments and set up the per-process options.
@@ -451,8 +446,11 @@ class NODE_EXTERN MultiIsolatePlatform : public v8::Platform {
 
   // This function may only be called once per `Isolate`, and discard any
   // pending delayed tasks scheduled for that isolate.
-  // This needs to be called right before calling `Isolate::Dispose()`.
+  // This needs to be called right after calling `Isolate::Dispose()`.
   virtual void UnregisterIsolate(v8::Isolate* isolate) = 0;
+  // This disposes, unregisters and frees up an isolate that's allocated using
+  // v8::Isolate::Allocate() in the correct order to prevent race conditions.
+  void DisposeIsolate(v8::Isolate* isolate);
 
   // The platform should call the passed function once all state associated
   // with the given isolate has been cleaned up. This can, but does not have to,
@@ -493,6 +491,21 @@ struct IsolateSettings {
       allow_wasm_code_generation_callback = nullptr;
   v8::ModifyCodeGenerationFromStringsCallback2
       modify_code_generation_from_strings_callback = nullptr;
+
+  // When the settings is passed to NewIsolate():
+  // - If cpp_heap is not nullptr, this CppHeap will be used to create
+  //   the isolate and its ownership will be passed to V8.
+  // - If this is nullptr, Node.js will create a CppHeap that will be
+  //   owned by V8.
+  //
+  // When the settings is passed to SetIsolateUpForNode():
+  // cpp_heap will be ignored. Embedders must ensure that the
+  // v8::Isolate has a CppHeap attached while it's still used by
+  // Node.js, for example using v8::CreateParams.
+  //
+  // See https://issues.chromium.org/issues/42203693. In future version
+  // of V8, this CppHeap will be created by V8 if not provided.
+  v8::CppHeap* cpp_heap = nullptr;
 };
 
 // Represents a startup snapshot blob, e.g. created by passing
@@ -547,8 +560,8 @@ class EmbedderSnapshotData {
   void ToFile(FILE* out) const;
   std::vector<char> ToBlob() const;
 
-  // Returns whether custom snapshots can be used. Currently, this means
-  // that V8 was configured without the shared-readonly-heap feature.
+  // Returns whether custom snapshots can be used. Currently, this always
+  // returns false since V8 enforces shared readonly-heap.
   static bool CanUseCustomSnapshotPerIsolate();
 
   EmbedderSnapshotData(const EmbedderSnapshotData&) = delete;
@@ -716,6 +729,16 @@ NODE_EXTERN Environment* CreateEnvironment(
     ThreadId thread_id = {} /* allocates a thread id automatically */,
     std::unique_ptr<InspectorParentHandle> inspector_parent_handle = {});
 
+NODE_EXTERN Environment* CreateEnvironment(
+    IsolateData* isolate_data,
+    v8::Local<v8::Context> context,
+    const std::vector<std::string>& args,
+    const std::vector<std::string>& exec_args,
+    EnvironmentFlags::Flags flags,
+    ThreadId thread_id,
+    std::unique_ptr<InspectorParentHandle> inspector_parent_handle,
+    std::string_view thread_name);
+
 // Returns a handle that can be passed to `LoadEnvironment()`, making the
 // child Environment accessible to the inspector as if it were a Node.js Worker.
 // `child_thread_id` can be created using `AllocateEnvironmentThreadId()`
@@ -733,6 +756,12 @@ NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
     ThreadId child_thread_id,
     const char* child_url,
     const char* name);
+
+NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
+    Environment* parent_env,
+    ThreadId child_thread_id,
+    std::string_view child_url,
+    std::string_view name);
 
 struct StartExecutionCallbackInfo {
   v8::Local<v8::Object> process_object;
@@ -1128,16 +1157,37 @@ NODE_EXTERN enum encoding ParseEncoding(
 NODE_EXTERN void FatalException(v8::Isolate* isolate,
                                 const v8::TryCatch& try_catch);
 
-NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
-                                        const char* buf,
-                                        size_t len,
-                                        enum encoding encoding = LATIN1);
+NODE_EXTERN v8::MaybeLocal<v8::Value> TryEncode(
+    v8::Isolate* isolate,
+    const char* buf,
+    size_t len,
+    enum encoding encoding = LATIN1);
 
 // Warning: This reverses endianness on Big Endian platforms, even though the
 // signature using uint16_t implies that it should not.
-NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
-                                        const uint16_t* buf,
-                                        size_t len);
+NODE_EXTERN v8::MaybeLocal<v8::Value> TryEncode(v8::Isolate* isolate,
+                                                const uint16_t* buf,
+                                                size_t len);
+
+// The original Encode(...) functions are deprecated because they do not
+// appropriately propagate exceptions and instead rely on ToLocalChecked()
+// which crashes the process if an exception occurs. We cannot just remove
+// these as it would break ABI compatibility, so we keep them around but
+// deprecate them in favor of the TryEncode(...) variations which return
+// a MaybeLocal<> and do not crash the process if an exception occurs.
+NODE_DEPRECATED(
+    "Use TryEncode(...) instead",
+    NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
+                                            const char* buf,
+                                            size_t len,
+                                            enum encoding encoding = LATIN1));
+
+// Warning: This reverses endianness on Big Endian platforms, even though the
+// signature using uint16_t implies that it should not.
+NODE_DEPRECATED("Use TryEncode(...) instead",
+                NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
+                                                        const uint16_t* buf,
+                                                        size_t len));
 
 // Returns -1 if the handle was not valid for decoding
 NODE_EXTERN ssize_t DecodeBytes(v8::Isolate* isolate,
@@ -1407,6 +1457,10 @@ NODE_EXTERN async_context EmitAsyncInit(v8::Isolate* isolate,
                                         v8::Local<v8::Object> resource,
                                         const char* name,
                                         async_id trigger_async_id = -1);
+NODE_EXTERN async_context EmitAsyncInit(v8::Isolate* isolate,
+                                        v8::Local<v8::Object> resource,
+                                        std::string_view name,
+                                        async_id trigger_async_id = -1);
 
 NODE_EXTERN async_context EmitAsyncInit(v8::Isolate* isolate,
                                         v8::Local<v8::Object> resource,
@@ -1502,6 +1556,10 @@ class NODE_EXTERN AsyncResource {
                 v8::Local<v8::Object> resource,
                 const char* name,
                 async_id trigger_async_id = -1);
+  AsyncResource(v8::Isolate* isolate,
+                v8::Local<v8::Object> resource,
+                std::string_view name,
+                async_id trigger_async_id = -1);
 
   virtual ~AsyncResource();
 
@@ -1536,6 +1594,7 @@ class NODE_EXTERN AsyncResource {
  private:
   Environment* env_;
   v8::Global<v8::Object> resource_;
+  v8::Global<v8::Value> context_frame_;
   async_context async_context_;
 };
 
@@ -1554,25 +1613,14 @@ void RegisterSignalHandler(int signal,
                            bool reset_handler = false);
 #endif  // _WIN32
 
-// Configure the layout of the JavaScript object with a cppgc::GarbageCollected
-// instance so that when the JavaScript object is reachable, the garbage
-// collected instance would have its Trace() method invoked per the cppgc
-// contract. To make it work, the process must have called
-// cppgc::InitializeProcess() before, which is usually the case for addons
-// loaded by the stand-alone Node.js executable. Embedders of Node.js can use
-// either need to call it themselves or make sure that
-// ProcessInitializationFlags::kNoInitializeCppgc is *not* set for cppgc to
-// work.
-// If the CppHeap is owned by Node.js, which is usually the case for addon,
-// the object must be created with at least two internal fields available,
-// and the first two internal fields would be configured by Node.js.
-// This may be superseded by a V8 API in the future, see
-// https://bugs.chromium.org/p/v8/issues/detail?id=13960. Until then this
-// serves as a helper for Node.js isolates.
-NODE_EXTERN void SetCppgcReference(v8::Isolate* isolate,
-                                   v8::Local<v8::Object> object,
-                                   void* wrappable);
-
+// This is kept as a compatibility layer for addons to wrap cppgc-managed
+// objects on Node.js versions without v8::Object::Wrap(). Addons created to
+// work with only Node.js versions with v8::Object::Wrap() should use that
+// instead.
+NODE_DEPRECATED("Use v8::Object::Wrap()",
+                NODE_EXTERN void SetCppgcReference(v8::Isolate* isolate,
+                                                   v8::Local<v8::Object> object,
+                                                   void* wrappable));
 // GRAAL EXTENSIONS
 
 long GraalArgumentsPreprocessing(int argc, char *argv[]);

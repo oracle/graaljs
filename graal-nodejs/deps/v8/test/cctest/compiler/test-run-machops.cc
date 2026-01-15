@@ -4535,7 +4535,7 @@ TEST(RunTruncateFloat32ToInt32) {
       } else {
         DCHECK(std::isnan(i));
 #if V8_TARGET_ARCH_IA32 || V8_TARGET_ARCH_X64 || V8_TARGET_ARCH_S390X || \
-    V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64
+    V8_TARGET_ARCH_PPC64
         CHECK_EQ(std::numeric_limits<int32_t>::min(), m.Call(i));
 #elif V8_TARGET_ARCH_ARM64 || V8_TARGET_ARCH_ARM || V8_TARGET_ARCH_LOONG64
         CHECK_EQ(0, m.Call(i));
@@ -4557,7 +4557,7 @@ TEST(RunTruncateFloat32ToInt32) {
       } else {
         DCHECK(std::isnan(i));
 #if V8_TARGET_ARCH_IA32 || V8_TARGET_ARCH_X64 || V8_TARGET_ARCH_S390X || \
-    V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64
+    V8_TARGET_ARCH_PPC64
         CHECK_EQ(std::numeric_limits<int32_t>::min(), m.Call(i));
 #elif V8_TARGET_ARCH_ARM64 || V8_TARGET_ARCH_ARM || V8_TARGET_ARCH_LOONG64
         CHECK_EQ(0, m.Call(i));
@@ -5181,7 +5181,7 @@ TEST(RunRefDiamond) {
   RawMachineAssemblerTester<int32_t> m;
 
   const int magic = 99644;
-  Handle<String> rexpected =
+  DirectHandle<String> rexpected =
       CcTest::i_isolate()->factory()->InternalizeUtf8String("A");
   Tagged<String> buffer;
 
@@ -5216,7 +5216,7 @@ TEST(RunDoubleRefDiamond) {
   const int magic = 99648;
   double dbuffer = 0.1;
   double dconstant = 99.99;
-  Handle<String> rexpected =
+  DirectHandle<String> rexpected =
       CcTest::i_isolate()->factory()->InternalizeUtf8String("AX");
   Tagged<String> rbuffer;
 
@@ -5257,7 +5257,7 @@ TEST(RunDoubleRefDoubleDiamond) {
   const int magic = 99649;
   double dbuffer = 0.1;
   double dconstant = 99.997;
-  Handle<String> rexpected =
+  DirectHandle<String> rexpected =
       CcTest::i_isolate()->factory()->InternalizeUtf8String("AD");
   Tagged<String> rbuffer;
 
@@ -7127,7 +7127,7 @@ TEST(RunBitcastFloat64ToInt64) {
 
 TEST(RunTryTruncateFloat32ToInt64WithoutCheck) {
   BufferedRawMachineAssemblerTester<int64_t> m(MachineType::Float32());
-  m.Return(m.TryTruncateFloat32ToInt64(m.Parameter(0)));
+  m.Return(m.Projection(0, m.TryTruncateFloat32ToInt64(m.Parameter(0))));
 
   FOR_INT64_INPUTS(i) {
     float input = static_cast<float>(i);
@@ -7163,7 +7163,7 @@ TEST(RunTryTruncateFloat32ToInt64WithCheck) {
 
 TEST(RunTryTruncateFloat64ToInt64WithoutCheck) {
   BufferedRawMachineAssemblerTester<int64_t> m(MachineType::Float64());
-  m.Return(m.TryTruncateFloat64ToInt64(m.Parameter(0)));
+  m.Return(m.Projection(0, m.TryTruncateFloat64ToInt64(m.Parameter(0))));
 
   FOR_FLOAT64_INPUTS(i) {
     if (base::IsValueInRangeForNumericType<int64_t>(i)) {
@@ -7199,7 +7199,7 @@ TEST(RunTryTruncateFloat64ToInt64WithCheck) {
 
 TEST(RunTryTruncateFloat32ToUint64WithoutCheck) {
   BufferedRawMachineAssemblerTester<uint64_t> m(MachineType::Float32());
-  m.Return(m.TryTruncateFloat32ToUint64(m.Parameter(0)));
+  m.Return(m.Projection(0, m.TryTruncateFloat32ToUint64(m.Parameter(0))));
 
   FOR_UINT64_INPUTS(i) {
     float input = static_cast<float>(i);
@@ -7236,7 +7236,7 @@ TEST(RunTryTruncateFloat32ToUint64WithCheck) {
 
 TEST(RunTryTruncateFloat64ToUint64WithoutCheck) {
   BufferedRawMachineAssemblerTester<uint64_t> m(MachineType::Float64());
-  m.Return(m.TryTruncateFloat64ToUint64(m.Parameter(0)));
+  m.Return(m.Projection(0, m.TryTruncateFloat64ToUint64(m.Parameter(0))));
 
   FOR_UINT64_INPUTS(j) {
     double input = static_cast<double>(j);

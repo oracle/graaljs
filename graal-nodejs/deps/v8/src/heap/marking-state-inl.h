@@ -5,9 +5,11 @@
 #ifndef V8_HEAP_MARKING_STATE_INL_H_
 #define V8_HEAP_MARKING_STATE_INL_H_
 
-#include "src/heap/marking-inl.h"
 #include "src/heap/marking-state.h"
-#include "src/heap/mutable-page.h"
+// Include the non-inl header before the rest of the headers.
+
+#include "src/heap/marking-inl.h"
+#include "src/heap/mutable-page-metadata.h"
 
 namespace v8 {
 namespace internal {

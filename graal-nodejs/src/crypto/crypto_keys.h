@@ -16,9 +16,7 @@
 #include <memory>
 #include <string>
 
-namespace node {
-namespace crypto {
-
+namespace node::crypto {
 enum KeyType {
   kKeyTypeSecret,
   kKeyTypePublic,
@@ -85,12 +83,12 @@ class KeyObjectData final : public MemoryRetainer {
                               unsigned int* offset,
                               KeyEncodingContext context);
 
-  v8::Maybe<void> ToEncodedPublicKey(
+  bool ToEncodedPublicKey(
       Environment* env,
       const ncrypto::EVPKeyPointer::PublicKeyEncodingConfig& config,
       v8::Local<v8::Value>* out);
 
-  v8::Maybe<void> ToEncodedPrivateKey(
+  bool ToEncodedPrivateKey(
       Environment* env,
       const ncrypto::EVPKeyPointer::PrivateKeyEncodingConfig& config,
       v8::Local<v8::Value>* out);
@@ -129,7 +127,7 @@ class KeyObjectData final : public MemoryRetainer {
   KeyObjectData(KeyType type,
                 std::shared_ptr<Mutex> mutex,
                 std::shared_ptr<Data> data)
-      : key_type_(type), mutex_(mutex), data_(data) {}
+      : key_type_(type), mutex_(std::move(mutex)), data_(std::move(data)) {}
 };
 
 class KeyObjectHandle : public BaseObject {
@@ -171,6 +169,12 @@ class KeyObjectHandle : public BaseObject {
       const v8::FunctionCallbackInfo<v8::Value>& args);
 
   static void Export(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+#if OPENSSL_WITH_PQC
+  static void InitPqcRaw(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void RawPublicKey(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void RawSeed(const v8::FunctionCallbackInfo<v8::Value>& args);
+#endif
 
   v8::MaybeLocal<v8::Value> ExportSecretKey() const;
   v8::MaybeLocal<v8::Value> ExportPublicKey(
@@ -378,15 +382,11 @@ WebCryptoKeyExportStatus PKEY_SPKI_Export(const KeyObjectData& key_data,
 WebCryptoKeyExportStatus PKEY_PKCS8_Export(const KeyObjectData& key_data,
                                            ByteSource* out);
 
-int GetOKPCurveFromName(const char* name);
-
 namespace Keys {
 void Initialize(Environment* env, v8::Local<v8::Object> target);
 void RegisterExternalReferences(ExternalReferenceRegistry* registry);
 }  // namespace Keys
-
-}  // namespace crypto
-}  // namespace node
+}  // namespace node::crypto
 
 #endif  // defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 #endif  // SRC_CRYPTO_CRYPTO_KEYS_H_

@@ -5,9 +5,11 @@
 #ifndef V8_OBJECTS_ALLOCATION_SITE_INL_H_
 #define V8_OBJECTS_ALLOCATION_SITE_INL_H_
 
+#include "src/objects/allocation-site.h"
+// Include the non-inl header before the rest of the headers.
+
 #include "src/common/globals.h"
 #include "src/heap/heap-write-barrier-inl.h"
-#include "src/objects/allocation-site.h"
 #include "src/objects/dependent-code-inl.h"
 #include "src/objects/js-objects-inl.h"
 
@@ -23,8 +25,6 @@ TQ_OBJECT_CONSTRUCTORS_IMPL(AllocationMemento)
 OBJECT_CONSTRUCTORS_IMPL(AllocationSite, Struct)
 
 NEVER_READ_ONLY_SPACE_IMPL(AllocationSite)
-
-CAST_ACCESSOR(AllocationSite)
 
 ACCESSORS(AllocationSite, transition_info_or_boilerplate, Tagged<Object>,
           kTransitionInfoOrBoilerplateOffset)
@@ -43,12 +43,12 @@ ACCESSORS(AllocationMemento, allocation_site, Tagged<Object>,
 
 Tagged<JSObject> AllocationSite::boilerplate() const {
   DCHECK(PointsToLiteral());
-  return JSObject::cast(transition_info_or_boilerplate());
+  return Cast<JSObject>(transition_info_or_boilerplate());
 }
 
 Tagged<JSObject> AllocationSite::boilerplate(AcquireLoadTag tag) const {
   DCHECK(PointsToLiteral());
-  return JSObject::cast(transition_info_or_boilerplate(tag));
+  return Cast<JSObject>(transition_info_or_boilerplate(tag));
 }
 
 void AllocationSite::set_boilerplate(Tagged<JSObject> value,
@@ -59,7 +59,7 @@ void AllocationSite::set_boilerplate(Tagged<JSObject> value,
 
 int AllocationSite::transition_info() const {
   DCHECK(!PointsToLiteral());
-  return Smi::cast(transition_info_or_boilerplate(kAcquireLoad)).value();
+  return Cast<Smi>(transition_info_or_boilerplate(kAcquireLoad)).value();
 }
 
 void AllocationSite::set_transition_info(int value) {
@@ -199,12 +199,12 @@ inline void AllocationSite::IncrementMementoCreateCount() {
 
 bool AllocationMemento::IsValid() const {
   return IsAllocationSite(allocation_site()) &&
-         !AllocationSite::cast(allocation_site())->IsZombie();
+         !Cast<AllocationSite>(allocation_site())->IsZombie();
 }
 
 Tagged<AllocationSite> AllocationMemento::GetAllocationSite() const {
   DCHECK(IsValid());
-  return AllocationSite::cast(allocation_site());
+  return Cast<AllocationSite>(allocation_site());
 }
 
 Address AllocationMemento::GetAllocationSiteUnchecked() const {
@@ -212,13 +212,14 @@ Address AllocationMemento::GetAllocationSiteUnchecked() const {
 }
 
 template <AllocationSiteUpdateMode update_or_check>
-bool AllocationSite::DigestTransitionFeedback(Handle<AllocationSite> site,
+bool AllocationSite::DigestTransitionFeedback(DirectHandle<AllocationSite> site,
                                               ElementsKind to_kind) {
   Isolate* isolate = site->GetIsolate();
   bool result = false;
 
   if (site->PointsToLiteral() && IsJSArray(site->boilerplate())) {
-    Handle<JSArray> boilerplate(JSArray::cast(site->boilerplate()), isolate);
+    DirectHandle<JSArray> boilerplate(Cast<JSArray>(site->boilerplate()),
+                                      isolate);
     ElementsKind kind = boilerplate->GetElementsKind();
     // if kind is holey ensure that to_kind is as well.
     if (IsHoleyElementsKind(kind)) {

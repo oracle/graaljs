@@ -76,6 +76,7 @@ const {
   MathMax,
   MathTrunc,
   NumberIsFinite,
+  NumberIsNaN,
   NumberMIN_SAFE_INTEGER,
   ReflectApply,
   Symbol,
@@ -91,7 +92,6 @@ const {
   getDefaultTriggerAsyncId,
   newAsyncId,
   initHooksExist,
-  destroyHooksExist,
   // The needed emit*() functions.
   emitInit,
   emitBefore,
@@ -169,17 +169,36 @@ function initAsyncResource(resource, type) {
   if (initHooksExist())
     emitInit(asyncId, type, triggerAsyncId, resource);
 }
+
+let warnedNegativeNumber = false;
+let warnedNotNumber = false;
+
 class Timeout {
   // Timer constructor function.
   // The entire prototype is defined in lib/timers.js
   constructor(callback, after, args, isRepeat, isRefed) {
-    after *= 1; // Coalesce to number or NaN
+    if (after === undefined) {
+      after = 1;
+    } else {
+      after *= 1; // Coalesce to number or NaN
+    }
+
     if (!(after >= 1 && after <= TIMEOUT_MAX)) {
       if (after > TIMEOUT_MAX) {
         process.emitWarning(`${after} does not fit into` +
                             ' a 32-bit signed integer.' +
                             '\nTimeout duration was set to 1.',
                             'TimeoutOverflowWarning');
+      } else if (after < 0 && !warnedNegativeNumber) {
+        warnedNegativeNumber = true;
+        process.emitWarning(`${after} is a negative number.` +
+                            '\nTimeout duration was set to 1.',
+                            'TimeoutNegativeWarning');
+      } else if (NumberIsNaN(after) && !warnedNotNumber) {
+        warnedNotNumber = true;
+        process.emitWarning(`${after} is not a number.` +
+                            '\nTimeout duration was set to 1.',
+                            'TimeoutNaNWarning');
       }
       after = 1; // Schedule on next tick, follows browser behavior
     }
@@ -488,8 +507,7 @@ function getTimerCallbacks(runNextTicks) {
       } finally {
         immediate._onImmediate = null;
 
-        if (destroyHooksExist())
-          emitDestroy(asyncId);
+        emitDestroy(asyncId);
 
         outstandingQueue.head = immediate = immediate._idleNext;
       }
@@ -565,8 +583,7 @@ function getTimerCallbacks(runNextTicks) {
           if (timer[kRefed])
             timeoutInfo[0]--;
 
-          if (destroyHooksExist())
-            emitDestroy(asyncId);
+          emitDestroy(asyncId);
         }
         continue;
       }
@@ -601,8 +618,7 @@ function getTimerCallbacks(runNextTicks) {
           if (timer[kRefed])
             timeoutInfo[0]--;
 
-          if (destroyHooksExist())
-            emitDestroy(asyncId);
+          emitDestroy(asyncId);
         }
       }
 

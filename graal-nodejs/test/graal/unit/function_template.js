@@ -126,18 +126,4 @@ describe('FunctionTemplate', function () {
             assert.strictEqual(Object.keys(obj).length, 1);
         });
     });
-    describe('SetAccessor', function () {
-        it('should create simple getter', function () {
-            var obj = module.FunctionTemplate_CreateWithAccessor("myAccess");
-            var gotValue = obj.myAccess;
-            assert.strictEqual(gotValue, "accessor getter called: myAccess");
-        });
-        it('should create simple setter', function () {
-            var obj = module.FunctionTemplate_CreateWithAccessor("myAccess");
-            assert.strictEqual(obj.mySetValue, undefined);
-            obj.myAccess = 1000;
-            assert.strictEqual(obj.mySetValue, 1000);
-            assert.strictEqual(obj.hasOwnProperty("mySetValue"), true);
-        });
-    });
 });

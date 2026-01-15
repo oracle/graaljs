@@ -55,8 +55,8 @@ const {
 
 const { compare } = internalBinding('buffer');
 const assert = require('internal/assert');
-const { isError } = require('internal/util');
 const { isURL } = require('internal/url');
+const { isError } = require('internal/util');
 const { Buffer } = require('buffer');
 
 const wellKnownConstructors = new SafeSet()
@@ -126,16 +126,15 @@ const {
   getOwnNonIndexProperties,
 } = internalBinding('util');
 
-const kStrict = 1;
+const kStrict = 2;
+const kStrictWithoutPrototypes = 3;
 const kLoose = 0;
-const kPartial = 2;
+const kPartial = 1;
 
 const kNoIterator = 0;
 const kIsArray = 1;
 const kIsSet = 2;
 const kIsMap = 3;
-
-let kKeyObject;
 
 // Check if they have the same source and flags
 function areSimilarRegExps(a, b) {
@@ -395,11 +394,12 @@ function objectComparisonStart(val1, val2, mode, memos) {
       return false;
     }
   } else if (isCryptoKey(val1)) {
-    kKeyObject ??= require('internal/crypto/util').kKeyObject;
+    const { kKeyObject } = require('internal/crypto/util');
+    const { kExtractable, kAlgorithm, kKeyUsages } = require('internal/crypto/keys');
     if (!isCryptoKey(val2) ||
-      val1.extractable !== val2.extractable ||
-      !innerDeepEqual(val1.algorithm, val2.algorithm, mode, memos) ||
-      !innerDeepEqual(val1.usages, val2.usages, mode, memos) ||
+      val1[kExtractable] !== val2[kExtractable] ||
+      !innerDeepEqual(val1[kAlgorithm], val2[kAlgorithm], mode, memos) ||
+      !innerDeepEqual(val1[kKeyUsages], val2[kKeyUsages], mode, memos) ||
       !innerDeepEqual(val1[kKeyObject], val2[kKeyObject], mode, memos)
     ) {
       return false;
@@ -453,7 +453,7 @@ function keyCheck(val1, val2, mode, memos, iterationType, keys2) {
       }
     } else if (keys2.length !== (keys1 = ObjectKeys(val1)).length) {
       return false;
-    } else if (mode === kStrict) {
+    } else if (mode === kStrict || mode === kStrictWithoutPrototypes) {
       const symbolKeysA = getOwnSymbols(val1);
       if (symbolKeysA.length !== 0) {
         let count = 0;
@@ -513,7 +513,10 @@ function handleCycles(val1, val2, mode, keys1, keys2, memos, iterationType) {
   if (memos.set === undefined) {
     if (memos.deep === false) {
       if (memos.a === val1) {
-        if (memos.b === val2) return true;
+        return memos.b === val2;
+      }
+      if (memos.b === val2) {
+        return false;
       }
       memos.c = val1;
       memos.d = val2;
@@ -534,8 +537,8 @@ function handleCycles(val1, val2, mode, keys1, keys2, memos, iterationType) {
   const originalSize = set.size;
   set.add(val1);
   set.add(val2);
-  if (originalSize === set.size) {
-    return true;
+  if (originalSize !== set.size - 2) {
+    return originalSize === set.size;
   }
 
   const areEq = objEquiv(val1, val2, mode, keys1, keys2, memos, iterationType);
@@ -1019,7 +1022,10 @@ module.exports = {
   isDeepEqual(val1, val2) {
     return detectCycles(val1, val2, kLoose);
   },
-  isDeepStrictEqual(val1, val2) {
+  isDeepStrictEqual(val1, val2, skipPrototype) {
+    if (skipPrototype) {
+      return detectCycles(val1, val2, kStrictWithoutPrototypes);
+    }
     return detectCycles(val1, val2, kStrict);
   },
   isPartialStrictEqual(val1, val2) {

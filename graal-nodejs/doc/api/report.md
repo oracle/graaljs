@@ -10,10 +10,14 @@
 
 <!-- YAML
 changes:
-  - version: v22.13.0
+  - version:
+    - v23.3.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/55697
     description: Added `--report-exclude-env` option for excluding environment variables from report generation.
-  - version: v22.0.0
+  - version:
+    - v22.0.0
+    - v20.13.0
     pr-url: https://github.com/nodejs/node/pull/51645
     description: Added `--report-exclude-network` option for excluding networking operations that can slow down report generation in some cases.
 -->
@@ -590,7 +594,9 @@ Report version definitions are consistent across LTS releases.
 
 <!-- YAML
 changes:
-  - version: v22.13.0
+  - version:
+    - v23.5.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/56068
     description: Fix typos in the memory limit units.
 -->
@@ -625,7 +631,9 @@ respectively in the `userLimits` section, as these values are given in bytes.
 
 <!-- YAML
 changes:
-  - version: v22.13.0
+  - version:
+    - v23.3.0
+    - v22.13.0
     pr-url: https://github.com/nodejs/node/pull/55697
     description: Added `--report-exclude-env` option for excluding environment variables from report generation.
 -->

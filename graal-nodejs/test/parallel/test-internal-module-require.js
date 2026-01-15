@@ -88,6 +88,9 @@ if (process.argv[2] === 'child') {
         });
       } else {
         require(id);
+        if (!id.startsWith('node:')) {
+          require(`node:${id}`);
+        }
         publicModules.add(id);
       }
     }

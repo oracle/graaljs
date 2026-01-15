@@ -19,6 +19,10 @@ const {
 } = require('internal/errors');
 const { pathToFileURL } = require('internal/url');
 const { exitCodes: { kGenericUserError } } = internalBinding('errors');
+const {
+  kSourcePhase,
+  kEvaluationPhase,
+} = internalBinding('module_wrap');
 const { stripTypeScriptModuleTypes } = require('internal/modules/typescript');
 
 const {
@@ -35,10 +39,11 @@ const { getOptionValue } = require('internal/options');
 const {
   makeContextifyScript, runScriptInThisContext,
 } = require('internal/vm');
-const { emitExperimentalWarning } = require('internal/util');
 // shouldAbortOnUncaughtToggle is a typed array for faster
 // communication with JS.
 const { shouldAbortOnUncaughtToggle } = internalBinding('util');
+
+const kEvalTag = '[eval]';
 
 function tryGetCwd() {
   try {
@@ -79,7 +84,7 @@ function evalScript(name, body, breakFirstLine, print, shouldLoadESM = false) {
   const baseUrl = pathToFileURL(module.filename).href;
 
   if (shouldUseModuleEntryPoint(name, body)) {
-    return getOptionValue('--experimental-strip-types') ?
+    return getOptionValue('--strip-types') ?
       evalTypeScriptModuleEntryPoint(body, print) :
       evalModuleEntryPoint(body, print);
   }
@@ -255,7 +260,7 @@ function evalTypeScript(name, source, breakFirstLine, print, shouldLoadESM = fal
     compiledScript = compileScript(name, source, baseUrl);
   } catch (originalError) {
     try {
-      sourceToRun = stripTypeScriptModuleTypes(source, name, false);
+      sourceToRun = stripTypeScriptModuleTypes(source, kEvalTag);
       // Retry the CJS/ESM syntax detection after stripping the types.
       if (shouldUseModuleEntryPoint(name, sourceToRun)) {
         return evalTypeScriptModuleEntryPoint(source, print);
@@ -263,8 +268,6 @@ function evalTypeScript(name, source, breakFirstLine, print, shouldLoadESM = fal
       // If the ContextifiedScript was successfully created, execute it.
       // outside the try-catch block to avoid catching runtime errors.
       compiledScript = compileScript(name, sourceToRun, baseUrl);
-      // Emit the experimental warning after the code was successfully evaluated.
-      emitExperimentalWarning('Type Stripping');
     } catch (tsError) {
       // If it's invalid or unsupported TypeScript syntax, rethrow the original error
       // with the TypeScript error message added to the stack.
@@ -318,12 +321,10 @@ function evalTypeScriptModuleEntryPoint(source, print) {
         moduleWrap = loader.createModuleWrap(source, url);
       } catch (originalError) {
         try {
-          const strippedSource = stripTypeScriptModuleTypes(source, url, false);
+          const strippedSource = stripTypeScriptModuleTypes(source, kEvalTag);
           // If the moduleWrap was successfully created, execute the module job.
           // outside the try-catch block to avoid catching runtime errors.
           moduleWrap = loader.createModuleWrap(strippedSource, url);
-          // Emit the experimental warning after the code was successfully compiled.
-          emitExperimentalWarning('Type Stripping');
         } catch (tsError) {
           // If it's invalid or unsupported TypeScript syntax, rethrow the original error
           // with the TypeScript error message added to the stack.
@@ -351,7 +352,7 @@ function evalTypeScriptModuleEntryPoint(source, print) {
  */
 function parseAndEvalModuleTypeScript(source, print) {
   // We know its a TypeScript module, we can safely emit the experimental warning.
-  const strippedSource = stripTypeScriptModuleTypes(source, getEvalModuleUrl());
+  const strippedSource = stripTypeScriptModuleTypes(source, kEvalTag);
   evalModuleEntryPoint(strippedSource, print);
 }
 
@@ -366,7 +367,7 @@ function parseAndEvalModuleTypeScript(source, print) {
  */
 function parseAndEvalCommonjsTypeScript(name, source, breakFirstLine, print, shouldLoadESM = false) {
   // We know its a TypeScript module, we can safely emit the experimental warning.
-  const strippedSource = stripTypeScriptModuleTypes(source, getEvalModuleUrl());
+  const strippedSource = stripTypeScriptModuleTypes(source, kEvalTag);
   evalScript(name, strippedSource, breakFirstLine, print, shouldLoadESM);
 }
 
@@ -379,9 +380,10 @@ function parseAndEvalCommonjsTypeScript(name, source, breakFirstLine, print, sho
  */
 function compileScript(name, body, baseUrl) {
   const hostDefinedOptionId = Symbol(name);
-  async function importModuleDynamically(specifier, _, importAttributes) {
+  async function importModuleDynamically(specifier, _, importAttributes, phase) {
     const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
-    return cascadedLoader.import(specifier, baseUrl, importAttributes);
+    return cascadedLoader.import(specifier, baseUrl, importAttributes,
+                                 phase === 'source' ? kSourcePhase : kEvaluationPhase);
   }
   return makeContextifyScript(
     body,                    // code
@@ -402,7 +404,7 @@ function compileScript(name, body, baseUrl) {
  * @returns {boolean} Whether the module entry point should be evaluated as a module.
  */
 function shouldUseModuleEntryPoint(name, body) {
-  return getOptionValue('--experimental-detect-module') && getOptionValue('--experimental-default-type') === '' &&
+  return getOptionValue('--experimental-detect-module') &&
     getOptionValue('--input-type') === '' &&
     containsModuleSyntax(body, name, null, 'no CJS variables');
 }

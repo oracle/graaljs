@@ -400,36 +400,6 @@ describe('Object', function () {
             assert.strictEqual(clone1.child === o2.child, true); //it's a shallow copy
         });
     });
-    describe('SetAccessor', function () {
-        it('should create simple getter', function () {
-            var o = {a: 42, b: 100};
-            assert.strictEqual(module.Object_SetAccessor(o, "myAccess"), true);
-            var gotValue = o.myAccess;
-            assert.strictEqual(gotValue, "accessor getter called: myAccess");
-        });
-        it('should create simple setter', function () {
-            var o = {a: 42, b: 100};
-            assert.strictEqual(o.mySetValue, undefined);
-            assert.strictEqual(module.Object_SetAccessor(o, "myAccess"), true);
-            o.myAccess = 1000;
-            assert.strictEqual(o.mySetValue, 1000);
-            assert.strictEqual(o.hasOwnProperty("mySetValue"), true);
-        });
-        it('should create a getter with a no-op setter (when setter is not provided and the property is writable)', function () {
-            "use strict";
-            var o = {mySetValue : 42};
-            assert.strictEqual(module.Object_SetAccessorNoSetterWritable(o, "myAccess"), true);
-            o.myAccess = 211; // No TypeError here
-            assert.strictEqual(o.mySetValue, 42);
-        });
-        it('should create a getter with no setter (when setter is not provided and the property is read-only)', function () {
-            "use strict";
-            var o = {mySetValue : 42};
-            assert.strictEqual(module.Object_SetAccessorNoSetterReadOnly(o, "myAccess"), true);
-            assert.throws(function() { o.myAccess = 211; }, TypeError);
-            assert.strictEqual(o.mySetValue, 42);
-        });
-    });
     describe('GetRealNamedPropertyAttributes', function() {
         it('should return correct attributes for data properties', function () {
             var o = {};

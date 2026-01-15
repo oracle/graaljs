@@ -22,6 +22,11 @@ template("node_gn_build") {
     } else {
       defines += [ "HAVE_OPENSSL=0" ]
     }
+    if (node_use_sqlite) {
+      defines += [ "HAVE_SQLITE=1" ]
+    } else {
+      defines += [ "HAVE_SQLITE=0" ]
+    }
     if (node_use_amaro) {
       defines += [ "HAVE_AMARO=1" ]
     } else {
@@ -159,7 +164,6 @@ template("node_gn_build") {
       "deps/nghttp2",
       "deps/ngtcp2",
       "deps/postject",
-      "deps/sqlite",
       "deps/uvwasi",
       "deps/zstd",
       "//third_party/zlib",
@@ -193,15 +197,20 @@ template("node_gn_build") {
       public_deps += [ "$node_openssl_path" ]
       sources += gypi_values.node_crypto_sources
     }
+    if (node_use_sqlite) {
+      deps += [ "deps/sqlite" ]
+      sources += gypi_values.node_sqlite_sources
+    }
     if (node_enable_inspector) {
       deps += [
-        "src/inspector:crdtp",
+        "$node_inspector_protocol_path:crdtp",
         "src/inspector:node_protocol_generated_sources",
         "src/inspector:v8_inspector_compress_protocol_json",
       ]
       include_dirs = [
         "$target_gen_dir/src",
         "$target_gen_dir/src/inspector",
+        "$node_inspector_protocol_path",
       ]
       node_inspector = exec_script(
           "./tools/gypi_to_gn.py",
@@ -249,12 +258,29 @@ template("node_gn_build") {
   if (node_use_node_snapshot) {
     if (current_toolchain == v8_snapshot_toolchain) {
       executable("node_mksnapshot") {
-        configs += [ ":node_internal_config" ]
+        configs += [ ":node_internal_config", ":disable_icf" ]
         sources = [
           "src/node_snapshot_stub.cc",
           "tools/snapshot/node_mksnapshot.cc",
         ]
         deps = [ ":libnode" ]
+      }
+
+      # This config disables a link time optimization "ICF", which may merge
+      # different functions into one if the function signature and body of them are
+      # identical.
+      #
+      # ICF breaks 1:1 mappings of the external references for V8 snapshot, so we
+      # disable it while taking a V8 snapshot.
+      config("disable_icf") {
+        visibility = [ ":*" ]  # Only targets in this file can depend on this.
+        if (is_win) {
+          ldflags = [ "/OPT:NOICF" ]  # link.exe, but also lld-link.exe.
+        } else if (is_apple && !use_lld) {
+          ldflags = [ "-Wl,-no_deduplicate" ]  # ld64.
+        } else if ((!is_apple && use_gold) || use_lld) {
+          ldflags = [ "-Wl,--icf=none" ]
+        }
       }
     }
 

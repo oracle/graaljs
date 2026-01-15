@@ -4,12 +4,8 @@ const {
   JSONParse,
   JSONStringify,
   SafeMap,
-} = primordials;
-
-const {
   SymbolDispose,
-  kEmptyObject,
-} = require('internal/util');
+} = primordials;
 
 const {
   ERR_INSPECTOR_ALREADY_ACTIVATED,
@@ -26,6 +22,7 @@ const { isLoopback } = require('internal/net');
 
 const EventEmitter = require('events');
 const { queueMicrotask } = require('internal/process/task_queues');
+const { kEmptyObject } = require('internal/util');
 const {
   isUint32,
   validateFunction,
@@ -35,6 +32,9 @@ const {
 } = require('internal/validators');
 const { isMainThread } = require('worker_threads');
 const { _debugEnd } = internalBinding('process_methods');
+const {
+  put,
+} = require('internal/inspector/network_resources');
 
 const {
   Connection,
@@ -213,7 +213,16 @@ const Network = {
   responseReceived: (params) => broadcastToFrontend('Network.responseReceived', params),
   loadingFinished: (params) => broadcastToFrontend('Network.loadingFinished', params),
   loadingFailed: (params) => broadcastToFrontend('Network.loadingFailed', params),
+  dataSent: (params) => broadcastToFrontend('Network.dataSent', params),
   dataReceived: (params) => broadcastToFrontend('Network.dataReceived', params),
+  webSocketCreated: (params) => broadcastToFrontend('Network.webSocketCreated', params),
+  webSocketClosed: (params) => broadcastToFrontend('Network.webSocketClosed', params),
+  webSocketHandshakeResponseReceived:
+    (params) => broadcastToFrontend('Network.webSocketHandshakeResponseReceived', params),
+};
+
+const NetworkResources = {
+  put,
 };
 
 module.exports = {
@@ -224,6 +233,7 @@ module.exports = {
   console,
   Session,
   Network,
+  NetworkResources,
 };
 
 // Use the mockup provided by 'inspect' instrument

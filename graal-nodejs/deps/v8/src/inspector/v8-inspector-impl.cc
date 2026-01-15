@@ -66,10 +66,10 @@ V8InspectorImpl::V8InspectorImpl(v8::Isolate* isolate,
       m_client(client),
       m_debugger(new V8Debugger(isolate, this)),
       m_lastExceptionId(0),
-      m_lastContextId(0),
-      m_isolateId(generateUniqueId()) {
+      m_lastContextId(0) {
   v8::debug::SetInspector(m_isolate, this);
   v8::debug::SetConsoleDelegate(m_isolate, console());
+  v8::debug::SetIsolateId(m_isolate, generateUniqueId());
 }
 
 V8InspectorImpl::~V8InspectorImpl() {
@@ -207,6 +207,10 @@ V8DebuggerId V8InspectorImpl::uniqueDebuggerId(int contextId) {
   if (context) unique_id = m_debugger->debuggerIdFor(context->contextGroupId());
 
   return unique_id.toV8DebuggerId();
+}
+
+uint64_t V8InspectorImpl::isolateId() {
+  return v8::debug::GetIsolateId(m_isolate);
 }
 
 void V8InspectorImpl::contextCreated(const V8ContextInfo& info) {
@@ -481,7 +485,8 @@ protocol::Response V8InspectorImpl::EvaluateScope::setTimeout(double timeout) {
     return protocol::Response::ServerError("Execution was terminated");
   }
   m_cancelToken.reset(new CancelToken());
-  v8::debug::GetCurrentPlatform()->CallDelayedOnWorkerThread(
+  v8::debug::GetCurrentPlatform()->PostDelayedTaskOnWorkerThread(
+      v8::TaskPriority::kUserVisible,
       std::make_unique<TerminateTask>(m_isolate, m_cancelToken), timeout);
   return protocol::Response::Success();
 }

@@ -36,16 +36,12 @@ struct hash_policy_traits : common_policy_traits<Policy> {
 
  private:
   struct ReturnKey {
-    // When C++17 is available, we can use std::launder to provide mutable
-    // access to the key for use in node handle.
-#if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606
     template <class Key,
               absl::enable_if_t<std::is_lvalue_reference<Key>::value, int> = 0>
     static key_type& Impl(Key&& k, int) {
       return *std::launder(
           const_cast<key_type*>(std::addressof(std::forward<Key>(k))));
     }
-#endif
 
     template <class Key>
     static Key Impl(Key&& k, char) {
@@ -168,7 +164,7 @@ struct hash_policy_traits : common_policy_traits<Policy> {
 #endif
   }
 
-  // Whether small object optimization is enabled. False by default.
+  // Whether small object optimization is enabled. True by default.
   static constexpr bool soo_enabled() { return soo_enabled_impl(Rank1{}); }
 
  private:
@@ -197,7 +193,7 @@ struct hash_policy_traits : common_policy_traits<Policy> {
     return P::soo_enabled();
   }
 
-  static constexpr bool soo_enabled_impl(Rank0) { return false; }
+  static constexpr bool soo_enabled_impl(Rank0) { return true; }
 };
 
 }  // namespace container_internal

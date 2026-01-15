@@ -31,7 +31,6 @@ const {
   UVException,
   codes: {
     ERR_FS_EISDIR,
-    ERR_FS_INVALID_SYMLINK_TYPE,
     ERR_INCOMPATIBLE_OPTION_PAIR,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
@@ -162,7 +161,6 @@ class Dirent {
   constructor(name, type, path) {
     this.name = name;
     this.parentPath = path;
-    this.path = path;
     this[kType] = type;
   }
 
@@ -303,7 +301,7 @@ function getDirent(path, name, type, callback) {
           callback(err);
           return;
         }
-        callback(null, new DirentFromStats(name, stats, filepath));
+        callback(null, new DirentFromStats(name, stats, path));
       });
     } else {
       callback(null, new Dirent(name, type, path));
@@ -421,10 +419,10 @@ StatsBase.prototype.isSocket = function() {
   return this._checkModeProperty(S_IFSOCK);
 };
 
-const kNsPerMsBigInt = 10n ** 6n;
-const kNsPerSecBigInt = 10n ** 9n;
-const kMsPerSec = 10 ** 3;
-const kNsPerMs = 10 ** 6;
+const kNsPerMsBigInt = 1_000_000n;
+const kNsPerSecBigInt = 1_000_000_000n;
+const kMsPerSec = 1_000;
+const kNsPerMs = 1_000_000;
 function msFromTimeSpec(sec, nsec) {
   return sec * kMsPerSec + nsec / kNsPerMs;
 }
@@ -635,22 +633,16 @@ function stringToFlags(flags, name = 'flags') {
 }
 
 const stringToSymlinkType = hideStackFrames((type) => {
-  let flags = 0;
-  if (typeof type === 'string') {
-    switch (type) {
-      case 'dir':
-        flags |= UV_FS_SYMLINK_DIR;
-        break;
-      case 'junction':
-        flags |= UV_FS_SYMLINK_JUNCTION;
-        break;
-      case 'file':
-        break;
-      default:
-        throw new ERR_FS_INVALID_SYMLINK_TYPE(type);
-    }
+  switch (type) {
+    case undefined:
+    case null:
+    case 'file':
+      return 0;
+    case 'dir':
+      return UV_FS_SYMLINK_DIR;
+    case 'junction':
+      return UV_FS_SYMLINK_JUNCTION;
   }
-  return flags;
 });
 
 // converts Date or number to a fractional UNIX timestamp

@@ -30,8 +30,9 @@ const protocolHandlers = {
 
 /**
  * Determine whether the given ambiguous source contains CommonJS or ES module syntax.
- * @param {string | Buffer | undefined} source
+ * @param {string | Buffer | undefined} [source]
  * @param {URL} url
+ * @returns {'module'|'commonjs'}
  */
 function detectModuleFormat(source, url) {
   if (!source) { return detectModule ? null : 'commonjs'; }
@@ -81,6 +82,7 @@ function extname(url) {
  * This function assumes that the input has already been verified to be a `file:` URL,
  * and is a file rather than a folder.
  * @param {URL} url
+ * @returns {boolean}
  */
 function underNodeModules(url) {
   if (url.protocol !== 'file:') { return false; } // We determine module types for other protocols based on MIME header
@@ -119,65 +121,39 @@ function getFileProtocolModuleFormat(url, context = { __proto__: null }, ignoreE
     }
 
     // The controlling `package.json` file has no `type` field.
-    switch (getOptionValue('--experimental-default-type')) {
-      case 'module': { // The user explicitly passed `--experimental-default-type=module`.
-        // An exception to the type flag making ESM the default everywhere is that package scopes under `node_modules`
-        // should retain the assumption that a lack of a `type` field means CommonJS.
-        return underNodeModules(url) ? 'commonjs' : 'module';
-      }
-      case 'commonjs': { // The user explicitly passed `--experimental-default-type=commonjs`.
-        return 'commonjs';
-      }
-      default: { // The user did not pass `--experimental-default-type`.
-        // `source` is undefined when this is called from `defaultResolve`;
-        // but this gets called again from `defaultLoad`/`defaultLoadSync`.
-        // For ambiguous files (no type field, .js extension) we return
-        // undefined from `resolve` and re-run the check in `load`.
-        const format = detectModuleFormat(source, url);
-        if (format === 'module' && foundPackageJson) {
-          // This module has a .js extension, a package.json with no `type` field, and ESM syntax.
-          // Warn about the missing `type` field so that the user can avoid the performance penalty of detection.
-          warnTypelessPackageJsonFile(pjsonPath, url);
-        }
-        return format;
-      }
+    // `source` is undefined when this is called from `defaultResolve`;
+    // but this gets called again from `defaultLoad`/`defaultLoadSync`.
+    // For ambiguous files (.js, no type field) we return undefined from `resolve` and re-run the check in `load`.
+    const format = detectModuleFormat(source, url);
+    if (format === 'module' && foundPackageJson) {
+      // This module has a .js extension, a package.json with no `type` field, and ESM syntax.
+      // Warn about the missing `type` field so that the user can avoid the performance penalty of detection.
+      warnTypelessPackageJsonFile(pjsonPath, url);
     }
+    return format;
   }
-  if (ext === '.ts' && getOptionValue('--experimental-strip-types')) {
+  if (ext === '.ts' && getOptionValue('--strip-types')) {
     const { type: packageType, pjsonPath, exists: foundPackageJson } = getPackageScopeConfig(url);
     if (packageType !== 'none') {
       return `${packageType}-typescript`;
     }
     // The controlling `package.json` file has no `type` field.
-    switch (getOptionValue('--experimental-default-type')) {
-      case 'module': { // The user explicitly passed `--experimental-default-type=module`.
-        // An exception to the type flag making ESM the default everywhere is that package scopes under `node_modules`
-        // should retain the assumption that a lack of a `type` field means CommonJS.
-        return underNodeModules(url) ? 'commonjs-typescript' : 'module-typescript';
-      }
-      case 'commonjs': { // The user explicitly passed `--experimental-default-type=commonjs`.
-        return 'commonjs-typescript';
-      }
-      default: { // The user did not pass `--experimental-default-type`.
-        // `source` is undefined when this is called from `defaultResolve`;
-        // but this gets called again from `defaultLoad`/`defaultLoadSync`.
-        // Since experimental-strip-types depends on detect-module, we always return null
-        // if source is undefined.
-        if (!source) { return null; }
-        const { stringify } = require('internal/modules/helpers');
-        const { stripTypeScriptModuleTypes } = require('internal/modules/typescript');
-        const stringifiedSource = stringify(source);
-        const parsedSource = stripTypeScriptModuleTypes(stringifiedSource, fileURLToPath(url));
-        const detectedFormat = detectModuleFormat(parsedSource, url);
-        const format = `${detectedFormat}-typescript`;
-        if (format === 'module-typescript' && foundPackageJson) {
-          // This module has a .js extension, a package.json with no `type` field, and ESM syntax.
-          // Warn about the missing `type` field so that the user can avoid the performance penalty of detection.
-          warnTypelessPackageJsonFile(pjsonPath, url);
-        }
-        return format;
-      }
+    // `source` is undefined when this is called from `defaultResolve`;
+    // but this gets called again from `defaultLoad`/`defaultLoadSync`.
+    // Since strip-types depends on detect-module, we always return null if source is undefined.
+    if (!source) { return null; }
+    const { stringify } = require('internal/modules/helpers');
+    const { stripTypeScriptModuleTypes } = require('internal/modules/typescript');
+    const stringifiedSource = stringify(source);
+    const parsedSource = stripTypeScriptModuleTypes(stringifiedSource, fileURLToPath(url));
+    const detectedFormat = detectModuleFormat(parsedSource, url);
+    const format = `${detectedFormat}-typescript`;
+    if (format === 'module-typescript' && foundPackageJson) {
+      // This module has a .js extension, a package.json with no `type` field, and ESM syntax.
+      // Warn about the missing `type` field so that the user can avoid the performance penalty of detection.
+      warnTypelessPackageJsonFile(pjsonPath, url);
     }
+    return format;
   }
 
   if (ext === '') {
@@ -190,24 +166,14 @@ function getFileProtocolModuleFormat(url, context = { __proto__: null }, ignoreE
     }
 
     // The controlling `package.json` file has no `type` field.
-    switch (getOptionValue('--experimental-default-type')) {
-      case 'module': { // The user explicitly passed `--experimental-default-type=module`.
-        return underNodeModules(url) ? 'commonjs' : getFormatOfExtensionlessFile(url);
-      }
-      case 'commonjs': { // The user explicitly passed `--experimental-default-type=commonjs`.
-        return 'commonjs';
-      }
-      default: { // The user did not pass `--experimental-default-type`.
-        if (!source) {
-          return null;
-        }
-        const format = getFormatOfExtensionlessFile(url);
-        if (format === 'wasm') {
-          return format;
-        }
-        return detectModuleFormat(source, url);
-      }
+    if (!source) {
+      return null;
     }
+    const format = getFormatOfExtensionlessFile(url);
+    if (format === 'wasm') {
+      return format;
+    }
+    return detectModuleFormat(source, url);
   }
 
   const format = extensionFormatMap[ext];

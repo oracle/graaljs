@@ -48,7 +48,8 @@
   V(ExternalConstant)                \
   V(NumberConstant)                  \
   V(PointerConstant)                 \
-  V(HeapConstant)
+  V(HeapConstant)                    \
+  V(TrustedHeapConstant)
 
 // Opcodes for constant operators.
 #define CONSTANT_OP_LIST(V)    \
@@ -173,6 +174,7 @@
   V(JSCreateLiteralObject)       \
   V(JSCreateLiteralRegExp)       \
   V(JSCreateObject)              \
+  V(JSCreateStringWrapper)       \
   V(JSCreatePromise)             \
   V(JSCreateStringIterator)      \
   V(JSCreateTypedArray)          \
@@ -199,6 +201,7 @@
 #define JS_CONTEXT_OP_LIST(V) \
   V(JSHasContextExtension)    \
   V(JSLoadContext)            \
+  V(JSLoadScriptContext)      \
   V(JSStoreContext)           \
   V(JSStoreScriptContext)     \
   V(JSCreateFunctionContext)  \
@@ -284,38 +287,42 @@
   V(TruncateTaggedToBit)             \
   V(TruncateTaggedPointerToBit)
 
-#define SIMPLIFIED_CHECKED_OP_LIST(V) \
-  V(CheckedInt32Add)                  \
-  V(CheckedInt32Sub)                  \
-  V(CheckedInt32Div)                  \
-  V(CheckedInt32Mod)                  \
-  V(CheckedUint32Div)                 \
-  V(CheckedUint32Mod)                 \
-  V(CheckedInt32Mul)                  \
-  V(CheckedInt64Add)                  \
-  V(CheckedInt64Sub)                  \
-  V(CheckedInt64Mul)                  \
-  V(CheckedInt64Div)                  \
-  V(CheckedInt64Mod)                  \
-  V(CheckedInt32ToTaggedSigned)       \
-  V(CheckedInt64ToInt32)              \
-  V(CheckedInt64ToTaggedSigned)       \
-  V(CheckedUint32Bounds)              \
-  V(CheckedUint32ToInt32)             \
-  V(CheckedUint32ToTaggedSigned)      \
-  V(CheckedUint64Bounds)              \
-  V(CheckedUint64ToInt32)             \
-  V(CheckedUint64ToInt64)             \
-  V(CheckedUint64ToTaggedSigned)      \
-  V(CheckedFloat64ToInt32)            \
-  V(CheckedFloat64ToInt64)            \
-  V(CheckedTaggedSignedToInt32)       \
-  V(CheckedTaggedToInt32)             \
-  V(CheckedTaggedToArrayIndex)        \
-  V(CheckedTruncateTaggedToWord32)    \
-  V(CheckedTaggedToFloat64)           \
-  V(CheckedTaggedToInt64)             \
-  V(CheckedTaggedToTaggedSigned)      \
+#define SIMPLIFIED_CHECKED_OP_LIST(V)    \
+  V(CheckedInt32Add)                     \
+  V(CheckedInt32Sub)                     \
+  V(CheckedInt32Div)                     \
+  V(CheckedInt32Mod)                     \
+  V(CheckedUint32Div)                    \
+  V(CheckedUint32Mod)                    \
+  V(CheckedInt32Mul)                     \
+  V(CheckedInt64Add)                     \
+  V(CheckedAdditiveSafeIntegerAdd)       \
+  V(CheckedAdditiveSafeIntegerSub)       \
+  V(CheckedInt64Sub)                     \
+  V(CheckedInt64Mul)                     \
+  V(CheckedInt64Div)                     \
+  V(CheckedInt64Mod)                     \
+  V(CheckedInt32ToTaggedSigned)          \
+  V(CheckedInt64ToInt32)                 \
+  V(CheckedInt64ToTaggedSigned)          \
+  V(CheckedUint32Bounds)                 \
+  V(CheckedUint32ToInt32)                \
+  V(CheckedUint32ToTaggedSigned)         \
+  V(CheckedUint64Bounds)                 \
+  V(CheckedUint64ToInt32)                \
+  V(CheckedUint64ToInt64)                \
+  V(CheckedUint64ToTaggedSigned)         \
+  V(CheckedFloat64ToInt32)               \
+  V(CheckedFloat64ToInt64)               \
+  V(CheckedFloat64ToAdditiveSafeInteger) \
+  V(CheckedTaggedSignedToInt32)          \
+  V(CheckedTaggedToInt32)                \
+  V(CheckedTaggedToArrayIndex)           \
+  V(CheckedTruncateTaggedToWord32)       \
+  V(CheckedTaggedToFloat64)              \
+  V(CheckedTaggedToAdditiveSafeInteger)  \
+  V(CheckedTaggedToInt64)                \
+  V(CheckedTaggedToTaggedSigned)         \
   V(CheckedTaggedToTaggedPointer)
 
 #define SIMPLIFIED_COMPARE_BINOP_LIST(V) \
@@ -382,8 +389,10 @@
   V(SpeculativeNumberShiftLeft)                     \
   V(SpeculativeNumberShiftRight)                    \
   V(SpeculativeNumberShiftRightLogical)             \
-  V(SpeculativeSafeIntegerAdd)                      \
-  V(SpeculativeSafeIntegerSubtract)
+  V(SpeculativeAdditiveSafeIntegerAdd)              \
+  V(SpeculativeAdditiveSafeIntegerSubtract)         \
+  V(SpeculativeSmallIntegerAdd)                     \
+  V(SpeculativeSmallIntegerSubtract)
 
 #define SIMPLIFIED_NUMBER_UNOP_LIST(V) \
   V(NumberAbs)                         \
@@ -455,6 +464,7 @@
   V(CheckMaps)                          \
   V(CheckNotTaggedHole)                 \
   V(CheckNumber)                        \
+  V(CheckNumberFitsInt32)               \
   V(CheckReceiver)                      \
   V(CheckReceiverOrNullOrUndefined)     \
   V(CheckSmi)                           \
@@ -531,6 +541,7 @@
   V(StringFromSingleCodePoint)          \
   V(StringIndexOf)                      \
   V(StringLength)                       \
+  V(StringWrapperLength)                \
   V(StringSubstring)                    \
   V(StringToLowerCaseIntl)              \
   V(StringToNumber)                     \
@@ -540,6 +551,8 @@
   V(TransitionAndStoreNonNumberElement) \
   V(TransitionAndStoreNumberElement)    \
   V(TransitionElementsKind)             \
+  V(TransitionElementsKindOrCheckMap)   \
+  V(TypedArrayLength)                   \
   V(TypeOf)                             \
   V(Unsigned32Divide)                   \
   V(VerifyType)                         \
@@ -813,7 +826,9 @@
   V(ChangeInt64ToFloat64)                \
   V(ChangeUint32ToFloat64)               \
   V(ChangeUint32ToUint64)                \
+  V(ChangeFloat16RawBitsToFloat64)       \
   V(TruncateFloat64ToFloat32)            \
+  V(TruncateFloat64ToFloat16RawBits)     \
   V(TruncateInt64ToInt32)                \
   V(RoundFloat64ToInt32)                 \
   V(RoundInt32ToFloat32)                 \
@@ -918,6 +933,39 @@
   IF_WASM(V, F32x4Trunc)                  \
   IF_WASM(V, F32x4NearestInt)             \
   IF_WASM(V, F32x4DemoteF64x2Zero)        \
+  IF_WASM(V, F16x8Splat)                  \
+  IF_WASM(V, F16x8ExtractLane)            \
+  IF_WASM(V, F16x8ReplaceLane)            \
+  IF_WASM(V, F16x8Abs)                    \
+  IF_WASM(V, F16x8Neg)                    \
+  IF_WASM(V, F16x8Sqrt)                   \
+  IF_WASM(V, F16x8Ceil)                   \
+  IF_WASM(V, F16x8Floor)                  \
+  IF_WASM(V, F16x8Trunc)                  \
+  IF_WASM(V, F16x8NearestInt)             \
+  IF_WASM(V, F16x8Add)                    \
+  IF_WASM(V, F16x8Sub)                    \
+  IF_WASM(V, F16x8Mul)                    \
+  IF_WASM(V, F16x8Div)                    \
+  IF_WASM(V, F16x8Min)                    \
+  IF_WASM(V, F16x8Max)                    \
+  IF_WASM(V, F16x8Pmin)                   \
+  IF_WASM(V, F16x8Pmax)                   \
+  IF_WASM(V, F16x8Eq)                     \
+  IF_WASM(V, F16x8Ne)                     \
+  IF_WASM(V, F16x8Lt)                     \
+  IF_WASM(V, F16x8Le)                     \
+  IF_WASM(V, F16x8Gt)                     \
+  IF_WASM(V, F16x8Ge)                     \
+  IF_WASM(V, I16x8SConvertF16x8)          \
+  IF_WASM(V, I16x8UConvertF16x8)          \
+  IF_WASM(V, F16x8SConvertI16x8)          \
+  IF_WASM(V, F16x8UConvertI16x8)          \
+  IF_WASM(V, F16x8DemoteF32x4Zero)        \
+  IF_WASM(V, F16x8DemoteF64x2Zero)        \
+  IF_WASM(V, F32x4PromoteLowF16x8)        \
+  IF_WASM(V, F16x8Qfma)                   \
+  IF_WASM(V, F16x8Qfms)                   \
   IF_WASM(V, I64x2Splat)                  \
   IF_WASM(V, I64x2SplatI32Pair)           \
   IF_WASM(V, I64x2ExtractLane)            \
@@ -1088,7 +1136,16 @@
   IF_WASM(V, I16x8RelaxedQ15MulRS)        \
   IF_WASM(V, I16x8DotI8x16I7x16S)         \
   IF_WASM(V, I32x4DotI8x16I7x16AddS)      \
+  IF_WASM(V, I8x16AddReduce)              \
+  IF_WASM(V, I16x8AddReduce)              \
+  IF_WASM(V, I32x4AddReduce)              \
+  IF_WASM(V, I64x2AddReduce)              \
+  IF_WASM(V, F32x4AddReduce)              \
+  IF_WASM(V, F64x2AddReduce)              \
   IF_WASM(V, I8x16Shuffle)                \
+  IF_WASM(V, I8x8Shuffle)                 \
+  IF_WASM(V, I8x4Shuffle)                 \
+  IF_WASM(V, I8x2Shuffle)                 \
   IF_WASM(V, V128AnyTrue)                 \
   IF_WASM(V, I64x2AllTrue)                \
   IF_WASM(V, I32x4AllTrue)                \
@@ -1103,6 +1160,8 @@
   V(F64x4Min)                      \
   V(F64x4Max)                      \
   V(F64x4Add)                      \
+  V(F64x4Abs)                      \
+  V(F64x4Neg)                      \
   V(F64x4Sqrt)                     \
   V(F32x8Add)                      \
   V(I64x4Add)                      \
@@ -1176,6 +1235,7 @@
   V(I8x32GtU)                      \
   V(I8x32GeS)                      \
   V(I8x32GeU)                      \
+  V(I32x8SConvertF32x8)            \
   V(I32x8UConvertF32x8)            \
   V(F64x4ConvertI32x4S)            \
   V(F32x8SConvertI32x8)            \
@@ -1238,7 +1298,23 @@
   V(F64x4Pmax)                     \
   V(F64x4Splat)                    \
   V(F32x8Splat)                    \
-  V(I8x32Shuffle)
+  V(I8x32Shuffle)                  \
+  V(F32x8Qfma)                     \
+  V(F32x8Qfms)                     \
+  V(F64x4Qfma)                     \
+  V(F64x4Qfms)                     \
+  V(I64x4RelaxedLaneSelect)        \
+  V(I32x8RelaxedLaneSelect)        \
+  V(I16x16RelaxedLaneSelect)       \
+  V(I8x32RelaxedLaneSelect)        \
+  V(I32x8DotI8x32I7x32AddS)        \
+  V(I16x16DotI8x32I7x32S)          \
+  V(F32x8RelaxedMin)               \
+  V(F32x8RelaxedMax)               \
+  V(F64x4RelaxedMin)               \
+  V(F64x4RelaxedMax)               \
+  V(I32x8RelaxedTruncF32x8S)       \
+  V(I32x8RelaxedTruncF32x8U)
 
 #define VALUE_OP_LIST(V)              \
   COMMON_OP_LIST(V)                   \

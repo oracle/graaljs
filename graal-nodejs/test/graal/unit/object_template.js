@@ -65,20 +65,6 @@ describe('ObjectTemplate', function () {
             assert.strictEqual(obj.foo, "bar");
         });
     });
-    describe('SetAccessor', function () {
-        it('should create simple getter', function () {
-            var obj = module.ObjectTemplate_CreateWithAccessor("myAccess");
-            var gotValue = obj.myAccess;
-            assert.strictEqual(gotValue, "accessor getter called: myAccess");
-        });
-        it('should create simple setter', function () {
-            var obj = module.ObjectTemplate_CreateWithAccessor("myAccess");
-            assert.strictEqual(obj.mySetValue, undefined);
-            obj.myAccess = 1000;
-            assert.strictEqual(obj.mySetValue, 1000);
-            assert.strictEqual(obj.hasOwnProperty("mySetValue"), true);
-        });
-    });
     describe('SetHandler', function () {
         it('should create object with the specified internal field count', function () {
             var result = module.ObjectTemplate_CheckNamedHandlerWithInternalFields();

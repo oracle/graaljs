@@ -61,8 +61,6 @@ namespace compiler {
   V(RiscvZeroExtendWord)                             \
   V(RiscvSignExtendWord)                             \
   V(RiscvClz64)                                      \
-  V(RiscvCtz64)                                      \
-  V(RiscvPopcnt64)                                   \
   V(RiscvShl64)                                      \
   V(RiscvShr64)                                      \
   V(RiscvSar64)                                      \
@@ -95,9 +93,11 @@ namespace compiler {
   V(RiscvStoreIndirectPointer)                       \
   V(RiscvAtomicLoadDecompressTaggedSigned)           \
   V(RiscvAtomicLoadDecompressTagged)                 \
+  V(RiscvLoadDecompressProtected)                    \
   V(RiscvAtomicStoreCompressTagged)                  \
   V(RiscvWord64AtomicCompareExchangeUint64)          \
   V(RiscvCmp32)                                      \
+  V(RiscvCmpZero32)                                  \
   V(RiscvTst64)
 #elif V8_TARGET_ARCH_RISCV32
 #define TARGET_ARCH_OPCODE_LIST_SPECAIL(V) \
@@ -159,16 +159,12 @@ namespace compiler {
   V(RiscvAnd32)                           \
   V(RiscvOr)                              \
   V(RiscvOr32)                            \
-  V(RiscvNor)                             \
-  V(RiscvNor32)                           \
   V(RiscvXor)                             \
   V(RiscvXor32)                           \
   V(RiscvClz32)                           \
   V(RiscvShl32)                           \
   V(RiscvShr32)                           \
   V(RiscvSar32)                           \
-  V(RiscvCtz32)                           \
-  V(RiscvPopcnt32)                        \
   V(RiscvRor32)                           \
   V(RiscvMov)                             \
   V(RiscvTst32)                           \
@@ -226,6 +222,8 @@ namespace compiler {
   V(RiscvULoadFloat)                      \
   V(RiscvULoadDouble)                     \
   V(RiscvUStoreDouble)                    \
+  V(RiscvEnableDebugTrace)                \
+  V(RiscvDisableDebugTrace)               \
   V(RiscvBitcastInt32ToFloat32)           \
   V(RiscvBitcastFloat32ToInt32)           \
   V(RiscvFloat64ExtractLowWord32)         \
@@ -375,7 +373,6 @@ namespace compiler {
   V(RiscvVzextVf2)                        \
   V(RiscvVsextVf2)
 
-#ifdef CAN_USE_ZBB_INSTRUCTIONS
 #define TARGET_ARCH_OPCODE_LIST_ZBB(V) \
   V(RiscvAndn)                         \
   V(RiscvOrn)                          \
@@ -401,13 +398,6 @@ namespace compiler {
 #define TARGET_ARCH_OPCODE_LIST_ZBB_32(V)
 #endif
 
-#else
-#define TARGET_ARCH_OPCODE_LIST_ZBB(V)
-
-#define TARGET_ARCH_OPCODE_LIST_ZBB_32(V)
-#endif
-
-#ifdef CAN_USE_ZBA_INSTRUCTIONS
 #define TARGET_ARCH_OPCODE_LIST_ZBA(V) \
   V(RiscvSh1add)                       \
   V(RiscvSh2add)                       \
@@ -423,12 +413,7 @@ namespace compiler {
 #else
 #define TARGET_ARCH_OPCODE_LIST_ZBA_32(V)
 #endif
-#else
-#define TARGET_ARCH_OPCODE_LIST_ZBA(V)
-#define TARGET_ARCH_OPCODE_LIST_ZBA_32(V)
-#endif
 
-#ifdef CAN_USE_ZBS_INSTRUCTIONS
 #define TARGET_ARCH_OPCODE_LIST_ZBS(V) \
   V(RiscvBclr)                         \
   V(RiscvBclri)                        \
@@ -438,9 +423,6 @@ namespace compiler {
   V(RiscvBinvi)                        \
   V(RiscvBset)                         \
   V(RiscvBseti)
-#else
-#define TARGET_ARCH_OPCODE_LIST_ZBS(V)
-#endif
 
 #define TARGET_ARCH_OPCODE_LIST(V)   \
   TARGET_ARCH_OPCODE_LIST_COMMON(V)  \

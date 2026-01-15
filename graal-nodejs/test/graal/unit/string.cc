@@ -85,7 +85,7 @@ EXPORT_TO_JS(Utf8Length) {
 
 EXPORT_TO_JS(Utf8Value) {
     String::Utf8Value utf8(args.GetIsolate(), args[0]);
-    args.GetReturnValue().Set(utf8.length());
+    args.GetReturnValue().Set((int32_t) utf8.length());
 }
 
 EXPORT_TO_JS(Utf8ValueEmpty) {

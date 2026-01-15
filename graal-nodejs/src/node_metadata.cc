@@ -161,6 +161,28 @@ Metadata::Versions::Versions() {
   nbytes = NBYTES_VERSION;
 }
 
+std::array<std::pair<std::string_view, std::string_view>,
+           NODE_VERSIONS_KEY_COUNT>
+Metadata::Versions::pairs() const {
+  std::array<std::pair<std::string_view, std::string_view>,
+             NODE_VERSIONS_KEY_COUNT>
+      versions_array;
+  auto slot = versions_array.begin();
+
+#define V(key)                                                                 \
+  do {                                                                         \
+    *slot++ = std::pair<std::string_view, std::string_view>(                   \
+        #key, per_process::metadata.versions.key);                             \
+  } while (0);
+  NODE_VERSIONS_KEYS(V)
+#undef V
+
+  std::ranges::sort(versions_array,
+                    [](auto& a, auto& b) { return a.first < b.first; });
+
+  return versions_array;
+}
+
 Metadata::Release::Release() : name(NODE_RELEASE) {
 #if NODE_VERSION_IS_LTS
   lts = NODE_VERSION_LTS_CODENAME;
@@ -173,9 +195,7 @@ Metadata::Release::Release() : name(NODE_RELEASE) {
   source_url = NODE_RELEASE_URLFPFX ".tar.gz";
   headers_url = NODE_RELEASE_URLFPFX "-headers.tar.gz";
 #ifdef _WIN32
-  lib_url = strcmp(NODE_ARCH, "ia32") ? NODE_RELEASE_URLPFX "win-" NODE_ARCH
-                                                           "/node.lib"
-                                     : NODE_RELEASE_URLPFX "win-x86/node.lib";
+  lib_url = NODE_RELEASE_URLPFX "win-" NODE_ARCH "/node.lib";
 #endif  // _WIN32
 
 #endif  // NODE_HAS_RELEASE_URLS

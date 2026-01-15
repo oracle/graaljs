@@ -20,9 +20,9 @@ os.chdir(Path(__file__).parent)
 original_argv = sys.argv[1:]
 
 # gcc and g++ as defaults matches what GYP's Makefile generator does,
-# except on OS X.
-CC = os.environ.get('CC', 'cc' if sys.platform == 'darwin' else 'gcc')
-CXX = os.environ.get('CXX', 'c++' if sys.platform == 'darwin' else 'g++')
+# except on macOS and Windows.
+CC = os.environ.get('CC', 'cc' if sys.platform == 'darwin' else 'clang' if sys.platform == 'win32' else 'gcc')
+CXX = os.environ.get('CXX', 'c++' if sys.platform == 'darwin' else 'clang' if sys.platform == 'win32' else 'g++')
 
 tools_path = Path('tools')
 
@@ -38,7 +38,6 @@ import nodedownload
 sys.path.insert(0, 'tools')
 import getmoduleversion
 import getnapibuildversion
-import getsharedopensslhasquic
 from gyp_node import run_gyp
 from utils import SearchFiles
 
@@ -47,7 +46,7 @@ parser = argparse.ArgumentParser()
 
 valid_os = ('win', 'mac', 'solaris', 'freebsd', 'openbsd', 'linux',
             'android', 'aix', 'cloudabi', 'os400', 'ios', 'openharmony')
-valid_arch = ('arm', 'arm64', 'ia32', 'mips', 'mipsel', 'mips64el', 'ppc',
+valid_arch = ('arm', 'arm64', 'ia32', 'mips', 'mipsel', 'mips64el',
               'ppc64', 'x64', 'x86', 'x86_64', 's390x', 'riscv64', 'loong64')
 valid_arm_float_abi = ('soft', 'softfp', 'hard')
 valid_arm_fpu = ('vfp', 'vfpv3', 'vfpv3-d16', 'neon')
@@ -56,6 +55,7 @@ valid_mips_fpu = ('fp32', 'fp64', 'fpxx')
 valid_mips_float_abi = ('soft', 'hard')
 valid_intl_modes = ('none', 'small-icu', 'full-icu', 'system-icu')
 icu_versions = json.loads((tools_path / 'icu' / 'icu_versions.json').read_text(encoding='utf-8'))
+maglev_enabled_architectures = ('x64', 'arm', 'arm64')
 
 # builtins may be removed later if they have been disabled by options
 shareable_builtins = {'cjs_module_lexer/lexer': 'deps/cjs-module-lexer/lexer.js',
@@ -277,7 +277,7 @@ shared_optgroup.add_argument('--shared-http-parser-includes',
 shared_optgroup.add_argument('--shared-http-parser-libname',
     action='store',
     dest='shared_http_parser_libname',
-    default='http_parser',
+    default='llhttp',
     help='alternative lib name to link to [default: %(default)s]')
 
 shared_optgroup.add_argument('--shared-http-parser-libpath',
@@ -643,6 +643,12 @@ parser.add_argument('--enable-d8',
     default=None,
     help=argparse.SUPPRESS)  # Unsupported, undocumented.
 
+parser.add_argument('--enable-v8windbg',
+    action='store_true',
+    dest='enable_v8windbg',
+    default=None,
+    help=argparse.SUPPRESS)  # Undocumented.
+
 parser.add_argument('--enable-trace-maps',
     action='store_true',
     dest='trace_maps',
@@ -655,11 +661,11 @@ parser.add_argument('--experimental-enable-pointer-compression',
     default=None,
     help='[Experimental] Enable V8 pointer compression (limits max heap to 4GB and breaks ABI compatibility)')
 
-parser.add_argument('--disable-shared-readonly-heap',
+parser.add_argument('--experimental-pointer-compression-shared-cage',
     action='store_true',
-    dest='disable_shared_ro_heap',
+    dest='pointer_compression_shared_cage',
     default=None,
-    help='Disable the shared read-only heap feature in V8')
+    help='[Experimental] Use V8 pointer compression with shared cage (requires --experimental-enable-pointer-compression)')
 
 parser.add_argument('--v8-options',
     action='store',
@@ -867,6 +873,12 @@ parser.add_argument('--without-siphash',
 
 # End dummy list.
 
+parser.add_argument('--with-quic',
+    action='store_true',
+    dest='quic',
+    default=None,
+    help='build with QUIC support')
+
 parser.add_argument('--without-ssl',
     action='store_true',
     dest='without_ssl',
@@ -883,7 +895,7 @@ parser.add_argument('--without-sqlite',
     action='store_true',
     dest='without_sqlite',
     default=None,
-    help='build without SQLite (disables SQLite and Web Stoage API)')
+    help='build without SQLite (disables SQLite and Web Storage API)')
 
 parser.add_argument('--ninja',
     action='store_true',
@@ -1002,11 +1014,13 @@ parser.add_argument('--v8-enable-hugepage',
     help='Enable V8 transparent hugepage support. This feature is only '+
          'available on Linux platform.')
 
-parser.add_argument('--v8-enable-maglev',
+maglev_enabled_by_default_help = f"(Maglev is enabled by default on {','.join(maglev_enabled_architectures)})"
+
+parser.add_argument('--v8-disable-maglev',
     action='store_true',
-    dest='v8_enable_maglev',
+    dest='v8_disable_maglev',
     default=None,
-    help='Enable V8 Maglev compiler. Not available on all platforms.')
+    help=f"Disable V8's Maglev compiler. {maglev_enabled_by_default_help}")
 
 parser.add_argument('--v8-enable-short-builtin-calls',
     action='store_true',
@@ -1131,7 +1145,7 @@ def try_check_compiler(cc, lang):
     proc = subprocess.Popen(shlex.split(cc) + ['-E', '-P', '-x', lang, '-'],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
   except OSError:
-    return (False, False, '', '')
+    return (False, False, '', '', False)
 
   with proc:
     proc.stdin.write(b'__clang__ __GNUC__ __GNUC_MINOR__ __GNUC_PATCHLEVEL__ '
@@ -1254,8 +1268,8 @@ def check_compiler(o):
   print_verbose(f"Detected {'clang ' if is_clang else ''}C++ compiler (CXX={CXX}) version: {version_str}")
   if not ok:
     warn(f'failed to autodetect C++ compiler version (CXX={CXX})')
-  elif clang_version < (8, 0, 0) if is_clang else gcc_version < (10, 1, 0):
-    warn(f'C++ compiler (CXX={CXX}, {version_str}) too old, need g++ 10.1.0 or clang++ 8.0.0')
+  elif clang_version < (8, 0, 0) if is_clang else gcc_version < (12, 2, 0):
+    warn(f'C++ compiler (CXX={CXX}, {version_str}) too old, need g++ 12.2.0 or clang++ 8.0.0')
 
   ok, is_clang, clang_version, gcc_version = try_check_compiler(CC, 'c')
   version_str = ".".join(map(str, clang_version if is_clang else gcc_version))
@@ -1376,18 +1390,17 @@ def host_arch_cc():
 def host_arch_win():
   """Host architecture check using environ vars (better way to do this?)"""
 
-  observed_arch = os.environ.get('PROCESSOR_ARCHITECTURE', 'x86')
+  observed_arch = os.environ.get('PROCESSOR_ARCHITECTURE', 'AMD64')
   arch = os.environ.get('PROCESSOR_ARCHITEW6432', observed_arch)
 
   matchup = {
     'AMD64'  : 'x64',
-    'x86'    : 'ia32',
     'arm'    : 'arm',
     'mips'   : 'mips',
     'ARM64'  : 'arm64'
   }
 
-  return matchup.get(arch, 'ia32')
+  return matchup.get(arch, 'x64')
 
 def set_configuration_variable(configs, name, release=None, debug=None):
   configs['Release'][name] = release
@@ -1751,7 +1764,8 @@ def configure_v8(o, configs):
   o['variables']['v8_random_seed'] = 0  # Use a random seed for hash tables.
   o['variables']['v8_promise_internal_field_count'] = 1 # Add internal field to promises for async hooks.
   o['variables']['v8_use_siphash'] = 0 if options.without_siphash else 1
-  o['variables']['v8_enable_maglev'] = 1 if options.v8_enable_maglev else 0
+  o['variables']['v8_enable_maglev'] = B(not options.v8_disable_maglev and
+                                         o['variables']['target_arch'] in maglev_enabled_architectures)
   o['variables']['v8_enable_pointer_compression'] = 1 if options.enable_pointer_compression else 0
   # Using the sandbox requires always allocating array buffer backing stores in the sandbox.
   # We currently have many backing stores tied to pointers from C++ land that are not
@@ -1760,20 +1774,25 @@ def configure_v8(o, configs):
   # Note that enabling pointer compression without enabling sandbox is unsupported by V8,
   # so this can be broken at any time.
   o['variables']['v8_enable_sandbox'] = 0
-  o['variables']['v8_enable_pointer_compression_shared_cage'] = 1 if options.enable_pointer_compression else 0
+  # We set v8_enable_pointer_compression_shared_cage to 0 always, even when
+  # pointer compression is enabled so that we don't accidentally enable shared
+  # cage mode when pointer compression is on.
+  o['variables']['v8_enable_pointer_compression_shared_cage'] = 1 if options.pointer_compression_shared_cage else 0
   o['variables']['v8_enable_external_code_space'] = 1 if options.enable_pointer_compression else 0
   o['variables']['v8_enable_31bit_smis_on_64bit_arch'] = 1 if options.enable_pointer_compression else 0
-  o['variables']['v8_enable_shared_ro_heap'] = 0 if options.enable_pointer_compression or options.disable_shared_ro_heap else 1
   o['variables']['v8_enable_extensible_ro_snapshot'] = 0
   o['variables']['v8_trace_maps'] = 1 if options.trace_maps else 0
   o['variables']['node_use_v8_platform'] = b(not options.without_v8_platform)
   o['variables']['node_use_bundled_v8'] = b(not options.without_bundled_v8)
   o['variables']['force_dynamic_crt'] = 1 if options.shared else 0
   o['variables']['node_enable_d8'] = b(options.enable_d8)
+  o['variables']['node_enable_v8windbg'] = b(options.enable_v8windbg)
   if options.enable_d8:
     o['variables']['test_isolation_mode'] = 'noop'  # Needed by d8.gyp.
   if options.without_bundled_v8 and options.enable_d8:
     raise Exception('--enable-d8 is incompatible with --without-bundled-v8.')
+  if options.without_bundled_v8 and options.enable_v8windbg:
+    raise Exception('--enable-v8windbg is incompatible with --without-bundled-v8.')
   if options.static_zoslib_gyp:
     o['variables']['static_zoslib_gyp'] = options.static_zoslib_gyp
   if flavor != 'linux' and options.v8_enable_hugepage:
@@ -1798,6 +1817,7 @@ def configure_openssl(o):
   variables['node_shared_ngtcp2'] = b(options.shared_ngtcp2)
   variables['node_shared_nghttp3'] = b(options.shared_nghttp3)
   variables['openssl_is_fips'] = b(options.openssl_is_fips)
+  variables['node_quic'] = b(options.quic)
   variables['node_fipsinstall'] = b(False)
 
   if options.openssl_no_asm:
@@ -1859,13 +1879,8 @@ def configure_openssl(o):
   if options.openssl_is_fips and not options.shared_openssl:
     variables['node_fipsinstall'] = b(True)
 
-  if options.shared_openssl:
-    has_quic = getsharedopensslhasquic.get_has_quic(options.__dict__['shared_openssl_includes'])
-  else:
-    has_quic = getsharedopensslhasquic.get_has_quic('deps/openssl/openssl/include')
-
-  variables['openssl_quic'] = b(has_quic)
-  if has_quic:
+  variables['openssl_quic'] = b(options.quic)
+  if options.quic:
     o['defines'] += ['NODE_OPENSSL_HAS_QUIC']
 
   configure_library('openssl', o)
@@ -2260,7 +2275,7 @@ def make_bin_override():
   if sys.platform == 'win32':
     raise Exception('make_bin_override should not be called on win32.')
   # If the system python is not the python we are running (which should be
-  # python 3.8+), then create a directory with a symlink called `python` to our
+  # python 3.9+), then create a directory with a symlink called `python` to our
   # sys.executable. This directory will be prefixed to the PATH, so that
   # other tools that shell out to `python` will use the appropriate python
 
@@ -2318,7 +2333,7 @@ configure_node_lib_files(output)
 configure_node_cctest_sources(output)
 configure_napi(output)
 configure_library('zlib', output)
-configure_library('http_parser', output)
+configure_library('http_parser', output, pkgname='libllhttp')
 configure_library('libuv', output)
 configure_library('ada', output)
 configure_library('simdjson', output)

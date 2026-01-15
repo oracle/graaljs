@@ -5,7 +5,8 @@
 #ifndef V8_WASM_BASELINE_RISCV_LIFTOFF_ASSEMBLER_RISCV64_INL_H_
 #define V8_WASM_BASELINE_RISCV_LIFTOFF_ASSEMBLER_RISCV64_INL_H_
 
-#include "src/heap/mutable-page.h"
+#include "src/codegen/interface-descriptors-inl.h"
+#include "src/heap/mutable-page-metadata.h"
 #include "src/wasm/baseline/liftoff-assembler.h"
 #include "src/wasm/baseline/riscv/liftoff-assembler-riscv-inl.h"
 #include "src/wasm/wasm-objects.h"
@@ -44,35 +45,29 @@ namespace liftoff {
 inline MemOperand GetMemOp(LiftoffAssembler* assm, Register addr,
                            Register offset, uintptr_t offset_imm,
                            bool i64_offset = false, unsigned shift_amount = 0) {
-  DCHECK_NE(addr, kScratchReg2);
-  DCHECK_NE(offset, kScratchReg2);
-  if (!i64_offset && offset != no_reg) {
-    // extract bit[0:31] without sign extend
-    assm->ExtractBits(kScratchReg2, offset, 0, 32, false);
-    offset = kScratchReg2;
-  }
-  if (is_uint31(offset_imm)) {
-    int32_t offset_imm32 = static_cast<int32_t>(offset_imm);
-    if (offset == no_reg) return MemOperand(addr, offset_imm32);
+  if (offset != no_reg) {
+    if (!i64_offset) {
+      // extract bit[0:31] without sign extend
+      assm->ExtractBits(kScratchReg2, offset, 0, 32, false);
+      offset = kScratchReg2;
+    }
     if (shift_amount != 0) {
       assm->CalcScaledAddress(kScratchReg2, addr, offset, shift_amount);
     } else {
       assm->Add64(kScratchReg2, offset, addr);
     }
-    return MemOperand(kScratchReg2, offset_imm32);
+    addr = kScratchReg2;
   }
-  // Offset immediate does not fit in 31 bits.
-  assm->li(kScratchReg2, offset_imm);
-  assm->Add64(kScratchReg2, kScratchReg2, addr);
-  if (offset != no_reg) {
-    if (shift_amount != 0) {
-      assm->CalcScaledAddress(kScratchReg2, kScratchReg2, offset, shift_amount);
-    } else {
-      assm->Add64(kScratchReg2, kScratchReg2, offset);
-    }
+  if (is_int31(offset_imm)) {
+    int32_t offset_imm32 = static_cast<int32_t>(offset_imm);
+    return MemOperand(addr, offset_imm32);
+  } else {
+    assm->li(kScratchReg, Operand(offset_imm));
+    assm->Add64(kScratchReg2, addr, kScratchReg);
+    return MemOperand(kScratchReg2, 0);
   }
-  return MemOperand(kScratchReg2, 0);
 }
+
 inline void Load(LiftoffAssembler* assm, LiftoffRegister dst, MemOperand src,
                  ValueKind kind) {
   switch (kind) {
@@ -82,7 +77,6 @@ inline void Load(LiftoffAssembler* assm, LiftoffRegister dst, MemOperand src,
     case kI64:
     case kRef:
     case kRefNull:
-    case kRtt:
       assm->Ld(dst.gp(), src);
       break;
     case kF32:
@@ -115,7 +109,6 @@ inline void Store(LiftoffAssembler* assm, Register base, int32_t offset,
     case kI64:
     case kRefNull:
     case kRef:
-    case kRtt:
       assm->Sd(src.gp(), dst);
       break;
     case kF32:
@@ -147,7 +140,6 @@ inline void push(LiftoffAssembler* assm, LiftoffRegister reg, ValueKind kind) {
     case kI64:
     case kRefNull:
     case kRef:
-    case kRtt:
       assm->push(reg.gp());
       break;
     case kF32:
@@ -188,7 +180,6 @@ inline void StoreToMemory(LiftoffAssembler* assm, MemOperand dst,
       case kI64:
       case kRef:
       case kRefNull:
-      case kRtt:
         return assm->Sd(src.reg().gp(), dst);
       case kF32:
         return assm->StoreFloat(src.reg().fp(), dst);
@@ -244,22 +235,6 @@ inline void StoreToMemory(LiftoffAssembler* assm, MemOperand dst,
 
 }  // namespace liftoff
 
-void LiftoffAssembler::LoadExternalPointer(Register dst, Register src_addr,
-                                           int offset, ExternalPointerTag tag,
-                                           Register /* scratch */) {
-  LoadExternalPointerField(dst, MemOperand(src_addr, offset), tag,
-                           kRootRegister);
-}
-
-void LiftoffAssembler::LoadExternalPointer(Register dst, Register src_addr,
-                                           int offset, Register index,
-                                           ExternalPointerTag tag,
-                                           Register /* scratch */) {
-  MemOperand src_op = liftoff::GetMemOp(this, src_addr, index, offset, false,
-                                        V8_ENABLE_SANDBOX_BOOL ? 2 : 3);
-  LoadExternalPointerField(dst, src_op, tag, kRootRegister);
-}
-
 void LiftoffAssembler::LoadConstant(LiftoffRegister reg, WasmValue value) {
   switch (value.type().kind()) {
     case kI32:
@@ -290,17 +265,10 @@ void LiftoffAssembler::LoadTaggedPointer(Register dst, Register src_addr,
   MemOperand src_op = liftoff::GetMemOp(this, src_addr, offset_reg, offset_imm,
                                         false, shift_amount);
   Assembler::BlockPoolsScope blocked_pools_scope_(this, 4 * kInstrSize);
-  LoadTaggedField(dst, src_op);
-
-  // Since LoadTaggedField might start with an instruction loading an immediate
-  // argument to a register, we have to compute the {protected_load_pc} after
-  // calling it.
-  // In case of compressed pointers, there is an additional instruction
-  // (pointer decompression) after the load.
-  uint8_t protected_instruction_offset_bias =
-      COMPRESS_POINTERS_BOOL ? 2 * kInstrSize : kInstrSize;
+  LoadTaggedField(dst, src_op, [protected_load_pc](int offset) {
+    if (protected_load_pc) *protected_load_pc = offset;
+  });
   if (protected_load_pc) {
-    *protected_load_pc = pc_offset() - protected_instruction_offset_bias;
     DCHECK(InstructionAt(*protected_load_pc)->IsLoad());
   }
 }
@@ -343,19 +311,17 @@ void LiftoffAssembler::StoreTaggedPointer(Register dst_addr,
     AddWord(effective_offset, offset_reg, Operand(offset_imm));
     offset_op = Operand(effective_offset);
   }
-
+  auto trapper = [protected_store_pc](int offset) {
+    if (protected_store_pc) *protected_store_pc = static_cast<uint32_t>(offset);
+  };
   if (offset_op.is_reg()) {
     AddWord(kScratchReg, dst_addr, offset_op.rm());
-    StoreTaggedField(src, MemOperand(kScratchReg, 0));
+    StoreTaggedField(src, MemOperand(kScratchReg, 0), trapper);
   } else {
-    StoreTaggedField(src, MemOperand(dst_addr, offset_imm));
+    StoreTaggedField(src, MemOperand(dst_addr, offset_imm), trapper);
   }
-
-  // Since StoreTaggedField might start with an instruction loading an immediate
-  // argument to a register, we have to compute the {protected_load_pc} after
-  // calling it.
   if (protected_store_pc) {
-    *protected_store_pc = pc_offset() - kInstrSize;
+    DCHECK(InstructionAt(*protected_store_pc)->IsStore());
   }
 
   if (skip_write_barrier || v8_flags.disable_write_barriers) return;
@@ -379,38 +345,41 @@ void LiftoffAssembler::Load(LiftoffRegister dst, Register src_addr,
   MemOperand src_op = liftoff::GetMemOp(this, src_addr, offset_reg, offset_imm,
                                         i64_offset, shift_amount);
   Assembler::BlockPoolsScope blocked_pools_scope_(this, 4 * kInstrSize);
+  auto trapper = [protected_load_pc](int offset) {
+    if (protected_load_pc) *protected_load_pc = static_cast<uint32_t>(offset);
+  };
   switch (type.value()) {
     case LoadType::kI32Load8U:
     case LoadType::kI64Load8U:
-      Lbu(dst.gp(), src_op);
+      Lbu(dst.gp(), src_op, trapper);
       break;
     case LoadType::kI32Load8S:
     case LoadType::kI64Load8S:
-      Lb(dst.gp(), src_op);
+      Lb(dst.gp(), src_op, trapper);
       break;
     case LoadType::kI32Load16U:
     case LoadType::kI64Load16U:
-      MacroAssembler::Lhu(dst.gp(), src_op);
+      Lhu(dst.gp(), src_op, trapper);
       break;
     case LoadType::kI32Load16S:
     case LoadType::kI64Load16S:
-      MacroAssembler::Lh(dst.gp(), src_op);
+      Lh(dst.gp(), src_op, trapper);
       break;
     case LoadType::kI64Load32U:
-      MacroAssembler::Lwu(dst.gp(), src_op);
+      Lwu(dst.gp(), src_op, trapper);
       break;
     case LoadType::kI32Load:
     case LoadType::kI64Load32S:
-      MacroAssembler::Lw(dst.gp(), src_op);
+      Lw(dst.gp(), src_op, trapper);
       break;
     case LoadType::kI64Load:
-      MacroAssembler::Ld(dst.gp(), src_op);
+      Ld(dst.gp(), src_op, trapper);
       break;
     case LoadType::kF32Load:
-      MacroAssembler::LoadFloat(dst.fp(), src_op);
+      LoadFloat(dst.fp(), src_op, trapper);
       break;
     case LoadType::kF64Load:
-      MacroAssembler::LoadDouble(dst.fp(), src_op);
+      LoadDouble(dst.fp(), src_op, trapper);
       break;
     case LoadType::kS128Load: {
       VU.set(kScratchReg, E8, m1);
@@ -418,19 +387,20 @@ void LiftoffAssembler::Load(LiftoffRegister dst, Register src_addr,
       if (src_op.offset() != 0) {
         MacroAssembler::AddWord(src_reg, src_op.rm(), src_op.offset());
       }
+      trapper(pc_offset());
       vl(dst.fp().toV(), src_reg, 0, E8);
       break;
     }
+    case LoadType::kF32LoadF16:
+      UNIMPLEMENTED();
+      break;
     default:
       UNREACHABLE();
   }
-  // Since {Ldr*} macros might start with an instruction loading an immediate
-  // argument to a register, we have to compute the {protected_load_pc} after
-  // calling them.
   if (protected_load_pc) {
-    *protected_load_pc = pc_offset() - kInstrSize;
     DCHECK(InstructionAt(*protected_load_pc)->IsLoad());
   }
+
 #if defined(V8_TARGET_BIG_ENDIAN)
   if (is_load_mem) {
     pinned.set(src_op.rm());
@@ -461,27 +431,30 @@ void LiftoffAssembler::Store(Register dst_addr, Register offset_reg,
 #endif
 
   Assembler::BlockPoolsScope blocked_pools_scope_(this, 4 * kInstrSize);
+  auto trapper = [protected_store_pc](int offset) {
+    if (protected_store_pc) *protected_store_pc = static_cast<uint32_t>(offset);
+  };
   switch (type.value()) {
     case StoreType::kI32Store8:
     case StoreType::kI64Store8:
-      Sb(src.gp(), dst_op);
+      Sb(src.gp(), dst_op, trapper);
       break;
     case StoreType::kI32Store16:
     case StoreType::kI64Store16:
-      MacroAssembler::Sh(src.gp(), dst_op);
+      Sh(src.gp(), dst_op, trapper);
       break;
     case StoreType::kI32Store:
     case StoreType::kI64Store32:
-      MacroAssembler::Sw(src.gp(), dst_op);
+      Sw(src.gp(), dst_op, trapper);
       break;
     case StoreType::kI64Store:
-      MacroAssembler::Sd(src.gp(), dst_op);
+      Sd(src.gp(), dst_op, trapper);
       break;
     case StoreType::kF32Store:
-      MacroAssembler::StoreFloat(src.fp(), dst_op);
+      StoreFloat(src.fp(), dst_op, trapper);
       break;
     case StoreType::kF64Store:
-      MacroAssembler::StoreDouble(src.fp(), dst_op);
+      StoreDouble(src.fp(), dst_op, trapper);
       break;
     case StoreType::kS128Store: {
       VU.set(kScratchReg, E8, m1);
@@ -489,17 +462,14 @@ void LiftoffAssembler::Store(Register dst_addr, Register offset_reg,
       if (dst_op.offset() != 0) {
         Add64(kScratchReg, dst_op.rm(), dst_op.offset());
       }
+      trapper(pc_offset());
       vs(src.fp().toV(), dst_reg, 0, VSew::E8);
       break;
     }
     default:
       UNREACHABLE();
   }
-  // Since {Str*} macros might start with an instruction loading an immediate
-  // argument to a register, we have to compute the {protected_load_pc} after
-  // calling them.
   if (protected_store_pc) {
-    *protected_store_pc = pc_offset() - kInstrSize;
     DCHECK(InstructionAt(*protected_store_pc)->IsStore());
   }
 }
@@ -836,9 +806,10 @@ void LiftoffAssembler::LoadCallerFrameSlot(LiftoffRegister dst,
 
 void LiftoffAssembler::StoreCallerFrameSlot(LiftoffRegister src,
                                             uint32_t caller_slot_idx,
-                                            ValueKind kind) {
+                                            ValueKind kind,
+                                            Register frame_pointer) {
   int32_t offset = kSystemPointerSize * (caller_slot_idx + 1);
-  liftoff::Store(this, fp, offset, src, kind);
+  liftoff::Store(this, frame_pointer, offset, src, kind);
 }
 
 void LiftoffAssembler::LoadReturnStackSlot(LiftoffRegister dst, int offset,
@@ -860,7 +831,6 @@ void LiftoffAssembler::MoveStackValue(uint32_t dst_offset, uint32_t src_offset,
     case kI64:
     case kRef:
     case kRefNull:
-    case kRtt:
       Ld(kScratchReg, src);
       Sd(kScratchReg, dst);
       break;
@@ -889,7 +859,9 @@ void LiftoffAssembler::MoveStackValue(uint32_t dst_offset, uint32_t src_offset,
     case kVoid:
     case kI8:
     case kI16:
+    case kTop:
     case kBottom:
+    case kF16:
       UNREACHABLE();
   }
 }
@@ -921,7 +893,6 @@ void LiftoffAssembler::Spill(int offset, LiftoffRegister reg, ValueKind kind) {
     case kI64:
     case kRef:
     case kRefNull:
-    case kRtt:
       Sd(reg.gp(), dst);
       break;
     case kF32:
@@ -1294,6 +1265,12 @@ void LiftoffAssembler::emit_u32_to_uintptr(Register dst, Register src) {
   ZeroExtendWord(dst, src);
 }
 
+void LiftoffAssembler::clear_i32_upper_half(Register dst) {
+  // Don't need to clear the upper halves of i32 values for sandbox on riscv64,
+  // because we'll explicitly zero-extend their lower halves before using them
+  // for memory accesses anyway.
+}
+
 #define FP_UNOP_RETURN_TRUE(name, instruction)                                 \
   bool LiftoffAssembler::emit_##name(DoubleRegister dst, DoubleRegister src) { \
     instruction(dst, src, kScratchDoubleReg);                                  \
@@ -1509,8 +1486,7 @@ void LiftoffAssembler::emit_cond_jump(Condition cond, Label* label,
     if (kind == kI64) {
       MacroAssembler::Branch(label, cond, lhs, Operand(rhs));
     } else {
-      DCHECK((kind == kI32) || (kind == kRtt) || (kind == kRef) ||
-             (kind == kRefNull));
+      DCHECK((kind == kI32) || (kind == kRef) || (kind == kRefNull));
       MacroAssembler::CompareTaggedAndBranch(label, cond, lhs, Operand(rhs));
     }
   }
@@ -1520,6 +1496,12 @@ void LiftoffAssembler::emit_i32_cond_jumpi(Condition cond, Label* label,
                                            Register lhs, int32_t imm,
                                            const FreezeCacheState& frozen) {
   MacroAssembler::CompareTaggedAndBranch(label, cond, lhs, Operand(imm));
+}
+
+void LiftoffAssembler::emit_ptrsize_cond_jumpi(Condition cond, Label* label,
+                                               Register lhs, int32_t imm,
+                                               const FreezeCacheState& frozen) {
+  MacroAssembler::Branch(label, cond, lhs, Operand(imm));
 }
 
 void LiftoffAssembler::emit_i32_eqz(Register dst, Register src) {
@@ -1568,16 +1550,19 @@ void LiftoffAssembler::LoadTransform(LiftoffRegister dst, Register src_addr,
                                      Register offset_reg, uintptr_t offset_imm,
                                      LoadType type,
                                      LoadTransformationKind transform,
-                                     uint32_t* protected_load_pc) {
+                                     uint32_t* protected_load_pc,
+                                     bool i64_offset) {
   UseScratchRegisterScope temps(this);
   Register scratch = temps.Acquire();
-  MemOperand src_op = liftoff::GetMemOp(this, src_addr, offset_reg, offset_imm);
+  MemOperand src_op =
+      liftoff::GetMemOp(this, src_addr, offset_reg, offset_imm, i64_offset);
   VRegister dst_v = dst.fp().toV();
-
+  auto trapper = [protected_load_pc](int offset) {
+    if (protected_load_pc) *protected_load_pc = static_cast<uint32_t>(offset);
+  };
   MachineType memtype = type.mem_type();
   if (transform == LoadTransformationKind::kExtend) {
-    Ld(scratch, src_op);
-    *protected_load_pc = pc_offset() - kInstrSize;
+    Ld(scratch, src_op, trapper);
     if (memtype == MachineType::Int8()) {
       VU.set(kScratchReg, E64, m1);
       vmv_vx(kSimd128ScratchReg, scratch);
@@ -1611,39 +1596,36 @@ void LiftoffAssembler::LoadTransform(LiftoffRegister dst, Register src_addr,
     vxor_vv(dst_v, dst_v, dst_v);
     if (memtype == MachineType::Int32()) {
       VU.set(kScratchReg, E32, m1);
-      Lwu(scratch, src_op);
-      *protected_load_pc = pc_offset() - kInstrSize;
+      Lwu(scratch, src_op, trapper);
       vmv_sx(dst_v, scratch);
     } else {
       DCHECK_EQ(MachineType::Int64(), memtype);
       VU.set(kScratchReg, E64, m1);
-      Ld(scratch, src_op);
-      *protected_load_pc = pc_offset() - kInstrSize;
+      Ld(scratch, src_op, trapper);
       vmv_sx(dst_v, scratch);
     }
   } else {
     DCHECK_EQ(LoadTransformationKind::kSplat, transform);
     if (memtype == MachineType::Int8()) {
       VU.set(kScratchReg, E8, m1);
-      Lb(scratch, src_op);
-      *protected_load_pc = pc_offset() - kInstrSize;
+      Lb(scratch, src_op, trapper);
       vmv_vx(dst_v, scratch);
     } else if (memtype == MachineType::Int16()) {
       VU.set(kScratchReg, E16, m1);
-      Lh(scratch, src_op);
-      *protected_load_pc = pc_offset() - kInstrSize;
+      Lh(scratch, src_op, trapper);
       vmv_vx(dst_v, scratch);
     } else if (memtype == MachineType::Int32()) {
       VU.set(kScratchReg, E32, m1);
-      Lw(scratch, src_op);
-      *protected_load_pc = pc_offset() - kInstrSize;
+      Lw(scratch, src_op, trapper);
       vmv_vx(dst_v, scratch);
     } else if (memtype == MachineType::Int64()) {
       VU.set(kScratchReg, E64, m1);
-      Ld(scratch, src_op);
-      *protected_load_pc = pc_offset() - kInstrSize;
+      Ld(scratch, src_op, trapper);
       vmv_vx(dst_v, scratch);
     }
+  }
+  if (protected_load_pc) {
+    DCHECK(InstructionAt(*protected_load_pc)->IsLoad());
   }
 }
 
@@ -1657,37 +1639,39 @@ void LiftoffAssembler::LoadLane(LiftoffRegister dst, LiftoffRegister src,
   MachineType mem_type = type.mem_type();
   UseScratchRegisterScope temps(this);
   Register scratch = temps.Acquire();
+  auto trapper = [protected_load_pc](int offset) {
+    if (protected_load_pc) *protected_load_pc = static_cast<uint32_t>(offset);
+  };
   if (mem_type == MachineType::Int8()) {
-    Lbu(scratch, src_op);
-    *protected_load_pc = pc_offset() - kInstrSize;
+    Lbu(scratch, src_op, trapper);
     VU.set(kScratchReg, E64, m1);
     li(kScratchReg, 0x1 << laneidx);
     vmv_sx(v0, kScratchReg);
     VU.set(kScratchReg, E8, m1);
     vmerge_vx(dst.fp().toV(), scratch, dst.fp().toV());
   } else if (mem_type == MachineType::Int16()) {
-    Lhu(scratch, src_op);
-    *protected_load_pc = pc_offset() - kInstrSize;
+    Lhu(scratch, src_op, trapper);
     VU.set(kScratchReg, E16, m1);
     li(kScratchReg, 0x1 << laneidx);
     vmv_sx(v0, kScratchReg);
     vmerge_vx(dst.fp().toV(), scratch, dst.fp().toV());
   } else if (mem_type == MachineType::Int32()) {
-    Lwu(scratch, src_op);
-    *protected_load_pc = pc_offset() - kInstrSize;
+    Lwu(scratch, src_op, trapper);
     VU.set(kScratchReg, E32, m1);
     li(kScratchReg, 0x1 << laneidx);
     vmv_sx(v0, kScratchReg);
     vmerge_vx(dst.fp().toV(), scratch, dst.fp().toV());
   } else if (mem_type == MachineType::Int64()) {
-    Ld(scratch, src_op);
-    *protected_load_pc = pc_offset() - kInstrSize;
+    Ld(scratch, src_op, trapper);
     VU.set(kScratchReg, E64, m1);
     li(kScratchReg, 0x1 << laneidx);
     vmv_sx(v0, kScratchReg);
     vmerge_vx(dst.fp().toV(), scratch, dst.fp().toV());
   } else {
     UNREACHABLE();
+  }
+  if (protected_load_pc) {
+    DCHECK(InstructionAt(*protected_load_pc)->IsLoad());
   }
 }
 
@@ -1699,31 +1683,33 @@ void LiftoffAssembler::StoreLane(Register dst, Register offset,
   MemOperand dst_op =
       liftoff::GetMemOp(this, dst, offset, offset_imm, i64_offset);
   MachineRepresentation rep = type.mem_rep();
+  auto trapper = [protected_store_pc](int offset) {
+    if (protected_store_pc) *protected_store_pc = static_cast<uint32_t>(offset);
+  };
   if (rep == MachineRepresentation::kWord8) {
     VU.set(kScratchReg, E8, m1);
     vslidedown_vi(kSimd128ScratchReg, src.fp().toV(), lane);
     vmv_xs(kScratchReg, kSimd128ScratchReg);
-    if (protected_store_pc) *protected_store_pc = pc_offset();
-    Sb(kScratchReg, dst_op);
+    Sb(kScratchReg, dst_op, trapper);
   } else if (rep == MachineRepresentation::kWord16) {
     VU.set(kScratchReg, E16, m1);
     vslidedown_vi(kSimd128ScratchReg, src.fp().toV(), lane);
     vmv_xs(kScratchReg, kSimd128ScratchReg);
-    if (protected_store_pc) *protected_store_pc = pc_offset();
-    Sh(kScratchReg, dst_op);
+    Sh(kScratchReg, dst_op, trapper);
   } else if (rep == MachineRepresentation::kWord32) {
     VU.set(kScratchReg, E32, m1);
     vslidedown_vi(kSimd128ScratchReg, src.fp().toV(), lane);
     vmv_xs(kScratchReg, kSimd128ScratchReg);
-    if (protected_store_pc) *protected_store_pc = pc_offset();
-    Sw(kScratchReg, dst_op);
+    Sw(kScratchReg, dst_op, trapper);
   } else {
     DCHECK_EQ(MachineRepresentation::kWord64, rep);
     VU.set(kScratchReg, E64, m1);
     vslidedown_vi(kSimd128ScratchReg, src.fp().toV(), lane);
     vmv_xs(kScratchReg, kSimd128ScratchReg);
-    if (protected_store_pc) *protected_store_pc = pc_offset();
-    Sd(kScratchReg, dst_op);
+    Sd(kScratchReg, dst_op, trapper);
+  }
+  if (protected_store_pc) {
+    DCHECK(InstructionAt(*protected_store_pc)->IsStore());
   }
 }
 
@@ -1934,6 +1920,8 @@ void LiftoffStackSlots::Construct(int param_slots) {
     }
   }
 }
+
+bool LiftoffAssembler::supports_f16_mem_access() { return false; }
 
 }  // namespace v8::internal::wasm
 

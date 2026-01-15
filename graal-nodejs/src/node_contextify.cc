@@ -22,6 +22,7 @@
 #include "node_contextify.h"
 
 #include "base_object-inl.h"
+#include "cppgc/allocation.h"
 #include "memory_tracker-inl.h"
 #include "module_wrap.h"
 #include "node_context_data.h"
@@ -44,6 +45,7 @@ using v8::Array;
 using v8::ArrayBufferView;
 using v8::Boolean;
 using v8::Context;
+using v8::DictionaryTemplate;
 using v8::EscapableHandleScope;
 using v8::Function;
 using v8::FunctionCallbackInfo;
@@ -116,8 +118,9 @@ MaybeLocal<String> Uint32ToName(Local<Context> context, uint32_t index) {
 
 }  // anonymous namespace
 
-BaseObjectPtr<ContextifyContext> ContextifyContext::New(
-    Environment* env, Local<Object> sandbox_obj, ContextOptions* options) {
+ContextifyContext* ContextifyContext::New(Environment* env,
+                                          Local<Object> sandbox_obj,
+                                          ContextOptions* options) {
   Local<ObjectTemplate> object_template;
   HandleScope scope(env->isolate());
   CHECK_IMPLIES(sandbox_obj.IsEmpty(), options->vanilla);
@@ -138,21 +141,25 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
   if (!(CreateV8Context(env->isolate(), object_template, snapshot_data, queue)
             .ToLocal(&v8_context))) {
     // Allocation failure, maximum call stack size reached, termination, etc.
-    return BaseObjectPtr<ContextifyContext>();
+    return {};
   }
   return New(v8_context, env, sandbox_obj, options);
 }
 
-void ContextifyContext::MemoryInfo(MemoryTracker* tracker) const {}
+void ContextifyContext::Trace(cppgc::Visitor* visitor) const {
+  CppgcMixin::Trace(visitor);
+  visitor->Trace(context_);
+}
 
 ContextifyContext::ContextifyContext(Environment* env,
                                      Local<Object> wrapper,
                                      Local<Context> v8_context,
                                      ContextOptions* options)
-    : BaseObject(env, wrapper),
-      microtask_queue_(options->own_microtask_queue
+    : microtask_queue_(options->own_microtask_queue
                            ? options->own_microtask_queue.release()
                            : nullptr) {
+  CppgcMixin::Wrap(this, env, wrapper);
+
   context_.Reset(env->isolate(), v8_context);
   // This should only be done after the initial initializations of the context
   // global object is finished.
@@ -160,19 +167,6 @@ ContextifyContext::ContextifyContext(Environment* env,
       ContextEmbedderIndex::kContextifyContext));
   v8_context->SetAlignedPointerInEmbedderData(
       ContextEmbedderIndex::kContextifyContext, this);
-  // It's okay to make this reference weak - V8 would create an internal
-  // reference to this context via the constructor of the wrapper.
-  // As long as the wrapper is alive, it's constructor is alive, and so
-  // is the context.
-  context_.SetWeak();
-}
-
-ContextifyContext::~ContextifyContext() {
-  Isolate* isolate = env()->isolate();
-  HandleScope scope(isolate);
-
-  env()->UnassignFromContext(PersistentToLocal::Weak(isolate, context_));
-  context_.Reset();
 }
 
 void ContextifyContext::InitializeGlobalTemplates(IsolateData* isolate_data) {
@@ -249,11 +243,10 @@ MaybeLocal<Context> ContextifyContext::CreateV8Context(
   return scope.Escape(ctx);
 }
 
-BaseObjectPtr<ContextifyContext> ContextifyContext::New(
-    Local<Context> v8_context,
-    Environment* env,
-    Local<Object> sandbox_obj,
-    ContextOptions* options) {
+ContextifyContext* ContextifyContext::New(Local<Context> v8_context,
+                                          Environment* env,
+                                          Local<Object> sandbox_obj,
+                                          ContextOptions* options) {
   HandleScope scope(env->isolate());
   CHECK_IMPLIES(sandbox_obj.IsEmpty(), options->vanilla);
   // This only initializes part of the context. The primordials are
@@ -261,7 +254,7 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
   // things down significantly and they are only needed in rare occasions
   // in the vm contexts.
   if (InitializeContextRuntime(v8_context).IsNothing()) {
-    return BaseObjectPtr<ContextifyContext>();
+    return {};
   }
 
   Local<Context> main_context = env->context();
@@ -292,13 +285,13 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
                               options->allow_code_gen_wasm);
 
   Utf8Value name_val(env->isolate(), options->name);
-  ContextInfo info(*name_val);
+  ContextInfo info(name_val.ToString());
   if (!options->origin.IsEmpty()) {
     Utf8Value origin_val(env->isolate(), options->origin);
-    info.origin = *origin_val;
+    info.origin = origin_val.ToString();
   }
 
-  BaseObjectPtr<ContextifyContext> result;
+  ContextifyContext* result;
   Local<Object> wrapper;
   {
     Context::Scope context_scope(v8_context);
@@ -313,7 +306,7 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
                   ctor_name,
                   static_cast<v8::PropertyAttribute>(v8::DontEnum))
               .IsNothing()) {
-        return BaseObjectPtr<ContextifyContext>();
+        return {};
       }
     }
 
@@ -326,7 +319,7 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
                          env->host_defined_option_symbol(),
                          options->host_defined_options_id)
             .IsNothing()) {
-      return BaseObjectPtr<ContextifyContext>();
+      return {};
     }
 
     env->AssignToContext(v8_context, nullptr, info);
@@ -334,13 +327,11 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
     if (!env->contextify_wrapper_template()
              ->NewInstance(v8_context)
              .ToLocal(&wrapper)) {
-      return BaseObjectPtr<ContextifyContext>();
+      return {};
     }
-
-    result =
-        MakeBaseObject<ContextifyContext>(env, wrapper, v8_context, options);
-    // The only strong reference to the wrapper will come from the sandbox.
-    result->MakeWeak();
+    DCHECK_NOT_NULL(env->isolate()->GetCppHeap());
+    result = cppgc::MakeGarbageCollected<ContextifyContext>(
+        env->cppgc_allocation_handle(), env, wrapper, v8_context, options);
   }
 
   Local<Object> wrapper_holder =
@@ -350,7 +341,7 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
           ->SetPrivate(
               v8_context, env->contextify_context_private_symbol(), wrapper)
           .IsNothing()) {
-    return BaseObjectPtr<ContextifyContext>();
+    return {};
   }
 
   // Assign host_defined_options_id to the sandbox object or the global object
@@ -362,7 +353,7 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
                        env->host_defined_option_symbol(),
                        options->host_defined_options_id)
           .IsNothing()) {
-    return BaseObjectPtr<ContextifyContext>();
+    return {};
   }
   return result;
 }
@@ -434,7 +425,7 @@ void ContextifyContext::MakeContext(const FunctionCallbackInfo<Value>& args) {
   options.host_defined_options_id = args[6].As<Symbol>();
 
   TryCatchScope try_catch(env);
-  BaseObjectPtr<ContextifyContext> context_ptr =
+  ContextifyContext* context_ptr =
       ContextifyContext::New(env, sandbox, &options);
 
   if (try_catch.HasCaught()) {
@@ -465,6 +456,10 @@ ContextifyContext* ContextifyContext::ContextFromContextifiedSandbox(
 
 template <typename T>
 ContextifyContext* ContextifyContext::Get(const PropertyCallbackInfo<T>& args) {
+  // TODO(joyeecheung): it should be fine to simply use
+  // args.GetIsolate()->GetCurrentContext() and take the pointer at
+  // ContextEmbedderIndex::kContextifyContext, as V8 is supposed to
+  // push the creation context before invoking these callbacks.
   return Get(args.This());
 }
 
@@ -739,7 +734,6 @@ Intercepted ContextifyContext::PropertyDefinerCallback(
     // kYes to behave according to the expected semantics.
     return Intercepted::kNo;
   }
-  return Intercepted::kNo;
 }
 
 // static
@@ -973,6 +967,13 @@ void ContextifyScript::RegisterExternalReferences(
   registry->Register(RunInContext);
 }
 
+ContextifyScript* ContextifyScript::New(Environment* env,
+                                        Local<Object> object) {
+  DCHECK_NOT_NULL(env->isolate()->GetCppHeap());
+  return cppgc::MakeGarbageCollected<ContextifyScript>(
+      env->cppgc_allocation_handle(), env, object);
+}
+
 void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Isolate* isolate = env->isolate();
@@ -1023,8 +1024,7 @@ void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
     id_symbol = args[7].As<Symbol>();
   }
 
-  ContextifyScript* contextify_script =
-      new ContextifyScript(env, args.This());
+  ContextifyScript* contextify_script = New(env, args.This());
 
   if (*TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(
           TRACING_CATEGORY_NODE2(vm, script)) != 0) {
@@ -1082,23 +1082,22 @@ void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
-  contextify_script->script_.Reset(isolate, v8_script);
-  contextify_script->script_.SetWeak();
-  contextify_script->object()->SetInternalField(kUnboundScriptSlot, v8_script);
+  contextify_script->set_unbound_script(v8_script);
 
   std::unique_ptr<ScriptCompiler::CachedData> new_cached_data;
   if (produce_cached_data) {
     new_cached_data.reset(ScriptCompiler::CreateCodeCache(v8_script));
   }
 
+  auto self = args.This();
+
   if (contextify_script->object()
           ->SetPrivate(context, env->host_defined_option_symbol(), id_symbol)
           .IsNothing()) {
     return;
   }
-
   if (StoreCodeCacheResult(env,
-                           args.This(),
+                           self,
                            compile_options,
                            source,
                            produce_cached_data,
@@ -1106,20 +1105,18 @@ void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
           .IsNothing()) {
     return;
   }
-
-  if (args.This()
-          ->Set(env->context(),
+  if (self->Set(env->context(),
                 env->source_url_string(),
                 v8_script->GetSourceURL())
-          .IsNothing())
+          .IsNothing()) {
     return;
-
-  if (args.This()
-          ->Set(env->context(),
+  }
+  if (self->Set(env->context(),
                 env->source_map_url_string(),
                 v8_script->GetSourceMappingURL())
-          .IsNothing())
+          .IsNothing()) {
     return;
+  }
 
   TRACE_EVENT_END0(TRACING_CATEGORY_NODE2(vm, script), "ContextifyScript::New");
 }
@@ -1176,11 +1173,9 @@ void ContextifyScript::CreateCachedData(
     const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   ContextifyScript* wrapped_script;
-  ASSIGN_OR_RETURN_UNWRAP(&wrapped_script, args.This());
-  Local<UnboundScript> unbound_script =
-      PersistentToLocal::Default(env->isolate(), wrapped_script->script_);
+  ASSIGN_OR_RETURN_UNWRAP_CPPGC(&wrapped_script, args.This());
   std::unique_ptr<ScriptCompiler::CachedData> cached_data(
-      ScriptCompiler::CreateCodeCache(unbound_script));
+      ScriptCompiler::CreateCodeCache(wrapped_script->unbound_script()));
 
   auto maybeRet = ([&] {
     if (!cached_data) {
@@ -1199,9 +1194,8 @@ void ContextifyScript::CreateCachedData(
 
 void ContextifyScript::RunInContext(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-
   ContextifyScript* wrapped_script;
-  ASSIGN_OR_RETURN_UNWRAP(&wrapped_script, args.This());
+  ASSIGN_OR_RETURN_UNWRAP_CPPGC(&wrapped_script, args.This());
 
   CHECK_EQ(args.Length(), 5);
   CHECK(args[0]->IsObject() || args[0]->IsNull());
@@ -1274,10 +1268,9 @@ bool ContextifyScript::EvalMachine(Local<Context> context,
 
   TryCatchScope try_catch(env);
   ContextifyScript* wrapped_script;
-  ASSIGN_OR_RETURN_UNWRAP(&wrapped_script, args.This(), false);
-  Local<UnboundScript> unbound_script =
-      PersistentToLocal::Default(env->isolate(), wrapped_script->script_);
-  Local<Script> script = unbound_script->BindToCurrentContext();
+  ASSIGN_OR_RETURN_UNWRAP_CPPGC(&wrapped_script, args.This(), false);
+  Local<Script> script =
+      wrapped_script->unbound_script()->BindToCurrentContext();
 
   if (break_on_first_line) {
     env->isolate()->SchedulePauseOnNextStatement();
@@ -1306,24 +1299,25 @@ bool ContextifyScript::EvalMachine(Local<Context> context,
   MaybeLocal<Value> result;
   bool timed_out = false;
   bool received_signal = false;
-  auto run = [&]() {
-    MaybeLocal<Value> result = script->Run(context);
+  {
+    auto wd = ([env](int64_t timeout, bool* timed_out_ptr) -> std::optional<Watchdog> {
+      if (timeout != -1) {
+        return std::make_optional<Watchdog>(env->isolate(), timeout, timed_out_ptr);
+      } else {
+        return std::nullopt;
+      }
+    })(timeout, &timed_out);
+    auto swd = ([env](bool break_on_sigint, bool* received_signal_ptr) -> std::optional<SigintWatchdog> {
+      if (break_on_sigint) {
+        return std::make_optional<SigintWatchdog>(env->isolate(), received_signal_ptr);
+      } else {
+        return std::nullopt;
+      }
+    })(break_on_sigint, &received_signal);
+
+    result = script->Run(context);
     if (!result.IsEmpty() && mtask_queue != nullptr)
       mtask_queue->PerformCheckpoint(env->isolate());
-    return result;
-  };
-  if (break_on_sigint && timeout != -1) {
-    Watchdog wd(env->isolate(), timeout, &timed_out);
-    SigintWatchdog swd(env->isolate(), &received_signal);
-    result = run();
-  } else if (break_on_sigint) {
-    SigintWatchdog swd(env->isolate(), &received_signal);
-    result = run();
-  } else if (timeout != -1) {
-    Watchdog wd(env->isolate(), timeout, &timed_out);
-    result = run();
-  } else {
-    result = run();
   }
 
   // Convert the termination exception into a regular exception.
@@ -1367,9 +1361,21 @@ bool ContextifyScript::EvalMachine(Local<Context> context,
   return true;
 }
 
-ContextifyScript::ContextifyScript(Environment* env, Local<Object> object)
-    : BaseObject(env, object) {
-  MakeWeak();
+Local<UnboundScript> ContextifyScript::unbound_script() const {
+  return script_.Get(env()->isolate());
+}
+
+void ContextifyScript::set_unbound_script(Local<UnboundScript> script) {
+  script_.Reset(env()->isolate(), script);
+}
+
+void ContextifyScript::Trace(cppgc::Visitor* visitor) const {
+  CppgcMixin::Trace(visitor);
+  visitor->Trace(script_);
+}
+
+ContextifyScript::ContextifyScript(Environment* env, Local<Object> object) {
+  CppgcMixin::Wrap(this, env, object);
 }
 
 ContextifyScript::~ContextifyScript() {}
@@ -1571,25 +1577,35 @@ MaybeLocal<Object> ContextifyFunction::CompileFunctionAndCacheResult(
     return {};
   }
 
-  Isolate* isolate = env->isolate();
-  Local<Object> result = Object::New(isolate);
-  if (result->Set(parsing_context, env->function_string(), fn).IsNothing())
-    return {};
-
-  // ScriptOrigin::ResourceName() returns SourceURL magic comment content if
-  // present.
-  if (result
-          ->Set(parsing_context,
-                env->source_url_string(),
-                fn->GetScriptOrigin().ResourceName())
-          .IsNothing()) {
-    return {};
+  auto tmpl = env->compiled_function_template();
+  if (tmpl.IsEmpty()) {
+    static constexpr std::string_view names[] = {
+        "function",
+        "sourceURL",
+        "sourceMapURL",
+        "cachedDataRejected",
+        "cachedDataProduced",
+        "cachedData",
+    };
+    tmpl = DictionaryTemplate::New(env->isolate(), names);
+    env->set_compiled_function_template(tmpl);
   }
-  if (result
-          ->Set(parsing_context,
-                env->source_map_url_string(),
-                fn->GetScriptOrigin().SourceMapUrl())
-          .IsNothing()) {
+
+  auto scriptOrigin = fn->GetScriptOrigin();
+  MaybeLocal<Value> values[] = {
+      fn,
+      // ScriptOrigin::ResourceName() returns SourceURL magic comment content if
+      // present.
+      scriptOrigin.ResourceName(),
+      scriptOrigin.SourceMapUrl(),
+      // These are conditionally filled in by StoreCodeCacheResult below.
+      Undefined(env->isolate()),  // cachedDataRejected
+      Undefined(env->isolate()),  // cachedDataProduced
+      Undefined(env->isolate()),  // cachedData
+  };
+
+  Local<Object> result;
+  if (!NewDictionaryInstance(env->context(), tmpl, values).ToLocal(&result)) {
     return {};
   }
 
@@ -1619,7 +1635,7 @@ MaybeLocal<Object> ContextifyFunction::CompileFunctionAndCacheResult(
 // While top-level `await` is not permitted in CommonJS, it returns the same
 // error message as when `await` is used in a sync function, so we don't use it
 // as a disambiguation.
-static std::vector<std::string_view> esm_syntax_error_messages = {
+static const auto esm_syntax_error_messages = std::array<std::string_view, 6>{
     "Expected an operand but found import",
     "Cannot use import statement outside a module",  // `import` statements
     "Expected an operand but found export",
@@ -1637,19 +1653,27 @@ static std::vector<std::string_view> esm_syntax_error_messages = {
 // - Top-level `await`: if the user writes `await` at the top level of a
 //   CommonJS module, it will throw a syntax error; but the same code is valid
 //   in ESM.
-static std::vector<std::string_view> throws_only_in_cjs_error_messages = {
-    "Identifier 'module' has already been declared",
-    "Variable \"module\" has already been declared",
-    "Identifier 'exports' has already been declared",
-    "Variable \"exports\" has already been declared",
-    "Identifier 'require' has already been declared",
-    "Variable \"require\" has already been declared",
-    "Identifier '__filename' has already been declared",
-    "Variable \"__filename\" has already been declared",
-    "Identifier '__dirname' has already been declared",
-    "Variable \"__dirname\" has already been declared",
-    "await is only valid in async functions and "
-    "the top level bodies of modules"};
+static const auto throws_only_in_cjs_error_messages =
+    std::array<std::string_view, 11>{
+        "Identifier 'module' has already been declared",
+        "Variable \"module\" has already been declared",
+        "Identifier 'exports' has already been declared",
+        "Variable \"exports\" has already been declared",
+        "Identifier 'require' has already been declared",
+        "Variable \"require\" has already been declared",
+        "Identifier '__filename' has already been declared",
+        "Variable \"__filename\" has already been declared",
+        "Identifier '__dirname' has already been declared",
+        "Variable \"__dirname\" has already been declared",
+        "await is only valid in async functions and "
+        "the top level bodies of modules"};
+
+static const auto maybe_top_level_await_errors =
+    std::array<std::string_view, 3>{
+        "missing ) after argument list",  // example: `func(await 1);`
+        "SyntaxError: Expected",
+        "SyntaxError: Unexpected"         // example: `if(await 1)`
+    };
 
 // If cached_data is provided, it would be used for the compilation and
 // the on-disk compilation cache from NODE_COMPILE_CACHE (if configured)
@@ -1805,12 +1829,12 @@ static void CompileFunctionForCJSLoader(
     // be reparsed as ESM.
     Utf8Value filename_utf8(isolate, filename);
     std::string url = url::FromFilePath(filename_utf8.ToStringView());
-    Local<String> url_value;
-    if (!String::NewFromUtf8(isolate, url.c_str()).ToLocal(&url_value)) {
+    Local<Value> url_value;
+    if (!ToV8Value(context, url).ToLocal(&url_value)) {
       return;
     }
-    can_parse_as_esm =
-        ShouldRetryAsESM(realm, cjs_message->Get(), code, url_value);
+    can_parse_as_esm = ShouldRetryAsESM(
+        realm, cjs_message->Get(), code, url_value.As<String>());
     if (!can_parse_as_esm) {
       // The syntax error is not related to ESM, throw the original error.
       isolate->ThrowException(cjs_exception);
@@ -1833,15 +1857,22 @@ static void CompileFunctionForCJSLoader(
     }
   }
 
+  auto tmpl = env->compiled_function_cjs_template();
+  if (tmpl.IsEmpty()) {
+    static constexpr std::string_view names[] = {
+        "cachedDataRejected",
+        "sourceMapURL",
+        "sourceURL",
+        "function",
+        "canParseAsESM",
+    };
+    tmpl = DictionaryTemplate::New(isolate, names);
+    env->set_compiled_function_cjs_template(tmpl);
+  }
+
   Local<Value> undefined = v8::Undefined(isolate);
-  Local<Name> names[] = {
-      env->cached_data_rejected_string(),
-      env->source_map_url_string(),
-      env->source_url_string(),
-      env->function_string(),
-      FIXED_ONE_BYTE_STRING(isolate, "canParseAsESM"),
-  };
-  Local<Value> values[] = {
+
+  MaybeLocal<Value> values[] = {
       Boolean::New(isolate, cache_rejected),
       fn.IsEmpty() ? undefined : fn->GetScriptOrigin().SourceMapUrl(),
       // ScriptOrigin::ResourceName() returns SourceURL magic comment content if
@@ -1850,9 +1881,10 @@ static void CompileFunctionForCJSLoader(
       fn.IsEmpty() ? undefined : fn.As<Value>(),
       Boolean::New(isolate, can_parse_as_esm),
   };
-  Local<Object> result = Object::New(
-      isolate, v8::Null(isolate), &names[0], &values[0], arraysize(names));
-  args.GetReturnValue().Set(result);
+  Local<Object> result;
+  if (NewDictionaryInstance(env->context(), tmpl, values).ToLocal(&result)) {
+    args.GetReturnValue().Set(result);
+  }
 }
 
 bool ShouldRetryAsESM(Realm* realm,
@@ -1881,6 +1913,16 @@ bool ShouldRetryAsESM(Realm* realm,
       break;
     }
   }
+
+  for (const auto& error_message : maybe_top_level_await_errors) {
+    if (message_view.find(error_message) != std::string_view::npos) {
+      // If the error message is related to top-level await, we can try to
+      // compile it as ESM.
+      maybe_valid_in_esm = true;
+      break;
+    }
+  }
+
   if (!maybe_valid_in_esm) {
     return false;
   }

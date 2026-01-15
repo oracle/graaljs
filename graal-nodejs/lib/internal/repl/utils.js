@@ -36,6 +36,11 @@ const {
 } = require('internal/readline/callbacks');
 
 const {
+  kIsMultiline,
+  kSetLine,
+} = require('internal/readline/interface');
+
+const {
   commonPrefix,
   kSubstringSearch,
 } = require('internal/readline/utils');
@@ -92,10 +97,6 @@ function isRecoverableError(e, code) {
     .extend(
       (Parser) => {
         return class extends Parser {
-          // eslint-disable-next-line no-useless-constructor
-          constructor(options, input, startPos) {
-            super(options, input, startPos);
-          }
           nextToken() {
             super.nextToken();
             if (this.type === tt.eof)
@@ -296,7 +297,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
   function getInputPreview(input, callback) {
     // For similar reasons as `defaultEval`, wrap expressions starting with a
     // curly brace with parenthesis.
-    if (!wrapped && input[0] === '{' && input[input.length - 1] !== ';') {
+    if (!wrapped && input[0] === '{' && input[input.length - 1] !== ';' && isValidSyntax(input)) {
       input = `(${input})`;
       wrapped = true;
     }
@@ -361,8 +362,11 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
   }
 
   const showPreview = (showCompletion = true) => {
-    // Prevent duplicated previews after a refresh.
-    if (inputPreview !== null || !repl.isCompletionEnabled || !process.features.inspector) {
+    // Prevent duplicated previews after a refresh or in a multiline command.
+    if (inputPreview !== null ||
+        repl[kIsMultiline] ||
+        !repl.isCompletionEnabled ||
+        !process.features.inspector) {
       return;
     }
 
@@ -444,9 +448,14 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
 
       const { cursorPos, displayPos } = getPreviewPos();
       const rows = displayPos.rows - cursorPos.rows;
+      // Moves one line below all the user lines
       moveCursor(repl.output, 0, rows);
+      // Writes the preview there
       repl.output.write(`\n${result}`);
+
+      // Go back to the horizontal position of the cursor
       cursorTo(repl.output, cursorPos.cols);
+      // Go back to the vertical position of the cursor
       moveCursor(repl.output, 0, -rows - 1);
     };
 
@@ -672,7 +681,7 @@ function setupReverseSearch(repl) {
     // line to the found entry.
     if (!isInReverseSearch) {
       if (lastMatch !== -1) {
-        repl.line = repl.history[lastMatch];
+        repl[kSetLine](repl.history[lastMatch]);
         repl.cursor = lastCursor;
         repl.historyIndex = lastMatch;
       }
@@ -741,6 +750,25 @@ function setupReverseSearch(repl) {
 
 const startsWithBraceRegExp = /^\s*{/;
 const endsWithSemicolonRegExp = /;\s*$/;
+function isValidSyntax(input) {
+  try {
+    AcornParser.parse(input, {
+      ecmaVersion: 'latest',
+      allowAwaitOutsideFunction: true,
+    });
+    return true;
+  } catch {
+    try {
+      AcornParser.parse(`_=${input}`, {
+        ecmaVersion: 'latest',
+        allowAwaitOutsideFunction: true,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
 
 /**
  * Checks if some provided code represents an object literal.
@@ -763,4 +791,5 @@ module.exports = {
   setupPreview,
   setupReverseSearch,
   isObjectLiteral,
+  isValidSyntax,
 };

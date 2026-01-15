@@ -288,14 +288,10 @@ ok 23 - level 0a
   ...
 # Subtest: top level
     # Subtest: +long running
-    not ok 1 - +long running
+    ok 1 - +long running
       ---
       duration_ms: *
       type: 'test'
-      location: '/test/fixtures/test-runner/output/output.js:(LINE):5'
-      failureType: 'cancelledByParent'
-      error: 'test did not finish before its parent and was cancelled'
-      code: 'ERR_TEST_FAILURE'
       ...
     # Subtest: +short running
         # Subtest: ++short running
@@ -311,14 +307,10 @@ ok 23 - level 0a
       type: 'test'
       ...
     1..2
-not ok 24 - top level
+ok 24 - top level
   ---
   duration_ms: *
   type: 'test'
-  location: '/test/fixtures/test-runner/output/output.js:(LINE):1'
-  failureType: 'subtestsFailed'
-  error: '1 subtest failed'
-  code: 'ERR_TEST_FAILURE'
   ...
 # Subtest: invalid subtest - pass but subtest fails
 ok 25 - invalid subtest - pass but subtest fails
@@ -519,40 +511,31 @@ ok 48 - callback async throw after done
   duration_ms: *
   type: 'test'
   ...
-# Subtest: only is set but not in only mode
+# Subtest: only is set on subtests but not in only mode
     # Subtest: running subtest 1
     ok 1 - running subtest 1
       ---
       duration_ms: *
       type: 'test'
       ...
-    # Subtest: running subtest 2
-    ok 2 - running subtest 2
-      ---
-      duration_ms: *
-      type: 'test'
-      ...
-    # 'only' and 'runOnly' require the --test-only command-line option.
     # Subtest: running subtest 3
-    ok 3 - running subtest 3
+    ok 2 - running subtest 3
       ---
       duration_ms: *
       type: 'test'
       ...
-    # 'only' and 'runOnly' require the --test-only command-line option.
     # Subtest: running subtest 4
-    ok 4 - running subtest 4
+    ok 3 - running subtest 4
       ---
       duration_ms: *
       type: 'test'
       ...
-    1..4
-ok 49 - only is set but not in only mode
+    1..3
+ok 49 - only is set on subtests but not in only mode
   ---
   duration_ms: *
   type: 'test'
   ...
-# 'only' and 'runOnly' require the --test-only command-line option.
 # Subtest: custom inspect symbol fail
 not ok 50 - custom inspect symbol fail
   ---
@@ -573,7 +556,7 @@ not ok 51 - custom inspect symbol that throws fail
   error: |-
     {
       foo: 1,
-      [Symbol(nodejs.util.inspect.custom)]: [Function: [nodejs.util.inspect.custom]]
+      Symbol(nodejs.util.inspect.custom): [Function: [nodejs.util.inspect.custom]]
     }
   code: 'ERR_TEST_FAILURE'
   ...
@@ -794,11 +777,11 @@ not ok 62 - invalid subtest fail
 # Error: Test "immediate reject - passes but warns" at test/fixtures/test-runner/output/output.js:(LINE):1 generated asynchronous activity after the test ended. This activity created the error "Error: rejected from immediate reject fail" and would have caused the test to fail, but instead triggered an unhandledRejection event.
 # Error: Test "callback called twice in different ticks" at test/fixtures/test-runner/output/output.js:(LINE):1 generated asynchronous activity after the test ended. This activity created the error "Error [ERR_TEST_FAILURE]: callback invoked multiple times" and would have caused the test to fail, but instead triggered an uncaughtException event.
 # Error: Test "callback async throw after done" at test/fixtures/test-runner/output/output.js:(LINE):1 generated asynchronous activity after the test ended. This activity created the error "Error: thrown from callback async throw after done" and would have caused the test to fail, but instead triggered an uncaughtException event.
-# tests 76
+# tests 75
 # suites 0
-# pass 35
-# fail 25
-# cancelled 3
+# pass 36
+# fail 24
+# cancelled 2
 # skipped 9
 # todo 4
 # duration_ms *

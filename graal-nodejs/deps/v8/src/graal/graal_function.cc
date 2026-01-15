@@ -293,7 +293,6 @@ v8::ScriptOrigin GraalFunction::GetScriptOrigin() const {
     GraalValue* resource_name = (java_resource_name == nullptr) ? graal_isolate->GetUndefined() : GraalString::Allocate(graal_isolate, java_resource_name);
     v8::Value* v8_resource_name = reinterpret_cast<v8::Value*> (resource_name);
     return v8::ScriptOrigin(
-        v8_isolate,
         v8::Local<v8::Value>::New(v8_isolate, v8_resource_name),
         0, // resource_line_offset
         0, // resource_column_offset

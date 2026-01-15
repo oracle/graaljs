@@ -157,6 +157,8 @@ Create a new resolver.
     default timeout.
   * `tries` {integer} The number of tries the resolver will try contacting
     each name server before giving up. **Default:** `4`
+  * `maxTimeout` {integer} The max retry timeout, in milliseconds.
+    **Default:** `0`, disabled.
 
 ### `resolver.cancel()`
 
@@ -219,7 +221,9 @@ section if a custom port is used.
 <!-- YAML
 added: v0.1.90
 changes:
-  - version: v22.1.0
+  - version:
+    - v22.1.0
+    - v20.13.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `verbatim` option is now deprecated in favor of the new `order` option.
   - version: v18.4.0
@@ -536,6 +540,7 @@ will be present on the object:
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `'A'`     | `address`/`ttl`                                                                                                                                  |
 | `'AAAA'`  | `address`/`ttl`                                                                                                                                  |
+| `'CAA'`   | Refer to [`dns.resolveCaa()`][]                                                                                                                  |
 | `'CNAME'` | `value`                                                                                                                                          |
 | `'MX'`    | Refer to [`dns.resolveMx()`][]                                                                                                                   |
 | `'NAPTR'` | Refer to [`dns.resolveNaptr()`][]                                                                                                                |
@@ -806,7 +811,9 @@ be an array of objects with the following properties:
 ## `dns.resolveTlsa(hostname, callback)`
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.9.0
+  - v22.15.0
 -->
 
 <!--lint disable no-undefined-references list-item-bullet-indent-->
@@ -850,14 +857,10 @@ changes:
                  `ERR_INVALID_CALLBACK`.
 -->
 
-<!--lint disable no-undefined-references list-item-bullet-indent-->
-
 * `hostname` {string}
 * `callback` {Function}
   * `err` {Error}
-  * `records` <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">\<string\[]\[]></a>
-
-<!--lint enable no-undefined-references list-item-bullet-indent-->
+  * `records` {string\[]}
 
 Uses the DNS protocol to resolve text queries (`TXT` records) for the
 `hostname`. The `records` argument passed to the `callback` function is a
@@ -890,7 +893,9 @@ added:
   - v16.4.0
   - v14.18.0
 changes:
-  - version: v22.1.0
+  - version:
+    - v22.1.0
+    - v20.13.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `ipv6first` value is supported now.
   - version: v17.0.0
@@ -919,7 +924,9 @@ added:
   - v20.1.0
   - v18.17.0
 changes:
-  - version: v22.1.0
+  - version:
+    - v22.1.0
+    - v20.13.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `ipv6first` value is supported now.
 -->
@@ -1084,7 +1091,9 @@ section if a custom port is used.
 <!-- YAML
 added: v10.6.0
 changes:
-  - version: v22.1.0
+  - version:
+    - v22.1.0
+    - v20.13.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `verbatim` option is now deprecated in favor of the new `order` option.
 -->
@@ -1301,6 +1310,7 @@ present on the object:
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `'A'`     | `address`/`ttl`                                                                                                                                          |
 | `'AAAA'`  | `address`/`ttl`                                                                                                                                          |
+| `'CAA'`   | Refer to [`dnsPromises.resolveCaa()`][]                                                                                                                  |
 | `'CNAME'` | `value`                                                                                                                                                  |
 | `'MX'`    | Refer to [`dnsPromises.resolveMx()`][]                                                                                                                   |
 | `'NAPTR'` | Refer to [`dnsPromises.resolveNaptr()`][]                                                                                                                |
@@ -1494,7 +1504,9 @@ the following properties:
 ### `dnsPromises.resolveTlsa(hostname)`
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.9.0
+  - v22.15.0
 -->
 
 * `hostname` {string}
@@ -1555,7 +1567,9 @@ added:
   - v16.4.0
   - v14.18.0
 changes:
-  - version: v22.1.0
+  - version:
+    - v22.1.0
+    - v20.13.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `ipv6first` value is supported now.
   - version: v17.0.0

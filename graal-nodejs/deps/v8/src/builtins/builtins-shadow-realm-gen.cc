@@ -12,6 +12,8 @@
 namespace v8 {
 namespace internal {
 
+#include "src/codegen/define-code-stub-assembler-macros.inc"
+
 class ShadowRealmBuiltinsAssembler : public CodeStubAssembler {
  public:
   explicit ShadowRealmBuiltinsAssembler(compiler::CodeAssemblerState* state)
@@ -81,13 +83,9 @@ ShadowRealmBuiltinsAssembler::AllocateImportValueFulfilledFunction(
   const TNode<Context> function_context =
       CreateImportValueFulfilledFunctionContext(caller_context, eval_context,
                                                 specifier, export_name);
-  const TNode<Map> function_map = CAST(LoadContextElement(
-      caller_context, Context::STRICT_FUNCTION_WITHOUT_PROTOTYPE_MAP_INDEX));
-  const TNode<SharedFunctionInfo> info =
-      ShadowRealmImportValueFulfilledSFIConstant();
-
-  return AllocateFunctionWithMapAndContext(function_map, info,
-                                           function_context);
+  return AllocateRootFunctionWithContext(
+      RootIndex::kShadowRealmImportValueFulfilledSharedFun, function_context,
+      {});
 }
 
 void ShadowRealmBuiltinsAssembler::CheckAccessor(TNode<DescriptorArray> array,
@@ -166,7 +164,11 @@ TF_BUILTIN(ShadowRealmGetWrappedValue, ShadowRealmBuiltinsAssembler) {
   // We don't need to check the exact accessor here because the only case
   // custom accessor arise is with function templates via API, and in that
   // case the object is in dictionary mode
+#if V8_ENABLE_WEBASSEMBLY
+  TNode<DescriptorArray> descriptors = CAST(LoadMapInstanceDescriptors(map));
+#else
   TNode<DescriptorArray> descriptors = LoadMapInstanceDescriptors(map);
+#endif  // V8_ENABLE_WEBASSEMBLY
   CheckAccessor(
       descriptors,
       IntPtrConstant(
@@ -287,9 +289,9 @@ TF_BUILTIN(CallWrappedFunction, ShadowRealmBuiltinsAssembler) {
 
   // 10. If result.[[Type]] is normal or result.[[Type]] is return, then
   // 10a. Return ? GetWrappedValue(callerRealm, result.[[Value]]).
-  TNode<Object> wrapped_result =
-      CallBuiltin(Builtin::kShadowRealmGetWrappedValue, caller_context,
-                  caller_context, target_context, result);
+  TNode<JSAny> wrapped_result =
+      CallBuiltin<JSAny>(Builtin::kShadowRealmGetWrappedValue, caller_context,
+                         caller_context, target_context, result);
   args.PopAndReturn(wrapped_result);
 
   // 11. Else,
@@ -427,6 +429,8 @@ TF_BUILTIN(ShadowRealmImportValueRejected, ShadowRealmBuiltinsAssembler) {
   ShadowRealmThrow(context, MessageTemplate::kImportShadowRealmRejected,
                    exception);
 }
+
+#include "src/codegen/undef-code-stub-assembler-macros.inc"
 
 }  // namespace internal
 }  // namespace v8

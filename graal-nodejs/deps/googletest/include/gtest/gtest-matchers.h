@@ -296,12 +296,12 @@ class MatcherBase : private MatcherDescriberInterface {
     return *this;
   }
 
-  MatcherBase(MatcherBase&& other)
+  MatcherBase(MatcherBase&& other) noexcept
       : vtable_(other.vtable_), buffer_(other.buffer_) {
     other.vtable_ = nullptr;
   }
 
-  MatcherBase& operator=(MatcherBase&& other) {
+  MatcherBase& operator=(MatcherBase&& other) noexcept {
     if (this == &other) return *this;
     Destroy();
     vtable_ = other.vtable_;
@@ -771,6 +771,35 @@ class GeMatcher
       : ComparisonBase<GeMatcher<Rhs>, Rhs, std::greater_equal<>>(rhs) {}
   static const char* Desc() { return "is >="; }
   static const char* NegatedDesc() { return "isn't >="; }
+};
+
+// Same as `EqMatcher<Rhs>`, except that the `rhs` is stored as `StoredRhs` and
+// must be implicitly convertible to `Rhs`.
+template <typename Rhs, typename StoredRhs>
+class ImplicitCastEqMatcher {
+ public:
+  explicit ImplicitCastEqMatcher(const StoredRhs& rhs) : stored_rhs_(rhs) {}
+
+  using is_gtest_matcher = void;
+
+  template <typename Lhs>
+  bool MatchAndExplain(const Lhs& lhs, std::ostream*) const {
+    return lhs == rhs();
+  }
+
+  void DescribeTo(std::ostream* os) const {
+    *os << "is equal to ";
+    UniversalPrint(rhs(), os);
+  }
+  void DescribeNegationTo(std::ostream* os) const {
+    *os << "isn't equal to ";
+    UniversalPrint(rhs(), os);
+  }
+
+ private:
+  Rhs rhs() const { return ImplicitCast_<Rhs>(stored_rhs_); }
+
+  StoredRhs stored_rhs_;
 };
 
 template <typename T, typename = typename std::enable_if<

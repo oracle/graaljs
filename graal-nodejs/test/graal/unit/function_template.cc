@@ -51,9 +51,6 @@ void FunctionTemplate_Child(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(args[0]);
 }
 
-void SimpleAccessorGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info);
-void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const PropertyCallbackInfo<void>& info);
-
 #endif
 
 // FunctionTemplate::HasInstance
@@ -177,21 +174,6 @@ EXPORT_TO_JS(SetOnInstanceTemplate) {
     Local<Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
     Local<Object> instance = function->NewInstance(context).ToLocalChecked();
 
-    args.GetReturnValue().Set(instance);
-}
-
-// Template::SetAccessor
-
-EXPORT_TO_JS(CreateWithAccessor) {
-    Isolate* isolate = args.GetIsolate();
-    Local<Context> context = isolate->GetCurrentContext();
-    Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
-    Local<ObjectTemplate> instanceTemplate = functionTemplate->InstanceTemplate();
-
-    Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
-    instanceTemplate->SetAccessor(name, SimpleAccessorGetter, SimpleAccessorSetter);
-    Local<Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
-    Local<Object> instance = function->NewInstance(context).ToLocalChecked();
     args.GetReturnValue().Set(instance);
 }
 

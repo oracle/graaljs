@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,10 +50,16 @@ const {
 describe('eventLoopExecutor', function () {
     if (unitTest.hasJavaInterop()) {
         const eventLoopExecutor = require('node:graal').eventLoopExecutor;
-        const EventLoopExecutorTest = Java.type('com.oracle.truffle.trufflenode.test.EventLoopExecutorTest');
+        var eventLoopExecutorTest;
+        function getEventLoopExecutorTest() {
+            if (!eventLoopExecutorTest) {
+                eventLoopExecutorTest = Java.type('com.oracle.truffle.trufflenode.test.EventLoopExecutorTest');
+            }
+            return eventLoopExecutorTest;
+        }
 
         it('refuses null Runnable', function () {
-            assert.ok(EventLoopExecutorTest.testNullRunnable(eventLoopExecutor));
+            assert.ok(getEventLoopExecutorTest().testNullRunnable(eventLoopExecutor));
         });
 
         it('allows asynchronous resolution of promises', function (done) {
@@ -62,7 +68,7 @@ describe('eventLoopExecutor', function () {
                 assert.strictEqual(result, 42);
                 done();
             });
-            EventLoopExecutorTest.testAsyncResolution(eventLoopExecutor, resolve);
+            getEventLoopExecutorTest().testAsyncResolution(eventLoopExecutor, resolve);
         }).timeout(10000);
 
         it('works in a worker', function (done) {
@@ -105,7 +111,7 @@ describe('eventLoopExecutor', function () {
             });
             w.on('message', (workerExecutor) => {
                 w.terminate().then(() => {
-                    assert.ok(EventLoopExecutorTest.testFinishedEventLoop(workerExecutor));
+                    assert.ok(getEventLoopExecutorTest().testFinishedEventLoop(workerExecutor));
                     done();
                 });
             });

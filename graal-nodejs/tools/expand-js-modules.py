@@ -57,7 +57,7 @@ def WrapModule(module_path, module_code):
     if module_path == join('lib', 'internal', 'bootstrap', 'realm.js'):
         result = "(function (process, getLinkedBinding, getInternalBinding, primordials) {" + wrapped_module_code + "\n});"
     elif module_path.startswith(join('lib', 'internal', 'per_context')):
-        result = "(function (exports, primordials) {" + wrapped_module_code + "\n});"
+        result = "(function (exports, primordials, privateSymbols, perIsolateSymbols) {" + wrapped_module_code + "\n});"
     elif module_path.startswith(join('lib', 'internal', 'main')) or module_path.startswith(join('lib', 'internal', 'bootstrap')):
         result = "(function (process, require, internalBinding, primordials) {" + wrapped_module_code + "\n});"
     else:

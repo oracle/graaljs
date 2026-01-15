@@ -179,11 +179,11 @@ console.timeEnd(NaN);
 // Make sure calling time twice without timeEnd doesn't reset the timer.
 console.time('test');
 const time = console._times.get('test');
-setTimeout(() => {
+setTimeout(common.mustCall(() => {
   console.time('test');
   assert.deepStrictEqual(console._times.get('test'), time);
   console.timeEnd('test');
-}, 1);
+}), 1);
 
 console.time('log1');
 console.timeLog('log1');
@@ -236,10 +236,10 @@ for (const expected of expectedStrings) {
 }
 
 assert.strictEqual(strings.shift(),
-                   "{\n  foo: 'bar',\n  [Symbol(nodejs.util.inspect.custom)]:" +
+                   "{\n  foo: 'bar',\n  Symbol(nodejs.util.inspect.custom):" +
                     ' [Function: [nodejs.util.inspect.custom]]\n}\n');
 assert.strictEqual(strings.shift(),
-                   "{\n  foo: 'bar',\n  [Symbol(nodejs.util.inspect.custom)]:" +
+                   "{\n  foo: 'bar',\n  Symbol(nodejs.util.inspect.custom):" +
                     ' [Function: [nodejs.util.inspect.custom]]\n}\n');
 assert.ok(strings.shift().includes('foo: [Object]'));
 assert.strictEqual(strings.shift().includes('baz'), false);

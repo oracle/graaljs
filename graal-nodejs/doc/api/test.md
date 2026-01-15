@@ -153,6 +153,46 @@ test('skip() method with message', (t) => {
 });
 ```
 
+## Rerunning failed tests
+
+The test runner supports persisting the state of the run to a file, allowing
+the test runner to rerun failed tests without having to re-run the entire test suite.
+Use the [`--test-rerun-failures`][] command-line option to specify a file path where the
+state of the run is stored. if the state file does not exist, the test runner will
+create it.
+the state file is a JSON file that contains an array of run attempts.
+Each run attempt is an object mapping successful tests to the attempt they have passed in.
+The key identifying a test in this map is the test file path, with the line and column where the test is defined.
+in a case where a test defined in a specific location is run multiple times,
+for example within a function or a loop,
+a counter will be appended to the key, to disambiguate the test runs.
+note changing the order of test execution or the location of a test can lead the test runner
+to consider tests as passed on a previous attempt,
+meaning `--test-rerun-failures` should be used when tests run in a deterministic order.
+
+example of a state file:
+
+```json
+[
+  {
+    "test.js:10:5": { "passed_on_attempt": 0, "name": "test 1" },
+  },
+  {
+    "test.js:10:5": { "passed_on_attempt": 0, "name": "test 1" },
+    "test.js:20:5": { "passed_on_attempt": 1, "name": "test 2" }
+  }
+]
+```
+
+in this example, there are two run attempts, with two tests defined in `test.js`,
+the first test succeeded on the first attempt, and the second test succeeded on the second attempt.
+
+When the `--test-rerun-failures` option is used, the test runner will only run tests that have not yet passed.
+
+```bash
+node --test-rerun-failures /path/to/state/file
+```
+
 ## TODO tests
 
 Individual tests can be marked as flaky or incomplete by passing the `todo`
@@ -402,6 +442,60 @@ their dependencies. When a change is detected, the test runner will
 rerun the tests affected by the change.
 The test runner will continue to run until the process is terminated.
 
+## Global setup and teardown
+
+<!-- YAML
+added: v24.0.0
+-->
+
+> Stability: 1.0 - Early development
+
+The test runner supports specifying a module that will be evaluated before all tests are executed and
+can be used to setup global state or fixtures for tests. This is useful for preparing resources or setting up
+shared state that is required by multiple tests.
+
+This module can export any of the following:
+
+* A `globalSetup` function which runs once before all tests start
+* A `globalTeardown` function which runs once after all tests complete
+
+The module is specified using the `--test-global-setup` flag when running tests from the command line.
+
+```cjs
+// setup-module.js
+async function globalSetup() {
+  // Setup shared resources, state, or environment
+  console.log('Global setup executed');
+  // Run servers, create files, prepare databases, etc.
+}
+
+async function globalTeardown() {
+  // Clean up resources, state, or environment
+  console.log('Global teardown executed');
+  // Close servers, remove files, disconnect from databases, etc.
+}
+
+module.exports = { globalSetup, globalTeardown };
+```
+
+```mjs
+// setup-module.mjs
+export async function globalSetup() {
+  // Setup shared resources, state, or environment
+  console.log('Global setup executed');
+  // Run servers, create files, prepare databases, etc.
+}
+
+export async function globalTeardown() {
+  // Clean up resources, state, or environment
+  console.log('Global teardown executed');
+  // Close servers, remove files, disconnect from databases, etc.
+}
+```
+
+If the global setup function throws an error, no tests will be run and the process will exit with a non-zero exit code.
+The global teardown function will not be called in this case.
+
 ## Running tests from the command line
 
 The Node.js test runner can be invoked from the command line by passing the
@@ -420,8 +514,8 @@ By default, Node.js will run all files matching these patterns:
 * `**/test.{cjs,mjs,js}`
 * `**/test/**/*.{cjs,mjs,js}`
 
-When [`--experimental-strip-types`][] is supplied, the following
-additional patterns are matched:
+Unless [`--no-strip-types`][] is supplied, the following
+additional patterns are also matched:
 
 * `**/*.test.{cts,mts,ts}`
 * `**/*-test.{cts,mts,ts}`
@@ -466,6 +560,24 @@ each other in ways that are not possible when isolation is enabled. For example,
 if a test relies on global state, it is possible for that state to be modified
 by a test originating from another file.
 
+#### Child process option inheritance
+
+When running tests in process isolation mode (the default), spawned child processes
+inherit Node.js options from the parent process, including those specified in
+[configuration files][]. However, certain flags are filtered out to enable proper
+test runner functionality:
+
+* `--test` - Prevented to avoid recursive test execution
+* `--experimental-test-coverage` - Managed by the test runner
+* `--watch` - Watch mode is handled at the parent level
+* `--experimental-default-config-file` - Config file loading is handled by the parent
+* `--test-reporter` - Reporting is managed by the parent process
+* `--test-reporter-destination` - Output destinations are controlled by the parent
+* `--experimental-config-file` - Config file paths are managed by the parent
+
+All other Node.js options from command line arguments, environment variables,
+and configuration files are inherited by the child processes.
+
 ## Collecting code coverage
 
 > Stability: 1 - Experimental
@@ -476,8 +588,10 @@ all tests have completed. If the [`NODE_V8_COVERAGE`][] environment variable is
 used to specify a code coverage directory, the generated V8 coverage files are
 written to that directory. Node.js core modules and files within
 `node_modules/` directories are, by default, not included in the coverage report.
-However, they can be explicitly included via the [`--test-coverage-include`][] flag. If
-coverage is enabled, the coverage report is sent to any [test reporters][] via
+However, they can be explicitly included via the [`--test-coverage-include`][] flag.
+By default all the matching test files are excluded from the coverage report.
+Exclusions can be overridden by using the [`--test-coverage-exclude`][] flag.
+If coverage is enabled, the coverage report is sent to any [test reporters][] via
 the `'test:coverage'` event.
 
 Coverage can be disabled on a series of lines using the following
@@ -995,6 +1109,10 @@ added:
   - v19.6.0
   - v18.15.0
 changes:
+  - version: v23.0.0
+    pr-url: https://github.com/nodejs/node/pull/54548
+    description: The default reporter on non-TTY stdout is changed from `tap` to
+                 `spec`, aligning with TTY stdout.
   - version:
     - v19.9.0
     - v18.17.0
@@ -1007,11 +1125,12 @@ flags for the test runner to use a specific reporter.
 
 The following built-reporters are supported:
 
+* `spec`
+  The `spec` reporter outputs the test results in a human-readable format. This
+  is the default reporter.
+
 * `tap`
   The `tap` reporter outputs the test results in the [TAP][] format.
-
-* `spec`
-  The `spec` reporter outputs the test results in a human-readable format.
 
 * `dot`
   The `dot` reporter outputs the test results in a compact format,
@@ -1024,9 +1143,6 @@ The following built-reporters are supported:
 * `lcov`
   The `lcov` reporter outputs test coverage when used with the
   [`--experimental-test-coverage`][] flag.
-
-When `stdout` is a [TTY][], the `spec` reporter is used by default.
-Otherwise, the `tap` reporter is used by default.
 
 The exact output of these reporters is subject to change between versions of
 Node.js, and should not be relied on programmatically. If programmatic access
@@ -1067,6 +1183,9 @@ const customReporter = new Transform({
         break;
       case 'test:watch:drained':
         callback(null, 'test watch queue drained');
+        break;
+      case 'test:watch:restarted':
+        callback(null, 'test watch restarted due to file change');
         break;
       case 'test:start':
         callback(null, `test ${event.data.name} started`);
@@ -1113,6 +1232,9 @@ const customReporter = new Transform({
       case 'test:watch:drained':
         callback(null, 'test watch queue drained');
         break;
+      case 'test:watch:restarted':
+        callback(null, 'test watch restarted due to file change');
+        break;
       case 'test:start':
         callback(null, `test ${event.data.name} started`);
         break;
@@ -1157,6 +1279,9 @@ export default async function * customReporter(source) {
       case 'test:watch:drained':
         yield 'test watch queue drained\n';
         break;
+      case 'test:watch:restarted':
+        yield 'test watch restarted due to file change\n';
+        break;
       case 'test:start':
         yield `test ${event.data.name} started\n`;
         break;
@@ -1196,6 +1321,9 @@ module.exports = async function * customReporter(source) {
         break;
       case 'test:watch:drained':
         yield 'test watch queue drained\n';
+        break;
+      case 'test:watch:restarted':
+        yield 'test watch restarted due to file change\n';
         break;
       case 'test:start':
         yield `test ${event.data.name} started\n`;
@@ -1254,7 +1382,15 @@ added:
   - v18.9.0
   - v16.19.0
 changes:
-  - version: v22.10.0
+  - version: v24.7.0
+    pr-url: https://github.com/nodejs/node/pull/59443
+    description: Added a rerunFailuresFilePath option.
+  - version: v23.0.0
+    pr-url: https://github.com/nodejs/node/pull/54705
+    description: Added the `cwd` option.
+  - version:
+    - v23.0.0
+    - v22.10.0
     pr-url: https://github.com/nodejs/node/pull/53937
     description: Added coverage options.
   - version: v22.8.0
@@ -1263,7 +1399,9 @@ changes:
   - version: v22.6.0
     pr-url: https://github.com/nodejs/node/pull/53866
     description: Added the `globPatterns` option.
-  - version: v22.0.0
+  - version:
+    - v22.0.0
+    - v20.14.0
     pr-url: https://github.com/nodejs/node/pull/52038
     description: Added the `forceExit` option.
   - version:
@@ -1282,14 +1420,17 @@ changes:
     parallel.
     If `false`, it would only run one test file at a time.
     **Default:** `false`.
-  * `files`: {Array} An array containing the list of files to run.
-    **Default:** matching files from [test runner execution model][].
-  * `forceExit`: {boolean} Configures the test runner to exit the process once
+  * `cwd` {string} Specifies the current working directory to be used by the test runner.
+    Serves as the base path for resolving files as if [running tests from the command line][] from that directory.
+    **Default:** `process.cwd()`.
+  * `files` {Array} An array containing the list of files to run.
+    **Default:** Same as [running tests from the command line][].
+  * `forceExit` {boolean} Configures the test runner to exit the process once
     all known tests have finished executing even if the event loop would
     otherwise remain active. **Default:** `false`.
-  * `globPatterns`: {Array} An array containing the list of glob patterns to
+  * `globPatterns` {Array} An array containing the list of glob patterns to
     match test files. This option cannot be used together with `files`.
-    **Default:** matching files from [test runner execution model][].
+    **Default:** Same as [running tests from the command line][].
   * `inspectPort` {number|Function} Sets inspector port of test child process.
     This can be a number, or a function that takes no arguments and returns a
     number. If a nullish value is provided, each process gets its own port,
@@ -1300,7 +1441,7 @@ changes:
     `'process'`, each test file is run in a separate child process. If set to
     `'none'`, all test files run in the current process. **Default:**
     `'process'`.
-  * `only`: {boolean} If truthy, the test context will only run tests that
+  * `only` {boolean} If truthy, the test context will only run tests that
     have the `only` option set
   * `setup` {Function} A function that accepts the `TestsStream` instance
     and can be used to setup listeners before any tests are run.
@@ -1334,6 +1475,10 @@ changes:
       that specifies the index of the shard to run. This option is _required_.
     * `total` {number} is a positive integer that specifies the total number
       of shards to split the test files to. This option is _required_.
+  * `rerunFailuresFilePath` {string} A file path where the test runner will
+    store the state of the tests to allow rerunning only the failed tests on a next run.
+    see \[Rerunning failed tests]\[] for more information.
+    **Default:** `undefined`.
   * `coverage` {boolean} enable [code coverage][] collection.
     **Default:** `false`.
   * `coverageExcludeGlobs` {string|Array} Excludes specific files from code coverage
@@ -1394,7 +1539,9 @@ run({ files: [path.resolve('./tests/test.js')] })
 ## `suite([name][, options][, fn])`
 
 <!-- YAML
-added: v22.0.0
+added:
+  - v22.0.0
+  - v20.13.0
 -->
 
 * `name` {string} The name of the suite, which is displayed when reporting test
@@ -1412,7 +1559,9 @@ The `suite()` function is imported from the `node:test` module.
 ## `suite.skip([name][, options][, fn])`
 
 <!-- YAML
-added: v22.0.0
+added:
+  - v22.0.0
+  - v20.13.0
 -->
 
 Shorthand for skipping a suite. This is the same as
@@ -1421,7 +1570,9 @@ Shorthand for skipping a suite. This is the same as
 ## `suite.todo([name][, options][, fn])`
 
 <!-- YAML
-added: v22.0.0
+added:
+  - v22.0.0
+  - v20.13.0
 -->
 
 Shorthand for marking a suite as `TODO`. This is the same as
@@ -1430,7 +1581,9 @@ Shorthand for marking a suite as `TODO`. This is the same as
 ## `suite.only([name][, options][, fn])`
 
 <!-- YAML
-added: v22.0.0
+added:
+  - v22.0.0
+  - v20.13.0
 -->
 
 Shorthand for marking a suite as `only`. This is the same as
@@ -1735,7 +1888,9 @@ describe('tests', async () => {
 ## `assert`
 
 <!-- YAML
-added: v22.14.0
+added:
+  - v23.7.0
+  - v22.14.0
 -->
 
 An object whose methods are used to configure available assertions on the
@@ -1749,7 +1904,9 @@ preloaded with `--require` or `--import`.
 ### `assert.register(name, fn)`
 
 <!-- YAML
-added: v22.14.0
+added:
+  - v23.7.0
+  - v22.14.0
 -->
 
 Defines a new assertion function with the provided name and function. If an
@@ -1816,7 +1973,7 @@ added:
   - v18.13.0
 -->
 
-* {Array}
+* Type: {Array}
 
 A getter that returns a copy of the internal array used to track calls to the
 mock. Each entry in the array is an object with the following properties.
@@ -1955,7 +2112,9 @@ mock can still be used after calling this function.
 ## Class: `MockModuleContext`
 
 <!-- YAML
-added: v22.3.0
+added:
+  - v22.3.0
+  - v20.18.0
 -->
 
 > Stability: 1.0 - Early development
@@ -1966,10 +2125,93 @@ created via the [`MockTracker`][] APIs.
 ### `ctx.restore()`
 
 <!-- YAML
-added: v22.3.0
+added:
+  - v22.3.0
+  - v20.18.0
 -->
 
 Resets the implementation of the mock module.
+
+## Class: `MockPropertyContext`
+
+<!-- YAML
+added: v24.3.0
+-->
+
+The `MockPropertyContext` class is used to inspect or manipulate the behavior
+of property mocks created via the [`MockTracker`][] APIs.
+
+### `ctx.accesses`
+
+* Type: {Array}
+
+A getter that returns a copy of the internal array used to track accesses (get/set) to
+the mocked property. Each entry in the array is an object with the following properties:
+
+* `type` {string} Either `'get'` or `'set'`, indicating the type of access.
+* `value` {any} The value that was read (for `'get'`) or written (for `'set'`).
+* `stack` {Error} An `Error` object whose stack can be used to determine the
+  callsite of the mocked function invocation.
+
+### `ctx.accessCount()`
+
+* Returns: {integer} The number of times that the property was accessed (read or written).
+
+This function returns the number of times that the property was accessed.
+This function is more efficient than checking `ctx.accesses.length` because
+`ctx.accesses` is a getter that creates a copy of the internal access tracking array.
+
+### `ctx.mockImplementation(value)`
+
+* `value` {any} The new value to be set as the mocked property value.
+
+This function is used to change the value returned by the mocked property getter.
+
+### `ctx.mockImplementationOnce(value[, onAccess])`
+
+* `value` {any} The value to be used as the mock's
+  implementation for the invocation number specified by `onAccess`.
+* `onAccess` {integer} The invocation number that will use `value`. If
+  the specified invocation has already occurred then an exception is thrown.
+  **Default:** The number of the next invocation.
+
+This function is used to change the behavior of an existing mock for a single
+invocation. Once invocation `onAccess` has occurred, the mock will revert to
+whatever behavior it would have used had `mockImplementationOnce()` not been
+called.
+
+The following example creates a mock function using `t.mock.property()`, calls the
+mock property, changes the mock implementation to a different value for the
+next invocation, and then resumes its previous behavior.
+
+```js
+test('changes a mock behavior once', (t) => {
+  const obj = { foo: 1 };
+
+  const prop = t.mock.property(obj, 'foo', 5);
+
+  assert.strictEqual(obj.foo, 5);
+  prop.mock.mockImplementationOnce(25);
+  assert.strictEqual(obj.foo, 25);
+  assert.strictEqual(obj.foo, 5);
+});
+```
+
+#### Caveat
+
+For consistency with the rest of the mocking API, this function treats both property gets and sets
+as accesses. If a property set occurs at the same access index, the "once" value will be consumed
+by the set operation, and the mocked property value will be changed to the "once" value. This may
+lead to unexpected behavior if you intend the "once" value to only be used for a get operation.
+
+### `ctx.resetAccesses()`
+
+Resets the access history of the mocked property.
+
+### `ctx.restore()`
+
+Resets the implementation of the mock property to its original behavior. The
+mock can still be used after calling this function.
 
 ## Class: `MockTracker`
 
@@ -2107,10 +2349,12 @@ test('spies on an object method', (t) => {
 ### `mock.module(specifier[, options])`
 
 <!-- YAML
-added: v22.3.0
+added:
+  - v22.3.0
+  - v20.18.0
 changes:
   - version:
-    - v22.17.0
+    - v24.0.0
     pr-url: https://github.com/nodejs/node/pull/58007
     description: Support JSON modules.
 -->
@@ -2173,6 +2417,43 @@ test('mocks a builtin module in both module systems', async (t) => {
 });
 ```
 
+### `mock.property(object, propertyName[, value])`
+
+<!-- YAML
+added: v24.3.0
+-->
+
+* `object` {Object} The object whose value is being mocked.
+* `propertyName` {string|symbol} The identifier of the property on `object` to mock.
+* `value` {any} An optional value used as the mock value
+  for `object[propertyName]`. **Default:** The original property value.
+* Returns: {Proxy} A proxy to the mocked object. The mocked object contains a
+  special `mock` property, which is an instance of [`MockPropertyContext`][], and
+  can be used for inspecting and changing the behavior of the mocked property.
+
+Creates a mock for a property value on an object. This allows you to track and control access to a specific property,
+including how many times it is read (getter) or written (setter), and to restore the original value after mocking.
+
+```js
+test('mocks a property value', (t) => {
+  const obj = { foo: 42 };
+  const prop = t.mock.property(obj, 'foo', 100);
+
+  assert.strictEqual(obj.foo, 100);
+  assert.strictEqual(prop.mock.accessCount(), 1);
+  assert.strictEqual(prop.mock.accesses[0].type, 'get');
+  assert.strictEqual(prop.mock.accesses[0].value, 100);
+
+  obj.foo = 200;
+  assert.strictEqual(prop.mock.accessCount(), 2);
+  assert.strictEqual(prop.mock.accesses[1].type, 'set');
+  assert.strictEqual(prop.mock.accesses[1].value, 200);
+
+  prop.mock.restore();
+  assert.strictEqual(obj.foo, 42);
+});
+```
+
 ### `mock.reset()`
 
 <!-- YAML
@@ -2220,9 +2501,11 @@ set to `true`.
 added:
   - v20.4.0
   - v18.19.0
+changes:
+  - version: v23.1.0
+    pr-url: https://github.com/nodejs/node/pull/55398
+    description: The Mock Timers is now stable.
 -->
-
-> Stability: 1 - Experimental
 
 Mocking timers is a technique commonly used in software testing to simulate and
 control the behavior of timers, such as `setInterval` and `setTimeout`,
@@ -2983,6 +3266,8 @@ Emitted when a test is enqueued for execution.
       * `cause` {Error} The actual error thrown by the test.
     * `type` {string|undefined} The type of the test, used to denote whether
       this is a suite.
+    * `attempt` {number|undefined} The attempt number of the test run,
+      present only when using the [`--test-rerun-failures`][] flag.
   * `file` {string|undefined} The path of the test file,
     `undefined` if test was run through the REPL.
   * `line` {number|undefined} The line number where the test is defined, or
@@ -3007,6 +3292,10 @@ The corresponding execution ordered event is `'test:complete'`.
     * `duration_ms` {number} The duration of the test in milliseconds.
     * `type` {string|undefined} The type of the test, used to denote whether
       this is a suite.
+    * `attempt` {number|undefined} The attempt number of the test run,
+      present only when using the [`--test-rerun-failures`][] flag.
+    * `passed_on_attempt` {number|undefined} The attempt number the test passed on,
+      present only when using the [`--test-rerun-failures`][] flag.
   * `file` {string|undefined} The path of the test file,
     `undefined` if test was run through the REPL.
   * `line` {number|undefined} The line number where the test is defined, or
@@ -3105,6 +3394,10 @@ generated for each test file in addition to a final cumulative summary.
 ### Event: `'test:watch:drained'`
 
 Emitted when no more tests are queued for execution in watch mode.
+
+### Event: `'test:watch:restarted'`
+
+Emitted when one or more tests are restarted due to a file change in watch mode.
 
 ## Class: `TestContext`
 
@@ -3248,6 +3541,7 @@ test('top level test', async (t) => {
 <!-- YAML
 added:
   - v22.2.0
+  - v20.15.0
 -->
 
 An object containing assertion methods bound to `context`. The top-level
@@ -3264,7 +3558,9 @@ test('test', (t) => {
 #### `context.assert.fileSnapshot(value, path[, options])`
 
 <!-- YAML
-added: v22.14.0
+added:
+  - v23.7.0
+  - v22.14.0
 -->
 
 * `value` {any} A value to serialize to a string. If Node.js was started with
@@ -3354,7 +3650,9 @@ test('top level test', (t) => {
 ### `context.filePath`
 
 <!-- YAML
-added: v22.6.0
+added:
+  - v22.6.0
+  - v20.16.0
 -->
 
 The absolute path of the test file that created the current test. If a test file
@@ -3625,7 +3923,9 @@ test('top level test', async (t) => {
 ### `context.waitFor(condition[, options])`
 
 <!-- YAML
-added: v22.14.0
+added:
+  - v23.7.0
+  - v22.14.0
 -->
 
 * `condition` {Function|AsyncFunction} An assertion function that is invoked
@@ -3688,21 +3988,23 @@ added:
 Can be used to abort test subtasks when the test has been aborted.
 
 [TAP]: https://testanything.org/
-[TTY]: tty.md
-[`--experimental-strip-types`]: cli.md#--experimental-strip-types
 [`--experimental-test-coverage`]: cli.md#--experimental-test-coverage
 [`--experimental-test-module-mocks`]: cli.md#--experimental-test-module-mocks
 [`--import`]: cli.md#--importmodule
+[`--no-strip-types`]: cli.md#--no-strip-types
 [`--test-concurrency`]: cli.md#--test-concurrency
+[`--test-coverage-exclude`]: cli.md#--test-coverage-exclude
 [`--test-coverage-include`]: cli.md#--test-coverage-include
 [`--test-name-pattern`]: cli.md#--test-name-pattern
 [`--test-only`]: cli.md#--test-only
 [`--test-reporter-destination`]: cli.md#--test-reporter-destination
 [`--test-reporter`]: cli.md#--test-reporter
+[`--test-rerun-failures`]: cli.md#--test-rerun-failures
 [`--test-skip-pattern`]: cli.md#--test-skip-pattern
 [`--test-update-snapshots`]: cli.md#--test-update-snapshots
 [`--test`]: cli.md#--test
 [`MockFunctionContext`]: #class-mockfunctioncontext
+[`MockPropertyContext`]: #class-mockpropertycontext
 [`MockTimers`]: #class-mocktimers
 [`MockTracker.method`]: #mockmethodobject-methodname-implementation-options
 [`MockTracker`]: #class-mocktracker
@@ -3719,8 +4021,10 @@ Can be used to abort test subtasks when the test has been aborted.
 [`suite()`]: #suitename-options-fn
 [`test()`]: #testname-options-fn
 [code coverage]: #collecting-code-coverage
+[configuration files]: cli.md#--experimental-config-fileconfig
 [describe options]: #describename-options-fn
 [it options]: #testname-options-fn
+[running tests from the command line]: #running-tests-from-the-command-line
 [stream.compose]: stream.md#streamcomposestreams
 [subtests]: #subtests
 [suite options]: #suitename-options-fn

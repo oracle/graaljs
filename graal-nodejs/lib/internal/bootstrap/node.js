@@ -67,10 +67,7 @@ const {
 } = primordials;
 const config = internalBinding('config');
 const internalTimers = require('internal/timers');
-const {
-  defineOperation,
-  deprecate,
-} = require('internal/util');
+const { defineOperation } = require('internal/util');
 const {
   validateInteger,
 } = require('internal/validators');
@@ -179,6 +176,7 @@ const rawMethods = internalBinding('process_methods');
   process.loadEnvFile = wrapped.loadEnvFile;
   process._rawDebug = wrapped._rawDebug;
   process.cpuUsage = wrapped.cpuUsage;
+  process.threadCpuUsage = wrapped.threadCpuUsage;
   process.resourceUsage = wrapped.resourceUsage;
   process.memoryUsage = wrapped.memoryUsage;
   process.constrainedMemory = rawMethods.constrainedMemory;
@@ -272,12 +270,6 @@ ObjectDefineProperty(process, 'allowedNodeEnvironmentFlags', {
   configurable: true,
 });
 
-// process.assert
-process.assert = deprecate(
-  perThreadSetup.assert,
-  'process.assert() is deprecated. Please use the `assert` module instead.',
-  'DEP0100');
-
 // TODO(joyeecheung): this property has not been well-maintained, should we
 // deprecate it in favor of a better API?
 const { isDebugBuild, hasOpenSSL, openSSLIsBoringSSL, hasInspector } = config;
@@ -341,7 +333,7 @@ ObjectDefineProperty(process.features, 'typescript', {
     if (kTypeStrippingMode === null) {
       if (getOptionValue('--experimental-transform-types')) {
         kTypeStrippingMode = 'transform';
-      } else if (getOptionValue('--experimental-strip-types')) {
+      } else if (getOptionValue('--strip-types')) {
         kTypeStrippingMode = 'strip';
       } else {
         kTypeStrippingMode = false;

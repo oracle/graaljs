@@ -120,7 +120,7 @@ public final class JSContextOptions {
             }
             try {
                 final int minVersion = 5;
-                final int maxVersion = JSConfig.LatestECMAScriptVersion;
+                final int maxVersion = JSConfig.ECMAScript2026;
                 final int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptVersionYearDelta;
                 final int maxYearVersion = maxVersion + JSConfig.ECMAScriptVersionYearDelta;
                 int version = Integer.parseInt(in);

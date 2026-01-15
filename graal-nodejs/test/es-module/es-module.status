@@ -21,7 +21,16 @@ test-esm-detect-ambiguous            : FAIL
 test-esm-tla-unfinished              : FAIL
 test-require-module-tla-print-execution: FAIL
 
+# Uses js-string builtins
+test-esm-wasm-js-string-builtins     : FAIL
+
+# Different output for TypeScript SyntaxError
+test-typescript-eval                 : FAIL
+
 # Unclassified
+test-esm-wasm-source-phase-dynamic   : FAIL
+test-esm-wasm-source-phase-no-execute: FAIL
+test-esm-wasm-source-phase-static    : FAIL
 test-require-module-tla              : SKIP
 
 # transient test failure tracked under GR-61384
@@ -37,4 +46,4 @@ test-wasm-web-api: SKIP
 
 [$system==ibmi]
 # https://github.com/nodejs/node/issues/58582
-test-wasm-web-api: PASS,FLAKY
+test-wasm-web-api: SKIP

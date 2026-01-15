@@ -45,10 +45,16 @@
             }
           ]
         },
+        "allow-inspector": {
+          "type": "boolean"
+        },
         "allow-wasi": {
           "type": "boolean"
         },
         "allow-worker": {
+          "type": "boolean"
+        },
+        "async-context-frame": {
           "type": "boolean"
         },
         "conditions": {
@@ -121,11 +127,8 @@
         "entry-url": {
           "type": "boolean"
         },
-        "experimental-async-context-frame": {
+        "experimental-addon-modules": {
           "type": "boolean"
-        },
-        "experimental-default-type": {
-          "type": "string"
         },
         "experimental-detect-module": {
           "type": "boolean"
@@ -133,16 +136,7 @@
         "experimental-eventsource": {
           "type": "boolean"
         },
-        "experimental-fetch": {
-          "type": "boolean"
-        },
-        "experimental-global-customevent": {
-          "type": "boolean"
-        },
         "experimental-global-navigator": {
-          "type": "boolean"
-        },
-        "experimental-global-webcrypto": {
           "type": "boolean"
         },
         "experimental-import-meta-resolve": {
@@ -177,16 +171,10 @@
         "experimental-sqlite": {
           "type": "boolean"
         },
-        "experimental-strip-types": {
-          "type": "boolean"
-        },
         "experimental-transform-types": {
           "type": "boolean"
         },
         "experimental-vm-modules": {
-          "type": "boolean"
-        },
-        "experimental-wasm-modules": {
           "type": "boolean"
         },
         "experimental-websocket": {
@@ -278,6 +266,9 @@
         "max-http-header-size": {
           "type": "number"
         },
+        "max-old-space-size-percentage": {
+          "type": "string"
+        },
         "network-family-autoselection": {
           "type": "boolean"
         },
@@ -364,6 +355,9 @@
         "stack-trace-limit": {
           "type": "number"
         },
+        "strip-types": {
+          "type": "boolean"
+        },
         "test-coverage-branches": {
           "type": "number"
         },
@@ -400,6 +394,12 @@
         },
         "test-coverage-lines": {
           "type": "number"
+        },
+        "test-global-setup": {
+          "type": "string"
+        },
+        "test-isolation": {
+          "type": "string"
         },
         "test-name-pattern": {
           "oneOf": [
@@ -446,6 +446,9 @@
             }
           ]
         },
+        "test-rerun-failures": {
+          "type": "string"
+        },
         "test-shard": {
           "type": "string"
         },
@@ -491,9 +494,6 @@
           "type": "boolean"
         },
         "tls-min-v1.3": {
-          "type": "boolean"
-        },
-        "trace-atomics-wait": {
           "type": "boolean"
         },
         "trace-deprecation": {
@@ -547,6 +547,9 @@
         "use-bundled-ca": {
           "type": "boolean"
         },
+        "use-env-proxy": {
+          "type": "boolean"
+        },
         "use-largepages": {
           "type": "string"
         },
@@ -567,6 +570,9 @@
         },
         "watch": {
           "type": "boolean"
+        },
+        "watch-kill-signal": {
+          "type": "string"
         },
         "watch-path": {
           "oneOf": [
@@ -590,6 +596,167 @@
         }
       },
       "type": "object"
+    },
+    "testRunner": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "experimental-test-coverage": {
+          "type": "boolean"
+        },
+        "experimental-test-module-mocks": {
+          "type": "boolean"
+        },
+        "test-concurrency": {
+          "type": "number"
+        },
+        "test-coverage-branches": {
+          "type": "number"
+        },
+        "test-coverage-exclude": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string",
+                "minItems": 1
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "test-coverage-functions": {
+          "type": "number"
+        },
+        "test-coverage-include": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string",
+                "minItems": 1
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "test-coverage-lines": {
+          "type": "number"
+        },
+        "test-force-exit": {
+          "type": "boolean"
+        },
+        "test-global-setup": {
+          "type": "string"
+        },
+        "test-isolation": {
+          "type": "string"
+        },
+        "test-name-pattern": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string",
+                "minItems": 1
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "test-only": {
+          "type": "boolean"
+        },
+        "test-reporter": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string",
+                "minItems": 1
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "test-reporter-destination": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string",
+                "minItems": 1
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "test-rerun-failures": {
+          "type": "string"
+        },
+        "test-shard": {
+          "type": "string"
+        },
+        "test-skip-pattern": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string",
+                "minItems": 1
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "test-timeout": {
+          "type": "number"
+        },
+        "test-update-snapshots": {
+          "type": "boolean"
+        }
+      }
+    },
+    "watch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "watch": {
+          "type": "boolean"
+        },
+        "watch-kill-signal": {
+          "type": "string"
+        },
+        "watch-path": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string",
+                "minItems": 1
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "watch-preserve-output": {
+          "type": "boolean"
+        }
+      }
     }
   },
   "type": "object"

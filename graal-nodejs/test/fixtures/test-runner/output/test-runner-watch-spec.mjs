@@ -32,11 +32,8 @@ const { signal } = controller;
 
 const stream = run({
   watch: true,
+  cwd: tmpdir.path,
   signal,
-  files: [
-    fixturePaths['failing-test.js'],
-    fixturePaths['test.js'],
-  ],
 });
 
 

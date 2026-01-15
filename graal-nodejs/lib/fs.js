@@ -25,6 +25,7 @@
 'use strict';
 
 const {
+  ArrayFromAsync,
   ArrayPrototypePush,
   BigIntPrototypeToString,
   Boolean,
@@ -33,6 +34,7 @@ const {
   ObjectDefineProperties,
   ObjectDefineProperty,
   Promise,
+  PromisePrototypeThen,
   PromiseResolve,
   ReflectApply,
   SafeMap,
@@ -40,6 +42,7 @@ const {
   StringPrototypeCharCodeAt,
   StringPrototypeIndexOf,
   StringPrototypeSlice,
+  SymbolDispose,
   uncurryThis,
 } = primordials;
 
@@ -59,7 +62,6 @@ const {
 } = constants;
 
 const pathModule = require('path');
-const { isAbsolute } = pathModule;
 const { isArrayBufferView } = require('internal/util/types');
 
 const binding = internalBinding('fs');
@@ -86,6 +88,7 @@ const {
 const { toPathIfFileURL } = require('internal/url');
 const {
   customPromisifyArgs: kCustomPromisifyArgsSymbol,
+  deprecate,
   getLazy,
   kEmptyObject,
   promisify: {
@@ -143,13 +146,13 @@ const {
   validateFunction,
   validateInteger,
   validateObject,
+  validateOneOf,
   validateString,
   kValidateObjectAllowNullable,
 } = require('internal/validators');
 
 const permission = require('internal/process/permission');
 
-let truncateWarn = true;
 let fs;
 
 // Lazy loaded
@@ -159,7 +162,6 @@ let promises = null;
 let ReadStream;
 let WriteStream;
 let rimraf;
-let rimrafSync;
 let kResistStopPropagation;
 let ReadFileContext;
 
@@ -167,15 +169,10 @@ let ReadFileContext;
 // monkeypatching.
 let FileReadStream;
 let FileWriteStream;
+let Utf8Stream;
 
-function showTruncateDeprecation() {
-  if (truncateWarn) {
-    process.emitWarning(
-      'Using fs.truncate with a file descriptor is deprecated. Please use ' +
-      'fs.ftruncate with a file descriptor instead.',
-      'DeprecationWarning', 'DEP0081');
-    truncateWarn = false;
-  }
+function lazyLoadUtf8Stream() {
+  Utf8Stream ??= require('internal/streams/fast-utf8-stream');
 }
 
 // Ensure that callbacks run in the global context. Only use this function
@@ -270,12 +267,7 @@ ObjectDefineProperty(exists, kCustomPromisifiedSymbol, {
   },
 });
 
-// fs.existsSync never throws, it only returns true or false.
-// Since fs.existsSync never throws, users have established
-// the expectation that passing invalid arguments to it, even like
-// fs.existsSync(), would only get a false in return, so we cannot signal
-// validation errors to users properly out of compatibility concerns.
-// TODO(joyeecheung): deprecate the never-throw-on-invalid-arguments behavior
+let showExistsDeprecation = true;
 /**
  * Synchronously tests whether or not the given path exists.
  * @param {string | Buffer | URL} path
@@ -284,7 +276,13 @@ ObjectDefineProperty(exists, kCustomPromisifiedSymbol, {
 function existsSync(path) {
   try {
     path = getValidatedPath(path);
-  } catch {
+  } catch (err) {
+    if (showExistsDeprecation && err?.code === 'ERR_INVALID_ARG_TYPE') {
+      process.emitWarning(
+        'Passing invalid argument types to fs.existsSync is deprecated', 'DeprecationWarning', 'DEP0187',
+      );
+      showExistsDeprecation = false;
+    }
     return false;
   }
 
@@ -1031,10 +1029,6 @@ function renameSync(oldPath, newPath) {
  * @returns {void}
  */
 function truncate(path, len, callback) {
-  if (typeof path === 'number') {
-    showTruncateDeprecation();
-    return fs.ftruncate(path, len, callback);
-  }
   if (typeof len === 'function') {
     callback = len;
     len = 0;
@@ -1064,11 +1058,6 @@ function truncate(path, len, callback) {
  * @returns {void}
  */
 function truncateSync(path, len) {
-  if (typeof path === 'number') {
-    // legacy
-    showTruncateDeprecation();
-    return fs.ftruncateSync(path, len);
-  }
   if (len === undefined) {
     len = 0;
   }
@@ -1123,7 +1112,7 @@ function lazyLoadCp() {
 
 function lazyLoadRimraf() {
   if (rimraf === undefined)
-    ({ rimraf, rimrafSync } = require('internal/fs/rimraf'));
+    ({ rimraf } = require('internal/fs/rimraf'));
 }
 
 /**
@@ -1191,8 +1180,7 @@ function rmdirSync(path, options) {
     emitRecursiveRmdirWarning();
     options = validateRmOptionsSync(path, { ...options, force: false }, true);
     if (options !== false) {
-      lazyLoadRimraf();
-      return rimrafSync(path, options);
+      return binding.rmSync(path, options.maxRetries, options.recursive, options.retryDelay);
     }
   } else {
     validateRmdirOptions(options);
@@ -1243,11 +1231,8 @@ function rm(path, options, callback) {
  * @returns {void}
  */
 function rmSync(path, options) {
-  lazyLoadRimraf();
-  return rimrafSync(
-    getValidatedPath(path),
-    validateRmOptionsSync(path, options, false),
-  );
+  const opts = validateRmOptionsSync(path, options, false);
+  return binding.rmSync(getValidatedPath(path), opts.maxRetries, opts.recursive, opts.retryDelay);
 }
 
 /**
@@ -1261,6 +1246,11 @@ function rmSync(path, options) {
 function fdatasync(fd, callback) {
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
+
+  if (permission.isEnabled()) {
+    callback(new ERR_ACCESS_DENIED('fdatasync API is disabled when Permission Model is enabled.'));
+    return;
+  }
   binding.fdatasync(fd, req);
 }
 
@@ -1272,6 +1262,9 @@ function fdatasync(fd, callback) {
  * @returns {void}
  */
 function fdatasyncSync(fd) {
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('fdatasync API is disabled when Permission Model is enabled.');
+  }
   binding.fdatasync(fd);
 }
 
@@ -1285,6 +1278,10 @@ function fdatasyncSync(fd) {
 function fsync(fd, callback) {
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
+  if (permission.isEnabled()) {
+    callback(new ERR_ACCESS_DENIED('fsync API is disabled when Permission Model is enabled.'));
+    return;
+  }
   binding.fsync(fd, req);
 }
 
@@ -1295,6 +1292,9 @@ function fsync(fd, callback) {
  * @returns {void}
  */
 function fsyncSync(fd) {
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('fsync API is disabled when Permission Model is enabled.');
+  }
   binding.fsync(fd);
 }
 
@@ -1448,7 +1448,7 @@ function handleDirents({ result, currentPath, context }) {
     const dirent = getDirent(currentPath, names[i], types[i]);
     ArrayPrototypePush(context.readdirResults, dirent);
 
-    if (dirent.isDirectory() || binding.internalModuleStat(binding, fullPath) === 1) {
+    if (dirent.isDirectory() || binding.internalModuleStat(fullPath) === 1) {
       ArrayPrototypePush(context.pathsQueue, fullPath);
     }
   }
@@ -1458,7 +1458,7 @@ function handleFilePaths({ result, currentPath, context }) {
   for (let i = 0; i < result.length; i++) {
     const resultPath = pathModule.join(currentPath, result[i]);
     const relativeResultPath = pathModule.relative(context.basePath, resultPath);
-    const stat = binding.internalModuleStat(binding, resultPath);
+    const stat = binding.internalModuleStat(resultPath);
     ArrayPrototypePush(context.readdirResults, relativeResultPath);
 
     if (stat === 1) {
@@ -1788,32 +1788,30 @@ function readlinkSync(path, options) {
  * Creates the link called `path` pointing to `target`.
  * @param {string | Buffer | URL} target
  * @param {string | Buffer | URL} path
- * @param {string | null} [type_]
- * @param {(err?: Error) => any} callback_
+ * @param {string | null} [type]
+ * @param {(err?: Error) => any} callback
  * @returns {void}
  */
-function symlink(target, path, type_, callback_) {
-  const type = (typeof type_ === 'string' ? type_ : null);
-  const callback = makeCallback(arguments[arguments.length - 1]);
+function symlink(target, path, type, callback) {
+  if (callback === undefined) {
+    callback = makeCallback(type);
+    type = undefined;
+  } else {
+    validateOneOf(type, 'type', ['dir', 'file', 'junction', null, undefined]);
+  }
 
-  if (permission.isEnabled()) {
-    // The permission model's security guarantees fall apart in the presence of
-    // relative symbolic links. Thus, we have to prevent their creation.
-    if (BufferIsBuffer(target)) {
-      if (!isAbsolute(BufferToString(target))) {
-        callback(new ERR_ACCESS_DENIED('relative symbolic link target'));
-        return;
-      }
-    } else if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
-      callback(new ERR_ACCESS_DENIED('relative symbolic link target'));
-      return;
-    }
+  // Due to the nature of Node.js runtime, symlinks has different edge cases that can bypass
+  // the permission model security guarantees. Thus, this API is disabled unless fs.read
+  // and fs.write permission has been given.
+  if (permission.isEnabled() && !permission.has('fs')) {
+    callback(new ERR_ACCESS_DENIED('fs.symlink API requires full fs.read and fs.write permissions.'));
+    return;
   }
 
   target = getValidatedPath(target, 'target');
   path = getValidatedPath(path);
 
-  if (isWindows && type === null) {
+  if (isWindows && type == null) {
     let absoluteTarget;
     try {
       // Symlinks targets can be relative to the newly created path.
@@ -1863,24 +1861,19 @@ function symlink(target, path, type_, callback_) {
  * @returns {void}
  */
 function symlinkSync(target, path, type) {
-  type = (typeof type === 'string' ? type : null);
-  if (isWindows && type === null) {
+  validateOneOf(type, 'type', ['dir', 'file', 'junction', null, undefined]);
+  if (isWindows && type == null) {
     const absoluteTarget = pathModule.resolve(`${path}`, '..', `${target}`);
     if (statSync(absoluteTarget, { throwIfNoEntry: false })?.isDirectory()) {
       type = 'dir';
     }
   }
 
-  if (permission.isEnabled()) {
-    // The permission model's security guarantees fall apart in the presence of
-    // relative symbolic links. Thus, we have to prevent their creation.
-    if (BufferIsBuffer(target)) {
-      if (!isAbsolute(BufferToString(target))) {
-        throw new ERR_ACCESS_DENIED('relative symbolic link target');
-      }
-    } else if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
-      throw new ERR_ACCESS_DENIED('relative symbolic link target');
-    }
+  // Due to the nature of Node.js runtime, symlinks has different edge cases that can bypass
+  // the permission model security guarantees. Thus, this API is disabled unless fs.read
+  // and fs.write permission has been given.
+  if (permission.isEnabled() && !permission.has('fs')) {
+    throw new ERR_ACCESS_DENIED('fs.symlink API requires full fs.read and fs.write permissions.');
   }
 
   target = getValidatedPath(target, 'target');
@@ -2221,6 +2214,11 @@ function futimes(fd, atime, mtime, callback) {
   mtime = toUnixTimestamp(mtime, 'mtime');
   callback = makeCallback(callback);
 
+  if (permission.isEnabled()) {
+    callback(new ERR_ACCESS_DENIED('futimes API is disabled when Permission Model is enabled.'));
+    return;
+  }
+
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.futimes(fd, atime, mtime, req);
@@ -2236,6 +2234,10 @@ function futimes(fd, atime, mtime, callback) {
  * @returns {void}
  */
 function futimesSync(fd, atime, mtime) {
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('futimes API is disabled when Permission Model is enabled.');
+  }
+
   binding.futimes(
     fd,
     toUnixTimestamp(atime, 'atime'),
@@ -3050,6 +3052,36 @@ function mkdtempSync(prefix, options) {
 }
 
 /**
+ * Synchronously creates a unique temporary directory.
+ * The returned value is a disposable object which removes the
+ * directory and its contents when disposed.
+ * @param {string | Buffer | URL} prefix
+ * @param {string | { encoding?: string; }} [options]
+ * @returns {object} A disposable object with a "path" property.
+ */
+function mkdtempDisposableSync(prefix, options) {
+  options = getOptions(options);
+
+  prefix = getValidatedPath(prefix, 'prefix');
+  warnOnNonPortableTemplate(prefix);
+
+  const path = binding.mkdtemp(prefix, options.encoding);
+  // Stash the full path in case of process.chdir()
+  const fullPath = pathModule.resolve(process.cwd(), path);
+
+  const remove = () => {
+    binding.rmSync(fullPath, 0 /* maxRetries */, true /* recursive */, 100 /* retryDelay */);
+  };
+  return {
+    path,
+    remove,
+    [SymbolDispose]() {
+      remove();
+    },
+  };
+}
+
+/**
  * Asynchronously copies `src` to `dest`. By
  * default, `dest` is overwritten if it already exists.
  * @param {string | Buffer | URL} src
@@ -3192,18 +3224,11 @@ function glob(pattern, options, callback) {
   callback = makeCallback(callback);
 
   const Glob = lazyGlob();
-  // TODO: Use iterator helpers when available
-  (async () => {
-    try {
-      const res = [];
-      for await (const entry of new Glob(pattern, options).glob()) {
-        ArrayPrototypePush(res, entry);
-      }
-      callback(null, res);
-    } catch (err) {
-      callback(err);
-    }
-  })();
+  PromisePrototypeThen(
+    ArrayFromAsync(new Glob(pattern, options).glob()),
+    (res) => callback(null, res),
+    callback,
+  );
 }
 
 function globSync(pattern, options) {
@@ -3261,6 +3286,7 @@ module.exports = fs = {
   mkdirSync,
   mkdtemp,
   mkdtempSync,
+  mkdtempDisposableSync,
   open,
   openSync,
   openAsBlob,
@@ -3344,6 +3370,11 @@ module.exports = fs = {
     FileWriteStream = val;
   },
 
+  get Utf8Stream() {
+    lazyLoadUtf8Stream();
+    return Utf8Stream;
+  },
+
   // For tests
   _toUnixTimestamp: toUnixTimestamp,
 };
@@ -3355,10 +3386,50 @@ defineLazyProperties(
 );
 
 ObjectDefineProperties(fs, {
-  F_OK: { __proto__: null, enumerable: true, value: F_OK || 0 },
-  R_OK: { __proto__: null, enumerable: true, value: R_OK || 0 },
-  W_OK: { __proto__: null, enumerable: true, value: W_OK || 0 },
-  X_OK: { __proto__: null, enumerable: true, value: X_OK || 0 },
+  F_OK: {
+    __proto__: null,
+    enumerable: false,
+    get: deprecate(
+      function get() {
+        return F_OK || 0;
+      },
+      'fs.F_OK is deprecated, use fs.constants.F_OK instead',
+      'DEP0176',
+    ),
+  },
+  R_OK: {
+    __proto__: null,
+    enumerable: false,
+    get: deprecate(
+      function get() {
+        return R_OK || 0;
+      },
+      'fs.R_OK is deprecated, use fs.constants.R_OK instead',
+      'DEP0176',
+    ),
+  },
+  W_OK: {
+    __proto__: null,
+    enumerable: false,
+    get: deprecate(
+      function get() {
+        return W_OK || 0;
+      },
+      'fs.W_OK is deprecated, use fs.constants.W_OK instead',
+      'DEP0176',
+    ),
+  },
+  X_OK: {
+    __proto__: null,
+    enumerable: false,
+    get: deprecate(
+      function get() {
+        return X_OK || 0;
+      },
+      'fs.X_OK is deprecated, use fs.constants.X_OK instead',
+      'DEP0176',
+    ),
+  },
   constants: {
     __proto__: null,
     configurable: false,

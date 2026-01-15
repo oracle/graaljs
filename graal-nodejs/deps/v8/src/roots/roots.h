@@ -110,7 +110,8 @@ class RootVisitor;
   V(Map, coverage_info_map, CoverageInfoMap)                                   \
   V(Map, dictionary_template_info_map, DictionaryTemplateInfoMap)              \
   V(Map, global_dictionary_map, GlobalDictionaryMap)                           \
-  V(Map, global_const_tracking_let_cell_map, GlobalConstTrackingLetCellMap)    \
+  V(Map, global_context_side_property_cell_map,                                \
+    GlobalContextSidePropertyCellMap)                                          \
   V(Map, many_closures_cell_map, ManyClosuresCellMap)                          \
   V(Map, mega_dom_handler_map, MegaDomHandlerMap)                              \
   V(Map, module_info_map, ModuleInfoMap)                                       \
@@ -127,6 +128,9 @@ class RootVisitor;
   V(Map, property_array_map, PropertyArrayMap)                                 \
   V(Map, accessor_info_map, AccessorInfoMap)                                   \
   V(Map, regexp_match_info_map, RegExpMatchInfoMap)                            \
+  V(Map, regexp_data_map, RegExpDataMap)                                       \
+  V(Map, atom_regexp_data_map, AtomRegExpDataMap)                              \
+  V(Map, ir_regexp_data_map, IrRegExpDataMap)                                  \
   V(Map, simple_number_dictionary_map, SimpleNumberDictionaryMap)              \
   V(Map, small_ordered_hash_map_map, SmallOrderedHashMapMap)                   \
   V(Map, small_ordered_hash_set_map, SmallOrderedHashSetMap)                   \
@@ -134,7 +138,7 @@ class RootVisitor;
   V(Map, source_text_module_map, SourceTextModuleMap)                          \
   V(Map, swiss_name_dictionary_map, SwissNameDictionaryMap)                    \
   V(Map, synthetic_module_map, SyntheticModuleMap)                             \
-  IF_WASM(V, Map, wasm_api_function_ref_map, WasmApiFunctionRefMap)            \
+  IF_WASM(V, Map, wasm_import_data_map, WasmImportDataMap)                     \
   IF_WASM(V, Map, wasm_capi_function_data_map, WasmCapiFunctionDataMap)        \
   IF_WASM(V, Map, wasm_continuation_object_map, WasmContinuationObjectMap)     \
   IF_WASM(V, Map, wasm_dispatch_table_map, WasmDispatchTableMap)               \
@@ -145,6 +149,7 @@ class RootVisitor;
   IF_WASM(V, Map, wasm_js_function_data_map, WasmJSFunctionDataMap)            \
   IF_WASM(V, Map, wasm_null_map, WasmNullMap)                                  \
   IF_WASM(V, Map, wasm_resume_data_map, WasmResumeDataMap)                     \
+  IF_WASM(V, Map, wasm_suspender_object_map, WasmSuspenderObjectMap)           \
   IF_WASM(V, Map, wasm_trusted_instance_data_map, WasmTrustedInstanceDataMap)  \
   IF_WASM(V, Map, wasm_type_info_map, WasmTypeInfoMap)                         \
   V(Map, weak_fixed_array_map, WeakFixedArrayMap)                              \
@@ -152,11 +157,14 @@ class RootVisitor;
   V(Map, ephemeron_hash_table_map, EphemeronHashTableMap)                      \
   V(Map, embedder_data_array_map, EmbedderDataArrayMap)                        \
   V(Map, weak_cell_map, WeakCellMap)                                           \
-  V(Map, external_pointer_array_map, ExternalPointerArrayMap)                  \
   V(Map, trusted_fixed_array_map, TrustedFixedArrayMap)                        \
+  V(Map, trusted_weak_fixed_array_map, TrustedWeakFixedArrayMap)               \
   V(Map, trusted_byte_array_map, TrustedByteArrayMap)                          \
   V(Map, protected_fixed_array_map, ProtectedFixedArrayMap)                    \
+  V(Map, protected_weak_fixed_array_map, ProtectedWeakFixedArrayMap)           \
   V(Map, interpreter_data_map, InterpreterDataMap)                             \
+  V(Map, shared_function_info_wrapper_map, SharedFunctionInfoWrapperMap)       \
+  V(Map, trusted_foreign_map, TrustedForeignMap)                               \
   /* String maps */                                                            \
   V(Map, seq_two_byte_string_map, SeqTwoByteStringMap)                         \
   V(Map, cons_two_byte_string_map, ConsTwoByteStringMap)                       \
@@ -201,8 +209,6 @@ class RootVisitor;
   V(EnumCache, empty_enum_cache, EmptyEnumCache)                               \
   V(PropertyArray, empty_property_array, EmptyPropertyArray)                   \
   V(ByteArray, empty_byte_array, EmptyByteArray)                               \
-  V(ExternalPointerArray, empty_external_pointer_array,                        \
-    EmptyExternalPointerArray)                                                 \
   V(ObjectBoilerplateDescription, empty_object_boilerplate_description,        \
     EmptyObjectBoilerplateDescription)                                         \
   V(ArrayBoilerplateDescription, empty_array_boilerplate_description,          \
@@ -224,6 +230,7 @@ class RootVisitor;
   V(WeakFixedArray, empty_weak_fixed_array, EmptyWeakFixedArray)               \
   V(WeakArrayList, empty_weak_array_list, EmptyWeakArrayList)                  \
   V(Cell, invalid_prototype_validity_cell, InvalidPrototypeValidityCell)       \
+  V(FeedbackCell, many_closures_cell, ManyClosuresCell)                        \
   STRONG_READ_ONLY_HEAP_NUMBER_ROOT_LIST(V)                                    \
   /* Table of strings of one-byte single characters */                         \
   V(FixedArray, single_character_string_table, SingleCharacterStringTable)     \
@@ -249,18 +256,75 @@ class RootVisitor;
 #define TRUSTED_ROOT_LIST(V)                                              \
   V(TrustedByteArray, empty_trusted_byte_array, EmptyTrustedByteArray)    \
   V(TrustedFixedArray, empty_trusted_fixed_array, EmptyTrustedFixedArray) \
-  V(ProtectedFixedArray, empty_protected_fixed_array, EmptyProtectedFixedArray)
+  V(TrustedWeakFixedArray, empty_trusted_weak_fixed_array,                \
+    EmptyTrustedWeakFixedArray)                                           \
+  V(ProtectedFixedArray, empty_protected_fixed_array,                     \
+    EmptyProtectedFixedArray)                                             \
+  V(ProtectedWeakFixedArray, empty_protected_weak_fixed_array,            \
+    EmptyProtectedWeakFixedArray)
+
+#define BUILTINS_WITH_SFI_LIST_GENERATOR(APPLY, V)                             \
+  APPLY(V, ProxyRevoke, proxy_revoke)                                          \
+  APPLY(V, AsyncFromSyncIteratorCloseSyncAndRethrow,                           \
+        async_from_sync_iterator_close_sync_and_rethrow)                       \
+  APPLY(V, AsyncFunctionAwaitRejectClosure,                                    \
+        async_function_await_reject_closure)                                   \
+  APPLY(V, AsyncFunctionAwaitResolveClosure,                                   \
+        async_function_await_resolve_closure)                                  \
+  APPLY(V, AsyncGeneratorAwaitRejectClosure,                                   \
+        async_generator_await_reject_closure)                                  \
+  APPLY(V, AsyncGeneratorAwaitResolveClosure,                                  \
+        async_generator_await_resolve_closure)                                 \
+  APPLY(V, AsyncGeneratorYieldWithAwaitResolveClosure,                         \
+        async_generator_yield_with_await_resolve_closure)                      \
+  APPLY(V, AsyncGeneratorReturnClosedResolveClosure,                           \
+        async_generator_return_closed_resolve_closure)                         \
+  APPLY(V, AsyncGeneratorReturnClosedRejectClosure,                            \
+        async_generator_return_closed_reject_closure)                          \
+  APPLY(V, AsyncGeneratorReturnResolveClosure,                                 \
+        async_generator_return_resolve_closure)                                \
+  APPLY(V, AsyncIteratorValueUnwrap, async_iterator_value_unwrap)              \
+  APPLY(V, ArrayFromAsyncArrayLikeOnFulfilled,                                 \
+        array_from_async_array_like_on_fulfilled)                              \
+  APPLY(V, ArrayFromAsyncArrayLikeOnRejected,                                  \
+        array_from_async_array_like_on_rejected)                               \
+  APPLY(V, ArrayFromAsyncIterableOnFulfilled,                                  \
+        array_from_async_iterable_on_fulfilled)                                \
+  APPLY(V, ArrayFromAsyncIterableOnRejected,                                   \
+        array_from_async_iterable_on_rejected)                                 \
+  APPLY(V, PromiseCapabilityDefaultResolve,                                    \
+        promise_capability_default_resolve)                                    \
+  APPLY(V, PromiseCapabilityDefaultReject, promise_capability_default_reject)  \
+  APPLY(V, PromiseGetCapabilitiesExecutor, promise_get_capabilities_executor)  \
+  APPLY(V, PromiseAllSettledResolveElementClosure,                             \
+        promise_all_settled_resolve_element_closure)                           \
+  APPLY(V, PromiseAllSettledRejectElementClosure,                              \
+        promise_all_settled_reject_element_closure)                            \
+  APPLY(V, PromiseAllResolveElementClosure,                                    \
+        promise_all_resolve_element_closure)                                   \
+  APPLY(V, PromiseAnyRejectElementClosure, promise_any_reject_element_closure) \
+  APPLY(V, PromiseThrowerFinally, promise_thrower_finally)                     \
+  APPLY(V, PromiseValueThunkFinally, promise_value_thunk_finally)              \
+  APPLY(V, PromiseThenFinally, promise_then_finally)                           \
+  APPLY(V, PromiseCatchFinally, promise_catch_finally)                         \
+  APPLY(V, ShadowRealmImportValueFulfilled,                                    \
+        shadow_realm_import_value_fulfilled)                                   \
+  APPLY(V, AsyncIteratorPrototypeAsyncDisposeResolveClosure,                   \
+        async_iterator_prototype_async_dispose_resolve_closure)
+
+#define BUILTINS_WITH_SFI_ROOTS_LIST_ADAPTER(V, CamelName, underscore_name, \
+                                             ...)                           \
+  V(SharedFunctionInfo, underscore_name##_shared_fun, CamelName##SharedFun)
+
+#define BUILTINS_WITH_SFI_ROOTS_LIST(V) \
+  BUILTINS_WITH_SFI_LIST_GENERATOR(BUILTINS_WITH_SFI_ROOTS_LIST_ADAPTER, V)
 
 // Mutable roots that are known to be immortal immovable, for which we can
 // safely skip write barriers.
 #define STRONG_MUTABLE_IMMOVABLE_ROOT_LIST(V)                                  \
   ACCESSOR_INFO_ROOT_LIST(V)                                                   \
-  /* Maps */                                                                   \
-  V(Map, external_map, ExternalMap)                                            \
-  V(Map, message_object_map, JSMessageObjectMap)                               \
   /* Canonical empty values */                                                 \
   V(Script, empty_script, EmptyScript)                                         \
-  V(FeedbackCell, many_closures_cell, ManyClosuresCell)                        \
   /* Protectors */                                                             \
   V(PropertyCell, array_constructor_protector, ArrayConstructorProtector)      \
   V(PropertyCell, no_elements_protector, NoElementsProtector)                  \
@@ -270,6 +334,7 @@ class RootVisitor;
     NoUndetectableObjectsProtector)                                            \
   V(PropertyCell, is_concat_spreadable_protector, IsConcatSpreadableProtector) \
   V(PropertyCell, array_species_protector, ArraySpeciesProtector)              \
+  V(PropertyCell, typed_array_length_protector, TypedArrayLengthProtector)     \
   V(PropertyCell, typed_array_species_protector, TypedArraySpeciesProtector)   \
   V(PropertyCell, promise_species_protector, PromiseSpeciesProtector)          \
   V(PropertyCell, regexp_species_protector, RegExpSpeciesProtector)            \
@@ -290,64 +355,27 @@ class RootVisitor;
   /* Caches */                                                                 \
   V(FixedArray, string_split_cache, StringSplitCache)                          \
   V(FixedArray, regexp_multiple_cache, RegExpMultipleCache)                    \
+  V(FixedArray, regexp_match_global_atom_cache, RegExpMatchGlobalAtomCache)    \
   /* Indirection lists for isolate-independent builtins */                     \
   V(FixedArray, builtins_constants_table, BuiltinsConstantsTable)              \
   /* Internal SharedFunctionInfos */                                           \
-  V(SharedFunctionInfo, async_function_await_reject_shared_fun,                \
-    AsyncFunctionAwaitRejectSharedFun)                                         \
-  V(SharedFunctionInfo, async_function_await_resolve_shared_fun,               \
-    AsyncFunctionAwaitResolveSharedFun)                                        \
-  V(SharedFunctionInfo, async_generator_await_reject_shared_fun,               \
-    AsyncGeneratorAwaitRejectSharedFun)                                        \
-  V(SharedFunctionInfo, async_generator_await_resolve_shared_fun,              \
-    AsyncGeneratorAwaitResolveSharedFun)                                       \
-  V(SharedFunctionInfo, async_generator_yield_with_await_resolve_shared_fun,   \
-    AsyncGeneratorYieldWithAwaitResolveSharedFun)                              \
-  V(SharedFunctionInfo, async_generator_return_resolve_shared_fun,             \
-    AsyncGeneratorReturnResolveSharedFun)                                      \
-  V(SharedFunctionInfo, async_generator_return_closed_reject_shared_fun,       \
-    AsyncGeneratorReturnClosedRejectSharedFun)                                 \
-  V(SharedFunctionInfo, async_generator_return_closed_resolve_shared_fun,      \
-    AsyncGeneratorReturnClosedResolveSharedFun)                                \
-  V(SharedFunctionInfo, async_iterator_value_unwrap_shared_fun,                \
-    AsyncIteratorValueUnwrapSharedFun)                                         \
-  V(SharedFunctionInfo, promise_all_resolve_element_shared_fun,                \
-    PromiseAllResolveElementSharedFun)                                         \
-  V(SharedFunctionInfo, promise_all_settled_resolve_element_shared_fun,        \
-    PromiseAllSettledResolveElementSharedFun)                                  \
-  V(SharedFunctionInfo, promise_all_settled_reject_element_shared_fun,         \
-    PromiseAllSettledRejectElementSharedFun)                                   \
-  V(SharedFunctionInfo, promise_any_reject_element_shared_fun,                 \
-    PromiseAnyRejectElementSharedFun)                                          \
-  V(SharedFunctionInfo, promise_capability_default_reject_shared_fun,          \
-    PromiseCapabilityDefaultRejectSharedFun)                                   \
-  V(SharedFunctionInfo, promise_capability_default_resolve_shared_fun,         \
-    PromiseCapabilityDefaultResolveSharedFun)                                  \
-  V(SharedFunctionInfo, promise_catch_finally_shared_fun,                      \
-    PromiseCatchFinallySharedFun)                                              \
-  V(SharedFunctionInfo, promise_get_capabilities_executor_shared_fun,          \
-    PromiseGetCapabilitiesExecutorSharedFun)                                   \
-  V(SharedFunctionInfo, promise_then_finally_shared_fun,                       \
-    PromiseThenFinallySharedFun)                                               \
-  V(SharedFunctionInfo, promise_thrower_finally_shared_fun,                    \
-    PromiseThrowerFinallySharedFun)                                            \
-  V(SharedFunctionInfo, promise_value_thunk_finally_shared_fun,                \
-    PromiseValueThunkFinallySharedFun)                                         \
-  V(SharedFunctionInfo, proxy_revoke_shared_fun, ProxyRevokeSharedFun)         \
-  V(SharedFunctionInfo, shadow_realm_import_value_fulfilled_sfi,               \
-    ShadowRealmImportValueFulfilledSFI)                                        \
   V(SharedFunctionInfo, source_text_module_execute_async_module_fulfilled_sfi, \
     SourceTextModuleExecuteAsyncModuleFulfilledSFI)                            \
   V(SharedFunctionInfo, source_text_module_execute_async_module_rejected_sfi,  \
     SourceTextModuleExecuteAsyncModuleRejectedSFI)                             \
-  V(SharedFunctionInfo, array_from_async_iterable_on_fulfilled_shared_fun,     \
-    ArrayFromAsyncIterableOnFulfilledSharedFun)                                \
-  V(SharedFunctionInfo, array_from_async_iterable_on_rejected_shared_fun,      \
-    ArrayFromAsyncIterableOnRejectedSharedFun)                                 \
-  V(SharedFunctionInfo, array_from_async_array_like_on_fulfilled_shared_fun,   \
-    ArrayFromAsyncArrayLikeOnFulfilledSharedFun)                               \
-  V(SharedFunctionInfo, array_from_async_array_like_on_rejected_shared_fun,    \
-    ArrayFromAsyncArrayLikeOnRejectedSharedFun)                                \
+  V(SharedFunctionInfo, atomics_mutex_async_unlock_resolve_handler_sfi,        \
+    AtomicsMutexAsyncUnlockResolveHandlerSFI)                                  \
+  V(SharedFunctionInfo, atomics_mutex_async_unlock_reject_handler_sfi,         \
+    AtomicsMutexAsyncUnlockRejectHandlerSFI)                                   \
+  V(SharedFunctionInfo, atomics_condition_acquire_lock_sfi,                    \
+    AtomicsConditionAcquireLockSFI)                                            \
+  V(SharedFunctionInfo, async_disposable_stack_on_fulfilled_shared_fun,        \
+    AsyncDisposableStackOnFulfilledSharedFun)                                  \
+  V(SharedFunctionInfo, async_disposable_stack_on_rejected_shared_fun,         \
+    AsyncDisposableStackOnRejectedSharedFun)                                   \
+  V(SharedFunctionInfo, async_dispose_from_sync_dispose_shared_fun,            \
+    AsyncDisposeFromSyncDisposeSharedFun)                                      \
+  BUILTINS_WITH_SFI_ROOTS_LIST(V)                                              \
   TRUSTED_ROOT_LIST(V)
 
 // These root references can be updated by the mutator.
@@ -361,7 +389,6 @@ class RootVisitor;
   V(WeakArrayList, script_list, ScriptList)                                 \
   V(FixedArray, materialized_objects, MaterializedObjects)                  \
   V(WeakArrayList, detached_contexts, DetachedContexts)                     \
-  V(WeakArrayList, retaining_path_targets, RetainingPathTargets)            \
   /* Feedback vectors that we need for code coverage or type profile */     \
   V(Object, feedback_vectors_for_profiling_tools,                           \
     FeedbackVectorsForProfilingTools)                                       \
@@ -380,8 +407,8 @@ class RootVisitor;
   V(HeapObject, locals_block_list_cache, DebugLocalsBlockListCache)         \
   IF_WASM(V, HeapObject, active_continuation, ActiveContinuation)           \
   IF_WASM(V, HeapObject, active_suspender, ActiveSuspender)                 \
-  IF_WASM(V, WeakArrayList, js_to_wasm_wrappers, JSToWasmWrappers)          \
-  IF_WASM(V, WeakArrayList, wasm_canonical_rtts, WasmCanonicalRtts)         \
+  IF_WASM(V, WeakFixedArray, js_to_wasm_wrappers, JSToWasmWrappers)         \
+  IF_WASM(V, WeakFixedArray, wasm_canonical_rtts, WasmCanonicalRtts)        \
   /* Internal SharedFunctionInfos */                                        \
   V(FunctionTemplateInfo, error_stack_getter_fun_template,                  \
     ErrorStackGetterSharedFun)                                              \
@@ -392,6 +419,7 @@ class RootVisitor;
 #define SMI_ROOT_LIST(V)                                                       \
   V(Smi, last_script_id, LastScriptId)                                         \
   V(Smi, last_debugging_id, LastDebuggingId)                                   \
+  V(Smi, last_stack_trace_id, LastStackTraceId)                                \
   /* To distinguish the function templates, so that we can find them in the */ \
   /* function cache of the native context. */                                  \
   V(Smi, next_template_serial_number, NextTemplateSerialNumber)                \
@@ -399,6 +427,8 @@ class RootVisitor;
     ConstructStubCreateDeoptPCOffset)                                          \
   V(Smi, construct_stub_invoke_deopt_pc_offset,                                \
     ConstructStubInvokeDeoptPCOffset)                                          \
+  V(Smi, deopt_pc_offset_after_adapt_shadow_stack,                             \
+    DeoptPCOffsetAfterAdaptShadowStack)                                        \
   V(Smi, interpreter_entry_return_pc_offset, InterpreterEntryReturnPCOffset)
 
 // Produces (String, name, CamelCase) entries
@@ -436,17 +466,20 @@ class RootVisitor;
 #define ACCESSOR_INFO_ROOT_LIST(V) \
   ACCESSOR_INFO_LIST_GENERATOR(ACCESSOR_INFO_ROOT_LIST_ADAPTER, V)
 
-#define READ_ONLY_ROOT_LIST(V)     \
-  STRONG_READ_ONLY_ROOT_LIST(V)    \
-  INTERNALIZED_STRING_ROOT_LIST(V) \
-  PRIVATE_SYMBOL_ROOT_LIST(V)      \
-  PUBLIC_SYMBOL_ROOT_LIST(V)       \
-  WELL_KNOWN_SYMBOL_ROOT_LIST(V)   \
-  STRUCT_MAPS_LIST(V)              \
-  TORQUE_DEFINED_MAP_ROOT_LIST(V)  \
-  ALLOCATION_SITE_MAPS_LIST(V)     \
-  NAME_FOR_PROTECTOR_ROOT_LIST(V)  \
-  DATA_HANDLER_MAPS_LIST(V)
+#define READ_ONLY_ROOT_LIST(V)      \
+  STRONG_READ_ONLY_ROOT_LIST(V)     \
+  INTERNALIZED_STRING_ROOT_LIST(V)  \
+  PRIVATE_SYMBOL_ROOT_LIST(V)       \
+  PUBLIC_SYMBOL_ROOT_LIST(V)        \
+  WELL_KNOWN_SYMBOL_ROOT_LIST(V)    \
+  STRUCT_MAPS_LIST(V)               \
+  TORQUE_DEFINED_MAP_ROOT_LIST(V)   \
+  ALLOCATION_SITE_MAPS_LIST(V)      \
+  NAME_FOR_PROTECTOR_ROOT_LIST(V)   \
+  DATA_HANDLER_MAPS_LIST(V)         \
+  /* Maps */                        \
+  V(Map, external_map, ExternalMap) \
+  V(Map, message_object_map, JSMessageObjectMap)
 
 #define MUTABLE_ROOT_LIST(V)            \
   STRONG_MUTABLE_IMMOVABLE_ROOT_LIST(V) \
@@ -508,7 +541,10 @@ enum class RootIndex : uint16_t {
       kFirstImmortalImmovableRoot + kImmortalImmovableRootsCount - 1,
 
   kFirstSmiRoot = kLastStrongRoot + 1,
-  kLastSmiRoot = kLastRoot
+  kLastSmiRoot = kLastRoot,
+
+  kFirstBuiltinWithSfiRoot = kProxyRevokeSharedFun,
+  kLastBuiltinWithSfiRoot = kFirstBuiltinWithSfiRoot + BUILTINS_WITH_SFI_ROOTS_LIST(COUNT_ROOT) - 1,
 #undef COUNT_ROOT
 };
 // clang-format on
@@ -520,6 +556,10 @@ static_assert(RootIndex::kFirstNameForProtector <=
   static_assert(RootIndex::k##CamelName <= RootIndex::kLastNameForProtector);
 NAME_FOR_PROTECTOR_ROOT_LIST(FOR_PROTECTOR_CHECK)
 #undef FOR_PROTECTOR_CHECK
+
+#define ROOT_TYPE_FWD_DECL(Type, name, CamelName) class Type;
+ROOT_LIST(ROOT_TYPE_FWD_DECL)
+#undef ROOT_TYPE_FWD_DECL
 
 // Represents a storage of V8 heap roots.
 class RootsTable {
@@ -533,7 +573,18 @@ class RootsTable {
                                    RootIndex* index) const;
 
   template <typename T>
-  bool IsRootHandle(Handle<T> handle, RootIndex* index) const;
+  bool IsRootHandle(IndirectHandle<T> handle, RootIndex* index) const;
+
+  // Returns heap number with identical value if it already exists or the empty
+  // handle otherwise.
+  IndirectHandle<HeapNumber> FindHeapNumber(double value);
+
+#define ROOT_ACCESSOR(Type, name, CamelName) \
+  V8_INLINE IndirectHandle<Type> name();
+  ROOT_LIST(ROOT_ACCESSOR)
+#undef ROOT_ACCESSOR
+
+  V8_INLINE IndirectHandle<Object> handle_at(RootIndex root_index);
 
   Address const& operator[](RootIndex root_index) const {
     size_t index = static_cast<size_t>(root_index);
@@ -574,6 +625,15 @@ class RootsTable {
     static_assert(static_cast<int>(RootIndex::kFirstReadOnlyRoot) == 0);
     return static_cast<unsigned>(root_index) <=
            static_cast<unsigned>(RootIndex::kLastReadOnlyRoot);
+  }
+
+  static constexpr RootIndex SingleCharacterStringIndex(int c) {
+    DCHECK_GE(c, 0);
+    DCHECK_LE(c, static_cast<unsigned>(RootIndex::klatin1_ff_string) -
+                     static_cast<unsigned>(RootIndex::kascii_nul_string));
+    static_assert(static_cast<int>(RootIndex::kFirstReadOnlyRoot) == 0);
+    return static_cast<RootIndex>(
+        static_cast<unsigned>(RootIndex::kascii_nul_string) + c);
   }
 
  private:
@@ -640,16 +700,12 @@ class RootsTable {
   friend class Factory;
   friend class FactoryBase<Factory>;
   friend class FactoryBase<LocalFactory>;
-  friend class PointerCompressedReadOnlyArtifacts;
   friend class ReadOnlyHeap;
   friend class ReadOnlyRoots;
   friend class RootsSerializer;
-  friend class SoleReadOnlyHeap;
 };
 
-#define ROOT_TYPE_FWD_DECL(Type, name, CamelName) class Type;
-READ_ONLY_ROOT_LIST(ROOT_TYPE_FWD_DECL)
-#undef ROOT_TYPE_FWD_DECL
+inline ReadOnlyRoots GetReadOnlyRoots();
 
 class ReadOnlyRoots {
  public:
@@ -664,10 +720,9 @@ class ReadOnlyRoots {
   // map-word instead of a tagged heap pointer.
   MapWord one_pointer_filler_map_word();
 
-#define ROOT_ACCESSOR(Type, name, CamelName)       \
-  V8_INLINE Tagged<Type> name() const;             \
-  V8_INLINE Tagged<Type> unchecked_##name() const; \
-  V8_INLINE Handle<Type> name##_handle() const;
+#define ROOT_ACCESSOR(Type, name, CamelName) \
+  V8_INLINE Tagged<Type> name() const;       \
+  V8_INLINE Tagged<Type> unchecked_##name() const;
 
   READ_ONLY_ROOT_LIST(ROOT_ACCESSOR)
 #undef ROOT_ACCESSOR
@@ -676,20 +731,15 @@ class ReadOnlyRoots {
   V8_INLINE void VerifyNameForProtectorsPages() const;
 #ifdef DEBUG
   void VerifyNameForProtectors();
+  void VerifyTypes();
 #endif
 
   V8_INLINE Tagged<Boolean> boolean_value(bool value) const;
-  V8_INLINE Handle<Boolean> boolean_value_handle(bool value) const;
-
-  // Returns heap number with identical value if it already exists or the empty
-  // handle otherwise.
-  Handle<HeapNumber> FindHeapNumber(double value);
 
   V8_INLINE Address address_at(RootIndex root_index) const;
   V8_INLINE Tagged<Object> object_at(RootIndex root_index) const;
-  V8_INLINE Handle<Object> handle_at(RootIndex root_index) const;
 
-  // Check if a slot is initialized yet. Should only be neccessary for code
+  // Check if a slot is initialized yet. Should only be necessary for code
   // running during snapshot creation.
   V8_INLINE bool is_initialized(RootIndex root_index) const;
 
@@ -705,24 +755,16 @@ class ReadOnlyRoots {
  private:
   V8_INLINE Address first_name_for_protector() const;
   V8_INLINE Address last_name_for_protector() const;
-#ifdef DEBUG
-#define ROOT_TYPE_CHECK(Type, name, CamelName) \
-  V8_EXPORT_PRIVATE bool CheckType_##name() const;
-
-  READ_ONLY_ROOT_LIST(ROOT_TYPE_CHECK)
-#undef ROOT_TYPE_CHECK
-#endif
 
   V8_INLINE explicit ReadOnlyRoots(Address* ro_roots)
       : read_only_roots_(ro_roots) {}
-
-  V8_INLINE Address* GetLocation(RootIndex root_index) const;
 
   Address* read_only_roots_;
 
   friend class ReadOnlyHeap;
   friend class DeserializerAllocator;
   friend class ReadOnlyHeapImageDeserializer;
+  friend ReadOnlyRoots GetReadOnlyRoots();
 };
 
 }  // namespace internal

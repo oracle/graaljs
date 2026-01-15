@@ -73,10 +73,9 @@ expressions:
   `import` or `export` statements or `import.meta`, with no explicit marker of
   how it should be interpreted. Explicit markers are `.mjs` or `.cjs`
   extensions, `package.json` `"type"` fields with either `"module"` or
-  `"commonjs"` values, or `--input-type` or `--experimental-default-type` flags.
-  Dynamic `import()` expressions are supported in either CommonJS or ES modules
-  and would not force a file to be treated as an ES module. See
-  [Syntax detection][].
+  `"commonjs"` values, or the `--input-type` flag. Dynamic `import()`
+  expressions are supported in either CommonJS or ES modules and would not force
+  a file to be treated as an ES module. See [Syntax detection][].
 
 Node.js will treat the following as [CommonJS][] when passed to `node` as the
 initial input, or when referenced by `import` statements or `import()`
@@ -90,30 +89,21 @@ expressions:
 * Strings passed in as an argument to `--eval` or `--print`, or piped to `node`
   via `STDIN`, with the flag `--input-type=commonjs`.
 
-Aside from these explicit cases, there are other cases where Node.js defaults to
-one module system or the other based on the value of the
-[`--experimental-default-type`][] flag:
+* Files with a `.js` extension with no parent `package.json` file or where the
+  nearest parent `package.json` file lacks a `type` field, and where the code
+  can evaluate successfully as CommonJS. In other words, Node.js tries to run
+  such "ambiguous" files as CommonJS first, and will retry evaluating them as ES
+  modules if the evaluation as CommonJS fails because the parser found ES module
+  syntax.
 
-* Files ending in `.js` or with no extension, if there is no `package.json` file
-  present in the same folder or any parent folder.
-
-* Files ending in `.js` or with no extension, if the nearest parent
-  `package.json` field lacks a `"type"` field; unless the folder is inside a
-  `node_modules` folder. (Package scopes under `node_modules` are always treated
-  as CommonJS when the `package.json` file lacks a `"type"` field, regardless
-  of `--experimental-default-type`, for backward compatibility.)
-
-* Strings passed in as an argument to `--eval` or piped to `node` via `STDIN`,
-  when `--input-type` is unspecified.
-
-This flag currently defaults to `"commonjs"`, but it may change in the future to
-default to `"module"`. For this reason it is best to be explicit wherever
-possible; in particular, package authors should always include the [`"type"`][]
-field in their `package.json` files, even in packages where all sources are
-CommonJS. Being explicit about the `type` of the package will future-proof the
-package in case the default type of Node.js ever changes, and it will also make
-things easier for build tools and loaders to determine how the files in the
-package should be interpreted.
+Writing ES module syntax in "ambiguous" files incurs a performance cost, and
+therefore it is encouraged that authors be explicit wherever possible. In
+particular, package authors should always include the [`"type"`][] field in
+their `package.json` files, even in packages where all sources are CommonJS.
+Being explicit about the `type` of the package will future-proof the package in
+case the default type of Node.js ever changes, and it will also make things
+easier for build tools and loaders to determine how the files in the package
+should be interpreted.
 
 ### Syntax detection
 
@@ -124,6 +114,7 @@ added:
 changes:
   - version:
     - v22.7.0
+    - v20.19.0
     pr-url: https://github.com/nodejs/node/pull/53619
     description: Syntax detection is enabled by default.
 -->
@@ -137,10 +128,8 @@ as an ES module.
 Ambiguous input is defined as:
 
 * Files with a `.js` extension or no extension; and either no controlling
-  `package.json` file or one that lacks a `type` field; and
-  `--experimental-default-type` is not specified.
-* String input (`--eval` or STDIN) when neither `--input-type` nor
-  `--experimental-default-type` are specified.
+  `package.json` file or one that lacks a `type` field.
+* String input (`--eval` or `STDIN`) when `--input-type`is not specified.
 
 ES module syntax is defined as syntax that would throw when evaluated as
 CommonJS. This includes the following:
@@ -153,46 +142,56 @@ CommonJS. This includes the following:
 * Lexical redeclarations of the CommonJS wrapper variables (`require`, `module`,
   `exports`, `__dirname`, `__filename`).
 
-### Modules loaders
+### Module resolution and loading
 
-Node.js has two systems for resolving a specifier and loading modules.
+Node.js has two types of module resolution and loading, chosen based on how the module is requested.
 
-There is the CommonJS module loader:
+When a module is requested via `require()` (available by default in CommonJS modules,
+and can be dynamically generated using `createRequire()` in both CommonJS and ES Modules):
 
-* It is fully synchronous.
-* It is responsible for handling `require()` calls.
-* It is monkey patchable.
-* It supports [folders as modules][].
-* When resolving a specifier, if no exact match is found, it will try to add
-  extensions (`.js`, `.json`, and finally `.node`) and then attempt to resolve
-  [folders as modules][].
-* It treats `.json` as JSON text files.
-* `.node` files are interpreted as compiled addon modules loaded with
-  `process.dlopen()`.
-* It treats all files that lack `.json` or `.node` extensions as JavaScript
-  text files.
-* It can only be used to [load ECMAScript modules from CommonJS modules][] if
-  the module graph is synchronous (that contains no top-level `await`).
-  When used to load a JavaScript text file that is not an ECMAScript module,
-  the file will be loaded as a CommonJS module.
+* Resolution:
+  * The resolution initiated by `require()` supports [folders as modules][].
+  * When resolving a specifier, if no exact match is found, `require()` will try to add
+    extensions (`.js`, `.json`, and finally `.node`) and then attempt to resolve
+    [folders as modules][].
+  * It does not support URLs as specifiers by default.
+* Loading:
+  * `.json` files are treated as JSON text files.
+  * `.node` files are interpreted as compiled addon modules loaded with `process.dlopen()`.
+  * `.ts`, `.mts` and `.cts` files are treated as [TypeScript][] text files.
+  * Files with any other extension, or without extensions, are treated as JavaScript
+    text files.
+  * `require()` can only be used to [load ECMAScript modules from CommonJS modules][] if
+    the [ECMAScript module][ES Module] _and its dependencies_ are synchronous
+    (i.e. they do not contain top-level `await`).
 
-There is the ECMAScript module loader:
+When a module is requested via static `import` statements (only available in ES Modules)
+or `import()` expressions (available in both CommonJS and ES Modules):
 
-* It is asynchronous, unless it's being used to load modules for `require()`.
-* It is responsible for handling `import` statements and `import()` expressions.
-* It is not monkey patchable, can be customized using [loader hooks][].
-* It does not support folders as modules, directory indexes (e.g.
-  `'./startup/index.js'`) must be fully specified.
-* It does no extension searching. A file extension must be provided
-  when the specifier is a relative or absolute file URL.
-* It can load JSON modules, but an import type attribute is required.
-* It accepts only `.js`, `.mjs`, and `.cjs` extensions for JavaScript text
-  files.
-* It can be used to load JavaScript CommonJS modules. Such modules
-  are passed through the `cjs-module-lexer` to try to identify named exports,
-  which are available if they can be determined through static analysis.
-  Imported CommonJS modules have their URLs converted to absolute
-  paths and are then loaded via the CommonJS module loader.
+* Resolution:
+  * The resolution of `import`/`import()` does not support folders as modules,
+    directory indexes (e.g. `'./startup/index.js'`) must be fully specified.
+  * It does not perform extension searching. A file extension must be provided
+    when the specifier is a relative or absolute file URL.
+  * It supports `file://` and `data:` URLs as specifiers by default.
+* Loading:
+  * `.json` files are treated as JSON text files. When importing JSON modules,
+    an import type attribute is required (e.g.
+    `import json from './data.json' with { type: 'json' }`).
+  * `.node` files are interpreted as compiled addon modules loaded with
+    `process.dlopen()`, if [`--experimental-addon-modules`][] is enabled.
+  * `.ts`, `.mts` and `.cts` files are treated as [TypeScript][] text files.
+  * It accepts only `.js`, `.mjs`, and `.cjs` extensions for JavaScript text
+    files.
+  * `.wasm` files are treated as [WebAssembly modules][].
+  * Any other file extensions will result in a  [`ERR_UNKNOWN_FILE_EXTENSION`][] error.
+    Additional file extensions can be facilitated via [customization hooks][].
+  * `import`/`import()` can be used to load JavaScript [CommonJS modules][commonjs].
+    Such modules are passed through the `cjs-module-lexer` to try to identify named
+    exports, which are available if they can be determined through static analysis.
+
+Regardless of how a module is requested, the resolution and loading process can be customized
+using [customization hooks][].
 
 ### `package.json` and file extensions
 
@@ -443,6 +442,59 @@ enabling the import map to utilize a [packages folder mapping][] to map multiple
 subpaths where possible instead of a separate map entry per package subpath
 export. This also mirrors the requirement of using [the full specifier path][]
 in relative and absolute import specifiers.
+
+#### Path Rules and Validation for Export Targets
+
+When defining paths as targets in the [`"exports"`][] field, Node.js enforces
+several rules to ensure security, predictability, and proper encapsulation.
+Understanding these rules is crucial for authors publishing packages.
+
+##### Targets must be relative URLs
+
+All target paths in the [`"exports"`][] map (the values associated with export
+keys) must be relative URL strings starting with `./`.
+
+```json
+// package.json
+{
+  "name": "my-package",
+  "exports": {
+    ".": "./dist/main.js",          // Correct
+    "./feature": "./lib/feature.js", // Correct
+    // "./origin-relative": "/dist/main.js", // Incorrect: Must start with ./
+    // "./absolute": "file:///dev/null", // Incorrect: Must start with ./
+    // "./outside": "../common/util.js" // Incorrect: Must start with ./
+  }
+}
+```
+
+Reasons for this behavior include:
+
+* **Security:** Prevents exporting arbitrary files from outside the
+  package's own directory.
+* **Encapsulation:** Ensures all exported paths are resolved relative to
+  the package root, making the package self-contained.
+
+##### No path traversal or invalid segments
+
+Export targets must not resolve to a location outside the package's root
+directory. Additionally, path segments like `.` (single dot), `..` (double dot),
+or `node_modules` (and their URL-encoded equivalents) are generally disallowed
+within the `target` string after the initial `./` and in any `subpath` part
+substituted into a target pattern.
+
+```json
+// package.json
+{
+  "name": "my-package",
+  "exports": {
+    // ".": "./dist/../../elsewhere/file.js", // Invalid: path traversal
+    // ".": "././dist/main.js",             // Invalid: contains "." segment
+    // ".": "./dist/../dist/main.js",       // Invalid: contains ".." segment
+    // "./utils/./helper.js": "./utils/helper.js" // Key has invalid segment
+  }
+}
+```
 
 ### Exports sugar
 
@@ -1050,7 +1102,7 @@ changes:
     description: Implement conditional exports.
 -->
 
-* Type: {Object} | {string} | {string\[]}
+* Type: {Object|string|string\[]}
 
 ```json
 {
@@ -1109,6 +1161,8 @@ This field defines [subpath imports][] for the current package.
 [Node.js documentation for this section]: https://github.com/nodejs/node/blob/HEAD/doc/api/packages.md#conditions-definitions
 [Runtime Keys]: https://runtime-keys.proposal.wintercg.org/
 [Syntax detection]: #syntax-detection
+[TypeScript]: typescript.md
+[WebAssembly modules]: esm.md#wasm-modules
 [WinterCG]: https://wintercg.org/
 [`"exports"`]: #exports
 [`"imports"`]: #imports
@@ -1116,15 +1170,16 @@ This field defines [subpath imports][] for the current package.
 [`"name"`]: #name
 [`"type"`]: #type
 [`--conditions` / `-C` flag]: #resolving-user-conditions
-[`--experimental-default-type`]: cli.md#--experimental-default-typetype
+[`--experimental-addon-modules`]: cli.md#--experimental-addon-modules
 [`--no-addons` flag]: cli.md#--no-addons
 [`ERR_PACKAGE_PATH_NOT_EXPORTED`]: errors.md#err_package_path_not_exported
+[`ERR_UNKNOWN_FILE_EXTENSION`]: errors.md#err_unknown_file_extension
 [`package.json`]: #nodejs-packagejson-field-definitions
+[customization hooks]: module.md#customization-hooks
 [entry points]: #package-entry-points
 [folders as modules]: modules.md#folders-as-modules
 [import maps]: https://github.com/WICG/import-maps
 [load ECMAScript modules from CommonJS modules]: modules.md#loading-ecmascript-modules-using-require
-[loader hooks]: esm.md#loaders
 [packages folder mapping]: https://github.com/WICG/import-maps#packages-via-trailing-slashes
 [self-reference]: #self-referencing-a-package-using-its-name
 [subpath exports]: #subpath-exports

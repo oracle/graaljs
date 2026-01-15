@@ -36,23 +36,41 @@
   },
   'includes': ['toolchain.gypi', 'features.gypi'],
   'target_defaults': {
+    'include_dirs': [
+      '<(V8_ROOT)',
+      '<(V8_ROOT)/include',
+    ],
     'msvs_settings': {
       'VCCLCompilerTool': {
         'AdditionalOptions': ['/utf-8']
       }
     },
     'conditions': [
-      ['OS=="mac"', {
-        # Hide symbols that are not explicitly exported with V8_EXPORT.
-        # TODO(joyeecheung): enable it on other platforms. Currently gcc times out
-        # or run out of memory with -fvisibility=hidden on some machines in the CI.
-        'xcode_settings': {
-          'GCC_SYMBOLS_PRIVATE_EXTERN': 'YES',  # -fvisibility=hidden
-        },
+      # Build with -fvisibility=hidden and -fvisibility-inlines-hidden to avoid
+      # including unnecessary internal symbols, which may lead to run-time fixups.
+      # This is not done on AIX where symbols are exported by tools/create_expfile.sh
+      # see https://github.com/nodejs/node/pull/56290#issuecomment-2582703109
+      ['OS!="aix" and OS!="os400"', {
         'defines': [
           'BUILDING_V8_SHARED',  # Make V8_EXPORT visible.
+        ]
+      }],
+      ['node_shared=="true"', {
+        'defines': [
+          'V8_TLS_USED_IN_LIBRARY',  # Enable V8_TLS_LIBRARY_MODE.
         ],
       }],
+      ['OS=="mac"', {
+        'xcode_settings': {
+          'GCC_SYMBOLS_PRIVATE_EXTERN': 'YES',  # -fvisibility=hidden
+          'GCC_INLINES_ARE_PRIVATE_EXTERN': 'YES'  # -fvisibility-inlines-hidden
+        },
+      }, '(OS!="aix" and OS!="os400") and (OS!="win" or clang==1)', {
+        'cflags': [
+          '-fvisibility=hidden',
+          '-fvisibility-inlines-hidden'
+        ],
+      }],  # MSVC hides the non-public symbols by default so no need to configure it.
     ],
   },
   'targets': [
@@ -261,6 +279,7 @@
         'v8_base_without_compiler',
         'v8_initializers',
         'v8_maybe_icu',
+        'fp16',
         'abseil.gyp:abseil',
       ],
       'sources': [
@@ -277,6 +296,7 @@
       'dependencies': [
         'generate_bytecode_builtins_list',
         'run_torque',
+        'fp16',
         'abseil.gyp:abseil',
       ],
       'cflags!': ['-O3'],
@@ -305,6 +325,7 @@
         'v8_base_without_compiler',
         'v8_shared_internal_headers',
         'v8_pch',
+        'fp16',
         'abseil.gyp:abseil',
       ],
       'include_dirs': [
@@ -363,11 +384,6 @@
         ['v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
           'sources': [
             '<(V8_ROOT)/src/builtins/mips64/builtins-mips64.cc',
-          ],
-        }],
-        ['v8_target_arch=="ppc"', {
-          'sources': [
-            '<(V8_ROOT)/src/builtins/ppc/builtins-ppc.cc',
           ],
         }],
         ['v8_target_arch=="ppc64"', {
@@ -435,6 +451,9 @@
               ],
             },
           ],
+        }],
+        ['OS in "aix os400"', {
+          'dependencies': ['fp16'],
         }],
       ],
     },  # v8_snapshot
@@ -694,11 +713,6 @@
               }],
             ],
           }],
-          ['v8_target_arch=="ppc"', {
-            'sources': [
-              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_i18n_support.*?v8_current_cpu == \\"ppc\\".*?sources \\+= ")',
-            ],
-          }],
           ['v8_target_arch=="ppc64"', {
             'sources': [
               '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_i18n_support.*?v8_current_cpu == \\"ppc64\\".*?sources \\+= ")',
@@ -713,12 +727,12 @@
           }],
           ['v8_target_arch=="s390x"', {
             'sources': [
-              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_i18n_support.*?v8_current_cpu == \\"s390\\".*?sources \\+= ")',
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_i18n_support.*?v8_current_cpu == \\"s390x\\".*?sources \\+= ")',
             ],
             'conditions': [
               ['v8_enable_sparkplug==1', {
                 'sources': [
-                  '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_i18n_support.*?v8_current_cpu == \\"s390\\".*?v8_enable_sparkplug.*?sources \\+= ")',
+                  '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_i18n_support.*?v8_current_cpu == \\"s390x\\".*?v8_enable_sparkplug.*?sources \\+= ")',
                 ],
               }],
             ],
@@ -780,11 +794,6 @@
           ['v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
             'sources': [
               '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_compiler_sources =.*?v8_current_cpu == \\"mips64\\".*?v8_compiler_sources \\+= ")',
-            ],
-          }],
-          ['v8_target_arch=="ppc"', {
-            'sources': [
-              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_compiler_sources =.*?v8_current_cpu == \\"ppc\\".*?v8_compiler_sources \\+= ")',
             ],
           }],
           ['v8_target_arch=="ppc64"', {
@@ -854,11 +863,16 @@
         'v8_base_without_compiler',
         'v8_libbase',
         'v8_shared_internal_headers',
-        'v8_turboshaft',
         'v8_pch',
+        'fp16',
         'abseil.gyp:abseil',
       ],
       'conditions': [
+        ['v8_enable_maglev==0', {
+          'sources': [
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?!v8_enable_maglev.*?sources \\+= ")',
+          ],
+        }],
         ['v8_enable_turbofan==1', {
           'dependencies': ['v8_compiler_sources'],
         }, {
@@ -866,39 +880,6 @@
         }],
       ],
     },  # v8_compiler
-    {
-      'target_name': 'v8_turboshaft',
-      'type': 'static_library',
-      'toolsets': ['host', 'target'],
-      'dependencies': [
-        'generate_bytecode_builtins_list',
-        'run_torque',
-        'v8_internal_headers',
-        'v8_maybe_icu',
-        'v8_base_without_compiler',
-        'v8_libbase',
-        'v8_shared_internal_headers',
-        'v8_pch',
-        'abseil.gyp:abseil',
-      ],
-      'sources': [
-        '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_source_set.\\"v8_turboshaft.*?sources = ")',
-      ],
-      'conditions': [
-        ['v8_enable_maglev==0', {
-          'sources': [
-            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_source_set.\\"v8_turboshaft.*?!v8_enable_maglev.*?sources \\+= ")',
-          ],
-        }],
-      ],
-      'msvs_settings': {
-        'VCCLCompilerTool': {
-          'AdditionalOptions': [
-            '/bigobj'
-          ],
-        },
-      },
-    },  # v8_turboshaft
     {
       'target_name': 'v8_compiler_for_mksnapshot',
       'type': 'none',
@@ -1074,7 +1055,9 @@
         '<(V8_ROOT)/src/graal/graal_big_int.cc',
         '<(V8_ROOT)/src/graal/graal_boolean.cc',
         '<(V8_ROOT)/src/graal/graal_context.cc',
+        '<(V8_ROOT)/src/graal/graal_data.cc',
         '<(V8_ROOT)/src/graal/graal_date.cc',
+        '<(V8_ROOT)/src/graal/graal_dictionary_template.cc',
         '<(V8_ROOT)/src/graal/graal_external.cc',
         '<(V8_ROOT)/src/graal/graal_fixed_array.cc',
         '<(V8_ROOT)/src/graal/graal_function.cc',
@@ -1115,13 +1098,6 @@
       'dependencies': [
         'v8_base_without_compiler',
       ],
-      'conditions': [
-        ['v8_enable_turbofan==1', {
-          'dependencies': [
-            'v8_turboshaft',
-          ],
-        }],
-      ],
     },  # v8_base
     {
       'target_name': 'torque_base',
@@ -1133,6 +1109,7 @@
       'dependencies': [
         'v8_shared_internal_headers',
         'v8_libbase',
+        'abseil.gyp:abseil',
       ],
       'defines!': [
         '_HAS_EXCEPTIONS=0',
@@ -1198,35 +1175,10 @@
       'toolsets': ['host', 'target'],
       'dependencies': [
         'v8_libbase',
+        'abseil.gyp:abseil',
       ],
       'sources': [
-        '<(V8_ROOT)/base/trace_event/common/trace_event_common.h',
-        '<(V8_ROOT)/include/libplatform/libplatform-export.h',
-        '<(V8_ROOT)/include/libplatform/libplatform.h',
-        '<(V8_ROOT)/include/libplatform/v8-tracing.h',
-        '<(V8_ROOT)/src/libplatform/default-foreground-task-runner.cc',
-        '<(V8_ROOT)/src/libplatform/default-foreground-task-runner.h',
-        '<(V8_ROOT)/src/libplatform/default-job.cc',
-        '<(V8_ROOT)/src/libplatform/default-job.h',
-        '<(V8_ROOT)/src/libplatform/default-platform.cc',
-        '<(V8_ROOT)/src/libplatform/default-platform.h',
-        '<(V8_ROOT)/src/libplatform/default-thread-isolated-allocator.cc',
-        '<(V8_ROOT)/src/libplatform/default-thread-isolated-allocator.h',
-        '<(V8_ROOT)/src/libplatform/default-worker-threads-task-runner.cc',
-        '<(V8_ROOT)/src/libplatform/default-worker-threads-task-runner.h',
-        '<(V8_ROOT)/src/libplatform/delayed-task-queue.cc',
-        '<(V8_ROOT)/src/libplatform/delayed-task-queue.h',
-        '<(V8_ROOT)/src/libplatform/task-queue.cc',
-        '<(V8_ROOT)/src/libplatform/task-queue.h',
-        '<(V8_ROOT)/src/libplatform/tracing/trace-buffer.cc',
-        '<(V8_ROOT)/src/libplatform/tracing/trace-buffer.h',
-        '<(V8_ROOT)/src/libplatform/tracing/trace-config.cc',
-        '<(V8_ROOT)/src/libplatform/tracing/trace-object.cc',
-        '<(V8_ROOT)/src/libplatform/tracing/trace-writer.cc',
-        '<(V8_ROOT)/src/libplatform/tracing/trace-writer.h',
-        '<(V8_ROOT)/src/libplatform/tracing/tracing-controller.cc',
-        '<(V8_ROOT)/src/libplatform/worker-thread.cc',
-        '<(V8_ROOT)/src/libplatform/worker-thread.h',
+        '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_libplatform.*?sources = ")',
       ],
       'conditions': [
         ['component=="shared_library"', {
@@ -1237,15 +1189,10 @@
         }],
         ['v8_use_perfetto==1', {
           'sources!': [
-            '<(V8_ROOT)/base/trace_event/common/trace_event_common.h',
-            '<(V8_ROOT)/src/libplatform/tracing/trace-buffer.cc',
-            '<(V8_ROOT)/src/libplatform/tracing/trace-buffer.h',
-            '<(V8_ROOT)/src/libplatform/tracing/trace-object.cc',
-            '<(V8_ROOT)/src/libplatform/tracing/trace-writer.cc',
-            '<(V8_ROOT)/src/libplatform/tracing/trace-writer.h',
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_libplatform.*?v8_use_perfetto.*?sources -= ")',
           ],
           'sources': [
-            '<(V8_ROOT)/src/libplatform/tracing/trace-event-listener.h',
+            '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_libplatform.*?v8_use_perfetto.*?sources += ")',
           ],
           'dependencies': [
             '<(V8_ROOT)/third_party/perfetto:libperfetto',
@@ -1297,7 +1244,8 @@
         'BUILDING_V8_SHARED=1',
       ],
       'dependencies': [
-        "v8_libbase",
+        'v8_libbase',
+        'abseil.gyp:abseil',
         # "build/win:default_exe_manifest",
       ],
       'sources': [
@@ -1319,14 +1267,32 @@
         'v8_libbase',
         'v8_libplatform',
         'v8_maybe_icu',
-        'v8_turboshaft',
         'v8_pch',
+        'fp16',
         'abseil.gyp:abseil',
         # "build/win:default_exe_manifest",
       ],
       'sources': [
         '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"mksnapshot.*?sources = ")',
       ],
+      'configurations': {
+        # We have to repeat the settings for each configuration because toochain.gypi
+        # defines the default EnableCOMDATFolding value in the configurations dicts.
+        'Debug': {
+          'msvs_settings': {
+            'VCLinkerTool': {
+              'EnableCOMDATFolding': '1', # /OPT:NOICF
+            },
+          },
+        },
+        'Release': {
+          'msvs_settings': {
+            'VCLinkerTool': {
+              'EnableCOMDATFolding': '1', # /OPT:NOICF
+            },
+          },
+        },
+      },
       'conditions': [
         ['want_separate_host_toolset', {
           'toolsets': ['host'],
@@ -1342,6 +1308,7 @@
       'type': 'executable',
       'dependencies': [
         'torque_base',
+        'abseil.gyp:abseil',
         # "build/win:default_exe_manifest",
       ],
       'conditions': [
@@ -1417,6 +1384,7 @@
         'v8_libbase',
         # "build/win:default_exe_manifest",
         'v8_maybe_icu',
+        'abseil.gyp:abseil',
       ],
       'conditions': [
         ['want_separate_host_toolset', {
@@ -1587,25 +1555,6 @@
               }],
             ]
           }],
-          ['OS=="win" and clang==0', {
-            'conditions': [
-              ['_toolset == "host" and host_arch == "x64" or _toolset == "target" and target_arch=="x64"', {
-                'sources': [
-                  '<(V8_ROOT)/src/heap/base/asm/x64/push_registers_masm.asm',
-                ],
-              }],
-              ['_toolset == "host" and host_arch == "ia32" or _toolset == "target" and target_arch=="ia32"', {
-                'sources': [
-                  '<(V8_ROOT)/src/heap/base/asm/ia32/push_registers_masm.asm',
-                ],
-              }],
-              ['_toolset == "host" and host_arch == "arm64" or _toolset == "target" and target_arch=="arm64"', {
-                'sources': [
-                  '<(V8_ROOT)/src/heap/base/asm/arm64/push_registers_masm.S',
-                ],
-              }],
-            ],
-          }],
         ],
       },
     },  # v8_heap_base
@@ -1684,6 +1633,8 @@
           '<(V8_ROOT)/src/objects/abstract-code-inl.h',
           '<(V8_ROOT)/src/objects/instruction-stream.h',
           '<(V8_ROOT)/src/objects/instruction-stream-inl.h',
+          '<(V8_ROOT)/src/objects/casting.h',
+          '<(V8_ROOT)/src/objects/casting-inl.h',
           '<(V8_ROOT)/src/objects/code.h',
           '<(V8_ROOT)/src/objects/code-inl.h',
           '<(V8_ROOT)/src/objects/data-handler.h',
@@ -1851,5 +1802,69 @@
         ],
       },
     },  # fp16
+    {
+      'target_name': 'highway',
+      'type': 'static_library',
+      'toolsets': ['host', 'target'],
+      'variables': {
+        'HIGHWAY_ROOT': '../../deps/v8/third_party/highway',
+      },
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(HIGHWAY_ROOT)/src',
+        ],
+        'conditions': [
+          ['v8_target_arch=="ia32"', {
+            'defines': ['HWY_BROKEN_TARGETS=(HWY_AVX2|HWY_AVX3)',],
+          }],
+          ['v8_target_arch=="arm64"', {
+            'defines': ['HWY_BROKEN_TARGETS=HWY_ALL_SVE',],
+          }],
+          ['v8_target_arch=="ppc64" or v8_target_arch=="s390x"', {
+            'defines': ['TOOLCHAIN_MISS_ASM_HWCAP_H',],
+          }],
+          ['v8_target_arch=="s390x"', {
+            'defines': ['HWY_BROKEN_EMU128=0',],
+          }],
+          ['OS in "aix os400"', {
+            'defines': ['HWY_BROKEN_EMU128=0',],
+          }],
+          ['v8_target_arch=="arm" and arm_version==7', {
+            'defines': ['HWY_BROKEN_EMU128=0',],
+          }],
+        ],
+      },
+      'include_dirs': [
+        '<(HIGHWAY_ROOT)/src',
+      ],
+      'conditions': [
+        ['v8_target_arch=="ia32"', {
+          'defines': ['HWY_BROKEN_TARGETS=(HWY_AVX2|HWY_AVX3)',],
+        }],
+        ['v8_target_arch=="arm64"', {
+          'defines': ['HWY_BROKEN_TARGETS=HWY_ALL_SVE',],
+        }],
+        ['v8_target_arch=="ppc64" or v8_target_arch=="s390x"', {
+          'defines': ['TOOLCHAIN_MISS_ASM_HWCAP_H',],
+        }],
+      ],
+      'sources': [
+        '<!@pymod_do_main(GN-scraper "<(HIGHWAY_ROOT)/BUILD.gn"  "source_set.\\"libhwy.*?sources = ")',
+      ],
+    },  # highway
+    {
+      'target_name': 'simdutf',
+      'type': 'static_library',
+      'toolsets': ['host', 'target'],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(V8_ROOT)/third_party/simdutf',
+        ],
+      },
+      'include_dirs': ['.'],
+      'sources': [
+        '<(V8_ROOT)/third_party/simdutf/simdutf.cpp',
+      ],
+    },  # simdutf
   ],
 }

@@ -96,8 +96,6 @@
       'src/js_stream.cc',
       'src/json_utils.cc',
       'src/js_udp_wrap.cc',
-      'src/json_parser.h',
-      'src/json_parser.cc',
       'src/module_wrap.cc',
       'src/node.cc',
       'src/node_api.cc',
@@ -120,6 +118,7 @@
       'src/node_http_parser.cc',
       'src/node_http2.cc',
       'src/node_i18n.cc',
+      'src/node_locks.cc',
       'src/node_main_instance.cc',
       'src/node_messaging.cc',
       'src/node_metadata.cc',
@@ -148,6 +147,7 @@
       'src/node_trace_events.cc',
       'src/node_types.cc',
       'src/node_url.cc',
+      'src/node_url_pattern.cc',
       'src/node_util.cc',
       'src/node_v8.cc',
       'src/node_wasi.cc',
@@ -162,6 +162,7 @@
       'src/permission/permission.cc',
       'src/permission/wasi_permission.cc',
       'src/permission/worker_permission.cc',
+      'src/permission/addon_permission.cc',
       'src/pipe_wrap.cc',
       'src/process_wrap.cc',
       'src/signal_wrap.cc',
@@ -203,6 +204,8 @@
       'src/compile_cache.h',
       'src/connect_wrap.h',
       'src/connection_wrap.h',
+      'src/cppgc_helpers.h',
+      'src/cppgc_helpers.cc',
       'src/dataqueue/queue.h',
       'src/debug_utils.h',
       'src/debug_utils-inl.h',
@@ -246,6 +249,7 @@
       'src/node_http2_state.h',
       'src/node_i18n.h',
       'src/node_internals.h',
+      'src/node_locks.h',
       'src/node_main_instance.h',
       'src/node_mem.h',
       'src/node_mem-inl.h',
@@ -275,6 +279,7 @@
       'src/node_stat_watcher.h',
       'src/node_union_bytes.h',
       'src/node_url.h',
+      'src/node_url_pattern.h',
       'src/node_version.h',
       'src/node_v8.h',
       'src/node_v8_platform-inl.h',
@@ -288,6 +293,7 @@
       'src/permission/permission.h',
       'src/permission/wasi_permission.h',
       'src/permission/worker_permission.h',
+      'src/permission/addon_permission.h',
       'src/pipe_wrap.h',
       'src/req_wrap.h',
       'src/req_wrap-inl.h',
@@ -316,7 +322,9 @@
     ],
     'node_crypto_sources': [
       'src/crypto/crypto_aes.cc',
+      'src/crypto/crypto_argon2.cc',
       'src/crypto/crypto_bio.cc',
+      'src/crypto/crypto_chacha20_poly1305.cc',
       'src/crypto/crypto_common.cc',
       'src/crypto/crypto_dsa.cc',
       'src/crypto/crypto_hkdf.cc',
@@ -326,7 +334,10 @@
       'src/crypto/crypto_cipher.cc',
       'src/crypto/crypto_context.cc',
       'src/crypto/crypto_ec.cc',
+      'src/crypto/crypto_ml_dsa.cc',
+      'src/crypto/crypto_kem.cc',
       'src/crypto/crypto_hmac.cc',
+      'src/crypto/crypto_kmac.cc',
       'src/crypto/crypto_random.cc',
       'src/crypto/crypto_rsa.cc',
       'src/crypto/crypto_spkac.cc',
@@ -339,10 +350,12 @@
       'src/crypto/crypto_scrypt.cc',
       'src/crypto/crypto_tls.cc',
       'src/crypto/crypto_x509.cc',
+      'src/crypto/crypto_argon2.h',
       'src/crypto/crypto_bio.h',
       'src/crypto/crypto_clienthello-inl.h',
       'src/crypto/crypto_dh.h',
       'src/crypto/crypto_hmac.h',
+      'src/crypto/crypto_kmac.h',
       'src/crypto/crypto_rsa.h',
       'src/crypto/crypto_spkac.h',
       'src/crypto/crypto_util.h',
@@ -357,6 +370,7 @@
       'src/crypto/crypto_clienthello.h',
       'src/crypto/crypto_context.h',
       'src/crypto/crypto_ec.h',
+      'src/crypto/crypto_ml_dsa.h',
       'src/crypto/crypto_hkdf.h',
       'src/crypto/crypto_pbkdf2.h',
       'src/crypto/crypto_sig.h',
@@ -408,6 +422,7 @@
       'test/cctest/test_quic_tokens.cc',
     ],
     'node_cctest_inspector_sources': [
+      'test/cctest/inspector/test_network_requests_buffer.cc',
       'test/cctest/inspector/test_node_protocol.cc',
       'test/cctest/test_inspector_socket.cc',
       'test/cctest/test_inspector_socket_server.cc',
@@ -469,19 +484,23 @@
       ],
     },
 
-    # Relevant only for x86.
-    # Refs: https://github.com/nodejs/node/pull/25852
-    # Refs: https://docs.microsoft.com/en-us/cpp/build/reference/safeseh-image-has-safe-exception-handlers
-    'msvs_settings': {
-      'VCLinkerTool': {
-        'ImageHasSafeExceptionHandlers': 'false',
-      },
-    },
-
     'conditions': [
       ['clang==0 and OS!="win"', {
         'cflags': [ '-Wno-restrict', ],
       }],
+      # TODO(joyeecheung): investigate if it breaks addons.
+      # ['OS=="mac"', {
+      #   'xcode_settings': {
+      #     'GCC_SYMBOLS_PRIVATE_EXTERN': 'YES',  # -fvisibility=hidden
+      #     'GCC_INLINES_ARE_PRIVATE_EXTERN': 'YES'  # -fvisibility-inlines-hidden
+      #   },
+      # }],
+      # ['OS!="win" or clang==1', {
+      #   'cflags': [
+      #     '-fvisibility=hidden',
+      #     '-fvisibility-inlines-hidden'
+      #   ],
+      # }],
       # Pointer authentication for ARM64.
       ['target_arch=="arm64"', {
           'target_conditions': [
@@ -876,7 +895,6 @@
         '<@(deps_files)',
         # node.gyp is added by default, common.gypi is added for change detection
         'common.gypi',
-        'common_node.gypi',
       ],
 
       'variables': {
@@ -888,6 +906,9 @@
         'NODE_ARCH="<(target_arch)"',
         'NODE_PLATFORM="<(OS)"',
         'NODE_WANT_INTERNALS=1',
+        # Define NAPI_EXPERIMENTAL to enable Node-API experimental function symbols being exposed.
+        'NAPI_EXPERIMENTAL=1',
+        'NODE_API_EXPERIMENTAL_NO_WARNING=1',
         # Warn when using deprecated V8 APIs.
         'V8_DEPRECATION_WARNINGS=1',
         'NODE_OPENSSL_SYSTEM_CERT_PATH="<(openssl_system_ca_path)"',
@@ -965,10 +986,14 @@
         [ 'node_use_openssl=="true"', {
           'sources': [
             '<@(node_crypto_sources)',
-            '<@(node_quic_sources)',
           ],
           'dependencies': [
             'deps/ncrypto/ncrypto.gyp:ncrypto',
+          ],
+        }],
+        [ 'node_quic=="true"', {
+          'sources': [
+            '<@(node_quic_sources)',
           ],
         }],
         [ 'node_use_sqlite=="true"', {
@@ -988,11 +1013,11 @@
           'variables': {
             'mkssldef_flags': [
               # Categories to export.
-              '-CAES,BF,BIO,DES,DH,DSA,EC,ECDH,ECDSA,ENGINE,EVP,HMAC,MD4,MD5,'
-              'PSK,RC2,RC4,RSA,SHA,SHA0,SHA1,SHA256,SHA512,SOCK,STDIO,TLSEXT,'
-              'UI,FP_API,TLS1_METHOD,TLS1_1_METHOD,TLS1_2_METHOD,SCRYPT,OCSP,'
-              'NEXTPROTONEG,RMD160,CAST,DEPRECATEDIN_1_1_0,DEPRECATEDIN_1_2_0,'
-              'DEPRECATEDIN_3_0',
+              '-CAES,ARGON2,BF,BIO,DES,DH,DSA,EC,ECDH,ECDSA,ENGINE,EVP,HMAC,'
+              'MD4,MD5,PSK,RC2,RC4,RSA,SHA,SHA0,SHA1,SHA256,SHA512,SOCK,STDIO,'
+              'TLSEXT,UI,FP_API,TLS1_METHOD,TLS1_1_METHOD,TLS1_2_METHOD,'
+              'SCRYPT,OCSP,NEXTPROTONEG,RMD160,CAST,DEPRECATEDIN_1_1_0,'
+              'DEPRECATEDIN_1_2_0,DEPRECATEDIN_3_0',
               # Defines.
               '-DWIN32',
               # Symbols to filter from the export list.
@@ -1105,7 +1130,6 @@
       'dependencies': [
         '<(node_lib_target_name)',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/uvwasi/uvwasi.gyp:uvwasi',
       ],
       'includes': [
         'node.gypi'
@@ -1116,7 +1140,6 @@
         'deps/v8/include',
         'deps/cares/include',
         'deps/uv/include',
-        'deps/uvwasi/include',
         'test/cctest',
       ],
       'defines': [
@@ -1129,6 +1152,10 @@
         'test/fuzzers/fuzz_ClientHelloParser.cc',
       ],
       'conditions': [
+        [ 'node_shared_uvwasi=="false"', {
+          'dependencies': [ 'deps/uvwasi/uvwasi.gyp:uvwasi' ],
+          'include_dirs': [ 'deps/uvwasi/include' ],
+        }],
         ['OS=="linux" or OS=="openharmony"', {
           'ldflags': [ '-fsanitize=fuzzer' ]
         }],
@@ -1149,7 +1176,6 @@
         '<(node_lib_target_name)',
         'deps/googletest/googletest.gyp:gtest_prod',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/uvwasi/uvwasi.gyp:uvwasi',
         'deps/nbytes/nbytes.gyp:nbytes',
       ],
       'includes': [
@@ -1161,7 +1187,6 @@
         'deps/v8/include',
         'deps/cares/include',
         'deps/uv/include',
-        'deps/uvwasi/include',
         'test/cctest',
       ],
       'defines': [
@@ -1174,6 +1199,10 @@
         'test/fuzzers/fuzz_strings.cc',
       ],
       'conditions': [
+        [ 'node_shared_uvwasi=="false"', {
+          'dependencies': [ 'deps/uvwasi/uvwasi.gyp:uvwasi' ],
+          'include_dirs': [ 'deps/uvwasi/include' ],
+        }],
         ['OS=="linux" or OS=="openharmony"', {
           'ldflags': [ '-fsanitize=fuzzer' ]
         }],
@@ -1354,6 +1383,13 @@
       ]
     }, # overlapped-checker
     {
+      'target_name': 'nop',
+      'type': 'executable',
+      'sources': [
+        'test/nop/nop.c',
+      ]
+    }, # nop
+    {
       'target_name': 'node_js2c',
       'type': 'executable',
       'toolsets': ['host'],
@@ -1369,7 +1405,7 @@
       ],
       'conditions': [
         [ 'node_shared_simdutf=="false"', {
-          'dependencies': [ 'deps/simdutf/simdutf.gyp:simdutf#host' ],
+          'dependencies': [ 'tools/v8_gypfiles/v8.gyp:simdutf#host' ],
         }],
         [ 'node_shared_libuv=="false"', {
           'dependencies': [ 'deps/uv/uv.gyp:libuv#host' ],
@@ -1417,6 +1453,12 @@
         'src/node_snapshot_stub.cc',
         'tools/snapshot/node_mksnapshot.cc',
       ],
+
+      'msvs_settings': {
+        'VCLinkerTool': {
+          'EnableCOMDATFolding': '1', # /OPT:NOICF
+        },
+      },
 
       'conditions': [
         ['node_write_snapshot_as_array_literals=="true"', {
@@ -1476,7 +1518,6 @@
             '<@(library_files)',
             '<@(deps_files)',
             'common.gypi',
-            'common_node.gypi',
           ],
           'direct_dependent_settings': {
             'ldflags': [ '-Wl,-brtl' ],

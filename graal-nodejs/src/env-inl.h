@@ -44,47 +44,12 @@
 
 namespace node {
 
-NoArrayBufferZeroFillScope::NoArrayBufferZeroFillScope(
-    IsolateData* isolate_data)
-    : node_allocator_(isolate_data->node_allocator()) {
-  if (node_allocator_ != nullptr) node_allocator_->zero_fill_field()[0] = 0;
-}
-
-NoArrayBufferZeroFillScope::~NoArrayBufferZeroFillScope() {
-  if (node_allocator_ != nullptr) node_allocator_->zero_fill_field()[0] = 1;
-}
-
 inline v8::Isolate* IsolateData::isolate() const {
   return isolate_;
 }
 
 inline uv_loop_t* IsolateData::event_loop() const {
   return event_loop_;
-}
-
-inline void IsolateData::SetCppgcReference(v8::Isolate* isolate,
-                                           v8::Local<v8::Object> object,
-                                           void* wrappable) {
-  v8::CppHeap* heap = isolate->GetCppHeap();
-  CHECK_NOT_NULL(heap);
-  v8::WrapperDescriptor descriptor = heap->wrapper_descriptor();
-  uint16_t required_size = std::max(descriptor.wrappable_instance_index,
-                                    descriptor.wrappable_type_index);
-  CHECK_GT(object->InternalFieldCount(), required_size);
-
-  uint16_t* id_ptr = nullptr;
-  {
-    Mutex::ScopedLock lock(isolate_data_mutex_);
-    auto it =
-        wrapper_data_map_.find(descriptor.embedder_id_for_garbage_collected);
-    CHECK_NE(it, wrapper_data_map_.end());
-    id_ptr = &(it->second->cppgc_id);
-  }
-
-  object->SetAlignedPointerInInternalField(descriptor.wrappable_type_index,
-                                           id_ptr);
-  object->SetAlignedPointerInInternalField(descriptor.wrappable_instance_index,
-                                           wrappable);
 }
 
 inline uint16_t* IsolateData::embedder_id_for_cppgc() const {
@@ -141,8 +106,10 @@ v8::Local<v8::Array> AsyncHooks::js_execution_async_resources() {
 }
 
 v8::Local<v8::Object> AsyncHooks::native_execution_async_resource(size_t i) {
-  if (i >= native_execution_async_resources_.size()) return {};
-  return native_execution_async_resources_[i];
+  if (i >= native_execution_async_resources_.size() ||
+      native_execution_async_resources_[i] == nullptr)
+    return {};
+  return *native_execution_async_resources_[i];
 }
 
 inline v8::Local<v8::String> AsyncHooks::provider_string(int idx) {
@@ -238,6 +205,15 @@ inline Environment* Environment::GetCurrent(
 
 inline v8::Isolate* Environment::isolate() const {
   return isolate_;
+}
+
+inline cppgc::AllocationHandle& Environment::cppgc_allocation_handle() const {
+  return isolate_->GetCppHeap()->GetAllocationHandle();
+}
+
+inline v8::ExternalMemoryAccounter* Environment::external_memory_accounter()
+    const {
+  return external_memory_accounter_;
 }
 
 inline Environment* Environment::from_timer_handle(uv_timer_t* handle) {
@@ -729,6 +705,10 @@ inline uint64_t Environment::thread_id() const {
   return thread_id_;
 }
 
+inline std::string_view Environment::thread_name() const {
+  return thread_name_;
+}
+
 inline worker::Worker* Environment::worker_context() const {
   return isolate_data()->worker_context();
 }
@@ -867,6 +847,7 @@ void Environment::set_process_exit_handler(
     return PropertyName##_.Get(isolate_);                                      \
   }                                                                            \
   inline void IsolateData::set_##PropertyName(v8::Local<TypeName> value) {     \
+    CHECK(PropertyName##_.IsEmpty());                                          \
     PropertyName##_.Set(isolate_, value);                                      \
   }
   PER_ISOLATE_TEMPLATE_PROPERTIES(V)
@@ -946,26 +927,6 @@ inline void Environment::RemoveHeapSnapshotNearHeapLimitCallback(
                                         heap_limit);
 }
 
-inline void Environment::SetAsyncResourceContextFrame(
-    std::uintptr_t async_resource_handle,
-    v8::Global<v8::Value>&& context_frame) {
-  async_resource_context_frames_.emplace(
-      std::make_pair(async_resource_handle, std::move(context_frame)));
-}
-
-inline const v8::Global<v8::Value>& Environment::GetAsyncResourceContextFrame(
-    std::uintptr_t async_resource_handle) {
-  auto&& async_resource_context_frame =
-      async_resource_context_frames_.find(async_resource_handle);
-  CHECK_NE(async_resource_context_frame, async_resource_context_frames_.end());
-
-  return async_resource_context_frame->second;
-}
-
-inline void Environment::RemoveAsyncResourceContextFrame(
-    std::uintptr_t async_resource_handle) {
-  async_resource_context_frames_.erase(async_resource_handle);
-}
 }  // namespace node
 
 // These two files depend on each other. Including base_object-inl.h after this

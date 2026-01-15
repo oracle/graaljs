@@ -104,27 +104,25 @@ Node.js does not support a platform version if a vendor has expired support
 for it. In other words, Node.js does not support running on End-of-Life (EoL)
 platforms. This is true regardless of entries in the table below.
 
-| Operating System | Architectures    | Versions                          | Support Type                                    | Notes                                |
-| ---------------- | ---------------- | --------------------------------- | ----------------------------------------------- | ------------------------------------ |
-| GNU/Linux        | x64              | kernel >= 4.18[^1], glibc >= 2.28 | Tier 1                                          | e.g. Ubuntu 20.04, Debian 10, RHEL 8 |
-| GNU/Linux        | x64              | kernel >= 3.10, musl >= 1.1.19    | Experimental                                    | e.g. Alpine 3.8                      |
-| GNU/Linux        | x86              | kernel >= 3.10, glibc >= 2.17     | Experimental                                    | Downgraded as of Node.js 10          |
-| GNU/Linux        | arm64            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 1                                          | e.g. Ubuntu 20.04, Debian 10, RHEL 8 |
-| GNU/Linux        | armv7            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 1                                          | e.g. Ubuntu 20.04, Debian 11         |
-| GNU/Linux        | armv6            | kernel >= 4.14, glibc >= 2.24     | Experimental                                    | Downgraded as of Node.js 12          |
-| GNU/Linux        | ppc64le >=power8 | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2                                          | e.g. Ubuntu 20.04, RHEL 8            |
-| GNU/Linux        | s390x            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2                                          | e.g. RHEL 8                          |
-| GNU/Linux        | loong64          | kernel >= 5.19, glibc >= 2.36     | Experimental                                    |                                      |
-| Windows          | x64, x86 (WoW64) | >= Windows 10/Server 2016         | Tier 1                                          | [^2],[^3]                            |
-| Windows          | x86 (native)     | >= Windows 10/Server 2016         | Tier 1 (running) / Experimental (compiling)[^4] |                                      |
-| Windows          | x64, x86         | Windows 8.1/Server 2012           | Experimental                                    |                                      |
-| Windows          | arm64            | >= Windows 10                     | Tier 2                                          |                                      |
-| macOS            | x64              | >= 11.0                           | Tier 1                                          | For notes about compilation see [^5] |
-| macOS            | arm64            | >= 11.0                           | Tier 1                                          |                                      |
-| SmartOS          | x64              | >= 18                             | Tier 2                                          |                                      |
-| AIX              | ppc64be >=power8 | >= 7.2 TL04                       | Tier 2                                          |                                      |
-| FreeBSD          | x64              | >= 13.2                           | Experimental                                    |                                      |
-| OpenHarmony      | arm64            | >= 5.0                            | Experimental                                    |                                      |
+| Operating System | Architectures    | Versions                          | Support Type | Notes                                |
+| ---------------- | ---------------- | --------------------------------- | ------------ | ------------------------------------ |
+| GNU/Linux        | x64              | kernel >= 4.18[^1], glibc >= 2.28 | Tier 1       | e.g. Ubuntu 20.04, Debian 10, RHEL 8 |
+| GNU/Linux        | x64              | kernel >= 3.10, musl >= 1.1.19    | Experimental | e.g. Alpine 3.8                      |
+| GNU/Linux        | x86              | kernel >= 3.10, glibc >= 2.17     | Experimental | Downgraded as of Node.js 10          |
+| GNU/Linux        | arm64            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 1       | e.g. Ubuntu 20.04, Debian 10, RHEL 8 |
+| GNU/Linux        | armv7            | kernel >= 4.18[^1], glibc >= 2.28 | Experimental | Downgraded as of Node.js 24          |
+| GNU/Linux        | armv6            | kernel >= 4.14, glibc >= 2.24     | Experimental | Downgraded as of Node.js 12          |
+| GNU/Linux        | ppc64le >=power8 | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2       | e.g. Ubuntu 20.04, RHEL 8            |
+| GNU/Linux        | s390x            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2       | e.g. RHEL 8                          |
+| GNU/Linux        | loong64          | kernel >= 5.19, glibc >= 2.36     | Experimental |                                      |
+| Windows          | x64              | >= Windows 10/Server 2016         | Tier 1       | [^2],[^3]                            |
+| Windows          | arm64            | >= Windows 10                     | Tier 2       |                                      |
+| macOS            | x64              | >= 13.5                           | Tier 1       | For notes about compilation see [^4] |
+| macOS            | arm64            | >= 13.5                           | Tier 1       |                                      |
+| SmartOS          | x64              | >= 18                             | Tier 2       |                                      |
+| AIX              | ppc64be >=power8 | >= 7.2 TL04                       | Tier 2       |                                      |
+| FreeBSD          | x64              | >= 13.2                           | Experimental |                                      |
+| OpenHarmony      | arm64            | >= 5.0                            | Experimental |                                      |
 
 <!--lint disable final-definition-->
 
@@ -146,12 +144,7 @@ platforms. This is true regardless of entries in the table below.
     Windows binary (`node.exe`) in WSL will not work without workarounds such as
     stdio redirection.
 
-[^4]: Running Node.js on x86 Windows should work and binaries
-    are provided. However, tests in our infrastructure only run on WoW64.
-    Furthermore, compiling on x86 Windows is Experimental and
-    may not be possible.
-
-[^5]: Our macOS x64 Binaries are compiled with 11.0 as a target. Xcode 13 is
+[^4]: Our macOS Binaries are compiled with 13.5 as a target. Xcode 16 is
     required to compile.
 
 <!--lint enable final-definition-->
@@ -162,37 +155,35 @@ Depending on the host platform, the selection of toolchains may vary.
 
 | Operating System | Compiler Versions                                              |
 | ---------------- | -------------------------------------------------------------- |
-| Linux            | GCC >= 10.1                                                    |
+| Linux            | GCC >= 12.2                                                    |
 | Windows          | Visual Studio >= 2022 with the Windows 10 SDK on a 64-bit host |
-| macOS            | Xcode >= 13 (Apple LLVM >= 12)                                 |
+| macOS            | Xcode >= 16.1 (Apple LLVM >= 17)                               |
 
 ### Official binary platforms and toolchains
 
 Binaries at <https://nodejs.org/download/release/> are produced on:
 
-| Binary package          | Platform and Toolchain                                                                                      |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
-| aix-ppc64               | AIX 7.2 TL04 on PPC64BE with GCC 10                                                                         |
-| darwin-x64              | macOS 13, Xcode 16 with -mmacosx-version-min=11.0                                                           |
-| darwin-arm64 (and .pkg) | macOS 13 (arm64), Xcode 16 with -mmacosx-version-min=11.0                                                   |
-| linux-arm64             | RHEL 8 with GCC 10[^6]                                                                                      |
-| linux-armv7l            | Cross-compiled on RHEL 8 x64 with [custom GCC toolchain](https://github.com/rvagg/rpi-newer-crosstools)[^7] |
-| linux-ppc64le           | RHEL 8 with gcc-toolset-10[^6]                                                                              |
-| linux-s390x             | RHEL 8 with gcc-toolset-10[^6]                                                                              |
-| linux-x64               | RHEL 8 with gcc-toolset-10[^6]                                                                              |
-| win-x64 and win-x86     | Windows Server 2022 (x64) with Visual Studio 2022                                                           |
+| Binary package          | Platform and Toolchain                                    |
+| ----------------------- | --------------------------------------------------------- |
+| aix-ppc64               | AIX 7.2 TL04 on PPC64BE with GCC 12[^5]                   |
+| darwin-x64              | macOS 13, Xcode 16 with -mmacosx-version-min=13.5         |
+| darwin-arm64 (and .pkg) | macOS 13 (arm64), Xcode 16 with -mmacosx-version-min=13.5 |
+| linux-arm64             | RHEL 8 with gcc-toolset-12[^6]                            |
+| linux-ppc64le           | RHEL 8 with gcc-toolset-12[^6]                            |
+| linux-s390x             | RHEL 8 with gcc-toolset-12[^6]                            |
+| linux-x64               | RHEL 8 with gcc-toolset-12[^6]                            |
+| win-arm64               | Windows Server 2022 (x64) with Visual Studio 2022         |
+| win-x64                 | Windows Server 2022 (x64) with Visual Studio 2022         |
 
 <!--lint disable final-definition-->
+
+[^5]: Binaries produced on these systems require libstdc++12, available
+    from the [AIX toolbox][].
 
 [^6]: Binaries produced on these systems are compatible with glibc >= 2.28
     and libstdc++ >= 6.0.25 (`GLIBCXX_3.4.25`). These are available on
     distributions natively supporting GCC 8.1 or higher, such as Debian 10,
     RHEL 8 and Ubuntu 20.04.
-
-[^7]: Binaries produced on these systems are compatible with glibc >= 2.28
-    and libstdc++ >= 6.0.28 (`GLIBCXX_3.4.28`). These are available on
-    distributions natively supporting GCC 9.3 or higher, such as Debian 11,
-    Ubuntu 20.04.
 
 <!--lint enable final-definition-->
 
@@ -241,7 +232,7 @@ Consult previous versions of this document for older versions of Node.js:
 
 #### Unix prerequisites
 
-* `gcc` and `g++` >= 10.1 or newer
+* `gcc` and `g++` >= 12.2 or newer
 * GNU Make 3.81 or newer
 * [A supported version of Python][Python versions]
   * For test coverage, your Python installation must include pip.
@@ -280,6 +271,11 @@ export CXX=g++-12
 ./configure
 make -j4
 ```
+
+> \[!IMPORTANT]
+> If you face a compilation error during this process such as
+> `error: no matching conversion for functional-style cast from 'unsigned int' to 'TypeIndex'`
+> Make sure to use a `g++` or `clang` version compatible with C++20.
 
 We can speed up the builds by using [Ninja](https://ninja-build.org/). For more
 information, see
@@ -354,6 +350,27 @@ You can also execute the tests in a test suite directory
 
 ```bash
 tools/test.py test/message
+```
+
+You can execute tests that match a specific naming pattern using the wildcard
+`*`. For example, to run all tests under `test/parallel` with a name that starts
+with `test-stream-`:
+
+```bash
+tools/test.py test/parallel/test-stream-*
+tools/test.py parallel/test-stream-*  # The test/ prefix can be omitted
+# In some shell environments, you may need to quote the pattern
+tools/test.py "test/parallel/test-stream-*"
+```
+
+The whildcard `*` can be used in any part of the path. For example, to run all tests
+with a name that starts with `test-inspector-`, regardless of the directory they are in:
+
+```bash
+# Matches test/sequential/test-inspector-*, test/parallel/test-inspector-*,
+# test/known_issues/test-inspector-*, etc.
+tools/test.py "test/*/test-inspector-*"
+tools/test.py "*/test-inspector-*"  # The test/ prefix can be omitted
 ```
 
 If you want to check the other options, please refer to the help by using
@@ -644,7 +661,10 @@ Refs:
   [Visual Studio 2022 (17.6 or newer)](https://visualstudio.microsoft.com/downloads/)
   or the "C++ build tools" workload from the
   [Build Tools](https://aka.ms/vs/17/release/vs_buildtools.exe),
-  with the default optional components
+  with the default optional components. Starting with Node.js v24, ClangCL is required to compile
+  on Windows. To enable it, two additional components are needed:
+  * C++ Clang Compiler for Windows (Microsoft.VisualStudio.Component.VC.Llvm.Clang)
+  * MSBuild support for LLVM toolset (Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset)
 * Basic Unix tools required for some tests,
   [Git for Windows](https://git-scm.com/download/win) includes Git Bash
   and tools which can be included in the global `PATH`.
@@ -667,13 +687,6 @@ Optional requirements for compiling for Windows on ARM (ARM64):
   * Visual C++ compilers and libraries for ARM64
   * Visual C++ ATL for ARM64
 * Windows 10 SDK 10.0.17763.0 or newer
-
-Optional requirements for compiling with ClangCL (search for `clang` in Visual Studio
-Installer's "individual component" tab):
-
-* Visual Studio individual components
-  * C++ Clang Compiler for Windows
-  * MSBuild support for LLVM toolset
 
 NOTE: Currently we only support compiling with Clang that comes from Visual Studio.
 
@@ -1038,4 +1051,5 @@ version of a dependency), please reserve and use a custom `NODE_MODULE_VERSION`
 by opening a pull request against the registry available at
 <https://github.com/nodejs/node/blob/HEAD/doc/abi_version_registry.json>.
 
+[AIX toolbox]: https://www.ibm.com/support/pages/aix-toolbox-open-source-software-overview
 [Python versions]: https://devguide.python.org/versions/

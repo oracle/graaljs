@@ -6,7 +6,6 @@ const {
   ArrayPrototypeFilter,
   ArrayPrototypeIncludes,
   ArrayPrototypePush,
-  ArrayPrototypePushApply,
   ArrayPrototypeSlice,
   ArrayPrototypeSort,
   Error,
@@ -15,6 +14,7 @@ const {
   ObjectDefineProperties,
   ObjectFreeze,
   ObjectKeys,
+  SafeArrayPrototypePushApply,
   SafeMap,
   SafeSet,
   Symbol,
@@ -52,7 +52,7 @@ const {
 const {
   validateFunction,
   validateObject,
-  validateInternalField,
+  validateThisInternalField,
 } = require('internal/validators');
 
 const {
@@ -185,12 +185,12 @@ class PerformanceObserverEntryList {
   }
 
   getEntries() {
-    validateInternalField(this, kBuffer, 'PerformanceObserverEntryList');
+    validateThisInternalField(this, kBuffer, 'PerformanceObserverEntryList');
     return ArrayPrototypeSlice(this[kBuffer]);
   }
 
   getEntriesByType(type) {
-    validateInternalField(this, kBuffer, 'PerformanceObserverEntryList');
+    validateThisInternalField(this, kBuffer, 'PerformanceObserverEntryList');
     if (arguments.length === 0) {
       throw new ERR_MISSING_ARGS('type');
     }
@@ -201,7 +201,7 @@ class PerformanceObserverEntryList {
   }
 
   getEntriesByName(name, type = undefined) {
-    validateInternalField(this, kBuffer, 'PerformanceObserverEntryList');
+    validateThisInternalField(this, kBuffer, 'PerformanceObserverEntryList');
     if (arguments.length === 0) {
       throw new ERR_MISSING_ARGS('name');
     }
@@ -307,7 +307,7 @@ class PerformanceObserver {
       maybeIncrementObserverCount(type);
       if (buffered) {
         const entries = filterBufferMapByNameAndType(undefined, type);
-        ArrayPrototypePushApply(this.#buffer, entries);
+        SafeArrayPrototypePushApply(this.#buffer, entries);
         kPending.add(this);
         if (kPending.size)
           queuePending();
@@ -514,9 +514,9 @@ function filterBufferMapByNameAndType(name, type) {
     return [];
   } else {
     bufferList = [];
-    ArrayPrototypePushApply(bufferList, markEntryBuffer);
-    ArrayPrototypePushApply(bufferList, measureEntryBuffer);
-    ArrayPrototypePushApply(bufferList, resourceTimingBuffer);
+    SafeArrayPrototypePushApply(bufferList, markEntryBuffer);
+    SafeArrayPrototypePushApply(bufferList, measureEntryBuffer);
+    SafeArrayPrototypePushApply(bufferList, resourceTimingBuffer);
   }
   if (name !== undefined) {
     bufferList = ArrayPrototypeFilter(bufferList, (buffer) => buffer.name === name);

@@ -341,11 +341,6 @@ child.exec(
   common.mustSucceed((stdout) => {
     assert.match(stdout, /^number/);
   }));
-child.exec(
-  ...common.escapePOSIXShell`"${process.execPath}" --no-experimental-global-webcrypto -p "var crypto = {randomBytes:1};typeof crypto.randomBytes"`,
-  common.mustSucceed((stdout) => {
-    assert.match(stdout, /^number/);
-  }));
 
 // Regression test for https://github.com/nodejs/node/issues/45336
 child.execFile(process.execPath,

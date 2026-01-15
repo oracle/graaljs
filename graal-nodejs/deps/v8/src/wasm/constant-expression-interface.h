@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef V8_WASM_CONSTANT_EXPRESSION_INTERFACE_H_
+#define V8_WASM_CONSTANT_EXPRESSION_INTERFACE_H_
+
 #if !V8_ENABLE_WEBASSEMBLY
 #error This header should only be included if WebAssembly is enabled.
 #endif  // !V8_ENABLE_WEBASSEMBLY
-
-#ifndef V8_WASM_CONSTANT_EXPRESSION_INTERFACE_H_
-#define V8_WASM_CONSTANT_EXPRESSION_INTERFACE_H_
 
 #include "src/wasm/decoder.h"
 #include "src/wasm/function-body-decoder-impl.h"
@@ -49,11 +49,13 @@ class V8_EXPORT_PRIVATE ConstantExpressionInterface {
 
   ConstantExpressionInterface(
       const WasmModule* module, Isolate* isolate,
-      Handle<WasmTrustedInstanceData> trusted_instance_data)
+      DirectHandle<WasmTrustedInstanceData> trusted_instance_data,
+      DirectHandle<WasmTrustedInstanceData> shared_trusted_instance_data)
       : module_(module),
         outer_module_(nullptr),
         isolate_(isolate),
-        trusted_instance_data_(trusted_instance_data) {
+        trusted_instance_data_(trusted_instance_data),
+        shared_trusted_instance_data_(shared_trusted_instance_data) {
     DCHECK_NOT_NULL(isolate);
   }
 
@@ -90,6 +92,12 @@ class V8_EXPORT_PRIVATE ConstantExpressionInterface {
 
  private:
   bool generate_value() const { return isolate_ != nullptr && !has_error(); }
+  DirectHandle<WasmTrustedInstanceData> GetTrustedInstanceDataForTypeIndex(
+      ModuleTypeIndex index);
+
+  DirectHandle<Map> GetRtt(DirectHandle<WasmTrustedInstanceData> data,
+                           ModuleTypeIndex index, const TypeDefinition& type,
+                           const Value& descriptor);
 
   bool end_found_ = false;
   WasmValue computed_value_;
@@ -97,7 +105,8 @@ class V8_EXPORT_PRIVATE ConstantExpressionInterface {
   const WasmModule* module_;
   WasmModule* outer_module_;
   Isolate* isolate_;
-  Handle<WasmTrustedInstanceData> trusted_instance_data_;
+  DirectHandle<WasmTrustedInstanceData> trusted_instance_data_;
+  DirectHandle<WasmTrustedInstanceData> shared_trusted_instance_data_;
 };
 
 }  // namespace wasm

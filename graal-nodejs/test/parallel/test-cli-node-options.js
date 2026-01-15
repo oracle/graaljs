@@ -76,7 +76,6 @@ if (common.hasCrypto) {
 expect('--abort_on-uncaught_exception', 'B\n');
 expect('--disallow-code-generation-from-strings', 'B\n');
 expect('--expose-gc', 'B\n');
-expect('--huge-max-old-generation-size', 'B\n');
 expect('--jitless', 'B\n');
 expect('--max-old-space-size=0', 'B\n');
 expect('--max-semi-space-size=0', 'B\n');
@@ -113,7 +112,7 @@ function expect(
   if (typeof want === 'string')
     want = new RegExp(want);
 
-  const test = (type) => common.mustCall((err, stdout) => {
+  const test = common.mustCallAtLeast((type) => common.mustCall((err, stdout) => {
     const o = JSON.stringify(opt);
     if (wantsError) {
       assert.ok(err, `${type}: expected error for ${o}`);
@@ -126,7 +125,7 @@ function expect(
     assert.fail(
       `${type}: for ${o}, failed to find ${want} in: <\n${stdout}\n>`
     );
-  });
+  }));
 
   exec(process.execPath, argv, opts, test('child process'));
   if (testWorker)

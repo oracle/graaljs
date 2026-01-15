@@ -226,7 +226,7 @@ You can find their contact email in the [`README.md`](../../README.md#tsc-techni
 
 ##### Goal
 
-The goal is to raise awareness of the Node.js TypeScript Type Stripping in the JavaScript ecosystem.
+The goal is to raise awareness of the Node.js TypeScript Type stripping in the JavaScript ecosystem.
 Some of the things to highlight include:
 
 * The benefits and limitations of the current implementation.
@@ -268,10 +268,10 @@ with projects learning from one another and their users.
 | [testing source code](https://nodejs.org/api/test.html)                                               | [16.17.0](https://nodejs.org/en/blog/release/v16.17.0) | Stable as of 20.0.0                                                |
 | [watching source code](https://nodejs.org/api/cli.html#--watch)                                       | [16.19.0](https://nodejs.org/en/blog/release/v16.19.0) | Stable as of 20.13.0                                               |
 | [parsing arguments](https://nodejs.org/api/util.html#utilparseargsconfig)                             | [18.3.0](https://nodejs.org/en/blog/release/v18.3.0)   | Stable as of 20.0.0                                                |
-| [reading environment](https://nodejs.org/api/cli.html#--env-fileconfig)                               | [20.6.0](https://nodejs.org/en/blog/release/v20.6.0)   | Active Development                                                 |
+| [reading environment](https://nodejs.org/api/cli.html#--env-filefile)                                 | [20.6.0](https://nodejs.org/en/blog/release/v20.6.0)   | Active Development                                                 |
 | [styling output](https://nodejs.org/docs/latest-v22.x/api/util.html#utilstyletextformat-text-options) | [20.12.0](https://nodejs.org/en/blog/release/v20.12.0) | Stable, as of [22.13.0](https://github.com/nodejs/node/pull/56329) |
 | [run scripts](https://nodejs.org/docs/latest/api/cli.html#--run)                                      | [22.0.0](https://nodejs.org/en/blog/release/v22.0.0)   | Stable, as of 22.0.0                                               |
-| [run TypeScript](https://nodejs.org/api/cli.html#--experimental-strip-types)                          | [22.6.0](https://nodejs.org/en/blog/release/v22.6.0)   | Active Development                                                 |
+| [run TypeScript](https://nodejs.org/api/cli.html#--strip-types)                                       | [22.6.0](https://nodejs.org/en/blog/release/v22.6.0)   | Stable, as of REPLACEME                                            |
 
 ##### Related Links
 
@@ -281,10 +281,10 @@ with projects learning from one another and their users.
 * <https://nodejs.org/api/test.html>
 * <https://nodejs.org/api/cli.html#--watch>
 * <https://nodejs.org/api/util.html#utilparseargsconfig>
-* <https://nodejs.org/api/cli.html#--env-fileconfig>
+* <https://nodejs.org/api/cli.html#--env-filefile>
 * <https://nodejs.org/docs/latest-v22.x/api/util.html#utilstyletextformat-text-options>
 * <https://nodejs.org/api/cli.html#--run>
-* <https://nodejs.org/api/cli.html#--experimental-strip-types>
+* <https://nodejs.org/api/cli.html#--strip-types>
 
 <!-- lint enable prohibited-strings remark-lint-->
 

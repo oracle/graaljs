@@ -64,28 +64,30 @@ GraalPropertyCallbackInfo<T>::GraalPropertyCallbackInfo(
         GraalIsolate* isolate,
         GraalValue* graal_this,
         GraalValue* graal_data,
-        GraalValue* graal_holder) : v8::PropertyCallbackInfo<T>(reinterpret_cast<v8::internal::Address*>(values_)) {
+        GraalValue* graal_holder) : v8::PropertyCallbackInfo<T>() {
     graal_this->ReferenceAdded();
     if (graal_data != nullptr) {
         graal_data->ReferenceAdded();
     }
     graal_holder->ReferenceAdded();
-    values_[v8::internal::PropertyCallbackArguments::kHolderIndex] = graal_holder;
-    values_[v8::internal::PropertyCallbackArguments::kIsolateIndex] = isolate;
-    values_[v8::internal::PropertyCallbackArguments::kReturnValueIndex] = nullptr;
-    values_[v8::internal::PropertyCallbackArguments::kDataIndex] = graal_data;
-    values_[v8::internal::PropertyCallbackArguments::kThisIndex] = graal_this;
+    v8::internal::Address* args = v8::internal::PropertyCallbackArguments::getArguments(this);
+    args[v8::internal::PropertyCallbackArguments::kHolderIndex] = reinterpret_cast<v8::internal::Address>(graal_holder);
+    args[v8::internal::PropertyCallbackArguments::kIsolateIndex] = reinterpret_cast<v8::internal::Address>(isolate);
+    args[v8::internal::PropertyCallbackArguments::kReturnValueIndex] = reinterpret_cast<v8::internal::Address>(nullptr);
+    args[v8::internal::PropertyCallbackArguments::kDataIndex] = reinterpret_cast<v8::internal::Address>(graal_data);
+    args[v8::internal::PropertyCallbackArguments::kThisIndex] = reinterpret_cast<v8::internal::Address>(graal_this);
 }
 
 template<typename T>
 GraalPropertyCallbackInfo<T>::~GraalPropertyCallbackInfo() {
-    GraalValue* graal_data = reinterpret_cast<GraalValue*> (values_[v8::internal::PropertyCallbackArguments::kDataIndex]);
+    v8::internal::Address* args = v8::internal::PropertyCallbackArguments::getArguments(this);
+    GraalValue* graal_data = reinterpret_cast<GraalValue*> (args[v8::internal::PropertyCallbackArguments::kDataIndex]);
     if (graal_data != nullptr) {
         graal_data->ReferenceRemoved();
     }
-    reinterpret_cast<GraalValue*> (values_[v8::internal::PropertyCallbackArguments::kThisIndex])->ReferenceRemoved();
-    reinterpret_cast<GraalValue*> (values_[v8::internal::PropertyCallbackArguments::kHolderIndex])->ReferenceRemoved();
-    GraalValue* return_value = reinterpret_cast<GraalValue*> (values_[v8::internal::PropertyCallbackArguments::kReturnValueIndex]);
+    reinterpret_cast<GraalValue*> (args[v8::internal::PropertyCallbackArguments::kThisIndex])->ReferenceRemoved();
+    reinterpret_cast<GraalValue*> (args[v8::internal::PropertyCallbackArguments::kHolderIndex])->ReferenceRemoved();
+    GraalValue* return_value = reinterpret_cast<GraalValue*> (args[v8::internal::PropertyCallbackArguments::kReturnValueIndex]);
     if (return_value != nullptr) {
         return_value->ReferenceRemoved();
     }

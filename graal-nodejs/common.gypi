@@ -38,7 +38,7 @@
 
     # Reset this number to 0 on major V8 upgrades.
     # Increment by one for each non-official patch applied to deps/v8.
-    'v8_embedder_string': '-node.27',
+    'v8_embedder_string': '-node.37',
 
     ##### V8 defaults for Node.js #####
 
@@ -113,8 +113,9 @@
         'v8_base': '<(PRODUCT_DIR)/libv8_snapshot.a',
       }],
       # V8 pointer compression only supports 64bit architectures.
-      ['target_arch in "arm ia32 mips mipsel ppc"', {
+      ['target_arch in "arm ia32 mips mipsel"', {
         'v8_enable_pointer_compression': 0,
+        'v8_enable_pointer_compression_shared_cage': 0,
         'v8_enable_31bit_smis_on_64bit_arch': 0,
         'v8_enable_external_code_space': 0,
         'v8_enable_sandbox': 0
@@ -453,11 +454,11 @@
       ['v8_enable_pointer_compression == 1', {
         'defines': ['V8_COMPRESS_POINTERS'],
       }],
+      ['v8_enable_pointer_compression == 1 and v8_enable_pointer_compression_shared_cage != 1', {
+        'defines': ['V8_COMPRESS_POINTERS_IN_MULTIPLE_CAGES'],
+      }],
       ['v8_enable_pointer_compression_shared_cage == 1', {
         'defines': ['V8_COMPRESS_POINTERS_IN_SHARED_CAGE'],
-      }],
-      ['v8_enable_pointer_compression == 1 and v8_enable_pointer_compression_shared_cage != 1', {
-        'defines': ['V8_COMPRESS_POINTERS_IN_ISOLATE_CAGE'],
       }],
       ['v8_enable_pointer_compression == 1 or v8_enable_31bit_smis_on_64bit_arch == 1', {
         'defines': ['V8_31BIT_SMIS_ON_64BIT_ARCH'],
@@ -521,7 +522,7 @@
           '-fno-rtti',
           '-fno-exceptions',
           '-fno-strict-aliasing',
-          '-std=gnu++17',
+          '-std=gnu++20',
         ],
         'defines': [ '__STDC_FORMAT_MACROS' ],
         'ldflags': [ '-rdynamic' ],
@@ -544,12 +545,13 @@
                 'cflags': [ '-m64' ],
                 'ldflags': [ '-m64' ],
               }],
-              [ 'host_arch=="ppc" and OS not in "aix os400"', {
-                'cflags': [ '-m32' ],
-                'ldflags': [ '-m32' ],
-              }],
               [ 'host_arch=="ppc64" and OS not in "aix os400"', {
-                'cflags': [ '-m64', '-mminimal-toc' ],
+                'conditions': [
+                  [ 'clang==0', {
+                    'cflags': [ '-mminimal-toc' ],
+                  }],
+                ],
+                'cflags': [ '-m64' ],
                 'ldflags': [ '-m64' ],
               }],
               [ 'host_arch=="s390x" and OS=="linux"', {
@@ -568,12 +570,13 @@
                 'cflags': [ '-m64' ],
                 'ldflags': [ '-m64' ],
               }],
-              [ 'target_arch=="ppc" and OS not in "aix os400"', {
-                'cflags': [ '-m32' ],
-                'ldflags': [ '-m32' ],
-              }],
               [ 'target_arch=="ppc64" and OS not in "aix os400"', {
-                'cflags': [ '-m64', '-mminimal-toc' ],
+                'conditions': [
+                  [ 'clang==0', {
+                    'cflags': [ '-mminimal-toc' ],
+                  }],
+                ],
+                'cflags': [ '-m64' ],
                 'ldflags': [ '-m64' ],
               }],
               [ 'target_arch=="s390x" and OS=="linux"', {
@@ -592,6 +595,7 @@
           }],
           [ 'node_shared=="true"', {
             'cflags': [ '-fPIC' ],
+            'ldflags': [ '-fPIC' ],
           }],
         ],
       }],
@@ -655,7 +659,7 @@
           'GCC_ENABLE_PASCAL_STRINGS': 'NO',        # No -mpascal-strings
           'GCC_STRICT_ALIASING': 'NO',              # -fno-strict-aliasing
           'PREBINDING': 'NO',                       # No -Wl,-prebind
-          'MACOSX_DEPLOYMENT_TARGET': '11.0',       # -mmacosx-version-min=11.0
+          'MACOSX_DEPLOYMENT_TARGET': '13.5',       # -mmacosx-version-min=13.5
           'USE_HEADERMAP': 'NO',
           'WARNING_CFLAGS': [
             '-Wall',
@@ -691,7 +695,7 @@
           ['clang==1', {
             'xcode_settings': {
               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
-              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++17',  # -std=gnu++17
+              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++20',  # -std=gnu++20
               'CLANG_CXX_LIBRARY': 'libc++',
             },
           }],

@@ -61,6 +61,7 @@ for (const coverage of coverages) {
     const result = spawnSync(process.execPath, [
       '--test',
       '--experimental-test-coverage',
+      '--test-coverage-exclude=!test/**',
       `${coverage.flag}=25`,
       '--test-reporter', 'tap',
       fixture,
@@ -77,6 +78,7 @@ for (const coverage of coverages) {
     const result = spawnSync(process.execPath, [
       '--test',
       '--experimental-test-coverage',
+      '--test-coverage-exclude=!test/**',
       `${coverage.flag}=25`,
       '--test-reporter', reporter,
       fixture,
@@ -112,6 +114,7 @@ for (const coverage of coverages) {
     const result = spawnSync(process.execPath, [
       '--test',
       '--experimental-test-coverage',
+      '--test-coverage-exclude=!test/**',
       `${coverage.flag}=99`,
       '--test-reporter', 'tap',
       fixture,
@@ -128,6 +131,7 @@ for (const coverage of coverages) {
     const result = spawnSync(process.execPath, [
       '--test',
       '--experimental-test-coverage',
+      '--test-coverage-exclude=!test/**',
       `${coverage.flag}=99`,
       '--test-reporter', reporter,
       fixture,
@@ -143,6 +147,7 @@ for (const coverage of coverages) {
     const result = spawnSync(process.execPath, [
       '--test',
       '--experimental-test-coverage',
+      '--test-coverage-exclude=!test/**',
       `${coverage.flag}=101`,
       fixture,
     ]);
@@ -156,6 +161,7 @@ for (const coverage of coverages) {
     const result = spawnSync(process.execPath, [
       '--test',
       '--experimental-test-coverage',
+      '--test-coverage-exclude=!test/**',
       `${coverage.flag}=-1`,
       fixture,
     ]);

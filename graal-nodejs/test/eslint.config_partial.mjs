@@ -11,6 +11,7 @@ export default [
     languageOptions: {
       globals: {
         ...globals.node,
+        CloseEvent: true,
       },
     },
     rules: {
@@ -36,6 +37,10 @@ export default [
           message: 'Do not use a literal for the third argument of assert.deepStrictEqual()',
         },
         {
+          selector: "CallExpression:matches([callee.name='notDeepStrictEqual'], [callee.property.name='deepStrictEqual'])[arguments.2.type='Literal']",
+          message: 'Do not use a literal for the third argument of assert.notDeepStrictEqual()',
+        },
+        {
           selector: "CallExpression:matches([callee.name='doesNotThrow'], [callee.property.name='doesNotThrow'])",
           message: 'Do not use `assert.doesNotThrow()`. Write the code without the wrapper and add a comment instead.',
         },
@@ -48,8 +53,16 @@ export default [
           message: '`assert.rejects()` must be invoked with at least two arguments.',
         },
         {
+          selector: "CallExpression[callee.property.name='notStrictEqual'][arguments.2.type='Literal']",
+          message: 'Do not use a literal for the third argument of assert.notStrictEqual()',
+        },
+        {
           selector: "CallExpression[callee.property.name='strictEqual'][arguments.2.type='Literal']",
           message: 'Do not use a literal for the third argument of assert.strictEqual()',
+        },
+        {
+          selector: "CallExpression[callee.name='assert'][arguments.1.type='Literal']:not([arguments.1.raw=/['\"`].*/])",
+          message: 'Do not use a non-string literal for the second argument of assert()',
         },
         {
           selector: "CallExpression:matches([callee.name='throws'], [callee.property.name='throws'])[arguments.1.type='Literal']:not([arguments.1.regex])",
@@ -90,6 +103,10 @@ export default [
         {
           selector: "ExpressionStatement>CallExpression:matches([callee.name='rejects'], [callee.object.name='assert'][callee.property.name='rejects'])",
           message: 'Calling `assert.rejects` without `await` or `.then(common.mustCall())` will not detect never-settling promises.',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="catch"]>:first-child:matches(CallExpression[callee.object.name="common"][callee.property.name="mustNotCall"], CallExpression[callee.name="mustNotCall"])',
+          message: 'Calling `.catch(common.mustNotCall())` will not detect never-settling promises. Use `.then(common.mustCall())` instead.',
         },
       ],
 
@@ -134,6 +151,56 @@ export default [
           objects: 'only-multiline',
         },
       ],
+    },
+  },
+  {
+    files: [
+      `test/{${[
+        'abort',
+        'addons',
+        'async-hooks',
+        'benchmark',
+        'cctest',
+        'client-proxy',
+        'doctool',
+        'embedding',
+        'es-module',
+        'fixtures',
+        'fuzzers',
+        'internet',
+        'js-native-api',
+        'known_issues',
+        'message',
+        'module-hooks',
+        'node-api',
+        'nop',
+        'overlapped-checker',
+        'pseudo-tty',
+        'pummel',
+        'report',
+        'sea',
+        'sequential',
+        'sqlite',
+        'system-ca',
+        'test426',
+        'testpy',
+        'tick-processor',
+        'tools',
+        'v8-updates',
+        'wasi',
+        'wasm-allocation',
+        'wpt',
+      ].join(',')}}/**/*.{js,mjs,cjs}`,
+      `test/parallel/test-{${
+        // 0x61 is code for 'a', this generates a string enumerating latin letters: 'a*,b*,…'
+        Array.from({ length: 3 }, (_, i) => String.fromCharCode(0x61 + i, 42)).join(',')
+      },${
+        // 0x61 is code for 'a', this generates a string enumerating latin letters: 'z*,y*,…'
+        Array.from({ length: 2 }, (_, i) => String.fromCharCode(0x61 + 25 - i, 42)).join(',')
+      }}.{js,mjs,cjs}`,
+    ],
+    rules: {
+      'node-core/must-call-assert': 'error',
     },
   },
   {

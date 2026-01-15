@@ -27,6 +27,7 @@ using v8::Array;
 using v8::ArrayBuffer;
 using v8::ArrayBufferView;
 using v8::BackingStore;
+using v8::BackingStoreInitializationMode;
 using v8::Boolean;
 using v8::Context;
 using v8::EscapableHandleScope;
@@ -298,11 +299,10 @@ Local<Value> Http2Settings::Pack(
     size_t count,
     const nghttp2_settings_entry* entries) {
   EscapableHandleScope scope(env->isolate());
-  std::unique_ptr<BackingStore> bs;
-  {
-    NoArrayBufferZeroFillScope no_zero_fill_scope(env->isolate_data());
-    bs = ArrayBuffer::NewBackingStore(env->isolate(), count * 6);
-  }
+  std::unique_ptr<BackingStore> bs = ArrayBuffer::NewBackingStore(
+      env->isolate(),
+      count * 6,
+      BackingStoreInitializationMode::kUninitialized);
   if (nghttp2_pack_settings_payload(static_cast<uint8_t*>(bs->Data()),
                                     bs->ByteLength(),
                                     entries,
@@ -468,13 +468,11 @@ Origins::Origins(
     return;
   }
 
-  {
-    NoArrayBufferZeroFillScope no_zero_fill_scope(env->isolate_data());
-    bs_ = ArrayBuffer::NewBackingStore(env->isolate(),
-                                       alignof(nghttp2_origin_entry) - 1 +
-                                       count_ * sizeof(nghttp2_origin_entry) +
-                                       origin_string_len);
-  }
+  bs_ = ArrayBuffer::NewBackingStore(
+      env->isolate(),
+      alignof(nghttp2_origin_entry) - 1 +
+          count_ * sizeof(nghttp2_origin_entry) + origin_string_len,
+      BackingStoreInitializationMode::kUninitialized);
 
   // Make sure the start address is aligned appropriately for an nghttp2_nv*.
   char* start = nbytes::AlignUp(static_cast<char*>(bs_->Data()),
@@ -485,13 +483,10 @@ Origins::Origins(
 
   CHECK_LE(origin_contents + origin_string_len,
            static_cast<char*>(bs_->Data()) + bs_->ByteLength());
-  CHECK_EQ(origin_string->WriteOneByte(
-               env->isolate(),
-               reinterpret_cast<uint8_t*>(origin_contents),
-               0,
-               origin_string_len,
-               String::NO_NULL_TERMINATION),
-           origin_string_len);
+  origin_string->WriteOneByteV2(env->isolate(),
+                                0,
+                                origin_string_len,
+                                reinterpret_cast<uint8_t*>(origin_contents));
 
   size_t n = 0;
   char* p;
@@ -2112,7 +2107,10 @@ void Http2Session::OnStreamRead(ssize_t nread, const uv_buf_t& buf_) {
       [[likely]] {
     // Shrink to the actual amount of used data.
     std::unique_ptr<BackingStore> old_bs = std::move(bs);
-    bs = ArrayBuffer::NewBackingStore(env()->isolate(), nread);
+    bs = ArrayBuffer::NewBackingStore(
+        env()->isolate(),
+        nread,
+        BackingStoreInitializationMode::kUninitialized);
     memcpy(bs->Data(), old_bs->Data(), nread);
   } else {
     // This is a very unlikely case, and should only happen if the ReadStart()
@@ -2120,12 +2118,10 @@ void Http2Session::OnStreamRead(ssize_t nread, const uv_buf_t& buf_) {
     // happen, we concatenate the data we received with the already-stored
     // pending input data, slicing off the already processed part.
     size_t pending_len = stream_buf_.len - stream_buf_offset_;
-    std::unique_ptr<BackingStore> new_bs;
-    {
-      NoArrayBufferZeroFillScope no_zero_fill_scope(env()->isolate_data());
-      new_bs = ArrayBuffer::NewBackingStore(env()->isolate(),
-                                            pending_len + nread);
-    }
+    std::unique_ptr<BackingStore> new_bs = ArrayBuffer::NewBackingStore(
+        env()->isolate(),
+        pending_len + nread,
+        BackingStoreInitializationMode::kUninitialized);
     memcpy(static_cast<char*>(new_bs->Data()),
            stream_buf_.base + stream_buf_offset_,
            pending_len);
@@ -2984,9 +2980,11 @@ void Http2Session::UpdateChunksSent(const FunctionCallbackInfo<Value>& args) {
 
   uint32_t length = session->chunks_sent_since_last_write_;
 
-  session->object()->Set(env->context(),
-                         env->chunks_sent_since_last_write_string(),
-                         Integer::NewFromUnsigned(isolate, length)).Check();
+  if (session->object()->Set(env->context(),
+          env->chunks_sent_since_last_write_string(),
+          Integer::NewFromUnsigned(isolate, length)).IsNothing()) {
+    return;
+  }
 
   args.GetReturnValue().Set(length);
 }
@@ -3177,14 +3175,16 @@ void Http2Session::AltSvc(const FunctionCallbackInfo<Value>& args) {
   }
 
   // origin and value are both required to be ASCII, handle them as such.
-  Local<String> origin_str = args[1]->ToString(env->context()).ToLocalChecked();
-  Local<String> value_str = args[2]->ToString(env->context()).ToLocalChecked();
+  Local<String> origin_str;
+  Local<String> value_str;
 
-  if (origin_str.IsEmpty() || value_str.IsEmpty())
+  if (!args[1]->ToString(env->context()).ToLocal(&origin_str) ||
+      !args[2]->ToString(env->context()).ToLocal(&value_str)) {
     return;
+  }
 
-  size_t origin_len = origin_str->Length();
-  size_t value_len = value_str->Length();
+  int origin_len = origin_str->Length();
+  int value_len = value_str->Length();
 
   CHECK_LE(origin_len + value_len, 16382);  // Max permitted for ALTSVC
   // Verify that origin len != 0 if stream id == 0, or
@@ -3193,8 +3193,13 @@ void Http2Session::AltSvc(const FunctionCallbackInfo<Value>& args) {
 
   MaybeStackBuffer<uint8_t> origin(origin_len);
   MaybeStackBuffer<uint8_t> value(value_len);
-  origin_str->WriteOneByte(env->isolate(), *origin);
-  value_str->WriteOneByte(env->isolate(), *value);
+  origin_str->WriteOneByteV2(env->isolate(),
+                             0,
+                             origin_len,
+                             *origin,
+                             String::WriteFlags::kNullTerminate);
+  value_str->WriteOneByteV2(
+      env->isolate(), 0, value_len, *value, String::WriteFlags::kNullTerminate);
 
   session->AltSvc(id, *origin, origin_len, *value, value_len);
 }

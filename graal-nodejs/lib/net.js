@@ -36,6 +36,8 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   Symbol,
+  SymbolAsyncDispose,
+  SymbolDispose,
 } = primordials;
 
 const EventEmitter = require('events');
@@ -120,8 +122,6 @@ const {
   isWindows,
   kEmptyObject,
   promisify,
-  SymbolAsyncDispose,
-  SymbolDispose,
 } = require('internal/util');
 const {
   validateAbortSignal,
@@ -2474,48 +2474,9 @@ Server.prototype.unref = function() {
   return this;
 };
 
-let _setSimultaneousAccepts;
-let warnSimultaneousAccepts = true;
-
-if (isWindows) {
-  let simultaneousAccepts;
-
-  _setSimultaneousAccepts = function(handle) {
-    if (warnSimultaneousAccepts) {
-      process.emitWarning(
-        'net._setSimultaneousAccepts() is deprecated and will be removed.',
-        'DeprecationWarning', 'DEP0121');
-      warnSimultaneousAccepts = false;
-    }
-    if (handle === undefined) {
-      return;
-    }
-
-    if (simultaneousAccepts === undefined) {
-      simultaneousAccepts = (process.env.NODE_MANY_ACCEPTS &&
-                             process.env.NODE_MANY_ACCEPTS !== '0');
-    }
-
-    if (handle._simultaneousAccepts !== simultaneousAccepts) {
-      handle.setSimultaneousAccepts(!!simultaneousAccepts);
-      handle._simultaneousAccepts = simultaneousAccepts;
-    }
-  };
-} else {
-  _setSimultaneousAccepts = function() {
-    if (warnSimultaneousAccepts) {
-      process.emitWarning(
-        'net._setSimultaneousAccepts() is deprecated and will be removed.',
-        'DeprecationWarning', 'DEP0121');
-      warnSimultaneousAccepts = false;
-    }
-  };
-}
-
 module.exports = {
   _createServerHandle: createServerHandle,
   _normalizeArgs: normalizeArgs,
-  _setSimultaneousAccepts,
   get BlockList() {
     BlockList ??= require('internal/blocklist').BlockList;
     return BlockList;

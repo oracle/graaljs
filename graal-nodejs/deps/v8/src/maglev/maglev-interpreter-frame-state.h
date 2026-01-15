@@ -5,7 +5,8 @@
 #ifndef V8_MAGLEV_MAGLEV_INTERPRETER_FRAME_STATE_H_
 #define V8_MAGLEV_MAGLEV_INTERPRETER_FRAME_STATE_H_
 
-#include "src/base/logging.h"
+#include <optional>
+
 #include "src/base/threaded-list.h"
 #include "src/compiler/bytecode-analysis.h"
 #include "src/compiler/bytecode-liveness-map.h"
@@ -103,7 +104,7 @@ class NodeInfo {
   V(int32, Int32)                                      \
   V(truncated_int32_to_number, TruncatedInt32ToNumber) \
   V(float64, Float64)                                  \
-  V(constant, Constant)
+  V(checked_value, CheckedValue)
 
     enum Kind {
 #define KIND(name, Name) k##Name,
@@ -197,6 +198,17 @@ class NodeInfo {
     any_map_is_unstable_ = false;
   }
 
+  template <typename Function>
+  void ClearUnstableMapsIfAny(const Function& condition) {
+    if (!any_map_is_unstable_) return;
+    for (auto map : possible_maps_) {
+      if (condition(map)) {
+        ClearUnstableMaps();
+        return;
+      }
+    }
+  }
+
   bool possible_maps_are_known() const { return possible_maps_are_known_; }
 
   const PossibleMaps& possible_maps() const {
@@ -207,15 +219,17 @@ class NodeInfo {
   }
 
   void SetPossibleMaps(const PossibleMaps& possible_maps,
-                       bool any_map_is_unstable, NodeType possible_type) {
+                       bool any_map_is_unstable, NodeType possible_type,
+                       compiler::JSHeapBroker* broker) {
     possible_maps_ = possible_maps;
     possible_maps_are_known_ = true;
     any_map_is_unstable_ = any_map_is_unstable;
 #ifdef DEBUG
     if (possible_maps.size()) {
-      NodeType expected = StaticTypeForMap(*possible_maps.begin());
+      NodeType expected = StaticTypeForMap(*possible_maps.begin(), broker);
       for (auto map : possible_maps) {
-        expected = maglev::IntersectType(StaticTypeForMap(map), expected);
+        expected =
+            maglev::IntersectType(StaticTypeForMap(map, broker), expected);
       }
       // Ensure the claimed type is not narrower than what can be learned from
       // the map checks.
@@ -244,19 +258,11 @@ class NodeInfo {
   AlternativeNodes alternative_;
 };
 
+struct LoopEffects;
+
 struct KnownNodeAspects {
   // Permanently valid if checked in a dominator.
   using NodeInfos = ZoneMap<ValueNode*, NodeInfo>;
-
-  explicit KnownNodeAspects(Zone* zone)
-      : any_map_for_any_node_is_unstable(false),
-        loaded_constant_properties(zone),
-        loaded_properties(zone),
-        loaded_context_constants(zone),
-        loaded_context_slots(zone),
-        available_expressions(zone),
-        node_infos(zone),
-        effect_epoch_(0) {}
 
   // Copy constructor is defaulted but private so that we explicitly call the
   // Clone method.
@@ -272,30 +278,11 @@ struct KnownNodeAspects {
   // invalidated in the loop body, and similarly stable maps will have
   // dependencies installed. Unstable maps however might be invalidated by
   // calls, and we don't know about these until it's too late.
-  KnownNodeAspects* CloneForLoopHeader(Zone* zone) const {
-    KnownNodeAspects* clone = zone->New<KnownNodeAspects>(zone);
-    if (!any_map_for_any_node_is_unstable) {
-      clone->node_infos = node_infos;
-#ifdef DEBUG
-      for (const auto& it : node_infos) {
-        DCHECK(!it.second.any_map_is_unstable());
-      }
-#endif
-    } else {
-      for (const auto& it : node_infos) {
-        clone->node_infos.emplace(it.first,
-                                  NodeInfo::ClearUnstableMapsOnCopy{it.second});
-      }
-    }
-    clone->loaded_constant_properties = loaded_constant_properties;
-    clone->loaded_context_constants = loaded_context_constants;
+  KnownNodeAspects* CloneForLoopHeader(bool optimistic_initial_state,
+                                       LoopEffects* loop_effects,
+                                       Zone* zone) const;
 
-    // To account for the back-jump we must not allow effects to be reshuffled
-    // across loop headers.
-    // TODO(olivf): Only do this if the loop contains write effects.
-    clone->effect_epoch_++;
-    return clone;
-  }
+  void ClearUnstableNodeAspects();
 
   void ClearUnstableMaps() {
     // A side effect could change existing objects' maps. For stable maps we
@@ -309,6 +296,14 @@ struct KnownNodeAspects {
       it.second.ClearUnstableMaps();
     }
     any_map_for_any_node_is_unstable = false;
+  }
+
+  template <typename Function>
+  void ClearUnstableMapsIfAny(const Function& condition) {
+    if (!any_map_for_any_node_is_unstable) return;
+    for (auto& it : node_infos) {
+      it.second.ClearUnstableMapsIfAny(condition);
+    }
   }
 
   void ClearAvailableExpressions() { available_expressions.clear(); }
@@ -332,10 +327,13 @@ struct KnownNodeAspects {
     if (!IsValid(info_it)) return nullptr;
     return &info_it->second;
   }
-  NodeInfo* GetOrCreateInfoFor(ValueNode* node) {
+  NodeInfo* GetOrCreateInfoFor(ValueNode* node, compiler::JSHeapBroker* broker,
+                               LocalIsolate* isolate) {
     auto info_it = FindInfo(node);
     if (IsValid(info_it)) return &info_it->second;
-    return &node_infos.emplace(node, NodeInfo()).first->second;
+    auto res = &node_infos.emplace(node, NodeInfo()).first->second;
+    res->CombineType(StaticTypeForNode(broker, isolate, node));
+    return res;
   }
 
   NodeType NodeTypeFor(ValueNode* node) const {
@@ -346,6 +344,10 @@ struct KnownNodeAspects {
   }
 
   void Merge(const KnownNodeAspects& other, Zone* zone);
+
+  // If IsCompatibleWithLoopHeader(other) returns true, it means that
+  // Merge(other) would not remove any information from `this`.
+  bool IsCompatibleWithLoopHeader(const KnownNodeAspects& other) const;
 
   // TODO(leszeks): Store these more efficiently than with std::map -- in
   // particular, clear out entries that are no longer reachable, perhaps also
@@ -363,18 +365,27 @@ struct KnownNodeAspects {
       // kName must be zero so that pointers are unaffected.
       kName = 0,
       kElements,
-      kTypedArrayLength
+      kTypedArrayLength,
+      // TODO(leszeks): We could probably share kStringLength with
+      // kTypedArrayLength if needed.
+      kStringLength
     };
     static constexpr int kTypeMask = 0x3;
     static_assert((kName & ~kTypeMask) == 0);
+    static_assert((kElements & ~kTypeMask) == 0);
     static_assert((kTypedArrayLength & ~kTypeMask) == 0);
+    static_assert((kStringLength & ~kTypeMask) == 0);
+
+    static LoadedPropertyMapKey Elements() {
+      return LoadedPropertyMapKey(kElements);
+    }
 
     static LoadedPropertyMapKey TypedArrayLength() {
       return LoadedPropertyMapKey(kTypedArrayLength);
     }
 
-    static LoadedPropertyMapKey Elements() {
-      return LoadedPropertyMapKey(kElements);
+    static LoadedPropertyMapKey StringLength() {
+      return LoadedPropertyMapKey(kStringLength);
     }
 
     // Allow implicit conversion from NameRef to key, so that callers in the
@@ -419,8 +430,42 @@ struct KnownNodeAspects {
 
   // Unconditionally valid across side-effecting calls.
   ZoneMap<std::tuple<ValueNode*, int>, ValueNode*> loaded_context_constants;
+  enum class ContextSlotLoadsAlias : uint8_t {
+    Invalid,
+    None,
+    OnlyLoadsRelativeToCurrentContext,
+    OnlyLoadsRelativeToConstant,
+    Yes,
+  };
+  ContextSlotLoadsAlias may_have_aliasing_contexts() const {
+    DCHECK_NE(may_have_aliasing_contexts_, ContextSlotLoadsAlias::Invalid);
+    return may_have_aliasing_contexts_;
+  }
+  void UpdateMayHaveAliasingContexts(ValueNode* context) {
+    if (context->Is<InitialValue>()) {
+      if (may_have_aliasing_contexts() == ContextSlotLoadsAlias::None) {
+        may_have_aliasing_contexts_ =
+            ContextSlotLoadsAlias::OnlyLoadsRelativeToCurrentContext;
+      } else if (may_have_aliasing_contexts() !=
+                 ContextSlotLoadsAlias::OnlyLoadsRelativeToCurrentContext) {
+        may_have_aliasing_contexts_ = ContextSlotLoadsAlias::Yes;
+      }
+    } else if (context->Is<Constant>()) {
+      if (may_have_aliasing_contexts() == ContextSlotLoadsAlias::None) {
+        may_have_aliasing_contexts_ =
+            ContextSlotLoadsAlias::OnlyLoadsRelativeToConstant;
+      } else if (may_have_aliasing_contexts() !=
+                 ContextSlotLoadsAlias::OnlyLoadsRelativeToConstant) {
+        may_have_aliasing_contexts_ = ContextSlotLoadsAlias::Yes;
+      }
+    } else if (!context->Is<LoadTaggedField>()) {
+      may_have_aliasing_contexts_ = ContextSlotLoadsAlias::Yes;
+    }
+  }
   // Flushed after side-effecting calls.
-  ZoneMap<std::tuple<ValueNode*, int>, ValueNode*> loaded_context_slots;
+  using LoadedContextSlotsKey = std::tuple<ValueNode*, int>;
+  using LoadedContextSlots = ZoneMap<LoadedContextSlotsKey, ValueNode*>;
+  LoadedContextSlots loaded_context_slots;
 
   struct AvailableExpression {
     NodeBase* node;
@@ -428,29 +473,62 @@ struct KnownNodeAspects {
   };
   ZoneMap<uint32_t, AvailableExpression> available_expressions;
   uint32_t effect_epoch() const { return effect_epoch_; }
-  void increment_effect_epoch() { effect_epoch_++; }
+  static constexpr uint32_t kEffectEpochForPureInstructions =
+      std::numeric_limits<uint32_t>::max();
+  static constexpr uint32_t kEffectEpochOverflow =
+      kEffectEpochForPureInstructions - 1;
+  void increment_effect_epoch() {
+    if (effect_epoch_ < kEffectEpochOverflow) effect_epoch_++;
+  }
+
+  explicit KnownNodeAspects(Zone* zone)
+      : any_map_for_any_node_is_unstable(false),
+        loaded_constant_properties(zone),
+        loaded_properties(zone),
+        loaded_context_constants(zone),
+        loaded_context_slots(zone),
+        available_expressions(zone),
+        may_have_aliasing_contexts_(ContextSlotLoadsAlias::None),
+        effect_epoch_(0),
+        node_infos(zone) {}
 
  private:
-  NodeInfos node_infos;
+  ContextSlotLoadsAlias may_have_aliasing_contexts_ =
+      ContextSlotLoadsAlias::Invalid;
   uint32_t effect_epoch_;
+
+  NodeInfos node_infos;
 
   friend KnownNodeAspects* Zone::New<KnownNodeAspects, const KnownNodeAspects&>(
       const KnownNodeAspects&);
   KnownNodeAspects(const KnownNodeAspects& other) V8_NOEXCEPT = default;
+  // Copy constructor for CloneForLoopHeader
+  friend KnownNodeAspects* Zone::New<KnownNodeAspects, const KnownNodeAspects&,
+                                     bool&, LoopEffects*&, Zone*&>(
+      const KnownNodeAspects&, bool&, maglev::LoopEffects*&, Zone*&);
+  KnownNodeAspects(const KnownNodeAspects& other, bool optimistic_initial_state,
+                   LoopEffects* loop_effects, Zone* zone);
 };
 
 class InterpreterFrameState {
  public:
   InterpreterFrameState(const MaglevCompilationUnit& info,
-                        KnownNodeAspects* known_node_aspects)
-      : frame_(info), known_node_aspects_(known_node_aspects) {}
+                        KnownNodeAspects* known_node_aspects,
+                        VirtualObjectList virtual_objects)
+      : frame_(info),
+        known_node_aspects_(known_node_aspects),
+        virtual_objects_(virtual_objects) {
+    frame_[interpreter::Register::virtual_accumulator()] = nullptr;
+  }
 
   explicit InterpreterFrameState(const MaglevCompilationUnit& info)
-      : InterpreterFrameState(
-            info, info.zone()->New<KnownNodeAspects>(info.zone())) {}
+      : InterpreterFrameState(info,
+                              info.zone()->New<KnownNodeAspects>(info.zone()),
+                              VirtualObjectList()) {}
 
   inline void CopyFrom(const MaglevCompilationUnit& info,
-                       MergePointInterpreterFrameState& state);
+                       MergePointInterpreterFrameState& state,
+                       bool preserve_known_node_aspects, Zone* zone);
 
   void set_accumulator(ValueNode* value) {
     // Conversions should be stored in known_node_aspects/NodeInfo.
@@ -494,9 +572,16 @@ class InterpreterFrameState {
 
   void clear_known_node_aspects() { known_node_aspects_ = nullptr; }
 
+  void add_object(VirtualObject* vobject) { virtual_objects_.Add(vobject); }
+  const VirtualObjectList& virtual_objects() const { return virtual_objects_; }
+  void set_virtual_objects(const VirtualObjectList& virtual_objects) {
+    virtual_objects_ = virtual_objects;
+  }
+
  private:
   RegisterFrameArray<ValueNode*> frame_;
   KnownNodeAspects* known_node_aspects_;
+  VirtualObjectList virtual_objects_;
 };
 
 class CompactInterpreterFrameState {
@@ -505,12 +590,14 @@ class CompactInterpreterFrameState {
                                const compiler::BytecodeLivenessState* liveness)
       : live_registers_and_accumulator_(
             info.zone()->AllocateArray<ValueNode*>(SizeFor(info, liveness))),
-        liveness_(liveness) {}
+        liveness_(liveness),
+        virtual_objects_() {}
 
   CompactInterpreterFrameState(const MaglevCompilationUnit& info,
                                const compiler::BytecodeLivenessState* liveness,
                                const InterpreterFrameState& state)
       : CompactInterpreterFrameState(info, liveness) {
+    virtual_objects_ = state.virtual_objects();
     ForEachValue(info, [&](ValueNode*& entry, interpreter::Register reg) {
       entry = state.get(reg);
     });
@@ -640,6 +727,12 @@ class CompactInterpreterFrameState {
     return SizeFor(info, liveness_);
   }
 
+  const VirtualObjectList& virtual_objects() const { return virtual_objects_; }
+  VirtualObjectList& virtual_objects() { return virtual_objects_; }
+  void set_virtual_objects(const VirtualObjectList& vos) {
+    virtual_objects_ = vos;
+  }
+
  private:
   static size_t SizeFor(const MaglevCompilationUnit& info,
                         const compiler::BytecodeLivenessState* liveness) {
@@ -652,10 +745,12 @@ class CompactInterpreterFrameState {
   static const int context_register_count_ = 1;
   ValueNode** const live_registers_and_accumulator_;
   const compiler::BytecodeLivenessState* const liveness_;
+  VirtualObjectList virtual_objects_;
 };
 
 class MergePointRegisterState {
 #ifdef V8_ENABLE_MAGLEV
+
  public:
   bool is_initialized() const { return values_[0].GetPayload().is_initialized; }
 
@@ -690,6 +785,7 @@ class MergePointInterpreterFrameState {
     kDefault,
     kLoopHeader,
     kExceptionHandlerStart,
+    kUnusedExceptionHandlerStart,
   };
 
   static MergePointInterpreterFrameState* New(
@@ -706,7 +802,7 @@ class MergePointInterpreterFrameState {
   static MergePointInterpreterFrameState* NewForCatchBlock(
       const MaglevCompilationUnit& unit,
       const compiler::BytecodeLivenessState* liveness, int handler_offset,
-      interpreter::Register context_register, Graph* graph);
+      bool was_used, interpreter::Register context_register, Graph* graph);
 
   // Merges an unmerged framestate with a possibly merged framestate into |this|
   // framestate.
@@ -715,6 +811,12 @@ class MergePointInterpreterFrameState {
   void Merge(MaglevGraphBuilder* graph_builder,
              MaglevCompilationUnit& compilation_unit,
              InterpreterFrameState& unmerged, BasicBlock* predecessor);
+  void InitializeLoop(MaglevGraphBuilder* graph_builder,
+                      MaglevCompilationUnit& compilation_unit,
+                      InterpreterFrameState& unmerged, BasicBlock* predecessor,
+                      bool optimistic_initial_state = false,
+                      LoopEffects* loop_effects = nullptr);
+  void InitializeWithBasicBlock(BasicBlock* current_block);
 
   // Merges an unmerged framestate with a possibly merged framestate into |this|
   // framestate.
@@ -725,12 +827,20 @@ class MergePointInterpreterFrameState {
                  MaglevCompilationUnit& compilation_unit,
                  InterpreterFrameState& loop_end_state,
                  BasicBlock* loop_end_block);
+  void set_loop_effects(LoopEffects* loop_effects);
+  const LoopEffects* loop_effects();
+  // Merges a frame-state that might not be mergable, in which case we need to
+  // re-compile the loop again. Calls FinishBlock only if the merge succeeded.
+  bool TryMergeLoop(MaglevGraphBuilder* graph_builder,
+                    InterpreterFrameState& loop_end_state,
+                    const std::function<BasicBlock*()>& FinishBlock);
 
-  // Merges an unmerged framestate with a possibly merged framestate into |this|
-  // framestate.
-  void MergeThrow(MaglevGraphBuilder* builder,
+  // Merges an unmerged framestate into a possibly merged framestate at the
+  // start of the target catchblock.
+  void MergeThrow(MaglevGraphBuilder* handler_builder,
                   const MaglevCompilationUnit* handler_unit,
-                  InterpreterFrameState& unmerged);
+                  const KnownNodeAspects& known_node_aspects,
+                  const VirtualObjectList virtual_objects);
 
   // Merges a dead framestate (e.g. one which has been early terminated with a
   // deopt).
@@ -738,13 +848,15 @@ class MergePointInterpreterFrameState {
                  unsigned num = 1) {
     DCHECK_GE(predecessor_count_, num);
     DCHECK_LT(predecessors_so_far_, predecessor_count_);
+    ReducePhiPredecessorCount(num);
     predecessor_count_ -= num;
     DCHECK_LE(predecessors_so_far_, predecessor_count_);
+  }
 
-    frame_state_.ForEachValue(compilation_unit,
-                              [&](ValueNode* value, interpreter::Register reg) {
-                                ReducePhiPredecessorCount(reg, value, num);
-                              });
+  void clear_is_loop() {
+    bitfield_ =
+        kBasicBlockTypeBits::update(bitfield_, BasicBlockType::kDefault);
+    bitfield_ = kIsResumableLoopBit::update(bitfield_, false);
   }
 
   // Merges a dead loop framestate (e.g. one where the block containing the
@@ -755,15 +867,29 @@ class MergePointInterpreterFrameState {
     DCHECK(is_unmerged_loop());
     MergeDead(compilation_unit);
     // This means that this is no longer a loop.
-    bitfield_ =
-        kBasicBlockTypeBits::update(bitfield_, BasicBlockType::kDefault);
+    clear_is_loop();
   }
+
+  // Clears dead loop state, after all merges have already be done.
+  void TurnLoopIntoRegularBlock() {
+    DCHECK(is_loop());
+    predecessor_count_--;
+    predecessors_so_far_--;
+    ReducePhiPredecessorCount(1);
+    clear_is_loop();
+  }
+
+  void RemovePredecessorAt(int predecessor_id);
 
   // Returns and clears the known node aspects on this state. Expects to only
   // ever be called once, when starting a basic block with this state.
   KnownNodeAspects* TakeKnownNodeAspects() {
     DCHECK_NOT_NULL(known_node_aspects_);
     return std::exchange(known_node_aspects_, nullptr);
+  }
+
+  KnownNodeAspects* CloneKnownNodeAspects(Zone* zone) {
+    return known_node_aspects_->Clone(zone);
   }
 
   const CompactInterpreterFrameState& frame_state() const {
@@ -774,33 +900,50 @@ class MergePointInterpreterFrameState {
   bool has_phi() const { return !phis_.is_empty(); }
   Phi::List* phis() { return &phis_; }
 
-  void SetPhis(Phi::List&& phis) {
-    // Move the collected phis to the live interpreter frame.
-    DCHECK(phis_.is_empty());
-    phis_.MoveTail(&phis, phis.begin());
-  }
+  uint32_t predecessor_count() const { return predecessor_count_; }
 
-  int predecessor_count() const { return predecessor_count_; }
-
-  int predecessors_so_far() const { return predecessors_so_far_; }
+  uint32_t predecessors_so_far() const { return predecessors_so_far_; }
 
   BasicBlock* predecessor_at(int i) const {
-    // DCHECK_EQ(predecessors_so_far_, predecessor_count_);
-    DCHECK_LT(i, predecessor_count_);
+    DCHECK_LE(predecessors_so_far_, predecessor_count_);
+    DCHECK_LT(i, predecessors_so_far_);
     return predecessors_[i];
   }
   void set_predecessor_at(int i, BasicBlock* val) {
-    // DCHECK_EQ(predecessors_so_far_, predecessor_count_);
-    DCHECK_LT(i, predecessor_count_);
+    DCHECK_LE(predecessors_so_far_, predecessor_count_);
+    DCHECK_LT(i, predecessors_so_far_);
     predecessors_[i] = val;
+  }
+
+  void set_virtual_objects(const VirtualObjectList& vos) {
+    frame_state_.set_virtual_objects(vos);
+  }
+
+  void PrintVirtualObjects(const MaglevCompilationUnit& info,
+                           VirtualObjectList from_ifs,
+                           const char* prelude = nullptr) {
+    if (!v8_flags.trace_maglev_graph_building) return;
+    if (prelude) {
+      std::cout << prelude << std::endl;
+    }
+    from_ifs.Print(std::cout,
+                   "* VOs (Interpreter Frame State): ", info.graph_labeller());
+    frame_state_.virtual_objects().Print(
+        std::cout, "* VOs (Merge Frame State): ", info.graph_labeller());
   }
 
   bool is_loop() const {
     return basic_block_type() == BasicBlockType::kLoopHeader;
   }
 
-  bool is_exception_handler() const {
+  bool exception_handler_was_used() const {
+    DCHECK(is_exception_handler());
     return basic_block_type() == BasicBlockType::kExceptionHandlerStart;
+  }
+
+  bool is_exception_handler() const {
+    return basic_block_type() == BasicBlockType::kExceptionHandlerStart ||
+           basic_block_type() == BasicBlockType::kUnusedExceptionHandlerStart;
   }
 
   bool is_unmerged_loop() const {
@@ -810,18 +953,22 @@ class MergePointInterpreterFrameState {
     return is_loop() && predecessors_so_far_ < predecessor_count_;
   }
 
-  bool is_unreachable_loop() const {
+  bool is_unmerged_unreachable_loop() const {
     // If there is only one predecessor, and it's not set, then this is a loop
     // merge with no forward control flow entering it.
-    return is_loop() && !is_resumable_loop() && predecessor_count_ == 1 &&
-           predecessors_so_far_ == 0;
+    return is_unmerged_loop() && !is_resumable_loop() &&
+           predecessor_count_ == 1 && predecessors_so_far_ == 0;
   }
+
+  bool IsUnreachableByForwardEdge() const;
 
   BasicBlockType basic_block_type() const {
     return kBasicBlockTypeBits::decode(bitfield_);
   }
   bool is_resumable_loop() const {
-    return kIsResumableLoopBit::decode(bitfield_);
+    bool res = kIsResumableLoopBit::decode(bitfield_);
+    DCHECK_IMPLIES(res, is_loop());
+    return res;
   }
   bool is_loop_with_peeled_iteration() const {
     return kIsLoopWithPeeledIterationBit::decode(bitfield_);
@@ -832,8 +979,13 @@ class MergePointInterpreterFrameState {
   DeoptFrame* backedge_deopt_frame() const { return backedge_deopt_frame_; }
 
   const compiler::LoopInfo* loop_info() const {
-    DCHECK(loop_info_.has_value());
-    return loop_info_.value();
+    DCHECK(loop_metadata_.has_value());
+    DCHECK_NOT_NULL(loop_metadata_->loop_info);
+    return loop_metadata_->loop_info;
+  }
+  void ClearLoopInfo() { loop_metadata_->loop_info = nullptr; }
+  bool HasLoopInfo() const {
+    return loop_metadata_.has_value() && loop_metadata_->loop_info;
   }
 
   interpreter::Register catch_block_context_register() const {
@@ -879,19 +1031,43 @@ class MergePointInterpreterFrameState {
       int predecessor_count, int predecessors_so_far, BasicBlock** predecessors,
       BasicBlockType type, const compiler::BytecodeLivenessState* liveness);
 
-  ValueNode* MergeValue(MaglevGraphBuilder* graph_builder,
+  void MergePhis(MaglevGraphBuilder* builder,
+                 MaglevCompilationUnit& compilation_unit,
+                 InterpreterFrameState& unmerged, BasicBlock* predecessor,
+                 bool optimistic_loop_phis);
+  void MergeVirtualObjects(MaglevGraphBuilder* builder,
+                           MaglevCompilationUnit& compilation_unit,
+                           InterpreterFrameState& unmerged,
+                           BasicBlock* predecessor);
+
+  ValueNode* MergeValue(const MaglevGraphBuilder* graph_builder,
                         interpreter::Register owner,
                         const KnownNodeAspects& unmerged_aspects,
                         ValueNode* merged, ValueNode* unmerged,
-                        Alternatives::List* per_predecessor_alternatives);
+                        Alternatives::List* per_predecessor_alternatives,
+                        bool optimistic_loop_phis = false);
 
-  void ReducePhiPredecessorCount(interpreter::Register owner, ValueNode* merged,
-                                 unsigned num = 1);
+  void ReducePhiPredecessorCount(unsigned num);
+
+  void MergeVirtualObjects(MaglevGraphBuilder* builder,
+                           MaglevCompilationUnit& compilation_unit,
+                           const VirtualObjectList unmerged_vos,
+                           const KnownNodeAspects& unmerged_aspects);
+
+  void MergeVirtualObject(MaglevGraphBuilder* builder,
+                          const VirtualObjectList unmerged_vos,
+                          const KnownNodeAspects& unmerged_aspects,
+                          VirtualObject* merged, VirtualObject* unmerged);
+
+  std::optional<ValueNode*> MergeVirtualObjectValue(
+      const MaglevGraphBuilder* graph_builder,
+      const KnownNodeAspects& unmerged_aspects, ValueNode* merged,
+      ValueNode* unmerged);
 
   void MergeLoopValue(MaglevGraphBuilder* graph_builder,
                       interpreter::Register owner,
-                      KnownNodeAspects& unmerged_aspects, ValueNode* merged,
-                      ValueNode* unmerged);
+                      const KnownNodeAspects& unmerged_aspects,
+                      ValueNode* merged, ValueNode* unmerged);
 
   ValueNode* NewLoopPhi(Zone* zone, interpreter::Register reg);
 
@@ -905,8 +1081,8 @@ class MergePointInterpreterFrameState {
 
   int merge_offset_;
 
-  int predecessor_count_;
-  int predecessors_so_far_;
+  uint32_t predecessor_count_;
+  uint32_t predecessors_so_far_;
 
   uint32_t bitfield_;
 
@@ -933,18 +1109,79 @@ class MergePointInterpreterFrameState {
     interpreter::Register catch_block_context_register_;
   };
 
-  base::Optional<const compiler::LoopInfo*> loop_info_ = base::nullopt;
+  struct LoopMetadata {
+    const compiler::LoopInfo* loop_info;
+    const LoopEffects* loop_effects;
+  };
+  std::optional<LoopMetadata> loop_metadata_ = std::nullopt;
+};
+
+struct LoopEffects {
+  explicit LoopEffects(int loop_header, Zone* zone)
+      :
+#ifdef DEBUG
+        loop_header(loop_header),
+#endif
+        context_slot_written(zone),
+        objects_written(zone),
+        keys_cleared(zone),
+        allocations(zone) {
+  }
+#ifdef DEBUG
+  int loop_header;
+#endif
+  ZoneSet<KnownNodeAspects::LoadedContextSlotsKey> context_slot_written;
+  ZoneSet<ValueNode*> objects_written;
+  ZoneSet<KnownNodeAspects::LoadedPropertyMapKey> keys_cleared;
+  ZoneSet<InlinedAllocation*> allocations;
+  bool unstable_aspects_cleared = false;
+  bool may_have_aliasing_contexts = false;
+  void Merge(const LoopEffects* other) {
+    if (!unstable_aspects_cleared) {
+      unstable_aspects_cleared = other->unstable_aspects_cleared;
+    }
+    if (!may_have_aliasing_contexts) {
+      may_have_aliasing_contexts = other->may_have_aliasing_contexts;
+    }
+    context_slot_written.insert(other->context_slot_written.begin(),
+                                other->context_slot_written.end());
+    objects_written.insert(other->objects_written.begin(),
+                           other->objects_written.end());
+    keys_cleared.insert(other->keys_cleared.begin(), other->keys_cleared.end());
+    allocations.insert(other->allocations.begin(), other->allocations.end());
+  }
 };
 
 void InterpreterFrameState::CopyFrom(const MaglevCompilationUnit& info,
-                                     MergePointInterpreterFrameState& state) {
+                                     MergePointInterpreterFrameState& state,
+                                     bool preserve_known_node_aspects = false,
+                                     Zone* zone = nullptr) {
+  DCHECK_IMPLIES(preserve_known_node_aspects, zone);
+  if (v8_flags.trace_maglev_graph_building) {
+    std::cout << "- Copying frame state from merge @" << &state << std::endl;
+    state.PrintVirtualObjects(info, virtual_objects());
+  }
+  virtual_objects_.Snapshot();
   state.frame_state().ForEachValue(
       info, [&](ValueNode* value, interpreter::Register reg) {
         frame_[reg] = value;
       });
-  // Move "what we know" across without copying -- we can safely mutate it
-  // now, as we won't be entering this merge point again.
-  known_node_aspects_ = state.TakeKnownNodeAspects();
+  if (preserve_known_node_aspects) {
+    known_node_aspects_ = state.CloneKnownNodeAspects(zone);
+  } else {
+    // Move "what we know" across without copying -- we can safely mutate it
+    // now, as we won't be entering this merge point again.
+    known_node_aspects_ = state.TakeKnownNodeAspects();
+  }
+  virtual_objects_ = state.frame_state().virtual_objects();
+}
+
+inline VirtualObjectList DeoptFrame::GetVirtualObjects() const {
+  if (type() == DeoptFrame::FrameType::kInterpretedFrame) {
+    return as_interpreted().frame_state()->virtual_objects();
+  }
+  DCHECK_NOT_NULL(parent());
+  return parent()->GetVirtualObjects();
 }
 
 }  // namespace maglev

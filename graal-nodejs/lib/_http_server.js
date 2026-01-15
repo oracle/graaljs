@@ -25,10 +25,12 @@ const {
   ArrayIsArray,
   Error,
   MathMin,
+  NumberIsFinite,
   ObjectKeys,
   ObjectSetPrototypeOf,
   ReflectApply,
   Symbol,
+  SymbolAsyncDispose,
   SymbolFor,
 } = primordials;
 
@@ -82,13 +84,13 @@ const {
   assignFunctionName,
   kEmptyObject,
   promisify,
-  SymbolAsyncDispose,
 } = require('internal/util');
 const {
   validateInteger,
   validateBoolean,
   validateLinkHeaderValue,
   validateObject,
+  validateFunction,
 } = require('internal/validators');
 const Buffer = require('buffer').Buffer;
 const { setInterval, clearInterval } = require('timers');
@@ -103,6 +105,8 @@ const onResponseFinishChannel = dc.channel('http.server.response.finish');
 
 const kServerResponse = Symbol('ServerResponse');
 const kServerResponseStatistics = Symbol('ServerResponseStatistics');
+
+const kOptimizeEmptyRequests = Symbol('OptimizeEmptyRequestsOption');
 
 const {
   hasObserver,
@@ -184,8 +188,6 @@ const kConnections = Symbol('http.server.connections');
 const kConnectionsCheckingInterval = Symbol('http.server.connectionsCheckingInterval');
 
 const HTTP_SERVER_TRACE_EVENT_NAME = 'http.server.request';
-// TODO(jazelly): make this configurable
-const HTTP_SERVER_KEEP_ALIVE_TIMEOUT_BUFFER = 1000;
 
 class HTTPServerAsyncResource {
   constructor(type, socket) {
@@ -330,7 +332,9 @@ ServerResponse.prototype.writeEarlyHints = function writeEarlyHints(hints, cb) {
 
   head += 'Link: ' + link + '\r\n';
 
-  for (const key of ObjectKeys(hints)) {
+  const keys = ObjectKeys(hints);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
     if (key !== 'link') {
       head += key + ': ' + hints[key] + '\r\n';
     }
@@ -451,6 +455,11 @@ function storeHTTPOptions(options) {
     validateInteger(maxHeaderSize, 'maxHeaderSize', 0);
   this.maxHeaderSize = maxHeaderSize;
 
+  const optimizeEmptyRequests = options.optimizeEmptyRequests;
+  if (optimizeEmptyRequests !== undefined)
+    validateBoolean(optimizeEmptyRequests, 'options.optimizeEmptyRequests');
+  this[kOptimizeEmptyRequests] = optimizeEmptyRequests || false;
+
   const insecureHTTPParser = options.insecureHTTPParser;
   if (insecureHTTPParser !== undefined)
     validateBoolean(insecureHTTPParser, 'options.insecureHTTPParser');
@@ -484,6 +493,14 @@ function storeHTTPOptions(options) {
     this.keepAliveTimeout = 5_000; // 5 seconds;
   }
 
+  const keepAliveTimeoutBuffer = options.keepAliveTimeoutBuffer;
+  if (keepAliveTimeoutBuffer !== undefined) {
+    validateInteger(keepAliveTimeoutBuffer, 'keepAliveTimeoutBuffer', 0);
+    this.keepAliveTimeoutBuffer = keepAliveTimeoutBuffer;
+  } else {
+    this.keepAliveTimeoutBuffer = 1000;
+  }
+
   const connectionsCheckingInterval = options.connectionsCheckingInterval;
   if (connectionsCheckingInterval !== undefined) {
     validateInteger(connectionsCheckingInterval, 'connectionsCheckingInterval', 0);
@@ -512,6 +529,16 @@ function storeHTTPOptions(options) {
     this.rejectNonStandardBodyWrites = rejectNonStandardBodyWrites;
   } else {
     this.rejectNonStandardBodyWrites = false;
+  }
+
+  const shouldUpgradeCallback = options.shouldUpgradeCallback;
+  if (shouldUpgradeCallback !== undefined) {
+    validateFunction(shouldUpgradeCallback, 'options.shouldUpgradeCallback');
+    this.shouldUpgradeCallback = shouldUpgradeCallback;
+  } else {
+    this.shouldUpgradeCallback = function() {
+      return this.listenerCount('upgrade') > 0;
+    };
   }
 }
 
@@ -546,6 +573,13 @@ function Server(options, requestListener) {
   }
 
   storeHTTPOptions.call(this, options);
+
+  // Optional buffer added to the keep-alive timeout when setting socket timeouts.
+  // Helps reduce ECONNRESET errors from clients by extending the internal timeout.
+  // Default is 1000ms if not specified.
+  const buf = options.keepAliveTimeoutBuffer;
+  this.keepAliveTimeoutBuffer =
+  (typeof buf === 'number' && NumberIsFinite(buf) && buf >= 0) ? buf : 1000;
   net.Server.call(
     this,
     { allowHalfOpen: true, noDelay: options.noDelay ?? true,
@@ -918,8 +952,6 @@ function socketOnError(e) {
 }
 
 function onParserExecuteCommon(server, socket, parser, state, ret, d) {
-  resetSocketTimeout(server, socket, state);
-
   if (ret instanceof Error) {
     prepareError(ret, parser, d);
     debug('parse error', ret);
@@ -943,7 +975,7 @@ function onParserExecuteCommon(server, socket, parser, state, ret, d) {
     parser = null;
 
     const eventName = req.method === 'CONNECT' ? 'connect' : 'upgrade';
-    if (eventName === 'upgrade' || server.listenerCount(eventName) > 0) {
+    if (server.listenerCount(eventName) > 0) {
       debug('SERVER have listener for %s', eventName);
       const bodyHead = d.slice(ret, d.length);
 
@@ -951,7 +983,7 @@ function onParserExecuteCommon(server, socket, parser, state, ret, d) {
 
       server.emit(eventName, req, socket, bodyHead);
     } else {
-      // Got CONNECT method, but have no handler.
+      // Got upgrade or CONNECT method, but have no handler.
       socket.destroy();
     }
   } else if (parser.incoming && parser.incoming.method === 'PRI') {
@@ -1013,10 +1045,16 @@ function resOnFinish(req, res, socket, state, server) {
       socket.end();
     }
   } else if (state.outgoing.length === 0) {
-    if (server.keepAliveTimeout && typeof socket.setTimeout === 'function') {
-      // Increase the internal timeout wrt the advertised value to reduce
+    const keepAliveTimeout = NumberIsFinite(server.keepAliveTimeout) && server.keepAliveTimeout >= 0 ?
+      server.keepAliveTimeout : 0;
+    const keepAliveTimeoutBuffer = NumberIsFinite(server.keepAliveTimeoutBuffer) && server.keepAliveTimeoutBuffer >= 0 ?
+      server.keepAliveTimeoutBuffer : 1e3;
+
+    if (keepAliveTimeout && typeof socket.setTimeout === 'function') {
+      // Extend the internal timeout by the configured buffer to reduce
       // the likelihood of ECONNRESET errors.
-      socket.setTimeout(server.keepAliveTimeout + HTTP_SERVER_KEEP_ALIVE_TIMEOUT_BUFFER);
+      // This allows fine-tuning beyond the advertised keepAliveTimeout.
+      socket.setTimeout(keepAliveTimeout + keepAliveTimeoutBuffer);
       state.keepAliveTimeoutSet = true;
     }
   } else {
@@ -1036,6 +1074,10 @@ function emitCloseNT(self) {
   }
 }
 
+function hasBodyHeaders(headers) {
+  return ('content-length' in headers) || ('transfer-encoding' in headers);
+}
+
 // The following callback is issued after the headers have been read on a
 // new message. In this callback we setup the response object and pass it
 // to the user.
@@ -1044,7 +1086,7 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
 
   if (req.upgrade) {
     req.upgrade = req.method === 'CONNECT' ||
-                  server.listenerCount('upgrade') > 0;
+                  !!server.shouldUpgradeCallback(req);
     if (req.upgrade)
       return 2;
   }
@@ -1085,6 +1127,19 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
       socket,
       server,
     });
+  }
+
+  // Check if we should optimize empty requests (those without Content-Length or Transfer-Encoding headers)
+  const shouldOptimize = server[kOptimizeEmptyRequests] === true && !hasBodyHeaders(req.headers);
+
+  if (shouldOptimize) {
+    // Fast processing where emitting 'data', 'end' and 'close' events is
+    // skipped and data is dumped.
+    // This avoids a lot of unnecessary overhead otherwise introduced by
+    // stream.Readable life cycle rules. The downside is that this will
+    // break some servers that read bodies for methods that don't have body headers.
+    req._dumpAndCloseReadable();
+    req._read();
   }
 
   if (socket._httpMessage) {

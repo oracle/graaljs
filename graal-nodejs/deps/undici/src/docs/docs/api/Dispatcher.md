@@ -194,26 +194,23 @@ Returns: `Boolean` - `false` if dispatcher is busy and further dispatch calls wo
 * **method** `string`
 * **reset** `boolean` (optional) - Default: `false` - If `false`, the request will attempt to create a long-living connection by sending the `connection: keep-alive` header,otherwise will attempt to close it immediately after response by sending `connection: close` within the request and closing the socket afterwards.
 * **body** `string | Buffer | Uint8Array | stream.Readable | Iterable | AsyncIterable | null` (optional) - Default: `null`
-* **headers** `UndiciHeaders | string[]` (optional) - Default: `null`.
+* **headers** `UndiciHeaders` (optional) - Default: `null`.
 * **query** `Record<string, any> | null` (optional) - Default: `null` - Query string params to be embedded in the request URL. Note that both keys and values of query are encoded using `encodeURIComponent`. If for some reason you need to send them unencoded, embed query params into path directly instead.
 * **idempotent** `boolean` (optional) - Default: `true` if `method` is `'HEAD'` or `'GET'` - Whether the requests can be safely retried or not. If `false` the request won't be sent until all preceding requests in the pipeline has completed.
-* **blocking** `boolean` (optional) - Default: `false` - Whether the response is expected to take a long time and would end up blocking the pipeline. When this is set to `true` further pipelining will be avoided on the same connection until headers have been received.
+* **blocking** `boolean` (optional) - Default: `method !== 'HEAD'` - Whether the response is expected to take a long time and would end up blocking the pipeline. When this is set to `true` further pipelining will be avoided on the same connection until headers have been received.
 * **upgrade** `string | null` (optional) - Default: `null` - Upgrade the request. Should be used to specify the kind of upgrade i.e. `'Websocket'`.
 * **bodyTimeout** `number | null` (optional) - The timeout after which a request will time out, in milliseconds. Monitors time between receiving body data. Use `0` to disable it entirely. Defaults to 300 seconds.
 * **headersTimeout** `number | null` (optional) - The amount of time, in milliseconds, the parser will wait to receive the complete HTTP headers while not sending the request. Defaults to 300 seconds.
-* **throwOnError** `boolean` (optional) - Default: `false` - Whether Undici should throw an error upon receiving a 4xx or 5xx response from the server.
 * **expectContinue** `boolean` (optional) - Default: `false` - For H2, it appends the expect: 100-continue header, and halts the request body until a 100-continue is received from the remote server
 
 #### Parameter: `DispatchHandler`
 
-* **onConnect** `(abort: () => void, context: object) => void` - Invoked before request is dispatched on socket. May be invoked multiple times when a request is retried when the request at the head of the pipeline fails.
-* **onError** `(error: Error) => void` - Invoked when an error has occurred. May not throw.
-* **onUpgrade** `(statusCode: number, headers: Buffer[], socket: Duplex) => void` (optional) - Invoked when request is upgraded. Required if `DispatchOptions.upgrade` is defined or `DispatchOptions.method === 'CONNECT'`.
-* **onResponseStarted** `() => void` (optional) - Invoked when response is received, before headers have been read.
-* **onHeaders** `(statusCode: number, headers: Buffer[], resume: () => void, statusText: string) => boolean` - Invoked when statusCode and headers have been received. May be invoked multiple times due to 1xx informational headers. Not required for `upgrade` requests.
-* **onData** `(chunk: Buffer) => boolean` - Invoked when response payload data is received. Not required for `upgrade` requests.
-* **onComplete** `(trailers: Buffer[]) => void` - Invoked when response payload and trailers have been received and the request has completed. Not required for `upgrade` requests.
-* **onBodySent** `(chunk: string | Buffer | Uint8Array) => void` - Invoked when a body chunk is sent to the server. Not required. For a stream or iterable body this will be invoked for every chunk. For other body types, it will be invoked once after the body is sent.
+* **onRequestStart** `(controller: DispatchController, context: object) => void` - Invoked before request is dispatched on socket. May be invoked multiple times when a request is retried when the request at the head of the pipeline fails.
+* **onRequestUpgrade** `(controller: DispatchController, statusCode: number, headers: Record<string, string | string[]>, socket: Duplex) => void` (optional) - Invoked when request is upgraded. Required if `DispatchOptions.upgrade` is defined or `DispatchOptions.method === 'CONNECT'`.
+* **onResponseStart** `(controller: DispatchController, statusCode: number, headers: Record<string, string | string []>, statusMessage?: string) => void` - Invoked when statusCode and headers have been received. May be invoked multiple times due to 1xx informational headers. Not required for `upgrade` requests.
+* **onResponseData** `(controller: DispatchController, chunk: Buffer) => void` - Invoked when response payload data is received. Not required for `upgrade` requests.
+* **onResponseEnd** `(controller: DispatchController, trailers: Record<string, string | string[]>) => void` - Invoked when response payload and trailers have been received and the request has completed. Not required for `upgrade` requests.
+* **onResponseError** `(controller: DispatchController, error: Error) => void` - Invoked when an error has occurred. May not throw.
 
 #### Example 1 - Dispatch GET request
 
@@ -378,7 +375,7 @@ Returns: `stream.Duplex`
 
 #### Parameter: PipelineOptions
 
-Extends: [`RequestOptions`](#parameter-requestoptions)
+Extends: [`RequestOptions`](/docs/docs/api/Dispatcher.md#parameter-requestoptions)
 
 * **objectMode** `boolean` (optional) - Default: `false` - Set to `true` if the `handler` will return an object stream.
 
@@ -468,7 +465,7 @@ Returns: `void | Promise<ResponseData>` - Only returns a `Promise` if no `callba
 
 #### Parameter: `RequestOptions`
 
-Extends: [`DispatchOptions`](#parameter-dispatchoptions)
+Extends: [`DispatchOptions`](/docs/docs/api/Dispatcher.md#parameter-dispatchoptions)
 
 * **opaque** `unknown` (optional) - Default: `null` - Used for passing through context to `ResponseData`.
 * **signal** `AbortSignal | events.EventEmitter | null` (optional) - Default: `null`.
@@ -479,7 +476,7 @@ The `RequestOptions.method` property should not be value `'CONNECT'`.
 #### Parameter: `ResponseData`
 
 * **statusCode** `number`
-* **headers** `Record<string, string | string[]>` - Note that all header keys are lower-cased, e. g. `content-type`.
+* **headers** `Record<string, string | string[]>` - Note that all header keys are lower-cased, e.g. `content-type`.
 * **body** `stream.Readable` which also implements [the body mixin from the Fetch Standard](https://fetch.spec.whatwg.org/#body-mixin).
 * **trailers** `Record<string, string>` - This object starts out
   as empty and will be mutated to contain trailers after `body` has emitted `'end'`.
@@ -528,6 +525,7 @@ try {
   console.log('headers', headers)
   body.setEncoding('utf8')
   body.on('data', console.log)
+  body.on('error', console.error)
   body.on('end', () => {
     console.log('trailers', trailers)
   })
@@ -631,11 +629,30 @@ try {
 }
 ```
 
+#### Example 3 - Conditionally reading the body
+
+Remember to fully consume the body even in the case when it is not read.
+
+```js
+const { body, statusCode } = await client.request({
+  path: '/',
+  method: 'GET'
+})
+
+if (statusCode === 200) {
+  return await body.arrayBuffer()
+}
+
+await body.dump()
+
+return null
+```
+
 ### `Dispatcher.stream(options, factory[, callback])`
 
 A faster version of `Dispatcher.request`. This method expects the second argument `factory` to return a [`stream.Writable`](https://nodejs.org/api/stream.html#stream_class_stream_writable) stream which the response will be written to. This improves performance by avoiding creating an intermediate [`stream.Readable`](https://nodejs.org/api/stream.html#stream_readable_streams) stream when the user expects to directly pipe the response body to a [`stream.Writable`](https://nodejs.org/api/stream.html#stream_class_stream_writable) stream.
 
-As demonstrated in [Example 1 - Basic GET stream request](#example-1---basic-get-stream-request), it is recommended to use the `option.opaque` property to avoid creating a closure for the `factory` method. This pattern works well with Node.js Web Frameworks such as [Fastify](https://fastify.io). See [Example 2 - Stream to Fastify Response](#example-2---stream-to-fastify-response) for more details.
+As demonstrated in [Example 1 - Basic GET stream request](/docs/docs/api/Dispatcher.md#example-1-basic-get-stream-request), it is recommended to use the `option.opaque` property to avoid creating a closure for the `factory` method. This pattern works well with Node.js Web Frameworks such as [Fastify](https://fastify.io). See [Example 2 - Stream to Fastify Response](/docs/docs/api/Dispatch.md#example-2-stream-to-fastify-response) for more details.
 
 Arguments:
 
@@ -824,9 +841,28 @@ try {
 Compose a new dispatcher from the current dispatcher and the given interceptors.
 
 > _Notes_:
-> - The order of the interceptors matters. The first interceptor will be the first to be called.
+> - The order of the interceptors matters. The last interceptor will be the first to be called.
 > - It is important to note that the `interceptor` function should return a function that follows the `Dispatcher.dispatch` signature.
 > - Any fork of the chain of `interceptors` can lead to unexpected results.
+>
+> **Interceptor Stack Visualization:**
+> ```
+> compose([interceptor1, interceptor2, interceptor3])
+>
+> Request Flow:
+> ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+> │   Request   │───▶│interceptor3 │───▶│interceptor2 │───▶│interceptor1 │───▶│  dispatcher │
+> └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘    │   .dispatch │
+>                           ▲                   ▲                   ▲         └─────────────┘
+>                           │                   │                   │                ▲
+>                    (called first)      (called second)     (called last)           │
+>                                                                                    │
+> ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐          │
+> │  Response   │◀───│interceptor3 │◀───│interceptor2 │◀───│interceptor1 │◀─────────┘
+> └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+>
+> The interceptors are composed in reverse order due to function composition.
+> ```
 
 Arguments:
 
@@ -917,7 +953,7 @@ await client.request({ path: '/', method: 'GET' })
 
 The `redirect` interceptor allows you to customize the way your dispatcher handles redirects.
 
-It accepts the same arguments as the [`RedirectHandler` constructor](./RedirectHandler.md).
+It accepts the same arguments as the [`RedirectHandler` constructor](/docs/docs/api/RedirectHandler.md).
 
 **Example - Basic Redirect Interceptor**
 
@@ -935,7 +971,7 @@ client.request({ path: "/" })
 
 The `retry` interceptor allows you to customize the way your dispatcher handles retries.
 
-It accepts the same arguments as the [`RetryHandler` constructor](./RetryHandler.md).
+It accepts the same arguments as the [`RetryHandler` constructor](/docs/docs/api/RetryHandler.md).
 
 **Example - Basic Redirect Interceptor**
 
@@ -975,7 +1011,7 @@ const client = new Client("http://example.com").compose(
   })
 );
 
-// or 
+// or
 client.dispatch(
   {
     path: "/",
@@ -1007,6 +1043,7 @@ The `dns` interceptor enables you to cache DNS lookups for a given duration, per
   - The function should return a single record from the records array.
   - By default a simplified version of Round Robin is used.
   - The `records` property can be mutated to store the state of the balancing algorithm.
+- `storage: DNSStorage` - Custom storage for resolved DNS records
 
 > The `Dispatcher#options` also gets extended with the options `dns.affinity`, `dns.dualStack`, `dns.lookup` and `dns.pick` which can be used to configure the interceptor at a request-per-request basis.
 
@@ -1020,6 +1057,14 @@ It represents a DNS record.
 It represents a map of DNS IP addresses records for a single origin.
 - `4.ips` - (`DNSInterceptorRecord[] | null`) The IPv4 addresses.
 - `6.ips` - (`DNSInterceptorRecord[] | null`) The IPv6 addresses.
+
+**DNSStorage**
+It represents a storage object for resolved DNS records.
+- `size` - (`number`) current size of the storage.
+- `get` - (`(origin: string) => DNSInterceptorOriginRecords | null`) method to get the records for a given origin.
+- `set` - (`(origin: string, records: DNSInterceptorOriginRecords | null, options: { ttl: number }) => void`) method to set the records for a given origin.
+- `delete` - (`(origin: string) => void`) method to delete records for a given origin.
+- `full` - (`() => boolean`) method to check if the storage is full, if returns `true`, DNS lookup will be skipped in this interceptor and new records will not be stored.
 
 **Example - Basic DNS Interceptor**
 
@@ -1037,202 +1082,174 @@ const response = await client.request({
 })
 ```
 
-##### `Response Error Interceptor`
-
-**Introduction**
-
-The Response Error Interceptor is designed to handle HTTP response errors efficiently. It intercepts responses and throws detailed errors for responses with status codes indicating failure (4xx, 5xx). This interceptor enhances error handling by providing structured error information, including response headers, data, and status codes.
-
-**ResponseError Class**
-
-The `ResponseError` class extends the `UndiciError` class and encapsulates detailed error information. It captures the response status code, headers, and data, providing a structured way to handle errors.
-
-**Definition**
+**Example - DNS Interceptor and LRU cache as a storage**
 
 ```js
-class ResponseError extends UndiciError {
-  constructor (message, code, { headers, data }) {
-    super(message);
-    this.name = 'ResponseError';
-    this.message = message || 'Response error';
-    this.code = 'UND_ERR_RESPONSE';
-    this.statusCode = code;
-    this.data = data;
-    this.headers = headers;
-  }
-}
-```
+const { Client, interceptors } = require("undici");
+const QuickLRU = require("quick-lru");
+const { dns } = interceptors;
 
-**Interceptor Handler**
+const lru = new QuickLRU({ maxSize: 100 });
 
-The interceptor's handler class extends `DecoratorHandler` and overrides methods to capture response details and handle errors based on the response status code.
-
-**Methods**
-
-- **onConnect**: Initializes response properties.
-- **onHeaders**: Captures headers and status code. Decodes body if content type is `application/json` or `text/plain`.
-- **onData**: Appends chunks to the body if status code indicates an error.
-- **onComplete**: Finalizes error handling, constructs a `ResponseError`, and invokes the `onError` method.
-- **onError**: Propagates errors to the handler.
-
-**Definition**
-
-```js
-class Handler extends DecoratorHandler {
-  // Private properties
-  #handler;
-  #statusCode;
-  #contentType;
-  #decoder;
-  #headers;
-  #body;
-
-  constructor (opts, { handler }) {
-    super(handler);
-    this.#handler = handler;
-  }
-
-  onConnect (abort) {
-    this.#statusCode = 0;
-    this.#contentType = null;
-    this.#decoder = null;
-    this.#headers = null;
-    this.#body = '';
-    return this.#handler.onConnect(abort);
-  }
-
-  onHeaders (statusCode, rawHeaders, resume, statusMessage, headers = parseHeaders(rawHeaders)) {
-    this.#statusCode = statusCode;
-    this.#headers = headers;
-    this.#contentType = headers['content-type'];
-
-    if (this.#statusCode < 400) {
-      return this.#handler.onHeaders(statusCode, rawHeaders, resume, statusMessage, headers);
-    }
-
-    if (this.#contentType === 'application/json' || this.#contentType === 'text/plain') {
-      this.#decoder = new TextDecoder('utf-8');
-    }
-  }
-
-  onData (chunk) {
-    if (this.#statusCode < 400) {
-      return this.#handler.onData(chunk);
-    }
-    this.#body += this.#decoder?.decode(chunk, { stream: true }) ?? '';
-  }
-
-  onComplete (rawTrailers) {
-    if (this.#statusCode >= 400) {
-      this.#body += this.#decoder?.decode(undefined, { stream: false }) ?? '';
-      if (this.#contentType === 'application/json') {
-        try {
-          this.#body = JSON.parse(this.#body);
-        } catch {
-          // Do nothing...
-        }
-      }
-
-      let err;
-      const stackTraceLimit = Error.stackTraceLimit;
-      Error.stackTraceLimit = 0;
-      try {
-        err = new ResponseError('Response Error', this.#statusCode, this.#headers, this.#body);
-      } finally {
-        Error.stackTraceLimit = stackTraceLimit;
-      }
-
-      this.#handler.onError(err);
-    } else {
-      this.#handler.onComplete(rawTrailers);
-    }
-  }
-
-  onError (err) {
-    this.#handler.onError(err);
+const lruAdapter = {
+  get size() {
+    return lru.size;
+  },
+  get(origin) {
+    return lru.get(origin);
+  },
+  set(origin, records, { ttl }) {
+    lru.set(origin, records, { maxAge: ttl });
+  },
+  delete(origin) {
+    lru.delete(origin);
+  },
+  full() {
+    // For LRU cache, we can always store new records,
+    // old records will be evicted automatically
+    return false;
   }
 }
 
-module.exports = (dispatch) => (opts, handler) => opts.throwOnError
-  ? dispatch(opts, new Handler(opts, { handler }))
-  : dispatch(opts, handler);
+const client = new Agent().compose([
+  dns({ storage: lruAdapter })
+])
+
+const response = await client.request({
+  origin: `http://localhost:3030`,
+  ...requestOpts
+})
 ```
 
-**Tests**
+##### `responseError`
 
-Unit tests ensure the interceptor functions correctly, handling both error and non-error responses appropriately.
+The `responseError` interceptor throws an error for responses with status code errors (>= 400).
 
-**Example Tests**
-
-- **No Error if `throwOnError` is False**:
+**Example**
 
 ```js
-test('should not error if request is not meant to throw error', async (t) => {
-  const opts = { throwOnError: false };
-  const handler = { onError: () => {}, onData: () => {}, onComplete: () => {} };
-  const interceptor = createResponseErrorInterceptor((opts, handler) => handler.onComplete());
-  assert.doesNotThrow(() => interceptor(opts, handler));
+const { Client, interceptors } = require("undici");
+const { responseError } = interceptors;
+
+const client = new Client("http://example.com").compose(
+  responseError()
+);
+
+// Will throw a ResponseError for status codes >= 400
+await client.request({
+  method: "GET",
+  path: "/"
 });
 ```
 
-- **Error if Status Code is in Specified Error Codes**:
+##### `decompress`
+
+⚠️ The decompress interceptor is experimental and subject to change.
+
+The `decompress` interceptor automatically decompresses response bodies that are compressed with gzip, deflate, brotli, or zstd compression. It removes the `content-encoding` and `content-length` headers from decompressed responses and supports RFC-9110 compliant multiple encodings.
+
+**Options**
+
+- `skipErrorResponses` - Whether to skip decompression for error responses (status codes >= 400). Default: `true`.
+- `skipStatusCodes` - Array of status codes to skip decompression for. Default: `[204, 304]`.
+
+**Example - Basic Decompress Interceptor**
 
 ```js
-test('should error if request status code is in the specified error codes', async (t) => {
-  const opts = { throwOnError: true, statusCodes: [500] };
-  const response = { statusCode: 500 };
-  let capturedError;
-  const handler = {
-    onError: (err) => { capturedError = err; },
-    onData: () => {},
-    onComplete: () => {}
-  };
+const { Client, interceptors } = require("undici");
+const { decompress } = interceptors;
 
-  const interceptor = createResponseErrorInterceptor((opts, handler) => {
-    if (opts.throwOnError && opts.statusCodes.includes(response.statusCode)) {
-      handler.onError(new Error('Response Error'));
-    } else {
-      handler.onComplete();
-    }
-  });
+const client = new Client("http://example.com").compose(
+  decompress()
+);
 
-  interceptor({ ...opts, response }, handler);
-
-  await new Promise(resolve => setImmediate(resolve));
-
-  assert(capturedError, 'Expected error to be captured but it was not.');
-  assert.strictEqual(capturedError.message, 'Response Error');
-  assert.strictEqual(response.statusCode, 500);
+// Automatically decompresses gzip/deflate/brotli/zstd responses
+const response = await client.request({
+  method: "GET",
+  path: "/"
 });
 ```
 
-- **No Error if Status Code is Not in Specified Error Codes**:
+**Example - Custom Options**
 
 ```js
-test('should not error if request status code is not in the specified error codes', async (t) => {
-  const opts = { throwOnError: true, statusCodes: [500] };
-  const response = { statusCode: 404 };
-  const handler = {
-    onError: () => {},
-    onData: () => {},
-    onComplete: () => {}
-  };
+const { Client, interceptors } = require("undici");
+const { decompress } = interceptors;
 
-  const interceptor = createResponseErrorInterceptor((opts, handler) => {
-    if (opts.throwOnError && opts.statusCodes.includes(response.statusCode)) {
-      handler.onError(new Error('Response Error'));
-    } else {
-      handler.onComplete();
-    }
-  });
-
-  assert.doesNotThrow(() => interceptor({ ...opts, response }, handler));
-});
+const client = new Client("http://example.com").compose(
+  decompress({
+    skipErrorResponses: false, // Decompress 5xx responses
+    skipStatusCodes: [204, 304, 201] // Skip these status codes
+  })
+);
 ```
 
-**Conclusion**
+**Supported Encodings**
 
-The Response Error Interceptor provides a robust mechanism for handling HTTP response errors by capturing detailed error information and propagating it through a structured `ResponseError` class. This enhancement improves error handling and debugging capabilities in applications using the interceptor.
+- `gzip` / `x-gzip` - GZIP compression
+- `deflate` / `x-compress` - DEFLATE compression  
+- `br` - Brotli compression
+- `zstd` - Zstandard compression
+- Multiple encodings (e.g., `gzip, deflate`) are supported per RFC-9110
+
+**Behavior**
+
+- Skips decompression for status codes < 200 or >= 400 (configurable)
+- Skips decompression for 204 No Content and 304 Not Modified by default
+- Removes `content-encoding` and `content-length` headers when decompressing
+- Passes through unsupported encodings unchanged
+- Handles case-insensitive encoding names
+- Supports streaming decompression without buffering
+
+##### `Cache Interceptor`
+
+The `cache` interceptor implements client-side response caching as described in
+[RFC9111](https://www.rfc-editor.org/rfc/rfc9111.html).
+
+**Options**
+
+- `store` - The [`CacheStore`](/docs/docs/api/CacheStore.md) to store and retrieve responses from. Default is [`MemoryCacheStore`](/docs/docs/api/CacheStore.md#memorycachestore).
+- `methods` - The [**safe** HTTP methods](https://www.rfc-editor.org/rfc/rfc9110#section-9.2.1) to cache the response of.
+- `cacheByDefault` - The default expiration time to cache responses by if they don't have an explicit expiration and cannot have an heuristic expiry computed. If this isn't present, responses neither with an explicit expiration nor heuristically cacheable will not be cached. Default `undefined`.
+- `type` - The [type of cache](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching#types_of_caches) for Undici to act as. Can be `shared` or `private`. Default `shared`. `private` implies privately cacheable responses will be cached and potentially shared with other users of your application.
+
+##### `Deduplicate Interceptor`
+
+The `deduplicate` interceptor deduplicates concurrent identical requests. When multiple identical requests are made while one is already in-flight, only one request is sent to the origin server, and all waiting handlers receive the same response. This reduces server load and improves performance.
+
+**Options**
+
+- `methods` - The [**safe** HTTP methods](https://www.rfc-editor.org/rfc/rfc9110#section-9.2.1) to deduplicate. Default `['GET']`.
+- `skipHeaderNames` - Header names that, if present in a request, will cause the request to skip deduplication entirely. Useful for headers like `idempotency-key` where presence indicates unique processing. Header name matching is case-insensitive. Default `[]`.
+- `excludeHeaderNames` - Header names to exclude from the deduplication key. Requests with different values for these headers will still be deduplicated together. Useful for headers like `x-request-id` that vary per request but shouldn't affect deduplication. Header name matching is case-insensitive. Default `[]`.
+
+**Usage**
+
+```js
+const { Client, interceptors } = require("undici");
+const { deduplicate, cache } = interceptors;
+
+// Deduplicate only
+const client = new Client("http://example.com").compose(
+  deduplicate()
+);
+
+// Deduplicate with caching
+const clientWithCache = new Client("http://example.com").compose(
+  deduplicate(),
+  cache()
+);
+```
+
+Requests are considered identical if they have the same:
+- Origin
+- HTTP method
+- Path
+- Request headers (excluding any headers specified in `excludeHeaderNames`)
+
+All deduplicated requests receive the complete response including status code, headers, and body.
+
+For observability, request deduplication events are published to the `undici:request:pending-requests` [diagnostic channel](/docs/docs/api/DiagnosticsChannel.md#undicirequestpending-requests).
 
 ## Instance Events
 
@@ -1280,13 +1297,13 @@ Emitted when dispatcher is no longer busy.
 
 * `Record<string, string | string[] | undefined> | string[] | Iterable<[string, string | string[] | undefined]> | null`
 
-Header arguments such as `options.headers` in [`Client.dispatch`](Client.md#clientdispatchoptions-handlers) can be specified in three forms:
+Header arguments such as `options.headers` in [`Client.dispatch`](/docs/docs/api/Client.md#clientdispatchoptions-handlers) can be specified in three forms:
 * As an object specified by the `Record<string, string | string[] | undefined>` (`IncomingHttpHeaders`) type.
 * As an array of strings. An array representation of a header list must have an even length, or an `InvalidArgumentError` will be thrown.
 * As an iterable that can encompass `Headers`, `Map`, or a custom iterator returning key-value pairs.
 Keys are lowercase and values are not modified.
 
-Response headers will derive a `host` from the `url` of the [Client](Client.md#class-client) instance if no `host` header was previously specified.
+Response headers will derive a `host` from the `url` of the [Client](/docs/docs/api/Client.md#class-client) instance if no `host` header was previously specified.
 
 ### Example 1 - Object
 

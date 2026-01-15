@@ -120,6 +120,10 @@ the Resource Timeline. If `name` is provided, removes only the named resource.
 added:
  - v14.10.0
  - v12.19.0
+changes:
+  - version: v24.12.0
+    pr-url: https://github.com/nodejs/node/pull/60370
+    description: Added `perf_hooks.eventLoopUtilization` alias.
 -->
 
 * `utilization1` {Object} The result of a previous call to
@@ -131,62 +135,9 @@ added:
   * `active` {number}
   * `utilization` {number}
 
-The `eventLoopUtilization()` method returns an object that contains the
-cumulative duration of time the event loop has been both idle and active as a
-high resolution milliseconds timer. The `utilization` value is the calculated
-Event Loop Utilization (ELU).
+This is an alias of [`perf_hooks.eventLoopUtilization()`][].
 
-If bootstrapping has not yet finished on the main thread the properties have
-the value of `0`. The ELU is immediately available on [Worker threads][] since
-bootstrap happens within the event loop.
-
-Both `utilization1` and `utilization2` are optional parameters.
-
-If `utilization1` is passed, then the delta between the current call's `active`
-and `idle` times, as well as the corresponding `utilization` value are
-calculated and returned (similar to [`process.hrtime()`][]).
-
-If `utilization1` and `utilization2` are both passed, then the delta is
-calculated between the two arguments. This is a convenience option because,
-unlike [`process.hrtime()`][], calculating the ELU is more complex than a
-single subtraction.
-
-ELU is similar to CPU utilization, except that it only measures event loop
-statistics and not CPU usage. It represents the percentage of time the event
-loop has spent outside the event loop's event provider (e.g. `epoll_wait`).
-No other CPU idle time is taken into consideration. The following is an example
-of how a mostly idle process will have a high ELU.
-
-```mjs
-import { eventLoopUtilization } from 'node:perf_hooks';
-import { spawnSync } from 'node:child_process';
-
-setImmediate(() => {
-  const elu = eventLoopUtilization();
-  spawnSync('sleep', ['5']);
-  console.log(eventLoopUtilization(elu).utilization);
-});
-```
-
-```cjs
-'use strict';
-const { eventLoopUtilization } = require('node:perf_hooks').performance;
-const { spawnSync } = require('node:child_process');
-
-setImmediate(() => {
-  const elu = eventLoopUtilization();
-  spawnSync('sleep', ['5']);
-  console.log(eventLoopUtilization(elu).utilization);
-});
-```
-
-Although the CPU is mostly idle while running this script, the value of
-`utilization` is `1`. This is because the call to
-[`child_process.spawnSync()`][] blocks the event loop from proceeding.
-
-Passing in a user-defined object instead of the result of a previous call to
-`eventLoopUtilization()` will lead to undefined behavior. The return values
-are not guaranteed to reflect any correct state of the event loop.
+_This property is an extension by Node.js. It is not available in Web browsers._
 
 ### `performance.getEntries()`
 
@@ -369,7 +320,7 @@ Performance Timeline manually with `performance.clearMeasures`.
 added: v8.5.0
 -->
 
-* {PerformanceNodeTiming}
+* Type: {PerformanceNodeTiming}
 
 _This property is an extension by Node.js. It is not available in Web browsers._
 
@@ -414,7 +365,7 @@ By default the max buffer size is set to 250.
 added: v8.5.0
 -->
 
-* {number}
+* Type: {number}
 
 The [`timeOrigin`][] specifies the high resolution millisecond timestamp at
 which the current `node` process began, measured in Unix time.
@@ -424,6 +375,9 @@ which the current `node` process began, measured in Unix time.
 <!-- YAML
 added: v8.5.0
 changes:
+  - version: v24.12.0
+    pr-url: https://github.com/nodejs/node/pull/60370
+    description: Added `perf_hooks.timerify` alias.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/37475
     description: Added the histogram option.
@@ -439,62 +393,9 @@ changes:
     `perf_hooks.createHistogram()` that will record runtime durations in
     nanoseconds.
 
+This is an alias of [`perf_hooks.timerify()`][].
+
 _This property is an extension by Node.js. It is not available in Web browsers._
-
-Wraps a function within a new function that measures the running time of the
-wrapped function. A `PerformanceObserver` must be subscribed to the `'function'`
-event type in order for the timing details to be accessed.
-
-```mjs
-import { performance, PerformanceObserver } from 'node:perf_hooks';
-
-function someFunction() {
-  console.log('hello world');
-}
-
-const wrapped = performance.timerify(someFunction);
-
-const obs = new PerformanceObserver((list) => {
-  console.log(list.getEntries()[0].duration);
-
-  performance.clearMarks();
-  performance.clearMeasures();
-  obs.disconnect();
-});
-obs.observe({ entryTypes: ['function'] });
-
-// A performance timeline entry will be created
-wrapped();
-```
-
-```cjs
-const {
-  performance,
-  PerformanceObserver,
-} = require('node:perf_hooks');
-
-function someFunction() {
-  console.log('hello world');
-}
-
-const wrapped = performance.timerify(someFunction);
-
-const obs = new PerformanceObserver((list) => {
-  console.log(list.getEntries()[0].duration);
-
-  performance.clearMarks();
-  performance.clearMeasures();
-  obs.disconnect();
-});
-obs.observe({ entryTypes: ['function'] });
-
-// A performance timeline entry will be created
-wrapped();
-```
-
-If the wrapped function returns a promise, a finally handler will be attached
-to the promise and the duration will be reported once the finally handler is
-invoked.
 
 ### `performance.toJSON()`
 
@@ -541,7 +442,7 @@ changes:
                  `PerformanceEntry` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The total number of milliseconds elapsed for this entry. This value will not
 be meaningful for all Performance Entry types.
@@ -557,7 +458,7 @@ changes:
                  `PerformanceEntry` object as the receiver.
 -->
 
-* {string}
+* Type: {string}
 
 The type of the performance entry. It may be one of:
 
@@ -583,7 +484,7 @@ changes:
                  `PerformanceEntry` object as the receiver.
 -->
 
-* {string}
+* Type: {string}
 
 The name of the performance entry.
 
@@ -598,7 +499,7 @@ changes:
                  `PerformanceEntry` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp marking the starting time of the
 Performance Entry.
@@ -626,7 +527,7 @@ changes:
                  `PerformanceMark` object as the receiver.
 -->
 
-* {any}
+* Type: {any}
 
 Additional detail specified when creating with `Performance.mark()` method.
 
@@ -655,7 +556,7 @@ changes:
                  `PerformanceMeasure` object as the receiver.
 -->
 
-* {any}
+* Type: {any}
 
 Additional detail specified when creating with `Performance.measure()` method.
 
@@ -684,7 +585,7 @@ changes:
                  `PerformanceNodeEntry` object as the receiver.
 -->
 
-* {any}
+* Type: {any}
 
 Additional detail specific to the `entryType`.
 
@@ -703,7 +604,7 @@ changes:
 
 > Stability: 0 - Deprecated: Use `performanceNodeEntry.detail` instead.
 
-* {number}
+* Type: {number}
 
 When `performanceEntry.entryType` is equal to `'gc'`, the `performance.flags`
 property contains additional information about garbage collection operation.
@@ -730,7 +631,7 @@ changes:
 
 > Stability: 0 - Deprecated: Use `performanceNodeEntry.detail` instead.
 
-* {number}
+* Type: {number}
 
 When `performanceEntry.entryType` is equal to `'gc'`, the `performance.kind`
 property identifies the type of garbage collection operation that occurred.
@@ -871,7 +772,7 @@ is not exposed to users.
 added: v8.5.0
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp at which the Node.js process
 completed bootstrapping. If bootstrapping has not yet finished, the property
@@ -883,7 +784,7 @@ has the value of -1.
 added: v8.5.0
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp at which the Node.js environment was
 initialized.
@@ -896,7 +797,7 @@ added:
   - v12.19.0
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp of the amount of time the event loop
 has been idle within the event loop's event provider (e.g. `epoll_wait`). This
@@ -910,7 +811,7 @@ value of 0.
 added: v8.5.0
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp at which the Node.js event loop
 exited. If the event loop has not yet exited, the property has the value of -1.
@@ -922,7 +823,7 @@ It can only have a value of not -1 in a handler of the [`'exit'`][] event.
 added: v8.5.0
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp at which the Node.js event loop
 started. If the event loop has not yet started (e.g., in the first tick of the
@@ -934,7 +835,7 @@ main script), the property has the value of -1.
 added: v8.5.0
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp at which the Node.js process was
 initialized.
@@ -942,7 +843,9 @@ initialized.
 ### `performanceNodeTiming.uvMetricsInfo`
 
 <!-- YAML
-added: v22.8.0
+added:
+  - v22.8.0
+  - v20.18.0
 -->
 
 * Returns: {Object}
@@ -979,7 +882,7 @@ setImmediate(() => {
 added: v8.5.0
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp at which the V8 platform was
 initialized.
@@ -1012,7 +915,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp at immediately before dispatching
 the `fetch` request. If the resource is not intercepted by a worker the property
@@ -1031,7 +934,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp that represents the start time
 of the fetch which initiates the redirect.
@@ -1049,7 +952,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp that will be created immediately after
 receiving the last byte of the response of the last redirect.
@@ -1067,7 +970,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp immediately before the Node.js starts
 to fetch the resource.
@@ -1085,7 +988,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp immediately before the Node.js starts
 the domain name lookup for the resource.
@@ -1103,7 +1006,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp representing the time immediately
 after the Node.js finished the domain name lookup for the resource.
@@ -1121,7 +1024,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp representing the time immediately
 before Node.js starts to establish the connection to the server to retrieve
@@ -1140,7 +1043,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp representing the time immediately
 after Node.js finishes establishing the connection to the server to retrieve
@@ -1159,7 +1062,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp representing the time immediately
 before Node.js starts the handshake process to secure the current connection.
@@ -1177,7 +1080,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp representing the time immediately
 before Node.js receives the first byte of the response from the server.
@@ -1195,7 +1098,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 The high resolution millisecond timestamp representing the time immediately
 after Node.js receives the last byte of the resource or immediately before
@@ -1214,7 +1117,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 A number representing the size (in octets) of the fetched resource. The size
 includes the response header fields plus the response payload body.
@@ -1232,7 +1135,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 A number representing the size (in octets) received from the fetch
 (HTTP or cache), of the payload body, before removing any applied
@@ -1251,7 +1154,7 @@ changes:
                  `PerformanceResourceTiming` object as the receiver.
 -->
 
-* {number}
+* Type: {number}
 
 A number representing the size (in octets) received from the fetch
 (HTTP or cache), of the message body, after removing any applied
@@ -1285,7 +1188,7 @@ added: v8.5.0
 added: v16.0.0
 -->
 
-* {string\[]}
+* Type: {string\[]}
 
 Get supported types.
 
@@ -1720,6 +1623,78 @@ added:
 
 Returns a {RecordableHistogram}.
 
+## `perf_hooks.eventLoopUtilization([utilization1[, utilization2]])`
+
+<!-- YAML
+added: v24.12.0
+-->
+
+* `utilization1` {Object} The result of a previous call to
+  `eventLoopUtilization()`.
+* `utilization2` {Object} The result of a previous call to
+  `eventLoopUtilization()` prior to `utilization1`.
+* Returns: {Object}
+  * `idle` {number}
+  * `active` {number}
+  * `utilization` {number}
+
+The `eventLoopUtilization()` function returns an object that contains the
+cumulative duration of time the event loop has been both idle and active as a
+high resolution milliseconds timer. The `utilization` value is the calculated
+Event Loop Utilization (ELU).
+
+If bootstrapping has not yet finished on the main thread the properties have
+the value of `0`. The ELU is immediately available on [Worker threads][] since
+bootstrap happens within the event loop.
+
+Both `utilization1` and `utilization2` are optional parameters.
+
+If `utilization1` is passed, then the delta between the current call's `active`
+and `idle` times, as well as the corresponding `utilization` value are
+calculated and returned (similar to [`process.hrtime()`][]).
+
+If `utilization1` and `utilization2` are both passed, then the delta is
+calculated between the two arguments. This is a convenience option because,
+unlike [`process.hrtime()`][], calculating the ELU is more complex than a
+single subtraction.
+
+ELU is similar to CPU utilization, except that it only measures event loop
+statistics and not CPU usage. It represents the percentage of time the event
+loop has spent outside the event loop's event provider (e.g. `epoll_wait`).
+No other CPU idle time is taken into consideration. The following is an example
+of how a mostly idle process will have a high ELU.
+
+```mjs
+import { eventLoopUtilization } from 'node:perf_hooks';
+import { spawnSync } from 'node:child_process';
+
+setImmediate(() => {
+  const elu = eventLoopUtilization();
+  spawnSync('sleep', ['5']);
+  console.log(eventLoopUtilization(elu).utilization);
+});
+```
+
+```cjs
+'use strict';
+const { eventLoopUtilization } = require('node:perf_hooks');
+const { spawnSync } = require('node:child_process');
+
+setImmediate(() => {
+  const elu = eventLoopUtilization();
+  spawnSync('sleep', ['5']);
+  console.log(eventLoopUtilization(elu).utilization);
+});
+```
+
+Although the CPU is mostly idle while running this script, the value of
+`utilization` is `1`. This is because the call to
+[`child_process.spawnSync()`][] blocks the event loop from proceeding.
+
+Passing in a user-defined object instead of the result of a previous call to
+`eventLoopUtilization()` will lead to undefined behavior. The return values
+are not guaranteed to reflect any correct state of the event loop.
+
 ## `perf_hooks.monitorEventLoopDelay([options])`
 
 <!-- YAML
@@ -1773,6 +1748,76 @@ console.log(h.percentile(50));
 console.log(h.percentile(99));
 ```
 
+## `perf_hooks.timerify(fn[, options])`
+
+<!-- YAML
+added: v24.12.0
+-->
+
+* `fn` {Function}
+* `options` {Object}
+  * `histogram` {RecordableHistogram} A histogram object created using
+    `perf_hooks.createHistogram()` that will record runtime durations in
+    nanoseconds.
+
+_This property is an extension by Node.js. It is not available in Web browsers._
+
+Wraps a function within a new function that measures the running time of the
+wrapped function. A `PerformanceObserver` must be subscribed to the `'function'`
+event type in order for the timing details to be accessed.
+
+```mjs
+import { timerify, performance, PerformanceObserver } from 'node:perf_hooks';
+
+function someFunction() {
+  console.log('hello world');
+}
+
+const wrapped = timerify(someFunction);
+
+const obs = new PerformanceObserver((list) => {
+  console.log(list.getEntries()[0].duration);
+
+  performance.clearMarks();
+  performance.clearMeasures();
+  obs.disconnect();
+});
+obs.observe({ entryTypes: ['function'] });
+
+// A performance timeline entry will be created
+wrapped();
+```
+
+```cjs
+const {
+  timerify,
+  performance,
+  PerformanceObserver,
+} = require('node:perf_hooks');
+
+function someFunction() {
+  console.log('hello world');
+}
+
+const wrapped = timerify(someFunction);
+
+const obs = new PerformanceObserver((list) => {
+  console.log(list.getEntries()[0].duration);
+
+  performance.clearMarks();
+  performance.clearMeasures();
+  obs.disconnect();
+});
+obs.observe({ entryTypes: ['function'] });
+
+// A performance timeline entry will be created
+wrapped();
+```
+
+If the wrapped function returns a promise, a finally handler will be attached
+to the promise and the duration will be reported once the finally handler is
+invoked.
+
 ## Class: `Histogram`
 
 <!-- YAML
@@ -1787,7 +1832,7 @@ added:
   - v16.14.0
 -->
 
-* {number}
+* Type: {number}
 
 The number of samples recorded by the histogram.
 
@@ -1799,7 +1844,7 @@ added:
   - v16.14.0
 -->
 
-* {bigint}
+* Type: {bigint}
 
 The number of samples recorded by the histogram.
 
@@ -1809,7 +1854,7 @@ The number of samples recorded by the histogram.
 added: v11.10.0
 -->
 
-* {number}
+* Type: {number}
 
 The number of times the event loop delay exceeded the maximum 1 hour event
 loop delay threshold.
@@ -1822,7 +1867,7 @@ added:
   - v16.14.0
 -->
 
-* {bigint}
+* Type: {bigint}
 
 The number of times the event loop delay exceeded the maximum 1 hour event
 loop delay threshold.
@@ -1833,7 +1878,7 @@ loop delay threshold.
 added: v11.10.0
 -->
 
-* {number}
+* Type: {number}
 
 The maximum recorded event loop delay.
 
@@ -1845,7 +1890,7 @@ added:
   - v16.14.0
 -->
 
-* {bigint}
+* Type: {bigint}
 
 The maximum recorded event loop delay.
 
@@ -1855,7 +1900,7 @@ The maximum recorded event loop delay.
 added: v11.10.0
 -->
 
-* {number}
+* Type: {number}
 
 The mean of the recorded event loop delays.
 
@@ -1865,7 +1910,7 @@ The mean of the recorded event loop delays.
 added: v11.10.0
 -->
 
-* {number}
+* Type: {number}
 
 The minimum recorded event loop delay.
 
@@ -1877,7 +1922,7 @@ added:
   - v16.14.0
 -->
 
-* {bigint}
+* Type: {bigint}
 
 The minimum recorded event loop delay.
 
@@ -1911,7 +1956,7 @@ Returns the value at the given percentile.
 added: v11.10.0
 -->
 
-* {Map}
+* Type: {Map}
 
 Returns a `Map` object detailing the accumulated percentile distribution.
 
@@ -1923,7 +1968,7 @@ added:
   - v16.14.0
 -->
 
-* {Map}
+* Type: {Map}
 
 Returns a `Map` object detailing the accumulated percentile distribution.
 
@@ -1941,7 +1986,7 @@ Resets the collected histogram data.
 added: v11.10.0
 -->
 
-* {number}
+* Type: {number}
 
 The standard deviation of the recorded event loop delays.
 
@@ -1970,6 +2015,23 @@ added: v11.10.0
 
 Enables the update interval timer. Returns `true` if the timer was
 started, `false` if it was already started.
+
+### `histogram[Symbol.dispose]()`
+
+<!-- YAML
+added: v24.2.0
+-->
+
+Disables the update interval timer when the histogram is disposed.
+
+```js
+const { monitorEventLoopDelay } = require('node:perf_hooks');
+{
+  using hist = monitorEventLoopDelay({ resolution: 20 });
+  hist.enable();
+  // The histogram will be disabled when the block is exited.
+}
+```
 
 ### Cloning an `IntervalHistogram`
 
@@ -2287,6 +2349,8 @@ dns.promises.resolve('localhost');
 [Worker threads]: worker_threads.md#worker-threads
 [`'exit'`]: process.md#event-exit
 [`child_process.spawnSync()`]: child_process.md#child_processspawnsynccommand-args-options
+[`perf_hooks.eventLoopUtilization()`]: #perf_hookseventlooputilizationutilization1-utilization2
+[`perf_hooks.timerify()`]: #perf_hookstimerifyfn-options
 [`process.hrtime()`]: process.md#processhrtimetime
 [`timeOrigin`]: https://w3c.github.io/hr-time/#dom-performance-timeorigin
 [`window.performance.toJSON`]: https://developer.mozilla.org/en-US/docs/Web/API/Performance/toJSON

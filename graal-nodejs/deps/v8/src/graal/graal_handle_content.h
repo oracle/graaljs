@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ public:
 // node.exe terminates before! it reaches wmain() when this debugging code is commented out?!?
 #if defined(DEBUG) || (defined(_MSC_VER) && _MSC_FULL_VER == 192829913)
         if (ref_count > 1000 || ref_count <= 0) {
-            fprintf(stderr, "Reference counting error (add)?\n");
+            fprintf(stderr, "Reference counting error (add) object: %p count: %d?\n", this, ref_count);
         }
 #endif
     }
@@ -98,7 +98,7 @@ public:
     inline void ReferenceRemoved() {
 #if defined(DEBUG) || (defined(_MSC_VER) && _MSC_FULL_VER == 192829913)
         if (ref_count > 1000 || ref_count <= 0) {
-            fprintf(stderr, "Reference counting error (rem)?\n");
+            fprintf(stderr, "Reference counting error (rem) object: %p count: %d?\n", this, ref_count);
         }
 #endif
         if (--ref_count == 0) {

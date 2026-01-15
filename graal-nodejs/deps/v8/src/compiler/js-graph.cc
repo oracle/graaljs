@@ -5,6 +5,8 @@
 #include "src/compiler/js-graph.h"
 
 #include "src/codegen/code-factory.h"
+#include "src/compiler/heap-refs.h"
+#include "src/compiler/js-heap-broker.h"
 #include "src/objects/objects-inl.h"
 
 namespace v8 {
@@ -52,6 +54,10 @@ Node* JSGraph::ConstantNoHole(ObjectRef ref, JSHeapBroker* broker) {
   CHECK(ref.IsSmi() || ref.IsHeapNumber() ||
         ref.AsHeapObject().GetHeapObjectType(broker).hole_type() ==
             HoleType::kNone);
+  if (IsThinString(*ref.object())) {
+    ref = MakeRefAssumeMemoryFence(broker,
+                                   Cast<ThinString>(*ref.object())->actual());
+  }
   return Constant(ref, broker);
 }
 
@@ -111,6 +117,11 @@ Node* JSGraph::Constant(ObjectRef ref, JSHeapBroker* broker) {
   }
 }
 
+Node* JSGraph::ConstantMutableHeapNumber(HeapNumberRef ref,
+                                         JSHeapBroker* broker) {
+  return HeapConstantNoHole(ref.AsHeapObject().object());
+}
+
 Node* JSGraph::ConstantNoHole(double value) {
   CHECK_NE(base::bit_cast<uint64_t>(value), kHoleNanInt64);
   return ConstantMaybeHole(value);
@@ -156,6 +167,14 @@ Node* JSGraph::HeapConstantHole(Handle<HeapObject> value) {
     *loc = graph()->NewNode(common()->HeapConstant(value));
   }
   return *loc;
+}
+
+Node* JSGraph::TrustedHeapConstant(Handle<HeapObject> value) {
+  DCHECK(IsTrustedObject(*value));
+  // TODO(pthier): Consider also caching trusted constants. Right now they are
+  // only used for RegExp data as part of RegExp literals and it should be
+  // uncommon for the same literal to appear multiple times.
+  return graph()->NewNode(common()->TrustedHeapConstant(value));
 }
 
 void JSGraph::GetCachedNodes(NodeVector* nodes) {

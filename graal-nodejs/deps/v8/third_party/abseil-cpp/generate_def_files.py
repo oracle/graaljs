@@ -27,6 +27,9 @@ import sys
 import tempfile
 import time
 
+assert sys.platform != 'win32', \
+  "This doesn't work on Windows due to https://crbug.com/3790230222"
+
 # Matches mangled symbols containing 'absl' or starting with 'Absl'. This is
 # a good enough heuristic to select Abseil symbols to list in the .def file.
 # See https://learn.microsoft.com/en-us/cpp/build/reference/decorated-names,
@@ -79,12 +82,13 @@ def _GenerateDefFile(cpu, is_debug, extra_gn_args=[], suffix=None):
     symbol_dumper = ['dumpbin', '/symbols']
     import shutil
     if not shutil.which('dumpbin'):
-      logging.error('dumpbin not found. Run tools\win\setenv.bat.')
+      logging.error('dumpbin not found. Run tools\\win\\setenv.bat.')
       exit(1)
-  with tempfile.TemporaryDirectory() as out_dir:
+  cwd = os.getcwd()
+  with tempfile.TemporaryDirectory(dir=cwd) as out_dir:
     logging.info('[%s - %s] Creating tmp out dir in %s', cpu, flavor, out_dir)
     subprocess.check_call([gn, 'gen', out_dir, '--args=' + ' '.join(gn_args)],
-                          cwd=os.getcwd())
+                          cwd=cwd)
     logging.info('[%s - %s] gn gen completed', cpu, flavor)
     subprocess.check_call(
         [autoninja, '-C', out_dir, 'third_party/abseil-cpp:absl_component_deps'],

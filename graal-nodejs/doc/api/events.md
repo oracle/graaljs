@@ -73,8 +73,8 @@ myEmitter.on('event', function(a, b) {
   //     _events: [Object: null prototype] { event: [Function (anonymous)] },
   //     _eventsCount: 1,
   //     _maxListeners: undefined,
-  //     [Symbol(shapeMode)]: false,
-  //     [Symbol(kCapture)]: false
+  //     Symbol(shapeMode): false,
+  //     Symbol(kCapture): false
   //   } true
 });
 myEmitter.emit('event', 'a', 'b');
@@ -91,8 +91,8 @@ myEmitter.on('event', function(a, b) {
   //     _events: [Object: null prototype] { event: [Function (anonymous)] },
   //     _eventsCount: 1,
   //     _maxListeners: undefined,
-  //     [Symbol(shapeMode)]: false,
-  //     [Symbol(kCapture)]: false
+  //     Symbol(shapeMode): false,
+  //     Symbol(kCapture): false
   //   } true
 });
 myEmitter.emit('event', 'a', 'b');
@@ -1099,7 +1099,7 @@ changes:
     description: No longer experimental.
 -->
 
-* `err` Error
+* `err` {Error}
 * `eventName` {string|symbol}
 * `...args` {any}
 
@@ -1600,7 +1600,7 @@ changes:
     description: No longer experimental.
 -->
 
-Value: {boolean}
+* Type: {boolean}
 
 Change the default `captureRejections` option on all new `EventEmitter` objects.
 
@@ -1618,7 +1618,7 @@ changes:
     description: No longer experimental.
 -->
 
-Value: `Symbol.for('nodejs.rejection')`
+* Type: {symbol} `Symbol.for('nodejs.rejection')`
 
 See how to write a custom [rejection handler][rejection].
 
@@ -1664,7 +1664,9 @@ added:
  - v13.6.0
  - v12.16.0
 changes:
-  - version: v22.0.0
+  - version:
+    - v22.0.0
+    - v20.13.0
     pr-url: https://github.com/nodejs/node/pull/52080
     description: Support `highWaterMark` and `lowWaterMark` options,
                  For consistency. Old options are still supported.
@@ -1679,12 +1681,12 @@ changes:
 * `eventName` {string|symbol} The name of the event being listened for
 * `options` {Object}
   * `signal` {AbortSignal} Can be used to cancel awaiting events.
-  * `close` - {string\[]} Names of events that will end the iteration.
-  * `highWaterMark` - {integer} **Default:** `Number.MAX_SAFE_INTEGER`
+  * `close` {string\[]} Names of events that will end the iteration.
+  * `highWaterMark` {integer} **Default:** `Number.MAX_SAFE_INTEGER`
     The high watermark. The emitter is paused every time the size of events
     being buffered is higher than it. Supported only on emitters implementing
     `pause()` and `resume()` methods.
-  * `lowWaterMark` - {integer} **Default:** `1`
+  * `lowWaterMark` {integer} **Default:** `1`
     The low watermark. The emitter is resumed every time the size of events
     being buffered is lower than it. Supported only on emitters implementing
     `pause()` and `resume()` methods.
@@ -1833,7 +1835,7 @@ added:
  - v20.5.0
  - v18.18.0
 changes:
- - version: v22.16.0
+ - version: v24.0.0
    pr-url: https://github.com/nodejs/node/pull/57765
    description: Change stability index for this feature from Experimental to Stable.
 -->
@@ -1984,7 +1986,7 @@ same options as `EventEmitter` and `AsyncResource` themselves.
 
 ### `eventemitterasyncresource.asyncResource`
 
-* Type: The underlying {AsyncResource}.
+* Type: {AsyncResource} The underlying {AsyncResource}.
 
 The returned `AsyncResource` object has an additional `eventEmitter` property
 that provides a reference to this `EventEmitterAsyncResource`.
@@ -2431,6 +2433,9 @@ added:
   - v18.7.0
   - v16.17.0
 changes:
+  - version: v23.0.0
+    pr-url: https://github.com/nodejs/node/pull/52723
+    description: No longer experimental.
   - version:
     - v22.1.0
     - v20.13.0
@@ -2453,7 +2458,9 @@ added:
   - v18.7.0
   - v16.17.0
 changes:
-  - version: v22.1.0
+  - version:
+    - v22.1.0
+    - v20.13.0
     pr-url: https://github.com/nodejs/node/pull/52618
     description: CustomEvent is now stable.
 -->

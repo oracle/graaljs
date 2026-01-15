@@ -33,6 +33,7 @@ following table:
 | File (\*.h/\*.cc)    | Description                                                                |
 | -------------------- | -------------------------------------------------------------------------- |
 | `crypto_aes`         | AES Cipher support.                                                        |
+| `crypto_argon2`      | Argon2 key / bit generation implementation.                                |
 | `crypto_cipher`      | General Encryption/Decryption utilities.                                   |
 | `crypto_clienthello` | TLS/SSL client hello parser implementation. Used during SSL/TLS handshake. |
 | `crypto_context`     | Implementation of the `SecureContext` object.                              |
@@ -105,10 +106,6 @@ an `ArrayBuffer` (`v8::BackingStore`), or allocated data.
   must remain valid until the `ByteSource` is destroyed.
 * If allocated data is used, then it must have been allocated using OpenSSL's
   allocator. It will be freed automatically when the `ByteSource` is destroyed.
-
-The `ByteSource::Builder` class can be used to allocate writable memory that can
-then be released as a `ByteSource`, making it read-only, or freed by destroying
-the `ByteSource::Builder` without releasing it as a `ByteSource`.
 
 ### `ArrayBufferOrViewContents`
 

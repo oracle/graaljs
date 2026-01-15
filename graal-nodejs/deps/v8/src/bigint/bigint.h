@@ -306,7 +306,8 @@ class Processor {
 
   // {out_length} initially contains the allocated capacity of {out}, and
   // upon return will be set to the actual length of the result string.
-  Status ToString(char* out, int* out_length, Digits X, int radix, bool sign);
+  Status ToString(char* out, uint32_t* out_length, Digits X, int radix,
+                  bool sign);
 
   // Z := the contents of {accumulator}.
   // Assume that this leaves {accumulator} in unusable state.
@@ -349,40 +350,10 @@ inline int DivideResultLength(Digits A, Digits B) {
 }
 inline int ModuloResultLength(Digits B) { return B.len(); }
 
-int ToStringResultLength(Digits X, int radix, bool sign);
+uint32_t ToStringResultLength(Digits X, int radix, bool sign);
 // In DEBUG builds, the result of {ToString} will be initialized to this value.
 constexpr char kStringZapValue = '?';
 
-inline int BitwiseAnd_PosPos_ResultLength(int x_length, int y_length) {
-  return std::min(x_length, y_length);
-}
-inline int BitwiseAnd_NegNeg_ResultLength(int x_length, int y_length) {
-  // Result length growth example: -2 & -3 = -4 (2-bit inputs, 3-bit result).
-  return std::max(x_length, y_length) + 1;
-}
-inline int BitwiseAnd_PosNeg_ResultLength(int x_length) { return x_length; }
-inline int BitwiseOrResultLength(int x_length, int y_length) {
-  return std::max(x_length, y_length);
-}
-inline int BitwiseXor_PosPos_ResultLength(int x_length, int y_length) {
-  return std::max(x_length, y_length);
-}
-inline int BitwiseXor_NegNeg_ResultLength(int x_length, int y_length) {
-  return std::max(x_length, y_length);
-}
-inline int BitwiseXor_PosNeg_ResultLength(int x_length, int y_length) {
-  // Result length growth example: 3 ^ -1 == -4 (2-bit inputs, 3-bit result).
-  return std::max(x_length, y_length) + 1;
-}
-inline int LeftShift_ResultLength(int x_length,
-                                  digit_t x_most_significant_digit,
-                                  digit_t shift) {
-  int digit_shift = static_cast<int>(shift / kDigitBits);
-  int bits_shift = static_cast<int>(shift % kDigitBits);
-  bool grow = bits_shift != 0 &&
-              (x_most_significant_digit >> (kDigitBits - bits_shift)) != 0;
-  return x_length + digit_shift + grow;
-}
 int RightShift_ResultLength(Digits X, bool x_sign, digit_t shift,
                             RightShiftState* state);
 
@@ -551,6 +522,7 @@ CharIt FromStringAccumulator::Parse(CharIt start, CharIt end, digit_t radix) {
   // The max supported radix is 36, and Math.log2(36) == 5.169..., so we
   // need at most 5.17 bits per char.
   static constexpr int kInlineThreshold = kStackParts * kDigitBits * 100 / 517;
+  BIGINT_H_DCHECK(end >= start);
   inline_everything_ = (end - start) <= kInlineThreshold;
 #endif
   if (!inline_everything_ && (radix & (radix - 1)) == 0) {
@@ -606,6 +578,7 @@ bool FromStringAccumulator::AddPart(digit_t multiplier, digit_t part,
       high = new_high;
     }
     stack_parts_[stack_parts_used_++] = carry + high;
+    BIGINT_H_DCHECK(stack_parts_used_ <= kStackParts);
     return true;
   }
 #else

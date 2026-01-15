@@ -41,12 +41,10 @@ class LiftoffCompileEnvironment {
     auto test_func = AddFunction(return_types, param_types, raw_function_bytes);
 
     // Now compile the function with Liftoff two times.
-    CompilationEnv env = CompilationEnv::ForModule(wasm_runner_.builder()
-                                                       .instance_object()
-                                                       ->module_object()
-                                                       ->native_module());
-    WasmFeatures detected1;
-    WasmFeatures detected2;
+    CompilationEnv env = CompilationEnv::ForModule(
+        wasm_runner_.builder().trusted_instance_data()->native_module());
+    WasmDetectedFeatures detected1;
+    WasmDetectedFeatures detected2;
     WasmCompilationResult result1 =
         ExecuteLiftoffCompilation(&env, test_func.body,
                                   LiftoffOptions{}
@@ -77,10 +75,8 @@ class LiftoffCompileEnvironment {
       std::vector<int> breakpoints = {}) {
     auto test_func = AddFunction(return_types, param_types, raw_function_bytes);
 
-    CompilationEnv env = CompilationEnv::ForModule(wasm_runner_.builder()
-                                                       .instance_object()
-                                                       ->module_object()
-                                                       ->native_module());
+    CompilationEnv env = CompilationEnv::ForModule(
+        wasm_runner_.builder().trusted_instance_data()->native_module());
     std::unique_ptr<DebugSideTable> debug_side_table_via_compilation;
     auto result = ExecuteLiftoffCompilation(
         &env, test_func.body,
@@ -155,7 +151,7 @@ class LiftoffCompileEnvironment {
                                               function->code.end_offset());
 
     bool is_shared =
-        native_module->module()->types[function->sig_index].is_shared;
+        native_module->module()->type(function->sig_index).is_shared;
     FunctionBody body{sig, 0, function_wire_bytes.begin(),
                       function_wire_bytes.end(), is_shared};
     return {code, body};
@@ -446,7 +442,7 @@ TEST(Liftoff_debug_side_table_catch_all) {
   LiftoffCompileEnvironment env;
   TestSignatures sigs;
   int ex = env.builder()->AddException(sigs.v_v());
-  ValueType exception_type = ValueType::Ref(HeapType::kAny);
+  ValueType exception_type = kWasmAnyRef.AsNonNull();
   auto debug_side_table = env.GenerateDebugSideTable(
       {}, {kWasmI32},
       {WASM_TRY_CATCH_ALL_T(kWasmI32, WASM_STMTS(WASM_I32V(0), WASM_THROW(ex)),
@@ -470,7 +466,7 @@ TEST(Liftoff_debug_side_table_catch_all) {
 
 TEST(Regress1199526) {
   LiftoffCompileEnvironment env;
-  ValueType exception_type = ValueType::Ref(HeapType::kAny);
+  ValueType exception_type = kWasmAnyRef.AsNonNull();
   auto debug_side_table = env.GenerateDebugSideTable(
       {}, {},
       {kExprTry, kVoidCode, kExprCallFunction, 0, kExprCatchAll, kExprLoop,

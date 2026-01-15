@@ -615,6 +615,7 @@ const assertValidPseudoHeaderTrailer = hideStackFrames((key) => {
 /**
  * Takes a request headers array, validates it and sets defaults, and returns
  * the resulting headers in NgHeaders string list format.
+ * @returns {object}
  */
 function prepareRequestHeadersArray(headers, session) {
   let method;
@@ -623,7 +624,7 @@ function prepareRequestHeadersArray(headers, session) {
   let path;
   let protocol;
 
-  // Extract the key psuedo header values from the headers array
+  // Extract the key pseudo header values from the headers array.
   for (let i = 0; i < headers.length; i += 2) {
     if (headers[i][0] !== ':') {
       continue;
@@ -647,11 +648,11 @@ function prepareRequestHeadersArray(headers, session) {
 
   // We then build an array of any missing pseudo headers, to prepend
   // default values to the given header array:
-  const additionalPsuedoHeaders = [];
+  const additionalPseudoHeaders = [];
 
   if (method === undefined) {
     method = HTTP2_METHOD_GET;
-    additionalPsuedoHeaders.push(HTTP2_HEADER_METHOD, method);
+    additionalPseudoHeaders.push(HTTP2_HEADER_METHOD, method);
   }
 
   const connect = method === HTTP2_METHOD_CONNECT;
@@ -659,14 +660,14 @@ function prepareRequestHeadersArray(headers, session) {
   if (!connect || protocol !== undefined) {
     if (authority === undefined && headers[HTTP2_HEADER_HOST] === undefined) {
       authority = session[kAuthority];
-      additionalPsuedoHeaders.push(HTTP2_HEADER_AUTHORITY, authority);
+      additionalPseudoHeaders.push(HTTP2_HEADER_AUTHORITY, authority);
     }
     if (scheme === undefined) {
       scheme = session[kProtocol].slice(0, -1);
-      additionalPsuedoHeaders.push(HTTP2_HEADER_SCHEME, scheme);
+      additionalPseudoHeaders.push(HTTP2_HEADER_SCHEME, scheme);
     }
     if (path === undefined) {
-      additionalPsuedoHeaders.push(HTTP2_HEADER_PATH, '/');
+      additionalPseudoHeaders.push(HTTP2_HEADER_PATH, '/');
     }
   } else {
     if (authority === undefined)
@@ -677,15 +678,22 @@ function prepareRequestHeadersArray(headers, session) {
       throw new ERR_HTTP2_CONNECT_PATH();
   }
 
+  const rawHeaders =
+    additionalPseudoHeaders.length ?
+      additionalPseudoHeaders.concat(headers) :
+      headers;
+
+  if (headers[kSensitiveHeaders] !== undefined) {
+    rawHeaders[kSensitiveHeaders] = headers[kSensitiveHeaders];
+  }
+
   const headersList = buildNgHeaderString(
-    additionalPsuedoHeaders.length ?
-      additionalPsuedoHeaders.concat(headers) :
-      headers,
+    rawHeaders,
     assertValidPseudoHeader,
-    headers[kSensitiveHeaders],
   );
 
   return {
+    rawHeaders,
     headersList,
     scheme,
     authority: authority ?? headers[HTTP2_HEADER_HOST],
@@ -696,6 +704,7 @@ function prepareRequestHeadersArray(headers, session) {
 /**
  * Takes a request headers object, validates it and sets defaults, and returns
  * the resulting headers in object format and NgHeaders string list format.
+ * @returns {object}
  */
 function prepareRequestHeadersObject(headers, session) {
   const headersObject = ObjectAssign({ __proto__: null }, headers);
@@ -742,16 +751,17 @@ const kNoHeaderFlags = StringFromCharCode(NGHTTP2_NV_FLAG_NONE);
  * format, rejecting illegal header configurations, and marking sensitive headers
  * that should not be indexed en route. This takes either a flat map of
  * raw headers ([k1, v1, k2, v2]) or a header object ({ k1: v1, k2: [v2, v3] }).
+ * @returns {[string, number]}
  */
 function buildNgHeaderString(arrayOrMap,
-                             assertValuePseudoHeader = assertValidPseudoHeader,
-                             sensitiveHeaders = arrayOrMap[kSensitiveHeaders]) {
+                             assertValuePseudoHeader = assertValidPseudoHeader) {
   let headers = '';
   let pseudoHeaders = '';
   let count = 0;
 
   const singles = new SafeSet();
-  const neverIndex = (sensitiveHeaders || emptyArray).map((v) => v.toLowerCase());
+  const sensitiveHeaders = arrayOrMap[kSensitiveHeaders] || emptyArray;
+  const neverIndex = sensitiveHeaders.map((v) => v.toLowerCase());
 
   function processHeader(key, value) {
     key = key.toLowerCase();

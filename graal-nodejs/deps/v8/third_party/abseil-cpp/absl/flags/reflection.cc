@@ -217,6 +217,13 @@ void FinalizeRegistry() {
 
 namespace {
 
+// These are only used as constexpr global objects.
+// They do not use a virtual destructor to simplify their implementation.
+// They are not destroyed except at program exit, so leaks do not matter.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#endif
 class RetiredFlagObj final : public CommandLineFlag {
  public:
   constexpr RetiredFlagObj(const char* name, FlagFastTypeId type_id)
@@ -276,14 +283,16 @@ class RetiredFlagObj final : public CommandLineFlag {
   const char* const name_;
   const FlagFastTypeId type_id_;
 };
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 }  // namespace
 
-void Retire(const char* name, FlagFastTypeId type_id, char* buf) {
+void Retire(const char* name, FlagFastTypeId type_id, unsigned char* buf) {
   static_assert(sizeof(RetiredFlagObj) == kRetiredFlagObjSize, "");
   static_assert(alignof(RetiredFlagObj) == kRetiredFlagObjAlignment, "");
-  auto* flag = ::new (static_cast<void*>(buf))
-      flags_internal::RetiredFlagObj(name, type_id);
+  auto* flag = ::new (buf) flags_internal::RetiredFlagObj(name, type_id);
   FlagRegistry::GlobalRegistry().RegisterFlag(*flag, nullptr);
 }
 

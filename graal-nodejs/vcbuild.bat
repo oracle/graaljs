@@ -74,6 +74,7 @@ set extra_msbuild_args=
 set compile_commands=
 set _java_home=
 set cfg=
+set v8windbg=
 set exit_code=0
 
 :next-arg
@@ -98,6 +99,7 @@ if /i "%1"=="nosnapshot"    set nosnapshot=1&goto arg-ok
 if /i "%1"=="nonpm"         set nonpm=1&goto arg-ok
 if /i "%1"=="nocorepack"    set nocorepack=1&goto arg-ok
 if /i "%1"=="ltcg"          set ltcg=1&goto arg-ok
+if /i "%1"=="v8windbg"      set v8windbg=1&goto arg-ok
 if /i "%1"=="licensertf"    set licensertf=1&goto arg-ok
 if /i "%1"=="test"          set test_args=%test_args% %common_test_suites%&set lint_cpp=1&set lint_js=1&set lint_md=1&goto arg-ok
 if /i "%1"=="test-ci-native" set test_args=%test_args% %test_ci_args% -p tap --logfile test.tap %CI_NATIVE_SUITES% %CI_DOC%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1&set cctest_args=%cctest_args% --gtest_output=xml:cctest.junit.xml&goto arg-ok
@@ -224,8 +226,12 @@ if defined ccache_path      set configure_flags=%configure_flags% --use-ccache-w
 if defined compile_commands set configure_flags=%configure_flags% -C
 if defined _java_home       set configure_flags=%configure_flags% --java-home=%_java_home% --without-dtrace
 if defined cfg              set configure_flags=%configure_flags% --control-flow-guard
+if defined v8windbg         set configure_flags=%configure_flags% --enable-v8windbg
 
-if "%target_arch%"=="x86" if "%PROCESSOR_ARCHITECTURE%"=="AMD64" set configure_flags=%configure_flags% --no-cross-compiling
+if "%target_arch%"=="x86" (
+  echo "32-bit Windows builds are not supported anymore."
+  exit /b 1
+)
 
 if not exist "%~dp0deps\icu" goto no-depsicu
 if "%target%"=="Clean" echo deleting %~dp0deps\icu
@@ -242,11 +248,19 @@ if "%target%"=="TestClean" (
 call tools\msvs\find_python.cmd
 if errorlevel 1 goto :exit
 
-REM NASM is only needed on IA32 and x86_64.
+REM NASM is only needed on x86_64.
 if not defined openssl_no_asm if "%target_arch%" NEQ "arm64" call tools\msvs\find_nasm.cmd
 if errorlevel 1 echo Could not find NASM, install it or build with openssl-no-asm. See BUILDING.md.
 
 call :getnodeversion || exit /b 1
+
+@REM Forcing ClangCL usage for version 24 and above
+set NODE_MAJOR_VERSION=
+for /F "tokens=1 delims=." %%i in ("%NODE_VERSION%") do set "NODE_MAJOR_VERSION=%%i"
+if %NODE_MAJOR_VERSION% GEQ 24 (
+  echo Using ClangCL because the Node.js version being compiled is ^>= 24.
+  set clang_cl=1
+)
 
 if defined TAG set configure_flags=%configure_flags% --tag=%TAG%
 
@@ -258,9 +272,7 @@ if defined noprojgen if defined nobuild goto :after-build
 
 @rem Set environment for msbuild
 
-set msvs_host_arch=x86
-if _%PROCESSOR_ARCHITECTURE%_==_AMD64_ set msvs_host_arch=amd64
-if _%PROCESSOR_ARCHITEW6432%_==_AMD64_ set msvs_host_arch=amd64
+set msvs_host_arch=amd64
 if _%PROCESSOR_ARCHITECTURE%_==_ARM64_ set msvs_host_arch=arm64
 @rem usually vcvarsall takes an argument: host + '_' + target
 set vcvarsall_arg=%msvs_host_arch%_%target_arch%
@@ -355,7 +367,7 @@ del .gyp_configure_stamp 2> NUL
 @rem Generate the VS project.
 echo configure %configure_flags%
 echo %configure_flags%> .used_configure_flags
-python configure %configure_flags%
+call python configure %configure_flags%
 if errorlevel 1 goto create-msvs-files-failed
 if not exist node.sln goto create-msvs-files-failed
 set project_generated=1
@@ -370,8 +382,7 @@ if defined nobuild goto :after-build
 @rem Build the sln with msbuild.
 set "msbcpu=/m:2"
 if "%NUMBER_OF_PROCESSORS%"=="1" set "msbcpu=/m:1"
-set "msbplatform=Win32"
-if "%target_arch%"=="x64" set "msbplatform=x64"
+set "msbplatform=x64"
 if "%target_arch%"=="arm64" set "msbplatform=ARM64"
 if "%target%"=="Build" (
   if defined no_cctest set target=node
@@ -818,7 +829,7 @@ set exit_code=1
 goto exit
 
 :help
-echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-doc/test-js-native-api/test-node-api/test-internet/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [clang-cl] [ccache path-to-ccache] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [nonpm] [nocorepack] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2022] [download-all] [enable-vtune] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [format-md] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
+echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-doc/test-js-native-api/test-node-api/test-internet/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [clang-cl] [ccache path-to-ccache] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [nonpm] [nocorepack] [ltcg] [licensetf] [sign] [x64/arm64] [vs2022] [download-all] [enable-vtune] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [format-md] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
 echo Examples:
 echo   vcbuild.bat                          : builds release build
 echo   vcbuild.bat debug                    : builds debug build

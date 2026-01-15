@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
+
 #include "src/api/api.h"
 #include "src/baseline/baseline.h"
 #include "src/builtins/builtins-inl.h"
@@ -11,7 +13,7 @@
 #include "src/codegen/macro-assembler-inl.h"
 #include "src/common/globals.h"
 #include "src/execution/frame-constants.h"
-#include "src/heap/mutable-page.h"
+#include "src/heap/mutable-page-metadata.h"
 #include "src/ic/accessor-assembler.h"
 #include "src/ic/keyed-store-generic.h"
 #include "src/logging/counters.h"
@@ -22,6 +24,8 @@
 
 namespace v8 {
 namespace internal {
+
+#include "src/codegen/define-code-stub-assembler-macros.inc"
 
 // -----------------------------------------------------------------------------
 // TurboFan support builtins.
@@ -69,7 +73,7 @@ TF_BUILTIN(GrowFastSmiOrObjectElements, CodeStubAssembler) {
 }
 
 TF_BUILTIN(ReturnReceiver, CodeStubAssembler) {
-  auto receiver = Parameter<Object>(Descriptor::kReceiver);
+  auto receiver = Parameter<JSAny>(Descriptor::kReceiver);
   Return(receiver);
 }
 
@@ -79,13 +83,19 @@ TF_BUILTIN(DebugBreakTrampoline, CodeStubAssembler) {
   auto new_target = Parameter<Object>(Descriptor::kJSNewTarget);
   auto arg_count =
       UncheckedParameter<Int32T>(Descriptor::kJSActualArgumentsCount);
+#ifdef V8_JS_LINKAGE_INCLUDES_DISPATCH_HANDLE
+  auto dispatch_handle =
+      UncheckedParameter<JSDispatchHandleT>(Descriptor::kJSDispatchHandle);
+#else
+  auto dispatch_handle = InvalidDispatchHandleConstant();
+#endif
   auto function = Parameter<JSFunction>(Descriptor::kJSTarget);
 
   // Check break-at-entry flag on the debug info.
   TNode<ExternalReference> f =
       ExternalConstant(ExternalReference::debug_break_at_entry_function());
   TNode<ExternalReference> isolate_ptr =
-      ExternalConstant(ExternalReference::isolate_address(isolate()));
+      ExternalConstant(ExternalReference::isolate_address());
   TNode<SharedFunctionInfo> shared =
       CAST(LoadObjectField(function, JSFunction::kSharedFunctionInfoOffset));
   TNode<IntPtrT> result = UncheckedCast<IntPtrT>(
@@ -99,8 +109,11 @@ TF_BUILTIN(DebugBreakTrampoline, CodeStubAssembler) {
 
   BIND(&tailcall_to_shared);
   // Tail call into code object on the SharedFunctionInfo.
+  // TODO(saelo): this is not safe. We either need to validate the parameter
+  // count here or obtain the code from the dispatch table.
   TNode<Code> code = GetSharedFunctionInfoCode(shared);
-  TailCallJSCode(code, context, function, new_target, arg_count);
+  TailCallJSCode(code, context, function, new_target, arg_count,
+                 dispatch_handle);
 }
 
 class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
@@ -130,19 +143,10 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
   }
 
   TNode<BoolT> UsesSharedHeap() {
-    TNode<ExternalReference> uses_shared_heap_addr = ExternalConstant(
-        ExternalReference::uses_shared_heap_flag_address(this->isolate()));
+    TNode<ExternalReference> uses_shared_heap_addr =
+        IsolateField(IsolateFieldId::kUsesSharedHeapFlag);
     return Word32NotEqual(Load<Uint8T>(uses_shared_heap_addr),
                           Int32Constant(0));
-  }
-
-  TNode<BoolT> IsPageFlagSet(TNode<IntPtrT> object, int mask) {
-    TNode<IntPtrT> header = MemoryChunkFromAddress(object);
-    TNode<IntPtrT> flags = UncheckedCast<IntPtrT>(
-        Load(MachineType::Pointer(), header,
-             IntPtrConstant(MemoryChunkLayout::kFlagsOffset)));
-    return WordNotEqual(WordAnd(flags, IntPtrConstant(mask)),
-                        IntPtrConstant(0));
   }
 
   TNode<BoolT> IsUnmarked(TNode<IntPtrT> object) {
@@ -151,37 +155,6 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
     GetMarkBit(object, &cell, &mask);
     // Marked only requires checking a single bit here.
     return WordEqual(WordAnd(Load<IntPtrT>(cell), mask), IntPtrConstant(0));
-  }
-
-  void GetMarkBit(TNode<IntPtrT> object, TNode<IntPtrT>* cell,
-                  TNode<IntPtrT>* mask) {
-    TNode<IntPtrT> page = PageMetadataFromAddress(object);
-    TNode<IntPtrT> bitmap = IntPtrAdd(
-        page, IntPtrConstant(MemoryChunkLayout::kMarkingBitmapOffset));
-
-    {
-      // Temp variable to calculate cell offset in bitmap.
-      TNode<WordT> r0;
-      int shift = MarkingBitmap::kBitsPerCellLog2 + kTaggedSizeLog2 -
-                  MarkingBitmap::kBytesPerCellLog2;
-      r0 = WordShr(object, IntPtrConstant(shift));
-      r0 = WordAnd(r0,
-                   IntPtrConstant(
-                       (MemoryChunk::GetAlignmentMaskForAssembler() >> shift) &
-                       ~(MarkingBitmap::kBytesPerCell - 1)));
-      *cell = IntPtrAdd(bitmap, Signed(r0));
-    }
-    {
-      // Temp variable to calculate bit offset in cell.
-      TNode<WordT> r1;
-      r1 = WordShr(object, IntPtrConstant(kTaggedSizeLog2));
-      r1 = WordAnd(r1,
-                   IntPtrConstant((1 << MarkingBitmap::kBitsPerCellLog2) - 1));
-      // It seems that LSB(e.g. cl) is automatically used, so no manual masking
-      // is needed. Uncomment the following line otherwise.
-      // WordAnd(r1, IntPtrConstant((1 << kBitsPerByte) - 1)));
-      *mask = WordShl(IntPtrConstant(1), r1);
-    }
   }
 
   void InsertIntoRememberedSet(TNode<IntPtrT> object, TNode<IntPtrT> slot,
@@ -193,9 +166,14 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
     // Load address of SlotSet
     TNode<IntPtrT> slot_set = LoadSlotSet(page, &slow_path);
     TNode<IntPtrT> slot_offset = IntPtrSub(slot, chunk);
+    TNode<IntPtrT> num_buckets_address =
+        IntPtrSub(slot_set, IntPtrConstant(SlotSet::kNumBucketsSize));
+    TNode<IntPtrT> num_buckets = UncheckedCast<IntPtrT>(
+        Load(MachineType::Pointer(), num_buckets_address, IntPtrConstant(0)));
 
     // Load bucket
-    TNode<IntPtrT> bucket = LoadBucket(slot_set, slot_offset, &slow_path);
+    TNode<IntPtrT> bucket =
+        LoadBucket(slot_set, slot_offset, num_buckets, &slow_path);
 
     // Update cell
     SetBitInCell(bucket, slot_offset);
@@ -218,15 +196,17 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
   TNode<IntPtrT> LoadSlotSet(TNode<IntPtrT> page, Label* slow_path) {
     TNode<IntPtrT> slot_set = UncheckedCast<IntPtrT>(
         Load(MachineType::Pointer(), page,
-             IntPtrConstant(MutablePageMetadata::kOldToNewSlotSetOffset)));
+             IntPtrConstant(MutablePageMetadata::SlotSetOffset(
+                 RememberedSetType::OLD_TO_NEW))));
     GotoIf(WordEqual(slot_set, IntPtrConstant(0)), slow_path);
     return slot_set;
   }
 
   TNode<IntPtrT> LoadBucket(TNode<IntPtrT> slot_set, TNode<WordT> slot_offset,
-                            Label* slow_path) {
+                            TNode<IntPtrT> num_buckets, Label* slow_path) {
     TNode<WordT> bucket_index =
         WordShr(slot_offset, SlotSet::kBitsPerBucketLog2 + kTaggedSizeLog2);
+    CSA_CHECK(this, IntPtrLessThan(bucket_index, num_buckets));
     TNode<IntPtrT> bucket = UncheckedCast<IntPtrT>(
         Load(MachineType::Pointer(), slot_set,
              WordShl(bucket_index, kSystemPointerSizeLog2)));
@@ -274,14 +254,7 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
   }
 
   void IndirectPointerWriteBarrier(SaveFPRegsMode fp_mode) {
-    // Currently, only objects living in (local) old space are referenced
-    // through a pointer table indirection and we have DCHECKs in the CPP write
-    // barrier code to check that. This simplifies the write barrier code for
-    // these cases.
-    Label marking_is_on(this), next(this);
-    Branch(IsMarking(), &marking_is_on, &next);
-
-    BIND(&marking_is_on);
+    CSA_DCHECK(this, IsMarking());
 
     // For this barrier, the slot contains an index into a pointer table and not
     // directly a pointer to a HeapObject. Further, the slot address is tagged
@@ -302,9 +275,6 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
         std::make_pair(MachineTypeOf<IntPtrT>::value, object),
         std::make_pair(MachineTypeOf<IntPtrT>::value, slot),
         std::make_pair(MachineTypeOf<IntPtrT>::value, tag));
-    Goto(&next);
-
-    BIND(&next);
   }
 
   void GenerationalOrSharedBarrierSlow(TNode<IntPtrT> slot, Label* next,
@@ -319,10 +289,15 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
     InYoungGeneration(value, &generational_barrier, &shared_barrier);
 
     BIND(&generational_barrier);
-    CSA_DCHECK(this,
-               IsPageFlagSet(value, MemoryChunk::kIsInYoungGenerationMask));
+    if (!v8_flags.sticky_mark_bits) {
+      CSA_DCHECK(this,
+                 IsPageFlagSet(value, MemoryChunk::kIsInYoungGenerationMask));
+    }
     GenerationalBarrierSlow(slot, next, fp_mode);
 
+    // TODO(333906585): With sticky-mark bits and without the shared barrier
+    // support, we actually never jump here. Don't put it under the flag though,
+    // since the assert below has been useful.
     BIND(&shared_barrier);
     CSA_DCHECK(this, IsPageFlagSet(value, MemoryChunk::kInSharedHeap));
     SharedBarrierSlow(slot, next, fp_mode);
@@ -370,21 +345,31 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
         shared_barrier_slow(this), generational_barrier_slow(this);
 
     // During incremental marking we always reach this slow path, so we need to
-    // check whether this is a old-to-new or old-to-shared reference.
+    // check whether this is an old-to-new or old-to-shared reference.
     TNode<IntPtrT> object = BitcastTaggedToWord(
         UncheckedParameter<Object>(WriteBarrierDescriptor::kObject));
 
-    InYoungGeneration(object, next, &generational_barrier_check);
+    if (!v8_flags.sticky_mark_bits) {
+      // With sticky markbits we know everything will be old after the GC so no
+      // need to check the age.
+      InYoungGeneration(object, next, &generational_barrier_check);
 
-    BIND(&generational_barrier_check);
+      BIND(&generational_barrier_check);
+    }
 
     TNode<IntPtrT> value = BitcastTaggedToWord(Load<HeapObject>(slot));
-    InYoungGeneration(value, &generational_barrier_slow, &shared_barrier_check);
 
-    BIND(&generational_barrier_slow);
-    GenerationalBarrierSlow(slot, next, fp_mode);
+    if (!v8_flags.sticky_mark_bits) {
+      // With sticky markbits we know everything will be old after the GC so no
+      // need to track old-to-new references.
+      InYoungGeneration(value, &generational_barrier_slow,
+                        &shared_barrier_check);
 
-    BIND(&shared_barrier_check);
+      BIND(&generational_barrier_slow);
+      GenerationalBarrierSlow(slot, next, fp_mode);
+
+      BIND(&shared_barrier_check);
+    }
 
     InSharedHeap(value, &shared_barrier_slow, next);
 
@@ -395,10 +380,24 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
 
   void InYoungGeneration(TNode<IntPtrT> object, Label* true_label,
                          Label* false_label) {
-    TNode<BoolT> object_is_young =
-        IsPageFlagSet(object, MemoryChunk::kIsInYoungGenerationMask);
+    if (v8_flags.sticky_mark_bits) {
+      // This method is currently only used when marking is disabled. Checking
+      // markbits while marking is active may result in unexpected results.
+      CSA_DCHECK(this, Word32Equal(IsMarking(), BoolConstant(false)));
 
-    Branch(object_is_young, true_label, false_label);
+      Label not_read_only(this);
+
+      TNode<BoolT> is_read_only_page =
+          IsPageFlagSet(object, MemoryChunk::kIsOnlyOldOrMajorGCInProgressMask);
+      Branch(is_read_only_page, false_label, &not_read_only);
+
+      BIND(&not_read_only);
+      Branch(IsUnmarked(object), true_label, false_label);
+    } else {
+      TNode<BoolT> object_is_young =
+          IsPageFlagSet(object, MemoryChunk::kIsInYoungGenerationMask);
+      Branch(object_is_young, true_label, false_label);
+    }
   }
 
   void InSharedHeap(TNode<IntPtrT> object, Label* true_label,
@@ -411,11 +410,16 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
 
   void IncrementalWriteBarrierMinor(TNode<IntPtrT> slot, TNode<IntPtrT> value,
                                     SaveFPRegsMode fp_mode, Label* next) {
-    Label check_is_unmarked(this);
+    Label check_is_unmarked(this, Label::kDeferred);
 
-    InYoungGeneration(value, &check_is_unmarked, next);
+    if (!v8_flags.sticky_mark_bits) {
+      // With sticky markbits, InYoungGeneration and IsUnmarked below are
+      // equivalent.
+      InYoungGeneration(value, &check_is_unmarked, next);
 
-    BIND(&check_is_unmarked);
+      BIND(&check_is_unmarked);
+    }
+
     GotoIfNot(IsUnmarked(value), next);
 
     {
@@ -477,7 +481,8 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
 
   void IncrementalWriteBarrier(TNode<IntPtrT> slot, SaveFPRegsMode fp_mode) {
     Label next(this), write_into_shared_object(this),
-        write_into_local_object(this), local_object_and_value(this);
+        write_into_local_object(this),
+        local_object_and_value(this, Label::kDeferred);
 
     TNode<IntPtrT> object = BitcastTaggedToWord(
         UncheckedParameter<Object>(WriteBarrierDescriptor::kObject));
@@ -583,7 +588,7 @@ class WriteBarrierCodeStubAssembler : public CodeStubAssembler {
     TNode<ExternalReference> function = ExternalConstant(
         ExternalReference::ephemeron_key_write_barrier_function());
     TNode<ExternalReference> isolate_constant =
-        ExternalConstant(ExternalReference::isolate_address(isolate()));
+        ExternalConstant(ExternalReference::isolate_address());
     // In this method we limit the allocatable registers so we have to use
     // UncheckedParameter. Parameter does not work because the checked cast
     // needs more registers.
@@ -989,8 +994,8 @@ class SetOrCopyDataPropertiesAssembler : public CodeStubAssembler {
   TNode<Object> SetOrCopyDataProperties(
       TNode<Context> context, TNode<JSReceiver> target, TNode<Object> source,
       Label* if_runtime,
-      base::Optional<TNode<IntPtrT>> excluded_property_count = base::nullopt,
-      base::Optional<TNode<IntPtrT>> excluded_property_base = base::nullopt,
+      std::optional<TNode<IntPtrT>> excluded_property_count = std::nullopt,
+      std::optional<TNode<IntPtrT>> excluded_property_base = std::nullopt,
       bool use_set = true) {
     Label if_done(this), if_noelements(this),
         if_sourcenotjsobject(this, Label::kDeferred);
@@ -1024,16 +1029,16 @@ class SetOrCopyDataPropertiesAssembler : public CodeStubAssembler {
         TNode<BoolT> target_is_simple_receiver = IsSimpleObjectMap(target_map);
         ForEachEnumerableOwnProperty(
             context, source_map, CAST(source), kEnumerationOrder,
-            [=](TNode<Name> key, TNode<Object> value) {
+            [=, this](TNode<Name> key, LazyNode<Object> value) {
               KeyedStoreGenericGenerator::SetProperty(
                   state(), context, target, target_is_simple_receiver, key,
-                  value, LanguageMode::kStrict);
+                  value(), LanguageMode::kStrict);
             },
             if_runtime);
       } else {
         ForEachEnumerableOwnProperty(
             context, source_map, CAST(source), kEnumerationOrder,
-            [=](TNode<Name> key, TNode<Object> value) {
+            [=, this](TNode<Name> key, LazyNode<Object> value) {
               Label skip(this);
               if (excluded_property_count.has_value()) {
                 BuildFastLoop<IntPtrT>(
@@ -1052,7 +1057,7 @@ class SetOrCopyDataPropertiesAssembler : public CodeStubAssembler {
               }
 
               CallBuiltin(Builtin::kCreateDataProperty, context, target, key,
-                          value);
+                          value());
               Goto(&skip);
               Bind(&skip);
             },
@@ -1126,7 +1131,7 @@ TF_BUILTIN(CopyDataPropertiesWithExcludedProperties,
       ReinterpretCast<IntPtrT>(arguments.AtIndexPtr(
           IntPtrSub(excluded_property_count, IntPtrConstant(2))));
 
-  arguments.PopAndReturn(CallBuiltin(
+  arguments.PopAndReturn(CallBuiltin<JSAny>(
       Builtin::kCopyDataPropertiesWithExcludedPropertiesOnStack, context,
       source, excluded_property_count, excluded_properties));
 }
@@ -1140,8 +1145,8 @@ TF_BUILTIN(CopyDataProperties, SetOrCopyDataPropertiesAssembler) {
   CSA_DCHECK(this, TaggedNotEqual(target, source));
 
   Label if_runtime(this, Label::kDeferred);
-  SetOrCopyDataProperties(context, target, source, &if_runtime, base::nullopt,
-                          base::nullopt, false);
+  SetOrCopyDataProperties(context, target, source, &if_runtime, std::nullopt,
+                          std::nullopt, false);
   Return(UndefinedConstant());
 
   BIND(&if_runtime);
@@ -1155,8 +1160,8 @@ TF_BUILTIN(SetDataProperties, SetOrCopyDataPropertiesAssembler) {
 
   Label if_runtime(this, Label::kDeferred);
   GotoIfForceSlowPath(&if_runtime);
-  SetOrCopyDataProperties(context, target, source, &if_runtime, base::nullopt,
-                          base::nullopt, true);
+  SetOrCopyDataProperties(context, target, source, &if_runtime, std::nullopt,
+                          std::nullopt, true);
   Return(UndefinedConstant());
 
   BIND(&if_runtime);
@@ -1194,7 +1199,7 @@ TF_BUILTIN(ForInPrepare, CodeStubAssembler) {
 
 TF_BUILTIN(ForInFilter, CodeStubAssembler) {
   auto key = Parameter<String>(Descriptor::kKey);
-  auto object = Parameter<HeapObject>(Descriptor::kObject);
+  auto object = Parameter<JSAnyNotSmi>(Descriptor::kObject);
   auto context = Parameter<Context>(Descriptor::kContext);
 
   Label if_true(this), if_false(this);
@@ -1236,57 +1241,68 @@ TF_BUILTIN(SameValueNumbersOnly, CodeStubAssembler) {
   Return(FalseConstant());
 }
 
-TF_BUILTIN(AdaptorWithBuiltinExitFrame, CodeStubAssembler) {
+class CppBuiltinsAdaptorAssembler : public CodeStubAssembler {
+ public:
+  using Descriptor = CppBuiltinAdaptorDescriptor;
+
+  explicit CppBuiltinsAdaptorAssembler(compiler::CodeAssemblerState* state)
+      : CodeStubAssembler(state) {}
+
+  void GenerateAdaptor(int formal_parameter_count);
+};
+
+void CppBuiltinsAdaptorAssembler::GenerateAdaptor(int formal_parameter_count) {
+  auto context = Parameter<Context>(Descriptor::kContext);
   auto target = Parameter<JSFunction>(Descriptor::kTarget);
   auto new_target = Parameter<Object>(Descriptor::kNewTarget);
   auto c_function = UncheckedParameter<WordT>(Descriptor::kCFunction);
+  auto actual_argc =
+      UncheckedParameter<Int32T>(Descriptor::kActualArgumentsCount);
 
   // The logic contained here is mirrored for TurboFan inlining in
   // JSTypedLowering::ReduceJSCall{Function,Construct}. Keep these in sync.
 
-  // Make sure we operate in the context of the called function (for example
-  // ConstructStubs implemented in C++ will be run in the context of the caller
-  // instead of the callee, due to the way that [[Construct]] is defined for
-  // ordinary functions).
-  TNode<Context> context = LoadJSFunctionContext(target);
+  // Make sure we operate in the context of the called function.
+  CSA_DCHECK(this, TaggedEqual(context, LoadJSFunctionContext(target)));
 
-  auto actual_argc =
-      UncheckedParameter<Int32T>(Descriptor::kActualArgumentsCount);
-  CodeStubArguments args(this, actual_argc);
+  static_assert(kDontAdaptArgumentsSentinel == 0);
+  // The code below relies on |actual_argc| to include receiver.
+  static_assert(i::JSParameterCount(0) == 1);
+  TVARIABLE(Int32T, pushed_argc, actual_argc);
 
-  TVARIABLE(Int32T, pushed_argc,
-            TruncateIntPtrToInt32(args.GetLengthWithReceiver()));
+  // It's guaranteed that the receiver is pushed to the stack, thus both
+  // kDontAdaptArgumentsSentinel and JSParameterCount(0) cases don't require
+  // arguments adaptation. Just use the latter version for consistency.
+  DCHECK_NE(kDontAdaptArgumentsSentinel, formal_parameter_count);
+  if (formal_parameter_count > i::JSParameterCount(0)) {
+    TNode<Int32T> formal_count = Int32Constant(formal_parameter_count);
 
-  TNode<SharedFunctionInfo> shared = LoadJSFunctionSharedFunctionInfo(target);
-
-  TNode<Int32T> formal_count = UncheckedCast<Int32T>(
-      LoadSharedFunctionInfoFormalParameterCountWithReceiver(shared));
-
-  // The number of arguments pushed is the maximum of actual arguments count
-  // and formal parameters count. Except when the formal parameters count is
-  // the sentinel.
-  Label check_argc(this), update_argc(this), done_argc(this);
-
-  Branch(IsSharedFunctionInfoDontAdaptArguments(shared), &done_argc,
-         &check_argc);
-  BIND(&check_argc);
-  Branch(Int32GreaterThan(formal_count, pushed_argc.value()), &update_argc,
-         &done_argc);
-  BIND(&update_argc);
-  pushed_argc = formal_count;
-  Goto(&done_argc);
-  BIND(&done_argc);
+    // The number of arguments pushed is the maximum of actual arguments count
+    // and formal parameters count.
+    Label done_argc(this);
+    GotoIf(Int32GreaterThanOrEqual(pushed_argc.value(), formal_count),
+           &done_argc);
+    // Update pushed args.
+    pushed_argc = formal_count;
+    Goto(&done_argc);
+    BIND(&done_argc);
+  }
 
   // Update arguments count for CEntry to contain the number of arguments
   // including the receiver and the extra arguments.
-  TNode<Int32T> argc = Int32Add(
-      pushed_argc.value(),
-      Int32Constant(BuiltinExitFrameConstants::kNumExtraArgsWithoutReceiver));
+  TNode<Int32T> argc =
+      Int32Add(pushed_argc.value(),
+               Int32Constant(BuiltinExitFrameConstants::kNumExtraArgs));
 
   const bool builtin_exit_frame = true;
   const bool switch_to_central_stack = false;
   Builtin centry = Builtins::CEntry(1, ArgvMode::kStack, builtin_exit_frame,
                                     switch_to_central_stack);
+
+  static_assert(BuiltinArguments::kNewTargetIndex == 0);
+  static_assert(BuiltinArguments::kTargetIndex == 1);
+  static_assert(BuiltinArguments::kArgcIndex == 2);
+  static_assert(BuiltinArguments::kPaddingIndex == 3);
 
   // Unconditionally push argc, target and new target as extra stack arguments.
   // They will be used by stack frame iterators when constructing stack trace.
@@ -1296,6 +1312,30 @@ TF_BUILTIN(AdaptorWithBuiltinExitFrame, CodeStubAssembler) {
                   SmiFromInt32(argc),  // additional stack argument 2
                   target,              // additional stack argument 3
                   new_target);         // additional stack argument 4
+}
+
+TF_BUILTIN(AdaptorWithBuiltinExitFrame0, CppBuiltinsAdaptorAssembler) {
+  GenerateAdaptor(i::JSParameterCount(0));
+}
+
+TF_BUILTIN(AdaptorWithBuiltinExitFrame1, CppBuiltinsAdaptorAssembler) {
+  GenerateAdaptor(i::JSParameterCount(1));
+}
+
+TF_BUILTIN(AdaptorWithBuiltinExitFrame2, CppBuiltinsAdaptorAssembler) {
+  GenerateAdaptor(i::JSParameterCount(2));
+}
+
+TF_BUILTIN(AdaptorWithBuiltinExitFrame3, CppBuiltinsAdaptorAssembler) {
+  GenerateAdaptor(i::JSParameterCount(3));
+}
+
+TF_BUILTIN(AdaptorWithBuiltinExitFrame4, CppBuiltinsAdaptorAssembler) {
+  GenerateAdaptor(i::JSParameterCount(4));
+}
+
+TF_BUILTIN(AdaptorWithBuiltinExitFrame5, CppBuiltinsAdaptorAssembler) {
+  GenerateAdaptor(i::JSParameterCount(5));
 }
 
 TF_BUILTIN(NewHeapNumber, CodeStubAssembler) {
@@ -1409,18 +1449,7 @@ void Builtins::Generate_BaselineLeaveFrame(MacroAssembler* masm) {
 #endif  // V8_ENABLE_SPARKPLUG
 }
 
-// TODO(v8:11421): Remove #if once the Maglev compiler is ported to other
-// architectures.
-#ifndef V8_TARGET_ARCH_X64
-void Builtins::Generate_MaglevOnStackReplacement(MacroAssembler* masm) {
-  using D =
-      i::CallInterfaceDescriptorFor<Builtin::kMaglevOnStackReplacement>::type;
-  static_assert(D::kParameterCount == 1);
-  masm->Trap();
-}
-#endif  // V8_TARGET_ARCH_X64
-
-#ifdef V8_ENABLE_MAGLEV
+#if defined(V8_ENABLE_MAGLEV) && !defined(V8_ENABLE_LEAPTIERING)
 void Builtins::Generate_MaglevOptimizeCodeOrTailCallOptimizedCodeSlot(
     MacroAssembler* masm) {
   using D = MaglevOptimizeCodeOrTailCallOptimizedCodeSlotDescriptor;
@@ -1432,16 +1461,19 @@ void Builtins::Generate_MaglevOptimizeCodeOrTailCallOptimizedCodeSlot(
   masm->Trap();
 }
 #else
+void Builtins::Generate_MaglevOptimizeCodeOrTailCallOptimizedCodeSlot(
+    MacroAssembler* masm) {
+  masm->Trap();
+}
+#endif  // V8_ENABLE_MAGLEV && !V8_ENABLE_LEAPTIERING
+
+#ifndef V8_ENABLE_MAGLEV
 // static
 void Builtins::Generate_MaglevFunctionEntryStackCheck(MacroAssembler* masm,
                                                       bool save_new_target) {
   masm->Trap();
 }
-void Builtins::Generate_MaglevOptimizeCodeOrTailCallOptimizedCodeSlot(
-    MacroAssembler* masm) {
-  masm->Trap();
-}
-#endif  // V8_ENABLE_MAGLEV
+#endif  // !V8_ENABLE_MAGLEV
 
 void Builtins::Generate_MaglevFunctionEntryStackCheck_WithoutNewTarget(
     MacroAssembler* masm) {
@@ -1455,7 +1487,7 @@ void Builtins::Generate_MaglevFunctionEntryStackCheck_WithNewTarget(
 
 // ES6 [[Get]] operation.
 TF_BUILTIN(GetProperty, CodeStubAssembler) {
-  auto object = Parameter<Object>(Descriptor::kObject);
+  auto object = Parameter<JSAny>(Descriptor::kObject);
   auto key = Parameter<Object>(Descriptor::kKey);
   auto context = Parameter<Context>(Descriptor::kContext);
   // TODO(duongn): consider tailcalling to GetPropertyWithReceiver(object,
@@ -1464,9 +1496,10 @@ TF_BUILTIN(GetProperty, CodeStubAssembler) {
       if_slow(this, Label::kDeferred);
 
   CodeStubAssembler::LookupPropertyInHolder lookup_property_in_holder =
-      [=](TNode<HeapObject> receiver, TNode<HeapObject> holder,
-          TNode<Map> holder_map, TNode<Int32T> holder_instance_type,
-          TNode<Name> unique_name, Label* next_holder, Label* if_bailout) {
+      [=, this](TNode<JSAnyNotSmi> receiver, TNode<JSAnyNotSmi> holder,
+                TNode<Map> holder_map, TNode<Int32T> holder_instance_type,
+                TNode<Name> unique_name, Label* next_holder,
+                Label* if_bailout) {
         TVARIABLE(Object, var_value);
         Label if_found(this);
         // If we get here then it's guaranteed that |object| (and thus the
@@ -1480,9 +1513,9 @@ TF_BUILTIN(GetProperty, CodeStubAssembler) {
       };
 
   CodeStubAssembler::LookupElementInHolder lookup_element_in_holder =
-      [=](TNode<HeapObject> receiver, TNode<HeapObject> holder,
-          TNode<Map> holder_map, TNode<Int32T> holder_instance_type,
-          TNode<IntPtrT> index, Label* next_holder, Label* if_bailout) {
+      [=, this](TNode<JSAnyNotSmi> receiver, TNode<JSAnyNotSmi> holder,
+                TNode<Map> holder_map, TNode<Int32T> holder_instance_type,
+                TNode<IntPtrT> index, Label* next_holder, Label* if_bailout) {
         // Not supported yet.
         Use(next_holder);
         Goto(if_bailout);
@@ -1513,18 +1546,19 @@ TF_BUILTIN(GetProperty, CodeStubAssembler) {
 
 // ES6 [[Get]] operation with Receiver.
 TF_BUILTIN(GetPropertyWithReceiver, CodeStubAssembler) {
-  auto object = Parameter<Object>(Descriptor::kObject);
+  auto object = Parameter<JSAny>(Descriptor::kObject);
   auto key = Parameter<Object>(Descriptor::kKey);
   auto context = Parameter<Context>(Descriptor::kContext);
-  auto receiver = Parameter<Object>(Descriptor::kReceiver);
+  auto receiver = Parameter<JSAny>(Descriptor::kReceiver);
   auto on_non_existent = Parameter<Object>(Descriptor::kOnNonExistent);
   Label if_notfound(this), if_proxy(this, Label::kDeferred),
       if_slow(this, Label::kDeferred);
 
   CodeStubAssembler::LookupPropertyInHolder lookup_property_in_holder =
-      [=](TNode<HeapObject> receiver, TNode<HeapObject> holder,
-          TNode<Map> holder_map, TNode<Int32T> holder_instance_type,
-          TNode<Name> unique_name, Label* next_holder, Label* if_bailout) {
+      [=, this](TNode<JSAnyNotSmi> receiver, TNode<JSAnyNotSmi> holder,
+                TNode<Map> holder_map, TNode<Int32T> holder_instance_type,
+                TNode<Name> unique_name, Label* next_holder,
+                Label* if_bailout) {
         TVARIABLE(Object, var_value);
         Label if_found(this);
         TryGetOwnProperty(context, receiver, CAST(holder), holder_map,
@@ -1536,9 +1570,9 @@ TF_BUILTIN(GetPropertyWithReceiver, CodeStubAssembler) {
       };
 
   CodeStubAssembler::LookupElementInHolder lookup_element_in_holder =
-      [=](TNode<HeapObject> receiver, TNode<HeapObject> holder,
-          TNode<Map> holder_map, TNode<Int32T> holder_instance_type,
-          TNode<IntPtrT> index, Label* next_holder, Label* if_bailout) {
+      [=, this](TNode<JSAnyNotSmi> receiver, TNode<JSAnyNotSmi> holder,
+                TNode<Map> holder_map, TNode<Int32T> holder_instance_type,
+                TNode<IntPtrT> index, Label* next_holder, Label* if_bailout) {
         // Not supported yet.
         Use(next_holder);
         Goto(if_bailout);
@@ -1583,7 +1617,7 @@ TF_BUILTIN(GetPropertyWithReceiver, CodeStubAssembler) {
 // ES6 [[Set]] operation.
 TF_BUILTIN(SetProperty, CodeStubAssembler) {
   auto context = Parameter<Context>(Descriptor::kContext);
-  auto receiver = Parameter<Object>(Descriptor::kReceiver);
+  auto receiver = Parameter<JSAny>(Descriptor::kReceiver);
   auto key = Parameter<Object>(Descriptor::kKey);
   auto value = Parameter<Object>(Descriptor::kValue);
 
@@ -1607,37 +1641,36 @@ TF_BUILTIN(CreateDataProperty, CodeStubAssembler) {
 
 TF_BUILTIN(InstantiateAsmJs, CodeStubAssembler) {
   Label tailcall_to_function(this);
+  auto function = Parameter<JSFunction>(Descriptor::kTarget);
   auto context = Parameter<Context>(Descriptor::kContext);
   auto new_target = Parameter<Object>(Descriptor::kNewTarget);
   auto arg_count =
       UncheckedParameter<Int32T>(Descriptor::kActualArgumentsCount);
-  auto function = Parameter<JSFunction>(Descriptor::kTarget);
+#ifdef V8_JS_LINKAGE_INCLUDES_DISPATCH_HANDLE
+  auto dispatch_handle =
+      UncheckedParameter<JSDispatchHandleT>(Descriptor::kDispatchHandle);
+#elif defined(V8_ENABLE_LEAPTIERING)
+  TNode<JSDispatchHandleT> dispatch_handle = ReinterpretCast<JSDispatchHandleT>(
+      LoadJSFunctionDispatchHandle(function));
+#else
+  auto dispatch_handle = InvalidDispatchHandleConstant();
+#endif
+
+  // This builtin is used on functions with different parameter counts.
+  SetSupportsDynamicParameterCount(function, dispatch_handle);
 
   // Retrieve arguments from caller (stdlib, foreign, heap).
   CodeStubArguments args(this, arg_count);
+
   TNode<Object> stdlib = args.GetOptionalArgumentValue(0);
   TNode<Object> foreign = args.GetOptionalArgumentValue(1);
   TNode<Object> heap = args.GetOptionalArgumentValue(2);
 
   // Call runtime, on success just pass the result to the caller and pop all
   // arguments. A smi 0 is returned on failure, an object on success.
-  TNode<Object> maybe_result_or_smi_zero = CallRuntime(
+  TNode<JSAny> maybe_result_or_smi_zero = CallRuntime<JSAny>(
       Runtime::kInstantiateAsmJs, context, function, stdlib, foreign, heap);
   GotoIf(TaggedIsSmi(maybe_result_or_smi_zero), &tailcall_to_function);
-
-  TNode<SharedFunctionInfo> shared = LoadJSFunctionSharedFunctionInfo(function);
-  TNode<Int32T> parameter_count = UncheckedCast<Int32T>(
-      LoadSharedFunctionInfoFormalParameterCountWithReceiver(shared));
-  // This builtin intercepts a call to {function}, where the number of arguments
-  // pushed is the maximum of actual arguments count and formal parameters
-  // count.
-  Label argc_lt_param_count(this), argc_ge_param_count(this);
-  Branch(IntPtrLessThan(args.GetLengthWithReceiver(),
-                        ChangeInt32ToIntPtr(parameter_count)),
-         &argc_lt_param_count, &argc_ge_param_count);
-  BIND(&argc_lt_param_count);
-  PopAndReturn(parameter_count, maybe_result_or_smi_zero);
-  BIND(&argc_ge_param_count);
   args.PopAndReturn(maybe_result_or_smi_zero);
 
   BIND(&tailcall_to_function);
@@ -1645,7 +1678,8 @@ TF_BUILTIN(InstantiateAsmJs, CodeStubAssembler) {
   // function which has been reset to the compile lazy builtin.
 
   TNode<Code> code = LoadJSFunctionCode(function);
-  TailCallJSCode(code, context, function, new_target, arg_count);
+  TailCallJSCode(code, context, function, new_target, arg_count,
+                 dispatch_handle);
 }
 
 TF_BUILTIN(FindNonDefaultConstructorOrConstruct, CodeStubAssembler) {
@@ -1696,6 +1730,8 @@ TF_BUILTIN(GetOwnPropertyDescriptor, CodeStubAssembler) {
   TailCallRuntime(Runtime::kGetOwnPropertyDescriptorObject, context, receiver,
                   key);
 }
+
+#include "src/codegen/undef-code-stub-assembler-macros.inc"
 
 }  // namespace internal
 }  // namespace v8

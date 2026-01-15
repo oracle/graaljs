@@ -25,27 +25,32 @@ const {
   parseCommandLine,
   reporterScope,
   shouldColorizeTestFiles,
+  setupGlobalSetupTeardownFunctions,
+  parsePreviousRuns,
 } = require('internal/test_runner/utils');
+const { PassThrough, compose } = require('stream');
+const { reportReruns } = require('internal/test_runner/reporter/rerun');
 const { queueMicrotask } = require('internal/process/task_queues');
+const { TIMEOUT_MAX } = require('internal/timers');
+const { clearInterval, setInterval } = require('timers');
 const { bigint: hrtime } = process.hrtime;
-const resolvedPromise = PromiseResolve();
 const testResources = new SafeMap();
 let globalRoot;
+let globalSetupExecuted = false;
 
 testResources.set(reporterScope.asyncId(), reporterScope);
 
 function createTestTree(rootTestOptions, globalOptions) {
   const buildPhaseDeferred = PromiseWithResolvers();
   const isFilteringByName = globalOptions.testNamePatterns ||
-                            globalOptions.testSkipPatterns;
-  const isFilteringByOnly = globalOptions.only || (globalOptions.isTestRunner &&
-                                                   globalOptions.isolation === 'none');
+    globalOptions.testSkipPatterns;
+  const isFilteringByOnly = (globalOptions.isolation === 'process' || process.env.NODE_TEST_CONTEXT) ?
+    globalOptions.only : true;
   const harness = {
     __proto__: null,
     buildPromise: buildPhaseDeferred.promise,
     buildSuites: [],
     isWaitingForBuildPhase: false,
-    bootstrapPromise: resolvedPromise,
     watching: false,
     config: globalOptions,
     coverage: null,
@@ -67,8 +72,24 @@ function createTestTree(rootTestOptions, globalOptions) {
     shouldColorizeTestFiles: shouldColorizeTestFiles(globalOptions.destinations),
     teardown: null,
     snapshotManager: null,
+    previousRuns: null,
     isFilteringByName,
     isFilteringByOnly,
+    async runBootstrap() {
+      if (globalSetupExecuted) {
+        return PromiseResolve();
+      }
+      globalSetupExecuted = true;
+      const globalSetupFunctions = await setupGlobalSetupTeardownFunctions(
+        globalOptions.globalSetupPath,
+        globalOptions.cwd,
+      );
+      harness.globalTeardownFunction = globalSetupFunctions.globalTeardownFunction;
+      if (typeof globalSetupFunctions.globalSetupFunction === 'function') {
+        return globalSetupFunctions.globalSetupFunction();
+      }
+      return PromiseResolve();
+    },
     async waitForBuildPhase() {
       if (harness.buildSuites.length > 0) {
         await SafePromiseAllReturnVoid(harness.buildSuites);
@@ -79,6 +100,7 @@ function createTestTree(rootTestOptions, globalOptions) {
   };
 
   harness.resetCounters();
+  harness.bootstrapPromise = harness.runBootstrap();
   globalRoot = new Test({
     __proto__: null,
     ...rootTestOptions,
@@ -116,7 +138,7 @@ function createProcessEventHandler(eventName, rootTest) {
         const name = test.hookType ? `Test hook "${test.hookType}"` : `Test "${test.name}"`;
         let locInfo = '';
         if (test.loc) {
-          const relPath = relative(process.cwd(), test.loc.file);
+          const relPath = relative(rootTest.config.cwd, test.loc.file);
           locInfo = ` at ${relPath}:${test.loc.line}:${test.loc.column}`;
         }
 
@@ -185,6 +207,25 @@ function collectCoverage(rootTest, coverage) {
   return summary;
 }
 
+function setupFailureStateFile(rootTest, globalOptions) {
+  if (!globalOptions.rerunFailuresFilePath) {
+    return;
+  }
+  rootTest.harness.previousRuns = parsePreviousRuns(globalOptions.rerunFailuresFilePath);
+  if (rootTest.harness.previousRuns === null) {
+    rootTest.diagnostic(`Warning: The rerun failures file at ` +
+      `${globalOptions.rerunFailuresFilePath} is not a valid rerun file. ` +
+      'The test runner will not be able to rerun failed tests.');
+    rootTest.harness.success = false;
+    process.exitCode = kGenericUserError;
+    return;
+  }
+  if (!process.env.NODE_TEST_CONTEXT) {
+    const reporter = reportReruns(rootTest.harness.previousRuns, globalOptions);
+    compose(rootTest.reporter, reporter).pipe(new PassThrough());
+  }
+}
+
 function setupProcessState(root, globalOptions) {
   const hook = createHook({
     __proto__: null,
@@ -212,14 +253,31 @@ function setupProcessState(root, globalOptions) {
   const rejectionHandler =
     createProcessEventHandler('unhandledRejection', root);
   const coverage = configureCoverage(root, globalOptions);
-  const exitHandler = async () => {
+
+  setupFailureStateFile(root, globalOptions);
+
+  const exitHandler = async (kill) => {
     if (root.subtests.length === 0 && (root.hooks.before.length > 0 || root.hooks.after.length > 0)) {
       // Run global before/after hooks in case there are no tests
       await root.run();
     }
+
+    if (kill !== true && root.subtestsPromise !== null) {
+      // Wait for all subtests to finish, but keep the process alive in case
+      // there are no ref'ed handles left.
+      const keepAlive = setInterval(() => {}, TIMEOUT_MAX);
+      await root.subtestsPromise.promise;
+      clearInterval(keepAlive);
+    }
+
     root.postRun(new ERR_TEST_FAILURE(
       'Promise resolution is still pending but the event loop has already resolved',
       kCancelledByParent));
+
+    if (root.harness.globalTeardownFunction) {
+      await root.harness.globalTeardownFunction();
+      root.harness.globalTeardownFunction = null;
+    }
 
     hook.disable();
     process.removeListener('uncaughtException', exceptionHandler);
@@ -231,8 +289,8 @@ function setupProcessState(root, globalOptions) {
     }
   };
 
-  const terminationHandler = () => {
-    exitHandler();
+  const terminationHandler = async () => {
+    await exitHandler(true);
     process.exit();
   };
 
@@ -260,13 +318,17 @@ function lazyBootstrapRoot() {
       loc: entryFile ? [1, 1, entryFile] : undefined,
     };
     const globalOptions = parseCommandLine();
+    globalOptions.cwd = process.cwd();
     createTestTree(rootTestOptions, globalOptions);
     globalRoot.reporter.on('test:summary', (data) => {
       if (!data.success) {
         process.exitCode = kGenericUserError;
       }
     });
-    globalRoot.harness.bootstrapPromise = globalOptions.setup(globalRoot.reporter);
+    globalRoot.harness.bootstrapPromise = SafePromiseAllReturnVoid([
+      globalRoot.harness.bootstrapPromise,
+      globalOptions.setup(globalRoot.reporter),
+    ]);
   }
   return globalRoot;
 }

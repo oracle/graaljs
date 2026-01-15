@@ -175,7 +175,7 @@ endif
 with-code-cache test-code-cache:
 	$(warning '$@' target is a noop)
 
-out/Makefile: config.gypi common.gypi common_node.gypi node.gyp \
+out/Makefile: config.gypi common.gypi node.gyp \
 	deps/*/*.gyp \
 	tools/v8_gypfiles/toolchain.gypi \
 	tools/v8_gypfiles/features.gypi \
@@ -225,7 +225,7 @@ testclean: ## Remove test artifacts.
 distclean: ## Remove all build and test artifacts.
 	$(RM) -r out
 	$(RM) config.gypi icu_config.gypi
-	$(RM) config.mk
+	$(RM) config.mk config.status
 	$(RM) -r $(NODE_EXE) $(NODE_G_EXE)
 	$(RM) -r node_modules
 	$(RM) -r deps/icu
@@ -383,11 +383,11 @@ ifeq ($(OSTYPE),os400)
 DOCBUILDSTAMP_PREREQS := $(DOCBUILDSTAMP_PREREQS) out/$(BUILDTYPE)/node.exp
 endif
 
-node_use_openssl = $(call available-node,"-p" \
-			 "process.versions.openssl != undefined")
+node_use_openssl_and_icu = $(call available-node,"-p" \
+			 "process.versions.openssl != undefined && process.versions.icu != undefined")
 test/addons/.docbuildstamp: $(DOCBUILDSTAMP_PREREQS) tools/doc/node_modules
-	@if [ "$(shell $(node_use_openssl))" != "true" ]; then \
-		echo "Skipping .docbuildstamp (no crypto)"; \
+	@if [ "$(shell $(node_use_openssl_and_icu))" != "true" ]; then \
+		echo "Skipping .docbuildstamp (no crypto and/or no ICU)"; \
 	else \
 		$(RM) -r test/addons/??_*/; \
 		[ -x $(NODE) ] && $(NODE) $< || node $< ; \
@@ -572,7 +572,7 @@ NATIVE_SUITES ?= addons js-native-api node-api
 # CI_* variables should be kept synchronized with the ones in vcbuild.bat
 CI_NATIVE_SUITES ?= $(NATIVE_SUITES) benchmark
 CI_JS_SUITES ?= $(JS_SUITES) pummel
-ifeq ($(node_use_openssl), false)
+ifeq ($(node_use_openssl_and_icu), false)
 	CI_DOC := doctool
 else
 	CI_DOC =
@@ -667,14 +667,10 @@ test-internet: all ## Run internet tests.
 test-tick-processor: all ## Run tick processor tests.
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) tick-processor
 
-.PHONY: test-hash-seed
-test-hash-seed: all ## Verifu that the hash seed used by V8 for hashing is random.
-	$(NODE) test/pummel/test-hash-seed.js
-
 .PHONY: test-doc
 test-doc: doc-only lint-md ## Build, lint, and verify the docs.
-	@if [ "$(shell $(node_use_openssl))" != "true" ]; then \
-		echo "Skipping test-doc (no crypto)"; \
+	@if [ "$(shell $(node_use_openssl_and_icu))" != "true" ]; then \
+		echo "Skipping test-doc (no crypto and/or no ICU)"; \
 	else \
 		$(PYTHON) tools/test.py $(PARALLEL_ARGS) doctool; \
 	fi
@@ -764,8 +760,6 @@ test-v8: v8  ## Run the V8 test suite on deps/v8.
 				mjsunit cctest debugger inspector message preparser \
 				$(TAP_V8)
 	$(call convert_to_junit,$(TAP_V8_JSON))
-	$(info Testing hash seed)
-	$(MAKE) test-hash-seed
 
 test-v8-intl: v8 ## Run the v8 test suite, intl tests.
 	export PATH="$(NO_BIN_OVERRIDE_PATH)" && \
@@ -781,7 +775,7 @@ test-v8-benchmarks: v8 ## Run the v8 test suite, benchmarks.
 				$(TAP_V8_BENCHMARKS)
 	$(call convert_to_junit,$(TAP_V8_BENCHMARKS_JSON))
 
-test-v8-updates: ## Run the v8 test suite, updates.
+test-v8-updates: all ## Run the v8 test suite, updates.
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) v8-updates
 
 test-v8-all: test-v8 test-v8-intl test-v8-benchmarks test-v8-updates ## Run the entire V8 test suite, including intl, benchmarks, and updates.
@@ -793,15 +787,17 @@ test-v8 test-v8-intl test-v8-benchmarks test-v8-all:
 endif
 
 apidoc_dirs = out/doc out/doc/api out/doc/api/assets
-apidoc_sources = $(wildcard doc/api/*.md)
+skip_apidoc_files = doc/api/quic.md
+
+apidoc_sources = $(filter-out $(skip_apidoc_files), $(wildcard doc/api/*.md))
 apidocs_html = $(addprefix out/,$(apidoc_sources:.md=.html))
 apidocs_json = $(addprefix out/,$(apidoc_sources:.md=.json))
 
 apiassets = $(subst api_assets,api/assets,$(addprefix out/,$(wildcard doc/api_assets/*)))
 
 tools/doc/node_modules: tools/doc/package.json
-	@if [ "$(shell $(node_use_openssl))" != "true" ]; then \
-		echo "Skipping tools/doc/node_modules (no crypto)"; \
+	@if [ "$(shell $(node_use_openssl_and_icu))" != "true" ]; then \
+		echo "Skipping tools/doc/node_modules (no crypto and/or no ICU)"; \
 	else \
 		cd tools/doc && $(call available-node,$(run-npm-ci)) \
 	fi
@@ -809,8 +805,8 @@ tools/doc/node_modules: tools/doc/package.json
 .PHONY: doc-only
 doc-only: tools/doc/node_modules \
 	$(apidoc_dirs) $(apiassets) ## Build the docs with the local or the global Node.js binary.
-	@if [ "$(shell $(node_use_openssl))" != "true" ]; then \
-		echo "Skipping doc-only (no crypto)"; \
+	@if [ "$(shell $(node_use_openssl_and_icu))" != "true" ]; then \
+		echo "Skipping doc-only (no crypto and/or no ICU)"; \
 	else \
 		$(MAKE) out/doc/api/all.html out/doc/api/all.json out/doc/api/stability; \
 	fi
@@ -957,14 +953,8 @@ else
 ifeq ($(findstring ppc64,$(UNAME_M)),ppc64)
 DESTCPU ?= ppc64
 else
-ifeq ($(findstring ppc,$(UNAME_M)),ppc)
-DESTCPU ?= ppc
-else
 ifeq ($(findstring s390x,$(UNAME_M)),s390x)
 DESTCPU ?= s390x
-else
-ifeq ($(findstring s390,$(UNAME_M)),s390)
-DESTCPU ?= s390
 else
 ifeq ($(findstring OS/390,$(shell uname -s)),OS/390)
 DESTCPU ?= s390x
@@ -999,8 +989,6 @@ endif
 endif
 endif
 endif
-endif
-endif
 ifeq ($(DESTCPU),x64)
 ARCH=x64
 else
@@ -1013,12 +1001,6 @@ else
 ifeq ($(DESTCPU),ppc64)
 ARCH=ppc64
 else
-ifeq ($(DESTCPU),ppc)
-ARCH=ppc
-else
-ifeq ($(DESTCPU),s390)
-ARCH=s390
-else
 ifeq ($(DESTCPU),s390x)
 ARCH=s390x
 else
@@ -1029,8 +1011,6 @@ ifeq ($(DESTCPU),loong64)
 ARCH=loong64
 else
 ARCH=x86
-endif
-endif
 endif
 endif
 endif
@@ -1252,6 +1232,7 @@ $(TARBALL): release-only doc-only
 	$(RM) -r $(TARNAME)/tools/cpplint.py
 	$(RM) -r $(TARNAME)/tools/eslint
 	$(RM) -r $(TARNAME)/tools/eslint-rules
+	$(RM) -r $(TARNAME)/test/parallel/test-eslint-*
 	$(RM) -r $(TARNAME)/tools/license-builder.sh
 	$(RM) -r $(TARNAME)/tools/eslint/node_modules
 	$(RM) -r $(TARNAME)/tools/osx-*
@@ -1443,8 +1424,8 @@ lint-js-fix: tools/eslint/node_modules/eslint/bin/eslint.js ## Lint and fix the 
 # Note that on the CI `lint-js-ci` is run instead.
 lint-js-doc: LINT_JS_TARGETS=doc
 lint-js lint-js-doc: tools/eslint/node_modules/eslint/bin/eslint.js ## Lint the JavaScript code with eslint./eslint/bin/eslint.js
-	@if [ "$(shell $(node_use_openssl))" != "true" ]; then \
-		echo "Skipping $@ (no crypto)"; \
+	@if [ "$(shell $(node_use_openssl_and_icu))" != "true" ]; then \
+		echo "Skipping $@ (no crypto and/or no ICU)"; \
 	else \
 		echo "Running JS linter..."; \
 		$(call available-node,$(run-lint-js)) \
@@ -1587,8 +1568,8 @@ cpplint: lint-cpp
 # Try with '--system' if it fails without; the system may have set '--user'
 lint-py-build: ## Build resources needed to lint python files.
 	$(info Pip installing ruff on $(shell $(PYTHON) --version)...)
-	$(PYTHON) -m pip install --upgrade --target tools/pip/site-packages ruff==0.6.5 || \
-		$(PYTHON) -m pip install --upgrade --system --target tools/pip/site-packages ruff==0.6.5
+	$(PYTHON) -m pip install --upgrade --target tools/pip/site-packages ruff==0.13.1 || \
+		$(PYTHON) -m pip install --upgrade --system --target tools/pip/site-packages ruff==0.13.1
 
 .PHONY: lint-py lint-py-fix lint-py-fix-unsafe
 ifneq ("","$(wildcard tools/pip/site-packages/ruff)")
@@ -1598,7 +1579,6 @@ lint-py:
 	tools/pip/site-packages/bin/ruff check .
 lint-py-fix:
 	tools/pip/site-packages/bin/ruff check . --fix
-
 lint-py-fix-unsafe:
 	tools/pip/site-packages/bin/ruff check . --fix --unsafe-fixes
 else
@@ -1666,7 +1646,7 @@ HAS_DOCKER ?= $(shell command -v docker > /dev/null 2>&1; [ $$? -eq 0 ] && echo 
 
 .PHONY: gen-openssl
 ifeq ($(HAS_DOCKER), 1)
-DOCKER_COMMAND ?= docker run -it -v $(PWD):/node
+DOCKER_COMMAND ?= docker run --rm -u $(shell id -u) -v $(PWD):/node
 IS_IN_WORKTREE = $(shell grep '^gitdir: ' $(PWD)/.git 2>/dev/null)
 GIT_WORKTREE_COMMON = $(shell git rev-parse --git-common-dir)
 DOCKER_COMMAND += $(if $(IS_IN_WORKTREE), -v $(GIT_WORKTREE_COMMON):$(GIT_WORKTREE_COMMON))

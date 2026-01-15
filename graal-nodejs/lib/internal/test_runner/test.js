@@ -29,6 +29,7 @@ const {
   StringPrototypeStartsWith,
   StringPrototypeTrim,
   Symbol,
+  SymbolDispose,
 } = primordials;
 const { getCallerLocation } = internalBinding('util');
 const { exitCodes: { kGenericUserError } } = internalBinding('errors');
@@ -54,7 +55,6 @@ const {
 const {
   kEmptyObject,
   once: runOnce,
-  SymbolDispose,
 } = require('internal/util');
 const { isPromise } = require('internal/util/types');
 const {
@@ -71,6 +71,7 @@ const {
 } = require('timers');
 const { TIMEOUT_MAX } = require('internal/timers');
 const { fileURLToPath } = require('internal/url');
+const { relative } = require('path');
 const { availableParallelism } = require('os');
 const { innerOk } = require('internal/assert/utils');
 const { bigint: hrtime } = process.hrtime;
@@ -288,6 +289,10 @@ class TestContext {
 
   get passed() {
     return this.#test.passed;
+  }
+
+  get attempt() {
+    return this.#test.attempt ?? 0;
   }
 
   diagnostic(message) {
@@ -537,6 +542,7 @@ class Test extends AsyncResource {
       this.childNumber = 0;
       this.timeout = kDefaultTimeout;
       this.entryFile = entryFile;
+      this.testDisambiguator = new SafeMap();
     } else {
       const nesting = parent.parent === null ? parent.nesting :
         parent.nesting + 1;
@@ -608,6 +614,12 @@ class Test extends AsyncResource {
     if (timeout != null && timeout !== Infinity) {
       validateNumber(timeout, 'options.timeout', 0, TIMEOUT_MAX);
       this.timeout = timeout;
+    } else if (timeout == null) {
+      const cliTimeout = this.config.timeout;
+      if (cliTimeout != null && cliTimeout !== Infinity) {
+        validateNumber(cliTimeout, 'this.config.timeout', 0, TIMEOUT_MAX);
+        this.timeout = cliTimeout;
+      }
     }
 
     if (skip) {
@@ -635,16 +647,20 @@ class Test extends AsyncResource {
     this.expectedAssertions = plan;
     this.cancelled = false;
     this.skipped = skip !== undefined && skip !== false;
-    this.isTodo = todo !== undefined && todo !== false;
+    this.isTodo = (todo !== undefined && todo !== false) || this.parent?.isTodo;
     this.startTime = null;
     this.endTime = null;
     this.passed = false;
     this.error = null;
+    this.attempt = undefined;
+    this.passedAttempt = undefined;
     this.message = typeof skip === 'string' ? skip :
       typeof todo === 'string' ? todo : null;
     this.activeSubtests = 0;
     this.pendingSubtests = [];
     this.readySubtests = new SafeMap();
+    this.unfinishedSubtests = new SafeSet();
+    this.subtestsPromise = null;
     this.subtests = [];
     this.waitingOn = 0;
     this.finished = false;
@@ -680,6 +696,23 @@ class Test extends AsyncResource {
 
       if (StringPrototypeStartsWith(this.loc.file, 'file://')) {
         this.loc.file = fileURLToPath(this.loc.file);
+      }
+    }
+
+    if (this.loc != null && this.root.harness.previousRuns != null) {
+      let testIdentifier = `${relative(this.config.cwd, this.loc.file)}:${this.loc.line}:${this.loc.column}`;
+      const disambiguator = this.root.testDisambiguator.get(testIdentifier);
+      if (disambiguator !== undefined) {
+        testIdentifier += `:(${disambiguator})`;
+        this.root.testDisambiguator.set(testIdentifier, disambiguator + 1);
+      } else {
+        this.root.testDisambiguator.set(testIdentifier, 1);
+      }
+      this.attempt = this.root.harness.previousRuns.length;
+      const previousAttempt = this.root.harness.previousRuns[this.attempt - 1]?.[testIdentifier]?.passed_on_attempt;
+      if (previousAttempt != null) {
+        this.passedAttempt = previousAttempt;
+        this.fn = noop;
       }
     }
   }
@@ -721,6 +754,7 @@ class Test extends AsyncResource {
    * Ex."grandparent parent test"
    *
    * It's needed to match a single test with non-unique name by pattern
+   * @returns {string}
    */
   getTestNameWithAncestors() {
     if (!this.parent) return '';
@@ -728,14 +762,24 @@ class Test extends AsyncResource {
     return `${this.parent.getTestNameWithAncestors()} ${this.name}`;
   }
 
+  /**
+   * @returns {boolean}
+   */
   hasConcurrency() {
     return this.concurrency > this.activeSubtests;
   }
 
+  /**
+   * @param {any} deferred
+   * @returns {void}
+   */
   addPendingSubtest(deferred) {
     ArrayPrototypePush(this.pendingSubtests, deferred);
   }
 
+  /**
+   * @returns {Promise<void>}
+   */
   async processPendingSubtests() {
     while (this.pendingSubtests.length > 0 && this.hasConcurrency()) {
       const deferred = ArrayPrototypeShift(this.pendingSubtests);
@@ -746,10 +790,23 @@ class Test extends AsyncResource {
     }
   }
 
+  /**
+   * @param {any} subtest
+   * @returns {void}
+   */
   addReadySubtest(subtest) {
     this.readySubtests.set(subtest.childNumber, subtest);
+
+    if (this.unfinishedSubtests.delete(subtest) &&
+        this.unfinishedSubtests.size === 0) {
+      this.subtestsPromise.resolve();
+    }
   }
 
+  /**
+   * @param {boolean} canSend
+   * @returns {void}
+   */
   processReadySubtestRange(canSend) {
     const start = this.waitingOn;
     const end = start + this.readySubtests.size;
@@ -809,6 +866,7 @@ class Test extends AsyncResource {
 
     if (parent.waitingOn === 0) {
       parent.waitingOn = test.childNumber;
+      parent.subtestsPromise = PromiseWithResolvers();
     }
 
     if (preventAddingSubtests) {
@@ -931,6 +989,7 @@ class Test extends AsyncResource {
     // If there is enough available concurrency to run the test now, then do
     // it. Otherwise, return a Promise to the caller and mark the test as
     // pending for later execution.
+    this.parent.unfinishedSubtests.add(this);
     this.reporter.enqueue(this.nesting, this.loc, this.name, this.reportedType);
     if (this.root.harness.buildPromise || !this.parent.hasConcurrency()) {
       const deferred = PromiseWithResolvers();
@@ -1054,7 +1113,10 @@ class Test extends AsyncResource {
       await SafePromiseRace(promises);
 
       this[kShouldAbort]();
-      this.plan?.check();
+
+      if (this.subtestsPromise !== null) {
+        await SafePromiseRace([this.subtestsPromise.promise, stopPromise]);
+      }
 
       if (this.plan !== null) {
         const planPromise = this.plan?.check();
@@ -1292,6 +1354,12 @@ class Test extends AsyncResource {
     if (!this.passed) {
       details.error = this.error;
     }
+    if (this.attempt !== undefined) {
+      details.attempt = this.attempt;
+    }
+    if (this.passedAttempt !== undefined) {
+      details.passed_on_attempt = this.passedAttempt;
+    }
     return { __proto__: null, details, directive };
   }
 
@@ -1322,6 +1390,11 @@ class Test extends AsyncResource {
     this.#reportedSubtest = true;
     this.parent.reportStarted();
     this.reporter.start(this.nesting, this.loc, this.name);
+  }
+
+  clearExecutionTime() {
+    this.startTime = hrtime();
+    this.endTime = null;
   }
 }
 
@@ -1382,6 +1455,9 @@ class Suite extends Test {
   reportedType = 'suite';
   constructor(options) {
     super(options);
+    if (options.timeout == null) {
+      this.timeout = null;
+    }
 
     if (this.config.testNamePatterns !== null &&
         this.config.testSkipPatterns !== null &&
@@ -1459,6 +1535,8 @@ class Suite extends Test {
 }
 
 function getFullName(test) {
+  if (test === test.root) return test.name;
+
   let fullName = test.name;
 
   for (let t = test.parent; t !== t.root; t = t.parent) {

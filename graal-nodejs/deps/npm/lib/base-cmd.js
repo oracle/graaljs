@@ -84,7 +84,7 @@ class BaseCommand {
     }
 
     if (config.get('workspaces') === false && config.get('workspace').length) {
-      throw new Error('Can not use --no-workspaces and --workspace at the same time')
+      throw new Error('Cannot use --no-workspaces and --workspace at the same time')
     }
   }
 
@@ -124,7 +124,6 @@ class BaseCommand {
     } else if (!this.npm.config.isDefault('expect-result-count')) {
       const expected = this.npm.config.get('expect-result-count')
       if (expected !== entries) {
-        /* eslint-disable-next-line max-len */
         log.warn(this.name, `Expected ${expected} result${expected === 1 ? '' : 's'}, got ${entries}`)
         process.exitCode = 1
       }

@@ -28,6 +28,7 @@ const {
   ArrayPrototypeSlice,
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
+  AsyncIteratorPrototype,
   Boolean,
   Error,
   ErrorCaptureStackTrace,
@@ -47,11 +48,12 @@ const {
   StringPrototypeSplit,
   Symbol,
   SymbolAsyncIterator,
+  SymbolDispose,
   SymbolFor,
 } = primordials;
 const kRejection = SymbolFor('nodejs.rejection');
 
-const { SymbolDispose, kEmptyObject, spliceOne } = require('internal/util');
+const { kEmptyObject, spliceOne } = require('internal/util');
 
 const {
   inspect,
@@ -66,7 +68,6 @@ const {
   AbortError,
   codes: {
     ERR_INVALID_ARG_TYPE,
-    ERR_INVALID_THIS,
     ERR_UNHANDLED_ERROR,
   },
   genericNodeError,
@@ -105,9 +106,9 @@ function lazyEventEmitterAsyncResource() {
       AsyncResource,
     } = require('async_hooks');
 
-    const kEventEmitter = Symbol('kEventEmitter');
-    const kAsyncResource = Symbol('kAsyncResource');
     class EventEmitterReferencingAsyncResource extends AsyncResource {
+      #eventEmitter;
+
       /**
        * @param {EventEmitter} ee
        * @param {string} [type]
@@ -118,21 +119,21 @@ function lazyEventEmitterAsyncResource() {
        */
       constructor(ee, type, options) {
         super(type, options);
-        this[kEventEmitter] = ee;
+        this.#eventEmitter = ee;
       }
 
       /**
        * @type {EventEmitter}
        */
       get eventEmitter() {
-        if (this[kEventEmitter] === undefined)
-          throw new ERR_INVALID_THIS('EventEmitterReferencingAsyncResource');
-        return this[kEventEmitter];
+        return this.#eventEmitter;
       }
     }
 
     EventEmitterAsyncResource =
       class EventEmitterAsyncResource extends EventEmitter {
+        #asyncResource;
+
         /**
          * @param {{
          *   name?: string,
@@ -153,19 +154,16 @@ function lazyEventEmitterAsyncResource() {
           }
           super(options);
 
-          this[kAsyncResource] =
-            new EventEmitterReferencingAsyncResource(this, name, options);
+          this.#asyncResource = new EventEmitterReferencingAsyncResource(this, name, options);
         }
 
         /**
-         * @param {symbol,string} event
-         * @param  {...any} args
+         * @param {symbol|string} event
+         * @param {any[]} args
          * @returns {boolean}
          */
         emit(event, ...args) {
-          if (this[kAsyncResource] === undefined)
-            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
-          const { asyncResource } = this;
+          const asyncResource = this.#asyncResource;
           ArrayPrototypeUnshift(args, super.emit, this, event);
           return ReflectApply(asyncResource.runInAsyncScope, asyncResource,
                               args);
@@ -175,36 +173,28 @@ function lazyEventEmitterAsyncResource() {
          * @returns {void}
          */
         emitDestroy() {
-          if (this[kAsyncResource] === undefined)
-            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
-          this.asyncResource.emitDestroy();
+          this.#asyncResource.emitDestroy();
         }
 
         /**
          * @type {number}
          */
         get asyncId() {
-          if (this[kAsyncResource] === undefined)
-            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
-          return this.asyncResource.asyncId();
+          return this.#asyncResource.asyncId();
         }
 
         /**
          * @type {number}
          */
         get triggerAsyncId() {
-          if (this[kAsyncResource] === undefined)
-            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
-          return this.asyncResource.triggerAsyncId();
+          return this.#asyncResource.triggerAsyncId();
         }
 
         /**
          * @type {EventEmitterReferencingAsyncResource}
          */
         get asyncResource() {
-          if (this[kAsyncResource] === undefined)
-            throw new ERR_INVALID_THIS('EventEmitterAsyncResource');
-          return this[kAsyncResource];
+          return this.#asyncResource;
         }
       };
   }
@@ -214,7 +204,7 @@ function lazyEventEmitterAsyncResource() {
 /**
  * Creates a new `EventEmitter` instance.
  * @param {{ captureRejections?: boolean; }} [opts]
- * @constructs {EventEmitter}
+ * @constructs EventEmitter
  */
 function EventEmitter(opts) {
   EventEmitter.init.call(this, opts);
@@ -1011,9 +1001,6 @@ async function once(emitter, name, options = kEmptyObject) {
   });
 }
 
-const AsyncIteratorPrototype = ObjectGetPrototypeOf(
-  ObjectGetPrototypeOf(async function* () {}).prototype);
-
 function createIterResult(value, done) {
   return { value, done };
 }
@@ -1126,24 +1113,28 @@ function on(emitter, event, options = kEmptyObject) {
     [kWatermarkData]: {
       /**
        * The current queue size
+       * @returns {number}
        */
       get size() {
         return size;
       },
       /**
        * The low watermark. The emitter is resumed every time size is lower than it
+       * @returns {number}
        */
       get low() {
         return lowWatermark;
       },
       /**
        * The high watermark. The emitter is paused every time size is higher than it
+       * @returns {number}
        */
       get high() {
         return highWatermark;
       },
       /**
        * It checks whether the emitter is paused by the watermark controller or not
+       * @returns {boolean}
        */
       get isPaused() {
         return paused;

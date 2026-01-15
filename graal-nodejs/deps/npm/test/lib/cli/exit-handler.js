@@ -46,7 +46,6 @@ t.cleanSnapshot = (path) => cleanDate(cleanCwd(path))
 mockGlobals(t, {
   process: Object.assign(new EventEmitter(), {
     // these are process properties that are needed in the running code and tests
-    // eslint-disable-next-line max-len
     ...pick(process, 'version', 'execPath', 'stdout', 'stderr', 'stdin', 'cwd', 'chdir', 'env', 'umask'),
     pid: 123456,
     argv: ['/node', ...process.argv.slice(1)],
@@ -126,7 +125,7 @@ const mockExitHandler = async (t, {
       ...errors,
     ],
     npm,
-    // Make it async to make testing ergonomics a little easier so we dont need
+    // Make it async to make testing ergonomics a little easier so we don't need
     // to t.plan() every test to make sure we get process.exit called.
     exitHandler: (argErr) => new Promise(res => {
       process.once('exit', res)

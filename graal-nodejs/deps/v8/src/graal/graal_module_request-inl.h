@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,9 @@
 
 #include "graal_module_request.h"
 
-#include "graal_handle_content-inl.h"
+#include "graal_data-inl.h"
 
-inline GraalModuleRequest::GraalModuleRequest(GraalIsolate* isolate, jobject java_module_request) : GraalHandleContent(isolate, java_module_request) {
+inline GraalModuleRequest::GraalModuleRequest(GraalIsolate* isolate, jobject java_module_request) : GraalData(isolate, java_module_request) {
 }
 
 inline GraalModuleRequest* GraalModuleRequest::Allocate(GraalIsolate* isolate, jobject java_module_request) {

@@ -1,5 +1,5 @@
 import * as common from '../common/index.mjs';
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, run } from 'node:test';
 import assert from 'node:assert';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -39,11 +39,23 @@ function refresh() {
 
 const runner = join(import.meta.dirname, '..', 'fixtures', 'test-runner-watch.mjs');
 
-async function testWatch({ fileToUpdate, file, action = 'update', cwd = tmpdir.path, fileToCreate }) {
+async function testWatch(
+  {
+    fileToUpdate,
+    file,
+    action = 'update',
+    cwd = tmpdir.path,
+    fileToCreate,
+    runnerCwd,
+    isolation
+  }
+) {
   const ran1 = Promise.withResolvers();
   const ran2 = Promise.withResolvers();
   const args = [runner];
   if (file) args.push('--file', file);
+  if (runnerCwd) args.push('--cwd', runnerCwd);
+  if (isolation) args.push('--isolation', isolation);
   const child = spawn(process.execPath,
                       args,
                       { encoding: 'utf8', stdio: 'pipe', cwd });
@@ -89,10 +101,12 @@ async function testWatch({ fileToUpdate, file, action = 'update', cwd = tmpdir.p
     currentRun = '';
     const fileToRenamePath = tmpdir.resolve(fileToUpdate);
     const newFileNamePath = tmpdir.resolve(`test-renamed-${fileToUpdate}`);
-    const interval = setInterval(() => renameSync(fileToRenamePath, newFileNamePath), common.platformTimeout(1000));
+    const interval = setInterval(() => {
+      renameSync(fileToRenamePath, newFileNamePath);
+      clearInterval(interval);
+    }, common.platformTimeout(1000));
     await ran2.promise;
     runs.push(currentRun);
-    clearInterval(interval);
     child.kill();
     await once(child, 'exit');
 
@@ -127,11 +141,11 @@ async function testWatch({ fileToUpdate, file, action = 'update', cwd = tmpdir.p
         unlinkSync(fileToDeletePath);
       } else {
         ran2.resolve();
+        clearInterval(interval);
       }
     }, common.platformTimeout(1000));
     await ran2.promise;
     runs.push(currentRun);
-    clearInterval(interval);
     child.kill();
     await once(child, 'exit');
 
@@ -148,15 +162,17 @@ async function testWatch({ fileToUpdate, file, action = 'update', cwd = tmpdir.p
     currentRun = '';
     const newFilePath = tmpdir.resolve(fileToCreate);
     const interval = setInterval(
-      () => writeFileSync(
-        newFilePath,
-        'module.exports = {};'
-      ),
+      () => {
+        writeFileSync(
+          newFilePath,
+          'module.exports = {};'
+        );
+        clearInterval(interval);
+      },
       common.platformTimeout(1000)
     );
     await ran2.promise;
     runs.push(currentRun);
-    clearInterval(interval);
     child.kill();
     await once(child, 'exit');
 
@@ -173,6 +189,8 @@ async function testWatch({ fileToUpdate, file, action = 'update', cwd = tmpdir.p
   action === 'rename2' && await testRename();
   action === 'delete' && await testDelete();
   action === 'create' && await testCreate();
+
+  return runs;
 }
 
 describe('test runner watch mode', () => {
@@ -219,7 +237,164 @@ describe('test runner watch mode', () => {
     });
   });
 
-  it('should run new tests when a new file is created in the watched directory', async () => {
-    await testWatch({ action: 'create', fileToCreate: 'new-test-file.test.js' });
+  it(
+    'should run new tests when a new file is created in the watched directory',
+    async () => {
+      await testWatch({ action: 'create', fileToCreate: 'new-test-file.test.js' });
+    });
+
+  // This test is flaky by its nature as it relies on the timing of 2 different runs
+  // considering the number of digits in the duration_ms is 9
+  // the chances of having the same duration_ms are very low
+  // but not impossible
+  // In case of costant failures, consider increasing the number of tests
+  it('should recalculate the run duration on a watch restart', async () => {
+    const testRuns = await testWatch({ file: 'test.js', fileToUpdate: 'test.js' });
+    const durations = testRuns.map((run) => {
+      const runDuration = run.match(/# duration_ms\s([\d.]+)/);
+      return runDuration;
+    });
+    assert.notDeepStrictEqual(durations[0][1], durations[1][1]);
+  });
+
+  it('should emit test:watch:restarted when file is updated', async () => {
+    let alreadyDrained = false;
+    const events = [];
+    const testWatchRestarted = common.mustCall(1);
+
+    const controller = new AbortController();
+    const stream = run({
+      cwd: tmpdir.path,
+      watch: true,
+      signal: controller.signal,
+    }).on('data', function({ type }) {
+      events.push(type);
+      if (type === 'test:watch:restarted') {
+        testWatchRestarted();
+      }
+      if (type === 'test:watch:drained') {
+        if (alreadyDrained) {
+          controller.abort();
+        }
+        alreadyDrained = true;
+      }
+    });
+
+    await once(stream, 'test:watch:drained');
+
+    writeFileSync(join(tmpdir.path, 'test.js'), fixtureContent['test.js']);
+
+    // eslint-disable-next-line no-unused-vars
+    for await (const _ of stream);
+
+    assert.partialDeepStrictEqual(events, [
+      'test:watch:drained',
+      'test:watch:restarted',
+      'test:watch:drained',
+    ]);
+  });
+
+  it('should not emit test:watch:restarted since watch mode is disabled', async () => {
+    const stream = run({
+      cwd: tmpdir.path,
+      watch: false,
+    });
+
+    stream.on('test:watch:restarted', common.mustNotCall());
+    writeFileSync(join(tmpdir.path, 'test.js'), fixtureContent['test.js']);
+
+    // eslint-disable-next-line no-unused-vars
+    for await (const _ of stream);
+  });
+
+  describe('test runner watch mode with different cwd', () => {
+    it(
+      'should execute run using a different cwd for the runner than the process cwd',
+      async () => {
+        await testWatch(
+          {
+            fileToUpdate: 'test.js',
+            action: 'rename',
+            cwd: import.meta.dirname,
+            runnerCwd: tmpdir.path
+          }
+        );
+      });
+
+    it(
+      'should execute run using a different cwd for the runner than the process cwd with isolation process',
+      async () => {
+        await testWatch(
+          {
+            fileToUpdate: 'test.js',
+            action: 'rename',
+            cwd: import.meta.dirname,
+            runnerCwd: tmpdir.path,
+            isolation: 'process'
+          }
+        );
+      });
+
+    it('should run with different cwd while in watch mode', async () => {
+      const controller = new AbortController();
+      const stream = run({
+        cwd: tmpdir.path,
+        watch: true,
+        signal: controller.signal,
+      }).on('data', function({ type }) {
+        if (type === 'test:watch:drained') {
+          stream.removeAllListeners('test:fail');
+          stream.removeAllListeners('test:pass');
+          controller.abort();
+        }
+      });
+
+      stream.on('test:fail', common.mustNotCall());
+      stream.on('test:pass', common.mustCall(1));
+      // eslint-disable-next-line no-unused-vars
+      for await (const _ of stream);
+    });
+
+    it('should run with different cwd while in watch mode and isolation "none"', async () => {
+      const controller = new AbortController();
+      const stream = run({
+        cwd: tmpdir.path,
+        watch: true,
+        signal: controller.signal,
+        isolation: 'none',
+      }).on('data', function({ type }) {
+        if (type === 'test:watch:drained') {
+          stream.removeAllListeners('test:fail');
+          stream.removeAllListeners('test:pass');
+          controller.abort();
+        }
+      });
+
+      stream.on('test:fail', common.mustNotCall());
+      stream.on('test:pass', common.mustCall(1));
+      // eslint-disable-next-line no-unused-vars
+      for await (const _ of stream);
+    });
+
+    it('should run with different cwd while in watch mode and isolation "process"', async () => {
+      const controller = new AbortController();
+      const stream = run({
+        cwd: tmpdir.path,
+        watch: true,
+        signal: controller.signal,
+        isolation: 'process',
+      }).on('data', function({ type }) {
+        if (type === 'test:watch:drained') {
+          stream.removeAllListeners('test:fail');
+          stream.removeAllListeners('test:pass');
+          controller.abort();
+        }
+      });
+
+      stream.on('test:fail', common.mustNotCall());
+      stream.on('test:pass', common.mustCall(1));
+      // eslint-disable-next-line no-unused-vars
+      for await (const _ of stream);
+    });
   });
 });

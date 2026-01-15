@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  ArrayPrototypeAt,
   ArrayPrototypeForEach,
   ArrayPrototypeIncludes,
   DatePrototypeGetTime,
@@ -14,9 +13,9 @@ const {
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyDescriptors,
-  Promise,
+  PromiseWithResolvers,
   Symbol,
-  SymbolAsyncIterator,
+  SymbolDispose,
   globalThis,
 } = primordials;
 
@@ -27,16 +26,14 @@ const {
 } = require('internal/validators');
 
 const {
-  emitExperimentalWarning,
-  SymbolDispose,
-} = require('internal/util');
-const {
   AbortError,
   codes: {
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_STATE,
   },
 } = require('internal/errors');
+
+const { addAbortListener } = require('internal/events/abort_listener');
 
 const { TIMEOUT_MAX } = require('internal/timers');
 
@@ -45,7 +42,6 @@ const nodeTimers = require('timers');
 const nodeTimersPromises = require('timers/promises');
 const EventEmitter = require('events');
 
-let kResistStopPropagation;
 // Internal reference to the MockTimers class inside MockDate
 let kMock;
 // Initial epoch to which #now should be set to
@@ -64,7 +60,7 @@ function abortIt(signal) {
 }
 
 /**
- * @enum {('setTimeout'|'setInterval'|'setImmediate'|'Date', 'scheduler.wait')[]} Supported timers
+ * @enum {('setTimeout'|'setInterval'|'setImmediate'|'Date'|'scheduler.wait')[]} Supported timers
  */
 const SUPPORTED_APIS = ['setTimeout', 'setInterval', 'setImmediate', 'Date', 'scheduler.wait'];
 const TIMERS_DEFAULT_INTERVAL = {
@@ -132,10 +128,6 @@ class MockTimers {
   #setInterval = FunctionPrototypeBind(this.#createTimer, this, true);
   #clearInterval = FunctionPrototypeBind(this.#clearTimer, this);
   #clearImmediate = FunctionPrototypeBind(this.#clearTimer, this);
-
-  constructor() {
-    emitExperimentalWarning('The MockTimers API');
-  }
 
   #restoreSetImmediate() {
     ObjectDefineProperty(
@@ -329,6 +321,7 @@ class MockTimers {
     if (timer?.priorityQueuePosition !== undefined) {
       this.#executionQueue.removeAt(timer.priorityQueuePosition);
       timer.priorityQueuePosition = undefined;
+      timer.interval = undefined;
     }
   }
 
@@ -430,8 +423,9 @@ class MockTimers {
   }
 
   async * #setIntervalPromisified(interval, result, options) {
-    const context = this;
     const emitter = new EventEmitter();
+
+    let abortListener;
     if (options?.signal) {
       validateAbortSignal(options.signal, 'options.signal');
 
@@ -439,53 +433,26 @@ class MockTimers {
         throw abortIt(options.signal);
       }
 
-      const onAbort = (reason) => {
-        emitter.emit('data', { __proto__: null, aborted: true, reason });
-      };
-
-      kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
-      options.signal.addEventListener('abort', onAbort, {
-        __proto__: null,
-        once: true,
-        [kResistStopPropagation]: true,
+      abortListener = addAbortListener(options.signal, () => {
+        emitter.emit('error', abortIt(options.signal));
       });
     }
 
     const eventIt = EventEmitter.on(emitter, 'data');
-    const callback = () => {
-      emitter.emit('data', result);
-    };
+    const timer = this.#createTimer(true,
+                                    () => emitter.emit('data'),
+                                    interval,
+                                    options);
 
-    const timer = this.#createTimer(true, callback, interval, options);
-    const clearListeners = () => {
-      emitter.removeAllListeners();
-      context.#clearTimer(timer);
-    };
-    const iterator = {
-      __proto__: null,
-      [SymbolAsyncIterator]() {
-        return this;
-      },
-      async next() {
-        const result = await eventIt.next();
-        const value = ArrayPrototypeAt(result.value, 0);
-        if (value?.aborted) {
-          iterator.return();
-          throw abortIt(options.signal);
-        }
-
-        return {
-          __proto__: null,
-          done: result.done,
-          value,
-        };
-      },
-      async return() {
-        clearListeners();
-        return eventIt.return();
-      },
-    };
-    yield* iterator;
+    try {
+      // eslint-disable-next-line no-unused-vars
+      for await (const event of eventIt) {
+        yield result;
+      }
+    } finally {
+      abortListener?.[SymbolDispose]();
+      this.#clearInterval(timer);
+    }
   }
 
   #setImmediate(callback, ...args) {
@@ -497,38 +464,31 @@ class MockTimers {
     );
   }
 
-  #promisifyTimer({ timerFn, clearFn, ms, result, options }) {
-    return new Promise((resolve, reject) => {
-      if (options?.signal) {
-        try {
-          validateAbortSignal(options.signal, 'options.signal');
-        } catch (err) {
-          return reject(err);
-        }
+  async #promisifyTimer({ timerFn, clearFn, ms, result, options }) {
+    const { promise, resolve, reject } = PromiseWithResolvers();
 
-        if (options.signal.aborted) {
-          return reject(abortIt(options.signal));
-        }
+    let abortListener;
+    if (options?.signal) {
+      validateAbortSignal(options.signal, 'options.signal');
+
+      if (options.signal.aborted) {
+        throw abortIt(options.signal);
       }
 
-      const onabort = () => {
-        clearFn(timer);
-        return reject(abortIt(options.signal));
-      };
+      abortListener = addAbortListener(options.signal, () => {
+        reject(abortIt(options.signal));
+      });
+    }
 
-      const timer = timerFn(() => {
-        return resolve(result);
-      }, ms);
+    const timer = timerFn(resolve, ms);
 
-      if (options?.signal) {
-        kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
-        options.signal.addEventListener('abort', onabort, {
-          __proto__: null,
-          once: true,
-          [kResistStopPropagation]: true,
-        });
-      }
-    });
+    try {
+      await promise;
+      return result;
+    } finally {
+      abortListener?.[SymbolDispose]();
+      clearFn(timer);
+    }
   }
 
   #setImmediatePromisified(result, options) {
@@ -673,7 +633,7 @@ class MockTimers {
   /**
    * Advances the virtual time of MockTimers by the specified duration (in milliseconds).
    * This method simulates the passage of time and triggers any scheduled timers that are due.
-   * @param {number} [time=1] - The amount of time (in milliseconds) to advance the virtual time.
+   * @param {number} [time] - The amount of time (in milliseconds) to advance the virtual time.
    * @throws {ERR_INVALID_STATE} If MockTimers are not enabled.
    * @throws {ERR_INVALID_ARG_VALUE} If a negative time value is provided.
    */

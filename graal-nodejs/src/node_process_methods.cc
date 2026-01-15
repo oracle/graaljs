@@ -133,20 +133,44 @@ static void CPUUsage(const FunctionCallbackInfo<Value>& args) {
   fields[1] = MICROS_PER_SEC * rusage.ru_stime.tv_sec + rusage.ru_stime.tv_usec;
 }
 
+// ThreadCPUUsage use libuv's uv_getrusage_thread() this-thread resource usage
+// accessor, to access ru_utime (user CPU time used) and ru_stime
+// (system CPU time used), which are uv_timeval_t structs
+// (long tv_sec, long tv_usec).
+// Returns those values as Float64 microseconds in the elements of the array
+// passed to the function.
+static void ThreadCPUUsage(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  uv_rusage_t rusage;
+
+  // Call libuv to get the values we'll return.
+  int err = uv_getrusage_thread(&rusage);
+  if (err) return env->ThrowUVException(err, "uv_getrusage_thread");
+
+  // Get the double array pointer from the Float64Array argument.
+  Local<ArrayBuffer> ab = get_fields_array_buffer(args, 0, 2);
+  double* fields = static_cast<double*>(ab->Data());
+
+  // Set the Float64Array elements to be user / system values in microseconds.
+  fields[0] = MICROS_PER_SEC * rusage.ru_utime.tv_sec + rusage.ru_utime.tv_usec;
+  fields[1] = MICROS_PER_SEC * rusage.ru_stime.tv_sec + rusage.ru_stime.tv_usec;
+}
+
 static void Cwd(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   CHECK(env->has_run_bootstrapping_code());
   char buf[PATH_MAX_BYTES];
   size_t cwd_len = sizeof(buf);
   int err = uv_cwd(buf, &cwd_len);
-  if (err)
+  if (err) {
     return env->ThrowUVException(err, "uv_cwd");
+  }
 
-  Local<String> cwd = String::NewFromUtf8(env->isolate(),
-                                          buf,
-                                          NewStringType::kNormal,
-                                          cwd_len).ToLocalChecked();
-  args.GetReturnValue().Set(cwd);
+  Local<String> cwd;
+  if (String::NewFromUtf8(env->isolate(), buf, NewStringType::kNormal, cwd_len)
+          .ToLocal(&cwd)) {
+    args.GetReturnValue().Set(cwd);
+  }
 }
 
 static void Kill(const FunctionCallbackInfo<Value>& args) {
@@ -498,9 +522,6 @@ static void Execve(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = env->isolate();
   Local<Context> context = env->context();
 
-  THROW_IF_INSUFFICIENT_PERMISSIONS(
-      env, permission::PermissionScope::kChildProcess, "");
-
   CHECK(args[0]->IsString());
   CHECK(args[1]->IsArray());
   CHECK(args[2]->IsArray());
@@ -510,6 +531,11 @@ static void Execve(const FunctionCallbackInfo<Value>& args) {
 
   // Copy arguments and environment
   Utf8Value executable(isolate, args[0]);
+
+  THROW_IF_INSUFFICIENT_PERMISSIONS(env,
+                                    permission::PermissionScope::kChildProcess,
+                                    executable.ToStringView());
+
   std::vector<std::string> argv_strings(argv_array->Length());
   std::vector<std::string> envp_strings(envp_array->Length());
   std::vector<char*> argv(argv_array->Length() + 1);
@@ -591,7 +617,7 @@ static void LoadEnvFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
     case dotenv.ParseResult::InvalidContent: {
       THROW_ERR_INVALID_ARG_TYPE(
-          env, "Contents of '%s' should be a valid string.", path.c_str());
+          env, "Contents of '%s' should be a valid string.", path);
       break;
     }
     case dotenv.ParseResult::FileError: {
@@ -630,24 +656,22 @@ BindingData::BindingData(Realm* realm,
   hrtime_buffer_.MakeWeak();
 }
 
-v8::CFunction BindingData::fast_number_(v8::CFunction::Make(FastNumber));
-v8::CFunction BindingData::fast_bigint_(v8::CFunction::Make(FastBigInt));
+CFunction BindingData::fast_hrtime_(CFunction::Make(FastHrtime));
+CFunction BindingData::fast_hrtime_bigint_(CFunction::Make(FastHrtimeBigInt));
 
 void BindingData::AddMethods(Isolate* isolate, Local<ObjectTemplate> target) {
   SetFastMethodNoSideEffect(
-      isolate, target, "hrtime", SlowNumber, &fast_number_);
+      isolate, target, "hrtime", SlowHrtime, &fast_hrtime_);
   SetFastMethodNoSideEffect(
-      isolate, target, "hrtimeBigInt", SlowBigInt, &fast_bigint_);
+      isolate, target, "hrtimeBigInt", SlowHrtimeBigInt, &fast_hrtime_bigint_);
 }
 
 void BindingData::RegisterExternalReferences(
     ExternalReferenceRegistry* registry) {
-  registry->Register(SlowNumber);
-  registry->Register(SlowBigInt);
-  registry->Register(FastNumber);
-  registry->Register(FastBigInt);
-  registry->Register(fast_number_.GetTypeInfo());
-  registry->Register(fast_bigint_.GetTypeInfo());
+  registry->Register(SlowHrtime);
+  registry->Register(SlowHrtimeBigInt);
+  registry->Register(fast_hrtime_);
+  registry->Register(fast_hrtime_bigint_);
 }
 
 BindingData* BindingData::FromV8Value(Local<Value> value) {
@@ -669,14 +693,14 @@ void BindingData::MemoryInfo(MemoryTracker* tracker) const {
 // broken into the upper/lower 32 bits to be converted back in JS,
 // because there is no Uint64Array in JS.
 // The third entry contains the remaining nanosecond part of the value.
-void BindingData::NumberImpl(BindingData* receiver) {
+void BindingData::HrtimeImpl(BindingData* receiver) {
   uint64_t t = uv_hrtime();
   receiver->hrtime_buffer_[0] = (t / NANOS_PER_SEC) >> 32;
   receiver->hrtime_buffer_[1] = (t / NANOS_PER_SEC) & 0xffffffff;
   receiver->hrtime_buffer_[2] = t % NANOS_PER_SEC;
 }
 
-void BindingData::BigIntImpl(BindingData* receiver) {
+void BindingData::HrtimeBigIntImpl(BindingData* receiver) {
   uint64_t t = uv_hrtime();
   // The buffer is a Uint32Array, so we need to reinterpret it as a
   // Uint64Array to write the value. The buffer is valid at this scope so we
@@ -686,12 +710,12 @@ void BindingData::BigIntImpl(BindingData* receiver) {
   fields[0] = t;
 }
 
-void BindingData::SlowBigInt(const FunctionCallbackInfo<Value>& args) {
-  BigIntImpl(FromJSObject<BindingData>(args.This()));
+void BindingData::SlowHrtimeBigInt(const FunctionCallbackInfo<Value>& args) {
+  HrtimeBigIntImpl(FromJSObject<BindingData>(args.This()));
 }
 
-void BindingData::SlowNumber(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  NumberImpl(FromJSObject<BindingData>(args.This()));
+void BindingData::SlowHrtime(const FunctionCallbackInfo<Value>& args) {
+  HrtimeImpl(FromJSObject<BindingData>(args.This()));
 }
 
 bool BindingData::PrepareForSerialization(Local<Context> context,
@@ -749,6 +773,7 @@ static void CreatePerIsolateProperties(IsolateData* isolate_data,
   SetMethod(isolate, target, "availableMemory", GetAvailableMemory);
   SetMethod(isolate, target, "rss", Rss);
   SetMethod(isolate, target, "cpuUsage", CPUUsage);
+  SetMethod(isolate, target, "threadCpuUsage", ThreadCPUUsage);
   SetMethod(isolate, target, "resourceUsage", ResourceUsage);
 
   SetMethod(isolate, target, "_debugEnd", DebugEnd);
@@ -797,6 +822,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GetAvailableMemory);
   registry->Register(Rss);
   registry->Register(CPUUsage);
+  registry->Register(ThreadCPUUsage);
   registry->Register(ResourceUsage);
 
   registry->Register(GetActiveRequests);

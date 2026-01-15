@@ -107,8 +107,7 @@ static void GetOSInformation(const FunctionCallbackInfo<Value>& args) {
 }
 
 static void GetCPUInfo(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-  Isolate* isolate = env->isolate();
+  Isolate* isolate = args.GetIsolate();
 
   uv_cpu_info_t* cpu_infos;
   int count;
@@ -214,6 +213,9 @@ static void GetInterfaceAddresses(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
+  auto cleanup =
+      OnScopeLeave([&]() { uv_free_interface_addresses(interfaces, count); });
+
   Local<Value> no_scope_id = Integer::New(isolate, -1);
   LocalVector<Value> result(isolate);
   result.reserve(count * 7);
@@ -257,7 +259,7 @@ static void GetInterfaceAddresses(const FunctionCallbackInfo<Value>& args) {
     result.emplace_back(OneByteString(isolate, ip));
     result.emplace_back(OneByteString(isolate, netmask));
     result.emplace_back(family);
-    result.emplace_back(FIXED_ONE_BYTE_STRING(isolate, mac));
+    result.emplace_back(OneByteString(isolate, mac.data(), mac.size() - 1));
     result.emplace_back(
         Boolean::New(env->isolate(), interfaces[i].is_internal));
     if (interfaces[i].address.address4.sin_family == AF_INET6) {
@@ -268,7 +270,6 @@ static void GetInterfaceAddresses(const FunctionCallbackInfo<Value>& args) {
     }
   }
 
-  uv_free_interface_addresses(interfaces, count);
   args.GetReturnValue().Set(Array::New(isolate, result.data(), result.size()));
 }
 
@@ -322,8 +323,6 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
 
   auto free_passwd = OnScopeLeave([&] { uv_os_free_passwd(&pwd); });
 
-  Local<Value> error;
-
 #ifdef _WIN32
   Local<Value> uid = Number::New(
       env->isolate(),
@@ -337,27 +336,21 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
 #endif
 
   Local<Value> username;
-  if (!StringBytes::Encode(env->isolate(), pwd.username, encoding, &error)
+  if (!StringBytes::Encode(env->isolate(), pwd.username, encoding)
            .ToLocal(&username)) {
-    CHECK(!error.IsEmpty());
-    env->isolate()->ThrowException(error);
     return;
   }
 
   Local<Value> homedir;
-  if (!StringBytes::Encode(env->isolate(), pwd.homedir, encoding, &error)
+  if (!StringBytes::Encode(env->isolate(), pwd.homedir, encoding)
            .ToLocal(&homedir)) {
-    CHECK(!error.IsEmpty());
-    env->isolate()->ThrowException(error);
     return;
   }
 
   Local<Value> shell = Null(env->isolate());
   if (pwd.shell != nullptr &&
-      !StringBytes::Encode(env->isolate(), pwd.shell, encoding, &error)
+      !StringBytes::Encode(env->isolate(), pwd.shell, encoding)
            .ToLocal(&shell)) {
-    CHECK(!error.IsEmpty());
-    env->isolate()->ThrowException(error);
     return;
   }
 
@@ -465,11 +458,9 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GetLoadAvg);
   registry->Register(GetUptime);
   registry->Register(GetTotalMemory);
-  registry->Register(FastGetTotalMemory);
-  registry->Register(fast_get_total_memory.GetTypeInfo());
+  registry->Register(fast_get_total_memory);
   registry->Register(GetFreeMemory);
-  registry->Register(FastGetFreeMemory);
-  registry->Register(fast_get_free_memory.GetTypeInfo());
+  registry->Register(fast_get_free_memory);
   registry->Register(GetCPUInfo);
   registry->Register(GetInterfaceAddresses);
   registry->Register(GetHomeDirectory);
@@ -477,8 +468,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(SetPriority);
   registry->Register(GetPriority);
   registry->Register(GetAvailableParallelism);
-  registry->Register(FastGetAvailableParallelism);
-  registry->Register(fast_get_available_parallelism.GetTypeInfo());
+  registry->Register(fast_get_available_parallelism);
   registry->Register(GetOSInformation);
 }
 

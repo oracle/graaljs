@@ -30,6 +30,8 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   ReflectApply,
+  SymbolAsyncDispose,
+  SymbolDispose,
 } = primordials;
 
 const {
@@ -64,7 +66,7 @@ const {
   validateUint32,
 } = require('internal/validators');
 const { Buffer } = require('buffer');
-const { deprecate, guessHandleType, promisify, SymbolAsyncDispose, SymbolDispose } = require('internal/util');
+const { deprecate, guessHandleType, promisify } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 const EventEmitter = require('events');
 const { addAbortListener } = require('internal/events/abort_listener');
@@ -548,6 +550,8 @@ function fixBufferList(list) {
     const buf = list[i];
     if (typeof buf === 'string')
       newlist[i] = Buffer.from(buf);
+    else if (Buffer.isBuffer(buf))
+      newlist[i] = buf;
     else if (!isArrayBufferView(buf))
       return null;
     else

@@ -363,7 +363,7 @@ UTEST_R2_FORM_WITH_OP(srl, uint32_t, 0x82340000U, 17, >>)
 UTEST_R2_FORM_WITH_OP(sra, int32_t, -0x12340000, 17, >>)
 
 // RV64B
-#ifdef CAN_USE_ZBA_INSTRUCTIONS
+
 UTEST_R2_FORM_WITH_RES(sh1add, int32_t, LARGE_UINT_UNDER_32_BIT,
                        LARGE_INT_UNDER_32_BIT,
                        int32_t((LARGE_INT_UNDER_32_BIT) +
@@ -376,9 +376,7 @@ UTEST_R2_FORM_WITH_RES(sh3add, int32_t, LARGE_UINT_UNDER_32_BIT,
                        LARGE_INT_UNDER_32_BIT,
                        int32_t((LARGE_INT_UNDER_32_BIT) +
                                (LARGE_UINT_UNDER_32_BIT << 3)))
-#endif
 
-#ifdef CAN_USE_ZBB_INSTRUCTIONS
 UTEST_R2_FORM_WITH_RES(andn, int32_t, LARGE_UINT_UNDER_32_BIT,
                        LARGE_INT_UNDER_32_BIT,
                        int32_t((LARGE_UINT_UNDER_32_BIT) &
@@ -406,7 +404,12 @@ UTEST_R2_FORM_WITH_RES(minu, uint32_t, -1012, 3456, 3456)
 UTEST_R1_FORM_WITH_RES(sextb, int32_t, int32_t, 0xB080, int32_t(0xffffff80))
 UTEST_R1_FORM_WITH_RES(sexth, int32_t, int32_t, 0xB080, int32_t(0xffffb080))
 UTEST_R1_FORM_WITH_RES(zexth, int32_t, int32_t, 0xB080, 0xB080)
-#endif
+
+UTEST_R2_FORM_WITH_RES(rol, uint32_t, 16, 2, 64)
+UTEST_R2_FORM_WITH_RES(ror, uint32_t, 16, 2, 4)
+UTEST_I_FORM_WITH_RES(rori, int32_t, 16, 2, 4)
+UTEST_R1_FORM_WITH_RES(orcb, int32_t, int32_t, 0x10010011, int32_t(0xFFFF00FF))
+
 // -- Memory fences --
 // void fence(uint8_t pred, uint8_t succ);
 // void fence_tso();
@@ -1474,7 +1477,7 @@ TEST(TARGET_ADDR) {
   MacroAssembler assm(isolate, v8::internal::CodeObjectRequired::kYes);
 
   uintptr_t addr = reinterpret_cast<uintptr_t>(&buffer[0]);
-  Address res = __ target_address_at(static_cast<Address>(addr));
+  Address res = __ target_constant_address_at(static_cast<Address>(addr));
   CHECK_EQ(0x01234567L, res);
 }
 
@@ -1490,9 +1493,9 @@ TEST(SET_TARGET_ADDR) {
   MacroAssembler assm(isolate, v8::internal::CodeObjectRequired::kYes);
 
   uintptr_t addr = reinterpret_cast<uintptr_t>(&buffer[0]);
-  __ set_target_value_at(static_cast<Address>(addr), 0xba987654L,
+  __ set_target_value_at(static_cast<Address>(addr), 0xba987654L, nullptr,
                          FLUSH_ICACHE_IF_NEEDED);
-  Address res = __ target_address_at(static_cast<Address>(addr));
+  Address res = __ target_constant_address_at(static_cast<Address>(addr));
   CHECK_EQ(0xba987654L, res);
 }
 

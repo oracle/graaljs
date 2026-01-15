@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -132,7 +132,7 @@ public final class GraalJSParserHelper {
         }
 
         if (errors.hasErrors()) {
-            throwErrors(truffleSource, errors, context);
+            throwErrors(truffleSource, errors, prologue.length(), context);
         }
         return parsed;
     }
@@ -149,7 +149,7 @@ public final class GraalJSParserHelper {
         Parser parser = createParser(context, env, source, errors, parserOptions);
         Expression expression = parser.parseExpression();
         if (errors.hasErrors()) {
-            throwErrors(truffleSource, errors, context);
+            throwErrors(truffleSource, errors, 0, context);
         }
 
         return expression;
@@ -219,7 +219,7 @@ public final class GraalJSParserHelper {
         parser.parseFunctionBody(generator, async);
     }
 
-    private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors, JSContext context) {
+    private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors, int prologueLength, JSContext context) {
         ParserException parserException = errors.getParserException();
         SourceSection sourceLocation = null;
         boolean isIncompleteSource = false;
@@ -228,7 +228,7 @@ public final class GraalJSParserHelper {
             if (parserException.getPosition() >= 0) {
                 // For EOL tokens, length is the line number
                 int length = Token.descType(parserException.getToken()) == TokenType.EOL ? 0 : Token.descLength(parserException.getToken());
-                sourceLocation = source.createSection(parserException.getPosition(), length);
+                sourceLocation = source.createSection(parserException.getPosition() - prologueLength, length);
             }
             if (parserException.getErrorType() == com.oracle.js.parser.JSErrorType.ReferenceError) {
                 throw Errors.createReferenceError(parserException.getMessage(), sourceLocation);

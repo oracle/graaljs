@@ -7,34 +7,38 @@
 #include <cstdlib>
 
 #include "src/heap/heap-write-barrier-inl.h"
-#include "src/heap/incremental-marking.h"
 #include "src/heap/marking-inl.h"
 #include "src/objects/heap-object.h"
 #include "src/utils/allocation.h"
 
-namespace v8 {
-namespace internal {
+namespace v8::internal {
 
 MemoryChunkMetadata::MemoryChunkMetadata(Heap* heap, BaseSpace* space,
                                          size_t chunk_size, Address area_start,
                                          Address area_end,
                                          VirtualMemory reservation)
-    : chunk_(this),
+    : reservation_(std::move(reservation)),
+      allocated_bytes_(area_end - area_start),
+      high_water_mark_(area_start -
+                       MemoryChunk::FromAddress(area_start)->address()),
       size_(chunk_size),
+      area_end_(area_end),
       heap_(heap),
       area_start_(area_start),
-      area_end_(area_end),
-      allocated_bytes_(area_end - area_start),
-      high_water_mark_(area_start - ChunkAddress()),
-      owner_(space),
-      reservation_(std::move(reservation)) {}
+      owner_(space) {}
 
-bool MemoryChunkMetadata::InOldSpace() const {
-  return owner()->identity() == OLD_SPACE;
+MemoryChunkMetadata::~MemoryChunkMetadata() {
+#ifdef V8_ENABLE_SANDBOX
+  MemoryChunk::ClearMetadataPointer(this);
+#endif
 }
 
-bool MemoryChunkMetadata::InLargeObjectSpace() const {
-  return owner()->identity() == LO_SPACE;
+bool MemoryChunkMetadata::InSharedSpace() const {
+  return IsAnySharedSpace(owner()->identity());
+}
+
+bool MemoryChunkMetadata::InTrustedSpace() const {
+  return IsAnyTrustedSpace(owner()->identity());
 }
 
 #ifdef THREAD_SANITIZER
@@ -55,36 +59,4 @@ void MemoryChunkMetadata::SynchronizedHeapStore() {
 }
 #endif
 
-class BasicMemoryChunkValidator {
-  // Computed offsets should match the compiler generated ones.
-  static_assert(MemoryChunkLayout::kSizeOffset ==
-                offsetof(MemoryChunkMetadata, size_));
-  static_assert(MemoryChunkLayout::kFlagsOffset ==
-                offsetof(MemoryChunk, main_thread_flags_));
-  static_assert(MemoryChunkLayout::kMetadataOffset ==
-                offsetof(MemoryChunk, metadata_));
-  static_assert(offsetof(MemoryChunkMetadata, chunk_) == 0);
-  static_assert(MemoryChunkLayout::kHeapOffset ==
-                offsetof(MemoryChunkMetadata, heap_));
-  static_assert(offsetof(MemoryChunkMetadata, size_) ==
-                MemoryChunkLayout::kSizeOffset);
-  static_assert(offsetof(MemoryChunkMetadata, heap_) ==
-                MemoryChunkLayout::kHeapOffset);
-  static_assert(offsetof(MemoryChunkMetadata, area_start_) ==
-                MemoryChunkLayout::kAreaStartOffset);
-  static_assert(offsetof(MemoryChunkMetadata, area_end_) ==
-                MemoryChunkLayout::kAreaEndOffset);
-  static_assert(offsetof(MemoryChunkMetadata, allocated_bytes_) ==
-                MemoryChunkLayout::kAllocatedBytesOffset);
-  static_assert(offsetof(MemoryChunkMetadata, wasted_memory_) ==
-                MemoryChunkLayout::kWastedMemoryOffset);
-  static_assert(offsetof(MemoryChunkMetadata, high_water_mark_) ==
-                MemoryChunkLayout::kHighWaterMarkOffset);
-  static_assert(offsetof(MemoryChunkMetadata, owner_) ==
-                MemoryChunkLayout::kOwnerOffset);
-  static_assert(offsetof(MemoryChunkMetadata, reservation_) ==
-                MemoryChunkLayout::kReservationOffset);
-};
-
-}  // namespace internal
-}  // namespace v8
+}  // namespace v8::internal

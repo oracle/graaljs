@@ -36,6 +36,9 @@ extern macro SetContinuationPreservedEmbedderData(Object): void;
 }
 
 namespace promise {
+const kInvalidAsyncTaskId:
+    constexpr uint32 generates 'JSPromise::kInvalidAsyncTaskId';
+
 extern macro IsFunctionWithPrototypeSlotMap(Map): bool;
 
 @export
@@ -49,9 +52,8 @@ macro PromiseInit(promise: JSPromise): void {
   promise.flags = SmiTag(JSPromiseFlags{
     status: PromiseState::kPending,
     has_handler: false,
-    handled_hint: false,
     is_silent: false,
-    async_task_id: 0
+    async_task_id: kInvalidAsyncTaskId
   });
   promise_internal::ZeroOutEmbedderOffsets(promise);
 }
@@ -69,9 +71,8 @@ macro InnerNewJSPromise(implicit context: Context)(): JSPromise {
   promise.flags = SmiTag(JSPromiseFlags{
     status: PromiseState::kPending,
     has_handler: false,
-    handled_hint: false,
     is_silent: false,
-    async_task_id: 0
+    async_task_id: kInvalidAsyncTaskId
   });
   return promise;
 }
@@ -268,8 +269,8 @@ transitioning macro RunAnyPromiseHookInit(
 // This uses the given parent as the parent promise for the promise
 // init hook.
 @export
-transitioning macro NewJSPromise(implicit context: Context)(parent: Object):
-    JSPromise {
+transitioning macro NewJSPromise(implicit context: Context)(
+                                 parent: Object): JSPromise {
   const instance = InnerNewJSPromise();
   PromiseInit(instance);
   RunAnyPromiseHookInit(instance, parent);

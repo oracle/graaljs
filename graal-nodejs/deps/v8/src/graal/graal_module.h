@@ -64,6 +64,7 @@ public:
             v8::Module::SyntheticModuleEvaluationSteps evaluation_steps);
     v8::Maybe<bool> SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value);
     v8::Local<v8::UnboundModuleScript> GetUnboundModuleScript();
+    bool HasTopLevelAwait() const;
     bool IsGraphAsync() const;
     bool IsSourceTextModule() const;
 protected:

@@ -42,9 +42,9 @@
 #include "graal_context.h"
 #include "graal_function_template.h"
 #include "graal_isolate.h"
+#include "graal_name.h"
 #include "graal_object.h"
 #include "graal_object_template.h"
-#include "graal_string.h"
 #include "include/v8.h"
 
 #include "graal_object-inl.h"
@@ -80,12 +80,12 @@ void GraalObjectTemplate::SetInternalFieldCount(int count) {
 }
 
 void GraalObjectTemplate::SetAccessor(
-        v8::Local<v8::String> name,
-        v8::AccessorGetterCallback getter,
-        v8::AccessorSetterCallback setter,
+        v8::Local<v8::Name> name,
+        v8::AccessorNameGetterCallback getter,
+        v8::AccessorNameSetterCallback setter,
         v8::Local<v8::Value> data,
         v8::PropertyAttribute attribute) {
-    jobject java_name = reinterpret_cast<GraalString*> (*name)->GetJavaObject();
+    jobject java_name = reinterpret_cast<GraalName*> (*name)->GetJavaObject();
     jlong java_getter = (jlong) getter;
     jlong java_setter = (jlong) setter;
     if (data.IsEmpty()) {

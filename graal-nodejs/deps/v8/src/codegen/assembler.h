@@ -40,7 +40,9 @@
 #include <map>
 #include <memory>
 #include <ostream>
+#include <type_traits>
 #include <unordered_map>
+#include <variant>
 
 #include "src/base/macros.h"
 #include "src/base/memory.h"
@@ -215,15 +217,11 @@ struct V8_EXPORT_PRIVATE AssemblerOptions {
   // module. This flag allows this reloc info to be disabled for code that
   // will not survive process destruction.
   bool record_reloc_info_for_serialization = true;
-  // Recording reloc info can be disabled wholesale. This is needed when the
-  // assembler is used on existing code directly (e.g. JumpTableAssembler)
-  // without any buffer to hold reloc information.
-  bool disable_reloc_info_for_patching = false;
   // Enables root-relative access to arbitrary untagged addresses (usually
   // external references). Only valid if code will not survive the process.
   bool enable_root_relative_access = false;
   // Enables specific assembler sequences only used for the simulator.
-  bool enable_simulator_code = false;
+  bool enable_simulator_code = USE_SIMULATOR_BOOL;
   // Enables use of isolate-independent constants, indirected through the
   // root array.
   // (macro assembler feature).
@@ -254,6 +252,14 @@ struct V8_EXPORT_PRIVATE AssemblerOptions {
 
   static AssemblerOptions Default(Isolate* isolate);
 };
+
+// Wrapper around an optional Zone*. If the zone isn't present, the
+// AccountingAllocator* may be used to create a fresh one.
+//
+// This is useful for assemblers that want to Zone-allocate temporay data,
+// without forcing all users to have to create a Zone before using the
+// assembler.
+using MaybeAssemblerZone = std::variant<Zone*, AccountingAllocator*>;
 
 class AssemblerBuffer {
  public:
@@ -307,7 +313,8 @@ class SlotDescriptor {
   }
 
  private:
-  SlotDescriptor(IndirectPointerTag tag) : indirect_pointer_tag_(tag) {}
+  explicit SlotDescriptor(IndirectPointerTag tag)
+      : indirect_pointer_tag_(tag) {}
 
   // If the tag is null, this object describes a direct pointer slot.
   IndirectPointerTag indirect_pointer_tag_;
@@ -407,8 +414,9 @@ class V8_EXPORT_PRIVATE AssemblerBase : public Malloced {
 
   // Record an inline code comment that can be used by a disassembler.
   // Use --code-comments to enable.
-  V8_INLINE void RecordComment(const char* comment,
-                               SourceLocation loc = SourceLocation::Current()) {
+  V8_INLINE void RecordComment(
+      const char* comment,
+      const SourceLocation& loc = SourceLocation::Current()) {
     // Set explicit dependency on --code-comments for dead-code elimination in
     // release builds.
     if (!v8_flags.code_comments) return;
@@ -421,8 +429,9 @@ class V8_EXPORT_PRIVATE AssemblerBase : public Malloced {
     }
   }
 
-  V8_INLINE void RecordComment(std::string comment,
-                               SourceLocation loc = SourceLocation::Current()) {
+  V8_INLINE void RecordComment(
+      std::string comment,
+      const SourceLocation& loc = SourceLocation::Current()) {
     // Set explicit dependency on --code-comments for dead-code elimination in
     // release builds.
     if (!v8_flags.code_comments) return;
@@ -438,11 +447,20 @@ class V8_EXPORT_PRIVATE AssemblerBase : public Malloced {
 #ifdef V8_CODE_COMMENTS
   class CodeComment {
    public:
-    V8_NODISCARD CodeComment(Assembler* assembler, std::string comment,
-                             SourceLocation loc = SourceLocation::Current())
+    // `comment` can either be a value convertible to std::string, or a function
+    // that returns a value convertible to std::string which is invoked lazily
+    // when code comments are enabled.
+    template <typename CommentGen>
+    V8_NODISCARD CodeComment(
+        Assembler* assembler, CommentGen&& comment,
+        const SourceLocation& loc = SourceLocation::Current())
         : assembler_(assembler) {
       if (!v8_flags.code_comments) return;
-      Open(comment, loc);
+      if constexpr (std::is_invocable_v<CommentGen>) {
+        Open(comment(), loc);
+      } else {
+        Open(comment, loc);
+      }
     }
     ~CodeComment() {
       if (!v8_flags.code_comments) return;
@@ -473,14 +491,14 @@ class V8_EXPORT_PRIVATE AssemblerBase : public Malloced {
  protected:
   // Add 'target' to the {code_targets_} vector, if necessary, and return the
   // offset at which it is stored.
-  int AddCodeTarget(Handle<Code> target);
-  Handle<Code> GetCodeTarget(intptr_t code_target_index) const;
+  int AddCodeTarget(IndirectHandle<Code> target);
+  IndirectHandle<Code> GetCodeTarget(intptr_t code_target_index) const;
 
   // Add 'object' to the {embedded_objects_} vector and return the index at
   // which it is stored.
   using EmbeddedObjectIndex = size_t;
-  EmbeddedObjectIndex AddEmbeddedObject(Handle<HeapObject> object);
-  Handle<HeapObject> GetEmbeddedObject(EmbeddedObjectIndex index) const;
+  EmbeddedObjectIndex AddEmbeddedObject(IndirectHandle<HeapObject> object);
+  IndirectHandle<HeapObject> GetEmbeddedObject(EmbeddedObjectIndex index) const;
 
   // The buffer into which code and relocation info are generated.
   std::unique_ptr<AssemblerBuffer> buffer_;
@@ -509,18 +527,10 @@ class V8_EXPORT_PRIVATE AssemblerBase : public Malloced {
 
   bool ShouldRecordRelocInfo(RelocInfo::Mode rmode) const {
     DCHECK(!RelocInfo::IsNoInfo(rmode));
-    if (options().disable_reloc_info_for_patching) return false;
     if (RelocInfo::IsOnlyForSerializer(rmode) &&
         !options().record_reloc_info_for_serialization &&
-        !v8_flags.debug_code) {
+        !v8_flags.debug_code && !v8_flags.slow_debug_code) {
       return false;
-    }
-    if (RelocInfo::IsOnlyForDisassembler(rmode)) {
-#ifdef ENABLE_DISASSEMBLER
-      return true;
-#else
-      return false;
-#endif  // ENABLE_DISASSEMBLER
     }
     return true;
   }
@@ -534,19 +544,20 @@ class V8_EXPORT_PRIVATE AssemblerBase : public Malloced {
   // guaranteed to fit in the instruction's offset field. We keep track of the
   // code handles we encounter in calls in this vector, and encode the index of
   // the code handle in the vector instead.
-  std::vector<Handle<Code>> code_targets_;
+  std::vector<IndirectHandle<Code>> code_targets_;
 
   // If an assembler needs a small number to refer to a heap object handle
   // (for example, because there are only 32bit available on a 64bit arch), the
   // assembler adds the object into this vector using AddEmbeddedObject, and
   // may then refer to the heap object using the handle's index in this vector.
-  std::vector<Handle<HeapObject>> embedded_objects_;
+  std::vector<IndirectHandle<HeapObject>> embedded_objects_;
 
   // Embedded objects are deduplicated based on handle location. This is a
   // compromise that is almost as effective as deduplication based on actual
   // heap object addresses maintains GC safety.
-  std::unordered_map<Handle<HeapObject>, EmbeddedObjectIndex,
-                     Handle<HeapObject>::hash, Handle<HeapObject>::equal_to>
+  std::unordered_map<IndirectHandle<HeapObject>, EmbeddedObjectIndex,
+                     IndirectHandle<HeapObject>::hash,
+                     IndirectHandle<HeapObject>::equal_to>
       embedded_objects_map_;
 
   const AssemblerOptions options_;

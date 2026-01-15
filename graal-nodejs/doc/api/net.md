@@ -41,11 +41,11 @@ sockets on other operating systems.
 [`socket.connect()`][] take a `path` parameter to identify IPC endpoints.
 
 On Unix, the local domain is also known as the Unix domain. The path is a
-file system pathname. It gets truncated to an OS-dependent length of
-`sizeof(sockaddr_un.sun_path) - 1`. Typical values are 107 bytes on Linux and
-103 bytes on macOS. If a Node.js API abstraction creates the Unix domain socket,
-it will unlink the Unix domain socket as well. For example,
-[`net.createServer()`][] may create a Unix domain socket and
+file system pathname. It will throw an error when the length of pathname is
+greater than the length of `sizeof(sockaddr_un.sun_path)`. Typical values are
+107 bytes on Linux and 103 bytes on macOS. If a Node.js API abstraction creates
+the Unix domain socket, it will unlink the Unix domain socket as well. For
+example, [`net.createServer()`][] may create a Unix domain socket and
 [`server.close()`][] will unlink it. But if a user creates the Unix domain
 socket outside of these abstractions, the user will need to remove it. The same
 applies when a Node.js API creates a Unix domain socket but the program then
@@ -173,11 +173,45 @@ The list of rules added to the blocklist.
 ### `BlockList.isBlockList(value)`
 
 <!-- YAML
-added: v22.13.0
+added:
+  - v23.4.0
+  - v22.13.0
 -->
 
 * `value` {any} Any JS value
 * Returns `true` if the `value` is a `net.BlockList`.
+
+### `blockList.fromJSON(value)`
+
+> Stability: 1 - Experimental
+
+ <!-- YAML
+added: v24.5.0
+-->
+
+```js
+const blockList = new net.BlockList();
+const data = [
+  'Subnet: IPv4 192.168.1.0/24',
+  'Address: IPv4 10.0.0.5',
+  'Range: IPv4 192.168.2.1-192.168.2.10',
+  'Range: IPv4 10.0.0.1-10.0.0.10',
+];
+blockList.fromJSON(data);
+blockList.fromJSON(JSON.stringify(data));
+```
+
+* `value` Blocklist.rules
+
+### `blockList.toJSON()`
+
+> Stability: 1 - Experimental
+
+ <!-- YAML
+added: v24.5.0
+-->
+
+* Returns Blocklist.rules
 
 ## Class: `net.SocketAddress`
 
@@ -212,7 +246,7 @@ added:
   - v14.18.0
 -->
 
-* Type {string}
+* Type: {string}
 
 ### `socketaddress.family`
 
@@ -222,7 +256,7 @@ added:
   - v14.18.0
 -->
 
-* Type {string} Either `'ipv4'` or `'ipv6'`.
+* Type: {string} Either `'ipv4'` or `'ipv6'`.
 
 ### `socketaddress.flowlabel`
 
@@ -232,7 +266,7 @@ added:
   - v14.18.0
 -->
 
-* Type {number}
+* Type: {number}
 
 ### `socketaddress.port`
 
@@ -242,12 +276,14 @@ added:
   - v14.18.0
 -->
 
-* Type {number}
+* Type: {number}
 
 ### `SocketAddress.parse(input)`
 
 <!-- YAML
-added: v22.13.0
+added:
+  - v23.4.0
+  - v22.13.0
 -->
 
 * `input` {string} An input string containing an IP address and optional port,
@@ -290,7 +326,7 @@ event is not emitted until all connections are ended.
 added: v0.1.90
 -->
 
-* {net.Socket} The connection object
+* Type: {net.Socket} The connection object
 
 Emitted when a new connection is made. `socket` is an instance of
 `net.Socket`.
@@ -301,7 +337,7 @@ Emitted when a new connection is made. `socket` is an instance of
 added: v0.1.90
 -->
 
-* {Error}
+* Type: {Error}
 
 Emitted when an error occurs. Unlike [`net.Socket`][], the [`'close'`][]
 event will **not** be emitted directly following this event unless
@@ -398,9 +434,11 @@ was not open when it was closed.
 added:
  - v20.5.0
  - v18.18.0
+changes:
+ - version: v24.2.0
+   pr-url: https://github.com/nodejs/node/pull/58467
+   description: No longer experimental.
 -->
-
-> Stability: 1 - Experimental
 
 Calls [`server.close()`][] and returns a promise that fulfills when the
 server has closed.
@@ -491,7 +529,9 @@ Listening on a file descriptor is not supported on Windows.
 <!-- YAML
 added: v0.11.14
 changes:
-  - version: v22.12.0
+  - version:
+    - v23.1.0
+    - v22.12.0
     pr-url: https://github.com/nodejs/node/pull/55408
     description: The `reusePort` option is supported.
   - version: v15.6.0
@@ -616,7 +656,7 @@ may cause the `net.Server` to also listen on the [unspecified IPv4 address][]
 added: v5.7.0
 -->
 
-* {boolean} Indicates whether or not the server is listening for connections.
+* Type: {boolean} Indicates whether or not the server is listening for connections.
 
 ### `server.maxConnections`
 
@@ -629,7 +669,7 @@ changes:
                  connections. Previously, it was interpreted as `Infinity`.
 -->
 
-* {integer}
+* Type: {integer}
 
 When the number of connections reaches the `server.maxConnections` threshold:
 
@@ -643,10 +683,12 @@ with [`child_process.fork()`][].
 ### `server.dropMaxConnection`
 
 <!-- YAML
-added: v22.12.0
+added:
+  - v23.1.0
+  - v22.12.0
 -->
 
-* {boolean}
+* Type: {boolean}
 
 Set this property to `true` to begin closing connections once the number of connections reaches the \[`server.maxConnections`]\[] threshold. This setting is only effective in cluster mode.
 
@@ -814,7 +856,7 @@ in [`socket.connect(options)`][].
 added: v0.1.90
 -->
 
-* {Buffer|string}
+* Type: {Buffer|string}
 
 Emitted when data is received. The argument `data` will be a `Buffer` or
 `String`. Encoding of data is set by [`socket.setEncoding()`][].
@@ -855,7 +897,7 @@ FIN packet back).
 added: v0.1.90
 -->
 
-* {Error}
+* Type: {Error}
 
 Emitted when an error occurs. The `'close'` event will be called directly
 following this event.
@@ -926,7 +968,7 @@ added:
  - v18.18.0
 -->
 
-* {string\[]}
+* Type: {string\[]}
 
 This property is only present if the family autoselection algorithm is enabled in
 [`socket.connect(options)`][] and it is an array of the addresses that have been attempted.
@@ -944,7 +986,7 @@ deprecated:
 
 > Stability: 0 - Deprecated: Use [`writable.writableLength`][] instead.
 
-* {integer}
+* Type: {integer}
 
 This property shows the number of characters buffered for writing. The buffer
 may contain strings whose length after encoding is not yet known. So this number
@@ -967,7 +1009,7 @@ Users who experience large or growing `bufferSize` should attempt to
 added: v0.5.3
 -->
 
-* {integer}
+* Type: {integer}
 
 The amount of received bytes.
 
@@ -977,7 +1019,7 @@ The amount of received bytes.
 added: v0.5.3
 -->
 
-* {integer}
+* Type: {integer}
 
 The amount of bytes sent.
 
@@ -1136,7 +1178,7 @@ called with `{port: port, host: host}` as `options`.
 added: v6.1.0
 -->
 
-* {boolean}
+* Type: {boolean}
 
 If `true`,
 [`socket.connect(options[, connectListener])`][`socket.connect(options)`] was
@@ -1162,7 +1204,7 @@ See [`writable.destroy()`][] for further details.
 
 ### `socket.destroyed`
 
-* {boolean} Indicates if the connection is destroyed or not. Once a
+* Type: {boolean} Indicates if the connection is destroyed or not. Once a
   connection is destroyed no further data can be transferred using it.
 
 See [`writable.destroyed`][] for further details.
@@ -1199,7 +1241,7 @@ See [`writable.end()`][] for further details.
 added: v0.9.6
 -->
 
-* {string}
+* Type: {string}
 
 The string representation of the local IP address the remote client is
 connecting on. For example, in a server listening on `'0.0.0.0'`, if a client
@@ -1212,7 +1254,7 @@ connects on `'192.168.1.1'`, the value of `socket.localAddress` would be
 added: v0.9.6
 -->
 
-* {integer}
+* Type: {integer}
 
 The numeric representation of the local port. For example, `80` or `21`.
 
@@ -1224,7 +1266,7 @@ added:
   - v16.18.0
 -->
 
-* {string}
+* Type: {string}
 
 The string representation of the local IP family. `'IPv4'` or `'IPv6'`.
 
@@ -1243,7 +1285,7 @@ added:
  - v10.16.0
 -->
 
-* {boolean}
+* Type: {boolean}
 
 This is `true` if the socket is not connected yet, either because `.connect()`
 has not yet been called or because it is still in the process of connecting
@@ -1267,7 +1309,7 @@ If the socket is `ref`ed calling `ref` again will have no effect.
 added: v0.5.10
 -->
 
-* {string}
+* Type: {string}
 
 The string representation of the remote IP address. For example,
 `'74.125.127.100'` or `'2001:4860:a005::68'`. Value may be `undefined` if
@@ -1279,7 +1321,7 @@ the socket is destroyed (for example, if the client disconnected).
 added: v0.11.14
 -->
 
-* {string}
+* Type: {string}
 
 The string representation of the remote IP family. `'IPv4'` or `'IPv6'`. Value may be `undefined` if
 the socket is destroyed (for example, if the client disconnected).
@@ -1290,7 +1332,7 @@ the socket is destroyed (for example, if the client disconnected).
 added: v0.5.10
 -->
 
-* {integer}
+* Type: {integer}
 
 The numeric representation of the remote port. For example, `80` or `21`. Value may be `undefined` if
 the socket is destroyed (for example, if the client disconnected).
@@ -1421,7 +1463,7 @@ The optional `callback` parameter will be added as a one-time listener for the
 added: v10.7.0
 -->
 
-* {number|undefined}
+* Type: {number|undefined}
 
 The socket timeout in milliseconds as set by [`socket.setTimeout()`][].
 It is `undefined` if a timeout has not been set.
@@ -1468,7 +1510,7 @@ information.
 added: v0.5.0
 -->
 
-* {string}
+* Type: {string}
 
 This property represents the state of the connection as a string.
 

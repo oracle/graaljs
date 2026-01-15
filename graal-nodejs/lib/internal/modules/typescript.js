@@ -22,13 +22,19 @@ const {
 const { getOptionValue } = require('internal/options');
 const assert = require('internal/assert');
 const { Buffer } = require('buffer');
+const {
+  getCompileCacheEntry,
+  saveCompileCacheEntry,
+  cachedCodeTypes: { kStrippedTypeScript, kTransformedTypeScript, kTransformedTypeScriptWithSourceMaps },
+} = internalBinding('modules');
 
 /**
  * The TypeScript parsing mode, either 'strip-only' or 'transform'.
- * @type {string}
+ * @type {function(): TypeScriptMode}
  */
 const getTypeScriptParsingMode = getLazy(() =>
-  (getOptionValue('--experimental-transform-types') ? 'transform' : 'strip-only'),
+  (getOptionValue('--experimental-transform-types') ?
+    (emitExperimentalWarning('Transform Types'), 'transform') : 'strip-only'),
 );
 
 /**
@@ -58,10 +64,14 @@ function parseTypeScript(source, options) {
      * It allows us to distinguish between invalid syntax and unsupported syntax.
      */
     switch (error?.code) {
-      case 'UnsupportedSyntax':
-        throw new ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX(error.message);
-      case 'InvalidSyntax':
-        throw new ERR_INVALID_TYPESCRIPT_SYNTAX(error.message);
+      case 'UnsupportedSyntax': {
+        const unsupportedSyntaxError = new ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX(error.message);
+        throw decorateErrorWithSnippet(unsupportedSyntaxError, error); /* node-do-not-add-exception-line */
+      }
+      case 'InvalidSyntax': {
+        const invalidSyntaxError = new ERR_INVALID_TYPESCRIPT_SYNTAX(error.message);
+        throw decorateErrorWithSnippet(invalidSyntaxError, error); /* node-do-not-add-exception-line */
+      }
       default:
         // SWC may throw strings when something goes wrong.
         if (typeof error === 'string') { assert.fail(error); }
@@ -69,6 +79,18 @@ function parseTypeScript(source, options) {
         assert.fail(error.message);
     }
   }
+}
+
+/**
+ *
+ * @param {Error} error the error to decorate: ERR_INVALID_TYPESCRIPT_SYNTAX, ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX
+ * @param {object} amaroError the error object from amaro
+ * @returns {Error} the decorated error
+ */
+function decorateErrorWithSnippet(error, amaroError) {
+  const errorHints = `${amaroError.filename}:${amaroError.startLine}\n${amaroError.snippet}`;
+  error.stack = `${errorHints}\n${error.stack}`;
+  return error;
 }
 
 /**
@@ -106,10 +128,18 @@ function stripTypeScriptTypes(code, options = kEmptyObject) {
 }
 
 /**
+ * @typedef {'strip-only' | 'transform'} TypeScriptMode
+ * @typedef {object} TypeScriptOptions
+ * @property {TypeScriptMode} mode Mode.
+ * @property {boolean} sourceMap Whether to generate source maps.
+ * @property {string|undefined} filename Filename.
+ */
+
+/**
  * Processes TypeScript code by stripping types or transforming.
  * Handles source maps if needed.
  * @param {string} code TypeScript code to process.
- * @param {object} options The configuration object.
+ * @param {TypeScriptOptions} options The configuration object.
  * @returns {string} The processed code.
  */
 function processTypeScriptCode(code, options) {
@@ -127,27 +157,65 @@ function processTypeScriptCode(code, options) {
 }
 
 /**
+ * Get the type enum used for compile cache.
+ * @param {TypeScriptMode} mode Mode of transpilation.
+ * @param {boolean} sourceMap Whether source maps are enabled.
+ * @returns {number}
+ */
+function getCachedCodeType(mode, sourceMap) {
+  if (mode === 'transform') {
+    if (sourceMap) { return kTransformedTypeScriptWithSourceMaps; }
+    return kTransformedTypeScript;
+  }
+  return kStrippedTypeScript;
+}
+
+/**
  * Performs type-stripping to TypeScript source code internally.
  * It is used by internal loaders.
  * @param {string} source TypeScript code to parse.
  * @param {string} filename The filename of the source code.
- * @param {boolean} emitWarning Whether to emit a warning.
  * @returns {TransformOutput} The stripped TypeScript code.
  */
-function stripTypeScriptModuleTypes(source, filename, emitWarning = true) {
-  if (emitWarning) {
-    emitExperimentalWarning('Type Stripping');
-  }
+function stripTypeScriptModuleTypes(source, filename) {
   assert(typeof source === 'string');
   if (isUnderNodeModules(filename)) {
     throw new ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING(filename);
   }
+  const sourceMap = getOptionValue('--enable-source-maps');
+
+  const mode = getTypeScriptParsingMode();
+
+  // Instead of caching the compile cache status, just go into C++ to fetch it,
+  // as checking process.env equally involves calling into C++ anyway, and
+  // the compile cache can be enabled dynamically.
+  const type = getCachedCodeType(mode, sourceMap);
+  // Get a compile cache entry into the native compile cache store,
+  // keyed by the filename. If the cache can already be loaded on disk,
+  // cached.transpiled contains the cached string. Otherwise we should do
+  // the transpilation and save it in the native store later using
+  // saveCompileCacheEntry().
+  const cached = (filename ? getCompileCacheEntry(source, filename, type) : undefined);
+  if (cached?.transpiled) {  // TODO(joyeecheung): return Buffer here.
+    return cached.transpiled;
+  }
+
   const options = {
-    mode: getTypeScriptParsingMode(),
-    sourceMap: getOptionValue('--enable-source-maps'),
+    mode,
+    sourceMap,
     filename,
   };
-  return processTypeScriptCode(source, options);
+
+  const transpiled = processTypeScriptCode(source, options);
+  if (cached) {
+    // cached.external contains a pointer to the native cache entry.
+    // The cached object would be unreachable once it's out of scope,
+    // but the pointer inside cached.external would stay around for reuse until
+    // environment shutdown or when the cache is manually flushed
+    // to disk. Unwrap it in JS before passing into C++ since it's faster.
+    saveCompileCacheEntry(cached.external, transpiled);
+  }
+  return transpiled;
 }
 
 /**

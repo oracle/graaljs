@@ -50,6 +50,8 @@ const {
   isArrayBufferView,
 } = require('internal/util/types');
 
+const constants = internalBinding('constants').crypto;
+
 function Sign(algorithm, options) {
   if (!(this instanceof Sign))
     return new Sign(algorithm, options);
@@ -85,7 +87,11 @@ function getPadding(options) {
 }
 
 function getSaltLength(options) {
-  return getIntOption('saltLength', options);
+  let saltLength = getIntOption('saltLength', options);
+  if (options.padding === constants.RSA_PKCS1_PSS_PADDING && saltLength === undefined) {
+    saltLength = constants.RSA_PSS_SALTLEN_MAX_SIGN;
+  }
+  return saltLength;
 }
 
 function getDSASignatureEncoding(options) {
@@ -99,6 +105,19 @@ function getDSASignatureEncoding(options) {
   }
 
   return kSigEncDER;
+}
+
+function getContext(options) {
+  if (options?.context === undefined) {
+    return undefined;
+  }
+
+  if (!isArrayBufferView(options.context)) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'options.context', ['Buffer', 'TypedArray', 'DataView'], options.context);
+  }
+
+  return options.context;
 }
 
 function getIntOption(name, options) {
@@ -153,6 +172,9 @@ function signOneShot(algorithm, data, key, callback) {
   // Options specific to (EC)DSA
   const dsaSigEnc = getDSASignatureEncoding(key);
 
+  // Options specific to Ed448 and ML-DSA
+  const context = getContext(key);
+
   const {
     data: keyData,
     format: keyFormat,
@@ -171,7 +193,9 @@ function signOneShot(algorithm, data, key, callback) {
     algorithm,
     pssSaltLength,
     rsaPadding,
-    dsaSigEnc);
+    dsaSigEnc,
+    context,
+    undefined);
 
   if (!callback) {
     const { 0: err, 1: signature } = job.run();
@@ -249,6 +273,9 @@ function verifyOneShot(algorithm, data, key, signature, callback) {
   // Options specific to (EC)DSA
   const dsaSigEnc = getDSASignatureEncoding(key);
 
+  // Options specific to Ed448 and ML-DSA
+  const context = getContext(key);
+
   if (!isArrayBufferView(signature)) {
     throw new ERR_INVALID_ARG_TYPE(
       'signature',
@@ -276,6 +303,7 @@ function verifyOneShot(algorithm, data, key, signature, callback) {
     pssSaltLength,
     rsaPadding,
     dsaSigEnc,
+    context,
     signature);
 
   if (!callback) {

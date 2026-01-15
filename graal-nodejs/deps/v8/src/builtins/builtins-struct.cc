@@ -20,11 +20,11 @@ static_assert(kMaxJSStructFields <= kMaxNumberOfDescriptors);
 namespace {
 
 struct NameHandleHasher {
-  size_t operator()(Handle<Name> name) const { return name->hash(); }
+  size_t operator()(IndirectHandle<Name> name) const { return name->hash(); }
 };
 
 struct UniqueNameHandleEqual {
-  bool operator()(Handle<Name> x, Handle<Name> y) const {
+  bool operator()(IndirectHandle<Name> x, IndirectHandle<Name> y) const {
     DCHECK(IsUniqueName(*x));
     DCHECK(IsUniqueName(*y));
     return *x == *y;
@@ -32,13 +32,14 @@ struct UniqueNameHandleEqual {
 };
 
 using UniqueNameHandleSet =
-    std::unordered_set<Handle<Name>, NameHandleHasher, UniqueNameHandleEqual>;
+    std::unordered_set<IndirectHandle<Name>, NameHandleHasher,
+                       UniqueNameHandleEqual>;
 
 }  // namespace
 
 BUILTIN(SharedSpaceJSObjectHasInstance) {
   HandleScope scope(isolate);
-  Handle<Object> constructor = args.receiver();
+  DirectHandle<Object> constructor = args.receiver();
   if (!IsJSFunction(*constructor)) {
     return *isolate->factory()->false_value();
   }
@@ -46,17 +47,17 @@ BUILTIN(SharedSpaceJSObjectHasInstance) {
   bool result;
   MAYBE_ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
       isolate, result,
-      AlwaysSharedSpaceJSObject::HasInstance(
-          isolate, Handle<JSFunction>::cast(constructor),
-          args.atOrUndefined(isolate, 1)));
+      AlwaysSharedSpaceJSObject::HasInstance(isolate,
+                                             Cast<JSFunction>(constructor),
+                                             args.atOrUndefined(isolate, 1)));
   return *isolate->factory()->ToBoolean(result);
 }
 
 namespace {
 Maybe<bool> CollectFieldsAndElements(Isolate* isolate,
-                                     Handle<JSReceiver> property_names,
+                                     DirectHandle<JSReceiver> property_names,
                                      int num_properties,
-                                     std::vector<Handle<Name>>& field_names,
+                                     DirectHandleVector<Name>& field_names,
                                      std::set<uint32_t>& element_names) {
   Handle<Object> raw_property_name;
   Handle<Name> property_name;
@@ -108,12 +109,12 @@ BUILTIN(SharedStructTypeConstructor) {
   HandleScope scope(isolate);
   auto* factory = isolate->factory();
 
-  Handle<Map> instance_map;
+  DirectHandle<Map> instance_map;
 
   {
     // Step 1: Collect the struct's property names and create the instance map.
 
-    Handle<JSReceiver> property_names_arg;
+    DirectHandle<JSReceiver> property_names_arg;
     if (!IsJSReceiver(*args.atOrUndefined(isolate, 1))) {
       THROW_NEW_ERROR_RETURN_FAILURE(
           isolate,
@@ -123,11 +124,11 @@ BUILTIN(SharedStructTypeConstructor) {
     property_names_arg = args.at<JSReceiver>(1);
 
     // Treat property_names_arg as arraylike.
-    Handle<Object> raw_length_number;
+    DirectHandle<Object> raw_length_number;
     ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
         isolate, raw_length_number,
         Object::GetLengthFromArrayLike(isolate, property_names_arg));
-    double num_properties_double = Object::Number(*raw_length_number);
+    double num_properties_double = Object::NumberValue(*raw_length_number);
     if (num_properties_double < 0 ||
         num_properties_double > kMaxJSStructFields) {
       THROW_NEW_ERROR_RETURN_FAILURE(
@@ -135,7 +136,7 @@ BUILTIN(SharedStructTypeConstructor) {
     }
     int num_properties = static_cast<int>(num_properties_double);
 
-    std::vector<Handle<Name>> field_names;
+    DirectHandleVector<Name> field_names(isolate);
     std::set<uint32_t> element_names;
     if (num_properties != 0) {
       MAYBE_RETURN(
@@ -147,7 +148,7 @@ BUILTIN(SharedStructTypeConstructor) {
     if (IsUndefined(*args.atOrUndefined(isolate, 2), isolate)) {
       // Create a new instance map if this type isn't registered.
       instance_map = JSSharedStruct::CreateInstanceMap(
-          isolate, field_names, element_names, MaybeHandle<String>());
+          isolate, base::VectorOf(field_names), element_names, {});
     } else {
       // Otherwise, get the canonical map.
       if (!IsString(*args.atOrUndefined(isolate, 2))) {
@@ -159,20 +160,19 @@ BUILTIN(SharedStructTypeConstructor) {
       ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
           isolate, instance_map,
           isolate->shared_struct_type_registry()->Register(
-              isolate, args.at<String>(2), field_names, element_names));
+              isolate, args.at<String>(2), base::VectorOf(field_names),
+              element_names));
     }
   }
 
   // Step 2: Creat the JSFunction constructor. This is always created anew,
   // regardless of whether the type is registered.
-  Handle<SharedFunctionInfo> info =
+  DirectHandle<SharedFunctionInfo> info =
       isolate->factory()->NewSharedFunctionInfoForBuiltin(
           isolate->factory()->empty_string(), Builtin::kSharedStructConstructor,
-          FunctionKind::kNormalFunction);
-  info->set_internal_formal_parameter_count(JSParameterCount(0));
-  info->set_length(0);
+          0, kAdapt);
 
-  Handle<JSFunction> constructor =
+  DirectHandle<JSFunction> constructor =
       Factory::JSFunctionBuilder{isolate, info, isolate->native_context()}
           .set_map(isolate->strict_function_with_readonly_prototype_map())
           .Build();
@@ -180,8 +180,9 @@ BUILTIN(SharedStructTypeConstructor) {
 
   JSObject::AddProperty(
       isolate, constructor, factory->has_instance_symbol(),
-      handle(isolate->native_context()->shared_space_js_object_has_instance(),
-             isolate),
+      direct_handle(
+          isolate->native_context()->shared_space_js_object_has_instance(),
+          isolate),
       ALL_ATTRIBUTES_MASK);
 
   return *constructor;
@@ -189,8 +190,8 @@ BUILTIN(SharedStructTypeConstructor) {
 
 BUILTIN(SharedStructConstructor) {
   HandleScope scope(isolate);
-  Handle<JSFunction> constructor(args.target());
-  Handle<Map> instance_map(constructor->initial_map(), isolate);
+  DirectHandle<JSFunction> constructor(args.target());
+  DirectHandle<Map> instance_map(constructor->initial_map(), isolate);
   return *isolate->factory()->NewJSSharedStruct(
       args.target(),
       JSSharedStruct::GetElementsTemplate(isolate, *instance_map));

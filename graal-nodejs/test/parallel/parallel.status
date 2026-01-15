@@ -13,6 +13,9 @@ test-aborted-util: FAIL
 test-worker-data-url: FAIL
 
 # Triggers stack-overflow that may not be handled well
+test-async-hooks-stack-overflow: SKIP
+test-async-hooks-stack-overflow-nested-async: SKIP
+test-async-hooks-stack-overflow-try-catch: SKIP
 test-async-wrap-pop-id-during-load: SKIP
 test-promise-reject-callback-exception: SKIP
 test-ttywrap-stack: SKIP
@@ -74,9 +77,40 @@ test-fs-write: FAIL
 # (which is a foreign object when chromeinspector is used)
 test-process-get-builtin: SKIP
 
+# SetNativeDataProperty is not exactly SetAccessor()
+test-worker-unsupported-things: FAIL
+
+# Uses 'using' keyword
+test-filehandle-autoclose: FAIL
+test-fs-read-empty-buffer: FAIL
+test-fs-read-offset-null: FAIL
+test-perf-hooks-histogram: FAIL
+test-sqlite-session: FAIL
+test-stream-duplex-destroy: FAIL
+test-stream-readable-dispose: FAIL
+test-stream-transform-destroy: FAIL
+test-stream-writable-destroy: FAIL
+test-worker-dispose: FAIL
+
+# Different stack-trace format expected
+test-fs-promises: FAIL
+
+# V8 option --enable-sharedarraybuffer-per-context is not supported
+test-internal-util-construct-sab: FAIL
+
+# Flag --max-old-space-size-percentage is not supported
+test-max-old-space-size-percentage: FAIL
+
+# Suspicious performance test
+test-repl-paste-big-data: FAIL
+
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint, %PrepareFunctionForOptimization)
 test-http-same-map: FAIL
 test-os-fast: FAIL
+test-perf-hooks-histogram-fast-calls: FAIL
+test-process-hrtime: FAIL
+test-process-hrtime-bigint: FAIL
+test-timers-fast-calls: FAIL
 test-timers-now: FAIL
 test-util-types: FAIL
 test-v8-flags: FAIL
@@ -126,6 +160,9 @@ test-worker-sharedarraybuffer-from-worker-thread: SKIP
 # Profiling is not supported
 test-cli-node-options: SKIP
 test-tick-processor-arguments: FAIL
+test-v8-cpu-profile: FAIL
+test-worker-cpu-profile: FAIL
+test-worker-heap-profile: FAIL
 
 # v8::Object::GetConstructorName() returns `Klass` for
 # Object.setPrototypeOf(new Klass(), null) (which graal-nodejs is unable to return)
@@ -157,6 +194,16 @@ test-vm-set-property-proxy: SKIP
 test-vm-timeout-escape-promise: FAIL
 test-vm-timeout-escape-promise-module: FAIL
 test-vm-timeout-escape-promise-2: FAIL
+
+# Separate MicrotaskQueue (in afterEvaluate mode) is not supported
+test-vm-module-after-evaluate: FAIL
+test-vm-script-after-evaluate: FAIL
+
+# v8::Module::GetModuleRequests() (i.e. Module.requestedModules) contains duplicate entries
+test-vm-module-modulerequests: FAIL
+
+# Incorrect handling of errored synthetic modules
+test-vm-module-evaluate-synthethic-module: FAIL
 
 # run-time user-land snapshots are not supported
 test-snapshot-api: FAIL
@@ -221,12 +268,10 @@ test-trace-events-vm: SKIP
 test-trace-events-worker-metadata: SKIP
 test-trace-events-worker-metadata-with-name: SKIP
 test-trace-exit-stack-limit: FAIL
-test-worker-node-options: FAIL
 
 # Unclassified
 test-async-context-frame: FAIL
 test-async-hooks-http-parser-destroy: SKIP
-test-common-must-not-call: FAIL
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
 test-domain-no-error-handler-abort-on-uncaught-0: FAIL
@@ -245,6 +290,7 @@ test-gc-http-client-connaborted: SKIP
 test-gc-net-timeout: SKIP
 test-gc-tls-external-memory: SKIP
 test-h2leak-destroy-session-on-socket-ended: FAIL
+test-http-client-leaky-with-double-response: SKIP
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
@@ -258,6 +304,7 @@ test-trace-env-stack: FAIL
 test-ttywrap-stack: FAIL
 test-vm-global-setter: FAIL
 test-vm-low-stack-space: SKIP
+test-vm-module-link: FAIL
 test-vm-new-script-new-context: FAIL
 test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP
@@ -327,12 +374,8 @@ test-child-process-stdio-inherit: PASS,FAIL
 
 [true] # This section applies to all platforms
 # https://github.com/nodejs/node/issues/52273
-test-net-write-fully-async-hex-string: PASS, FLAKY
-# https://github.com/nodejs/node/issues/52273
 test-shadow-realm-gc: SKIP
 test-shadow-realm-gc-module: SKIP
-# https://github.com/nodejs/node/issues/52274
-test-worker-arraybuffer-zerofill: PASS, FLAKY
 
 # https://github.com/nodejs/node/issues/51862
 test-fs-read-stream-concurrent-reads: PASS, FLAKY
@@ -345,21 +388,20 @@ test-fs-read-stream-concurrent-reads: PASS, FLAKY
 test-snapshot-incompatible: SKIP
 
 [$system==win32]
-# https://github.com/nodejs/node/issues/54807
-test-runner-watch-mode-complex: PASS, FLAKY
+# https://github.com/nodejs/node/issues/59090
+test-inspector-network-fetch: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54808
 test-async-context-frame: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54534
 test-runner-run-watch: PASS, FLAKY
-# https://github.com/nodejs/node/issues/56794
-test-fs-cp: PASS, FLAKY
+# https://github.com/nodejs/node/issues/59636
+test-fs-cp-sync-error-on-exist: SKIP
+test-fs-cp-sync-symlink-points-to-dest-error: SKIP
+test-fs-cp-async-symlink-points-to-dest: SKIP
+test-fs-cp-sync-unicode-folder-names: SKIP
 
 # https://github.com/nodejs/node/issues/56751
 test-without-async-context-frame: PASS, FLAKY
-
-# Windows on x86
-[$system==win32 && $arch==ia32]
-test-worker-nearheaplimit-deadlock: PASS, FLAKY
 
 # Windows on ARM
 [$system==win32 && $arch==arm64]
@@ -376,25 +418,19 @@ test-runner-run-watch: PASS, FLAKY
 # https://github.com/nodejs/node/issues/58353
 test-http2-debug: PASS, FLAKY
 
-[$system==linux || $system==win32]
-# https://github.com/nodejs/node/issues/49605
-test-runner-watch-mode: PASS,FLAKY
-
 [$system==macos]
 # https://github.com/nodejs/node/issues/42741
 test-http-server-headers-timeout-keepalive: PASS,FLAKY
 test-http-server-request-timeout-keepalive: PASS,FLAKY
-# https://github.com/nodejs/node/issues/50243
-test-inspector-async-stack-traces-set-interval: PASS, FLAKY
-# https://github.com/nodejs/node/issues/54811
-test-macos-app-sandbox: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54534
+test-runner-run-watch: PASS, FLAKY
+# https://github.com/nodejs/node/issues/60050
+test-cluster-dgram-1: SKIP
 
 [$arch==arm || $arch==arm64]
 # https://github.com/nodejs/node/pull/31178
 test-crypto-dh-stateless: SKIP
 test-crypto-keygen: SKIP
-# https://github.com/nodejs/node/issues/52963
-test-pipe-file-to-http: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54801
 test-debugger-heap-profiler: PASS, FLAKY
 
@@ -414,6 +450,7 @@ test-domain-throw-error-then-throw-from-uncaught-exception-handler: PASS, FLAKY
 test-domain-with-abort-on-uncaught-exception: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54346
 test-esm-loader-hooks-inspect-wait: PASS, FLAKY
+test-fs-promises-watch-iterator: SKIP
 # https://github.com/nodejs/node/issues/50050
 test-tick-processor-arguments: SKIP
 # https://github.com/nodejs/node/issues/54534
@@ -422,6 +459,7 @@ test-runner-run-watch: PASS, FLAKY
 [$system==freebsd]
 # https://github.com/nodejs/node/issues/54346
 test-esm-loader-hooks-inspect-wait: PASS, FLAKY
+test-fs-promises-watch-iterator: SKIP
 
 [$system==aix]
 # https://github.com/nodejs/node/issues/54346
@@ -432,6 +470,7 @@ test-esm-loader-hooks-inspect-wait: PASS, FLAKY
 test-child-process-fork-net-server: SKIP
 test-cli-node-options: SKIP
 test-cluster-shared-leak: SKIP
+test-fs-promises-watch-iterator: SKIP
 test-http-writable-true-after-close: SKIP
 test-http2-connect-method: SKIP
 test-net-error-twice: SKIP
@@ -461,13 +500,16 @@ test-tls-write-error: PASS, FLAKY
 # https://github.com/nodejs/node/issues/48047
 test-http-pipeline-flood: SKIP
 # https://github.com/nodejs/node/issues/58582
-test-http-proxy-fetch: PASS, FLAKY
-test-https-proxy-fetch: PASS, FLAKY
-test-inspector-network-fetch:  PASS, FLAKY
-test-fetch:  PASS, FLAKY
-test-without-async-context-frame: PASS, FLAKY
+test-inspector-network-fetch:  SKIP
+test-inspector-network-content-type: SKIP
+test-fetch:  SKIP
+test-without-async-context-frame: SKIP
 test-process-cpuUsage: PASS, FLAKY
-
+test-web-locks: SKIP
+test-http2-allow-http1-upgrade-ws: SKIP
+test-inspector-network-websocket: SKIP
+test-tls-set-default-ca-certificates-append-fetch: SKIP
+test-tls-set-default-ca-certificates-reset-fetch: SKIP
 
 [$asan==on]
 # https://github.com/nodejs/node/issues/39655

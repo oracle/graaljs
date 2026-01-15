@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "src/base/optional.h"
 #include "src/builtins/builtins-utils-gen.h"
 #include "src/builtins/builtins.h"
 #include "src/codegen/code-stub-assembler-inl.h"
@@ -13,6 +12,8 @@
 
 namespace v8 {
 namespace internal {
+
+#include "src/codegen/define-code-stub-assembler-macros.inc"
 
 class HandlerBuiltinsAssembler : public CodeStubAssembler {
  public:
@@ -159,7 +160,7 @@ void HandlerBuiltinsAssembler::Generate_ElementsTransitionAndStore(
     // TODO(v8:8481): Pass from_kind and to_kind in feedback vector slots.
     DispatchForElementsKindTransition(
         LoadElementsKind(receiver), LoadMapElementsKind(map),
-        [=, &miss](ElementsKind from_kind, ElementsKind to_kind) {
+        [=, this, &miss](ElementsKind from_kind, ElementsKind to_kind) {
           TransitionElementsKind(receiver, map, from_kind, to_kind, &miss);
           EmitElementStore(receiver, key, value, to_kind, store_mode, &miss,
                            context, nullptr);
@@ -258,20 +259,16 @@ void HandlerBuiltinsAssembler::DispatchByElementsKind(
   Switch(elements_kind, &if_unknown_type, elements_kinds, elements_kind_labels,
          arraysize(elements_kinds));
 
-#define ELEMENTS_KINDS_CASE(KIND)                                   \
-  BIND(&if_##KIND);                                                 \
-  {                                                                 \
-    if (!v8_flags.enable_sealed_frozen_elements_kind &&             \
-        IsAnyNonextensibleElementsKindUnchecked(KIND)) {            \
-      /* Disable support for frozen or sealed elements kinds. */    \
-      Unreachable();                                                \
-    } else if (!handle_typed_elements_kind &&                       \
-               IsTypedArrayOrRabGsabTypedArrayElementsKind(KIND)) { \
-      Unreachable();                                                \
-    } else {                                                        \
-      case_function(KIND);                                          \
-      Goto(&next);                                                  \
-    }                                                               \
+#define ELEMENTS_KINDS_CASE(KIND)                            \
+  BIND(&if_##KIND);                                          \
+  {                                                          \
+    if (!handle_typed_elements_kind &&                       \
+        IsTypedArrayOrRabGsabTypedArrayElementsKind(KIND)) { \
+      Unreachable();                                         \
+    } else {                                                 \
+      case_function(KIND);                                   \
+      Goto(&next);                                           \
+    }                                                        \
   }
   ELEMENTS_KINDS(ELEMENTS_KINDS_CASE)
 #undef ELEMENTS_KINDS_CASE
@@ -305,7 +302,7 @@ void HandlerBuiltinsAssembler::Generate_StoreFastElementIC(
   // TODO(v8:8481): Pass elements_kind in feedback vector slots.
   DispatchByElementsKind(
       LoadElementsKind(receiver),
-      [=, &miss, &maybe_converted_value](ElementsKind elements_kind) {
+      [=, this, &miss, &maybe_converted_value](ElementsKind elements_kind) {
         EmitElementStore(receiver, key, value, elements_kind, store_mode, &miss,
                          context, &maybe_converted_value);
       },
@@ -387,7 +384,7 @@ void HandlerBuiltinsAssembler::Generate_KeyedStoreIC_SloppyArguments() {
   using Descriptor = StoreWithVectorDescriptor;
   auto receiver = Parameter<JSObject>(Descriptor::kReceiver);
   auto key = Parameter<Object>(Descriptor::kName);
-  auto value = Parameter<Object>(Descriptor::kValue);
+  auto value = Parameter<JSAny>(Descriptor::kValue);
   auto slot = Parameter<Smi>(Descriptor::kSlot);
   auto vector = Parameter<HeapObject>(Descriptor::kVector);
   auto context = Parameter<Context>(Descriptor::kContext);
@@ -474,6 +471,8 @@ TF_BUILTIN(HasIndexedInterceptorIC, CodeStubAssembler) {
   TailCallRuntime(Runtime::kKeyedHasIC_Miss, context, receiver, key, slot,
                   vector);
 }
+
+#include "src/codegen/undef-code-stub-assembler-macros.inc"
 
 }  // namespace internal
 }  // namespace v8

@@ -130,6 +130,16 @@ public final class Symbol implements TruffleObject {
      * excluded from the with environment bindings of the associated object.
      */
     public static final Symbol SYMBOL_UNSCOPABLES = Symbol.createWellKnown(Strings.constant("Symbol.unscopables"));
+    /**
+     * A method that performs explicit resource cleanup on an object. Called by the semantics of the
+     * using declaration and DisposableStack objects.
+     */
+    public static final Symbol SYMBOL_DISPOSE = Symbol.createWellKnown(Strings.constant("Symbol.dispose"));
+    /**
+     * A method that performs explicit resource cleanup on an object. Called by the semantics of the
+     * await using declaration and AsyncDisposableStack objects.
+     */
+    public static final Symbol SYMBOL_ASYNC_DISPOSE = Symbol.createWellKnown(Strings.constant("Symbol.asyncDispose"));
 
     /**
      * [[Description]] of Symbol if it is a String value, {@code null} otherwise ([[Description]] is

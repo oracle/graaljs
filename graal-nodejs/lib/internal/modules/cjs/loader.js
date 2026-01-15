@@ -51,6 +51,7 @@ const {
   ReflectSet,
   RegExpPrototypeExec,
   SafeMap,
+  SafeSet,
   String,
   StringPrototypeCharAt,
   StringPrototypeCharCodeAt,
@@ -68,7 +69,8 @@ const {
     module_export_names_private_symbol,
     module_circular_visited_private_symbol,
     module_export_private_symbol,
-    module_parent_private_symbol,
+    module_first_parent_private_symbol,
+    module_last_parent_private_symbol,
   },
   isInsideNodeModules,
 } = internalBinding('util');
@@ -93,9 +95,13 @@ const kModuleCircularVisited = module_circular_visited_private_symbol;
  */
 const kModuleExport = module_export_private_symbol;
 /**
- * {@link Module} parent module.
+ * {@link Module} The first parent module that loads a module with require().
  */
-const kModuleParent = module_parent_private_symbol;
+const kFirstModuleParent = module_first_parent_private_symbol;
+/**
+ * {@link Module} The last parent module that loads a module with require().
+ */
+const kLastModuleParent = module_last_parent_private_symbol;
 
 const kIsMainSymbol = Symbol('kIsMainSymbol');
 const kIsCachedByESMLoader = Symbol('kIsCachedByESMLoader');
@@ -116,6 +122,7 @@ module.exports = {
   findLongestRegisteredExtension,
   resolveForCJSWithHooks,
   loadSourceForCJSWithHooks: loadSource,
+  populateCJSExportsFromESM,
   wrapSafe,
   wrapModuleLoad,
   kIsMainSymbol,
@@ -135,8 +142,8 @@ const {
   kEmptyObject,
   setOwnProperty,
   getLazy,
-  isUnderNodeModules,
   isWindows,
+  isUnderNodeModules,
 } = require('internal/util');
 const {
   makeContextifyScript,
@@ -154,6 +161,7 @@ const internalFsBinding = internalBinding('fs');
 const { safeGetenv } = internalBinding('credentials');
 const {
   getCjsConditions,
+  getCjsConditionsArray,
   initializeCjsConditions,
   loadBuiltinModule,
   makeRequireFunction,
@@ -169,6 +177,7 @@ const {
   registerHooks,
   resolveHooks,
   resolveWithHooks,
+  validateLoadStrict,
 } = require('internal/modules/customization_hooks');
 const { stripTypeScriptModuleTypes } = require('internal/modules/typescript');
 const packageJsonReader = require('internal/modules/package_json_reader');
@@ -224,6 +233,7 @@ let statCache = null;
  * Internal method to add tracing capabilities for Module._load.
  *
  * See more {@link Module._load}
+ * @returns {object}
  */
 function wrapModuleLoad(request, parent, isMain) {
   const logLabel = `[${parent?.id || ''}] [${request}]`;
@@ -245,6 +255,7 @@ function wrapModuleLoad(request, parent, isMain) {
 /**
  * Get a path's properties, using an in-memory cache to minimize lookups.
  * @param {string} filename Absolute path to the file
+ * @returns {number}
  */
 function stat(filename) {
   // Guard against internal bugs where a non-string filename is passed in by mistake.
@@ -255,9 +266,9 @@ function stat(filename) {
     const result = statCache.get(filename);
     if (result !== undefined) { return result; }
   }
-  const result = internalFsBinding.internalModuleStat(internalFsBinding, filename);
+  const result = internalFsBinding.internalModuleStat(filename);
   if (statCache !== null && result >= 0) {
-    // Only set cache when `internalModuleStat(internalFsBinding, filename)` succeeds.
+    // Only set cache when `internalModuleStat(filename)` succeeds.
     statCache.set(filename, result);
   }
   return result;
@@ -280,6 +291,7 @@ ObjectDefineProperty(Module, '_stat', {
  * @param {Module} parent Module requiring the children
  * @param {Module} child Module being required
  * @param {boolean} scan Add the child to the parent's children if not already present
+ * @returns {void}
  */
 function updateChildren(parent, child, scan) {
   const children = parent?.children;
@@ -291,6 +303,7 @@ function updateChildren(parent, child, scan) {
 /**
  * Tell the watch mode that a module was required.
  * @param {string} filename Absolute path of the module
+ * @returns {void}
  */
 function reportModuleToWatchMode(filename) {
   if (shouldReportRequiredModules() && process.send) {
@@ -302,6 +315,7 @@ function reportModuleToWatchMode(filename) {
  * Tell the watch mode that a module was not found.
  * @param {string} basePath The absolute path that errored
  * @param {string[]} extensions The extensions that were tried
+ * @returns {void}
  */
 function reportModuleNotFoundToWatchMode(basePath, extensions) {
   if (shouldReportRequiredModules() && process.send) {
@@ -313,12 +327,14 @@ function reportModuleNotFoundToWatchMode(basePath, extensions) {
  * Create a new module instance.
  * @param {string} id
  * @param {Module} parent
+ * @returns {void}
  */
 function Module(id = '', parent) {
   this.id = id;
   this.path = path.dirname(id);
   setOwnProperty(this, 'exports', {});
-  this[kModuleParent] = parent;
+  this[kFirstModuleParent] = parent;
+  this[kLastModuleParent] = parent;
   updateChildren(parent, this, false);
   this.filename = null;
   this.loaded = false;
@@ -329,7 +345,7 @@ function Module(id = '', parent) {
 Module._cache = { __proto__: null };
 /** @type {Record<string, string>} */
 Module._pathCache = { __proto__: null };
-/** @type {Record<string, (module: Module, filename: string) => void>} */
+/** @type {{[key: string]: function(Module, string): void}} */
 Module._extensions = { __proto__: null };
 /** @type {string[]} */
 let modulePaths = [];
@@ -341,6 +357,7 @@ let patched = false;
 /**
  * Add the CommonJS wrapper around a module's source code.
  * @param {string} script Module source code
+ * @returns {string}
  */
 let wrap = function(script) { // eslint-disable-line func-style
   return Module.wrapper[0] + script + Module.wrapper[1];
@@ -396,18 +413,20 @@ ObjectDefineProperty(BuiltinModule.prototype, 'isPreloading', isPreloadingDesc);
 /**
  * Get the parent of the current module from our cache.
  * @this {Module}
+ * @returns {object}
  */
 function getModuleParent() {
-  return this[kModuleParent];
+  return this[kFirstModuleParent];
 }
 
 /**
  * Set the parent of the current module in our cache.
  * @this {Module}
  * @param {Module} value
+ * @returns {void}
  */
 function setModuleParent(value) {
-  this[kModuleParent] = value;
+  this[kFirstModuleParent] = value;
 }
 
 let debug = debuglog('module', (fn) => {
@@ -435,11 +454,16 @@ Module.isBuiltin = BuiltinModule.isBuiltin;
 /**
  * Prepare to run CommonJS code.
  * This function is called during pre-execution, before any user code is run.
+ * @returns {void}
  */
 function initializeCJS() {
   // This need to be done at runtime in case --expose-internals is set.
-  const builtinModules = BuiltinModule.getCanBeRequiredByUsersWithoutSchemeList();
-  Module.builtinModules = ObjectFreeze(builtinModules);
+
+  let modules = Module.builtinModules = BuiltinModule.getAllBuiltinModuleIds();
+  if (!getOptionValue('--experimental-quic')) {
+    modules = modules.filter((i) => i !== 'node:quic');
+  }
+  Module.builtinModules = ObjectFreeze(modules);
 
   initializeCjsConditions();
 
@@ -450,17 +474,6 @@ function initializeCJS() {
   // TODO(joyeecheung): deprecate this in favor of a proper hook?
   Module.runMain =
     require('internal/modules/run_main').executeUserEntryPoint;
-
-  const tsEnabled = getOptionValue('--experimental-strip-types');
-  if (tsEnabled) {
-    Module._extensions['.cts'] = loadCTS;
-    Module._extensions['.ts'] = loadTS;
-  }
-  if (getOptionValue('--experimental-require-module')) {
-    if (tsEnabled) {
-      Module._extensions['.mts'] = loadMTS;
-    }
-  }
 }
 
 // Given a module name, and a list of paths to test, returns the first
@@ -492,6 +505,7 @@ ObjectDefineProperty(Module, '_readPackage', {
  * @param {string[]} exts File extensions to try appending in order to resolve the file
  * @param {boolean} isMain Whether the file is the main entry point of the app
  * @param {string} originalPath The specifier passed to `require`
+ * @returns {any}
  */
 function tryPackage(requestPath, exts, isMain, originalPath) {
   const { main: pkg, pjsonPath } = _readPackage(requestPath);
@@ -534,6 +548,7 @@ function tryPackage(requestPath, exts, isMain, originalPath) {
  * `--preserve-symlinks-main` and `isMain` is true , keep symlinks intact, otherwise resolve to the absolute realpath.
  * @param {string} requestPath The path to the file to load.
  * @param {boolean} isMain Whether the file is the main module.
+ * @returns {string|undefined}
  */
 function tryFile(requestPath, isMain) {
   const rc = _stat(requestPath);
@@ -549,6 +564,7 @@ function tryFile(requestPath, isMain) {
  * @param {string} basePath The path and filename without extension
  * @param {string[]} exts The extensions to try
  * @param {boolean} isMain Whether the module is the main module
+ * @returns {string|false}
  */
 function tryExtensions(basePath, exts, isMain) {
   for (let i = 0; i < exts.length; i++) {
@@ -564,6 +580,7 @@ function tryExtensions(basePath, exts, isMain) {
 /**
  * Find the longest (possibly multi-dot) extension registered in `Module._extensions`.
  * @param {string} filename The filename to find the longest registered extension for.
+ * @returns {string}
  */
 function findLongestRegisteredExtension(filename) {
   const name = path.basename(filename);
@@ -582,6 +599,7 @@ function findLongestRegisteredExtension(filename) {
 /**
  * Tries to get the absolute file path of the parent module.
  * @param {Module} parent The parent module object.
+ * @returns {string|false|void}
  */
 function trySelfParentPath(parent) {
   if (!parent) { return false; }
@@ -601,6 +619,8 @@ function trySelfParentPath(parent) {
  * Attempt to resolve a module request using the parent module package metadata.
  * @param {string} parentPath The path of the parent module
  * @param {string} request The module request to resolve
+ * @param {unknown} conditions
+ * @returns {false|string}
  */
 function trySelf(parentPath, request, conditions) {
   if (!parentPath) { return false; }
@@ -643,6 +663,8 @@ const EXPORTS_PATTERN = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/;
  * Resolves the exports for a given module path and request.
  * @param {string} nmPath The path to the module.
  * @param {string} request The request for the module.
+ * @param {Set<string>} conditions The conditions to use for resolution.
+ * @returns {undefined|string}
  */
 function resolveExports(nmPath, request, conditions) {
   // The implementation's behavior is meant to mirror resolution in ESM.
@@ -664,31 +686,6 @@ function resolveExports(nmPath, request, conditions) {
       throw e;
     }
   }
-}
-
-// We don't cache this in case user extends the extensions.
-function getDefaultExtensions() {
-  let extensions = ObjectKeys(Module._extensions);
-  const tsEnabled = getOptionValue('--experimental-strip-types');
-  if (tsEnabled) {
-    // remove .ts and .cts from the default extensions
-    // to avoid extensionless require of .ts and .cts files.
-    extensions = ArrayPrototypeFilter(extensions, (ext) =>
-      (ext !== '.ts' || Module._extensions['.ts'] !== loadTS) &&
-      (ext !== '.cts' || Module._extensions['.cts'] !== loadCTS),
-    );
-  }
-
-  if (!getOptionValue('--experimental-require-module')) {
-    return extensions;
-  }
-
-  if (tsEnabled) {
-    extensions = ArrayPrototypeFilter(extensions, (ext) =>
-      ext !== '.mts' || Module._extensions['.mts'] !== loadMTS,
-    );
-  }
-  return extensions;
 }
 
 /**
@@ -782,7 +779,7 @@ Module._findPath = function(request, paths, isMain, conditions = getCjsCondition
       if (!filename) {
         // Try it with each of the extensions
         if (exts === undefined) {
-          exts = getDefaultExtensions();
+          exts = ObjectKeys(Module._extensions);
         }
         filename = tryExtensions(basePath, exts, isMain);
       }
@@ -791,7 +788,7 @@ Module._findPath = function(request, paths, isMain, conditions = getCjsCondition
     if (!filename && rc === 1) {  // Directory.
       // try it with each of the extensions at "index"
       if (exts === undefined) {
-        exts = getDefaultExtensions();
+        exts = ObjectKeys(Module._extensions);
       }
       filename = tryPackage(basePath, exts, isMain, request);
     }
@@ -818,6 +815,7 @@ if (isWindows) {
   /**
    * Get the paths to the `node_modules` folder for a given path.
    * @param {string} from `__dirname` of the module
+   * @returns {string[]}
    */
   Module._nodeModulePaths = function(from) {
     // Guarantee that 'from' is absolute.
@@ -870,6 +868,7 @@ if (isWindows) {
   /**
    * Get the paths to the `node_modules` folder for a given path.
    * @param {string} from `__dirname` of the module
+   * @returns {string[]}
    */
   Module._nodeModulePaths = function(from) {
     // Guarantee that 'from' is absolute.
@@ -916,6 +915,7 @@ if (isWindows) {
  * Get the paths for module resolution.
  * @param {string} request
  * @param {Module} parent
+ * @returns {null|string[]}
  */
 Module._resolveLookupPaths = function(request, parent) {
   if (BuiltinModule.normalizeRequirableId(request)) {
@@ -963,6 +963,7 @@ Module._resolveLookupPaths = function(request, parent) {
 /**
  * Emits a warning when a non-existent property of module exports is accessed inside a circular dependency.
  * @param {string} prop The name of the non-existent property.
+ * @returns {void}
  */
 function emitCircularRequireWarning(prop) {
   process.emitWarning(
@@ -999,12 +1000,13 @@ const CircularRequirePrototypeWarningProxy = new Proxy({}, {
  * If the exports object is a plain object, it is wrapped in a proxy that warns
  * about circular dependencies.
  * @param {Module} module The module instance
+ * @returns {object}
  */
 function getExportsForCircularRequire(module) {
   const requiredESM = module[kRequiredModuleSymbol];
   if (requiredESM && requiredESM.getStatus() !== kEvaluated) {
     let message = `Cannot require() ES Module ${module.id} in a cycle.`;
-    const parent = module[kModuleParent];
+    const parent = module[kLastModuleParent];
     if (parent) {
       message += ` (from ${parent.filename})`;
     }
@@ -1076,9 +1078,22 @@ function resolveForCJSWithHooks(specifier, parent, isMain) {
   function defaultResolve(specifier, context) {
     // TODO(joyeecheung): parent and isMain should be part of context, then we
     // no longer need to use a different defaultResolve for every resolution.
+    // In the hooks, context.conditions is passed around as an array, but internally
+    // the resolution helpers expect a SafeSet. Do the conversion here.
+    let conditionSet;
+    const conditions = context.conditions;
+    if (conditions !== undefined && conditions !== getCjsConditionsArray()) {
+      if (!ArrayIsArray(conditions)) {
+        throw new ERR_INVALID_ARG_VALUE('context.conditions', conditions,
+                                        'expected an array');
+      }
+      conditionSet = new SafeSet(conditions);
+    } else {
+      conditionSet = getCjsConditions();
+    }
     defaultResolvedFilename = defaultResolveImpl(specifier, parent, isMain, {
       __proto__: null,
-      conditions: context.conditions,
+      conditions: conditionSet,
     });
 
     defaultResolvedURL = convertCJSFilenameToURL(defaultResolvedFilename);
@@ -1086,7 +1101,7 @@ function resolveForCJSWithHooks(specifier, parent, isMain) {
   }
 
   const resolveResult = resolveWithHooks(specifier, parentURL, /* importAttributes */ undefined,
-                                         getCjsConditions(), defaultResolve);
+                                         getCjsConditionsArray(), defaultResolve);
   const { url } = resolveResult;
   format = resolveResult.format;
 
@@ -1101,8 +1116,8 @@ function resolveForCJSWithHooks(specifier, parent, isMain) {
 }
 
 /**
- * @typedef {import('internal/modules/customization_hooks').ModuleLoadContext} ModuleLoadContext;
- * @typedef {import('internal/modules/customization_hooks').ModuleLoadResult} ModuleLoadResult;
+ * @typedef {import('internal/modules/customization_hooks').ModuleLoadContext} ModuleLoadContext
+ * @typedef {import('internal/modules/customization_hooks').ModuleLoadResult} ModuleLoadResult
  */
 
 /**
@@ -1152,17 +1167,17 @@ function getDefaultLoad(url, filename) {
 /**
  * Load a specified builtin module, invoking load hooks if necessary.
  * @param {string} id The module ID (without the node: prefix)
- * @param {string} url  The module URL (with the node: prefix)
+ * @param {string} url The module URL (with the node: prefix)
  * @param {string} format Format from resolution.
  * @returns {any} If there are no load hooks or the load hooks do not override the format of the
- *                builtin, load and return the exports of the builtin. Otherwise, return undefined.
+ *   builtin, load and return the exports of the builtin. Otherwise, return undefined.
  */
 function loadBuiltinWithHooks(id, url, format) {
   if (loadHooks.length) {
     url ??= `node:${id}`;
     // TODO(joyeecheung): do we really want to invoke the load hook for the builtins?
     const loadResult = loadWithHooks(url, format || 'builtin', /* importAttributes */ undefined,
-                                     getCjsConditions(), getDefaultLoad(url, id));
+                                     getCjsConditionsArray(), getDefaultLoad(url, id), validateLoadStrict);
     if (loadResult.format && loadResult.format !== 'builtin') {
       return undefined;  // Format has been overridden, return undefined for the caller to continue loading.
     }
@@ -1184,6 +1199,7 @@ function loadBuiltinWithHooks(id, url, format) {
  * @param {string} request Specifier of module to load via `require`
  * @param {Module} parent Absolute path of the module importing the child
  * @param {boolean} isMain Whether the module is the main entry point
+ * @returns {object}
  */
 Module._load = function(request, parent, isMain) {
   let relResolveCacheIdentifier;
@@ -1271,6 +1287,8 @@ Module._load = function(request, parent, isMain) {
     // load hooks for the module keyed by the (potentially customized) filename.
     module[kURL] = url;
     module[kFormat] = format;
+  } else {
+    module[kLastModuleParent] = parent;
   }
 
   if (parent !== undefined) {
@@ -1313,7 +1331,8 @@ Module._load = function(request, parent, isMain) {
  * @param {ResolveFilenameOptions} options Options object
  * @typedef {object} ResolveFilenameOptions
  * @property {string[]} paths Paths to search for modules in
- * @property {string[]} conditions Conditions used for resolution.
+ * @property {Set<string>?} conditions The conditions to use for resolution.
+ * @returns {void|string}
  */
 Module._resolveFilename = function(request, parent, isMain, options) {
   if (BuiltinModule.normalizeRequirableId(request)) {
@@ -1389,7 +1408,8 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   const requireStack = [];
   for (let cursor = parent;
     cursor;
-    cursor = cursor[kModuleParent]) {
+    // TODO(joyeecheung): it makes more sense to use kLastModuleParent here.
+    cursor = cursor[kFirstModuleParent]) {
     ArrayPrototypePush(requireStack, cursor.filename || cursor.id);
   }
   let message = `Cannot find module '${request}'`;
@@ -1411,6 +1431,7 @@ Module._resolveFilename = function(request, parent, isMain, options) {
  * @param {string} pkgPath The path of the package.json file
  * @throws {ERR_INVALID_MODULE_SPECIFIER} If the resolved module specifier contains encoded `/` or `\\` characters
  * @throws {Error} If the module cannot be found
+ * @returns {void|string|undefined}
  */
 function finalizeEsmResolution(resolved, parentPath, pkgPath) {
   const { encodedSepRegEx } = require('internal/modules/esm/resolve');
@@ -1423,14 +1444,14 @@ function finalizeEsmResolution(resolved, parentPath, pkgPath) {
   if (actual) {
     return actual;
   }
-  const err = createEsmNotFoundErr(filename, pkgPath);
-  throw err;
+  throw createEsmNotFoundErr(filename, pkgPath);
 }
 
 /**
  * Creates an error object for when a requested ES module cannot be found.
  * @param {string} request The name of the requested module
  * @param {string} [path] The path to the requested module
+ * @returns {Error}
  */
 function createEsmNotFoundErr(request, path) {
   // eslint-disable-next-line no-restricted-syntax
@@ -1446,6 +1467,7 @@ function createEsmNotFoundErr(request, path) {
 /**
  * Given a file name, pass it to the proper extension handler.
  * @param {string} filename The `require` specifier
+ * @returns {void}
  */
 Module.prototype.load = function(filename) {
   debug('load %j for module %j', filename, this.id);
@@ -1455,12 +1477,6 @@ Module.prototype.load = function(filename) {
   this.paths ??= Module._nodeModulePaths(path.dirname(filename));
 
   const extension = findLongestRegisteredExtension(filename);
-
-  if (getOptionValue('--experimental-strip-types')) {
-    if (StringPrototypeEndsWith(filename, '.mts') && !Module._extensions['.mts']) {
-      throw new ERR_REQUIRE_ESM(filename, true);
-    }
-  }
 
   Module._extensions[extension](this, filename);
   this.loaded = true;
@@ -1475,6 +1491,7 @@ Module.prototype.load = function(filename) {
  * Loads a module at the given file path. Returns that module's `exports` property.
  * @param {string} id
  * @throws {ERR_INVALID_ARG_TYPE} When `id` is not a string
+ * @returns {any}
  */
 Module.prototype.require = function(id) {
   validateString(id, 'id');
@@ -1504,12 +1521,12 @@ function loadESMFromCJS(mod, filename, format, source) {
   if (isMain) {
     require('internal/modules/run_main').runEntryPointWithESMLoader((cascadedLoader) => {
       const mainURL = pathToFileURL(filename).href;
-      return cascadedLoader.import(mainURL, undefined, { __proto__: null }, true);
+      return cascadedLoader.import(mainURL, undefined, { __proto__: null }, undefined, true);
     });
     // ESM won't be accessible via process.mainModule.
     setOwnProperty(process, 'mainModule', undefined);
   } else {
-    const parent = mod[kModuleParent];
+    const parent = mod[kLastModuleParent];
 
     requireModuleWarningMode ??= getOptionValue('--trace-require-module');
     if (requireModuleWarningMode) {
@@ -1559,54 +1576,66 @@ function loadESMFromCJS(mod, filename, format, source) {
       wrap,
       namespace,
     } = cascadedLoader.importSyncForRequire(mod, filename, source, isMain, parent);
-    // Tooling in the ecosystem have been using the __esModule property to recognize
-    // transpiled ESM in consuming code. For example, a 'log' package written in ESM:
-    //
-    // export default function log(val) { console.log(val); }
-    //
-    // Can be transpiled as:
-    //
-    // exports.__esModule = true;
-    // exports.default = function log(val) { console.log(val); }
-    //
-    // The consuming code may be written like this in ESM:
-    //
-    // import log from 'log'
-    //
-    // Which gets transpiled to:
-    //
-    // const _mod = require('log');
-    // const log = _mod.__esModule ? _mod.default : _mod;
-    //
-    // So to allow transpiled consuming code to recognize require()'d real ESM
-    // as ESM and pick up the default exports, we add a __esModule property by
-    // building a source text module facade for any module that has a default
-    // export and add .__esModule = true to the exports. This maintains the
-    // enumerability of the re-exported names and the live binding of the exports,
-    // without incurring a non-trivial per-access overhead on the exports.
-    //
-    // The source of the facade is defined as a constant per-isolate property
-    // required_module_default_facade_source_string, which looks like this
-    //
-    // export * from 'original';
-    // export { default } from 'original';
-    // export const __esModule = true;
-    //
-    // And the 'original' module request is always resolved by
-    // createRequiredModuleFacade() to `wrap` which is a ModuleWrap wrapping
-    // over the original module.
 
-    // We don't do this to modules that are marked as CJS ESM or that
-    // don't have default exports to avoid the unnecessary overhead.
-    // If __esModule is already defined, we will also skip the extension
-    // to allow users to override it.
-    if (ObjectHasOwn(namespace, 'module.exports')) {
-      mod.exports = namespace['module.exports'];
-    } else if (!ObjectHasOwn(namespace, 'default') || ObjectHasOwn(namespace, '__esModule')) {
-      mod.exports = namespace;
-    } else {
-      mod.exports = createRequiredModuleFacade(wrap);
-    }
+    populateCJSExportsFromESM(mod, wrap, namespace);
+  }
+}
+
+/**
+ * Populate the exports of a CJS module entry from an ESM module's namespace object for
+ * require(esm).
+ * @param {Module} mod CJS module instance
+ * @param {ModuleWrap} wrap ESM ModuleWrap instance.
+ * @param {object} namespace The ESM namespace object.
+ */
+function populateCJSExportsFromESM(mod, wrap, namespace) {
+  // Tooling in the ecosystem have been using the __esModule property to recognize
+  // transpiled ESM in consuming code. For example, a 'log' package written in ESM:
+  //
+  // export default function log(val) { console.log(val); }
+  //
+  // Can be transpiled as:
+  //
+  // exports.__esModule = true;
+  // exports.default = function log(val) { console.log(val); }
+  //
+  // The consuming code may be written like this in ESM:
+  //
+  // import log from 'log'
+  //
+  // Which gets transpiled to:
+  //
+  // const _mod = require('log');
+  // const log = _mod.__esModule ? _mod.default : _mod;
+  //
+  // So to allow transpiled consuming code to recognize require()'d real ESM
+  // as ESM and pick up the default exports, we add a __esModule property by
+  // building a source text module facade for any module that has a default
+  // export and add .__esModule = true to the exports. This maintains the
+  // enumerability of the re-exported names and the live binding of the exports,
+  // without incurring a non-trivial per-access overhead on the exports.
+  //
+  // The source of the facade is defined as a constant per-isolate property
+  // required_module_default_facade_source_string, which looks like this
+  //
+  // export * from 'original';
+  // export { default } from 'original';
+  // export const __esModule = true;
+  //
+  // And the 'original' module request is always resolved by
+  // createRequiredModuleFacade() to `wrap` which is a ModuleWrap wrapping
+  // over the original module.
+
+  // We don't do this to modules that are marked as CJS ESM or that
+  // don't have default exports to avoid the unnecessary overhead.
+  // If __esModule is already defined, we will also skip the extension
+  // to allow users to override it.
+  if (ObjectHasOwn(namespace, 'module.exports')) {
+    mod.exports = namespace['module.exports'];
+  } else if (!ObjectHasOwn(namespace, 'default') || ObjectHasOwn(namespace, '__esModule')) {
+    mod.exports = namespace;
+  } else {
+    mod.exports = createRequiredModuleFacade(wrap);
   }
 }
 
@@ -1616,6 +1645,7 @@ function loadESMFromCJS(mod, filename, format, source) {
  * @param {string} content The content of the file being loaded
  * @param {Module|undefined} cjsModuleInstance The CommonJS loader instance
  * @param {'commonjs'|undefined} format Intended format of the module.
+ * @returns {object}
  */
 function wrapSafe(filename, content, cjsModuleInstance, format) {
   assert(format !== 'module', 'ESM should be handled in loadESMFromCJS()');
@@ -1675,7 +1705,8 @@ function wrapSafe(filename, content, cjsModuleInstance, format) {
  * @param {string} content The source code of the module
  * @param {string} filename The file path of the module
  * @param {'module'|'commonjs'|'commonjs-typescript'|'module-typescript'|'typescript'} format
- * Intended format of the module.
+ *   Intended format of the module.
+ * @returns {any}
  */
 Module.prototype._compile = function(content, filename, format) {
   if (format === 'commonjs-typescript' || format === 'module-typescript' || format === 'typescript') {
@@ -1762,9 +1793,9 @@ function loadSource(mod, filename, formatFromNode) {
     mod[kURL] = convertCJSFilenameToURL(filename);
   }
 
-  const loadResult = loadWithHooks(mod[kURL], mod[kFormat], /* importAttributes */ undefined, getCjsConditions(),
-                                   getDefaultLoad(mod[kURL], filename));
-
+  const defaultLoad = getDefaultLoad(mod[kURL], filename);
+  const loadResult = loadWithHooks(mod[kURL], mod[kFormat], /* importAttributes */ undefined,
+                                   getCjsConditionsArray(), defaultLoad, validateLoadStrict);
   // Reset the module properties with load hook results.
   if (loadResult.format !== undefined) {
     mod[kFormat] = loadResult.format;
@@ -1772,55 +1803,6 @@ function loadSource(mod, filename, formatFromNode) {
   mod[kModuleSource] = loadResult.source;
   return { source: mod[kModuleSource], format: mod[kFormat] };
 }
-
-/**
- * Built-in handler for `.mts` files.
- * @param {Module} mod CJS module instance
- * @param {string} filename The file path of the module
- */
-function loadMTS(mod, filename) {
-  const loadResult = loadSource(mod, filename, 'module-typescript');
-  mod._compile(loadResult.source, filename, loadResult.format);
-}
-
-/**
- * Built-in handler for `.cts` files.
- * @param {Module} module CJS module instance
- * @param {string} filename The file path of the module
- */
-function loadCTS(module, filename) {
-  const loadResult = loadSource(module, filename, 'commonjs-typescript');
-  module._compile(loadResult.source, filename, loadResult.format);
-}
-
-/**
- * Built-in handler for `.ts` files.
- * @param {Module} module CJS module instance
- * @param {string} filename The file path of the module
- */
-function loadTS(module, filename) {
-  const pkg = packageJsonReader.getNearestParentPackageJSON(filename);
-  const typeFromPjson = pkg?.data.type;
-
-  let format;
-  if (typeFromPjson === 'module') {
-    format = 'module-typescript';
-  } else if (typeFromPjson === 'commonjs') {
-    format = 'commonjs-typescript';
-  } else {
-    format = 'typescript';
-  }
-  const loadResult = loadSource(module, filename, format);
-
-  // Function require shouldn't be used in ES modules when require(esm) is disabled.
-  if (typeFromPjson === 'module' && !getOptionValue('--experimental-require-module')) {
-    const err = getRequireESMError(module, pkg, loadResult.source, filename);
-    throw err;
-  }
-
-  module[kFormat] = loadResult.format;
-  module._compile(loadResult.source, filename, loadResult.format);
-};
 
 function reconstructErrorStack(err, parentPath, parentSource) {
   const errLine = StringPrototypeSplit(
@@ -1845,7 +1827,7 @@ function reconstructErrorStack(err, parentPath, parentSource) {
  */
 function getRequireESMError(mod, pkg, content, filename) {
   // This is an error path because `require` of a `.js` file in a `"type": "module"` scope is not allowed.
-  const parent = mod[kModuleParent];
+  const parent = mod[kFirstModuleParent];
   const parentPath = parent?.filename;
   const packageJsonPath = pkg?.path;
   const usesEsm = containsModuleSyntax(content, filename);
@@ -1875,6 +1857,7 @@ function getRequireESMError(mod, pkg, content, filename) {
  */
 Module._extensions['.js'] = function(module, filename) {
   let format, pkg;
+  const tsEnabled = getOptionValue('--strip-types');
   if (StringPrototypeEndsWith(filename, '.cjs')) {
     format = 'commonjs';
   } else if (StringPrototypeEndsWith(filename, '.mjs')) {
@@ -1885,10 +1868,25 @@ Module._extensions['.js'] = function(module, filename) {
     if (typeFromPjson === 'module' || typeFromPjson === 'commonjs' || !typeFromPjson) {
       format = typeFromPjson;
     }
+  } else if (StringPrototypeEndsWith(filename, '.mts') && tsEnabled) {
+    format = 'module-typescript';
+  } else if (StringPrototypeEndsWith(filename, '.cts') && tsEnabled) {
+    format = 'commonjs-typescript';
+  } else if (StringPrototypeEndsWith(filename, '.ts') && tsEnabled) {
+    pkg = packageJsonReader.getNearestParentPackageJSON(filename);
+    const typeFromPjson = pkg?.data.type;
+    if (typeFromPjson === 'module') {
+      format = 'module-typescript';
+    } else if (typeFromPjson === 'commonjs') {
+      format = 'commonjs-typescript';
+    } else {
+      format = 'typescript';
+    }
   }
   const { source, format: loadedFormat } = loadSource(module, filename, format);
   // Function require shouldn't be used in ES modules when require(esm) is disabled.
-  if (loadedFormat === 'module' && !getOptionValue('--experimental-require-module')) {
+  if ((loadedFormat === 'module' || loadedFormat === 'module-typescript') &&
+    !getOptionValue('--experimental-require-module')) {
     const err = getRequireESMError(module, pkg, source, filename);
     throw err;
   }
@@ -1915,6 +1913,7 @@ Module._extensions['.json'] = function(module, filename) {
  * Native handler for `.node` files.
  * @param {Module} module The module to compile
  * @param {string} filename The file path of the module
+ * @returns {any}
  */
 Module._extensions['.node'] = function(module, filename) {
   // Be aware this doesn't use `content`
@@ -1924,6 +1923,7 @@ Module._extensions['.node'] = function(module, filename) {
 /**
  * Creates a `require` function that can be used to load modules from the specified path.
  * @param {string} filename The path to the module
+ * @returns {any}
  */
 function createRequireFromPath(filename) {
   // Allow a directory to be passed as the filename
@@ -1950,6 +1950,7 @@ const createRequireError = 'must be a file URL object, file URL string, or ' +
  * @param {string | URL} filename The path or URL to the module context for this `require`
  * @throws {ERR_INVALID_ARG_VALUE} If `filename` is not a string or URL, or if it is a relative path that cannot be
  * resolved to an absolute path.
+ * @returns {object}
  */
 function createRequire(filename) {
   let filepath;

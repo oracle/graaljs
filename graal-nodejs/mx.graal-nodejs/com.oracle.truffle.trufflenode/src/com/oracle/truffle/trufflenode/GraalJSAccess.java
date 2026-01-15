@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,11 @@ package com.oracle.truffle.trufflenode;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantFalse;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantUndefined;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.GcBuiltinRoot;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.GetContinuationPreservedEmbedderData;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototype;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototypeGlobal;
 import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.SetBreakPoint;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.SetContinuationPreservedEmbedderData;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
@@ -181,6 +183,7 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
 import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -251,6 +254,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.CyclicModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
@@ -320,6 +324,8 @@ public final class GraalJSAccess {
     public static final TruffleString SHEBANG = Strings.constant("#!");
     public static final TruffleString EXECUTION = Strings.constant("execution");
     public static final TruffleString ASYNC = Strings.constant("async");
+    public static final TruffleString GET_CONTINUATION_PRESERVED_EMBEDDER_DATA = Strings.constant("getContinuationPreservedEmbedderData");
+    public static final TruffleString SET_CONTINUATION_PRESERVED_EMBEDDER_DATA = Strings.constant("setContinuationPreservedEmbedderData");
 
     private static final boolean VERBOSE = Boolean.getBoolean("truffle.node.js.verbose");
     private static final boolean USE_NIO_BUFFER = !"false".equals(System.getProperty("node.buffer.nio"));
@@ -333,6 +339,7 @@ public final class GraalJSAccess {
 
     private static final Symbol RESOLVER_RESOLVE = Symbol.createPrivate(RESOLVE);
     private static final Symbol RESOLVER_REJECT = Symbol.createPrivate(REJECT);
+    private static final Symbol CONTINUATION_DATA_SYMBOL = Symbol.createPrivate(Strings.constant("continuationData"));
 
     public static final HiddenKey HOLDER_KEY = new HiddenKey("Holder");
     public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
@@ -1035,6 +1042,11 @@ public final class GraalJSAccess {
         return true;
     }
 
+    public void templateSetLazyDataProperty(Object template, Object key, long getterPtr, Object data, int attributes) {
+        int flags = propertyAttributes(attributes);
+        getObjectTemplate(template).addValue(new Value(key, new LazyDataProperty(key, getterPtr, data, flags), flags));
+    }
+
     static class LazyDataProperty extends PropertyProxy {
         private final Object key;
         private final long getterPtr;
@@ -1702,6 +1714,14 @@ public final class GraalJSAccess {
         return Symbol.SYMBOL_UNSCOPABLES;
     }
 
+    public Object symbolGetDispose() {
+        return Symbol.SYMBOL_DISPOSE;
+    }
+
+    public Object symbolGetAsyncDispose() {
+        return Symbol.SYMBOL_ASYNC_DISPOSE;
+    }
+
     public Object symbolFor(Object description) {
         TruffleString stringDesc = (TruffleString) description;
         Map<TruffleString, Symbol> registry = mainJSContext.getSymbolRegistry();
@@ -1880,14 +1900,16 @@ public final class GraalJSAccess {
         throw exceptionObjectToException(exceptionObject);
     }
 
-    public void templateSet(Object templateObj, Object name, Object value, int attributes) {
-        ObjectTemplate template;
-        if (templateObj instanceof FunctionTemplate) {
-            template = ((FunctionTemplate) templateObj).getFunctionObjectTemplate();
+    private static ObjectTemplate getObjectTemplate(Object template) {
+        if (template instanceof FunctionTemplate) {
+            return ((FunctionTemplate) template).getFunctionObjectTemplate();
         } else {
-            template = (ObjectTemplate) templateObj;
+            return (ObjectTemplate) template;
         }
-        template.addValue(new Value(name, value, propertyAttributes(attributes)));
+    }
+
+    public void templateSet(Object template, Object name, Object value, int attributes) {
+        getObjectTemplate(template).addValue(new Value(name, value, propertyAttributes(attributes)));
     }
 
     public void templateSetAccessorProperty(Object templateObj, Object name, Object getter, Object setter, int attributes) {
@@ -2140,6 +2162,8 @@ public final class GraalJSAccess {
                 Object getter = (getterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, getterTemplate);
                 Object setter = (setterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, setterTemplate);
                 JSObjectUtil.defineAccessorProperty(context, obj, name, (JSDynamicObject) getter, (JSDynamicObject) setter, attributes);
+            } else if (processedValue instanceof PropertyProxy proxy) {
+                JSObjectUtil.defineProxyProperty(obj, name, proxy, attributes);
             } else {
                 if (name instanceof HiddenKey) {
                     if (!template.hasPropertyHandler()) {
@@ -3024,7 +3048,62 @@ public final class GraalJSAccess {
         });
         JSDynamicObject traceFunction = JSFunction.create(realm, traceFunctionData);
         JSObject.set(extras, TRACE, traceFunction);
+
+        JSFunctionData getContinuationData = engineCacheData.getOrCreateFunctionData(GetContinuationPreservedEmbedderData, GraalJSAccess::createGetContinuationPreservedEmbedderData);
+        JSDynamicObject getContinuationFunction = JSFunction.create(realm, getContinuationData);
+        JSObject.set(extras, GET_CONTINUATION_PRESERVED_EMBEDDER_DATA, getContinuationFunction);
+
+        JSFunctionData setContinuationData = engineCacheData.getOrCreateFunctionData(SetContinuationPreservedEmbedderData, GraalJSAccess::createSetContinuationPreservedEmbedderData);
+        JSDynamicObject setContinuationFunction = JSFunction.create(realm, setContinuationData);
+        JSObject.set(extras, SET_CONTINUATION_PRESERVED_EMBEDDER_DATA, setContinuationFunction);
+
         return extras;
+    }
+
+    private static JSFunctionData createGetContinuationPreservedEmbedderData(JSContext context) {
+        class GetContinuationPreservedEmbedderData extends JavaScriptRootNode {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return getContinuationPreservedEmbedderData(getRealm());
+            }
+        }
+        CallTarget callTarget = new GetContinuationPreservedEmbedderData().getCallTarget();
+        return JSFunctionData.createCallOnly(context, callTarget, 0, GET_CONTINUATION_PRESERVED_EMBEDDER_DATA);
+    }
+
+    private static JSFunctionData createSetContinuationPreservedEmbedderData(JSContext context) {
+        class SetContinuationPreservedEmbedderData extends JavaScriptRootNode {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object data = Undefined.instance;
+                Object[] args = frame.getArguments();
+                if (JSArguments.getUserArgumentCount(args) != 0) {
+                    data = JSArguments.getUserArgument(args, 0);
+                }
+                setContinuationPreservedEmbedderData(getRealm(), data);
+                return Undefined.instance;
+            }
+        }
+        CallTarget callTarget = new SetContinuationPreservedEmbedderData().getCallTarget();
+        return JSFunctionData.createCallOnly(context, callTarget, 1, SET_CONTINUATION_PRESERVED_EMBEDDER_DATA);
+    }
+
+    public Object isolateGetContinuationPreservedEmbedderData() {
+        return getContinuationPreservedEmbedderData(mainJSRealm);
+    }
+
+    private static Object getContinuationPreservedEmbedderData(JSRealm realm) {
+        return realm.getAgent().getAsyncContextMapping().getOrDefault(CONTINUATION_DATA_SYMBOL, Undefined.instance);
+    }
+
+    public void isolateSetContinuationPreservedEmbedderData(Object data) {
+        setContinuationPreservedEmbedderData(mainJSRealm, data == null ? Undefined.instance : data);
+    }
+
+    private static void setContinuationPreservedEmbedderData(JSRealm realm, Object data) {
+        JSAgent agent = realm.getAgent();
+        AsyncContext asyncContext = agent.getAsyncContextMapping();
+        agent.asyncContextSwap(asyncContext.withMapping(CONTINUATION_DATA_SYMBOL, data));
     }
 
     public void contextSetPointerInEmbedderData(Object context, int index, long pointer) {
@@ -3299,7 +3378,7 @@ public final class GraalJSAccess {
         return mainJSContext.getLocale().toLanguageTag();
     }
 
-    public void isolateDispose(boolean exit, int status) {
+    public void isolateDeinitialize(boolean exit, int status) {
         agent.setTaskRunnerPointer(0);
         if (exit) {
             exit(status);
@@ -3427,7 +3506,7 @@ public final class GraalJSAccess {
     private static final class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
         @Override
         public JSDynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
-            Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
+            Object importAttributes = moduleRequestGetImportAttributesImpl(moduleRequest, false);
             Object resourceName;
             Object hostDefinedOptions;
             if (referrer == null) {
@@ -3438,7 +3517,11 @@ public final class GraalJSAccess {
                 resourceName = Strings.fromJavaString(referrer.getSource().getName());
                 hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
             }
-            return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), importAssertions);
+            if (moduleRequest.phase() == Module.ImportPhase.Evaluation) {
+                return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), importAttributes);
+            }
+            int phase = moduleRequestGetPhaseImpl(moduleRequest);
+            return (JSDynamicObject) NativeAccess.executeImportModuleWithPhaseDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.specifier(), phase, importAttributes);
         }
     }
 
@@ -3803,6 +3886,11 @@ public final class GraalJSAccess {
         return JSFunction.call(JSArguments.create(Undefined.instance, resolverFactory, RESOLVER_RESOLVE, RESOLVER_REJECT));
     }
 
+    public Object promiseThen(Object promise, Object onFulfilled, Object onRejected) {
+        Object then = JSRuntime.get(promise, JSPromise.THEN);
+        return JSRuntime.call(then, promise, new Object[]{onFulfilled, onRejected});
+    }
+
     private JSDynamicObject getResolverFactory(Object realm) {
         RealmData data = getRealmEmbedderData(realm);
         JSDynamicObject resolverFactory = data.getResolverFactory();
@@ -3946,6 +4034,10 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
+    public boolean moduleHasTopLevelAwait(Object module) {
+        return (module instanceof CyclicModuleRecord record) && record.hasTLA();
+    }
+
     public boolean moduleIsGraphAsync(Object module) {
         if (!(module instanceof CyclicModuleRecord record)) {
             // synthetic modules are never async
@@ -3977,7 +4069,7 @@ public final class GraalJSAccess {
         return ((ModuleRequest) moduleRequest).specifier();
     }
 
-    private static Object[] moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
+    private static Object[] moduleRequestGetImportAttributesImpl(ModuleRequest request, boolean withSourceOffset) {
         List<Object> attributes = new ArrayList<>();
         for (Map.Entry<TruffleString, TruffleString> entry : request.attributes().entrySet()) {
             attributes.add(entry.getKey());
@@ -3989,9 +4081,18 @@ public final class GraalJSAccess {
         return attributes.toArray();
     }
 
-    public Object moduleRequestGetImportAssertions(Object moduleRequest) {
+    public Object moduleRequestGetImportAttributes(Object moduleRequest) {
         ModuleRequest request = (ModuleRequest) moduleRequest;
-        return moduleRequestGetImportAssertionsImpl(request, true);
+        return moduleRequestGetImportAttributesImpl(request, true);
+    }
+
+    public int moduleRequestGetPhase(Object moduleRequest) {
+        return moduleRequestGetPhaseImpl((ModuleRequest) moduleRequest);
+    }
+
+    static int moduleRequestGetPhaseImpl(ModuleRequest moduleRequest) {
+        Module.ImportPhase phase = moduleRequest.phase();
+        return (phase == Module.ImportPhase.Source) ? 0 /* kSource */ : 1 /* kEvaluation */;
     }
 
     public void moduleSetSyntheticModuleExport(Object module, Object exportName, Object exportValue) {
@@ -4018,8 +4119,7 @@ public final class GraalJSAccess {
     }
 
     public Object valueSerializerNew(long delegatePointer) {
-        TruffleLanguage.Env env = getCurrentRealm().getEnv();
-        return new Serializer(env, this, delegatePointer);
+        return new Serializer(this, delegatePointer);
     }
 
     public int valueSerializerSize(Object serializer) {
@@ -4260,6 +4360,20 @@ public final class GraalJSAccess {
         }
     }
 
+    public Object dictionaryTemplateNewInstance(Object context, Object names, Object[] values) {
+        JSRealm realm = (JSRealm) context;
+        JSObject object = JSOrdinary.create(realm.getContext(), realm);
+        Object[] nameArray = (Object[]) names;
+        for (int i = 0; i < nameArray.length; i++) {
+            Object value = values[i];
+            if (value != null) {
+                TruffleString key = Strings.fromJavaString((String) nameArray[i]);
+                JSObject.set(object, key, value);
+            }
+        }
+        return object;
+    }
+
     public static class WeakCallback extends WeakReference<Object> {
 
         long data;
@@ -4311,7 +4425,7 @@ public final class GraalJSAccess {
     }
 
     static class ESModuleLoader implements JSModuleLoader {
-        private final Map<ScriptOrModule, Map<TruffleString, AbstractModuleRecord>> cache = new HashMap<>();
+        private final Map<ScriptOrModule, Map<ModuleRequest, AbstractModuleRecord>> cache = new HashMap<>();
         private long resolver;
 
         void setResolver(long resolver) {
@@ -4320,13 +4434,12 @@ public final class GraalJSAccess {
 
         @Override
         public AbstractModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
-            Map<TruffleString, AbstractModuleRecord> referrerCache = cache.get(referrer);
-            TruffleString specifier = moduleRequest.specifier();
+            Map<ModuleRequest, AbstractModuleRecord> referrerCache = cache.get(referrer);
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();
                 cache.put(referrer, referrerCache);
             } else {
-                AbstractModuleRecord cached = referrerCache.get(specifier);
+                AbstractModuleRecord cached = referrerCache.get(moduleRequest);
                 if (cached != null) {
                     return cached;
                 }
@@ -4336,10 +4449,11 @@ public final class GraalJSAccess {
                 System.err.println("Cannot resolve module outside module instantiation!");
                 System.exit(1);
             }
-            Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, true);
+            TruffleString specifier = moduleRequest.specifier();
+            Object importAttributes = moduleRequestGetImportAttributesImpl(moduleRequest, true);
             JSRealm realm = JSRealm.get(null);
-            AbstractModuleRecord result = (AbstractModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAssertions, referrer);
-            referrerCache.put(specifier, result);
+            AbstractModuleRecord result = (AbstractModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAttributes, referrer);
+            referrerCache.put(moduleRequest, result);
             return result;
         }
     }

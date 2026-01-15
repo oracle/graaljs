@@ -26,6 +26,7 @@
 
 #include "uv.h"
 #include "v8-inspector.h"
+#include "v8-profiler.h"
 #include "v8.h"
 
 #include "node.h"
@@ -43,7 +44,9 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <set>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -315,7 +318,7 @@ class KVStore {
                         v8::Local<v8::String> key) const = 0;
   virtual int32_t Query(const char* key) const = 0;
   virtual void Delete(v8::Isolate* isolate, v8::Local<v8::String> key) = 0;
-  virtual v8::Local<v8::Array> Enumerate(v8::Isolate* isolate) const = 0;
+  virtual v8::MaybeLocal<v8::Array> Enumerate(v8::Isolate* isolate) const = 0;
 
   virtual std::shared_ptr<KVStore> Clone(v8::Isolate* isolate) const;
   virtual v8::Maybe<void> AssignFromObject(v8::Local<v8::Context> context,
@@ -328,44 +331,48 @@ class KVStore {
 };
 
 // Convenience wrapper around v8::String::NewFromOneByte().
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           const char* data,
-                                           int length = -1);
+inline v8::Local<v8::String> OneByteString(
+    v8::Isolate* isolate,
+    const char* data,
+    int length = -1,
+    v8::NewStringType type = v8::NewStringType::kNormal);
 
 // For the people that compile with -funsigned-char.
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           const signed char* data,
-                                           int length = -1);
+inline v8::Local<v8::String> OneByteString(
+    v8::Isolate* isolate,
+    const signed char* data,
+    int length = -1,
+    v8::NewStringType type = v8::NewStringType::kNormal);
 
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           const unsigned char* data,
-                                           int length = -1);
+inline v8::Local<v8::String> OneByteString(
+    v8::Isolate* isolate,
+    const unsigned char* data,
+    int length = -1,
+    v8::NewStringType type = v8::NewStringType::kNormal);
 
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           std::string_view str);
+inline v8::Local<v8::String> OneByteString(
+    v8::Isolate* isolate,
+    std::string_view str,
+    v8::NewStringType type = v8::NewStringType::kNormal);
 
 // Used to be a macro, hence the uppercase name.
-template <int N>
-inline v8::Local<v8::String> FIXED_ONE_BYTE_STRING(
-    v8::Isolate* isolate,
-    const char(&data)[N]) {
-  return OneByteString(isolate, data, N - 1);
-}
-
 template <std::size_t N>
-inline v8::Local<v8::String> FIXED_ONE_BYTE_STRING(
-    v8::Isolate* isolate,
-    const std::array<char, N>& arr) {
-  return OneByteString(isolate, arr.data(), N - 1);
+  requires(N > 0)
+inline v8::Local<v8::String> FIXED_ONE_BYTE_STRING(v8::Isolate* isolate,
+                                                   const char (&data)[N]) {
+  CHECK_EQ(data[N - 1], '\0');
+  return OneByteString(isolate, data, N - 1, v8::NewStringType::kInternalized);
 }
 
 // tolower() is locale-sensitive.  Use ToLower() instead.
 inline char ToLower(char c);
-inline std::string ToLower(const std::string& in);
+template <typename T>
+inline std::string ToLower(const T& in);
 
 // toupper() is locale-sensitive.  Use ToUpper() instead.
 inline char ToUpper(char c);
-inline std::string ToUpper(const std::string& in);
+template <typename T>
+inline std::string ToUpper(const T& in);
 
 // strcasecmp() is locale-sensitive.  Use StringEqualNoCase() instead.
 inline bool StringEqualNoCase(const char* a, const char* b);
@@ -500,6 +507,8 @@ class MaybeStackBuffer {
   inline std::basic_string_view<T> ToStringView() const {
     return {out(), length()};
   }
+  // This can only be used if the buffer contains path data in UTF8
+  inline std::filesystem::path ToPath() const;
 
  private:
   size_t length_;
@@ -690,11 +699,6 @@ class Utf8Value : public MaybeStackBuffer<char> {
  public:
   explicit Utf8Value(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
-  inline std::string ToString() const { return std::string(out(), length()); }
-  inline std::string_view ToStringView() const {
-    return std::string_view(out(), length());
-  }
-
   inline bool operator==(const char* a) const { return strcmp(out(), a) == 0; }
   inline bool operator!=(const char* a) const { return !(*this == a); }
 };
@@ -702,16 +706,21 @@ class Utf8Value : public MaybeStackBuffer<char> {
 class TwoByteValue : public MaybeStackBuffer<uint16_t> {
  public:
   explicit TwoByteValue(v8::Isolate* isolate, v8::Local<v8::Value> value);
+
+  inline std::u16string ToU16String() const {
+    return std::u16string(reinterpret_cast<const char16_t*>(out()), length());
+  }
+
+  inline std::u16string_view ToU16StringView() const {
+    return std::u16string_view(reinterpret_cast<const char16_t*>(out()),
+                               length());
+  }
 };
 
 class BufferValue : public MaybeStackBuffer<char> {
  public:
   explicit BufferValue(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
-  inline std::string ToString() const { return std::string(out(), length()); }
-  inline std::string_view ToStringView() const {
-    return std::string_view(out(), length());
-  }
   inline std::u8string_view ToU8StringView() const {
     return std::u8string_view(reinterpret_cast<const char8_t*>(out()),
                               length());
@@ -798,13 +807,9 @@ struct MallocedBuffer {
 };
 
 // Test whether some value can be called with ().
-template <typename T, typename = void>
-struct is_callable : std::is_function<T> { };
-
 template <typename T>
-struct is_callable<T, typename std::enable_if<
-    std::is_same<decltype(void(&T::operator())), void>::value
-    >::type> : std::true_type { };
+concept is_callable =
+    std::is_function<T>::value || requires { &T::operator(); };
 
 template <typename T, void (*function)(T*)>
 struct FunctionDeleter {
@@ -825,11 +830,12 @@ using DeleteFnPtr = typename FunctionDeleter<T, function>::Pointer;
 inline v8::Maybe<void> FromV8Array(v8::Local<v8::Context> context,
                                    v8::Local<v8::Array> js_array,
                                    std::vector<v8::Global<v8::Value>>* out);
-std::vector<std::string_view> SplitString(const std::string_view in,
-                                          const std::string_view delim);
 
 inline v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
                                            std::string_view str,
+                                           v8::Isolate* isolate = nullptr);
+inline v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
+                                           std::u16string_view str,
                                            v8::Isolate* isolate = nullptr);
 inline v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
                                            v8_inspector::StringView str,
@@ -851,6 +857,12 @@ template <typename T, typename U>
 inline v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
                                            const std::unordered_map<T, U>& map,
                                            v8::Isolate* isolate = nullptr);
+
+template <typename T, std::size_t U>
+inline v8::MaybeLocal<v8::Value> ToV8Value(
+    v8::Local<v8::Context> context,
+    const std::ranges::elements_view<T, U>& vec,
+    v8::Isolate* isolate = nullptr);
 
 // These macros expects a `Isolate* isolate` and a `Local<Context> context`
 // to be in the scope.
@@ -954,7 +966,11 @@ class PersistentToLocal {
 // computations.
 class FastStringKey {
  public:
-  constexpr explicit FastStringKey(std::string_view name);
+  // consteval ensures that the argument is a compile-time constant.
+  consteval explicit FastStringKey(std::string_view name);
+  // passing something that is not a compile-time constant needs explicit
+  // opt-in via this helper, as it defeats the purpose of FastStringKey.
+  static constexpr FastStringKey AllowDynamic(std::string_view name);
 
   struct Hash {
     constexpr size_t operator()(const FastStringKey& key) const;
@@ -964,6 +980,8 @@ class FastStringKey {
   constexpr std::string_view as_string_view() const;
 
  private:
+  constexpr explicit FastStringKey(std::string_view name, int dummy);
+
   static constexpr size_t HashImpl(std::string_view str);
 
   const std::string_view name_;
@@ -1058,6 +1076,16 @@ void SetMethodNoSideEffect(v8::Isolate* isolate,
                            const std::string_view name,
                            v8::FunctionCallback callback);
 
+// Set the Symbol.dispose method on the prototype of the class.
+void SetProtoDispose(v8::Isolate* isolate,
+                     v8::Local<v8::FunctionTemplate> that,
+                     v8::FunctionCallback callback);
+
+// Set the Symbol.asyncDispose method on the prototype of the class.
+void SetProtoAsyncDispose(v8::Isolate* isolate,
+                          v8::Local<v8::FunctionTemplate> that,
+                          v8::FunctionCallback callback);
+
 enum class SetConstructorFunctionFlag {
   NONE,
   SET_CLASS_NAME,
@@ -1126,12 +1154,51 @@ v8::Maybe<int> GetValidFileMode(Environment* env,
                                 v8::Local<v8::Value> input,
                                 uv_fs_type type);
 
+class JSONOutputStream final : public v8::OutputStream {
+ public:
+  JSONOutputStream() = default;
+
+  int GetChunkSize() override { return 65536; }
+
+  void EndOfStream() override {}
+
+  WriteResult WriteAsciiChunk(char* data, const int size) override {
+    out_stream_.write(data, size);
+    return kContinue;
+  }
+
+  std::ostringstream& out_stream() { return out_stream_; }
+
+ private:
+  std::ostringstream out_stream_;
+};
+
 #ifdef _WIN32
 // Returns true if OS==Windows and filename ends in .bat or .cmd,
 // case insensitive.
 inline bool IsWindowsBatchFile(const char* filename);
-inline std::wstring ConvertToWideString(const std::string& str, UINT code_page);
+inline std::wstring ConvertUTF8ToWideString(const std::string& str);
+inline std::string ConvertWideStringToUTF8(const std::wstring& wstr);
+
 #endif  // _WIN32
+
+inline std::filesystem::path ConvertUTF8ToPath(const std::string& str);
+inline std::string ConvertPathToUTF8(const std::filesystem::path& path);
+inline std::string ConvertGenericPathToUTF8(const std::filesystem::path& path);
+
+// A helper to create a new instance of the dictionary template.
+// Unlike v8::DictionaryTemplate::NewInstance, this method will
+// check that all properties have been set (are not empty MaybeLocals)
+// or will return early with an empty MaybeLocal under the assumption
+// that an error has been thrown.
+inline v8::MaybeLocal<v8::Object> NewDictionaryInstance(
+    v8::Local<v8::Context> context,
+    v8::Local<v8::DictionaryTemplate> tmpl,
+    v8::MemorySpan<v8::MaybeLocal<v8::Value>> property_values);
+inline v8::MaybeLocal<v8::Object> NewDictionaryInstanceNullProto(
+    v8::Local<v8::Context> context,
+    v8::Local<v8::DictionaryTemplate> tmpl,
+    v8::MemorySpan<v8::MaybeLocal<v8::Value>> property_values);
 
 }  // namespace node
 

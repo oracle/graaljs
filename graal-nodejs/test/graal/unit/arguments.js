@@ -67,18 +67,6 @@ describe('Arguments', function () {
             assert.strictEqual(actualThis, expectedThis);
         });
     });
-    describe('Holder', function () {
-        //holder is usually identical to This, except for some corner cases e.g., around prototypes
-        //https://groups.google.com/forum/#!topic/v8-users/Axf4hF_RfZo
-        it('should return correct holder value', function () {
-            var func = module.Arguments_FunctionWithArguments();
-            var obj = {};
-            var expectedThis = {a: 123, b: "test"};
-            func.call(expectedThis, obj);
-            var actualHolder = obj.holderValue;
-            assert.strictEqual(actualHolder, expectedThis);
-        });
-    });
     describe('arg[0]', function () {
         it('should be returned as it is from the identity function', function() {
             var lazyString = 'aaaaaaaaaaaaaaaaaaaa';

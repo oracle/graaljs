@@ -14,22 +14,28 @@
 
 #include "absl/container/internal/raw_hash_set.h"
 
+#include <sys/types.h>
+
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <bitset>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <deque>
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <map>
 #include <memory>
 #include <numeric>
 #include <ostream>
 #include <random>
+#include <set>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -49,14 +55,24 @@
 #include "absl/container/internal/container_memory.h"
 #include "absl/container/internal/hash_function_defaults.h"
 #include "absl/container/internal/hash_policy_testing.h"
+// TODO(b/382423690): Separate tests that depend only on
+// hashtable_control_bytes.
+#include "absl/container/internal/hashtable_control_bytes.h"
 #include "absl/container/internal/hashtable_debug.h"
 #include "absl/container/internal/hashtablez_sampler.h"
 #include "absl/container/internal/test_allocator.h"
+#include "absl/container/internal/test_instance_tracker.h"
+#include "absl/container/node_hash_set.h"
+#include "absl/functional/function_ref.h"
 #include "absl/hash/hash.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/memory/memory.h"
 #include "absl/meta/type_traits.h"
+#include "absl/numeric/int128.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 
 namespace absl {
 ABSL_NAMESPACE_BEGIN
@@ -86,9 +102,169 @@ using ::testing::Ge;
 using ::testing::Lt;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
+using ::testing::UnorderedElementsAreArray;
 
 // Convenience function to static cast to ctrl_t.
 ctrl_t CtrlT(int i) { return static_cast<ctrl_t>(i); }
+
+// Enables sampling with 1 percent sampling rate and
+// resets the rate counter for the current thread.
+void SetSamplingRateTo1Percent() {
+  SetHashtablezEnabled(true);
+  SetHashtablezSampleParameter(100);  // Sample ~1% of tables.
+  // Reset rate counter for the current thread.
+  TestOnlyRefreshSamplingStateForCurrentThread();
+}
+
+// Disables sampling and resets the rate counter for the current thread.
+void DisableSampling() {
+  SetHashtablezEnabled(false);
+  SetHashtablezSampleParameter(1 << 16);
+  // Reset rate counter for the current thread.
+  TestOnlyRefreshSamplingStateForCurrentThread();
+}
+
+TEST(GrowthInfoTest, GetGrowthLeft) {
+  GrowthInfo gi;
+  gi.InitGrowthLeftNoDeleted(5);
+  EXPECT_EQ(gi.GetGrowthLeft(), 5);
+  gi.OverwriteFullAsDeleted();
+  EXPECT_EQ(gi.GetGrowthLeft(), 5);
+}
+
+TEST(GrowthInfoTest, HasNoDeleted) {
+  GrowthInfo gi;
+  gi.InitGrowthLeftNoDeleted(5);
+  EXPECT_TRUE(gi.HasNoDeleted());
+  gi.OverwriteFullAsDeleted();
+  EXPECT_FALSE(gi.HasNoDeleted());
+  // After reinitialization we have no deleted slots.
+  gi.InitGrowthLeftNoDeleted(5);
+  EXPECT_TRUE(gi.HasNoDeleted());
+}
+
+TEST(GrowthInfoTest, HasNoDeletedAndGrowthLeft) {
+  GrowthInfo gi;
+  gi.InitGrowthLeftNoDeleted(5);
+  EXPECT_TRUE(gi.HasNoDeletedAndGrowthLeft());
+  gi.OverwriteFullAsDeleted();
+  EXPECT_FALSE(gi.HasNoDeletedAndGrowthLeft());
+  gi.InitGrowthLeftNoDeleted(0);
+  EXPECT_FALSE(gi.HasNoDeletedAndGrowthLeft());
+  gi.OverwriteFullAsDeleted();
+  EXPECT_FALSE(gi.HasNoDeletedAndGrowthLeft());
+  // After reinitialization we have no deleted slots.
+  gi.InitGrowthLeftNoDeleted(5);
+  EXPECT_TRUE(gi.HasNoDeletedAndGrowthLeft());
+}
+
+TEST(GrowthInfoTest, HasNoGrowthLeftAndNoDeleted) {
+  GrowthInfo gi;
+  gi.InitGrowthLeftNoDeleted(1);
+  EXPECT_FALSE(gi.HasNoGrowthLeftAndNoDeleted());
+  gi.OverwriteEmptyAsFull();
+  EXPECT_TRUE(gi.HasNoGrowthLeftAndNoDeleted());
+  gi.OverwriteFullAsDeleted();
+  EXPECT_FALSE(gi.HasNoGrowthLeftAndNoDeleted());
+  gi.OverwriteFullAsEmpty();
+  EXPECT_FALSE(gi.HasNoGrowthLeftAndNoDeleted());
+  gi.InitGrowthLeftNoDeleted(0);
+  EXPECT_TRUE(gi.HasNoGrowthLeftAndNoDeleted());
+  gi.OverwriteFullAsEmpty();
+  EXPECT_FALSE(gi.HasNoGrowthLeftAndNoDeleted());
+}
+
+TEST(GrowthInfoTest, OverwriteFullAsEmpty) {
+  GrowthInfo gi;
+  gi.InitGrowthLeftNoDeleted(5);
+  gi.OverwriteFullAsEmpty();
+  EXPECT_EQ(gi.GetGrowthLeft(), 6);
+  gi.OverwriteFullAsDeleted();
+  EXPECT_EQ(gi.GetGrowthLeft(), 6);
+  gi.OverwriteFullAsEmpty();
+  EXPECT_EQ(gi.GetGrowthLeft(), 7);
+  EXPECT_FALSE(gi.HasNoDeleted());
+}
+
+TEST(GrowthInfoTest, OverwriteEmptyAsFull) {
+  GrowthInfo gi;
+  gi.InitGrowthLeftNoDeleted(5);
+  gi.OverwriteEmptyAsFull();
+  EXPECT_EQ(gi.GetGrowthLeft(), 4);
+  gi.OverwriteFullAsDeleted();
+  EXPECT_EQ(gi.GetGrowthLeft(), 4);
+  gi.OverwriteEmptyAsFull();
+  EXPECT_EQ(gi.GetGrowthLeft(), 3);
+  EXPECT_FALSE(gi.HasNoDeleted());
+}
+
+TEST(GrowthInfoTest, OverwriteControlAsFull) {
+  GrowthInfo gi;
+  gi.InitGrowthLeftNoDeleted(5);
+  gi.OverwriteControlAsFull(ctrl_t::kEmpty);
+  EXPECT_EQ(gi.GetGrowthLeft(), 4);
+  gi.OverwriteControlAsFull(ctrl_t::kDeleted);
+  EXPECT_EQ(gi.GetGrowthLeft(), 4);
+  gi.OverwriteFullAsDeleted();
+  gi.OverwriteControlAsFull(ctrl_t::kDeleted);
+  // We do not count number of deleted, so the bit sticks till the next rehash.
+  EXPECT_FALSE(gi.HasNoDeletedAndGrowthLeft());
+  EXPECT_FALSE(gi.HasNoDeleted());
+}
+
+TEST(GrowthInfoTest, HasNoGrowthLeftAssumingMayHaveDeleted) {
+  GrowthInfo gi;
+  gi.InitGrowthLeftNoDeleted(1);
+  gi.OverwriteFullAsDeleted();
+  EXPECT_EQ(gi.GetGrowthLeft(), 1);
+  EXPECT_FALSE(gi.HasNoGrowthLeftAssumingMayHaveDeleted());
+  gi.OverwriteControlAsFull(ctrl_t::kDeleted);
+  EXPECT_EQ(gi.GetGrowthLeft(), 1);
+  EXPECT_FALSE(gi.HasNoGrowthLeftAssumingMayHaveDeleted());
+  gi.OverwriteFullAsEmpty();
+  EXPECT_EQ(gi.GetGrowthLeft(), 2);
+  EXPECT_FALSE(gi.HasNoGrowthLeftAssumingMayHaveDeleted());
+  gi.OverwriteEmptyAsFull();
+  EXPECT_EQ(gi.GetGrowthLeft(), 1);
+  EXPECT_FALSE(gi.HasNoGrowthLeftAssumingMayHaveDeleted());
+  gi.OverwriteEmptyAsFull();
+  EXPECT_EQ(gi.GetGrowthLeft(), 0);
+  EXPECT_TRUE(gi.HasNoGrowthLeftAssumingMayHaveDeleted());
+}
+
+TEST(Util, OptimalMemcpySizeForSooSlotTransfer) {
+  EXPECT_EQ(1, OptimalMemcpySizeForSooSlotTransfer(1));
+  ASSERT_EQ(4, OptimalMemcpySizeForSooSlotTransfer(2));
+  ASSERT_EQ(4, OptimalMemcpySizeForSooSlotTransfer(3));
+  for (size_t slot_size = 4; slot_size <= 8; ++slot_size) {
+    ASSERT_EQ(8, OptimalMemcpySizeForSooSlotTransfer(slot_size));
+  }
+  // If maximum amount of memory is 16, then we can copy up to 16 bytes.
+  for (size_t slot_size = 9; slot_size <= 16; ++slot_size) {
+    ASSERT_EQ(16,
+              OptimalMemcpySizeForSooSlotTransfer(slot_size,
+                                                  /*max_soo_slot_size=*/16));
+    ASSERT_EQ(16,
+              OptimalMemcpySizeForSooSlotTransfer(slot_size,
+                                                  /*max_soo_slot_size=*/24));
+  }
+  // But we shouldn't try to copy more than maximum amount of memory.
+  for (size_t slot_size = 9; slot_size <= 12; ++slot_size) {
+    ASSERT_EQ(12, OptimalMemcpySizeForSooSlotTransfer(
+                      slot_size, /*max_soo_slot_size=*/12));
+  }
+  for (size_t slot_size = 17; slot_size <= 24; ++slot_size) {
+    ASSERT_EQ(24,
+              OptimalMemcpySizeForSooSlotTransfer(slot_size,
+                                                  /*max_soo_slot_size=*/24));
+  }
+  // We shouldn't copy more than maximum.
+  for (size_t slot_size = 17; slot_size <= 20; ++slot_size) {
+    ASSERT_EQ(20,
+              OptimalMemcpySizeForSooSlotTransfer(slot_size,
+                                                  /*max_soo_slot_size=*/20));
+  }
+}
 
 TEST(Util, NormalizeCapacity) {
   EXPECT_EQ(1, NormalizeCapacity(0));
@@ -440,8 +616,6 @@ struct ValuePolicy {
 using IntPolicy = ValuePolicy<int64_t>;
 using Uint8Policy = ValuePolicy<uint8_t>;
 
-using TranferableIntPolicy = ValuePolicy<int64_t, /*kTransferable=*/true>;
-
 // For testing SOO.
 template <int N>
 class SizedValue {
@@ -479,6 +653,48 @@ class SizedValue {
 template <int N, bool kSoo>
 using SizedValuePolicy =
     ValuePolicy<SizedValue<N>, /*kTransferable=*/true, kSoo>;
+
+// Value is aligned as type T and contains N copies of it.
+template <typename T, int N>
+class AlignedValue {
+ public:
+  AlignedValue(int64_t v) {  // NOLINT
+    for (int i = 0; i < N; ++i) {
+      vals_[i] = v;
+      if (sizeof(T) < sizeof(int64_t)) {
+        v >>= (8 * sizeof(T));
+      } else {
+        v = 0;
+      }
+    }
+  }
+  AlignedValue() : AlignedValue(0) {}
+  AlignedValue(const AlignedValue&) = default;
+  AlignedValue& operator=(const AlignedValue&) = default;
+
+  int64_t operator*() const {
+    if (sizeof(T) == sizeof(int64_t)) {
+      return vals_[0];
+    }
+    int64_t result = 0;
+    for (int i = N - 1; i >= 0; --i) {
+      result <<= (8 * sizeof(T));
+      result += vals_[i];
+    }
+    return result;
+  }
+  explicit operator int() const { return **this; }
+  explicit operator int64_t() const { return **this; }
+
+  template <typename H>
+  friend H AbslHashValue(H h, AlignedValue sv) {
+    return H::combine(std::move(h), *sv);
+  }
+  bool operator==(const AlignedValue& rhs) const { return **this == *rhs; }
+
+ private:
+  T vals_[N];
+};
 
 class StringPolicy {
   template <class F, class K, class V,
@@ -557,10 +773,11 @@ struct StringTable
   using Base::Base;
 };
 
-template <typename T, bool kTransferable = false, bool kSoo = false>
+template <typename T, bool kTransferable = false, bool kSoo = false,
+          class Alloc = std::allocator<T>>
 struct ValueTable
     : raw_hash_set<ValuePolicy<T, kTransferable, kSoo>, hash_default_hash<T>,
-                   std::equal_to<T>, std::allocator<T>> {
+                   std::equal_to<T>, Alloc> {
   using Base = typename ValueTable::raw_hash_set;
   using Base::Base;
 };
@@ -569,11 +786,6 @@ using IntTable = ValueTable<int64_t>;
 using Uint8Table = ValueTable<uint8_t>;
 
 using TransferableIntTable = ValueTable<int64_t, /*kTransferable=*/true>;
-
-constexpr size_t kNonSooSize = sizeof(HeapOrSoo) + 8;
-static_assert(sizeof(SizedValue<kNonSooSize>) >= kNonSooSize, "too small");
-using NonSooIntTable = ValueTable<SizedValue<kNonSooSize>>;
-using SooIntTable = ValueTable<int64_t, /*kTransferable=*/true, /*kSoo=*/true>;
 
 template <typename T>
 struct CustomAlloc : std::allocator<T> {
@@ -592,6 +804,50 @@ struct CustomAllocIntTable
     : raw_hash_set<IntPolicy, hash_default_hash<int64_t>,
                    std::equal_to<int64_t>, CustomAlloc<int64_t>> {
   using Base = typename CustomAllocIntTable::raw_hash_set;
+  using Base::Base;
+};
+
+template <typename T>
+struct ChangingSizeAndTrackingTypeAlloc : std::allocator<T> {
+  ChangingSizeAndTrackingTypeAlloc() = default;
+
+  template <typename U>
+  explicit ChangingSizeAndTrackingTypeAlloc(
+      const ChangingSizeAndTrackingTypeAlloc<U>& other) {
+    EXPECT_EQ(other.type_id,
+              ChangingSizeAndTrackingTypeAlloc<U>::ComputeTypeId());
+  }
+
+  template <class U>
+  struct rebind {
+    using other = ChangingSizeAndTrackingTypeAlloc<U>;
+  };
+
+  T* allocate(size_t n) {
+    EXPECT_EQ(type_id, ComputeTypeId());
+    return std::allocator<T>::allocate(n);
+  }
+
+  void deallocate(T* p, std::size_t n) {
+    EXPECT_EQ(type_id, ComputeTypeId());
+    return std::allocator<T>::deallocate(p, n);
+  }
+
+  static size_t ComputeTypeId() { return absl::HashOf(typeid(T).name()); }
+
+  // We add extra data to make the allocator size being changed.
+  // This also make type_id positioned differently, so that assertions in the
+  // allocator can catch bugs more likely.
+  char data_before[sizeof(T) * 3] = {0};
+  size_t type_id = ComputeTypeId();
+  char data_after[sizeof(T) * 5] = {0};
+};
+
+struct ChangingSizeAllocIntTable
+    : raw_hash_set<IntPolicy, hash_default_hash<int64_t>,
+                   std::equal_to<int64_t>,
+                   ChangingSizeAndTrackingTypeAlloc<int64_t>> {
+  using Base = typename ChangingSizeAllocIntTable::raw_hash_set;
   using Base::Base;
 };
 
@@ -648,28 +904,44 @@ struct BadHashFreezableIntTable
   using Base::Base;
 };
 
-struct BadTable : raw_hash_set<IntPolicy, BadFastHash, std::equal_to<int>,
+struct BadTable : raw_hash_set<IntPolicy, BadFastHash, std::equal_to<int64_t>,
                                std::allocator<int>> {
   using Base = typename BadTable::raw_hash_set;
   BadTable() = default;
   using Base::Base;
 };
 
+constexpr size_t kNonSooSize = sizeof(HeapOrSoo) + 8;
+using NonSooIntTableSlotType = SizedValue<kNonSooSize>;
+static_assert(sizeof(NonSooIntTableSlotType) >= kNonSooSize, "too small");
+using NonSooIntTable = ValueTable<NonSooIntTableSlotType>;
+using SooInt32Table =
+    ValueTable<int32_t, /*kTransferable=*/true, /*kSoo=*/true>;
+using SooIntTable = ValueTable<int64_t, /*kTransferable=*/true, /*kSoo=*/true>;
+using NonMemcpyableSooIntTable =
+    ValueTable<int64_t, /*kTransferable=*/false, /*kSoo=*/true>;
+using MemcpyableSooIntCustomAllocTable =
+    ValueTable<int64_t, /*kTransferable=*/true, /*kSoo=*/true,
+               ChangingSizeAndTrackingTypeAlloc<int64_t>>;
+using NonMemcpyableSooIntCustomAllocTable =
+    ValueTable<int64_t, /*kTransferable=*/false, /*kSoo=*/true,
+               ChangingSizeAndTrackingTypeAlloc<int64_t>>;
+
 TEST(Table, EmptyFunctorOptimization) {
   static_assert(std::is_empty<std::equal_to<absl::string_view>>::value, "");
   static_assert(std::is_empty<std::allocator<int>>::value, "");
 
   struct MockTable {
+    size_t capacity;
+    uint64_t size;
     void* ctrl;
     void* slots;
-    size_t size;
-    size_t capacity;
   };
   struct StatelessHash {
     size_t operator()(absl::string_view) const { return 0; }
   };
   struct StatefulHash : StatelessHash {
-    size_t dummy;
+    uint64_t dummy;
   };
 
   struct GenerationData {
@@ -707,21 +979,25 @@ TEST(Table, EmptyFunctorOptimization) {
 template <class TableType>
 class SooTest : public testing::Test {};
 
-TYPED_TEST_SUITE_P(SooTest);
+using SooTableTypes =
+    ::testing::Types<SooIntTable, NonSooIntTable, NonMemcpyableSooIntTable,
+                     MemcpyableSooIntCustomAllocTable,
+                     NonMemcpyableSooIntCustomAllocTable>;
+TYPED_TEST_SUITE(SooTest, SooTableTypes);
 
-TYPED_TEST_P(SooTest, Empty) {
+TYPED_TEST(SooTest, Empty) {
   TypeParam t;
   EXPECT_EQ(0, t.size());
   EXPECT_TRUE(t.empty());
 }
 
-TYPED_TEST_P(SooTest, LookupEmpty) {
+TYPED_TEST(SooTest, LookupEmpty) {
   TypeParam t;
   auto it = t.find(0);
   EXPECT_TRUE(it == t.end());
 }
 
-TYPED_TEST_P(SooTest, Insert1) {
+TYPED_TEST(SooTest, Insert1) {
   TypeParam t;
   EXPECT_TRUE(t.find(0) == t.end());
   auto res = t.emplace(0);
@@ -731,7 +1007,7 @@ TYPED_TEST_P(SooTest, Insert1) {
   EXPECT_THAT(*t.find(0), 0);
 }
 
-TYPED_TEST_P(SooTest, Insert2) {
+TYPED_TEST(SooTest, Insert2) {
   TypeParam t;
   EXPECT_TRUE(t.find(0) == t.end());
   auto res = t.emplace(0);
@@ -794,7 +1070,7 @@ TEST(Table, InsertCollisionAndFindAfterDelete) {
   EXPECT_TRUE(t.empty());
 }
 
-TYPED_TEST_P(SooTest, EraseInSmallTables) {
+TYPED_TEST(SooTest, EraseInSmallTables) {
   for (int64_t size = 0; size < 64; ++size) {
     TypeParam t;
     for (int64_t i = 0; i < size; ++i) {
@@ -811,7 +1087,7 @@ TYPED_TEST_P(SooTest, EraseInSmallTables) {
   }
 }
 
-TYPED_TEST_P(SooTest, InsertWithinCapacity) {
+TYPED_TEST(SooTest, InsertWithinCapacity) {
   TypeParam t;
   t.reserve(10);
   const size_t original_capacity = t.capacity();
@@ -845,9 +1121,44 @@ TYPED_TEST_P(SooTest, InsertWithinCapacity) {
 template <class TableType>
 class SmallTableResizeTest : public testing::Test {};
 
-TYPED_TEST_SUITE_P(SmallTableResizeTest);
+using SmallTableTypes = ::testing::Types<
+    IntTable, TransferableIntTable, SooIntTable,
+    // int8
+    ValueTable<int8_t, /*kTransferable=*/true, /*kSoo=*/true>,
+    ValueTable<int8_t, /*kTransferable=*/false, /*kSoo=*/true>,
+    // int16
+    ValueTable<int16_t, /*kTransferable=*/true, /*kSoo=*/true>,
+    ValueTable<int16_t, /*kTransferable=*/false, /*kSoo=*/true>,
+    // int128
+    ValueTable<SizedValue<16>, /*kTransferable=*/true, /*kSoo=*/true>,
+    ValueTable<SizedValue<16>, /*kTransferable=*/false, /*kSoo=*/true>,
+    // int192
+    ValueTable<SizedValue<24>, /*kTransferable=*/true, /*kSoo=*/true>,
+    ValueTable<SizedValue<24>, /*kTransferable=*/false, /*kSoo=*/true>,
+    // Special tables.
+    MinimumAlignmentUint8Table, CustomAllocIntTable, ChangingSizeAllocIntTable,
+    BadTable,
+    // alignment 1, size 2.
+    ValueTable<AlignedValue<uint8_t, 2>, /*kTransferable=*/true, /*kSoo=*/true>,
+    ValueTable<AlignedValue<uint8_t, 2>, /*kTransferable=*/false,
+               /*kSoo=*/true>,
+    // alignment 1, size 7.
+    ValueTable<AlignedValue<uint8_t, 7>, /*kTransferable=*/true, /*kSoo=*/true>,
+    ValueTable<AlignedValue<uint8_t, 7>, /*kTransferable=*/false,
+               /*kSoo=*/true>,
+    // alignment 2, size 6.
+    ValueTable<AlignedValue<uint16_t, 3>, /*kTransferable=*/true,
+               /*kSoo=*/true>,
+    ValueTable<AlignedValue<uint16_t, 3>, /*kTransferable=*/false,
+               /*kSoo=*/true>,
+    // alignment 2, size 10.
+    ValueTable<AlignedValue<uint16_t, 5>, /*kTransferable=*/true,
+               /*kSoo=*/true>,
+    ValueTable<AlignedValue<uint16_t, 5>, /*kTransferable=*/false,
+               /*kSoo=*/true>>;
+TYPED_TEST_SUITE(SmallTableResizeTest, SmallTableTypes);
 
-TYPED_TEST_P(SmallTableResizeTest, InsertIntoSmallTable) {
+TYPED_TEST(SmallTableResizeTest, InsertIntoSmallTable) {
   TypeParam t;
   for (int i = 0; i < 32; ++i) {
     t.insert(i);
@@ -859,10 +1170,13 @@ TYPED_TEST_P(SmallTableResizeTest, InsertIntoSmallTable) {
   }
 }
 
-TYPED_TEST_P(SmallTableResizeTest, ResizeGrowSmallTables) {
+TYPED_TEST(SmallTableResizeTest, ResizeGrowSmallTables) {
   for (size_t source_size = 0; source_size < 32; ++source_size) {
     for (size_t target_size = source_size; target_size < 32; ++target_size) {
       for (bool rehash : {false, true}) {
+        SCOPED_TRACE(absl::StrCat("source_size: ", source_size,
+                                  ", target_size: ", target_size,
+                                  ", rehash: ", rehash));
         TypeParam t;
         for (size_t i = 0; i < source_size; ++i) {
           t.insert(static_cast<int>(i));
@@ -881,16 +1195,22 @@ TYPED_TEST_P(SmallTableResizeTest, ResizeGrowSmallTables) {
   }
 }
 
-TYPED_TEST_P(SmallTableResizeTest, ResizeReduceSmallTables) {
+TYPED_TEST(SmallTableResizeTest, ResizeReduceSmallTables) {
+  DisableSampling();
   for (size_t source_size = 0; source_size < 32; ++source_size) {
     for (size_t target_size = 0; target_size <= source_size; ++target_size) {
       TypeParam t;
-      t.reserve(source_size);
       size_t inserted_count = std::min<size_t>(source_size, 5);
       for (size_t i = 0; i < inserted_count; ++i) {
         t.insert(static_cast<int>(i));
       }
+      const size_t minimum_capacity = t.capacity();
+      t.reserve(source_size);
       t.rehash(target_size);
+      if (target_size == 0) {
+        EXPECT_EQ(t.capacity(), minimum_capacity)
+            << "rehash(0) must resize to the minimum capacity";
+      }
       for (size_t i = 0; i < inserted_count; ++i) {
         EXPECT_TRUE(t.find(static_cast<int>(i)) != t.end());
         EXPECT_EQ(*t.find(static_cast<int>(i)), static_cast<int>(i));
@@ -898,13 +1218,6 @@ TYPED_TEST_P(SmallTableResizeTest, ResizeReduceSmallTables) {
     }
   }
 }
-
-REGISTER_TYPED_TEST_SUITE_P(SmallTableResizeTest, InsertIntoSmallTable,
-                            ResizeGrowSmallTables, ResizeReduceSmallTables);
-using SmallTableTypes =
-    ::testing::Types<IntTable, TransferableIntTable, SooIntTable>;
-INSTANTIATE_TYPED_TEST_SUITE_P(InstanceSmallTableResizeTest,
-                               SmallTableResizeTest, SmallTableTypes);
 
 TEST(Table, LazyEmplace) {
   StringTable t;
@@ -924,13 +1237,13 @@ TEST(Table, LazyEmplace) {
   EXPECT_THAT(*it, Pair("abc", "ABC"));
 }
 
-TYPED_TEST_P(SooTest, ContainsEmpty) {
+TYPED_TEST(SooTest, ContainsEmpty) {
   TypeParam t;
 
   EXPECT_FALSE(t.contains(0));
 }
 
-TYPED_TEST_P(SooTest, Contains1) {
+TYPED_TEST(SooTest, Contains1) {
   TypeParam t;
 
   EXPECT_TRUE(t.insert(0).second);
@@ -941,7 +1254,7 @@ TYPED_TEST_P(SooTest, Contains1) {
   EXPECT_FALSE(t.contains(0));
 }
 
-TYPED_TEST_P(SooTest, Contains2) {
+TYPED_TEST(SooTest, Contains2) {
   TypeParam t;
 
   EXPECT_TRUE(t.insert(0).second);
@@ -1187,7 +1500,7 @@ struct Modulo1000Hash {
 };
 
 struct Modulo1000HashTable
-    : public raw_hash_set<IntPolicy, Modulo1000Hash, std::equal_to<int>,
+    : public raw_hash_set<IntPolicy, Modulo1000Hash, std::equal_to<int64_t>,
                           std::allocator<int>> {};
 
 // Test that rehash with no resize happen in case of many deleted slots.
@@ -1239,20 +1552,20 @@ TEST(Table, RehashWithNoResize) {
   }
 }
 
-TYPED_TEST_P(SooTest, InsertEraseStressTest) {
+TYPED_TEST(SooTest, InsertEraseStressTest) {
   TypeParam t;
-  const size_t kMinElementCount = 250;
+  const size_t kMinElementCount = 50;
   std::deque<int> keys;
   size_t i = 0;
   for (; i < MaxDensitySize(kMinElementCount); ++i) {
-    t.emplace(i);
+    t.emplace(static_cast<int64_t>(i));
     keys.push_back(i);
   }
-  const size_t kNumIterations = 1000000;
+  const size_t kNumIterations = 20000;
   for (; i < kNumIterations; ++i) {
     ASSERT_EQ(1, t.erase(keys.front()));
     keys.pop_front();
-    t.emplace(i);
+    t.emplace(static_cast<int64_t>(i));
     keys.push_back(i);
   }
 }
@@ -1268,15 +1581,18 @@ TEST(Table, InsertOverloads) {
                                       Pair("DEF", "!!!")));
 }
 
-TYPED_TEST_P(SooTest, LargeTable) {
+TYPED_TEST(SooTest, LargeTable) {
   TypeParam t;
-  for (int64_t i = 0; i != 100000; ++i) t.emplace(i << 40);
-  for (int64_t i = 0; i != 100000; ++i)
+  for (int64_t i = 0; i != 10000; ++i) {
+    t.emplace(i << 40);
+    ASSERT_EQ(t.size(), i + 1);
+  }
+  for (int64_t i = 0; i != 10000; ++i)
     ASSERT_EQ(i << 40, static_cast<int64_t>(*t.find(i << 40)));
 }
 
 // Timeout if copy is quadratic as it was in Rust.
-TYPED_TEST_P(SooTest, EnsureNonQuadraticAsInRust) {
+TYPED_TEST(SooTest, EnsureNonQuadraticAsInRust) {
   static const size_t kLargeSize = 1 << 15;
 
   TypeParam t;
@@ -1289,7 +1605,7 @@ TYPED_TEST_P(SooTest, EnsureNonQuadraticAsInRust) {
   for (const auto& entry : t) t2.insert(entry);
 }
 
-TYPED_TEST_P(SooTest, ClearBug) {
+TYPED_TEST(SooTest, ClearBug) {
   if (SwisstableGenerationsEnabled()) {
     GTEST_SKIP() << "Generations being enabled causes extra rehashes.";
   }
@@ -1316,7 +1632,7 @@ TYPED_TEST_P(SooTest, ClearBug) {
             capacity * sizeof(typename TypeParam::value_type));
 }
 
-TYPED_TEST_P(SooTest, Erase) {
+TYPED_TEST(SooTest, Erase) {
   TypeParam t;
   EXPECT_TRUE(t.find(0) == t.end());
   auto res = t.emplace(0);
@@ -1327,7 +1643,7 @@ TYPED_TEST_P(SooTest, Erase) {
   EXPECT_TRUE(t.find(0) == t.end());
 }
 
-TYPED_TEST_P(SooTest, EraseMaintainsValidIterator) {
+TYPED_TEST(SooTest, EraseMaintainsValidIterator) {
   TypeParam t;
   const int kNumElements = 100;
   for (int i = 0; i < kNumElements; i++) {
@@ -1346,7 +1662,7 @@ TYPED_TEST_P(SooTest, EraseMaintainsValidIterator) {
   EXPECT_EQ(num_erase_calls, kNumElements);
 }
 
-TYPED_TEST_P(SooTest, EraseBeginEnd) {
+TYPED_TEST(SooTest, EraseBeginEnd) {
   TypeParam t;
   for (int i = 0; i < 10; ++i) t.insert(i);
   EXPECT_EQ(t.size(), 10);
@@ -1746,7 +2062,28 @@ TEST(Table, EraseInsertProbing) {
   EXPECT_THAT(t, UnorderedElementsAre(1, 10, 3, 11, 12));
 }
 
-TYPED_TEST_P(SooTest, Clear) {
+TEST(Table, GrowthInfoDeletedBit) {
+  BadTable t;
+  EXPECT_TRUE(
+      RawHashSetTestOnlyAccess::GetCommon(t).growth_info().HasNoDeleted());
+  int64_t init_count = static_cast<int64_t>(
+      CapacityToGrowth(NormalizeCapacity(Group::kWidth + 1)));
+  for (int64_t i = 0; i < init_count; ++i) {
+    t.insert(i);
+  }
+  EXPECT_TRUE(
+      RawHashSetTestOnlyAccess::GetCommon(t).growth_info().HasNoDeleted());
+  t.erase(0);
+  EXPECT_EQ(RawHashSetTestOnlyAccess::CountTombstones(t), 1);
+  EXPECT_FALSE(
+      RawHashSetTestOnlyAccess::GetCommon(t).growth_info().HasNoDeleted());
+  t.rehash(0);
+  EXPECT_EQ(RawHashSetTestOnlyAccess::CountTombstones(t), 0);
+  EXPECT_TRUE(
+      RawHashSetTestOnlyAccess::GetCommon(t).growth_info().HasNoDeleted());
+}
+
+TYPED_TEST(SooTest, Clear) {
   TypeParam t;
   EXPECT_TRUE(t.find(0) == t.end());
   t.clear();
@@ -1759,7 +2096,7 @@ TYPED_TEST_P(SooTest, Clear) {
   EXPECT_TRUE(t.find(0) == t.end());
 }
 
-TYPED_TEST_P(SooTest, Swap) {
+TYPED_TEST(SooTest, Swap) {
   TypeParam t;
   EXPECT_TRUE(t.find(0) == t.end());
   auto res = t.emplace(0);
@@ -1773,7 +2110,7 @@ TYPED_TEST_P(SooTest, Swap) {
   EXPECT_THAT(*u.find(0), 0);
 }
 
-TYPED_TEST_P(SooTest, Rehash) {
+TYPED_TEST(SooTest, Rehash) {
   TypeParam t;
   EXPECT_TRUE(t.find(0) == t.end());
   t.emplace(0);
@@ -1785,7 +2122,7 @@ TYPED_TEST_P(SooTest, Rehash) {
   EXPECT_THAT(*t.find(1), 1);
 }
 
-TYPED_TEST_P(SooTest, RehashDoesNotRehashWhenNotNecessary) {
+TYPED_TEST(SooTest, RehashDoesNotRehashWhenNotNecessary) {
   TypeParam t;
   t.emplace(0);
   t.emplace(1);
@@ -1810,7 +2147,7 @@ TEST(Table, RehashZeroDeallocatesEmptyTable) {
   EXPECT_EQ(0, t.bucket_count());
 }
 
-TYPED_TEST_P(SooTest, RehashZeroForcesRehash) {
+TYPED_TEST(SooTest, RehashZeroForcesRehash) {
   TypeParam t;
   t.emplace(0);
   t.emplace(1);
@@ -1827,7 +2164,7 @@ TEST(Table, ConstructFromInitList) {
   StringTable t = {P(), Q(), {}, {{}, {}}};
 }
 
-TYPED_TEST_P(SooTest, CopyConstruct) {
+TYPED_TEST(SooTest, CopyConstruct) {
   TypeParam t;
   t.emplace(0);
   EXPECT_EQ(1, t.size());
@@ -1848,7 +2185,44 @@ TYPED_TEST_P(SooTest, CopyConstruct) {
   }
 }
 
-TYPED_TEST_P(SooTest, CopyDifferentSizes) {
+TYPED_TEST(SooTest, CopyAssignment) {
+  std::vector<size_t> sizes = {0, 1, 7, 25};
+  for (size_t source_size : sizes) {
+    for (size_t target_size : sizes) {
+      SCOPED_TRACE(absl::StrCat("source_size: ", source_size,
+                                " target_size: ", target_size));
+      TypeParam source;
+      std::vector<int> source_elements;
+      for (size_t i = 0; i < source_size; ++i) {
+        source.emplace(static_cast<int>(i) * 2);
+        source_elements.push_back(static_cast<int>(i) * 2);
+      }
+      TypeParam target;
+      for (size_t i = 0; i < target_size; ++i) {
+        target.emplace(static_cast<int>(i) * 3);
+      }
+      target = source;
+      ASSERT_EQ(target.size(), source_size);
+      ASSERT_THAT(target, UnorderedElementsAreArray(source_elements));
+    }
+  }
+}
+
+TYPED_TEST(SooTest, CopyConstructWithSampling) {
+  SetSamplingRateTo1Percent();
+  for (int i = 0; i < 10000; ++i) {
+    TypeParam t;
+    t.emplace(0);
+    EXPECT_EQ(1, t.size());
+    {
+      TypeParam u(t);
+      EXPECT_EQ(1, u.size());
+      EXPECT_THAT(*u.find(0), 0);
+    }
+  }
+}
+
+TYPED_TEST(SooTest, CopyDifferentSizes) {
   TypeParam t;
 
   for (int i = 0; i < 100; ++i) {
@@ -1862,7 +2236,7 @@ TYPED_TEST_P(SooTest, CopyDifferentSizes) {
   }
 }
 
-TYPED_TEST_P(SooTest, CopyDifferentCapacities) {
+TYPED_TEST(SooTest, CopyDifferentCapacities) {
   for (int cap = 1; cap < 100; cap = cap * 2 + 1) {
     TypeParam t;
     t.reserve(static_cast<size_t>(cap));
@@ -1975,6 +2349,10 @@ TEST(Table, MoveSelfAssign) {
   t.emplace("a", "b");
   EXPECT_EQ(1, t.size());
   t = std::move(*&t);
+  if (SwisstableGenerationsEnabled()) {
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(t.contains("a"), "self-move-assigned");
+  }
   // As long as we don't crash, it's fine.
 }
 
@@ -2011,7 +2389,7 @@ TEST(Table, Equality3) {
   EXPECT_NE(u, t);
 }
 
-TYPED_TEST_P(SooTest, NumDeletedRegression) {
+TYPED_TEST(SooTest, NumDeletedRegression) {
   TypeParam t;
   t.emplace(0);
   t.erase(t.find(0));
@@ -2020,7 +2398,7 @@ TYPED_TEST_P(SooTest, NumDeletedRegression) {
   t.clear();
 }
 
-TYPED_TEST_P(SooTest, FindFullDeletedRegression) {
+TYPED_TEST(SooTest, FindFullDeletedRegression) {
   TypeParam t;
   for (int i = 0; i < 1000; ++i) {
     t.emplace(i);
@@ -2029,7 +2407,10 @@ TYPED_TEST_P(SooTest, FindFullDeletedRegression) {
   EXPECT_EQ(0, t.size());
 }
 
-TYPED_TEST_P(SooTest, ReplacingDeletedSlotDoesNotRehash) {
+TYPED_TEST(SooTest, ReplacingDeletedSlotDoesNotRehash) {
+  // We need to disable hashtablez to avoid issues related to SOO and sampling.
+  DisableSampling();
+
   size_t n;
   {
     // Compute n such that n is the maximum number of elements before rehash.
@@ -2290,7 +2671,7 @@ TEST(Nodes, ExtractInsert) {
   EXPECT_FALSE(node);  // NOLINT(bugprone-use-after-move)
 }
 
-TYPED_TEST_P(SooTest, HintInsert) {
+TYPED_TEST(SooTest, HintInsert) {
   TypeParam t = {1, 2, 3};
   auto node = t.extract(1);
   EXPECT_THAT(t, UnorderedElementsAre(2, 3));
@@ -2311,8 +2692,9 @@ TYPED_TEST_P(SooTest, HintInsert) {
 }
 
 template <typename T>
-T MakeSimpleTable(size_t size) {
+T MakeSimpleTable(size_t size, bool do_reserve) {
   T t;
+  if (do_reserve) t.reserve(size);
   while (t.size() < size) t.insert(t.size());
   return t;
 }
@@ -2324,65 +2706,88 @@ std::vector<int> OrderOfIteration(const T& t) {
   return res;
 }
 
-// These IterationOrderChanges tests depend on non-deterministic behavior.
-// We are injecting non-determinism from the pointer of the table, but do so in
-// a way that only the page matters. We have to retry enough times to make sure
-// we are touching different memory pages to cause the ordering to change.
-// We also need to keep the old tables around to avoid getting the same memory
-// blocks over and over.
-TYPED_TEST_P(SooTest, IterationOrderChangesByInstance) {
-  for (size_t size : {2, 6, 12, 20}) {
-    const auto reference_table = MakeSimpleTable<TypeParam>(size);
-    const auto reference = OrderOfIteration(reference_table);
+// Generate irrelevant seeds to avoid being stuck in the same last bit
+// in seed.
+void GenerateIrrelevantSeeds(int cnt) {
+  for (int i = cnt % 17; i > 0; --i) {
+    NextSeedBaseNumber();
+  }
+}
 
-    std::vector<TypeParam> tables;
-    bool found_difference = false;
-    for (int i = 0; !found_difference && i < 5000; ++i) {
-      tables.push_back(MakeSimpleTable<TypeParam>(size));
-      found_difference = OrderOfIteration(tables.back()) != reference;
-    }
-    if (!found_difference) {
-      FAIL()
-          << "Iteration order remained the same across many attempts with size "
-          << size;
+// These IterationOrderChanges tests depend on non-deterministic behavior.
+// We are injecting non-determinism to the table.
+// We have to retry enough times to make sure that the seed changes in bits that
+// matter for the iteration order.
+TYPED_TEST(SooTest, IterationOrderChangesByInstance) {
+  DisableSampling();  // We do not want test to pass only because of sampling.
+  for (bool do_reserve : {false, true}) {
+    for (size_t size : {2u, 6u, 12u, 20u}) {
+      SCOPED_TRACE(absl::StrCat("size: ", size, " do_reserve: ", do_reserve));
+      const auto reference_table = MakeSimpleTable<TypeParam>(size, do_reserve);
+      const auto reference = OrderOfIteration(reference_table);
+
+      bool found_difference = false;
+      for (int i = 0; !found_difference && i < 500; ++i) {
+        auto new_table = MakeSimpleTable<TypeParam>(size, do_reserve);
+        found_difference = OrderOfIteration(new_table) != reference;
+        GenerateIrrelevantSeeds(i);
+      }
+      if (!found_difference) {
+        FAIL() << "Iteration order remained the same across many attempts.";
+      }
     }
   }
 }
 
-TYPED_TEST_P(SooTest, IterationOrderChangesOnRehash) {
+TYPED_TEST(SooTest, IterationOrderChangesOnRehash) {
+  DisableSampling();  // We do not want test to pass only because of sampling.
+
   // We test different sizes with many small numbers, because small table
   // resize has a different codepath.
   // Note: iteration order for size() <= 1 is always the same.
-  for (size_t size : std::vector<size_t>{2, 3, 6, 7, 12, 15, 20, 50}) {
-    for (size_t rehash_size : {
-             size_t{0},  // Force rehash is guaranteed.
-             size * 10   // Rehash to the larger capacity is guaranteed.
-         }) {
-      std::vector<TypeParam> garbage;
-      bool ok = false;
-      for (int i = 0; i < 5000; ++i) {
-        auto t = MakeSimpleTable<TypeParam>(size);
-        const auto reference = OrderOfIteration(t);
-        // Force rehash.
-        t.rehash(rehash_size);
-        auto trial = OrderOfIteration(t);
-        if (trial != reference) {
-          // We are done.
-          ok = true;
-          break;
+  for (bool do_reserve : {false, true}) {
+    for (size_t size : {2u, 3u, 6u, 7u, 12u, 15u, 20u, 50u}) {
+      for (size_t rehash_size : {
+               size_t{0},        // Force rehash is guaranteed.
+               size * 10  // Rehash to the larger capacity is guaranteed.
+           }) {
+        SCOPED_TRACE(absl::StrCat("size: ", size, " rehash_size: ", rehash_size,
+                                  " do_reserve: ", do_reserve));
+        bool ok = false;
+        auto t = MakeSimpleTable<TypeParam>(size, do_reserve);
+        const size_t original_capacity = t.capacity();
+        auto reference = OrderOfIteration(t);
+        for (int i = 0; i < 500; ++i) {
+          if (i > 0 && rehash_size != 0) {
+            // Rehash back to original size.
+            t.rehash(0);
+            ASSERT_EQ(t.capacity(), original_capacity);
+            reference = OrderOfIteration(t);
+          }
+          // Force rehash.
+          t.rehash(rehash_size);
+          auto trial = OrderOfIteration(t);
+          if (trial != reference) {
+            // We are done.
+            ok = true;
+            break;
+          }
+          GenerateIrrelevantSeeds(i);
         }
-        garbage.push_back(std::move(t));
+        EXPECT_TRUE(ok)
+            << "Iteration order remained the same across many attempts " << size
+            << "->" << rehash_size << ".";
       }
-      EXPECT_TRUE(ok)
-          << "Iteration order remained the same across many attempts " << size
-          << "->" << rehash_size << ".";
     }
   }
 }
 
 // Verify that pointers are invalidated as soon as a second element is inserted.
 // This prevents dependency on pointer stability on small tables.
-TYPED_TEST_P(SooTest, UnstablePointers) {
+TYPED_TEST(SooTest, UnstablePointers) {
+  // We need to disable hashtablez to avoid issues related to SOO and sampling.
+  DisableSampling();
+
   TypeParam table;
 
   const auto addr = [&](int i) {
@@ -2449,7 +2854,7 @@ constexpr bool kMsvc = true;
 constexpr bool kMsvc = false;
 #endif
 
-TYPED_TEST_P(SooTest, IteratorInvalidAssertsEqualityOperator) {
+TYPED_TEST(SooTest, IteratorInvalidAssertsEqualityOperator) {
   if (!IsAssertEnabled() && !SwisstableGenerationsEnabled())
     GTEST_SKIP() << "Assertions not enabled.";
 
@@ -2486,7 +2891,7 @@ TYPED_TEST_P(SooTest, IteratorInvalidAssertsEqualityOperator) {
   EXPECT_DEATH_IF_SUPPORTED(void(iter2 == iter1), kContainerDiffDeathMessage);
 }
 
-TYPED_TEST_P(SooTest, IteratorInvalidAssertsEqualityOperatorRehash) {
+TYPED_TEST(SooTest, IteratorInvalidAssertsEqualityOperatorRehash) {
   if (!IsAssertEnabled() && !SwisstableGenerationsEnabled())
     GTEST_SKIP() << "Assertions not enabled.";
   if (kMsvc) GTEST_SKIP() << "MSVC doesn't support | in regex.";
@@ -2512,17 +2917,30 @@ TYPED_TEST_P(SooTest, IteratorInvalidAssertsEqualityOperatorRehash) {
 #if defined(ABSL_INTERNAL_HASHTABLEZ_SAMPLE)
 template <typename T>
 class RawHashSamplerTest : public testing::Test {};
-TYPED_TEST_SUITE_P(RawHashSamplerTest);
 
-TYPED_TEST_P(RawHashSamplerTest, Sample) {
-  constexpr bool soo_enabled = std::is_same<SooIntTable, TypeParam>::value;
+using RawHashSamplerTestTypes = ::testing::Types<
+    // 32 bits to make sure that table is Soo for 32 bits platform as well.
+    // 64 bits table is not SOO due to alignment.
+    SooInt32Table,
+    NonSooIntTable>;
+TYPED_TEST_SUITE(RawHashSamplerTest, RawHashSamplerTestTypes);
+
+TYPED_TEST(RawHashSamplerTest, Sample) {
+  constexpr bool soo_enabled = std::is_same<SooInt32Table, TypeParam>::value;
   // Enable the feature even if the prod default is off.
-  SetHashtablezEnabled(true);
-  SetHashtablezSampleParameter(100);
+  SetSamplingRateTo1Percent();
+
+  ASSERT_EQ(TypeParam().capacity(), soo_enabled ? SooCapacity() : 0);
 
   auto& sampler = GlobalHashtablezSampler();
   size_t start_size = 0;
-  absl::flat_hash_set<const HashtablezInfo*> preexisting_info;
+
+  // Reserve these utility tables, so that if they sampled, they'll be
+  // preexisting.
+  absl::flat_hash_set<const HashtablezInfo*> preexisting_info(10);
+  absl::flat_hash_map<size_t, int> observed_checksums(10);
+  absl::flat_hash_map<ssize_t, int> reservations(10);
+
   start_size += sampler.Iterate([&](const HashtablezInfo& info) {
     preexisting_info.insert(&info);
     ++start_size;
@@ -2549,28 +2967,29 @@ TYPED_TEST_P(RawHashSamplerTest, Sample) {
     }
   }
   size_t end_size = 0;
-  absl::flat_hash_map<size_t, int> observed_checksums;
-  absl::flat_hash_map<ssize_t, int> reservations;
   end_size += sampler.Iterate([&](const HashtablezInfo& info) {
-    if (preexisting_info.count(&info) == 0) {
-      observed_checksums[info.hashes_bitwise_xor.load(
-          std::memory_order_relaxed)]++;
-      reservations[info.max_reserve.load(std::memory_order_relaxed)]++;
-    }
-    EXPECT_EQ(info.inline_element_size, sizeof(typename TypeParam::value_type));
     ++end_size;
+    if (preexisting_info.contains(&info)) return;
+    observed_checksums[info.hashes_bitwise_xor.load(
+        std::memory_order_relaxed)]++;
+    reservations[info.max_reserve.load(std::memory_order_relaxed)]++;
+    EXPECT_EQ(info.inline_element_size, sizeof(typename TypeParam::value_type));
+    EXPECT_EQ(info.key_size, sizeof(typename TypeParam::key_type));
+    EXPECT_EQ(info.value_size, sizeof(typename TypeParam::value_type));
+
+    if (soo_enabled) {
+      EXPECT_EQ(info.soo_capacity, SooCapacity());
+    } else {
+      EXPECT_EQ(info.soo_capacity, 0);
+    }
   });
 
+  // Expect that we sampled at the requested sampling rate of ~1%.
   EXPECT_NEAR((end_size - start_size) / static_cast<double>(tables.size()),
               0.01, 0.005);
-  if (soo_enabled) {
-    EXPECT_EQ(observed_checksums.size(), 9);
-  } else {
-    EXPECT_EQ(observed_checksums.size(), 5);
-    for (const auto& [_, count] : observed_checksums) {
-      EXPECT_NEAR((100 * count) / static_cast<double>(tables.size()), 0.2,
-                  0.05);
-    }
+  EXPECT_EQ(observed_checksums.size(), 5);
+  for (const auto& [_, count] : observed_checksums) {
+    EXPECT_NEAR((100 * count) / static_cast<double>(tables.size()), 0.2, 0.05);
   }
 
   EXPECT_EQ(reservations.size(), 10);
@@ -2583,22 +3002,146 @@ TYPED_TEST_P(RawHashSamplerTest, Sample) {
   }
 }
 
-REGISTER_TYPED_TEST_SUITE_P(RawHashSamplerTest, Sample);
-using RawHashSamplerTestTypes = ::testing::Types<SooIntTable, NonSooIntTable>;
-INSTANTIATE_TYPED_TEST_SUITE_P(My, RawHashSamplerTest, RawHashSamplerTestTypes);
+std::vector<const HashtablezInfo*> SampleSooMutation(
+    absl::FunctionRef<void(SooInt32Table&)> mutate_table) {
+  // Enable the feature even if the prod default is off.
+  SetSamplingRateTo1Percent();
+
+  auto& sampler = GlobalHashtablezSampler();
+  size_t start_size = 0;
+  // Reserve the table, so that if it sampled, it'll be preexisting.
+  absl::flat_hash_set<const HashtablezInfo*> preexisting_info(10);
+  start_size += sampler.Iterate([&](const HashtablezInfo& info) {
+    preexisting_info.insert(&info);
+    ++start_size;
+  });
+
+  std::vector<SooInt32Table> tables;
+  for (int i = 0; i < 1000000; ++i) {
+    tables.emplace_back();
+    mutate_table(tables.back());
+  }
+  size_t end_size = 0;
+  std::vector<const HashtablezInfo*> infos;
+  end_size += sampler.Iterate([&](const HashtablezInfo& info) {
+    ++end_size;
+    if (preexisting_info.contains(&info)) return;
+    infos.push_back(&info);
+  });
+
+  // Expect that we sampled at the requested sampling rate of ~1%.
+  EXPECT_NEAR((end_size - start_size) / static_cast<double>(tables.size()),
+              0.01, 0.005);
+  return infos;
+}
+
+TEST(RawHashSamplerTest, SooTableInsertToEmpty) {
+  if (SooInt32Table().capacity() != SooCapacity()) {
+    CHECK_LT(sizeof(void*), 8) << "missing SOO coverage";
+    GTEST_SKIP() << "not SOO on this platform";
+  }
+  std::vector<const HashtablezInfo*> infos =
+      SampleSooMutation([](SooInt32Table& t) { t.insert(1); });
+
+  for (const HashtablezInfo* info : infos) {
+    ASSERT_EQ(info->inline_element_size,
+              sizeof(typename SooInt32Table::value_type));
+    ASSERT_EQ(info->soo_capacity, SooCapacity());
+    ASSERT_EQ(info->capacity, NextCapacity(SooCapacity()));
+    ASSERT_EQ(info->size, 1);
+    ASSERT_EQ(info->max_reserve, 0);
+    ASSERT_EQ(info->num_erases, 0);
+    ASSERT_EQ(info->max_probe_length, 0);
+    ASSERT_EQ(info->total_probe_length, 0);
+  }
+}
+
+TEST(RawHashSamplerTest, SooTableReserveToEmpty) {
+  if (SooInt32Table().capacity() != SooCapacity()) {
+    CHECK_LT(sizeof(void*), 8) << "missing SOO coverage";
+    GTEST_SKIP() << "not SOO on this platform";
+  }
+  std::vector<const HashtablezInfo*> infos =
+      SampleSooMutation([](SooInt32Table& t) { t.reserve(100); });
+
+  for (const HashtablezInfo* info : infos) {
+    ASSERT_EQ(info->inline_element_size,
+              sizeof(typename SooInt32Table::value_type));
+    ASSERT_EQ(info->soo_capacity, SooCapacity());
+    ASSERT_GE(info->capacity, 100);
+    ASSERT_EQ(info->size, 0);
+    ASSERT_EQ(info->max_reserve, 100);
+    ASSERT_EQ(info->num_erases, 0);
+    ASSERT_EQ(info->max_probe_length, 0);
+    ASSERT_EQ(info->total_probe_length, 0);
+  }
+}
+
+// This tests that reserve on a full SOO table doesn't incorrectly result in new
+// (over-)sampling.
+TEST(RawHashSamplerTest, SooTableReserveToFullSoo) {
+  if (SooInt32Table().capacity() != SooCapacity()) {
+    CHECK_LT(sizeof(void*), 8) << "missing SOO coverage";
+    GTEST_SKIP() << "not SOO on this platform";
+  }
+  std::vector<const HashtablezInfo*> infos =
+      SampleSooMutation([](SooInt32Table& t) {
+        t.insert(1);
+        t.reserve(100);
+      });
+
+  for (const HashtablezInfo* info : infos) {
+    ASSERT_EQ(info->inline_element_size,
+              sizeof(typename SooInt32Table::value_type));
+    ASSERT_EQ(info->soo_capacity, SooCapacity());
+    ASSERT_GE(info->capacity, 100);
+    ASSERT_EQ(info->size, 1);
+    ASSERT_EQ(info->max_reserve, 100);
+    ASSERT_EQ(info->num_erases, 0);
+    ASSERT_EQ(info->max_probe_length, 0);
+    ASSERT_EQ(info->total_probe_length, 0);
+  }
+}
+
+// This tests that rehash(0) on a sampled table with size that fits in SOO
+// doesn't incorrectly result in losing sampling.
+TEST(RawHashSamplerTest, SooTableRehashShrinkWhenSizeFitsInSoo) {
+  if (SooInt32Table().capacity() != SooCapacity()) {
+    CHECK_LT(sizeof(void*), 8) << "missing SOO coverage";
+    GTEST_SKIP() << "not SOO on this platform";
+  }
+  std::vector<const HashtablezInfo*> infos =
+      SampleSooMutation([](SooInt32Table& t) {
+        t.reserve(100);
+        t.insert(1);
+        EXPECT_GE(t.capacity(), 100);
+        t.rehash(0);
+      });
+
+  for (const HashtablezInfo* info : infos) {
+    ASSERT_EQ(info->inline_element_size,
+              sizeof(typename SooInt32Table::value_type));
+    ASSERT_EQ(info->soo_capacity, SooCapacity());
+    ASSERT_EQ(info->capacity, NextCapacity(SooCapacity()));
+    ASSERT_EQ(info->size, 1);
+    ASSERT_EQ(info->max_reserve, 100);
+    ASSERT_EQ(info->num_erases, 0);
+    ASSERT_EQ(info->max_probe_length, 0);
+    ASSERT_EQ(info->total_probe_length, 0);
+  }
+}
 #endif  // ABSL_INTERNAL_HASHTABLEZ_SAMPLE
 
 TEST(RawHashSamplerTest, DoNotSampleCustomAllocators) {
   // Enable the feature even if the prod default is off.
-  SetHashtablezEnabled(true);
-  SetHashtablezSampleParameter(100);
+  SetSamplingRateTo1Percent();
 
   auto& sampler = GlobalHashtablezSampler();
   size_t start_size = 0;
   start_size += sampler.Iterate([&](const HashtablezInfo&) { ++start_size; });
 
   std::vector<CustomAllocIntTable> tables;
-  for (int i = 0; i < 1000000; ++i) {
+  for (int i = 0; i < 100000; ++i) {
     tables.emplace_back();
     tables.back().insert(1);
   }
@@ -2613,9 +3156,10 @@ TEST(RawHashSamplerTest, DoNotSampleCustomAllocators) {
 template <class TableType>
 class SanitizerTest : public testing::Test {};
 
-TYPED_TEST_SUITE_P(SanitizerTest);
+using SanitizerTableTypes = ::testing::Types<IntTable, TransferableIntTable>;
+TYPED_TEST_SUITE(SanitizerTest, SanitizerTableTypes);
 
-TYPED_TEST_P(SanitizerTest, PoisoningUnused) {
+TYPED_TEST(SanitizerTest, PoisoningUnused) {
   TypeParam t;
   for (size_t reserve_size = 2; reserve_size < 1024;
        reserve_size = reserve_size * 3 / 2) {
@@ -2632,11 +3176,6 @@ TYPED_TEST_P(SanitizerTest, PoisoningUnused) {
     }
   }
 }
-
-REGISTER_TYPED_TEST_SUITE_P(SanitizerTest, PoisoningUnused);
-using SanitizerTableTypes = ::testing::Types<IntTable, TransferableIntTable>;
-INSTANTIATE_TYPED_TEST_SUITE_P(InstanceSanitizerTest, SanitizerTest,
-                               SanitizerTableTypes);
 
 // TODO(b/289225379): poison inline space when empty SOO.
 TEST(Sanitizer, PoisoningOnErase) {
@@ -2660,28 +3199,27 @@ TYPED_TEST(AlignOneTest, AlignOne) {
   // first slot when alignof(value_type) is 1. We test repeated
   // insertions/erases and verify that the behavior is correct.
   TypeParam t;
-  std::unordered_set<uint8_t> verifier;  // NOLINT
+  std::bitset<256> verifier;
 
   // Do repeated insertions/erases from the table.
-  for (int64_t i = 0; i < 100000; ++i) {
+  for (int64_t i = 0; i < 10000; ++i) {
     SCOPED_TRACE(i);
     const uint8_t u = (i * -i) & 0xFF;
     auto it = t.find(u);
-    auto verifier_it = verifier.find(u);
     if (it == t.end()) {
-      ASSERT_EQ(verifier_it, verifier.end());
+      ASSERT_FALSE(verifier.test(u));
       t.insert(u);
-      verifier.insert(u);
+      verifier.set(u);
     } else {
-      ASSERT_NE(verifier_it, verifier.end());
+      ASSERT_TRUE(verifier.test(u));
       t.erase(it);
-      verifier.erase(verifier_it);
+      verifier.reset(u);
     }
   }
 
-  EXPECT_EQ(t.size(), verifier.size());
+  EXPECT_EQ(t.size(), verifier.count());
   for (uint8_t u : t) {
-    EXPECT_EQ(verifier.count(u), 1);
+    ASSERT_TRUE(verifier.test(u));
   }
 }
 
@@ -2752,7 +3290,7 @@ TEST(Iterator, InvalidUseWithMoveCrashesWithSanitizers) {
 #endif
 }
 
-TYPED_TEST_P(SooTest, ReservedGrowthUpdatesWhenTableDoesntGrow) {
+TYPED_TEST(SooTest, ReservedGrowthUpdatesWhenTableDoesntGrow) {
   TypeParam t;
   for (int i = 0; i < 8; ++i) t.insert(i);
   // Want to insert twice without invalidating iterators so reserve.
@@ -2767,6 +3305,213 @@ TYPED_TEST_P(SooTest, ReservedGrowthUpdatesWhenTableDoesntGrow) {
   EXPECT_EQ(*it, 0);
 }
 
+template <class TableType>
+class InstanceTrackerTest : public testing::Test {};
+
+using ::absl::test_internal::CopyableMovableInstance;
+using ::absl::test_internal::InstanceTracker;
+
+struct InstanceTrackerHash {
+  size_t operator()(const CopyableMovableInstance& t) const {
+    return absl::HashOf(t.value());
+  }
+};
+
+using InstanceTrackerTableTypes = ::testing::Types<
+    absl::node_hash_set<CopyableMovableInstance, InstanceTrackerHash>,
+    absl::flat_hash_set<CopyableMovableInstance, InstanceTrackerHash>>;
+TYPED_TEST_SUITE(InstanceTrackerTest, InstanceTrackerTableTypes);
+
+TYPED_TEST(InstanceTrackerTest, EraseIfAll) {
+  using Table = TypeParam;
+  InstanceTracker tracker;
+  for (int size = 0; size < 100; ++size) {
+    Table t;
+    for (int i = 0; i < size; ++i) {
+      t.emplace(i);
+    }
+    absl::erase_if(t, [](const auto&) { return true; });
+    ASSERT_EQ(t.size(), 0);
+  }
+  EXPECT_EQ(tracker.live_instances(), 0);
+}
+
+TYPED_TEST(InstanceTrackerTest, EraseIfNone) {
+  using Table = TypeParam;
+  InstanceTracker tracker;
+  {
+    Table t;
+    for (size_t size = 0; size < 100; ++size) {
+      absl::erase_if(t, [](const auto&) { return false; });
+      ASSERT_EQ(t.size(), size);
+      t.emplace(size);
+    }
+  }
+  EXPECT_EQ(tracker.live_instances(), 0);
+}
+
+TYPED_TEST(InstanceTrackerTest, EraseIfPartial) {
+  using Table = TypeParam;
+  InstanceTracker tracker;
+  for (int mod : {0, 1}) {
+    for (int size = 0; size < 100; ++size) {
+      SCOPED_TRACE(absl::StrCat(mod, " ", size));
+      Table t;
+      std::vector<CopyableMovableInstance> expected;
+      for (int i = 0; i < size; ++i) {
+        t.emplace(i);
+        if (i % 2 != mod) {
+          expected.emplace_back(i);
+        }
+      }
+      absl::erase_if(t, [mod](const auto& x) { return x.value() % 2 == mod; });
+      ASSERT_THAT(t, testing::UnorderedElementsAreArray(expected));
+    }
+  }
+  EXPECT_EQ(tracker.live_instances(), 0);
+}
+
+TYPED_TEST(SooTest, EraseIfAll) {
+  auto pred = [](const auto&) { return true; };
+  for (int size = 0; size < 100; ++size) {
+    TypeParam t;
+    for (int i = 0; i < size; ++i) t.insert(i);
+    absl::container_internal::EraseIf(pred, &t);
+    ASSERT_EQ(t.size(), 0);
+  }
+}
+
+TYPED_TEST(SooTest, EraseIfNone) {
+  auto pred = [](const auto&) { return false; };
+  TypeParam t;
+  for (size_t size = 0; size < 100; ++size) {
+    absl::container_internal::EraseIf(pred, &t);
+    ASSERT_EQ(t.size(), size);
+    t.insert(size);
+  }
+}
+
+TYPED_TEST(SooTest, EraseIfPartial) {
+  for (int mod : {0, 1}) {
+    auto pred = [&](const auto& x) {
+      return static_cast<int64_t>(x) % 2 == mod;
+    };
+    for (int size = 0; size < 100; ++size) {
+      SCOPED_TRACE(absl::StrCat(mod, " ", size));
+      TypeParam t;
+      std::vector<int64_t> expected;
+      for (int i = 0; i < size; ++i) {
+        t.insert(i);
+        if (i % 2 != mod) {
+          expected.push_back(i);
+        }
+      }
+      absl::container_internal::EraseIf(pred, &t);
+      ASSERT_THAT(t, testing::UnorderedElementsAreArray(expected));
+    }
+  }
+}
+
+TYPED_TEST(SooTest, ForEach) {
+  TypeParam t;
+  std::vector<int64_t> expected;
+  for (int size = 0; size < 100; ++size) {
+    SCOPED_TRACE(size);
+    {
+      SCOPED_TRACE("mutable iteration");
+      std::vector<int64_t> actual;
+      auto f = [&](auto& x) { actual.push_back(static_cast<int64_t>(x)); };
+      absl::container_internal::ForEach(f, &t);
+      ASSERT_THAT(actual, testing::UnorderedElementsAreArray(expected));
+    }
+    {
+      SCOPED_TRACE("const iteration");
+      std::vector<int64_t> actual;
+      auto f = [&](auto& x) {
+        static_assert(
+            std::is_const<std::remove_reference_t<decltype(x)>>::value,
+            "no mutable values should be passed to const ForEach");
+        actual.push_back(static_cast<int64_t>(x));
+      };
+      const auto& ct = t;
+      absl::container_internal::ForEach(f, &ct);
+      ASSERT_THAT(actual, testing::UnorderedElementsAreArray(expected));
+    }
+    t.insert(size);
+    expected.push_back(size);
+  }
+}
+
+TEST(Table, ForEachMutate) {
+  StringTable t;
+  using ValueType = StringTable::value_type;
+  std::vector<ValueType> expected;
+  for (int size = 0; size < 100; ++size) {
+    SCOPED_TRACE(size);
+    std::vector<ValueType> actual;
+    auto f = [&](ValueType& x) {
+      actual.push_back(x);
+      x.second += "a";
+    };
+    absl::container_internal::ForEach(f, &t);
+    ASSERT_THAT(actual, testing::UnorderedElementsAreArray(expected));
+    for (ValueType& v : expected) {
+      v.second += "a";
+    }
+    ASSERT_THAT(t, testing::UnorderedElementsAreArray(expected));
+    t.emplace(std::to_string(size), std::to_string(size));
+    expected.emplace_back(std::to_string(size), std::to_string(size));
+  }
+}
+
+TYPED_TEST(SooTest, EraseIfReentryDeath) {
+  if (!IsAssertEnabled()) GTEST_SKIP() << "Assertions not enabled.";
+
+  auto erase_if_with_removal_reentrance = [](size_t reserve_size) {
+    TypeParam t;
+    t.reserve(reserve_size);
+    int64_t first_value = -1;
+    t.insert(1024);
+    t.insert(5078);
+    auto pred = [&](const auto& x) {
+      if (first_value == -1) {
+        first_value = static_cast<int64_t>(x);
+        return false;
+      }
+      // We erase on second call to `pred` to reduce the chance that assertion
+      // will happen in IterateOverFullSlots.
+      t.erase(first_value);
+      return true;
+    };
+    absl::container_internal::EraseIf(pred, &t);
+  };
+  // Removal will likely happen in a different group.
+  EXPECT_DEATH_IF_SUPPORTED(erase_if_with_removal_reentrance(1024 * 16),
+                            "hash table was modified unexpectedly");
+  // Removal will happen in the same group.
+  EXPECT_DEATH_IF_SUPPORTED(
+      erase_if_with_removal_reentrance(CapacityToGrowth(Group::kWidth - 1)),
+      "hash table was modified unexpectedly");
+}
+
+// This test is useful to test soo branch.
+TYPED_TEST(SooTest, EraseIfReentrySingleElementDeath) {
+  if (!IsAssertEnabled()) GTEST_SKIP() << "Assertions not enabled.";
+
+  auto erase_if_with_removal_reentrance = []() {
+    TypeParam t;
+    t.insert(1024);
+    auto pred = [&](const auto& x) {
+      // We erase ourselves in order to confuse the erase_if.
+      t.erase(static_cast<int64_t>(x));
+      return false;
+    };
+    absl::container_internal::EraseIf(pred, &t);
+  };
+  EXPECT_DEATH_IF_SUPPORTED(erase_if_with_removal_reentrance(),
+                            "hash table was modified unexpectedly");
+}
+
 TEST(Table, EraseBeginEndResetsReservedGrowth) {
   bool frozen = false;
   BadHashFreezableIntTable t{FreezableAlloc<int64_t>(&frozen)};
@@ -2777,7 +3522,8 @@ TEST(Table, EraseBeginEndResetsReservedGrowth) {
   for (int i = 0; i < 10; ++i) {
     // Create a long run (hash function returns constant).
     for (int j = 0; j < 100; ++j) t.insert(j);
-    // Erase elements from the middle of the long run, which creates tombstones.
+    // Erase elements from the middle of the long run, which creates
+    // tombstones.
     for (int j = 30; j < 60; ++j) t.erase(j);
     EXPECT_EQ(t.size(), 70);
     EXPECT_EQ(t.capacity(), cap);
@@ -2924,33 +3670,33 @@ TEST(Table, CountedHash) {
 // IterateOverFullSlots doesn't support SOO.
 TEST(Table, IterateOverFullSlotsEmpty) {
   NonSooIntTable t;
-  auto fail_if_any = [](const ctrl_t*, auto* i) {
-    FAIL() << "expected no slots " << **i;
+  using SlotType = NonSooIntTableSlotType;
+  auto fail_if_any = [](const ctrl_t*, void* i) {
+    FAIL() << "expected no slots " << **static_cast<SlotType*>(i);
   };
   container_internal::IterateOverFullSlots(
-      RawHashSetTestOnlyAccess::GetCommon(t),
-      RawHashSetTestOnlyAccess::GetSlots(t), fail_if_any);
+      RawHashSetTestOnlyAccess::GetCommon(t), sizeof(SlotType), fail_if_any);
   for (size_t i = 0; i < 256; ++i) {
     t.reserve(i);
     container_internal::IterateOverFullSlots(
-        RawHashSetTestOnlyAccess::GetCommon(t),
-        RawHashSetTestOnlyAccess::GetSlots(t), fail_if_any);
+        RawHashSetTestOnlyAccess::GetCommon(t), sizeof(SlotType), fail_if_any);
   }
 }
 
 TEST(Table, IterateOverFullSlotsFull) {
   NonSooIntTable t;
+  using SlotType = NonSooIntTableSlotType;
 
   std::vector<int64_t> expected_slots;
-  for (int64_t i = 0; i < 128; ++i) {
-    t.insert(i);
-    expected_slots.push_back(i);
+  for (int64_t idx = 0; idx < 128; ++idx) {
+    t.insert(idx);
+    expected_slots.push_back(idx);
 
     std::vector<int64_t> slots;
     container_internal::IterateOverFullSlots(
-        RawHashSetTestOnlyAccess::GetCommon(t),
-        RawHashSetTestOnlyAccess::GetSlots(t),
-        [&t, &slots](const ctrl_t* ctrl, auto* i) {
+        RawHashSetTestOnlyAccess::GetCommon(t), sizeof(SlotType),
+        [&t, &slots](const ctrl_t* ctrl, void* slot) {
+          SlotType* i = static_cast<SlotType*>(slot);
           ptrdiff_t ctrl_offset =
               ctrl - RawHashSetTestOnlyAccess::GetCommon(t).control();
           ptrdiff_t slot_offset = i - RawHashSetTestOnlyAccess::GetSlots(t);
@@ -2961,15 +3707,87 @@ TEST(Table, IterateOverFullSlotsFull) {
   }
 }
 
+TEST(Table, IterateOverFullSlotsDeathOnRemoval) {
+  if (!IsAssertEnabled()) GTEST_SKIP() << "Assertions not enabled.";
+
+  auto iterate_with_reentrant_removal = [](int64_t size,
+                                           int64_t reserve_size = -1) {
+    if (reserve_size == -1) reserve_size = size;
+    for (int64_t idx = 0; idx < size; ++idx) {
+      NonSooIntTable t;
+      using SlotType = NonSooIntTableSlotType;
+      t.reserve(static_cast<size_t>(reserve_size));
+      for (int val = 0; val <= idx; ++val) {
+        t.insert(val);
+      }
+
+      container_internal::IterateOverFullSlots(
+          RawHashSetTestOnlyAccess::GetCommon(t), sizeof(SlotType),
+          [&t](const ctrl_t*, void* slot) {
+            int64_t value = **static_cast<SlotType*>(slot);
+            // Erase the other element from 2*k and 2*k+1 pair.
+            t.erase(value ^ 1);
+          });
+    }
+  };
+
+  EXPECT_DEATH_IF_SUPPORTED(iterate_with_reentrant_removal(128),
+                            "hash table was modified unexpectedly");
+  // Removal will likely happen in a different group.
+  EXPECT_DEATH_IF_SUPPORTED(iterate_with_reentrant_removal(14, 1024 * 16),
+                            "hash table was modified unexpectedly");
+  // Removal will happen in the same group.
+  EXPECT_DEATH_IF_SUPPORTED(iterate_with_reentrant_removal(static_cast<int64_t>(
+                                CapacityToGrowth(Group::kWidth - 1))),
+                            "hash table was modified unexpectedly");
+}
+
+TEST(Table, IterateOverFullSlotsDeathOnInsert) {
+  if (!IsAssertEnabled()) GTEST_SKIP() << "Assertions not enabled.";
+
+  auto iterate_with_reentrant_insert = [](int64_t reserve_size,
+                                          int64_t size_divisor = 2) {
+    int64_t size = reserve_size / size_divisor;
+    for (int64_t idx = 1; idx <= size; ++idx) {
+      NonSooIntTable t;
+      using SlotType = NonSooIntTableSlotType;
+      t.reserve(static_cast<size_t>(reserve_size));
+      for (int val = 1; val <= idx; ++val) {
+        t.insert(val);
+      }
+
+      container_internal::IterateOverFullSlots(
+          RawHashSetTestOnlyAccess::GetCommon(t), sizeof(SlotType),
+          [&t](const ctrl_t*, void* slot) {
+            int64_t value = **static_cast<SlotType*>(slot);
+            t.insert(-value);
+          });
+    }
+  };
+
+  EXPECT_DEATH_IF_SUPPORTED(iterate_with_reentrant_insert(128),
+                            "hash table was modified unexpectedly");
+  // Insert will likely happen in a different group.
+  EXPECT_DEATH_IF_SUPPORTED(iterate_with_reentrant_insert(1024 * 16, 1024 * 2),
+                            "hash table was modified unexpectedly");
+  // Insert will happen in the same group.
+  EXPECT_DEATH_IF_SUPPORTED(iterate_with_reentrant_insert(static_cast<int64_t>(
+                                CapacityToGrowth(Group::kWidth - 1))),
+                            "hash table was modified unexpectedly");
+}
+
 template <typename T>
 class SooTable : public testing::Test {};
-TYPED_TEST_SUITE_P(SooTable);
+using FreezableSooTableTypes =
+    ::testing::Types<FreezableSizedValueSooTable<8>,
+                     FreezableSizedValueSooTable<16>>;
+TYPED_TEST_SUITE(SooTable, FreezableSooTableTypes);
 
-TYPED_TEST_P(SooTable, Basic) {
+TYPED_TEST(SooTable, Basic) {
   bool frozen = true;
   TypeParam t{FreezableAlloc<typename TypeParam::value_type>(&frozen)};
   if (t.capacity() != SooCapacity()) {
-    EXPECT_LT(sizeof(void*), 8);
+    CHECK_LT(sizeof(void*), 8) << "missing SOO coverage";
     GTEST_SKIP() << "not SOO on this platform";
   }
 
@@ -2995,20 +3813,18 @@ TYPED_TEST_P(SooTable, Basic) {
   EXPECT_EQ(t.size(), 0);
 }
 
-REGISTER_TYPED_TEST_SUITE_P(SooTable, Basic);
-using FreezableSooTableTypes =
-    ::testing::Types<FreezableSizedValueSooTable<8>,
-                     FreezableSizedValueSooTable<16>>;
-INSTANTIATE_TYPED_TEST_SUITE_P(My, SooTable, FreezableSooTableTypes);
-
-TEST(Table, RehashToSoo) {
+TEST(Table, RehashToSooUnsampled) {
   SooIntTable t;
   if (t.capacity() != SooCapacity()) {
-    EXPECT_LT(sizeof(void*), 8);
+    CHECK_LT(sizeof(void*), 8) << "missing SOO coverage";
     GTEST_SKIP() << "not SOO on this platform";
   }
 
-  t.reserve(10);
+  // We disable hashtablez sampling for this test to ensure that the table isn't
+  // sampled. When the table is sampled, it won't rehash down to SOO.
+  DisableSampling();
+
+  t.reserve(100);
   t.insert(0);
   EXPECT_EQ(*t.begin(), 0);
 
@@ -3021,8 +3837,8 @@ TEST(Table, RehashToSoo) {
   EXPECT_EQ(t.find(1), t.end());
 }
 
-TEST(Table, ResizeToNonSoo) {
-  for (int reserve_capacity : {8, 100000}) {
+TEST(Table, ReserveToNonSoo) {
+  for (size_t reserve_capacity : {2u, 8u, 100000u}) {
     SooIntTable t;
     t.insert(0);
 
@@ -3035,20 +3851,301 @@ TEST(Table, ResizeToNonSoo) {
   }
 }
 
-REGISTER_TYPED_TEST_SUITE_P(
-    SooTest, Empty, Clear, ClearBug, Contains1, Contains2, ContainsEmpty,
-    CopyConstruct, CopyDifferentCapacities, CopyDifferentSizes,
-    EnsureNonQuadraticAsInRust, Erase, EraseBeginEnd, EraseInSmallTables,
-    EraseMaintainsValidIterator, FindFullDeletedRegression, HintInsert, Insert1,
-    Insert2, InsertEraseStressTest, InsertWithinCapacity,
-    IterationOrderChangesByInstance, IterationOrderChangesOnRehash,
-    IteratorInvalidAssertsEqualityOperator,
-    IteratorInvalidAssertsEqualityOperatorRehash, LargeTable, LookupEmpty,
-    NumDeletedRegression, Rehash, RehashDoesNotRehashWhenNotNecessary,
-    RehashZeroForcesRehash, ReplacingDeletedSlotDoesNotRehash,
-    ReservedGrowthUpdatesWhenTableDoesntGrow, Swap, UnstablePointers);
-using SooTableTypes = ::testing::Types<SooIntTable, NonSooIntTable>;
-INSTANTIATE_TYPED_TEST_SUITE_P(My, SooTest, SooTableTypes);
+struct InconsistentHashEqType {
+  InconsistentHashEqType(int v1, int v2) : v1(v1), v2(v2) {}
+  template <typename H>
+  friend H AbslHashValue(H h, InconsistentHashEqType t) {
+    return H::combine(std::move(h), t.v1);
+  }
+  bool operator==(InconsistentHashEqType t) const { return v2 == t.v2; }
+  int v1, v2;
+};
+
+TEST(Iterator, InconsistentHashEqFunctorsValidation) {
+  if (!IsAssertEnabled()) GTEST_SKIP() << "Assertions not enabled.";
+
+  ValueTable<InconsistentHashEqType> t;
+  for (int i = 0; i < 10; ++i) t.insert({i, i});
+  // We need to find/insert multiple times to guarantee that we get the
+  // assertion because it's possible for the hash to collide with the inserted
+  // element that has v2==0. In those cases, the new element won't be inserted.
+  auto find_conflicting_elems = [&] {
+    for (int i = 100; i < 20000; ++i) {
+      EXPECT_EQ(t.find({i, 0}), t.end());
+    }
+  };
+  EXPECT_DEATH_IF_SUPPORTED(find_conflicting_elems(),
+                            "hash/eq functors are inconsistent.");
+  auto insert_conflicting_elems = [&] {
+    for (int i = 100; i < 20000; ++i) {
+      EXPECT_EQ(t.insert({i, 0}).second, false);
+    }
+  };
+  EXPECT_DEATH_IF_SUPPORTED(insert_conflicting_elems(),
+                            "hash/eq functors are inconsistent.");
+}
+
+struct ConstructCaller {
+  explicit ConstructCaller(int v) : val(v) {}
+  ConstructCaller(int v, absl::FunctionRef<void()> func) : val(v) { func(); }
+  template <typename H>
+  friend H AbslHashValue(H h, const ConstructCaller& d) {
+    return H::combine(std::move(h), d.val);
+  }
+  bool operator==(const ConstructCaller& c) const { return val == c.val; }
+
+  int val;
+};
+
+struct DestroyCaller {
+  explicit DestroyCaller(int v) : val(v) {}
+  DestroyCaller(int v, absl::FunctionRef<void()> func)
+      : val(v), destroy_func(func) {}
+  DestroyCaller(DestroyCaller&& that)
+      : val(that.val), destroy_func(std::move(that.destroy_func)) {
+    that.Deactivate();
+  }
+  ~DestroyCaller() {
+    if (destroy_func) (*destroy_func)();
+  }
+  void Deactivate() { destroy_func = absl::nullopt; }
+
+  template <typename H>
+  friend H AbslHashValue(H h, const DestroyCaller& d) {
+    return H::combine(std::move(h), d.val);
+  }
+  bool operator==(const DestroyCaller& d) const { return val == d.val; }
+
+  int val;
+  absl::optional<absl::FunctionRef<void()>> destroy_func;
+};
+
+TEST(Table, ReentrantCallsFail) {
+#ifdef NDEBUG
+  GTEST_SKIP() << "Reentrant checks only enabled in debug mode.";
+#else
+  {
+    ValueTable<ConstructCaller> t;
+    t.insert(ConstructCaller{0});
+    auto erase_begin = [&] { t.erase(t.begin()); };
+    EXPECT_DEATH_IF_SUPPORTED(t.emplace(1, erase_begin), "");
+  }
+  {
+    ValueTable<DestroyCaller> t;
+    t.insert(DestroyCaller{0});
+    auto find_0 = [&] { t.find(DestroyCaller{0}); };
+    t.insert(DestroyCaller{1, find_0});
+    for (int i = 10; i < 20; ++i) t.insert(DestroyCaller{i});
+    EXPECT_DEATH_IF_SUPPORTED(t.clear(), "");
+    for (auto& elem : t) elem.Deactivate();
+  }
+  {
+    ValueTable<DestroyCaller> t;
+    t.insert(DestroyCaller{0});
+    auto insert_1 = [&] { t.insert(DestroyCaller{1}); };
+    t.insert(DestroyCaller{1, insert_1});
+    for (int i = 10; i < 20; ++i) t.insert(DestroyCaller{i});
+    EXPECT_DEATH_IF_SUPPORTED(t.clear(), "");
+    for (auto& elem : t) elem.Deactivate();
+  }
+#endif
+}
+
+// TODO(b/328794765): this check is very useful to run with ASAN in opt mode.
+TEST(Table, DestroyedCallsFail) {
+#ifdef NDEBUG
+  ASSERT_EQ(SwisstableAssertAccessToDestroyedTable(),
+            SwisstableGenerationsEnabled());
+#else
+  ASSERT_TRUE(SwisstableAssertAccessToDestroyedTable());
+#endif
+  if (!SwisstableAssertAccessToDestroyedTable()) {
+    GTEST_SKIP() << "Validation not enabled.";
+  }
+#if !defined(__clang__) && defined(__GNUC__)
+  GTEST_SKIP() << "Flaky on GCC.";
+#endif
+  absl::optional<IntTable> t;
+  t.emplace({1});
+  IntTable* t_ptr = &*t;
+  EXPECT_TRUE(t_ptr->contains(1));
+  t.reset();
+  std::string expected_death_message =
+#if defined(ABSL_HAVE_MEMORY_SANITIZER)
+      "use-of-uninitialized-value";
+#else
+      "destroyed hash table";
+#endif
+  EXPECT_DEATH_IF_SUPPORTED(t_ptr->contains(1), expected_death_message);
+}
+
+TEST(Table, DestroyedCallsFailDuringDestruction) {
+  if (!SwisstableAssertAccessToDestroyedTable()) {
+    GTEST_SKIP() << "Validation not enabled.";
+  }
+#if !defined(__clang__) && defined(__GNUC__)
+  GTEST_SKIP() << "Flaky on GCC.";
+#endif
+  // When EXPECT_DEATH_IF_SUPPORTED is not executed, the code after it is not
+  // executed as well.
+  // We need to destruct the table correctly in such a case.
+  // Must be defined before the table for correct destruction order.
+  bool do_lookup = false;
+
+  using Table = absl::flat_hash_map<int, std::shared_ptr<int>>;
+  absl::optional<Table> t = Table();
+  Table* t_ptr = &*t;
+  auto destroy = [&](int* ptr) {
+    if (do_lookup) {
+      ASSERT_TRUE(t_ptr->contains(*ptr));
+    }
+    delete ptr;
+  };
+  t->insert({0, std::shared_ptr<int>(new int(0), destroy)});
+  auto destroy_with_lookup = [&] {
+    do_lookup = true;
+    t.reset();
+  };
+  std::string expected_death_message =
+#ifdef NDEBUG
+      "destroyed hash table";
+#else
+      "Reentrant container access";
+#endif
+  EXPECT_DEATH_IF_SUPPORTED(destroy_with_lookup(), expected_death_message);
+}
+
+TEST(Table, MovedFromCallsFail) {
+  if (!SwisstableGenerationsEnabled()) {
+    GTEST_SKIP() << "Moved-from checks only enabled in sanitizer mode.";
+    return;
+  }
+
+  {
+    ABSL_ATTRIBUTE_UNUSED IntTable t1, t2, t3;
+    t1.insert(1);
+    t2 = std::move(t1);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(t1.contains(1), "moved-from");
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(t1.swap(t3), "moved-from");
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(t1.merge(t3), "moved-from");
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(IntTable{t1}, "moved-from");
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(t1.begin(), "moved-from");
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(t1.end(), "moved-from");
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(t1.size(), "moved-from");
+  }
+  {
+    ABSL_ATTRIBUTE_UNUSED IntTable t1;
+    t1.insert(1);
+    ABSL_ATTRIBUTE_UNUSED IntTable t2(std::move(t1));
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    EXPECT_DEATH_IF_SUPPORTED(t1.contains(1), "moved-from");
+    t1.clear();  // Clearing a moved-from table is allowed.
+  }
+  {
+    // Test that using a table (t3) that was moved-to from a moved-from table
+    // (t1) fails.
+    ABSL_ATTRIBUTE_UNUSED IntTable t1, t2, t3;
+    t1.insert(1);
+    t2 = std::move(t1);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    t3 = std::move(t1);
+    EXPECT_DEATH_IF_SUPPORTED(t3.contains(1), "moved-from");
+  }
+}
+
+TEST(HashtableSize, GenerateNewSeedDoesntChangeSize) {
+  size_t size = 1;
+  do {
+    HashtableSize hs(no_seed_empty_tag_t{});
+    hs.increment_size(size);
+    EXPECT_EQ(hs.size(), size);
+    hs.generate_new_seed();
+    EXPECT_EQ(hs.size(), size);
+    size = size * 2 + 1;
+  } while (size < MaxValidSizeFor1ByteSlot());
+}
+
+TEST(Table, MaxValidSize) {
+  IntTable t;
+  EXPECT_EQ(MaxValidSize(sizeof(IntTable::value_type)), t.max_size());
+  if constexpr (sizeof(size_t) == 8) {
+    for (size_t i = 0; i < 35; ++i) {
+      SCOPED_TRACE(i);
+      size_t slot_size = size_t{1} << i;
+      size_t max_size = MaxValidSize(slot_size);
+      ASSERT_FALSE(IsAboveValidSize(max_size, slot_size));
+      ASSERT_TRUE(IsAboveValidSize(max_size + 1, slot_size));
+      ASSERT_LT(max_size, uint64_t{1} << 60);
+      // For non gigantic slot sizes we expect max size to be at least 2^40.
+      if (i <= 22) {
+        ASSERT_FALSE(IsAboveValidSize(size_t{1} << 40, slot_size));
+        ASSERT_GE(max_size, uint64_t{1} << 40);
+      }
+      ASSERT_LT(NormalizeCapacity(GrowthToLowerboundCapacity(max_size)),
+                uint64_t{1} << HashtableSize::kSizeBitCount);
+      ASSERT_LT(absl::uint128(max_size) * slot_size, uint64_t{1} << 63);
+    }
+  }
+  EXPECT_LT(MaxValidSize</*kSizeOfSizeT=*/4>(1), 1 << 30);
+  EXPECT_LT(MaxValidSize</*kSizeOfSizeT=*/4>(2), 1 << 29);
+  for (size_t i = 0; i < 29; ++i) {
+    size_t slot_size = size_t{1} << i;
+    size_t max_size = MaxValidSize</*kSizeOfSizeT=*/4>(slot_size);
+    ASSERT_FALSE(IsAboveValidSize</*kSizeOfSizeT=*/4>(max_size, slot_size));
+    ASSERT_TRUE(IsAboveValidSize</*kSizeOfSizeT=*/4>(max_size + 1, slot_size));
+    ASSERT_LT(max_size, 1 << 30);
+    size_t max_capacity =
+        NormalizeCapacity(GrowthToLowerboundCapacity(max_size));
+    ASSERT_LT(max_capacity, (size_t{1} << 31) / slot_size);
+    ASSERT_GT(max_capacity, (1 << 29) / slot_size);
+    ASSERT_LT(max_capacity * slot_size, size_t{1} << 31);
+  }
+}
+
+TEST(Table, MaxSizeOverflow) {
+  size_t overflow = (std::numeric_limits<size_t>::max)();
+  EXPECT_DEATH_IF_SUPPORTED(IntTable t(overflow), "Hash table size overflow");
+  IntTable t;
+  EXPECT_DEATH_IF_SUPPORTED(t.reserve(overflow), "Hash table size overflow");
+  EXPECT_DEATH_IF_SUPPORTED(t.rehash(overflow), "Hash table size overflow");
+  size_t slightly_overflow = MaxValidSize(sizeof(IntTable::value_type)) + 1;
+  size_t slightly_overflow_capacity =
+      NextCapacity(NormalizeCapacity(slightly_overflow));
+  EXPECT_DEATH_IF_SUPPORTED(IntTable t2(slightly_overflow_capacity - 10),
+                            "Hash table size overflow");
+  EXPECT_DEATH_IF_SUPPORTED(t.reserve(slightly_overflow),
+                            "Hash table size overflow");
+  EXPECT_DEATH_IF_SUPPORTED(t.rehash(slightly_overflow),
+                            "Hash table size overflow");
+}
+
+// TODO(b/397453582): Remove support for const hasher and ermove this test.
+TEST(Table, ConstLambdaHash) {
+  int64_t multiplier = 17;
+  // Make sure that code compiles and work OK with non-empty hasher with const
+  // qualifier.
+  const auto hash = [multiplier](SizedValue<64> value) -> size_t {
+    return static_cast<size_t>(static_cast<int64_t>(value) * multiplier);
+  };
+  static_assert(!std::is_empty_v<decltype(hash)>);
+  absl::flat_hash_set<SizedValue<64>, decltype(hash)> t(0, hash);
+  t.insert(1);
+  EXPECT_EQ(t.size(), 1);
+  EXPECT_EQ(t.find(1), t.begin());
+  EXPECT_EQ(t.find(2), t.end());
+  t.insert(2);
+  EXPECT_EQ(t.size(), 2);
+  EXPECT_NE(t.find(1), t.end());
+  EXPECT_NE(t.find(2), t.end());
+  EXPECT_EQ(t.find(3), t.end());
+}
 
 }  // namespace
 }  // namespace container_internal

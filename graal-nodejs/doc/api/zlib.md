@@ -74,7 +74,6 @@ import {
   createReadStream,
   createWriteStream,
 } from 'node:fs';
-import process from 'node:process';
 import { createGzip } from 'node:zlib';
 import { pipeline } from 'node:stream/promises';
 
@@ -724,7 +723,9 @@ These advanced options are available for controlling decompression:
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 There are several options and other constants available for Zstd-based
@@ -749,6 +750,34 @@ The most important options are:
 * `ZSTD_c_compressionLevel`
   * Set compression parameters according to pre-defined cLevel table. Default
     level is ZSTD\_CLEVEL\_DEFAULT==3.
+* `ZSTD_c_strategy`
+  * Select the compression strategy.
+  * Possible values are listed in the strategy options section below.
+
+#### Strategy options
+
+The following constants can be used as values for the `ZSTD_c_strategy`
+parameter:
+
+* `zlib.constants.ZSTD_fast`
+* `zlib.constants.ZSTD_dfast`
+* `zlib.constants.ZSTD_greedy`
+* `zlib.constants.ZSTD_lazy`
+* `zlib.constants.ZSTD_lazy2`
+* `zlib.constants.ZSTD_btlazy2`
+* `zlib.constants.ZSTD_btopt`
+* `zlib.constants.ZSTD_btultra`
+* `zlib.constants.ZSTD_btultra2`
+
+Example:
+
+```js
+const stream = zlib.createZstdCompress({
+  params: {
+    [zlib.constants.ZSTD_c_strategy]: zlib.constants.ZSTD_btultra,
+  },
+});
+```
 
 #### Pledged Source Size
 
@@ -983,29 +1012,13 @@ base class of the compressor/decompressor classes.
 This class inherits from [`stream.Transform`][], allowing `node:zlib` objects to
 be used in pipes and similar stream operations.
 
-### `zlib.bytesRead`
-
-<!-- YAML
-added: v8.1.0
-deprecated: v10.0.0
--->
-
-> Stability: 0 - Deprecated: Use [`zlib.bytesWritten`][] instead.
-
-* {number}
-
-Deprecated alias for [`zlib.bytesWritten`][]. This original name was chosen
-because it also made sense to interpret the value as the number of bytes
-read by the engine, but is inconsistent with other streams in Node.js that
-expose values under these names.
-
 ### `zlib.bytesWritten`
 
 <!-- YAML
 added: v10.0.0
 -->
 
-* {number}
+* Type: {number}
 
 The `zlib.bytesWritten` property specifies the number of bytes written to
 the engine, before the bytes are processed (compressed or decompressed,
@@ -1068,7 +1081,9 @@ the inflate and deflate algorithms.
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 <!--type=misc-->
@@ -1082,6 +1097,9 @@ Each Zstd-based class takes an `options` object. All options are optional.
 * `maxOutputLength` {integer} Limits output size when using
   [convenience methods][]. **Default:** [`buffer.kMaxLength`][]
 * `info` {boolean} If `true`, returns an object with `buffer` and `engine`. **Default:** `false`
+* `dictionary` {Buffer} Optional dictionary used to
+  improve compression efficiency when compressing or decompressing data that
+  shares common patterns with the dictionary.
 
 For example:
 
@@ -1100,7 +1118,9 @@ const stream = zlib.createZstdCompress({
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 Compress data using the Zstd algorithm.
@@ -1110,7 +1130,9 @@ Compress data using the Zstd algorithm.
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 Decompress data using the Zstd algorithm.
@@ -1126,7 +1148,9 @@ Provides an object enumerating Zlib-related constants.
 ## `zlib.crc32(data[, value])`
 
 <!-- YAML
-added: v22.2.0
+added:
+  - v22.2.0
+  - v20.15.0
 -->
 
 * `data` {string|Buffer|TypedArray|DataView} When `data` is a string,
@@ -1291,7 +1315,9 @@ Creates and returns a new [`Unzip`][] object.
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 * `options` {zstd options}
@@ -1303,7 +1329,9 @@ Creates and returns a new [`ZstdCompress`][] object.
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 * `options` {zstd options}
@@ -1661,7 +1689,9 @@ Decompress a chunk of data with [`Unzip`][].
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 * `buffer` {Buffer|TypedArray|DataView|ArrayBuffer|string}
@@ -1673,7 +1703,9 @@ added: v22.15.0
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 * `buffer` {Buffer|TypedArray|DataView|ArrayBuffer|string}
@@ -1684,7 +1716,9 @@ Compress a chunk of data with [`ZstdCompress`][].
 ### `zlib.zstdDecompress(buffer[, options], callback)`
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 * `buffer` {Buffer|TypedArray|DataView|ArrayBuffer|string}
@@ -1696,7 +1730,9 @@ added: v22.15.0
 > Stability: 1 - Experimental
 
 <!-- YAML
-added: v22.15.0
+added:
+  - v23.8.0
+  - v22.15.0
 -->
 
 * `buffer` {Buffer|TypedArray|DataView|ArrayBuffer|string}
@@ -1728,7 +1764,6 @@ Decompress a chunk of data with [`ZstdDecompress`][].
 [`buffer.kMaxLength`]: buffer.md#bufferkmaxlength
 [`deflateInit2` and `inflateInit2`]: https://zlib.net/manual.html#Advanced
 [`stream.Transform`]: stream.md#class-streamtransform
-[`zlib.bytesWritten`]: #zlibbyteswritten
 [convenience methods]: #convenience-methods
 [zlib documentation]: https://zlib.net/manual.html#Constants
 [zlib.createGzip example]: #zlib

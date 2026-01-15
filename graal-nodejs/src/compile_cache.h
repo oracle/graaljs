@@ -13,10 +13,17 @@
 namespace node {
 class Environment;
 
-// TODO(joyeecheung): move it into a CacheHandler class.
+#define CACHED_CODE_TYPES(V)                                                   \
+  V(kCommonJS, 0)                                                              \
+  V(kESM, 1)                                                                   \
+  V(kStrippedTypeScript, 2)                                                    \
+  V(kTransformedTypeScript, 3)                                                 \
+  V(kTransformedTypeScriptWithSourceMaps, 4)
+
 enum class CachedCodeType : uint8_t {
-  kCommonJS = 0,
-  kESM,
+#define V(type, value) type = value,
+  CACHED_CODE_TYPES(V)
+#undef V
 };
 
 struct CompileCacheEntry {
@@ -34,6 +41,7 @@ struct CompileCacheEntry {
   // Copy the cache into a new store for V8 to consume. Caller takes
   // ownership.
   v8::ScriptCompiler::CachedData* CopyCache() const;
+  const char* type_name() const;
 };
 
 #define COMPILE_CACHE_STATUS(V)                                                \
@@ -54,10 +62,14 @@ struct CompileCacheEnableResult {
   std::string message;  // Set in case of failure.
 };
 
+enum class EnableOption : uint8_t { DEFAULT, PORTABLE };
+
 class CompileCacheHandler {
  public:
   explicit CompileCacheHandler(Environment* env);
-  CompileCacheEnableResult Enable(Environment* env, const std::string& dir);
+  CompileCacheEnableResult Enable(Environment* env,
+                                  const std::string& dir,
+                                  EnableOption option = EnableOption::DEFAULT);
 
   void Persist();
 
@@ -70,6 +82,7 @@ class CompileCacheHandler {
   void MaybeSave(CompileCacheEntry* entry,
                  v8::Local<v8::Module> mod,
                  bool rejected);
+  void MaybeSave(CompileCacheEntry* entry, std::string_view transpiled);
   std::string_view cache_dir() { return compile_cache_dir_; }
 
  private:
@@ -94,6 +107,8 @@ class CompileCacheHandler {
   bool is_debug_ = false;
 
   std::string compile_cache_dir_;
+  std::string normalized_compile_cache_dir_;
+  EnableOption portable_ = EnableOption::DEFAULT;
   std::unordered_map<uint32_t, std::unique_ptr<CompileCacheEntry>>
       compiler_cache_store_;
 };

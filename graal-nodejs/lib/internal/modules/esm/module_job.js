@@ -3,6 +3,7 @@
 const {
   Array,
   ArrayPrototypeJoin,
+  ArrayPrototypePush,
   ArrayPrototypeSome,
   FunctionPrototype,
   ObjectSetPrototypeOf,
@@ -26,6 +27,7 @@ const {
   ModuleWrap,
   kErrored,
   kEvaluated,
+  kEvaluating,
   kEvaluationPhase,
   kInstantiated,
   kUninstantiated,
@@ -35,7 +37,11 @@ const {
     entry_point_module_private_symbol,
   },
 } = internalBinding('util');
-const { decorateErrorStack, kEmptyObject } = require('internal/util');
+/**
+ * @typedef {import('./utils.js').ModuleRequestType} ModuleRequestType
+ */
+const { decorateErrorStack } = require('internal/util');
+const { isPromise } = require('internal/util/types');
 const {
   getSourceMapsSupport,
 } = require('internal/source_map/source_map_cache');
@@ -72,9 +78,16 @@ const isCommonJSGlobalLikeNotDefinedError = (errorMessage) =>
  * @param {string} url
  * @returns {void}
  */
-const explainCommonJSGlobalLikeNotDefinedError = (e, url) => {
+const explainCommonJSGlobalLikeNotDefinedError = (e, url, hasTopLevelAwait) => {
   if (e?.name === 'ReferenceError' &&
       isCommonJSGlobalLikeNotDefinedError(e.message)) {
+
+    if (hasTopLevelAwait) {
+      e.message = `Cannot determine intended module format because both require() and top-level await are present. If the code is intended to be CommonJS, wrap await in an async function. If the code is intended to be an ES module, replace require() with import.`;
+      e.code = 'ERR_AMBIGUOUS_MODULE_SYNTAX';
+      return;
+    }
+
     e.message += ' in ES module scope';
 
     if (StringPrototypeStartsWith(e.message, 'require ')) {
@@ -97,49 +110,107 @@ const explainCommonJSGlobalLikeNotDefinedError = (e, url) => {
 };
 
 class ModuleJobBase {
-  constructor(url, importAttributes, isMain, inspectBrk) {
+  constructor(loader, url, importAttributes, phase, isMain, inspectBrk) {
+    assert(typeof phase === 'number');
+    this.loader = loader;
     this.importAttributes = importAttributes;
+    this.phase = phase;
     this.isMain = isMain;
     this.inspectBrk = inspectBrk;
 
     this.url = url;
+  }
+
+  /**
+   * Synchronously link the module and its dependencies.
+   * @param {ModuleRequestType} requestType Type of the module request.
+   * @returns {ModuleJobBase[]}
+   */
+  syncLink(requestType) {
+    // Store itself into the cache first before linking in case there are circular
+    // references in the linking.
+    this.loader.loadCache.set(this.url, this.type, this);
+    const moduleRequests = this.module.getModuleRequests();
+    // Modules should be aligned with the moduleRequests array in order.
+    const modules = Array(moduleRequests.length);
+    const evaluationDepJobs = [];
+    this.commonJsDeps = Array(moduleRequests.length);
+    try {
+      for (let idx = 0; idx < moduleRequests.length; idx++) {
+        const request = moduleRequests[idx];
+        // TODO(joyeecheung): split this into two iterators, one for resolving and one for loading so
+        // that hooks can pre-fetch sources off-thread.
+        const job = this.loader.getOrCreateModuleJob(this.url, request, requestType);
+        debug(`ModuleJobBase.syncLink() ${this.url} -> ${request.specifier}`, job);
+        assert(!isPromise(job));
+        assert(job.module instanceof ModuleWrap);
+        if (request.phase === kEvaluationPhase) {
+          ArrayPrototypePush(evaluationDepJobs, job);
+        }
+        modules[idx] = job.module;
+        this.commonJsDeps[idx] = job.module.isCommonJS;
+      }
+      this.module.link(modules);
+    } finally {
+      // Restore it - if it succeeds, we'll reset in the caller; Otherwise it's
+      // not cached and if the error is caught, subsequent attempt would still fail.
+      this.loader.loadCache.delete(this.url, this.type);
+    }
+
+    return evaluationDepJobs;
+  }
+
+  /**
+   * Ensure that this ModuleJob is moving towards the required phase
+   * (does not necessarily mean it is ready at that phase - run does that)
+   * @param {number} phase
+   */
+  ensurePhase(phase, requestType) {
+    if (this.phase < phase) {
+      this.phase = phase;
+      this.linked = this.link(requestType);
+      if (isPromise(this.linked)) {
+        PromisePrototypeThen(this.linked, undefined, noop);
+      }
+    }
   }
 }
 
 /* A ModuleJob tracks the loading of a single Module, and the ModuleJobs of
  * its dependencies, over time. */
 class ModuleJob extends ModuleJobBase {
-  #loader = null;
-
   /**
    * @param {ModuleLoader} loader The ESM loader.
    * @param {string} url URL of the module to be wrapped in ModuleJob.
    * @param {ImportAttributes} importAttributes Import attributes from the import statement.
    * @param {ModuleWrap|Promise<ModuleWrap>} moduleOrModulePromise Translated ModuleWrap for the module.
+   * @param {number} phase The phase to load the module to.
    * @param {boolean} isMain Whether the module is the entry point.
    * @param {boolean} inspectBrk Whether this module should be evaluated with the
-   *                             first line paused in the debugger (because --inspect-brk is passed).
-   * @param {boolean} isForRequireInImportedCJS Whether this is created for require() in imported CJS.
+   *   first line paused in the debugger (because --inspect-brk is passed).
+   * @param {ModuleRequestType} requestType Type of the module request.
    */
-  constructor(loader, url, importAttributes = { __proto__: null },
-              moduleOrModulePromise, isMain, inspectBrk, isForRequireInImportedCJS = false) {
-    super(url, importAttributes, isMain, inspectBrk);
-    this.#loader = loader;
+  constructor(loader, url, importAttributes = { __proto__: null }, moduleOrModulePromise,
+              phase = kEvaluationPhase, isMain, inspectBrk, requestType) {
+    super(loader, url, importAttributes, phase, isMain, inspectBrk);
 
     // Expose the promise to the ModuleWrap directly for linking below.
-    if (isForRequireInImportedCJS) {
-      this.module = moduleOrModulePromise;
-      assert(this.module instanceof ModuleWrap);
-      this.modulePromise = PromiseResolve(this.module);
-    } else {
+    if (isPromise(moduleOrModulePromise)) {
       this.modulePromise = moduleOrModulePromise;
+    } else {
+      this.module = moduleOrModulePromise;
+      this.modulePromise = PromiseResolve(moduleOrModulePromise);
     }
 
-    // Promise for the list of all dependencyJobs.
-    this.linked = this._link();
-    // This promise is awaited later anyway, so silence
-    // 'unhandled rejection' warnings.
-    PromisePrototypeThen(this.linked, undefined, noop);
+    if (this.phase === kEvaluationPhase) {
+      // Promise for the list of all dependencyJobs.
+      this.linked = this.link(requestType);
+      // This promise is awaited later anyway, so silence
+      // 'unhandled rejection' warnings.
+      if (isPromise(this.linked)) {
+        PromisePrototypeThen(this.linked, undefined, noop);
+      }
+    }
 
     // instantiated == deep dependency jobs wrappers are instantiated,
     // and module wrapper is instantiated.
@@ -147,58 +218,69 @@ class ModuleJob extends ModuleJobBase {
   }
 
   /**
-   * Iterates the module requests and links with the loader.
-   * @returns {Promise<ModuleJob[]>} Dependency module jobs.
+   * @param {ModuleRequestType} requestType Type of the module request.
+   * @returns {ModuleJobBase[]|Promise<ModuleJobBase[]>}
    */
-  async _link() {
+  link(requestType) {
+    if (this.loader.isForAsyncLoaderHookWorker) {
+      return this.#asyncLink(requestType);
+    }
+    return this.syncLink(requestType);
+  }
+
+  /**
+   * @param {ModuleRequestType} requestType Type of the module request.
+   * @returns {Promise<ModuleJobBase[]>}
+   */
+  async #asyncLink(requestType) {
+    assert(this.loader.isForAsyncLoaderHookWorker);
     this.module = await this.modulePromise;
     assert(this.module instanceof ModuleWrap);
-
     const moduleRequests = this.module.getModuleRequests();
-    // Explicitly keeping track of dependency jobs is needed in order
-    // to flatten out the dependency graph below in `_instantiate()`,
-    // so that circular dependencies can't cause a deadlock by two of
-    // these `link` callbacks depending on each other.
     // Create an ArrayLike to avoid calling into userspace with `.then`
     // when returned from the async function.
-    const dependencyJobs = Array(moduleRequests.length);
-    ObjectSetPrototypeOf(dependencyJobs, null);
-
-    // Specifiers should be aligned with the moduleRequests array in order.
-    const specifiers = Array(moduleRequests.length);
+    // Modules should be aligned with the moduleRequests array in order.
     const modulePromises = Array(moduleRequests.length);
-    // Iterate with index to avoid calling into userspace with `Symbol.iterator`.
+    const evaluationDepJobs = [];
+    this.commonJsDeps = Array(moduleRequests.length);
     for (let idx = 0; idx < moduleRequests.length; idx++) {
-      const { specifier, attributes } = moduleRequests[idx];
-      // TODO(joyeecheung): resolve all requests first, then load them in another
-      // loop so that hooks can pre-fetch sources off-thread.
-      const dependencyJobPromise = this.#loader.getModuleJobForImport(
-        specifier, this.url, attributes,
-      );
+      const request = moduleRequests[idx];
+      // Explicitly keeping track of dependency jobs is needed in order
+      // to flatten out the dependency graph below in `asyncInstantiate()`,
+      // so that circular dependencies can't cause a deadlock by two of
+      // these `link` callbacks depending on each other.
+      // TODO(joyeecheung): split this into two iterators, one for resolving and one for loading so
+      // that hooks can pre-fetch sources off-thread.
+      const dependencyJobPromise = this.loader.getOrCreateModuleJob(this.url, request, requestType);
       const modulePromise = PromisePrototypeThen(dependencyJobPromise, (job) => {
-        debug(`async link() ${this.url} -> ${specifier}`, job);
-        dependencyJobs[idx] = job;
+        debug(`ModuleJob.asyncLink() ${this.url} -> ${request.specifier}`, job);
+        if (request.phase === kEvaluationPhase) {
+          ArrayPrototypePush(evaluationDepJobs, job);
+        }
         return job.modulePromise;
       });
       modulePromises[idx] = modulePromise;
-      specifiers[idx] = specifier;
+    }
+    const modules = await SafePromiseAllReturnArrayLike(modulePromises);
+    for (let idx = 0; idx < moduleRequests.length; idx++) {
+      this.commonJsDeps[idx] = modules[idx].isCommonJS;
     }
 
-    const modules = await SafePromiseAllReturnArrayLike(modulePromises);
-    this.module.link(specifiers, modules);
-
-    return dependencyJobs;
+    this.module.link(modules);
+    return evaluationDepJobs;
   }
 
-  instantiate() {
+  #instantiate() {
     if (this.instantiated === undefined) {
-      this.instantiated = this._instantiate();
+      this.instantiated = this.#asyncInstantiate();
     }
     return this.instantiated;
   }
 
-  async _instantiate() {
+  async #asyncInstantiate() {
     const jobsInGraph = new SafeSet();
+    // TODO(joyeecheung): if it's not on the async loader thread, consider this already
+    // linked.
     const addJobsToDependencyGraph = async (moduleJob) => {
       debug(`async addJobsToDependencyGraph() ${this.url}`, moduleJob);
 
@@ -206,7 +288,7 @@ class ModuleJob extends ModuleJobBase {
         return;
       }
       jobsInGraph.add(moduleJob);
-      const dependencyJobs = await moduleJob.linked;
+      const dependencyJobs = isPromise(moduleJob.linked) ? await moduleJob.linked : moduleJob.linked;
       return SafePromiseAllReturnVoid(dependencyJobs, addJobsToDependencyGraph);
     };
     await addJobsToDependencyGraph(this);
@@ -229,31 +311,19 @@ class ModuleJob extends ModuleJobBase {
           StringPrototypeIncludes(e.message,
                                   ' does not provide an export named')) {
         const splitStack = StringPrototypeSplit(e.stack, '\n', 2);
-        const parentFileUrl = RegExpPrototypeSymbolReplace(
-          /:\d+$/,
-          splitStack[0],
-          '',
-        );
         const { 1: childSpecifier, 2: name } = RegExpPrototypeExec(
           /module '(.*)' does not provide an export named '(.+)'/,
           e.message);
-        const { url: childFileURL } = await this.#loader.resolve(
-          childSpecifier,
-          parentFileUrl,
-          kEmptyObject,
-        );
-        let format;
-        try {
-          // This might throw for non-CommonJS modules because we aren't passing
-          // in the import attributes and some formats require them; but we only
-          // care about CommonJS for the purposes of this error message.
-          ({ format } =
-            await this.#loader.load(childFileURL));
-        } catch {
-          // Continue regardless of error.
+        const moduleRequests = this.module.getModuleRequests();
+        let isCommonJS = false;
+        for (let i = 0; i < moduleRequests.length; ++i) {
+          if (moduleRequests[i].specifier === childSpecifier) {
+            isCommonJS = this.commonJsDeps[i];
+            break;
+          }
         }
 
-        if (format === 'commonjs') {
+        if (isCommonJS) {
           const importStatement = splitStack[1];
           // TODO(@ctavan): The original error stack only provides the single
           // line which causes the error. For multi-line import statements we
@@ -289,19 +359,20 @@ class ModuleJob extends ModuleJobBase {
     assert(this.module instanceof ModuleWrap);
     let status = this.module.getStatus();
 
-    debug('ModuleJob.runSync', this.module);
-    // FIXME(joyeecheung): this cannot fully handle < kInstantiated. Make the linking
-    // fully synchronous instead.
+    debug('ModuleJob.runSync()', status, this.module);
     if (status === kUninstantiated) {
-      this.module.async = this.module.instantiateSync();
+      // FIXME(joyeecheung): this cannot fully handle < kInstantiated. Make the linking
+      // fully synchronous instead.
+      if (this.module.getModuleRequests().length === 0) {
+        this.module.link([]);
+      }
+      this.module.instantiate();
       status = this.module.getStatus();
     }
     if (status === kInstantiated || status === kErrored) {
       const filename = urlToFilename(this.url);
       const parentFilename = urlToFilename(parent?.filename);
-      this.module.async ??= this.module.isGraphAsync();
-
-      if (this.module.async && !getOptionValue('--experimental-print-required-tla')) {
+      if (this.module.hasAsyncGraph && !getOptionValue('--experimental-print-required-tla')) {
         throw new ERR_REQUIRE_ASYNC_MODULE(filename, parentFilename);
       }
       if (status === kInstantiated) {
@@ -310,15 +381,28 @@ class ModuleJob extends ModuleJobBase {
         return { __proto__: null, module: this.module, namespace };
       }
       throw this.module.getError();
-
-    } else if (status === kEvaluated) {
-      return { __proto__: null, module: this.module, namespace: this.module.getNamespaceSync() };
+    } else if (status === kEvaluating || status === kEvaluated) {
+      if (this.module.hasAsyncGraph) {
+        const filename = urlToFilename(this.url);
+        const parentFilename = urlToFilename(parent?.filename);
+        throw new ERR_REQUIRE_ASYNC_MODULE(filename, parentFilename);
+      }
+      // kEvaluating can show up when this is being used to deal with CJS <-> CJS cycles.
+      // Allow it for now, since we only need to ban ESM <-> CJS cycles which would be
+      // detected earlier during the linking phase, though the CJS handling in the ESM
+      // loader won't be able to emit warnings on pending circular exports like what
+      // the CJS loader does.
+      // TODO(joyeecheung): remove the re-invented require() in the ESM loader and
+      // always handle CJS using the CJS loader to eliminate the quirks.
+      return { __proto__: null, module: this.module, namespace: this.module.getNamespace() };
     }
     assert.fail(`Unexpected module status ${status}.`);
   }
 
   async run(isEntryPoint = false) {
-    await this.instantiate();
+    debug('ModuleJob.run()', this.module);
+    assert(this.phase === kEvaluationPhase);
+    await this.#instantiate();
     if (isEntryPoint) {
       globalThis[entry_point_module_private_symbol] = this.module;
     }
@@ -328,7 +412,7 @@ class ModuleJob extends ModuleJobBase {
     try {
       await this.module.evaluate(timeout, breakOnSigint);
     } catch (e) {
-      explainCommonJSGlobalLikeNotDefinedError(e, this.module.url);
+      explainCommonJSGlobalLikeNotDefinedError(e, this.module.url, this.module.hasTopLevelAwait);
       throw e;
     }
     return { __proto__: null, module: this.module };
@@ -346,48 +430,37 @@ class ModuleJob extends ModuleJobBase {
  * TODO(joyeecheung): consolidate this with the isForRequireInImportedCJS variant of ModuleJob.
  */
 class ModuleJobSync extends ModuleJobBase {
-  #loader = null;
-
   /**
    * @param {ModuleLoader} loader The ESM loader.
    * @param {string} url URL of the module to be wrapped in ModuleJob.
    * @param {ImportAttributes} importAttributes Import attributes from the import statement.
    * @param {ModuleWrap} moduleWrap Translated ModuleWrap for the module.
+   * @param {number} phase The phase to load the module to.
    * @param {boolean} isMain Whether the module is the entry point.
    * @param {boolean} inspectBrk Whether this module should be evaluated with the
-   *                             first line paused in the debugger (because --inspect-brk is passed).
+   *   first line paused in the debugger (because --inspect-brk is passed).
    */
-  constructor(loader, url, importAttributes, moduleWrap, isMain, inspectBrk) {
-    super(url, importAttributes, isMain, inspectBrk, true);
+  constructor(loader, url, importAttributes, moduleWrap, phase = kEvaluationPhase, isMain,
+              inspectBrk, requestType) {
+    super(loader, url, importAttributes, phase, isMain, inspectBrk);
 
-    this.#loader = loader;
     this.module = moduleWrap;
 
     assert(this.module instanceof ModuleWrap);
-    // Store itself into the cache first before linking in case there are circular
-    // references in the linking.
-    loader.loadCache.set(url, importAttributes.type, this);
-
-    try {
-      const moduleRequests = this.module.getModuleRequests();
-      // Specifiers should be aligned with the moduleRequests array in order.
-      const specifiers = Array(moduleRequests.length);
-      const modules = Array(moduleRequests.length);
-      const jobs = Array(moduleRequests.length);
-      for (let i = 0; i < moduleRequests.length; ++i) {
-        const { specifier, attributes } = moduleRequests[i];
-        const job = this.#loader.getModuleJobForRequire(specifier, url, attributes);
-        specifiers[i] = specifier;
-        modules[i] = job.module;
-        jobs[i] = job;
-      }
-      this.module.link(specifiers, modules);
-      this.linked = jobs;
-    } finally {
-      // Restore it - if it succeeds, we'll reset in the caller; Otherwise it's
-      // not cached and if the error is caught, subsequent attempt would still fail.
-      loader.loadCache.delete(url, importAttributes.type);
+    this.linked = undefined;
+    this.type = importAttributes.type;
+    if (phase === kEvaluationPhase) {
+      this.linked = this.link(requestType);
     }
+  }
+
+  /**
+   * @param {ModuleRequestType} requestType Type of the module request.
+   * @returns {ModuleJobBase[]}
+   */
+  link(requestType) {
+    // Synchronous linking is always used for ModuleJobSync.
+    return this.syncLink(requestType);
   }
 
   get modulePromise() {
@@ -395,15 +468,20 @@ class ModuleJobSync extends ModuleJobBase {
   }
 
   async run() {
+    assert(this.phase === kEvaluationPhase);
     // This path is hit by a require'd module that is imported again.
     const status = this.module.getStatus();
-    if (status > kInstantiated) {
+    debug('ModuleJobSync.run()', status, this.module);
+    // If the module was previously required and errored, reject from import() again.
+    if (status === kErrored) {
+      throw this.module.getError();
+    } else if (status > kInstantiated) {
       if (this.evaluationPromise) {
         await this.evaluationPromise;
       }
       return { __proto__: null, module: this.module };
     } else if (status === kInstantiated) {
-      // The evaluation may have been canceled because instantiateSync() detected TLA first.
+      // The evaluation may have been canceled because instantiate() detected TLA first.
       // But when it is imported again, it's fine to re-evaluate it asynchronously.
       const timeout = -1;
       const breakOnSigint = false;
@@ -418,17 +496,20 @@ class ModuleJobSync extends ModuleJobBase {
   }
 
   runSync(parent) {
+    debug('ModuleJobSync.runSync()', this.module);
+    assert(this.phase === kEvaluationPhase);
     // TODO(joyeecheung): add the error decoration logic from the async instantiate.
-    this.module.async = this.module.instantiateSync();
+    this.module.instantiate();
     // If --experimental-print-required-tla is true, proceeds to evaluation even
     // if it's async because we want to search for the TLA and help users locate
     // them.
     // TODO(joyeecheung): track the asynchroniticy using v8::Module::HasTopLevelAwait()
     // and we'll be able to throw right after compilation of the modules, using acron
-    // to find and print the TLA.
+    // to find and print the TLA. This requires the linking to be synchronous in case
+    // it runs into cached asynchronous modules that are not yet fetched.
     const parentFilename = urlToFilename(parent?.filename);
     const filename = urlToFilename(this.url);
-    if (this.module.async && !getOptionValue('--experimental-print-required-tla')) {
+    if (this.module.hasAsyncGraph && !getOptionValue('--experimental-print-required-tla')) {
       throw new ERR_REQUIRE_ASYNC_MODULE(filename, parentFilename);
     }
     setHasStartedUserESMExecution();
@@ -436,7 +517,7 @@ class ModuleJobSync extends ModuleJobBase {
       const namespace = this.module.evaluateSync(filename, parentFilename);
       return { __proto__: null, module: this.module, namespace };
     } catch (e) {
-      explainCommonJSGlobalLikeNotDefinedError(e, this.module.url);
+      explainCommonJSGlobalLikeNotDefinedError(e, this.module.url, this.module.hasTopLevelAwait);
       throw e;
     }
   }

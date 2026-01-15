@@ -4,8 +4,7 @@ import { test } from 'node:test';
 
 const testArguments = [
   '--test',
-  '--test-reporter=spec',
-  '--experimental-test-isolation=none',
+  '--test-isolation=none',
 ];
 
 const testFiles = [
@@ -62,6 +61,18 @@ test('use --import (ESM) to define global hooks', async (t) => {
   const { stdout } = await common.spawnPromisified(process.execPath, [
     ...testArguments,
     '--import', fixtures.fileURL('test-runner', 'no-isolation', 'global-hooks.mjs'),
+    ...testFiles,
+  ]);
+
+  const testHookOutput = stdout.split('\n▶')[0];
+
+  t.assert.equal(testHookOutput, order);
+});
+
+test('use --require to define global hooks', async (t) => {
+  const { stdout } = await common.spawnPromisified(process.execPath, [
+    ...testArguments,
+    '--require', fixtures.path('test-runner', 'no-isolation', 'global-hooks.cjs'),
     ...testFiles,
   ]);
 

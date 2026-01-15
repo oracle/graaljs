@@ -41,19 +41,19 @@ static const int SMI_MAX = (1 << 30) - 1;
 static const int SMI_MIN = -(1 << 30);
 
 static MaybeHandle<Object> CallFunction(Isolate* isolate,
-                                        Handle<JSFunction> function) {
+                                        DirectHandle<JSFunction> function) {
   return Execution::Call(isolate, function,
-                         isolate->factory()->undefined_value(), 0, nullptr);
+                         isolate->factory()->undefined_value(), {});
 }
 
 template <class... A>
 static MaybeHandle<Object> CallFunction(Isolate* isolate,
-                                        Handle<JSFunction> function,
+                                        DirectHandle<JSFunction> function,
                                         A... args) {
-  Handle<Object> argv[] = {args...};
+  DirectHandle<Object> arguments[] = {args...};
   return Execution::Call(isolate, function,
-                         isolate->factory()->undefined_value(), sizeof...(args),
-                         argv);
+                         isolate->factory()->undefined_value(),
+                         {arguments, sizeof...(args)});
 }
 
 static v8::Local<v8::Value> CompileRun(v8::Isolate* isolate,
@@ -109,7 +109,7 @@ class BytecodeGraphTester {
   Local<Message> CheckThrowsReturnMessage() {
     TryCatch try_catch(reinterpret_cast<v8::Isolate*>(isolate_));
     auto callable = GetCallable<>();
-    MaybeHandle<Object> no_result = callable();
+    MaybeDirectHandle<Object> no_result = callable();
     CHECK(isolate_->has_exception());
     CHECK(try_catch.HasCaught());
     CHECK(no_result.is_null());
@@ -133,7 +133,7 @@ class BytecodeGraphTester {
                                .ToLocalChecked())
             .ToLocalChecked());
     Handle<JSFunction> function =
-        Handle<JSFunction>::cast(v8::Utils::OpenHandle(*api_function));
+        Cast<JSFunction>(v8::Utils::OpenHandle(*api_function));
     IsCompiledScope is_compiled_scope(
         function->shared()->is_compiled_scope(isolate_));
     JSFunction::EnsureFeedbackVector(isolate_, function, &is_compiled_scope);
@@ -142,12 +142,12 @@ class BytecodeGraphTester {
     Zone zone(isolate_->allocator(), ZONE_NAME);
     Handle<SharedFunctionInfo> shared(function->shared(), isolate_);
     OptimizedCompilationInfo compilation_info(&zone, isolate_, shared, function,
-                                              CodeKind::TURBOFAN);
+                                              CodeKind::TURBOFAN_JS);
 
-    Handle<Code> code =
+    DirectHandle<Code> code =
         Pipeline::GenerateCodeForTesting(&compilation_info, isolate_)
             .ToHandleChecked();
-    function->set_code(*code, kReleaseStore);
+    function->UpdateOptimizedCode(isolate_, *code);
 
     return function;
   }
@@ -230,7 +230,7 @@ class RunBytecodeGraphBuilderTest : public TestWithNativeContext {
 
       BytecodeGraphTester tester(i_isolate(), script.begin());
       auto callable = tester.GetCallable<Handle<Object>>();
-      Handle<Object> return_value =
+      DirectHandle<Object> return_value =
           callable(snippets[i].parameter(0)).ToHandleChecked();
       CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
     }
@@ -277,7 +277,7 @@ class RunBytecodeGraphBuilderTest : public TestWithNativeContext {
 
       BytecodeGraphTester tester(isolate, script.begin());
       auto callable = tester.GetCallable<Handle<Object>>();
-      Handle<Object> return_value =
+      DirectHandle<Object> return_value =
           callable(snippets[i].parameter(0)).ToHandleChecked();
       CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
     }
@@ -326,7 +326,7 @@ class RunBytecodeGraphBuilderTest : public TestWithNativeContext {
       if ((i % 2) != shard) continue;
       BytecodeGraphTester tester(isolate, snippets[i].code_snippet);
       auto callable = tester.GetCallable<>();
-      Handle<Object> return_value = callable().ToHandleChecked();
+      DirectHandle<Object> return_value = callable().ToHandleChecked();
       CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
     }
   }
@@ -362,10 +362,10 @@ class RunBytecodeGraphBuilderTest : public TestWithNativeContext {
       BytecodeGraphTester tester(isolate, script.c_str());
       auto callable = tester.GetCallable<Handle<Object>>();
       for (int a = 0; a < 3; a++) {
-        Handle<Object> return_val =
+        DirectHandle<Object> return_val =
             callable(factory->NewNumberFromInt(a)).ToHandleChecked();
         static const int results[] = {11, 12, 2};
-        CHECK_EQ(Smi::cast(*return_val).value(), results[a]);
+        CHECK_EQ(Cast<Smi>(*return_val).value(), results[a]);
       }
     }
   }
@@ -399,7 +399,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderReturnStatements) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -423,7 +423,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderPrimitiveExpressions) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -476,7 +476,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderTwoParameterTests) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>, Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0), snippets[i].parameter(1))
             .ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
@@ -509,7 +509,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderNamedLoad) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -554,7 +554,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderKeyedLoad) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>, Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0), snippets[i].parameter(1))
             .ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
@@ -587,7 +587,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderPropertyCall) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -623,7 +623,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCallNew) {
   for (size_t i = 0; i < arraysize(snippets); i++) {
     BytecodeGraphTester tester(isolate, snippets[i].code_snippet);
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -658,7 +658,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCreateClosure) {
   for (size_t i = 0; i < arraysize(snippets); i++) {
     BytecodeGraphTester tester(isolate, snippets[i].code_snippet);
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -679,7 +679,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCallRuntime) {
   for (size_t i = 0; i < arraysize(snippets); i++) {
     BytecodeGraphTester tester(isolate, snippets[i].code_snippet);
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -727,7 +727,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderToName) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -752,7 +752,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderLogicalNot) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -779,7 +779,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderTypeOf) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -821,7 +821,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCompareTypeOf) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -867,7 +867,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCountOperation) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -898,7 +898,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderDelete) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -948,7 +948,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderDeleteGlobal) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -984,7 +984,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderDeleteLookupSlot) {
 
     BytecodeGraphTester tester(isolate, script.begin(), "t");
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1023,7 +1023,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderLookupSlot) {
 
     BytecodeGraphTester tester(isolate, script.begin(), "t");
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1049,7 +1049,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderLookupContextSlot) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value,
                             *inner_eval_snippets[i].return_value()));
   }
@@ -1072,7 +1072,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderLookupContextSlot) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value,
                             *outer_eval_snippets[i].return_value()));
   }
@@ -1099,7 +1099,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderLookupGlobalSlot) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value,
                             *inner_eval_snippets[i].return_value()));
   }
@@ -1122,7 +1122,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderLookupGlobalSlot) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value,
                             *outer_eval_snippets[i].return_value()));
   }
@@ -1163,7 +1163,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderLookupSlotWide) {
 
     BytecodeGraphTester tester(isolate, script.begin(), "t");
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1189,7 +1189,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCallLookupSlot) {
              snippets[i].code_snippet, kFunctionName);
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1235,7 +1235,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderEval) {
              snippets[i].code_snippet, kFunctionName);
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1260,7 +1260,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderEvalParams) {
              snippets[i].code_snippet, kFunctionName);
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -1284,13 +1284,14 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderEvalGlobal) {
   for (size_t i = 0; i < arraysize(snippets); i++) {
     BytecodeGraphTester tester(isolate, snippets[i].code_snippet);
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
 
 bool get_compare_result(Isolate* isolate, Token::Value opcode,
-                        Handle<Object> lhs_value, Handle<Object> rhs_value) {
+                        DirectHandle<Object> lhs_value,
+                        DirectHandle<Object> rhs_value) {
   switch (opcode) {
     case Token::kEq:
       return Object::Equals(isolate, lhs_value, rhs_value).FromJust();
@@ -1359,7 +1360,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCompare) {
     auto callable = tester.GetCallable<Handle<Object>, Handle<Object>>();
     for (size_t j = 0; j < arraysize(lhs_values); j++) {
       for (size_t k = 0; k < arraysize(rhs_values); k++) {
-        Handle<Object> return_value =
+        DirectHandle<Object> return_value =
             callable(lhs_values[j], rhs_values[k]).ToHandleChecked();
         bool result = get_compare_result(isolate, kCompareOperators[i],
                                          lhs_values[j], rhs_values[k]);
@@ -1402,7 +1403,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderTestIn) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>, Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0), snippets[i].parameter(1))
             .ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
@@ -1431,7 +1432,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderTestInstanceOf) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -1459,7 +1460,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderTryCatch) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1495,7 +1496,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderTryFinally1) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1601,7 +1602,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderContext) {
 
     BytecodeGraphTester tester(isolate, script.begin(), "f");
     auto callable = tester.GetCallable<>("f");
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1663,7 +1664,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderLoadContext) {
 
     BytecodeGraphTester tester(isolate, script.begin(), "*");
     auto callable = tester.GetCallable<Handle<Object>>("f");
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -1693,7 +1694,7 @@ TEST_F(RunBytecodeGraphBuilderTest,
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1734,7 +1735,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCreateArguments) {
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable =
         tester.GetCallable<Handle<Object>, Handle<Object>, Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0), snippets[i].parameter(1),
                  snippets[i].parameter(2))
             .ToHandleChecked();
@@ -1775,7 +1776,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderCreateRestArguments) {
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable =
         tester.GetCallable<Handle<Object>, Handle<Object>, Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0), snippets[i].parameter(1),
                  snippets[i].parameter(2))
             .ToHandleChecked();
@@ -1806,7 +1807,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderRegExpLiterals) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1841,7 +1842,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderArrayLiterals) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -1898,7 +1899,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderObjectLiterals) {
              snippets[i].code_snippet, kFunctionName);
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2004,7 +2005,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderIf) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -2032,7 +2033,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderConditionalOperator) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -2077,7 +2078,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderSwitch) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -2124,7 +2125,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderSwitchMerge) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0)).ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
@@ -2181,7 +2182,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderNestedSwitch) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<Handle<Object>, Handle<Object>>();
-    Handle<Object> return_value =
+    DirectHandle<Object> return_value =
         callable(snippets[i].parameter(0), snippets[i].parameter(1))
             .ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
@@ -2221,7 +2222,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderBreakableBlocks) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2267,7 +2268,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderWhile) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2313,7 +2314,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderDo) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2404,7 +2405,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderFor) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2473,7 +2474,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderForIn) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2562,7 +2563,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderForOf) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2599,7 +2600,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderWithStatement) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2644,7 +2645,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderConstDeclaration) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 
@@ -2656,7 +2657,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderConstDeclaration) {
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2685,7 +2686,7 @@ TEST_F(RunBytecodeGraphBuilderTest,
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 
@@ -2697,7 +2698,7 @@ TEST_F(RunBytecodeGraphBuilderTest,
 
     BytecodeGraphTester tester(isolate, script.begin());
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *snippets[i].return_value()));
   }
 }
@@ -2744,7 +2745,7 @@ TEST_F(RunBytecodeGraphBuilderTest,
 
     BytecodeGraphTester tester(isolate, script.begin(), "*");
     auto callable = tester.GetCallable<>();
-    Handle<Object> return_value = callable().ToHandleChecked();
+    DirectHandle<Object> return_value = callable().ToHandleChecked();
     CHECK(Object::SameValue(*return_value, *const_decl[i].return_value()));
   }
 }
@@ -2822,7 +2823,7 @@ TEST_F(RunBytecodeGraphBuilderTest, BytecodeGraphBuilderDebuggerStatement) {
 
   BytecodeGraphTester tester(isolate, snippet.code_snippet);
   auto callable = tester.GetCallable<>();
-  Handle<Object> return_value = callable().ToHandleChecked();
+  DirectHandle<Object> return_value = callable().ToHandleChecked();
 
   v8::debug::SetDebugDelegate(v8_isolate(), nullptr);
   CHECK(return_value.is_identical_to(snippet.return_value()));

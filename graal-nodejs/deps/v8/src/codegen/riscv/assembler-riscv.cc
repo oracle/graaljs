@@ -38,6 +38,7 @@
 #include "src/base/cpu.h"
 #include "src/codegen/assembler-inl.h"
 #include "src/codegen/safepoint-table.h"
+#include "src/common/code-memory-access-inl.h"
 #include "src/deoptimizer/deoptimizer.h"
 #include "src/diagnostics/disasm.h"
 #include "src/diagnostics/disassembler.h"
@@ -46,49 +47,79 @@
 namespace v8 {
 namespace internal {
 // Get the CPU features enabled by the build. For cross compilation the
-// preprocessor symbols CAN_USE_FPU_INSTRUCTIONS
+// preprocessor symbols __riscv_f and __riscv_d
 // can be defined to enable FPU instructions when building the
 // snapshot.
 static unsigned CpuFeaturesImpliedByCompiler() {
   unsigned answer = 0;
-#ifdef CAN_USE_FPU_INSTRUCTIONS
+#if defined(__riscv_f) && defined(__riscv_d)
   answer |= 1u << FPU;
-#endif  // def CAN_USE_FPU_INSTRUCTIONS
+#endif  // def __riscv_f
 
-#if (defined CAN_USE_RVV_INSTRUCTIONS)
+#if (defined __riscv_vector) && (__riscv_v >= 1000000)
   answer |= 1u << RISCV_SIMD;
 #endif  // def CAN_USE_RVV_INSTRUCTIONS
 
-#if (defined CAN_USE_ZBA_INSTRUCTIONS)
+#if (defined __riscv_zba)
   answer |= 1u << ZBA;
-#endif  // def CAN_USE_ZBA_INSTRUCTIONS
+#endif  // def __riscv_zba
 
-#if (defined CAN_USE_ZBB_INSTRUCTIONS)
+#if (defined __riscv_zbb)
   answer |= 1u << ZBB;
-#endif  // def CAN_USE_ZBA_INSTRUCTIONS
+#endif  // def __riscv_zbb
 
-#if (defined CAN_USE_ZBS_INSTRUCTIONS)
+#if (defined __riscv_zbs)
   answer |= 1u << ZBS;
-#endif  // def CAN_USE_ZBA_INSTRUCTIONS
+#endif  // def __riscv_zbs
+
+#if (defined _riscv_zicond)
+  answer |= 1u << ZICOND;
+#endif  // def _riscv_zicond
   return answer;
 }
+
+#ifdef _RISCV_TARGET_SIMULATOR
+static unsigned SimulatorFeatures() {
+  unsigned answer = 0;
+  answer |= 1u << RISCV_SIMD;
+  answer |= 1u << ZBA;
+  answer |= 1u << ZBB;
+  answer |= 1u << ZBS;
+  answer |= 1u << ZICOND;
+  answer |= 1u << FPU;
+  return answer;
+}
+#endif
 
 bool CpuFeatures::SupportsWasmSimd128() { return IsSupported(RISCV_SIMD); }
 
 void CpuFeatures::ProbeImpl(bool cross_compile) {
   supported_ |= CpuFeaturesImpliedByCompiler();
+
+#ifdef _RISCV_TARGET_SIMULATOR
+  supported_ |= SimulatorFeatures();
+#endif  // _RISCV_TARGET_SIMULATOR
   // Only use statically determined features for cross compile (snapshot).
   if (cross_compile) return;
   // Probe for additional features at runtime.
+
+#ifndef USE_SIMULATOR
   base::CPU cpu;
   if (cpu.has_fpu()) supported_ |= 1u << FPU;
   if (cpu.has_rvv()) supported_ |= 1u << RISCV_SIMD;
+  if (cpu.has_zba()) supported_ |= 1u << ZBA;
+  if (cpu.has_zbb()) supported_ |= 1u << ZBB;
+  if (cpu.has_zbs()) supported_ |= 1u << ZBS;
+  if (v8_flags.riscv_b_extension) {
+    supported_ |= (1u << ZBA) | (1u << ZBB) | (1u << ZBS);
+  }
 #ifdef V8_COMPRESS_POINTERS
   if (cpu.riscv_mmu() == base::CPU::RV_MMU_MODE::kRiscvSV57) {
     FATAL("SV57 is not supported");
     UNIMPLEMENTED();
   }
-#endif
+#endif  // V8_COMPRESS_POINTERS
+#endif  // USE_SIMULATOR
   // Set a static value on whether SIMD is supported.
   // This variable is only used for certain archs to query SupportWasmSimd128()
   // at runtime in builtins using an extern ref. Other callers should use
@@ -99,6 +130,9 @@ void CpuFeatures::ProbeImpl(bool cross_compile) {
 void CpuFeatures::PrintTarget() {}
 void CpuFeatures::PrintFeatures() {
   printf("supports_wasm_simd_128=%d\n", CpuFeatures::SupportsWasmSimd128());
+  printf("RISC-V Extension zba=%d,zbb=%d,zbs=%d,ZICOND=%d\n",
+         CpuFeatures::IsSupported(ZBA), CpuFeatures::IsSupported(ZBB),
+         CpuFeatures::IsSupported(ZBS), CpuFeatures::IsSupported(ZICOND));
 }
 int ToNumber(Register reg) {
   DCHECK(reg.is_valid());
@@ -153,6 +187,7 @@ Register ToRegister(int num) {
 const int RelocInfo::kApplyMask =
     RelocInfo::ModeMask(RelocInfo::INTERNAL_REFERENCE) |
     RelocInfo::ModeMask(RelocInfo::INTERNAL_REFERENCE_ENCODED) |
+    RelocInfo::ModeMask(RelocInfo::NEAR_BUILTIN_ENTRY) |
     RelocInfo::ModeMask(RelocInfo::RELATIVE_CODE_TARGET);
 
 bool RelocInfo::IsCodedSpecially() {
@@ -166,16 +201,25 @@ bool RelocInfo::IsInConstantPool() { return false; }
 
 uint32_t RelocInfo::wasm_call_tag() const {
   DCHECK(rmode_ == WASM_CALL || rmode_ == WASM_STUB_CALL);
-  return static_cast<uint32_t>(
-      Assembler::target_address_at(pc_, constant_pool_));
+  Instr instr = Assembler::instr_at(pc_);
+  Instr instr1 = Assembler::instr_at(pc_ + 1 * kInstrSize);
+  if (Assembler::IsAuipc(instr) && Assembler::IsJalr(instr1)) {
+    DCHECK(reinterpret_cast<Instruction*>(pc_)->RdValue() ==
+           reinterpret_cast<Instruction*>(pc_ + 4)->Rs1Value());
+    return Assembler::BrachlongOffset(instr, instr1);
+  } else {
+    return static_cast<uint32_t>(
+        Assembler::target_address_at(pc_, constant_pool_));
+  }
 }
 
 // -----------------------------------------------------------------------------
 // Implementation of Operand and MemOperand.
 // See assembler-riscv-inl.h for inlined constructors.
 
-Operand::Operand(Handle<HeapObject> handle)
-    : rm_(no_reg), rmode_(RelocInfo::FULL_EMBEDDED_OBJECT) {
+Operand::Operand(Handle<HeapObject> handle, RelocInfo::Mode rmode)
+    : rm_(no_reg), rmode_(rmode) {
+  DCHECK(RelocInfo::IsEmbeddedObjectMode(rmode) || RelocInfo::IsNoInfo(rmode));
   value_.immediate = static_cast<intptr_t>(handle.address());
 }
 
@@ -205,7 +249,12 @@ void Assembler::AllocateAndInstallRequestedHeapNumbers(LocalIsolate* isolate) {
         isolate->factory()->NewHeapNumber<AllocationType::kOld>(
             request.heap_number());
     Address pc = reinterpret_cast<Address>(buffer_start_) + request.offset();
+#ifdef V8_TARGET_ARCH_RISCV64
+    EmbeddedObjectIndex index = AddEmbeddedObject(object);
+    set_embedded_object_index_referenced_from(pc, index);
+#else
     set_target_value_at(pc, reinterpret_cast<uintptr_t>(object.location()));
+#endif
   }
 }
 
@@ -216,7 +265,8 @@ Assembler::Assembler(const AssemblerOptions& options,
                      std::unique_ptr<AssemblerBuffer> buffer)
     : AssemblerBase(options, std::move(buffer)),
       VU(this),
-      scratch_register_list_({t3, t5}),
+      scratch_register_list_(DefaultTmpList()),
+      scratch_double_register_list_(DefaultFPTmpList()),
       constpool_(this) {
   reloc_info_writer.Reposition(buffer_start_ + buffer_->size(), pc_);
 
@@ -243,7 +293,7 @@ void Assembler::GetCode(Isolate* isolate, CodeDesc* desc) {
   GetCode(isolate->main_thread_local_isolate(), desc);
 }
 void Assembler::GetCode(LocalIsolate* isolate, CodeDesc* desc,
-                        SafepointTableBuilder* safepoint_table_builder,
+                        SafepointTableBuilderBase* safepoint_table_builder,
                         int handler_table_offset) {
   // As a crutch to avoid having to add manual Align calls wherever we use a
   // raw workflow to create InstructionStream objects (mostly in tests), add
@@ -267,8 +317,12 @@ void Assembler::GetCode(LocalIsolate* isolate, CodeDesc* desc,
   // this point to make CodeDesc initialization less fiddly.
 
   static constexpr int kConstantPoolSize = 0;
+  static constexpr int kBuiltinJumpTableInfoSize = 0;
   const int instruction_size = pc_offset();
-  const int code_comments_offset = instruction_size - code_comments_size;
+  const int builtin_jump_table_info_offset =
+      instruction_size - kBuiltinJumpTableInfoSize;
+  const int code_comments_offset =
+      builtin_jump_table_info_offset - code_comments_size;
   const int constant_pool_offset = code_comments_offset - kConstantPoolSize;
   const int handler_table_offset2 = (handler_table_offset == kNoHandlerTable)
                                         ? constant_pool_offset
@@ -281,7 +335,8 @@ void Assembler::GetCode(LocalIsolate* isolate, CodeDesc* desc,
       static_cast<int>(reloc_info_writer.pos() - buffer_->start());
   CodeDesc::Initialize(desc, this, safepoint_table_offset,
                        handler_table_offset2, constant_pool_offset,
-                       code_comments_offset, reloc_info_offset);
+                       code_comments_offset, builtin_jump_table_info_offset,
+                       reloc_info_offset);
 }
 
 void Assembler::Align(int m) {
@@ -363,7 +418,7 @@ int Assembler::target_at(int pos, bool is_internal) {
     }
     case LUI: {
       Address pc = reinterpret_cast<Address>(buffer_start_ + pos);
-      pc = target_address_at(pc);
+      pc = target_constant_address_at(pc);
       uintptr_t instr_address =
           reinterpret_cast<uintptr_t>(buffer_start_ + pos);
       uintptr_t imm = reinterpret_cast<uintptr_t>(pc);
@@ -407,8 +462,9 @@ int Assembler::target_at(int pos, bool is_internal) {
   }
 }
 
-static inline Instr SetBranchOffset(int32_t pos, int32_t target_pos,
-                                    Instr instr) {
+[[nodiscard]] static inline Instr SetBranchOffset(int32_t pos,
+                                                  int32_t target_pos,
+                                                  Instr instr) {
   int32_t imm = target_pos - pos;
   DCHECK_EQ(imm & 1, 0);
   DCHECK(is_intn(imm, Assembler::kBranchOffsetBits));
@@ -422,7 +478,7 @@ static inline Instr SetBranchOffset(int32_t pos, int32_t target_pos,
   return instr | (imm12 & kBImm12Mask);
 }
 
-static inline Instr SetLoadOffset(int32_t offset, Instr instr) {
+[[nodiscard]] static inline Instr SetLoadOffset(int32_t offset, Instr instr) {
 #if V8_TARGET_ARCH_RISCV64
   DCHECK(Assembler::IsLd(instr));
 #elif V8_TARGET_ARCH_RISCV32
@@ -434,24 +490,9 @@ static inline Instr SetLoadOffset(int32_t offset, Instr instr) {
   return instr | (imm12 & kImm12Mask);
 }
 
-static inline Instr SetAuipcOffset(int32_t offset, Instr instr) {
-  DCHECK(Assembler::IsAuipc(instr));
-  DCHECK(is_int20(offset));
-  instr = (instr & ~kImm31_12Mask) | ((offset & kImm19_0Mask) << 12);
-  return instr;
-}
 
-static inline Instr SetJalrOffset(int32_t offset, Instr instr) {
-  DCHECK(Assembler::IsJalr(instr));
-  DCHECK(is_int12(offset));
-  instr &= ~kImm12Mask;
-  int32_t imm12 = offset << kImm12Shift;
-  DCHECK(Assembler::IsJalr(instr | (imm12 & kImm12Mask)));
-  DCHECK_EQ(Assembler::JalrOffset(instr | (imm12 & kImm12Mask)), offset);
-  return instr | (imm12 & kImm12Mask);
-}
-
-static inline Instr SetJalOffset(int32_t pos, int32_t target_pos, Instr instr) {
+[[nodiscard]] static inline Instr SetJalOffset(int32_t pos, int32_t target_pos,
+                                               Instr instr) {
   DCHECK(Assembler::IsJal(instr));
   int32_t imm = target_pos - pos;
   DCHECK_EQ(imm & 1, 0);
@@ -466,8 +507,9 @@ static inline Instr SetJalOffset(int32_t pos, int32_t target_pos, Instr instr) {
   return instr | (imm20 & kImm20Mask);
 }
 
-static inline ShortInstr SetCJalOffset(int32_t pos, int32_t target_pos,
-                                       Instr instr) {
+[[nodiscard]] static inline ShortInstr SetCJalOffset(int32_t pos,
+                                                     int32_t target_pos,
+                                                     Instr instr) {
   DCHECK(Assembler::IsCJal(instr));
   int32_t imm = target_pos - pos;
   DCHECK_EQ(imm & 1, 0);
@@ -481,8 +523,9 @@ static inline ShortInstr SetCJalOffset(int32_t pos, int32_t target_pos,
   DCHECK(Assembler::IsCJal(instr | (imm11 & kImm11Mask)));
   return instr | (imm11 & kImm11Mask);
 }
-static inline Instr SetCBranchOffset(int32_t pos, int32_t target_pos,
-                                     Instr instr) {
+[[nodiscard]] static inline Instr SetCBranchOffset(int32_t pos,
+                                                   int32_t target_pos,
+                                                   Instr instr) {
   DCHECK(Assembler::IsCBranch(instr));
   int32_t imm = target_pos - pos;
   DCHECK_EQ(imm & 1, 0);
@@ -515,8 +558,7 @@ void Assembler::disassembleInstr(uint8_t* pc) {
   DEBUG_PRINTF("%s\n", disasm_buffer.begin());
 }
 
-void Assembler::target_at_put(int pos, int target_pos, bool is_internal,
-                              bool trampoline) {
+void Assembler::target_at_put(int pos, int target_pos, bool is_internal) {
   if (is_internal) {
     uintptr_t imm = reinterpret_cast<uintptr_t>(buffer_start_) + target_pos;
     *reinterpret_cast<uintptr_t*>(buffer_start_ + pos) = imm;
@@ -536,8 +578,29 @@ void Assembler::target_at_put(int pos, int target_pos, bool is_internal,
     } break;
     case JAL: {
       DCHECK(IsJal(instr));
-      instr = SetJalOffset(pos, target_pos, instr);
-      instr_at_put(pos, instr);
+      intptr_t offset = target_pos - pos;
+      if (is_intn(offset, Assembler::kJumpOffsetBits)) {
+        instr = SetJalOffset(pos, target_pos, instr);
+        instr_at_put(pos, instr);
+      } else {
+        Instr instr_I = instr_at(pos + 4);
+        CHECK_EQ(instr_I, kNopByte);
+        CHECK(is_int32(offset + 0x800));
+        Instr instr_auipc = AUIPC | t6.code() << kRdShift;
+        instr_I = RO_JALR | (t6.code() << kRs1Shift) |
+                  (instruction->RdValue() << kRdShift);
+
+        int32_t Hi20 = (((int32_t)offset + 0x800) >> 12);
+        int32_t Lo12 = (int32_t)offset << 20 >> 20;
+
+        instr_auipc = SetHi20Offset(Hi20, instr_auipc);
+        instr_at_put(pos, instr_auipc);
+
+        instr_I = SetLo12Offset(Lo12, instr_I);
+        instr_at_put(pos + 4, instr_I);
+        DCHECK_EQ(offset, BrachlongOffset(Assembler::instr_at(pos),
+                                          Assembler::instr_at(pos + 4)));
+      }
     } break;
     case LUI: {
       Address pc = reinterpret_cast<Address>(buffer_start_ + pos);
@@ -547,12 +610,19 @@ void Assembler::target_at_put(int pos, int target_pos, bool is_internal,
     case AUIPC: {
       Instr instr_auipc = instr;
       Instr instr_I = instr_at(pos + 4);
+      Instruction* instruction_I = Instruction::At(buffer_start_ + pos + 4);
       DCHECK(IsJalr(instr_I) || IsAddi(instr_I));
 
       intptr_t offset = target_pos - pos;
-      if (is_int21(offset) && IsJalr(instr_I) && trampoline) {
+      if (is_int21(offset) && IsJalr(instr_I) &&
+          (instruction->RdValue() == instruction_I->Rs1Value())) {
+        if (v8_flags.riscv_debug) {
+          disassembleInstr(buffer_start_ + pos);
+          disassembleInstr(buffer_start_ + pos + 4);
+        }
+        DEBUG_PRINTF("\ttarget_at_put: Relpace by JAL pos:(%d) \n", pos);
         DCHECK(is_int21(offset) && ((offset & 1) == 0));
-        Instr instr = JAL;
+        Instr instr = JAL | (instruction_I->RdValue() << kRdShift);
         instr = SetJalOffset(pos, target_pos, instr);
         DCHECK(IsJal(instr));
         DCHECK(JumpOffset(instr) == offset);
@@ -564,8 +634,7 @@ void Assembler::target_at_put(int pos, int target_pos, bool is_internal,
         int32_t Hi20 = (((int32_t)offset + 0x800) >> 12);
         int32_t Lo12 = (int32_t)offset << 20 >> 20;
 
-        instr_auipc =
-            (instr_auipc & ~kImm31_12Mask) | ((Hi20 & kImm19_0Mask) << 12);
+        instr_auipc = SetHi20Offset(Hi20, instr_auipc);
         instr_at_put(pos, instr_auipc);
 
         const int kImm31_20Mask = ((1 << 12) - 1) << 20;
@@ -653,7 +722,7 @@ void Assembler::bind_to(Label* L, int pos) {
           }
           CHECK((trampoline_pos - fixup_pos) <= kMaxBranchOffset);
           DEBUG_PRINTF("\t\ttrampolining: %d\n", trampoline_pos);
-          target_at_put(fixup_pos, trampoline_pos, false, true);
+          target_at_put(fixup_pos, trampoline_pos, false);
           fixup_pos = trampoline_pos;
         }
         target_at_put(fixup_pos, pos, false);
@@ -665,7 +734,7 @@ void Assembler::bind_to(Label* L, int pos) {
           }
           CHECK((trampoline_pos - fixup_pos) <= kMaxJumpOffset);
           DEBUG_PRINTF("\t\ttrampolining: %d\n", trampoline_pos);
-          target_at_put(fixup_pos, trampoline_pos, false, true);
+          target_at_put(fixup_pos, trampoline_pos, false);
           fixup_pos = trampoline_pos;
         }
         target_at_put(fixup_pos, pos, false);
@@ -736,14 +805,16 @@ int Assembler::BrachlongOffset(Instr auipc, Instr instr_I) {
 }
 
 int Assembler::PatchBranchlongOffset(Address pc, Instr instr_auipc,
-                                     Instr instr_jalr, int32_t offset) {
+                                     Instr instr_jalr, int32_t offset,
+                                     WritableJitAllocation* jit_allocation) {
   DCHECK(IsAuipc(instr_auipc));
   DCHECK(IsJalr(instr_jalr));
   CHECK(is_int32(offset + 0x800));
   int32_t Hi20 = (((int32_t)offset + 0x800) >> 12);
   int32_t Lo12 = (int32_t)offset << 20 >> 20;
-  instr_at_put(pc, SetAuipcOffset(Hi20, instr_auipc));
-  instr_at_put(pc + 4, SetJalrOffset(Lo12, instr_jalr));
+  instr_at_put(pc, SetHi20Offset(Hi20, instr_auipc), jit_allocation);
+  instr_at_put(pc + kInstrSize, SetLo12Offset(Lo12, instr_jalr),
+               jit_allocation);
   DCHECK(offset ==
          BrachlongOffset(Assembler::instr_at(pc), Assembler::instr_at(pc + 4)));
   return 2;
@@ -753,7 +824,7 @@ int Assembler::PatchBranchlongOffset(Address pc, Instr instr_auipc,
 int32_t Assembler::get_trampoline_entry(int32_t pos) {
   int32_t trampoline_entry = kInvalidSlotPos;
   if (!internal_trampoline_exception_) {
-    DEBUG_PRINTF("\tstart: %d,pos: %d\n", trampoline_.start(), pos);
+    DEBUG_PRINTF("\ttrampoline start: %d,pos: %d\n", trampoline_.start(), pos);
     if (trampoline_.start() > pos) {
       trampoline_entry = trampoline_.take_slot();
     }
@@ -919,7 +990,7 @@ inline int64_t signExtend(uint64_t V, int N) {
 #if V8_TARGET_ARCH_RISCV64
 void Assembler::RV_li(Register rd, int64_t imm) {
   UseScratchRegisterScope temps(this);
-  if (RecursiveLiCount(imm) > GeneralLiCount(imm, temps.hasAvailable())) {
+  if (RecursiveLiCount(imm) > GeneralLiCount(imm, temps.CanAcquire())) {
     GeneralLi(rd, imm);
   } else {
     RecursiveLi(rd, imm);
@@ -972,7 +1043,7 @@ void Assembler::GeneralLi(Register rd, int64_t imm) {
       // No temp register is needed
     } else {
       BlockTrampolinePoolScope block_trampoline_pool(this);
-      temp_reg = temps.hasAvailable() ? temps.Acquire() : no_reg;
+      temp_reg = temps.CanAcquire() ? temps.Acquire() : no_reg;
     }
     if (temp_reg != no_reg) {
       // keep track of hardware behavior for lower part in sim_low
@@ -1087,6 +1158,20 @@ void Assembler::GeneralLi(Register rd, int64_t imm) {
 }
 
 void Assembler::li_ptr(Register rd, int64_t imm) {
+#ifdef RISCV_USE_SV39
+  // Initialize rd with an address
+  // Pointers are 39 bits
+  // 4 fixed instructions are generated
+  DCHECK_EQ((imm & 0xffffff8000000000ll), 0);
+  int64_t a8 = imm & 0xff;                      // bits 0:7. 8 bits
+  int64_t high_31 = (imm >> 8) & 0x7fffffff;    // 31 bits
+  int64_t high_20 = ((high_31 + 0x800) >> 12);  // 19 bits
+  int64_t low_12 = high_31 & 0xfff;             // 12 bits
+  lui(rd, (int32_t)high_20);
+  addi(rd, rd, low_12);  // 31 bits in rd.
+  slli(rd, rd, 8);       // Space for next 8 bis
+  ori(rd, rd, a8);       // 8 bits are put in.
+#else
   // Initialize rd with an address
   // Pointers are 48 bits
   // 6 fixed instructions are generated
@@ -1102,10 +1187,12 @@ void Assembler::li_ptr(Register rd, int64_t imm) {
   ori(rd, rd, b11);      // 11 bits are put in. 42 bit in rd
   slli(rd, rd, 6);       // Space for next 6 bits
   ori(rd, rd, a6);       // 6 bits are put in. 48 bis in rd
+#endif
 }
 
 void Assembler::li_constant(Register rd, int64_t imm) {
-  DEBUG_PRINTF("\tli_constant(%d, %lx <%ld>)\n", ToNumber(rd), imm, imm);
+  DEBUG_PRINTF("\tli_constant(%d, %" PRIx64 " <%" PRId64 ">)\n", ToNumber(rd),
+               imm, imm);
   lui(rd, (imm + (1LL << 47) + (1LL << 35) + (1LL << 23) + (1LL << 11)) >>
               48);  // Bits 63:48
   addiw(rd, rd,
@@ -1117,6 +1204,15 @@ void Assembler::li_constant(Register rd, int64_t imm) {
   addi(rd, rd, (imm + (1LL << 11)) << 40 >> 52);  // Bits 23:12
   slli(rd, rd, 12);
   addi(rd, rd, imm << 52 >> 52);  // Bits 11:0
+}
+
+void Assembler::li_constant32(Register rd, int32_t imm) {
+  ASM_CODE_COMMENT(this);
+  DEBUG_PRINTF("\tli_constant(%d, %x <%d>)\n", ToNumber(rd), imm, imm);
+  int32_t high_20 = ((imm + 0x800) >> 12);  // bits31:12
+  int32_t low_12 = imm & 0xfff;             // bits11:0
+  lui(rd, high_20);
+  addi(rd, rd, low_12);
 }
 
 #elif V8_TARGET_ARCH_RISCV32
@@ -1162,6 +1258,7 @@ void Assembler::li_ptr(Register rd, int32_t imm) {
 }
 
 void Assembler::li_constant(Register rd, int32_t imm) {
+  ASM_CODE_COMMENT(this);
   DEBUG_PRINTF("\tli_constant(%d, %x <%d>)\n", ToNumber(rd), imm, imm);
   int32_t high_20 = ((imm + 0x800) >> 12);  // bits31:12
   int32_t low_12 = imm & 0xfff;             // bits11:0
@@ -1174,7 +1271,7 @@ void Assembler::li_constant(Register rd, int32_t imm) {
 void Assembler::break_(uint32_t code, bool break_as_stop) {
   // We need to invalidate breaks that could be stops as well because the
   // simulator expects a char pointer after the stop instruction.
-  // See constants-mips.h for explanation.
+  // See base-constants-riscv.h for explanation.
   DCHECK(
       (break_as_stop && code <= kMaxStopCode && code > kMaxTracepointCode) ||
       (!break_as_stop && (code > kMaxStopCode || code <= kMaxTracepointCode)));
@@ -1260,11 +1357,15 @@ int Assembler::RelocateInternalReference(RelocInfo::Mode rmode, Address pc,
   Instr instr = instr_at(pc);
   DCHECK(RelocInfo::IsInternalReferenceEncoded(rmode));
   if (IsLui(instr)) {
-    uintptr_t target_address = target_address_at(pc) + pc_delta;
+    uintptr_t target_address = target_constant_address_at(pc) + pc_delta;
     DEBUG_PRINTF("\ttarget_address 0x%" PRIxPTR "\n", target_address);
     set_target_value_at(pc, target_address);
 #if V8_TARGET_ARCH_RISCV64
+#ifdef RISCV_USE_SV39
+    return 6;  // Number of instructions patched.
+#else
     return 8;  // Number of instructions patched.
+#endif
 #elif V8_TARGET_ARCH_RISCV32
     return 2;  // Number of instructions patched.
 #endif
@@ -1277,7 +1378,8 @@ void Assembler::RelocateRelativeReference(RelocInfo::Mode rmode, Address pc,
                                           intptr_t pc_delta) {
   Instr instr = instr_at(pc);
   Instr instr1 = instr_at(pc + 1 * kInstrSize);
-  DCHECK(RelocInfo::IsRelativeCodeTarget(rmode));
+  DCHECK(RelocInfo::IsRelativeCodeTarget(rmode) ||
+         RelocInfo::IsNearBuiltinEntry(rmode));
   if (IsAuipc(instr) && IsJalr(instr1)) {
     int32_t imm;
     imm = BrachlongOffset(instr, instr1);
@@ -1350,11 +1452,7 @@ void Assembler::dd(uint32_t data) {
 
 void Assembler::dq(uint64_t data) {
   if (!is_buffer_growth_blocked()) CheckBuffer();
-#if V8_TARGET_ARCH_RISCV64
-  DEBUG_PRINTF("%p(%d): constant 0x%lx\n", pc_, pc_offset(), data);
-#elif V8_TARGET_ARCH_RISCV32
-  DEBUG_PRINTF("%p(%d): constant 0x%llx\n", pc_, pc_offset(), data);
-#endif
+  DEBUG_PRINTF("%p(%d): constant 0x%" PRIx64 "\n", pc_, pc_offset(), data);
   EmitHelper(data);
 }
 
@@ -1454,6 +1552,7 @@ void Assembler::CheckTrampolinePool() {
 
 void Assembler::set_target_address_at(Address pc, Address constant_pool,
                                       Address target,
+                                      WritableJitAllocation* jit_allocation,
                                       ICacheFlushMode icache_flush_mode) {
   Instr* instr = reinterpret_cast<Instr*>(pc);
   if (IsAuipc(*instr)) {
@@ -1464,9 +1563,11 @@ void Assembler::set_target_address_at(Address pc, Address constant_pool,
 #endif
       int32_t Hi20 = AuipcOffset(*instr);
       int32_t Lo12 = LoadOffset(*reinterpret_cast<Instr*>(pc + 4));
-      Memory<Address>(pc + Hi20 + Lo12) = target;
-      if (icache_flush_mode != SKIP_ICACHE_FLUSH) {
-        FlushInstructionCache(pc + Hi20 + Lo12, 2 * kInstrSize);
+      if (jit_allocation) {
+        jit_allocation->WriteValue<Address>(
+            reinterpret_cast<Address>(pc + Hi20 + Lo12), target);
+      } else {
+        Memory<Address>(reinterpret_cast<Address>(pc + Hi20 + Lo12)) = target;
       }
     } else {
       DCHECK(IsJalr(*reinterpret_cast<Instr*>(pc + 4)));
@@ -1474,13 +1575,14 @@ void Assembler::set_target_address_at(Address pc, Address constant_pool,
       Instr instr = instr_at(pc);
       Instr instr1 = instr_at(pc + 1 * kInstrSize);
       DCHECK(is_int32(imm + 0x800));
-      int num = PatchBranchlongOffset(pc, instr, instr1, (int32_t)imm);
+      int num = PatchBranchlongOffset(pc, instr, instr1, (int32_t)imm,
+                                      jit_allocation);
       if (icache_flush_mode != SKIP_ICACHE_FLUSH) {
         FlushInstructionCache(pc, num * kInstrSize);
       }
     }
   } else {
-    set_target_address_at(pc, target, icache_flush_mode);
+    set_target_value_at(pc, target, jit_allocation, icache_flush_mode);
   }
 }
 
@@ -1503,13 +1605,30 @@ Address Assembler::target_address_at(Address pc, Address constant_pool) {
     }
 
   } else {
-    return target_address_at(pc);
+    return target_constant_address_at(pc);
   }
 }
 
 #if V8_TARGET_ARCH_RISCV64
-Address Assembler::target_address_at(Address pc) {
-  DEBUG_PRINTF("target_address_at: pc: %lx\t", pc);
+Address Assembler::target_constant_address_at(Address pc) {
+#ifdef RISCV_USE_SV39
+  Instruction* instr0 = Instruction::At((unsigned char*)pc);
+  Instruction* instr1 = Instruction::At((unsigned char*)(pc + 1 * kInstrSize));
+  Instruction* instr2 = Instruction::At((unsigned char*)(pc + 2 * kInstrSize));
+  Instruction* instr3 = Instruction::At((unsigned char*)(pc + 3 * kInstrSize));
+
+  // Interpret instructions for address generated by li: See listing in
+  // Assembler::set_target_address_at() just below.
+  if (IsLui(*reinterpret_cast<Instr*>(instr0)) &&
+      IsAddi(*reinterpret_cast<Instr*>(instr1)) &&
+      IsSlli(*reinterpret_cast<Instr*>(instr2)) &&
+      IsOri(*reinterpret_cast<Instr*>(instr3))) {
+    // Assemble the 64 bit value.
+    int64_t addr = (int64_t)(instr0->Imm20UValue() << kImm20Shift) +
+                   (int64_t)instr1->Imm12Value();
+    addr <<= 8;
+    addr |= (int64_t)instr3->Imm12Value();
+#else
   Instruction* instr0 = Instruction::At((unsigned char*)pc);
   Instruction* instr1 = Instruction::At((unsigned char*)(pc + 1 * kInstrSize));
   Instruction* instr2 = Instruction::At((unsigned char*)(pc + 2 * kInstrSize));
@@ -1532,8 +1651,8 @@ Address Assembler::target_address_at(Address pc) {
     addr |= (int64_t)instr3->Imm12Value();
     addr <<= 6;
     addr |= (int64_t)instr5->Imm12Value();
-
-    DEBUG_PRINTF("addr: %lx\n", addr);
+#endif
+    DEBUG_PRINTF("\taddr: %" PRIx64 "\n", addr);
     return static_cast<Address>(addr);
   }
   // We should never get here, force a bad address if we do.
@@ -1547,12 +1666,48 @@ Address Assembler::target_address_at(Address pc) {
 //  slli(reg, reg, 6); // Space for next 6 bits
 //  ori(reg, reg, a6); // 6 bits are put in. all 48 bis in reg
 //
+// If define RISCV_USE_SV39, a 39-bit target address is stored in an
+// 4-instruction sequence:
+//  lui(reg, (int32_t)high_20); // 20 high bits
+//  addi(reg, reg, low_12); // 12 following bits. total is 32 high bits in reg.
+//  slli(reg, reg, 8); // Space for next 7 bits
+//  ori(reg, reg, a7); // 7 bits are put in.
+//
 // Patching the address must replace all instructions, and flush the i-cache.
 // Note that this assumes the use of SV48, the 48-bit virtual memory system.
 void Assembler::set_target_value_at(Address pc, uint64_t target,
+                                    WritableJitAllocation* jit_allocation,
                                     ICacheFlushMode icache_flush_mode) {
-  DEBUG_PRINTF("set_target_value_at: pc: %lx\ttarget: %lx\n", pc, target);
+  DEBUG_PRINTF("\tset_target_value_at: pc: %" PRIxPTR "\ttarget: %" PRIx64
+               "\told: %" PRIx64 "\n",
+               pc, target, target_address_at(pc, static_cast<Address>(0)));
   uint32_t* p = reinterpret_cast<uint32_t*>(pc);
+#ifdef RISCV_USE_SV39
+  DCHECK_EQ((target & 0xffffff8000000000ll), 0);
+#ifdef DEBUG
+  // Check we have the result from a li macro-instruction.
+  Instruction* instr0 = Instruction::At((unsigned char*)pc);
+  Instruction* instr1 = Instruction::At((unsigned char*)(pc + 1 * kInstrSize));
+  Instruction* instr3 = Instruction::At((unsigned char*)(pc + 3 * kInstrSize));
+  DCHECK(IsLui(*reinterpret_cast<Instr*>(instr0)) &&
+         IsAddi(*reinterpret_cast<Instr*>(instr1)) &&
+         IsOri(*reinterpret_cast<Instr*>(instr3)));
+#endif
+  int64_t a8 = target & 0xff;                    // bits 0:7. 8 bits
+  int64_t high_31 = (target >> 8) & 0x7fffffff;  // 31 bits
+  int64_t high_20 = ((high_31 + 0x800) >> 12);   // 19 bits
+  int64_t low_12 = high_31 & 0xfff;              // 12 bits
+  instr_at_put(pc, (*p & 0xfff) | ((int32_t)high_20 << 12), jit_allocation);
+  instr_at_put(pc + 1 * kInstrSize,
+               (*(p + 1) & 0xfffff) | ((int32_t)low_12 << 20), jit_allocation);
+  instr_at_put(pc + 2 * kInstrSize, (*(p + 2) & 0xfffff) | (8 << 20),
+               jit_allocation);
+  instr_at_put(pc + 3 * kInstrSize, (*(p + 3) & 0xfffff) | ((int32_t)a8 << 20),
+               jit_allocation);
+  if (icache_flush_mode != SKIP_ICACHE_FLUSH) {
+    FlushInstructionCache(pc, 6 * kInstrSize);
+  }
+#else
   DCHECK_EQ((target & 0xffff000000000000ll), 0);
 #ifdef DEBUG
   // Check we have the result from a li macro-instruction.
@@ -1570,41 +1725,30 @@ void Assembler::set_target_value_at(Address pc, uint64_t target,
   int64_t high_31 = (target >> 17) & 0x7fffffff;  // 31 bits
   int64_t high_20 = ((high_31 + 0x800) >> 12);    // 19 bits
   int64_t low_12 = high_31 & 0xfff;               // 12 bits
-  *p = *p & 0xfff;
-  *p = *p | ((int32_t)high_20 << 12);
-  *(p + 1) = *(p + 1) & 0xfffff;
-  *(p + 1) = *(p + 1) | ((int32_t)low_12 << 20);
-  *(p + 2) = *(p + 2) & 0xfffff;
-  *(p + 2) = *(p + 2) | (11 << 20);
-  *(p + 3) = *(p + 3) & 0xfffff;
-  *(p + 3) = *(p + 3) | ((int32_t)b11 << 20);
-  *(p + 4) = *(p + 4) & 0xfffff;
-  *(p + 4) = *(p + 4) | (6 << 20);
-  *(p + 5) = *(p + 5) & 0xfffff;
-  *(p + 5) = *(p + 5) | ((int32_t)a6 << 20);
+  instr_at_put(pc, (*p & 0xfff) | ((int32_t)high_20 << 12), jit_allocation);
+  instr_at_put(pc + 1 * kInstrSize,
+               (*(p + 1) & 0xfffff) | ((int32_t)low_12 << 20), jit_allocation);
+  instr_at_put(pc + 2 * kInstrSize, (*(p + 2) & 0xfffff) | (11 << 20),
+               jit_allocation);
+  instr_at_put(pc + 3 * kInstrSize, (*(p + 3) & 0xfffff) | ((int32_t)b11 << 20),
+               jit_allocation);
+  instr_at_put(pc + 4 * kInstrSize, (*(p + 4) & 0xfffff) | (6 << 20),
+               jit_allocation);
+  instr_at_put(pc + 5 * kInstrSize, (*(p + 5) & 0xfffff) | ((int32_t)a6 << 20),
+               jit_allocation);
   if (icache_flush_mode != SKIP_ICACHE_FLUSH) {
     FlushInstructionCache(pc, 8 * kInstrSize);
   }
-  DCHECK_EQ(target_address_at(pc), target);
+#endif
+  DCHECK_EQ(target_constant_address_at(pc), target);
 }
-#elif V8_TARGET_ARCH_RISCV32
-Address Assembler::target_address_at(Address pc) {
-  DEBUG_PRINTF("target_address_at: pc: %x\t", pc);
-  Instruction* instr0 = Instruction::At((unsigned char*)pc);
-  Instruction* instr1 = Instruction::At((unsigned char*)(pc + 1 * kInstrSize));
 
-  // Interpret instructions for address generated by li: See listing in
-  // Assembler::set_target_address_at() just below.
-  if (IsLui(*reinterpret_cast<Instr*>(instr0)) &&
-      IsAddi(*reinterpret_cast<Instr*>(instr1))) {
-    // Assemble the 32bit value.
-    int32_t addr = (int32_t)(instr0->Imm20UValue() << kImm20Shift) +
-                   (int32_t)instr1->Imm12Value();
-    DEBUG_PRINTF("addr: %x\n", addr);
-    return static_cast<Address>(addr);
-  }
-  // We should never get here, force a bad address if we do.
-  UNREACHABLE();
+#elif V8_TARGET_ARCH_RISCV32
+Address Assembler::target_constant_address_at(Address pc) {
+  DEBUG_PRINTF("\ttarget_constant_address_at: pc: %x\t", pc);
+  int32_t addr = target_constant32_at(pc);
+  DEBUG_PRINTF("\taddr: %x\n", addr);
+  return static_cast<Address>(addr);
 }
 // On RISC-V, a 32-bit target address is stored in an 2-instruction sequence:
 //  lui(reg, high_20); // 20 high bits
@@ -1612,32 +1756,12 @@ Address Assembler::target_address_at(Address pc) {
 //
 // Patching the address must replace all instructions, and flush the i-cache.
 void Assembler::set_target_value_at(Address pc, uint32_t target,
+                                    WritableJitAllocation* jit_allocation,
                                     ICacheFlushMode icache_flush_mode) {
-  DEBUG_PRINTF("set_target_value_at: pc: %x\ttarget: %x\n", pc, target);
-  uint32_t* p = reinterpret_cast<uint32_t*>(pc);
-#ifdef DEBUG
-  // Check we have the result from a li macro-instruction.
-  Instruction* instr0 = Instruction::At((unsigned char*)pc);
-  Instruction* instr1 = Instruction::At((unsigned char*)(pc + 1 * kInstrSize));
-  DCHECK(IsLui(*reinterpret_cast<Instr*>(instr0)) &&
-         IsAddi(*reinterpret_cast<Instr*>(instr1)));
-#endif
-  int32_t high_20 = ((target + 0x800) >> 12);  // 20 bits
-  int32_t low_12 = target & 0xfff;             // 12 bits
-  *p = *p & 0xfff;
-  *p = *p | ((int32_t)high_20 << 12);
-  *(p + 1) = *(p + 1) & 0xfffff;
-  *(p + 1) = *(p + 1) | ((int32_t)low_12 << 20);
-  if (icache_flush_mode != SKIP_ICACHE_FLUSH) {
-    FlushInstructionCache(pc, 2 * kInstrSize);
-  }
-  DCHECK_EQ(target_address_at(pc), target);
+  DEBUG_PRINTF("\tset_target_value_at: pc: %x\ttarget: %x\n", pc, target);
+  set_target_constant32_at(pc, target, jit_allocation, icache_flush_mode);
 }
 #endif
-
-bool UseScratchRegisterScope::hasAvailable() const {
-  return !available_->is_empty();
-}
 
 bool Assembler::IsConstantPoolAt(Instruction* instr) {
   // The constant pool marker is made of two instructions. These instructions
@@ -1717,6 +1841,35 @@ void Assembler::emit(uint64_t data) {
   EmitHelper(data);
 }
 
+void Assembler::instr_at_put(int pos, Instr instr,
+                             WritableJitAllocation* jit_allocation) {
+  if (jit_allocation) {
+    jit_allocation->WriteUnalignedValue(
+        reinterpret_cast<Address>(buffer_start_ + pos), instr);
+  } else {
+    *reinterpret_cast<Instr*>(buffer_start_ + pos) = instr;
+  }
+}
+
+void Assembler::instr_at_put(int pos, ShortInstr instr,
+                             WritableJitAllocation* jit_allocation) {
+  if (jit_allocation) {
+    jit_allocation->WriteUnalignedValue(
+        reinterpret_cast<Address>(buffer_start_ + pos), instr);
+  } else {
+    *reinterpret_cast<ShortInstr*>(buffer_start_ + pos) = instr;
+  }
+}
+
+void Assembler::instr_at_put(Address pc, Instr instr,
+                             WritableJitAllocation* jit_allocation) {
+  if (jit_allocation) {
+    jit_allocation->WriteUnalignedValue(pc, instr);
+  } else {
+    *reinterpret_cast<Instr*>(pc) = instr;
+  }
+}
+
 // Constant Pool
 
 void ConstantPool::EmitPrologue(Alignment require_alignment) {
@@ -1756,7 +1909,7 @@ void ConstantPool::SetLoadOffsetToConstPoolEntry(int load_offset,
 #elif V8_TARGET_ARCH_RISCV32
   DCHECK(assm_->IsLw(instr_load));
 #endif
-  DCHECK_EQ(assm_->LoadOffset(instr_load), 0);
+  DCHECK_EQ(assm_->LoadOffset(instr_load), 1);
   DCHECK_EQ(assm_->AuipcOffset(instr_auipc), 0);
   int32_t distance = static_cast<int32_t>(
       reinterpret_cast<Address>(entry_offset) -
@@ -1764,7 +1917,7 @@ void ConstantPool::SetLoadOffsetToConstPoolEntry(int load_offset,
   CHECK(is_int32(distance + 0x800));
   int32_t Hi20 = (((int32_t)distance + 0x800) >> 12);
   int32_t Lo12 = (int32_t)distance << 20 >> 20;
-  assm_->instr_at_put(load_offset, SetAuipcOffset(Hi20, instr_auipc));
+  assm_->instr_at_put(load_offset, SetHi20Offset(Hi20, instr_auipc));
   assm_->instr_at_put(load_offset + 4, SetLoadOffset(Lo12, instr_load));
 }
 
@@ -2135,5 +2288,8 @@ int Assembler::GeneralLiCount(int64_t imm, bool is_get_temp_reg) {
   return count;
 }
 #endif
+
+RegList Assembler::DefaultTmpList() { return {t3, t5}; }
+DoubleRegList Assembler::DefaultFPTmpList() { return {kScratchDoubleReg}; }
 }  // namespace internal
 }  // namespace v8

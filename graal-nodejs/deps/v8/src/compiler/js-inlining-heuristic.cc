@@ -9,6 +9,7 @@
 #include "src/compiler/js-heap-broker.h"
 #include "src/compiler/node-matchers.h"
 #include "src/compiler/simplified-operator.h"
+#include "src/numbers/conversions.h"
 
 namespace v8 {
 namespace internal {
@@ -299,10 +300,7 @@ void JSInliningHeuristic::Finalize() {
     int total_size =
         total_inlined_bytecode_size_ + static_cast<int>(size_of_candidate);
     if (total_size > max_inlined_bytecode_size_cumulative_) {
-      if (v8_flags.profile_guided_optimization) {
-        info_->shared_info()->set_cached_tiering_decision(
-            CachedTieringDecision::kNormal);
-      }
+      info_->set_could_not_inline_all_candidates();
       // Try if any smaller functions are available to inline.
       continue;
     }
@@ -793,20 +791,33 @@ Reduction JSInliningHeuristic::InlineCandidate(Candidate const& candidate,
 
 bool JSInliningHeuristic::CandidateCompare::operator()(
     const Candidate& left, const Candidate& right) const {
+  constexpr bool kInlineLeftFirst = true, kInlineRightFirst = false;
   if (right.frequency.IsUnknown()) {
     if (left.frequency.IsUnknown()) {
       // If left and right are both unknown then the ordering is indeterminate,
       // which breaks strict weak ordering requirements, so we fall back to the
       // node id as a tie breaker.
-      return left.node->id() > right.node->id();
+      if (left.total_size < right.total_size) {
+        return kInlineLeftFirst;
+      } else if (left.total_size > right.total_size) {
+        return kInlineRightFirst;
+      } else {
+        return left.node->id() > right.node->id();
+      }
+    } else {
+      return kInlineLeftFirst;
     }
-    return true;
   } else if (left.frequency.IsUnknown()) {
-    return false;
-  } else if (left.frequency.value() > right.frequency.value()) {
-    return true;
-  } else if (left.frequency.value() < right.frequency.value()) {
-    return false;
+    return kInlineRightFirst;
+  }
+
+  float left_score = left.frequency.value() / left.total_size;
+  float right_score = right.frequency.value() / right.total_size;
+
+  if (left_score > right_score) {
+    return kInlineLeftFirst;
+  } else if (left_score < right_score) {
+    return kInlineRightFirst;
   } else {
     return left.node->id() > right.node->id();
   }
@@ -844,7 +855,7 @@ void JSInliningHeuristic::PrintCandidates() {
   }
 }
 
-Graph* JSInliningHeuristic::graph() const { return jsgraph()->graph(); }
+TFGraph* JSInliningHeuristic::graph() const { return jsgraph()->graph(); }
 
 CompilationDependencies* JSInliningHeuristic::dependencies() const {
   return broker()->dependencies();

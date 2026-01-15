@@ -34,6 +34,8 @@ using ToBooleanMode = BytecodeArrayBuilder::ToBooleanMode;
 
 TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
   FlagScope<bool> const_tracking_let(&i::v8_flags.const_tracking_let, true);
+  FlagScope<bool> script_context_mutable_heap_number(
+      &i::v8_flags.script_context_mutable_heap_number, true);
 
   FeedbackVectorSpec feedback_spec(zone());
   BytecodeArrayBuilder builder(zone(), 1, 131, &feedback_spec);
@@ -41,6 +43,16 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
   AstValueFactory ast_factory(zone(), isolate()->ast_string_constants(),
                               HashSeed(isolate()));
   DeclarationScope scope(zone(), &ast_factory);
+
+  Handle<ScopeInfo> scope_info =
+      factory->NewScopeInfo(ScopeInfo::kVariablePartIndex);
+  int flags = ScopeInfo::IsEmptyBit::encode(true);
+  scope_info->set_flags(flags, kRelaxedStore);
+  scope_info->set_context_local_count(0);
+  scope_info->set_parameter_count(0);
+  scope_info->set_position_info_start(0);
+  scope_info->set_position_info_end(0);
+  scope.SetScriptScopeInfo(scope_info);
 
   CHECK_EQ(builder.locals_count(), 131);
   CHECK_EQ(builder.fixed_register_count(), 131);
@@ -129,34 +141,61 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
   Variable var1(&scope, name, VariableMode::kVar, VariableKind::NORMAL_VARIABLE,
                 InitializationFlag::kCreatedInitialized);
   var1.AllocateTo(VariableLocation::CONTEXT, 1);
+  Variable var2(&scope, name, VariableMode::kVar, VariableKind::NORMAL_VARIABLE,
+                InitializationFlag::kCreatedInitialized);
+  var2.AllocateTo(VariableLocation::CONTEXT, 1);
   Variable var3(&scope, name, VariableMode::kVar, VariableKind::NORMAL_VARIABLE,
                 InitializationFlag::kCreatedInitialized);
   var3.AllocateTo(VariableLocation::CONTEXT, 3);
-  Variable let_var(&scope, name, VariableMode::kLet,
-                   VariableKind::NORMAL_VARIABLE,
-                   InitializationFlag::kCreatedInitialized);
-  let_var.AllocateTo(VariableLocation::CONTEXT, 1);
 
+  // Emit context operations which operate on the script context.
   builder.PushContext(reg)
       .PopContext(reg)
-      .LoadContextSlot(reg, 1, 0, BytecodeArrayBuilder::kMutableSlot)
+      .LoadContextSlot(reg, &var1, 0, BytecodeArrayBuilder::kMutableSlot)
       .StoreContextSlot(reg, &var1, 0)
-      .LoadContextSlot(reg, 2, 0, BytecodeArrayBuilder::kImmutableSlot)
-      .StoreContextSlot(reg, &var3, 0)
-      .LoadContextSlot(reg, 1, 0, BytecodeArrayBuilder::kMutableSlot)
-      .StoreContextSlot(reg, &let_var, 0);
+      .LoadContextSlot(reg, &var2, 0, BytecodeArrayBuilder::kImmutableSlot)
+      .StoreContextSlot(reg, &var3, 0);
 
   // Emit context operations which operate on the local context.
   builder
-      .LoadContextSlot(Register::current_context(), 1, 0,
+      .LoadContextSlot(Register::current_context(), &var1, 0,
                        BytecodeArrayBuilder::kMutableSlot)
       .StoreContextSlot(Register::current_context(), &var1, 0)
-      .LoadContextSlot(Register::current_context(), 2, 0,
+      .LoadContextSlot(Register::current_context(), &var2, 0,
                        BytecodeArrayBuilder::kImmutableSlot)
       .StoreContextSlot(Register::current_context(), &var3, 0)
-      .LoadContextSlot(Register::current_context(), 1, 0,
+      .LoadContextSlot(Register::current_context(), &var1, 0,
+                       BytecodeArrayBuilder::kMutableSlot);
+
+  // Emit context operations.
+  DeclarationScope fun_scope(zone(), ScopeType::FUNCTION_SCOPE, &ast_factory,
+                             scope_info);
+  Variable fun_var1(&fun_scope, name, VariableMode::kVar,
+                    VariableKind::NORMAL_VARIABLE,
+                    InitializationFlag::kCreatedInitialized);
+  fun_var1.AllocateTo(VariableLocation::CONTEXT, 1);
+  Variable fun_var2(&fun_scope, name, VariableMode::kVar,
+                    VariableKind::NORMAL_VARIABLE,
+                    InitializationFlag::kCreatedInitialized);
+  fun_var2.AllocateTo(VariableLocation::CONTEXT, 1);
+  Variable fun_var3(&fun_scope, name, VariableMode::kVar,
+                    VariableKind::NORMAL_VARIABLE,
+                    InitializationFlag::kCreatedInitialized);
+  fun_var3.AllocateTo(VariableLocation::CONTEXT, 3);
+  builder.CreateFunctionContext(&fun_scope, 3)
+      .StoreAccumulatorInRegister(reg)
+      .LoadContextSlot(reg, &fun_var1, 0, BytecodeArrayBuilder::kMutableSlot)
+      .StoreContextSlot(reg, &fun_var1, 0)
+      .LoadContextSlot(reg, &fun_var2, 0, BytecodeArrayBuilder::kImmutableSlot)
+      .StoreContextSlot(reg, &fun_var3, 0)
+      .PushContext(reg)
+      .LoadContextSlot(Register::current_context(), &fun_var1, 0,
                        BytecodeArrayBuilder::kMutableSlot)
-      .StoreContextSlot(Register::current_context(), &let_var, 0);
+      .StoreContextSlot(Register::current_context(), &fun_var1, 0)
+      .LoadContextSlot(Register::current_context(), &fun_var2, 0,
+                       BytecodeArrayBuilder::kImmutableSlot)
+      .StoreContextSlot(Register::current_context(), &fun_var3, 0)
+      .PopContext(reg);
 
   // Emit load / store property operations.
   builder.LoadNamedProperty(reg, name, load_slot.ToInt())
@@ -189,8 +228,15 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
                        LookupHoistingMode::kNormal);
 
   // Emit load / store lookup slots with context fast paths.
-  builder.LoadLookupContextSlot(name, TypeofMode::kNotInside, 1, 0)
-      .LoadLookupContextSlot(name, TypeofMode::kInside, 1, 0);
+  builder
+      .LoadLookupContextSlot(name, TypeofMode::kNotInside,
+                             ContextKind::kDefault, 1, 0)
+      .LoadLookupContextSlot(name, TypeofMode::kInside, ContextKind::kDefault,
+                             1, 0)
+      .LoadLookupContextSlot(name, TypeofMode::kNotInside,
+                             ContextKind::kScriptContext, 1, 0)
+      .LoadLookupContextSlot(name, TypeofMode::kInside,
+                             ContextKind::kScriptContext, 1, 0);
 
   // Emit load / store lookup slots with global fast paths.
   builder.LoadLookupGlobalSlot(name, TypeofMode::kNotInside, 1, 0)
@@ -271,7 +317,7 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
   // Emit unary operator invocations.
   builder.LogicalNot(ToBooleanMode::kConvertToBoolean)
       .LogicalNot(ToBooleanMode::kAlreadyBoolean)
-      .TypeOf();
+      .TypeOf(1);
 
   // Emit delete
   builder.Delete(reg, LanguageMode::kSloppy).Delete(reg, LanguageMode::kStrict);
@@ -316,7 +362,7 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
     BytecodeLoopHeader loop_header;
     BytecodeLabel after_jump1, after_jump2, after_jump3, after_jump4,
         after_jump5, after_jump6, after_jump7, after_jump8, after_jump9,
-        after_jump10, after_jump11, after_loop;
+        after_jump10, after_jump11, after_jump12, after_loop;
     builder.JumpIfNull(&after_loop)
         .Bind(&loop_header)
         .Jump(&after_jump1)
@@ -333,19 +379,21 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
         .Bind(&after_jump6)
         .JumpIfJSReceiver(&after_jump7)
         .Bind(&after_jump7)
-        .JumpIfTrue(ToBooleanMode::kConvertToBoolean, &after_jump8)
+        .JumpIfForInDone(&after_jump8, reg, reg)
         .Bind(&after_jump8)
-        .JumpIfTrue(ToBooleanMode::kAlreadyBoolean, &after_jump9)
+        .JumpIfTrue(ToBooleanMode::kConvertToBoolean, &after_jump9)
         .Bind(&after_jump9)
-        .JumpIfFalse(ToBooleanMode::kConvertToBoolean, &after_jump10)
+        .JumpIfTrue(ToBooleanMode::kAlreadyBoolean, &after_jump10)
         .Bind(&after_jump10)
-        .JumpIfFalse(ToBooleanMode::kAlreadyBoolean, &after_jump11)
+        .JumpIfFalse(ToBooleanMode::kConvertToBoolean, &after_jump11)
         .Bind(&after_jump11)
+        .JumpIfFalse(ToBooleanMode::kAlreadyBoolean, &after_jump12)
+        .Bind(&after_jump12)
         .JumpLoop(&loop_header, 0, 0, 0)
         .Bind(&after_loop);
   }
 
-  BytecodeLabel end[11];
+  BytecodeLabel end[12];
   {
     // Longer jumps with constant operands
     BytecodeLabel after_jump;
@@ -362,7 +410,8 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
         .JumpIfNotUndefined(&end[8])
         .JumpIfUndefinedOrNull(&end[9])
         .LoadLiteral(ast_factory.prototype_string())
-        .JumpIfJSReceiver(&end[10]);
+        .JumpIfJSReceiver(&end[10])
+        .JumpIfForInDone(&end[11], reg, reg);
   }
 
   // Emit Smi table switch bytecode.
@@ -380,7 +429,6 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
 
   builder.ForInEnumerate(reg)
       .ForInPrepare(triple, 1)
-      .ForInContinue(reg, reg)
       .ForInNext(reg, reg, pair, 1)
       .ForInStep(reg);
 
@@ -400,7 +448,7 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
                InitializationFlag::kCreatedInitialized);
   var.AllocateTo(VariableLocation::CONTEXT, 1024);
 
-  builder.LoadContextSlot(reg, 1024, 0, BytecodeArrayBuilder::kMutableSlot)
+  builder.LoadContextSlot(reg, &var, 0, BytecodeArrayBuilder::kMutableSlot)
       .StoreContextSlot(reg, &var, 0);
 
   // Emit wide load / store lookup slots.
@@ -476,16 +524,8 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
   builder.Return();
 
   // Generate BytecodeArray.
-  Handle<ScopeInfo> scope_info =
-      factory->NewScopeInfo(ScopeInfo::kVariablePartIndex);
-  int flags = ScopeInfo::IsEmptyBit::encode(true);
-  scope_info->set_flags(flags);
-  scope_info->set_context_local_count(0);
-  scope_info->set_parameter_count(0);
-  scope.SetScriptScopeInfo(scope_info);
-
   ast_factory.Internalize(isolate());
-  Handle<BytecodeArray> the_array = builder.ToBytecodeArray(isolate());
+  DirectHandle<BytecodeArray> the_array = builder.ToBytecodeArray(isolate());
   CHECK_EQ(the_array->frame_size(),
            builder.total_register_count() * kSystemPointerSize);
 
@@ -526,7 +566,7 @@ TEST_F(BytecodeArrayBuilderTest, AllBytecodesGenerated) {
   if (!Bytecodes::IsDebugBreak(Bytecode::k##Name)) {                     \
     EXPECT_GE(scorecard[Bytecodes::ToByte(Bytecode::k##Name)], 1);       \
   }
-  BYTECODE_LIST(CHECK_BYTECODE_PRESENT)
+  BYTECODE_LIST(CHECK_BYTECODE_PRESENT, CHECK_BYTECODE_PRESENT)
 #undef CHECK_BYTECODE_PRESENT
 }
 
@@ -549,7 +589,8 @@ TEST_F(BytecodeArrayBuilderTest, FrameSizesLookGood) {
       }
       builder.Return();
 
-      Handle<BytecodeArray> the_array = builder.ToBytecodeArray(isolate());
+      DirectHandle<BytecodeArray> the_array =
+          builder.ToBytecodeArray(isolate());
       int total_registers = locals + temps;
       CHECK_EQ(the_array->frame_size(), total_registers * kSystemPointerSize);
     }
@@ -598,7 +639,7 @@ TEST_F(BytecodeArrayBuilderTest, Constants) {
       .Return();
 
   ast_factory.Internalize(isolate());
-  Handle<BytecodeArray> array = builder.ToBytecodeArray(isolate());
+  DirectHandle<BytecodeArray> array = builder.ToBytecodeArray(isolate());
   // Should only have one entry for each identical constant.
   EXPECT_EQ(4, array->constant_pool()->length());
 }

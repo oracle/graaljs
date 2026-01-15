@@ -6,6 +6,7 @@
 #define V8_CODEGEN_ARM64_DECODER_ARM64_INL_H_
 
 #include "src/codegen/arm64/decoder-arm64.h"
+// Include the non-inl header before the rest of the headers.
 
 namespace v8 {
 namespace internal {
@@ -694,11 +695,19 @@ void Decoder<V>::DecodeNEONVectorDataProcessing(Instruction* instr) {
             if (instr->Bits(23, 22) == 0) {
               V::VisitNEONCopy(instr);
             } else {
-              V::VisitUnallocated(instr);
+              if (instr->Bit(14) == 0 && instr->Bit(22)) {
+                V::VisitNEON3SameHP(instr);
+              } else {
+                V::VisitUnallocated(instr);
+              }
             }
           }
         } else {
-          V::VisitUnallocated(instr);
+          if (instr->Bit(10) == 1) {
+            V::VisitNEON3Extension(instr);
+          } else {
+            V::VisitUnallocated(instr);
+          }
         }
       } else {
         if (instr->Bit(10) == 0) {
@@ -720,7 +729,8 @@ void Decoder<V>::DecodeNEONVectorDataProcessing(Instruction* instr) {
                 if (instr->Bit(19) == 0) {
                   V::VisitNEONAcrossLanes(instr);
                 } else {
-                  V::VisitUnallocated(instr);
+                  // Half-precision version.
+                  V::VisitNEON2RegMisc(instr);
                 }
               }
             } else {

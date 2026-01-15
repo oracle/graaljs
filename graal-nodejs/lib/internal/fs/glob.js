@@ -143,7 +143,7 @@ class Cache {
     if (cached) {
       return cached;
     }
-    const promise = PromisePrototypeThen(readdir(path, { __proto__: null, withFileTypes: true }), null, () => null);
+    const promise = PromisePrototypeThen(readdir(path, { __proto__: null, withFileTypes: true }), null, () => []);
     this.#readdirCache.set(path, promise);
     return promise;
   }
@@ -240,7 +240,6 @@ class Pattern {
 class ResultSet extends SafeSet {
   #root = '.';
   #isExcluded = () => false;
-  constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
 
   setup(root, isExcludedFn) {
     this.#root = root;
@@ -757,7 +756,30 @@ class Glob {
   }
 }
 
+/**
+ * Check if a path matches a glob pattern
+ * @param {string} path the path to check
+ * @param {string} pattern the glob pattern to match
+ * @param {boolean} windows whether the path is on a Windows system, defaults to `isWindows`
+ * @returns {boolean}
+ */
+function matchGlobPattern(path, pattern, windows = isWindows) {
+  validateString(path, 'path');
+  validateString(pattern, 'pattern');
+  return lazyMinimatch().minimatch(path, pattern, {
+    kEmptyObject,
+    nocase: isMacOS || isWindows,
+    windowsPathsNoEscape: true,
+    nonegate: true,
+    nocomment: true,
+    optimizationLevel: 2,
+    platform: windows ? 'win32' : 'posix',
+    nocaseMagicOnly: true,
+  });
+}
+
 module.exports = {
   __proto__: null,
   Glob,
+  matchGlobPattern,
 };

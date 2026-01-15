@@ -1,14 +1,9 @@
-// Flags: --js-float16array
-// TODO(LiviaMedeiros): once `Float16Array` is unflagged in v8, remove the line above
 'use strict';
 
 const common = require('../common');
 const vm = require('node:vm');
 const assert = require('node:assert');
 const { describe, it } = require('node:test');
-
-// TODO(LiviaMedeiros): once linter recognizes `Float16Array`, remove next line
-const { Float16Array } = globalThis;
 
 const x = ['x'];
 
@@ -77,6 +72,16 @@ describe('Object Comparison Tests', () => {
           expected: new Set([{ a: 1 }, { b: 1 }]),
         },
 
+        {
+          description: 'throws when comparing two WeakSet objects',
+          actual: new WeakSet(),
+          expected: new WeakSet(),
+        },
+        {
+          description: 'throws when comparing two WeakMap objects',
+          actual: new WeakMap(),
+          expected: new WeakMap(),
+        },
         {
           description: 'throws when comparing two different objects',
           actual: { a: 1, b: 'string' },

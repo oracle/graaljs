@@ -174,7 +174,7 @@ class ProgressIndicator(object):
       raise
     self.Done()
     return {
-      'allPassed': not self.failed,
+      'allPassed': not self.failed and not self.shutdown_event.is_set(),
       'failed': self.failed,
     }
 
@@ -602,12 +602,21 @@ class TestCase(object):
 
   def Run(self):
     try:
-      result = self.RunCommand(self.GetCommand(), {
+      run_configuration = self.GetRunConfiguration()
+      command = run_configuration['command']
+      envs = {}
+      if 'envs' in run_configuration:
+        envs.update(run_configuration['envs'])
+      envs.update({
         "TEST_SERIAL_ID": "%d" % self.serial_id,
         "TEST_THREAD_ID": "%d" % self.thread_id,
         "TEST_PARALLEL" : "%d" % self.parallel,
         "GITHUB_STEP_SUMMARY": "",
       })
+      result = self.RunCommand(
+        command,
+        envs
+      )
     finally:
       # Tests can leave the tty in non-blocking mode. If the test runner
       # tries to print to stdout/stderr after that and the tty buffer is
@@ -782,6 +791,11 @@ def Execute(args, context, timeout=None, env=None, disable_core_files=False,
   for key, value in env.items():
     env_copy[key] = value
 
+  # We append NODE_SKIP_FLAG_CHECK (ref: test/common/index.js)
+  # to avoid parsing the test files twice when looking for
+  # flags or environment variables defined via // Flags: and // Env:
+  env_copy["NODE_SKIP_FLAG_CHECK"] = "true"
+
   preexec_fn = None
 
   def disableCoreFiles():
@@ -806,7 +820,7 @@ def Execute(args, context, timeout=None, env=None, disable_core_files=False,
     else:
       preexec_fn = setMaxVirtualMemory
 
-  (process, exit_code, timed_out) = RunProcess(
+  (_process, exit_code, timed_out) = RunProcess(
     context,
     timeout,
     args = args,
@@ -913,7 +927,7 @@ class LiteralTestSuite(TestSuite):
     return result
 
   def ListTests(self, current_path, path, context, arch, mode):
-    (name, rest) = CarCdr(path)
+    (name, _rest) = CarCdr(path)
     result = [ ]
     for test in self.tests_repos:
       test_name = test.GetName()
@@ -958,6 +972,7 @@ class Context(object):
     self.abort_on_timeout = abort_on_timeout
     self.v8_enable_inspector = True
     self.node_has_crypto = True
+    self.use_error_reporter = False
 
   def GetVm(self, arch, mode):
     if self.vm is not None:
@@ -1450,7 +1465,7 @@ def BuildOptions():
       help="Type of build (simple, fips, coverage)",
       default=None)
   result.add_argument("--error-reporter",
-      help="use error reporter",
+      help="use error reporter if the test uses node:test",
       default=True, action="store_true")
   return result
 
@@ -1599,7 +1614,7 @@ def ArgsToTestPaths(test_root, args, suites):
   if len(args) == 0 or 'default' in args:
     def_suites = [s for s in suites if s not in IGNORED_SUITES]
     args = [a for a in args if a != 'default'] + def_suites
-  subsystem_regex = re.compile(r'^[a-zA-Z-]*$')
+  subsystem_regex = re.compile(r'^[a-zA-Z0-9-]*$')
   check = lambda arg: subsystem_regex.match(arg) and (arg not in suites)
   mapped_args = ["*/test*-%s-*" % arg if check(arg) else arg for arg in args]
   paths = [SplitPath(NormalizePath(a)) for a in mapped_args]
@@ -1671,10 +1686,6 @@ def Main():
     options.node_args.append("--always-turbofan")
     options.progress = "deopts"
 
-  if options.error_reporter:
-    options.node_args.append('--test-reporter=./test/common/test-error-reporter.js')
-    options.node_args.append('--test-reporter-destination=stdout')
-
   if options.worker:
     run_worker = join(workspace, "tools", "run-worker.js")
     options.node_args.append(run_worker)
@@ -1693,6 +1704,9 @@ def Main():
                     options.repeat,
                     options.abort_on_timeout)
 
+  if options.error_reporter:
+    context.use_error_reporter = True
+
   # Get status for tests
   sections = [ ]
   defs = { }
@@ -1704,27 +1718,28 @@ def Main():
   all_unused = [ ]
   unclassified_tests = [ ]
   globally_unused_rules = None
-  for path in paths:
-    for arch in options.arch:
-      for mode in options.mode:
-        vm = context.GetVm(arch, mode)
-        if not exists(vm):
-          print("Can't find shell executable: '%s'" % vm)
-          continue
-        archEngineContext = Execute([vm, "-p", "process.arch"], context)
-        vmArch = archEngineContext.stdout.rstrip()
-        if archEngineContext.exit_code != 0 or vmArch == "undefined":
-          print("Can't determine the arch of: '%s'" % vm)
-          print(archEngineContext.stderr.rstrip())
-          continue
-        env = {
-          'mode': mode,
-          'system': utils.GuessOS(),
-          'arch': vmArch,
-          'type': get_env_type(vm, options.type, context),
-          'asan': get_asan_state(vm, context),
-          'pointer_compression': get_pointer_compression_state(vm, context),
-        }
+
+  for arch in options.arch:
+    for mode in options.mode:
+      vm = context.GetVm(arch, mode)
+      if not exists(vm):
+        print("Can't find shell executable: '%s'" % vm)
+        continue
+      archEngineContext = Execute([vm, "-p", "process.arch"], context)
+      vmArch = archEngineContext.stdout.rstrip()
+      if archEngineContext.exit_code != 0 or vmArch == "undefined":
+        print("Can't determine the arch of: '%s'" % vm)
+        print(archEngineContext.stderr.rstrip())
+        continue
+      env = {
+        'mode': mode,
+        'system': utils.GuessOS(),
+        'arch': vmArch,
+        'type': get_env_type(vm, options.type, context),
+        'asan': get_asan_state(vm, context),
+        'pointer_compression': get_pointer_compression_state(vm, context),
+      }
+      for path in paths:
         test_list = root.ListTests([], path, context, arch, mode)
         unclassified_tests += test_list
         cases, unused_rules = config.ClassifyTests(test_list, env)
@@ -1832,11 +1847,12 @@ def Main():
 
   if result['allPassed']:
     print("\nAll tests passed.")
-  else:
+  elif result['failed']:
     print("\nFailed tests:")
     for failure in result['failed']:
       print(EscapeCommand(failure.command))
-
+  else:
+    print("\nTest aborted.")
   return exitcode
 
 

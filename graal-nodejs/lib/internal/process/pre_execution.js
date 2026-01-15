@@ -12,9 +12,7 @@ const {
   NumberParseInt,
   ObjectDefineProperty,
   ObjectFreeze,
-  ObjectGetOwnPropertyDescriptor,
   String,
-  Symbol,
   globalThis,
 } = primordials;
 
@@ -23,21 +21,15 @@ const {
   refreshOptions,
   getEmbedderOptions,
 } = require('internal/options');
-const { reconnectZeroFillToggle } = require('internal/buffer');
 const {
-  exposeInterface,
   exposeLazyInterfaces,
   defineReplaceableLazyAttribute,
   setupCoverageHooks,
   emitExperimentalWarning,
-  SymbolAsyncDispose,
-  SymbolDispose,
   deprecate,
 } = require('internal/util');
 
 const {
-  ERR_INVALID_THIS,
-  ERR_NO_CRYPTO,
   ERR_MISSING_OPTION,
   ERR_ACCESS_DENIED,
 } = require('internal/errors').codes;
@@ -55,14 +47,30 @@ function prepareMainThreadExecution(expandArgv1 = false, initializeModules = tru
     expandArgv1,
     initializeModules,
     isMainThread: true,
+    shouldSpawnLoaderHookWorker: initializeModules,
+    shouldPreloadModules: initializeModules,
+  });
+}
+
+function prepareTestRunnerMainExecution(loadUserModules = true) {
+  return prepareExecution({
+    expandArgv1: false,
+    initializeModules: true,
+    isMainThread: true,
+    shouldSpawnLoaderHookWorker: loadUserModules,
+    shouldPreloadModules: loadUserModules,
   });
 }
 
 function prepareWorkerThreadExecution() {
   prepareExecution({
     expandArgv1: false,
-    initializeModules: false,
     isMainThread: false,
+    // Module loader initialization in workers are delayed until the worker thread
+    // is ready for execution.
+    initializeModules: false,
+    shouldSpawnLoaderHookWorker: false,
+    shouldPreloadModules: false,
   });
 }
 
@@ -73,7 +81,7 @@ function prepareShadowRealmExecution() {
   setupDebugEnv();
 
   // Disable custom loaders in ShadowRealm.
-  setupUserModules(true);
+  initializeModuleLoaders({ shouldSpawnLoaderHookWorker: false, shouldPreloadModules: false });
   const {
     privateSymbols: {
       host_defined_option_symbol,
@@ -95,10 +103,9 @@ function prepareShadowRealmExecution() {
 }
 
 function prepareExecution(options) {
-  const { expandArgv1, initializeModules, isMainThread } = options;
+  const { expandArgv1, initializeModules, isMainThread, shouldSpawnLoaderHookWorker, shouldPreloadModules } = options;
 
   refreshRuntimeOptions();
-  reconnectZeroFillToggle();
 
   // Patch the process object and get the resolved main entry point.
   const mainEntry = patchProcessObject(expandArgv1);
@@ -107,11 +114,10 @@ function prepareExecution(options) {
   setupNetworkInspection();
   setupNavigator();
   setupWarningHandler();
-  setupUndici();
-  setupWebCrypto();
   setupSQLite();
+  setupQuic();
   setupWebStorage();
-  setupCustomEvent();
+  setupWebsocket();
   setupEventsource();
   setupCodeCoverage();
   setupDebugEnv();
@@ -127,8 +133,7 @@ function prepareExecution(options) {
   initializeConfigFileSupport();
 
   require('internal/dns/utils').initializeDns();
-
-  setupSymbolDisposePolyfill();
+  require('internal/graal/wasm');
 
   if (isMainThread) {
     assert(internalBinding('worker').isMainThread);
@@ -157,54 +162,80 @@ function prepareExecution(options) {
     assert(!initializeModules);
   }
 
+  setupVmModules();
   if (initializeModules) {
-    setupUserModules();
+    initializeModuleLoaders({ shouldSpawnLoaderHookWorker, shouldPreloadModules });
   }
+
+  // This has to be done after the user module loader is initialized,
+  // in case undici is externalized.
+  setupHttpProxy();
 
   return mainEntry;
 }
 
-function setupSymbolDisposePolyfill() {
-  // TODO(MoLow): Remove this polyfill once Symbol.dispose and Symbol.asyncDispose are available in V8.
-  // eslint-disable-next-line node-core/prefer-primordials
-  if (typeof Symbol.dispose !== 'symbol') {
-    ObjectDefineProperty(Symbol, 'dispose', {
-      __proto__: null,
-      configurable: false,
-      enumerable: false,
-      value: SymbolDispose,
-      writable: false,
-    });
-  }
-
-  // eslint-disable-next-line node-core/prefer-primordials
-  if (typeof Symbol.asyncDispose !== 'symbol') {
-    ObjectDefineProperty(Symbol, 'asyncDispose', {
-      __proto__: null,
-      configurable: false,
-      enumerable: false,
-      value: SymbolAsyncDispose,
-      writable: false,
-    });
+function setupVmModules() {
+  // Patch the vm module when --experimental-vm-modules is on.
+  // Please update the comments in vm.js when this block changes.
+  // TODO(joyeecheung): move this to vm.js?
+  if (getOptionValue('--experimental-vm-modules')) {
+    const {
+      Module, SourceTextModule, SyntheticModule,
+    } = require('internal/vm/module');
+    const vm = require('vm');
+    vm.Module = Module;
+    vm.SourceTextModule = SourceTextModule;
+    vm.SyntheticModule = SyntheticModule;
   }
 }
 
-function setupUserModules(forceDefaultLoader = false) {
-  initializeCJSLoader();
-  initializeESMLoader(forceDefaultLoader);
+function setupHttpProxy() {
+  // This normalized from both --use-env-proxy and NODE_USE_ENV_PROXY settings.
+  if (!getOptionValue('--use-env-proxy')) {
+    return;
+  }
+  if (!process.env.HTTP_PROXY && !process.env.HTTPS_PROXY &&
+      !process.env.http_proxy && !process.env.https_proxy) {
+    return;
+  }
+
+  const { setGlobalDispatcher, EnvHttpProxyAgent } = require('internal/deps/undici/undici');
+  const envHttpProxyAgent = new EnvHttpProxyAgent();
+  setGlobalDispatcher(envHttpProxyAgent);
+  // For fetch, we need to set the global dispatcher from here.
+  // For http/https agents, we'll configure the global agent when they are
+  // actually created, in lib/_http_agent.js and lib/https.js.
+  // TODO(joyeecheung): This is currently guarded with NODE_USE_ENV_PROXY and --use-env-proxy.
+  // Investigate whether it's possible to enable it by default without stepping on other
+  // existing libraries that sets the global dispatcher or monkey patches the global agent.
+}
+
+function initializeModuleLoaders(options) {
+  const { shouldSpawnLoaderHookWorker, shouldPreloadModules } = options;
+  // Initialize certain special module.Module properties and the CJS conditions.
+  const { initializeCJS } = require('internal/modules/cjs/loader');
+  initializeCJS();
+  // Initialize the ESM loader and a few module callbacks.
+  // If shouldSpawnLoaderHookWorker is true, later when the ESM loader is instantiated on-demand,
+  // it will spawn a loader worker thread to handle async custom loader hooks.
+  const { initializeESM } = require('internal/modules/esm/utils');
+  initializeESM(shouldSpawnLoaderHookWorker);
+
   const {
     hasStartedUserCJSExecution,
     hasStartedUserESMExecution,
   } = require('internal/modules/helpers');
+  // At this point, no user module has been executed yet.
   assert(!hasStartedUserCJSExecution());
   assert(!hasStartedUserESMExecution());
+
   if (getEmbedderOptions().hasEmbedderPreload) {
     runEmbedderPreload();
   }
   // Do not enable preload modules if custom loaders are disabled.
   // For example, loader workers are responsible for doing this themselves.
   // And preload modules are not supported in ShadowRealm as well.
-  if (!forceDefaultLoader) {
+  if (shouldPreloadModules) {
     loadPreloadModules();
   }
   // Need to be done after --require setup.
@@ -220,7 +251,8 @@ function refreshRuntimeOptions() {
  * Replace `process.argv[0]` with `process.execPath`, preserving the original `argv[0]` value as `process.argv0`.
  * Replace `process.argv[1]` with the resolved absolute file path of the entry point, if found.
  * @param {boolean} expandArgv1 - Whether to replace `process.argv[1]` with the resolved absolute file path of
- * the main entry point.
+ *   the main entry point.
+ * @returns {string}
  */
 function patchProcessObject(expandArgv1) {
   const binding = internalBinding('process_methods');
@@ -319,21 +351,11 @@ function setupWarningHandler() {
   }
 }
 
-// https://fetch.spec.whatwg.org/
 // https://websockets.spec.whatwg.org/
-function setupUndici() {
-  if (getOptionValue('--no-experimental-fetch') || typeof WebAssembly === 'undefined') {
-    delete globalThis.fetch;
-    delete globalThis.FormData;
-    delete globalThis.Headers;
-    delete globalThis.Request;
-    delete globalThis.Response;
-  } else {
-    require('internal/graal/wasm');
-  }
-
+function setupWebsocket() {
   if (getOptionValue('--no-experimental-websocket')) {
     delete globalThis.WebSocket;
+    delete globalThis.CloseEvent;
   }
 }
 
@@ -357,41 +379,6 @@ function setupNavigator() {
   defineReplaceableLazyAttribute(globalThis, 'internal/navigator', ['navigator'], false);
 }
 
-// TODO(aduh95): move this to internal/bootstrap/web/* when the CLI flag is
-//               removed.
-function setupWebCrypto() {
-  if (getEmbedderOptions().noBrowserGlobals ||
-      getOptionValue('--no-experimental-global-webcrypto')) {
-    return;
-  }
-
-  if (internalBinding('config').hasOpenSSL) {
-    defineReplaceableLazyAttribute(
-      globalThis,
-      'internal/crypto/webcrypto',
-      ['crypto'],
-      false,
-      function cryptoThisCheck() {
-        if (this !== globalThis && this != null)
-          throw new ERR_INVALID_THIS(
-            'nullish or must be the global object');
-      },
-    );
-    exposeLazyInterfaces(
-      globalThis, 'internal/crypto/webcrypto',
-      ['Crypto', 'CryptoKey', 'SubtleCrypto'],
-    );
-  } else {
-    ObjectDefineProperty(globalThis, 'crypto',
-                         { __proto__: null, ...ObjectGetOwnPropertyDescriptor({
-                           get crypto() {
-                             throw new ERR_NO_CRYPTO();
-                           },
-                         }, 'crypto') });
-
-  }
-}
-
 function setupSQLite() {
   if (getOptionValue('--no-experimental-sqlite')) {
     return;
@@ -406,6 +393,15 @@ function initializeConfigFileSupport() {
       getOptionValue('--experimental-config-file')) {
     emitExperimentalWarning('--experimental-config-file');
   }
+}
+
+function setupQuic() {
+  if (!getOptionValue('--experimental-quic')) {
+    return;
+  }
+
+  const { BuiltinModule } = require('internal/bootstrap/realm');
+  BuiltinModule.allowRequireByUsers('quic');
 }
 
 function setupWebStorage() {
@@ -434,25 +430,11 @@ function setupCodeCoverage() {
   }
 }
 
-// TODO(daeyeon): move this to internal/bootstrap/web/* when the CLI flag is
-//                removed.
-function setupCustomEvent() {
-  if (getEmbedderOptions().noBrowserGlobals ||
-      getOptionValue('--no-experimental-global-customevent')) {
-    return;
-  }
-  const { CustomEvent } = require('internal/event_target');
-  exposeInterface(globalThis, 'CustomEvent', CustomEvent);
-}
-
 function setupStacktracePrinterOnSigint() {
   if (!getOptionValue('--trace-sigint')) {
     return;
   }
-  const { SigintWatchdog } = require('internal/watchdog');
-
-  const watchdog = new SigintWatchdog();
-  watchdog.start();
+  require('internal/util/trace_sigint').setTraceSigInt(true);
 }
 
 function initializeReport() {
@@ -639,6 +621,7 @@ function initializePermission() {
     const warnFlags = [
       '--allow-addons',
       '--allow-child-process',
+      '--allow-inspector',
       '--allow-wasi',
       '--allow-worker',
     ];
@@ -675,42 +658,13 @@ function initializePermission() {
       },
     });
   } else {
-    const availablePermissionFlags = [
-      '--allow-fs-read',
-      '--allow-fs-write',
-      '--allow-addons',
-      '--allow-child-process',
-      '--allow-wasi',
-      '--allow-worker',
-    ];
-    ArrayPrototypeForEach(availablePermissionFlags, (flag) => {
+    const { availableFlags } = require('internal/process/permission');
+    ArrayPrototypeForEach(availableFlags(), (flag) => {
       const value = getOptionValue(flag);
       if (value.length) {
         throw new ERR_MISSING_OPTION('--permission');
       }
     });
-  }
-}
-
-function initializeCJSLoader() {
-  const { initializeCJS } = require('internal/modules/cjs/loader');
-  initializeCJS();
-}
-
-function initializeESMLoader(forceDefaultLoader) {
-  const { initializeESM } = require('internal/modules/esm/utils');
-  initializeESM(forceDefaultLoader);
-
-  // Patch the vm module when --experimental-vm-modules is on.
-  // Please update the comments in vm.js when this block changes.
-  if (getOptionValue('--experimental-vm-modules')) {
-    const {
-      Module, SourceTextModule, SyntheticModule,
-    } = require('internal/vm/module');
-    const vm = require('vm');
-    vm.Module = Module;
-    vm.SourceTextModule = SourceTextModule;
-    vm.SyntheticModule = SyntheticModule;
   }
 }
 
@@ -783,10 +737,11 @@ function getHeapSnapshotFilename(diagnosticDir) {
 }
 
 module.exports = {
-  setupUserModules,
+  initializeModuleLoaders,
   prepareMainThreadExecution,
   prepareWorkerThreadExecution,
   prepareShadowRealmExecution,
+  prepareTestRunnerMainExecution,
   markBootstrapComplete,
   loadPreloadModules,
   initializeFrozenIntrinsics,

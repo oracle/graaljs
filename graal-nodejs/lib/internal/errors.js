@@ -90,6 +90,7 @@ let internalPrepareStackTrace = defaultPrepareStackTrace;
  * The default implementation of `Error.prepareStackTrace` with simple
  * concatenation of stack frames.
  * Read more about `Error.prepareStackTrace` at https://v8.dev/docs/stack-trace-api#customizing-stack-traces.
+ * @returns {string}
  */
 function defaultPrepareStackTrace(error, trace) {
   // Normal error formatting:
@@ -157,6 +158,7 @@ function prepareStackTraceCallback(globalThis, error, trace) {
 
 /**
  * The default Error.prepareStackTrace implementation.
+ * @returns {string}
  */
 function ErrorPrepareStackTrace(error, trace) {
   return internalPrepareStackTrace(error, trace);
@@ -1122,6 +1124,8 @@ E('ERR_AMBIGUOUS_ARGUMENT', 'The "%s" argument is ambiguous. %s', TypeError);
 E('ERR_ARG_NOT_ITERABLE', '%s must be iterable', TypeError);
 E('ERR_ASSERTION', '%s', Error);
 E('ERR_ASYNC_CALLBACK', '%s must be a function', TypeError);
+E('ERR_ASYNC_LOADER_REQUEST_NEVER_SETTLED',
+  'Async loader request never settled', Error);
 E('ERR_ASYNC_TYPE', 'Invalid name for async "type": %s', TypeError);
 E('ERR_BROTLI_INVALID_PARAM', '%s is not a valid Brotli parameter', RangeError);
 E('ERR_BUFFER_OUT_OF_BOUNDS',
@@ -1146,7 +1150,9 @@ E('ERR_CHILD_PROCESS_STDIO_MAXBUFFER', '%s maxBuffer length exceeded',
   RangeError);
 E('ERR_CONSOLE_WRITABLE_STREAM',
   'Console expects a writable stream instance for %s', TypeError);
+E('ERR_CONSTRUCT_CALL_REQUIRED', 'Class constructor %s cannot be invoked without `new`', TypeError);
 E('ERR_CONTEXT_NOT_INITIALIZED', 'context used is not initialized', Error);
+E('ERR_CRYPTO_ARGON2_NOT_SUPPORTED', 'Argon2 algorithm not supported', Error);
 E('ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED',
   'Custom engines not supported by this OpenSSL', Error);
 E('ERR_CRYPTO_ECDH_INVALID_FORMAT', 'Invalid ECDH format: %s', TypeError);
@@ -1167,8 +1173,8 @@ E('ERR_CRYPTO_INVALID_JWK', 'Invalid JWK data', TypeError);
 E('ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE',
   'Invalid key object type %s, expected %s.', TypeError);
 E('ERR_CRYPTO_INVALID_STATE', 'Invalid state for operation %s', Error);
+E('ERR_CRYPTO_KEM_NOT_SUPPORTED', 'KEM is not supported', Error);
 E('ERR_CRYPTO_PBKDF2_ERROR', 'PBKDF2 error', Error);
-E('ERR_CRYPTO_SCRYPT_INVALID_PARAMETER', 'Invalid scrypt parameter', Error);
 E('ERR_CRYPTO_SCRYPT_NOT_SUPPORTED', 'Scrypt algorithm not supported', Error);
 // Switch to TypeError. The current implementation does not seem right.
 E('ERR_CRYPTO_SIGN_KEY_REQUIRED', 'No key provided to sign', Error);
@@ -1220,9 +1226,7 @@ E('ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY',
 E('ERR_FS_CP_UNKNOWN', 'Cannot copy an unknown file type', SystemError);
 E('ERR_FS_EISDIR', 'Path is a directory', SystemError, HideStackFramesError);
 E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than 2 GiB', RangeError);
-E('ERR_FS_INVALID_SYMLINK_TYPE',
-  'Symlink type must be one of "dir", "file", or "junction". Received "%s"',
-  Error); // Switch to TypeError. The current implementation does not seem right
+E('ERR_FS_WATCH_QUEUE_OVERFLOW', 'fs.watch() queued more than %d events', Error);
 E('ERR_HTTP2_ALTSVC_INVALID_ORIGIN',
   'HTTP/2 ALTSVC frames require a valid origin', TypeError);
 E('ERR_HTTP2_ALTSVC_LENGTH',
@@ -1474,7 +1478,10 @@ E('ERR_INVALID_FD',
 E('ERR_INVALID_FD_TYPE', 'Unsupported fd type: %s', TypeError);
 E('ERR_INVALID_FILE_URL_HOST',
   'File URL host must be "localhost" or empty on %s', TypeError);
-E('ERR_INVALID_FILE_URL_PATH', 'File URL path %s', TypeError);
+E('ERR_INVALID_FILE_URL_PATH', function(reason, input) {
+  this.input = input;
+  return `File URL path ${reason}`;
+}, TypeError);
 E('ERR_INVALID_HANDLE_TYPE', 'This handle type cannot be sent', TypeError);
 E('ERR_INVALID_HTTP_TOKEN', '%s must be a valid HTTP token ["%s"]', TypeError, HideStackFramesError);
 E('ERR_INVALID_IP_ADDRESS', 'Invalid IP address: %s', TypeError);
@@ -1531,7 +1538,7 @@ E('ERR_INVALID_SYNC_FORK_INPUT',
   'Asynchronous forks do not support ' +
     'Buffer, TypedArray, DataView or string input: %s',
   TypeError);
-E('ERR_INVALID_THIS', 'Value of "this" must be of type %s', TypeError);
+E('ERR_INVALID_THIS', 'Value of "this" must be of type %s', TypeError, HideStackFramesError);
 E('ERR_INVALID_TUPLE', '%s must be an iterable %s tuple', TypeError);
 E('ERR_INVALID_TYPESCRIPT_SYNTAX', '%s', SyntaxError);
 E('ERR_INVALID_URI', 'URI malformed', URIError);
@@ -1587,6 +1594,7 @@ E('ERR_MISSING_ARGS',
     return `${msg} must be specified`;
   }, TypeError);
 E('ERR_MISSING_OPTION', '%s is required', TypeError);
+E('ERR_MODULE_LINK_MISMATCH', '%s', TypeError);
 E('ERR_MODULE_NOT_FOUND', function(path, base, exactUrl) {
   if (exactUrl) {
     lazyInternalUtil().setOwnProperty(this, 'url', `${exactUrl}`);
@@ -1659,6 +1667,8 @@ E('ERR_PARSE_ARGS_UNKNOWN_OPTION', (option, allowPositionals) => {
 E('ERR_PERFORMANCE_INVALID_TIMESTAMP',
   '%d is not a valid timestamp', TypeError);
 E('ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS', '%s', TypeError);
+E('ERR_PROXY_INVALID_CONFIG', '%s', Error);
+E('ERR_PROXY_TUNNEL', '%s', Error);
 E('ERR_QUIC_APPLICATION_ERROR', 'A QUIC application error occurred. %d [%s]', Error);
 E('ERR_QUIC_CONNECTION_FAILED', 'QUIC connection failed', Error);
 E('ERR_QUIC_ENDPOINT_CLOSED', 'QUIC endpoint closed: %s (%d)', Error);
@@ -1750,6 +1760,7 @@ E('ERR_STREAM_DESTROYED', 'Cannot call %s after a stream was destroyed', Error);
 E('ERR_STREAM_NULL_VALUES', 'May not write null values to stream', TypeError);
 E('ERR_STREAM_PREMATURE_CLOSE', 'Premature close', Error);
 E('ERR_STREAM_PUSH_AFTER_EOF', 'stream.push() after EOF', Error);
+E('ERR_STREAM_UNABLE_TO_PIPE', 'Cannot pipe to a closed or destroyed stream', Error);
 E('ERR_STREAM_UNSHIFT_AFTER_END_EVENT',
   'stream.unshift() after end event', Error);
 E('ERR_STREAM_WRAP', 'Stream has StringDecoder set or is in objectMode', Error);

@@ -5,14 +5,44 @@ const DecoratorHandler = require('../handler/decorator-handler')
 const { InvalidArgumentError, InformationalError } = require('../core/errors')
 const maxInt = Math.pow(2, 31) - 1
 
+class DNSStorage {
+  #maxItems = 0
+  #records = new Map()
+
+  constructor (opts) {
+    this.#maxItems = opts.maxItems
+  }
+
+  get size () {
+    return this.#records.size
+  }
+
+  get (hostname) {
+    return this.#records.get(hostname) ?? null
+  }
+
+  set (hostname, records) {
+    this.#records.set(hostname, records)
+  }
+
+  delete (hostname) {
+    this.#records.delete(hostname)
+  }
+
+  // Delegate to storage decide can we do more lookups or not
+  full () {
+    return this.size >= this.#maxItems
+  }
+}
+
 class DNSInstance {
   #maxTTL = 0
   #maxItems = 0
-  #records = new Map()
   dualStack = true
   affinity = null
   lookup = null
   pick = null
+  storage = null
 
   constructor (opts) {
     this.#maxTTL = opts.maxTTL
@@ -21,18 +51,15 @@ class DNSInstance {
     this.affinity = opts.affinity
     this.lookup = opts.lookup ?? this.#defaultLookup
     this.pick = opts.pick ?? this.#defaultPick
-  }
-
-  get full () {
-    return this.#records.size === this.#maxItems
+    this.storage = opts.storage ?? new DNSStorage(opts)
   }
 
   runLookup (origin, opts, cb) {
-    const ips = this.#records.get(origin.hostname)
+    const ips = this.storage.get(origin.hostname)
 
     // If full, we just return the origin
-    if (ips == null && this.full) {
-      cb(null, origin.origin)
+    if (ips == null && this.storage.full()) {
+      cb(null, origin)
       return
     }
 
@@ -55,7 +82,7 @@ class DNSInstance {
         }
 
         this.setRecords(origin, addresses)
-        const records = this.#records.get(origin.hostname)
+        const records = this.storage.get(origin.hostname)
 
         const ip = this.pick(
           origin,
@@ -74,9 +101,9 @@ class DNSInstance {
 
         cb(
           null,
-          `${origin.protocol}//${
+          new URL(`${origin.protocol}//${
             ip.family === 6 ? `[${ip.address}]` : ip.address
-          }${port}`
+          }${port}`)
         )
       })
     } else {
@@ -89,7 +116,7 @@ class DNSInstance {
 
       // If no IPs we lookup - deleting old records
       if (ip == null) {
-        this.#records.delete(origin.hostname)
+        this.storage.delete(origin.hostname)
         this.runLookup(origin, opts, cb)
         return
       }
@@ -105,9 +132,9 @@ class DNSInstance {
 
       cb(
         null,
-        `${origin.protocol}//${
+        new URL(`${origin.protocol}//${
           ip.family === 6 ? `[${ip.address}]` : ip.address
-        }${port}`
+        }${port}`)
       )
     }
   }
@@ -192,14 +219,48 @@ class DNSInstance {
     return ip
   }
 
+  pickFamily (origin, ipFamily) {
+    const records = this.storage.get(origin.hostname)?.records
+    if (!records) {
+      return null
+    }
+
+    const family = records[ipFamily]
+    if (!family) {
+      return null
+    }
+
+    if (family.offset == null || family.offset === maxInt) {
+      family.offset = 0
+    } else {
+      family.offset++
+    }
+
+    const position = family.offset % family.ips.length
+    const ip = family.ips[position] ?? null
+    if (ip == null) {
+      return ip
+    }
+
+    if (Date.now() - ip.timestamp > ip.ttl) { // record TTL is already in ms
+      // We delete expired records
+      // It is possible that they have different TTL, so we manage them individually
+      family.ips.splice(position, 1)
+    }
+
+    return ip
+  }
+
   setRecords (origin, addresses) {
     const timestamp = Date.now()
     const records = { records: { 4: null, 6: null } }
+    let minTTL = this.#maxTTL
     for (const record of addresses) {
       record.timestamp = timestamp
       if (typeof record.ttl === 'number') {
         // The record TTL is expected to be in ms
         record.ttl = Math.min(record.ttl, this.#maxTTL)
+        minTTL = Math.min(minTTL, record.ttl)
       } else {
         record.ttl = this.#maxTTL
       }
@@ -210,7 +271,12 @@ class DNSInstance {
       records.records[record.family] = familyRecords
     }
 
-    this.#records.set(origin.hostname, records)
+    // We provide a default TTL if external storage will be used without TTL per record-level support
+    this.storage.set(origin.hostname, records, { ttl: minTTL })
+  }
+
+  deleteRecords (origin) {
+    this.storage.delete(origin.hostname)
   }
 
   getHandler (meta, opts) {
@@ -222,49 +288,68 @@ class DNSDispatchHandler extends DecoratorHandler {
   #state = null
   #opts = null
   #dispatch = null
-  #handler = null
   #origin = null
+  #controller = null
+  #newOrigin = null
+  #firstTry = true
 
-  constructor (state, { origin, handler, dispatch }, opts) {
+  constructor (state, { origin, handler, dispatch, newOrigin }, opts) {
     super(handler)
     this.#origin = origin
-    this.#handler = handler
+    this.#newOrigin = newOrigin
     this.#opts = { ...opts }
     this.#state = state
     this.#dispatch = dispatch
   }
 
-  onError (err) {
+  onResponseError (controller, err) {
     switch (err.code) {
       case 'ETIMEDOUT':
       case 'ECONNREFUSED': {
         if (this.#state.dualStack) {
-          // We delete the record and retry
-          this.#state.runLookup(this.#origin, this.#opts, (err, newOrigin) => {
-            if (err) {
-              return this.#handler.onError(err)
-            }
+          if (!this.#firstTry) {
+            super.onResponseError(controller, err)
+            return
+          }
+          this.#firstTry = false
 
-            const dispatchOpts = {
-              ...this.#opts,
-              origin: newOrigin
-            }
+          // Pick an ip address from the other family
+          const otherFamily = this.#newOrigin.hostname[0] === '[' ? 4 : 6
+          const ip = this.#state.pickFamily(this.#origin, otherFamily)
+          if (ip == null) {
+            super.onResponseError(controller, err)
+            return
+          }
 
-            this.#dispatch(dispatchOpts, this)
-          })
+          let port
+          if (typeof ip.port === 'number') {
+            port = `:${ip.port}`
+          } else if (this.#origin.port !== '') {
+            port = `:${this.#origin.port}`
+          } else {
+            port = ''
+          }
 
-          // if dual-stack disabled, we error out
+          const dispatchOpts = {
+            ...this.#opts,
+            origin: `${this.#origin.protocol}//${
+                ip.family === 6 ? `[${ip.address}]` : ip.address
+              }${port}`
+          }
+          this.#dispatch(dispatchOpts, this)
           return
         }
 
-        this.#handler.onError(err)
-        return
+        // if dual-stack disabled, we error out
+        super.onResponseError(controller, err)
+        break
       }
       case 'ENOTFOUND':
-        this.#state.deleteRecord(this.#origin)
-      // eslint-disable-next-line no-fallthrough
+        this.#state.deleteRecords(this.#origin)
+        super.onResponseError(controller, err)
+        break
       default:
-        this.#handler.onError(err)
+        super.onResponseError(controller, err)
         break
     }
   }
@@ -317,6 +402,17 @@ module.exports = interceptorOpts => {
     throw new InvalidArgumentError('Invalid pick. Must be a function')
   }
 
+  if (
+    interceptorOpts?.storage != null &&
+    (typeof interceptorOpts?.storage?.get !== 'function' ||
+      typeof interceptorOpts?.storage?.set !== 'function' ||
+      typeof interceptorOpts?.storage?.full !== 'function' ||
+      typeof interceptorOpts?.storage?.delete !== 'function'
+    )
+  ) {
+    throw new InvalidArgumentError('Invalid storage. Must be a object with methods: { get, set, full, delete }')
+  }
+
   const dualStack = interceptorOpts?.dualStack ?? true
   let affinity
   if (dualStack) {
@@ -331,7 +427,8 @@ module.exports = interceptorOpts => {
     pick: interceptorOpts?.pick ?? null,
     dualStack,
     affinity,
-    maxItems: interceptorOpts?.maxItems ?? Infinity
+    maxItems: interceptorOpts?.maxItems ?? Infinity,
+    storage: interceptorOpts?.storage
   }
 
   const instance = new DNSInstance(opts)
@@ -349,23 +446,25 @@ module.exports = interceptorOpts => {
 
       instance.runLookup(origin, origDispatchOpts, (err, newOrigin) => {
         if (err) {
-          return handler.onError(err)
+          return handler.onResponseError(null, err)
         }
 
-        let dispatchOpts = null
-        dispatchOpts = {
+        const dispatchOpts = {
           ...origDispatchOpts,
           servername: origin.hostname, // For SNI on TLS
-          origin: newOrigin,
+          origin: newOrigin.origin,
           headers: {
-            host: origin.hostname,
+            host: origin.host,
             ...origDispatchOpts.headers
           }
         }
 
         dispatch(
           dispatchOpts,
-          instance.getHandler({ origin, dispatch, handler }, origDispatchOpts)
+          instance.getHandler(
+            { origin, dispatch, handler, newOrigin },
+            origDispatchOpts
+          )
         )
       })
 

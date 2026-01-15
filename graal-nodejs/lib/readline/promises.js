@@ -2,6 +2,7 @@
 
 const {
   Promise,
+  SymbolDispose,
 } = primordials;
 
 const {
@@ -22,15 +23,10 @@ const { validateAbortSignal } = require('internal/validators');
 
 const {
   kEmptyObject,
-  SymbolDispose,
 } = require('internal/util');
 let addAbortListener;
 
 class Interface extends _Interface {
-  // eslint-disable-next-line no-useless-constructor
-  constructor(input, output, completer, terminal) {
-    super(input, output, completer, terminal);
-  }
   question(query, options = kEmptyObject) {
     return new Promise((resolve, reject) => {
       let cb = resolve;

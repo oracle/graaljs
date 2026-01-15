@@ -13,8 +13,9 @@
 #include "src/heap/heap.h"
 #include "src/heap/large-spaces.h"
 #include "src/heap/main-allocator.h"
-#include "src/heap/mutable-page.h"
+#include "src/heap/mutable-page-metadata.h"
 #include "src/heap/spaces-inl.h"
+#include "src/heap/trusted-range.h"
 #include "test/unittests/test-utils.h"
 
 namespace v8 {
@@ -55,7 +56,8 @@ TEST_F(SpacesTest, CompactionSpaceMerge) {
 
   CompactionSpace* compaction_space =
       new CompactionSpace(heap, OLD_SPACE, NOT_EXECUTABLE,
-                          CompactionSpaceKind::kCompactionSpaceForMarkCompact);
+                          CompactionSpaceKind::kCompactionSpaceForMarkCompact,
+                          CompactionSpace::DestinationHeap::kSameHeap);
   MainAllocator allocator(heap, compaction_space, MainAllocator::kInGC);
   EXPECT_TRUE(compaction_space != nullptr);
 
@@ -100,10 +102,10 @@ TEST_F(SpacesTest, WriteBarrierIsMarking) {
   MemoryChunk* chunk = reinterpret_cast<MemoryChunk*>(&memory);
   EXPECT_FALSE(chunk->IsFlagSet(MemoryChunk::INCREMENTAL_MARKING));
   EXPECT_FALSE(chunk->IsMarking());
-  chunk->SetFlag(MemoryChunk::INCREMENTAL_MARKING);
+  chunk->SetFlagNonExecutable(MemoryChunk::INCREMENTAL_MARKING);
   EXPECT_TRUE(chunk->IsFlagSet(MemoryChunk::INCREMENTAL_MARKING));
   EXPECT_TRUE(chunk->IsMarking());
-  chunk->ClearFlag(MemoryChunk::INCREMENTAL_MARKING);
+  chunk->ClearFlagNonExecutable(MemoryChunk::INCREMENTAL_MARKING);
   EXPECT_FALSE(chunk->IsFlagSet(MemoryChunk::INCREMENTAL_MARKING));
   EXPECT_FALSE(chunk->IsMarking());
 }
@@ -114,9 +116,9 @@ TEST_F(SpacesTest, WriteBarrierInYoungGenerationToSpace) {
   memset(&memory, 0, kSizeOfMemoryChunk);
   MemoryChunk* chunk = reinterpret_cast<MemoryChunk*>(&memory);
   EXPECT_FALSE(chunk->InYoungGeneration());
-  chunk->SetFlag(MemoryChunk::TO_PAGE);
+  chunk->SetFlagNonExecutable(MemoryChunk::TO_PAGE);
   EXPECT_TRUE(chunk->InYoungGeneration());
-  chunk->ClearFlag(MemoryChunk::TO_PAGE);
+  chunk->ClearFlagNonExecutable(MemoryChunk::TO_PAGE);
   EXPECT_FALSE(chunk->InYoungGeneration());
 }
 
@@ -126,9 +128,9 @@ TEST_F(SpacesTest, WriteBarrierInYoungGenerationFromSpace) {
   memset(&memory, 0, kSizeOfMemoryChunk);
   MemoryChunk* chunk = reinterpret_cast<MemoryChunk*>(&memory);
   EXPECT_FALSE(chunk->InYoungGeneration());
-  chunk->SetFlag(MemoryChunk::FROM_PAGE);
+  chunk->SetFlagNonExecutable(MemoryChunk::FROM_PAGE);
   EXPECT_TRUE(chunk->InYoungGeneration());
-  chunk->ClearFlag(MemoryChunk::FROM_PAGE);
+  chunk->ClearFlagNonExecutable(MemoryChunk::FROM_PAGE);
   EXPECT_FALSE(chunk->InYoungGeneration());
 }
 
@@ -396,6 +398,43 @@ TEST_F(SpacesTest, InlineAllocationObserverCadence) {
   CHECK_EQ(observer1.count(), 32);
   CHECK_EQ(observer2.count(), 28);
 }
+
+#if V8_ENABLE_SANDBOX
+TEST_F(SpacesTest, TrustedSpaceNullPage) {
+  // Trusted space should have a reserved, inaccessible area at the start to
+  // mitigate (compressed) nullptr dereference bugs.
+
+  v8::Isolate::Scope isolate_scope(v8_isolate());
+  v8::HandleScope handle_scope(v8_isolate());
+  v8::Context::New(v8_isolate())->Enter();
+
+  Address trusted_space_base =
+      TrustedRange::GetProcessWideTrustedRange()->base();
+  const size_t size_of_reserved_area = 1 * MB;
+
+  // Test that no objects are allocated in the reserved area.
+  MainAllocator* trusted_space_allocator =
+      i_isolate()->heap()->allocator()->trusted_space_allocator();
+  for (int i = 0; i < 64; ++i) {
+    Tagged<HeapObject> allocation = AllocateUnaligned(
+        trusted_space_allocator, i_isolate()->heap()->trusted_space(), 32);
+    CHECK_GE(allocation.address(), trusted_space_base);
+    size_t offset = allocation.address() - trusted_space_base;
+    CHECK_GT(offset, size_of_reserved_area);
+  }
+
+  // Test that the reserved area is inaccessible.
+  auto ReadByteAt = [](Address address) {
+    return *reinterpret_cast<volatile uint8_t*>(address);
+  };
+  uint8_t buf = 0;
+  EXPECT_DEATH_IF_SUPPORTED(buf += ReadByteAt(trusted_space_base), "");
+  EXPECT_DEATH_IF_SUPPORTED(
+      buf += ReadByteAt(trusted_space_base + size_of_reserved_area - 1), "");
+  // Mostly just to prevent the compiler from optimizing away the memory loads.
+  CHECK_EQ(buf, 0);
+}
+#endif  // V8_ENABLE_SANDBOX
 
 }  // namespace internal
 }  // namespace v8

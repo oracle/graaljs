@@ -316,11 +316,14 @@ constexpr Register kJavaScriptCallCodeStartRegister = r2;
 constexpr Register kJavaScriptCallTargetRegister = kJSFunctionRegister;
 constexpr Register kJavaScriptCallNewTargetRegister = r3;
 constexpr Register kJavaScriptCallExtraArg1Register = r2;
+// DispatchHandle is only needed for the sandbox which is not available on
+// Arm32.
+constexpr Register kJavaScriptCallDispatchHandleRegister = no_reg;
 
 constexpr Register kRuntimeCallFunctionRegister = r1;
 constexpr Register kRuntimeCallArgCountRegister = r0;
 constexpr Register kRuntimeCallArgvRegister = r2;
-constexpr Register kWasmInstanceRegister = r3;
+constexpr Register kWasmImplicitArgRegister = r3;
 constexpr Register kWasmCompileLazyFuncIndexRegister = r4;
 
 // Give alias names to registers

@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -126,7 +127,9 @@ class NODE_EXTERN_PRIVATE BuiltinLoader {
 
   void CopySourceAndCodeCacheReferenceFrom(const BuiltinLoader* other);
 
-  std::vector<std::string_view> GetBuiltinIds() const;
+  [[nodiscard]] std::ranges::keys_view<
+      std::ranges::ref_view<const BuiltinSourceMap>>
+  GetBuiltinIds() const;
 
   void SetEagerCompile() { should_eager_compile_ = true; }
 

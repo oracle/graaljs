@@ -36,14 +36,13 @@ using ncrypto::StackOfX509;
 using ncrypto::X509Pointer;
 using ncrypto::X509View;
 using v8::ArrayBuffer;
-using v8::BackingStore;
-using v8::Context;
+using v8::BackingStoreInitializationMode;
+using v8::DictionaryTemplate;
 using v8::EscapableHandleScope;
 using v8::Integer;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Object;
-using v8::String;
 using v8::Undefined;
 using v8::Value;
 
@@ -53,32 +52,28 @@ SSLSessionPointer GetTLSSession(const unsigned char* buf, size_t length) {
   return SSLSessionPointer(d2i_SSL_SESSION(nullptr, &buf, length));
 }
 
-long VerifyPeerCertificate(  // NOLINT(runtime/int)
-    const SSLPointer& ssl,
-    long def) {  // NOLINT(runtime/int)
-  return ssl.verifyPeerCertificate().value_or(def);
-}
-
-bool UseSNIContext(
-    const SSLPointer& ssl, BaseObjectPtr<SecureContext> context) {
-  return ssl.setSniContext(context->ctx());
-}
-
-bool SetGroups(SecureContext* sc, const char* groups) {
-  return sc->ctx().setGroups(groups);
-}
-
 MaybeLocal<Value> GetValidationErrorReason(Environment* env, int err) {
-  auto reason = X509Pointer::ErrorReason(err).value_or("");
+  auto reason = std::string(X509Pointer::ErrorReason(err).value_or(""));
   if (reason == "") return Undefined(env->isolate());
-  return OneByteString(env->isolate(), reason.data(), reason.length());
+
+  // Suggest --use-system-ca if the error indicates a certificate issue
+  bool suggest_system_ca =
+      (err == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE) ||
+      (err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) ||
+      ((err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT) &&
+       !per_process::cli_options->use_system_ca);
+
+  if (suggest_system_ca) {
+    reason.append("; if the root CA is installed locally, "
+                  "try running Node.js with --use-system-ca");
+  }
+  return OneByteString(env->isolate(), reason);
 }
 
 MaybeLocal<Value> GetValidationErrorCode(Environment* env, int err) {
-  if (err == 0)
-    return Undefined(env->isolate());
+  if (err == 0) return Undefined(env->isolate());
   auto error = X509Pointer::ErrorCode(err);
-  return OneByteString(env->isolate(), error.data(), error.length());
+  return OneByteString(env->isolate(), error);
 }
 
 MaybeLocal<Value> GetCert(Environment* env, const SSLPointer& ssl) {
@@ -89,35 +84,6 @@ MaybeLocal<Value> GetCert(Environment* env, const SSLPointer& ssl) {
 }
 
 namespace {
-template <typename T>
-bool Set(
-    Local<Context> context,
-    Local<Object> target,
-    Local<Value> name,
-    MaybeLocal<T> maybe_value) {
-  Local<Value> value;
-  if (!maybe_value.ToLocal(&value))
-    return false;
-
-  // Undefined is ignored, but still considered successful
-  if (value->IsUndefined())
-    return true;
-
-  return !target->Set(context, name, value).IsNothing();
-}
-
-template <const char* (*getstr)(const SSL_CIPHER* cipher)>
-MaybeLocal<Value> GetCipherValue(Environment* env, const SSL_CIPHER* cipher) {
-  if (cipher == nullptr)
-    return Undefined(env->isolate());
-
-  return OneByteString(env->isolate(), getstr(cipher));
-}
-
-constexpr auto GetCipherName = GetCipherValue<SSL_CIPHER_get_name>;
-constexpr auto GetCipherStandardName = GetCipherValue<SSL_CIPHER_standard_name>;
-constexpr auto GetCipherVersion = GetCipherValue<SSL_CIPHER_get_version>;
-
 StackOfX509 CloneSSLCerts(X509Pointer&& cert,
                           const STACK_OF(X509)* const ssl_certs) {
   StackOfX509 peer_certs(sk_X509_new(nullptr));
@@ -148,11 +114,11 @@ MaybeLocal<Object> AddIssuerChainToObject(X509Pointer* cert,
       Local<Value> ca_info;
       if (!X509Certificate::toObject(env, ca).ToLocal(&ca_info)) return {};
       CHECK(ca_info->IsObject());
-
-      if (!Set<Object>(env->context(),
-                       object,
-                       env->issuercert_string(),
-                       ca_info.As<Object>())) {
+      if (object
+              ->Set(env->context(),
+                    env->issuercert_string(),
+                    ca_info.As<Object>())
+              .IsNothing()) {
         return {};
       }
       object = ca_info.As<Object>();
@@ -184,10 +150,10 @@ MaybeLocal<Object> GetLastIssuedCert(
 
     CHECK(ca_info->IsObject());
 
-    if (!Set<Object>(env->context(),
-                     issuer_chain,
-                     env->issuercert_string(),
-                     ca_info.As<Object>())) {
+    if (issuer_chain
+            ->Set(
+                env->context(), env->issuercert_string(), ca_info.As<Object>())
+            .IsNothing()) {
       return {};
     }
     issuer_chain = ca_info.As<Object>();
@@ -204,72 +170,63 @@ MaybeLocal<Object> GetLastIssuedCert(
   return MaybeLocal<Object>(issuer_chain);
 }
 
+Local<Value> maybeString(Environment* env,
+                         std::optional<std::string_view> value) {
+  if (!value.has_value()) return Undefined(env->isolate());
+  return OneByteString(env->isolate(), value.value());
+}
 }  // namespace
-
-MaybeLocal<Value> GetCurrentCipherName(Environment* env,
-                                       const SSLPointer& ssl) {
-  return GetCipherName(env, ssl.getCipher());
-}
-
-MaybeLocal<Value> GetCurrentCipherVersion(Environment* env,
-                                          const SSLPointer& ssl) {
-  return GetCipherVersion(env, ssl.getCipher());
-}
-
-template <MaybeLocal<Value> (*Get)(Environment* env, const SSL_CIPHER* cipher)>
-MaybeLocal<Value> GetCurrentCipherValue(Environment* env,
-                                        const SSLPointer& ssl) {
-  return Get(env, ssl.getCipher());
-}
 
 MaybeLocal<Object> GetCipherInfo(Environment* env, const SSLPointer& ssl) {
   if (ssl.getCipher() == nullptr) return MaybeLocal<Object>();
   EscapableHandleScope scope(env->isolate());
-  Local<Object> info = Object::New(env->isolate());
 
-  if (!Set<Value>(env->context(),
-                  info,
-                  env->name_string(),
-                  GetCurrentCipherValue<GetCipherName>(env, ssl)) ||
-      !Set<Value>(env->context(),
-                  info,
-                  env->standard_name_string(),
-                  GetCurrentCipherValue<GetCipherStandardName>(env, ssl)) ||
-      !Set<Value>(env->context(),
-                  info,
-                  env->version_string(),
-                  GetCurrentCipherValue<GetCipherVersion>(env, ssl))) {
-    return MaybeLocal<Object>();
+  auto tmpl = env->cipherinfo_template();
+  if (tmpl.IsEmpty()) {
+    static constexpr std::string_view names[] = {
+        "name", "standardName", "version"};
+    tmpl = DictionaryTemplate::New(env->isolate(), names);
+    env->set_cipherinfo_template(tmpl);
   }
 
-  return scope.Escape(info);
+  MaybeLocal<Value> values[] = {
+      maybeString(env, ssl.getCipherName()),
+      maybeString(env, ssl.getCipherStandardName()),
+      maybeString(env, ssl.getCipherVersion()),
+  };
+
+  return scope.EscapeMaybe(NewDictionaryInstance(env->context(), tmpl, values));
 }
 
 MaybeLocal<Object> GetEphemeralKey(Environment* env, const SSLPointer& ssl) {
   CHECK(!ssl.isServer());
 
   EscapableHandleScope scope(env->isolate());
-  Local<Object> info = Object::New(env->isolate());
+
+  auto tmpl = env->ephemeral_key_template();
+  if (tmpl.IsEmpty()) {
+    static constexpr std::string_view names[] = {"type", "name", "size"};
+    tmpl = DictionaryTemplate::New(env->isolate(), names);
+    env->set_ephemeral_key_template(tmpl);
+  }
+
+  MaybeLocal<Value> values[] = {
+      Undefined(env->isolate()),  // type
+      Undefined(env->isolate()),  // name
+      Undefined(env->isolate()),  // size
+  };
   EVPKeyPointer key = ssl.getPeerTempKey();
-  if (!key) return scope.Escape(info);
-
-  Local<Context> context = env->context();
-
-  int kid = key.id();
-  switch (kid) {
-    case EVP_PKEY_DH:
-      if (!Set<String>(context, info, env->type_string(), env->dh_string()) ||
-          !Set<Integer>(context,
-                        info,
-                        env->size_string(),
-                        Integer::New(env->isolate(), key.bits()))) {
-        return MaybeLocal<Object>();
+  if (EVPKeyPointer key = ssl.getPeerTempKey()) {
+    int kid = key.id();
+    switch (kid) {
+      case EVP_PKEY_DH: {
+        values[0] = env->dh_string();
+        values[2] = Integer::New(env->isolate(), key.bits());
+        break;
       }
-      break;
-    case EVP_PKEY_EC:
-    case EVP_PKEY_X25519:
-    case EVP_PKEY_X448:
-      {
+      case EVP_PKEY_EC:
+      case EVP_PKEY_X25519:
+      case EVP_PKEY_X448: {
         const char* curve_name;
         if (kid == EVP_PKEY_EC) {
           int nid = ECKeyPointer::GetGroupName(key);
@@ -277,41 +234,29 @@ MaybeLocal<Object> GetEphemeralKey(Environment* env, const SSLPointer& ssl) {
         } else {
           curve_name = OBJ_nid2sn(kid);
         }
-        if (!Set<String>(
-                context, info, env->type_string(), env->ecdh_string()) ||
-            !Set<String>(context,
-                         info,
-                         env->name_string(),
-                         OneByteString(env->isolate(), curve_name)) ||
-            !Set<Integer>(context,
-                          info,
-                          env->size_string(),
-                          Integer::New(env->isolate(), key.bits()))) {
-          return MaybeLocal<Object>();
-        }
+        values[0] = env->ecdh_string();
+        values[1] = OneByteString(env->isolate(), curve_name);
+        values[2] = Integer::New(env->isolate(), key.bits());
+        break;
       }
-      break;
+    }
   }
 
-  return scope.Escape(info);
+  return scope.EscapeMaybe(NewDictionaryInstance(env->context(), tmpl, values));
 }
 
 MaybeLocal<Object> ECPointToBuffer(Environment* env,
                                    const EC_GROUP* group,
                                    const EC_POINT* point,
-                                   point_conversion_form_t form,
-                                   const char** error) {
+                                   point_conversion_form_t form) {
   size_t len = EC_POINT_point2oct(group, point, form, nullptr, 0, nullptr);
   if (len == 0) {
-    if (error != nullptr) *error = "Failed to get public key length";
+    THROW_ERR_CRYPTO_OPERATION_FAILED(env, "Failed to get public key length");
     return MaybeLocal<Object>();
   }
 
-  std::unique_ptr<BackingStore> bs;
-  {
-    NoArrayBufferZeroFillScope no_zero_fill_scope(env->isolate_data());
-    bs = ArrayBuffer::NewBackingStore(env->isolate(), len);
-  }
+  auto bs = ArrayBuffer::NewBackingStore(
+      env->isolate(), len, BackingStoreInitializationMode::kUninitialized);
 
   len = EC_POINT_point2oct(group,
                            point,
@@ -320,7 +265,7 @@ MaybeLocal<Object> ECPointToBuffer(Environment* env,
                            bs->ByteLength(),
                            nullptr);
   if (len == 0) {
-    if (error != nullptr) *error = "Failed to get public key";
+    THROW_ERR_CRYPTO_OPERATION_FAILED(env, "Failed to get public key");
     return MaybeLocal<Object>();
   }
 
@@ -381,10 +326,8 @@ MaybeLocal<Value> GetPeerCert(
 
   // Last certificate should be self-signed.
   if (cert.view().isIssuedBy(cert.view()) &&
-      !Set<Object>(env->context(),
-                   issuer_chain,
-                   env->issuercert_string(),
-                   issuer_chain)) {
+      issuer_chain->Set(env->context(), env->issuercert_string(), issuer_chain)
+          .IsNothing()) {
     return {};
   }
 

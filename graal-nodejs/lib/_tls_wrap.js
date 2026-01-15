@@ -33,7 +33,6 @@ const {
 
 const {
   assertCrypto,
-  deprecate,
   kEmptyObject,
 } = require('internal/util');
 
@@ -235,39 +234,44 @@ function callALPNCallback(protocolsBuffer) {
   const handle = this;
   const socket = handle[owner_symbol];
 
-  const servername = handle.getServername();
+  try {
+    const servername = handle.getServername();
 
-  // Collect all the protocols from the given buffer:
-  const protocols = [];
-  let offset = 0;
-  while (offset < protocolsBuffer.length) {
-    const protocolLen = protocolsBuffer[offset];
-    offset += 1;
+    // Collect all the protocols from the given buffer:
+    const protocols = [];
+    let offset = 0;
+    while (offset < protocolsBuffer.length) {
+      const protocolLen = protocolsBuffer[offset];
+      offset += 1;
 
-    const protocol = protocolsBuffer.slice(offset, offset + protocolLen);
-    offset += protocolLen;
+      const protocol = protocolsBuffer.slice(offset, offset + protocolLen);
+      offset += protocolLen;
 
-    protocols.push(protocol.toString('ascii'));
+      protocols.push(protocol.toString('ascii'));
+    }
+
+    const selectedProtocol = socket[kALPNCallback]({
+      servername,
+      protocols,
+    });
+
+    // Undefined -> all proposed protocols rejected
+    if (selectedProtocol === undefined) return undefined;
+
+    const protocolIndex = protocols.indexOf(selectedProtocol);
+    if (protocolIndex === -1) {
+      throw new ERR_TLS_ALPN_CALLBACK_INVALID_RESULT(selectedProtocol, protocols);
+    }
+    let protocolOffset = 0;
+    for (let i = 0; i < protocolIndex; i++) {
+      protocolOffset += 1 + protocols[i].length;
+    }
+
+    return protocolOffset;
+  } catch (err) {
+    socket.destroy(err);
+    return undefined;
   }
-
-  const selectedProtocol = socket[kALPNCallback]({
-    servername,
-    protocols,
-  });
-
-  // Undefined -> all proposed protocols rejected
-  if (selectedProtocol === undefined) return undefined;
-
-  const protocolIndex = protocols.indexOf(selectedProtocol);
-  if (protocolIndex === -1) {
-    throw new ERR_TLS_ALPN_CALLBACK_INVALID_RESULT(selectedProtocol, protocols);
-  }
-  let protocolOffset = 0;
-  for (let i = 0; i < protocolIndex; i++) {
-    protocolOffset += 1 + protocols[i].length;
-  }
-
-  return protocolOffset;
 }
 
 function requestOCSP(socket, info) {
@@ -374,63 +378,75 @@ function onnewsession(sessionId, session) {
 
 function onPskServerCallback(identity, maxPskLen) {
   const owner = this[owner_symbol];
-  const ret = owner[kPskCallback](owner, identity);
-  if (ret == null)
-    return undefined;
 
-  let psk;
-  if (isArrayBufferView(ret)) {
-    psk = ret;
-  } else {
-    if (typeof ret !== 'object') {
-      throw new ERR_INVALID_ARG_TYPE(
-        'ret',
-        ['Object', 'Buffer', 'TypedArray', 'DataView'],
-        ret,
+  try {
+    const ret = owner[kPskCallback](owner, identity);
+    if (ret == null)
+      return undefined;
+
+    let psk;
+    if (isArrayBufferView(ret)) {
+      psk = ret;
+    } else {
+      if (typeof ret !== 'object') {
+        throw new ERR_INVALID_ARG_TYPE(
+          'ret',
+          ['Object', 'Buffer', 'TypedArray', 'DataView'],
+          ret,
+        );
+      }
+      psk = ret.psk;
+      validateBuffer(psk, 'psk');
+    }
+
+    if (psk.length > maxPskLen) {
+      throw new ERR_INVALID_ARG_VALUE(
+        'psk',
+        psk,
+        `Pre-shared key exceeds ${maxPskLen} bytes`,
       );
     }
-    psk = ret.psk;
-    validateBuffer(psk, 'psk');
-  }
 
-  if (psk.length > maxPskLen) {
-    throw new ERR_INVALID_ARG_VALUE(
-      'psk',
-      psk,
-      `Pre-shared key exceeds ${maxPskLen} bytes`,
-    );
+    return psk;
+  } catch (err) {
+    owner.destroy(err);
+    return undefined;
   }
-
-  return psk;
 }
 
 function onPskClientCallback(hint, maxPskLen, maxIdentityLen) {
   const owner = this[owner_symbol];
-  const ret = owner[kPskCallback](hint);
-  if (ret == null)
+
+  try {
+    const ret = owner[kPskCallback](hint);
+    if (ret == null)
+      return undefined;
+
+    validateObject(ret, 'ret');
+
+    validateBuffer(ret.psk, 'psk');
+    if (ret.psk.length > maxPskLen) {
+      throw new ERR_INVALID_ARG_VALUE(
+        'psk',
+        ret.psk,
+        `Pre-shared key exceeds ${maxPskLen} bytes`,
+      );
+    }
+
+    validateString(ret.identity, 'identity');
+    if (Buffer.byteLength(ret.identity) > maxIdentityLen) {
+      throw new ERR_INVALID_ARG_VALUE(
+        'identity',
+        ret.identity,
+        `PSK identity exceeds ${maxIdentityLen} bytes`,
+      );
+    }
+
+    return { psk: ret.psk, identity: ret.identity };
+  } catch (err) {
+    owner.destroy(err);
     return undefined;
-
-  validateObject(ret, 'ret');
-
-  validateBuffer(ret.psk, 'psk');
-  if (ret.psk.length > maxPskLen) {
-    throw new ERR_INVALID_ARG_VALUE(
-      'psk',
-      ret.psk,
-      `Pre-shared key exceeds ${maxPskLen} bytes`,
-    );
   }
-
-  validateString(ret.identity, 'identity');
-  if (Buffer.byteLength(ret.identity) > maxIdentityLen) {
-    throw new ERR_INVALID_ARG_VALUE(
-      'identity',
-      ret.identity,
-      `PSK identity exceeds ${maxIdentityLen} bytes`,
-    );
-  }
-
-  return { psk: ret.psk, identity: ret.identity };
 }
 
 function onkeylog(line) {
@@ -1253,6 +1269,7 @@ function tlsConnectionListener(rawSocket) {
   socket[kErrorEmitted] = false;
   socket.on('close', onSocketClose);
   socket.on('_tlsError', onSocketTLSError);
+  socket.on('error', onSocketTLSError);
 }
 
 // AUTHENTICATION MODES
@@ -1536,53 +1553,6 @@ Server.prototype.setTicketKeys = function setTicketKeys(keys) {
          'Session ticket keys must be a 48-byte buffer');
   this._sharedCreds.context.setTicketKeys(keys);
 };
-
-
-Server.prototype.setOptions = deprecate(function(options) {
-  this.requestCert = options.requestCert === true;
-  this.rejectUnauthorized = options.rejectUnauthorized !== false;
-
-  if (options.pfx) this.pfx = options.pfx;
-  if (options.key) this.key = options.key;
-  if (options.passphrase) this.passphrase = options.passphrase;
-  if (options.cert) this.cert = options.cert;
-  if (options.clientCertEngine)
-    this.clientCertEngine = options.clientCertEngine;
-  if (options.ca) this.ca = options.ca;
-  if (options.minVersion) this.minVersion = options.minVersion;
-  if (options.maxVersion) this.maxVersion = options.maxVersion;
-  if (options.secureProtocol) this.secureProtocol = options.secureProtocol;
-  if (options.crl) this.crl = options.crl;
-  if (options.ciphers) this.ciphers = options.ciphers;
-  if (options.ecdhCurve !== undefined)
-    this.ecdhCurve = options.ecdhCurve;
-  if (options.dhparam) this.dhparam = options.dhparam;
-  if (options.sessionTimeout) this.sessionTimeout = options.sessionTimeout;
-  if (options.ticketKeys) this.ticketKeys = options.ticketKeys;
-  const secureOptions = options.secureOptions || 0;
-  if (options.honorCipherOrder !== undefined)
-    this.honorCipherOrder = !!options.honorCipherOrder;
-  else
-    this.honorCipherOrder = true;
-  if (secureOptions) this.secureOptions = secureOptions;
-  if (options.ALPNProtocols)
-    tls.convertALPNProtocols(options.ALPNProtocols, this);
-  if (options.sessionIdContext) {
-    this.sessionIdContext = options.sessionIdContext;
-  } else {
-    this.sessionIdContext = crypto.createHash('sha1')
-      .update(process.argv.join(' '))
-      .digest('hex')
-      .slice(0, 32);
-  }
-  if (options.pskCallback) this[kPskCallback] = options.pskCallback;
-  if (options.pskIdentityHint) this[kPskIdentityHint] = options.pskIdentityHint;
-  if (options.sigalgs) this.sigalgs = options.sigalgs;
-  if (options.privateKeyIdentifier !== undefined)
-    this.privateKeyIdentifier = options.privateKeyIdentifier;
-  if (options.privateKeyEngine !== undefined)
-    this.privateKeyEngine = options.privateKeyEngine;
-}, 'Server.prototype.setOptions() is deprecated', 'DEP0122');
 
 // SNI Contexts High-Level API
 Server.prototype.addContext = function(servername, context) {

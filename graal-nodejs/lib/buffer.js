@@ -90,6 +90,7 @@ const {
   kIsEncodingSymbol,
   defineLazyProperties,
   encodingsMap,
+  deprecate,
 } = require('internal/util');
 const {
   isAnyArrayBuffer,
@@ -244,7 +245,7 @@ function copyImpl(source, target, targetStart, sourceStart, sourceEnd) {
   return _copyActual(source, target, targetStart, sourceStart, sourceEnd);
 }
 
-function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
+function _copyActual(source, target, targetStart, sourceStart, sourceEnd, isUint8Copy = false) {
   if (sourceEnd - sourceStart > target.byteLength - targetStart)
     sourceEnd = sourceStart + target.byteLength - targetStart;
 
@@ -256,7 +257,11 @@ function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
   if (nb <= 0)
     return 0;
 
-  _copy(source, target, targetStart, sourceStart, nb);
+  if (sourceStart === 0 && nb === sourceLen && (isUint8Copy || isUint8Array(target))) {
+    TypedArrayPrototypeSet(target, source, targetStart);
+  } else {
+    _copy(source, target, targetStart, sourceStart, nb);
+  }
 
   return nb;
 }
@@ -270,6 +275,7 @@ function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
  * runtime deprecation would introduce too much breakage at this time. It's not
  * likely that the Buffer constructors would ever actually be removed.
  * Deprecation Code: DEP0005
+ * @returns {Buffer}
  */
 function Buffer(arg, encodingOrOffset, length) {
   showFlaggedDeprecation();
@@ -297,6 +303,10 @@ ObjectDefineProperty(Buffer, SymbolSpecies, {
  * Buffer.from(array)
  * Buffer.from(buffer)
  * Buffer.from(arrayBuffer[, byteOffset[, length]])
+ * @param {any} value
+ * @param {BufferEncoding|number} encodingOrOffset
+ * @param {number} [length]
+ * @returns {Buffer}
  */
 Buffer.from = function from(value, encodingOrOffset, length) {
   if (typeof value === 'string')
@@ -393,6 +403,7 @@ ObjectSetPrototypeOf(Buffer, Uint8Array);
 /**
  * Creates a new filled Buffer instance.
  * alloc(size[, fill[, encoding]])
+ * @returns {FastBuffer}
  */
 Buffer.alloc = function alloc(size, fill, encoding) {
   validateNumber(size, 'size', 0, kMaxLength);
@@ -406,6 +417,7 @@ Buffer.alloc = function alloc(size, fill, encoding) {
 /**
  * Equivalent to Buffer(num), by default creates a non-zero-filled Buffer
  * instance. If `--zero-fill-buffers` is set, will zero-fill the buffer.
+ * @returns {FastBuffer}
  */
 Buffer.allocUnsafe = function allocUnsafe(size) {
   validateNumber(size, 'size', 0, kMaxLength);
@@ -416,6 +428,8 @@ Buffer.allocUnsafe = function allocUnsafe(size) {
  * Equivalent to SlowBuffer(num), by default creates a non-zero-filled
  * Buffer instance that is not allocated off the pre-initialized pool.
  * If `--zero-fill-buffers` is set, will zero-fill the buffer.
+ * @param {number} size
+ * @returns {FastBuffer|undefined}
  */
 Buffer.allocUnsafeSlow = function allocUnsafeSlow(size) {
   validateNumber(size, 'size', 0, kMaxLength);
@@ -605,7 +619,7 @@ Buffer.concat = function concat(list, length) {
       throw new ERR_INVALID_ARG_TYPE(
         `list[${i}]`, ['Buffer', 'Uint8Array'], list[i]);
     }
-    pos += _copyActual(buf, buffer, pos, 0, buf.length);
+    pos += _copyActual(buf, buffer, pos, 0, buf.length, true);
   }
 
   // Note: `length` is always equal to `buffer.length` at this point
@@ -1333,7 +1347,10 @@ function isAscii(input) {
 
 module.exports = {
   Buffer,
-  SlowBuffer,
+  SlowBuffer: deprecate(
+    SlowBuffer,
+    'SlowBuffer() is deprecated. Please use Buffer.allocUnsafeSlow()',
+    'DEP0030'),
   transcode,
   isUtf8,
   isAscii,

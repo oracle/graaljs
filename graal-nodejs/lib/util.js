@@ -23,15 +23,9 @@
 
 const {
   ArrayIsArray,
-  ArrayPrototypeJoin,
   ArrayPrototypePop,
   ArrayPrototypePush,
-  Date,
-  DatePrototypeGetDate,
-  DatePrototypeGetHours,
-  DatePrototypeGetMinutes,
-  DatePrototypeGetMonth,
-  DatePrototypeGetSeconds,
+  ArrayPrototypeReduce,
   Error,
   ErrorCaptureStackTrace,
   FunctionPrototypeBind,
@@ -40,11 +34,11 @@ const {
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptors,
   ObjectKeys,
-  ObjectPrototypeToString,
   ObjectSetPrototypeOf,
   ObjectValues,
   ReflectApply,
-  StringPrototypePadStart,
+  RegExp,
+  RegExpPrototypeSymbolReplace,
   StringPrototypeToWellFormed,
 } = primordials;
 
@@ -73,7 +67,6 @@ const {
   validateOneOf,
   validateObject,
 } = require('internal/validators');
-const { isBuffer } = require('buffer').Buffer;
 const {
   isReadableStream,
   isWritableStream,
@@ -91,7 +84,7 @@ const { getOptionValue } = require('internal/options');
 const binding = internalBinding('util');
 
 const {
-  deprecate,
+  deprecate: internalDeprecate,
   getLazy,
   getSystemErrorMap,
   getSystemErrorName: internalErrorName,
@@ -110,113 +103,6 @@ function lazyAbortController() {
 let internalDeepEqual;
 
 /**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {arg is boolean}
- */
-function isBoolean(arg) {
-  return typeof arg === 'boolean';
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {arg is null}
- */
-function isNull(arg) {
-  return arg === null;
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {arg is (null | undefined)}
- */
-function isNullOrUndefined(arg) {
-  return arg === null || arg === undefined;
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {arg is number}
- */
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-
-/**
- * @param {any} arg
- * @returns {arg is string}
- */
-function isString(arg) {
-  return typeof arg === 'string';
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {arg is symbol}
- */
-function isSymbol(arg) {
-  return typeof arg === 'symbol';
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {arg is undefined}
- */
-function isUndefined(arg) {
-  return arg === undefined;
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {a is NonNullable<object>}
- */
-function isObject(arg) {
-  return arg !== null && typeof arg === 'object';
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} e
- * @returns {arg is Error}
- */
-function isError(e) {
-  return ObjectPrototypeToString(e) === '[object Error]' || e instanceof Error;
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {arg is Function}
- */
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-
-/**
- * @deprecated since v4.0.0
- * @param {any} arg
- * @returns {arg is (boolean | null | number | string | symbol | undefined)}
- */
-function isPrimitive(arg) {
-  return arg === null ||
-         (typeof arg !== 'object' && typeof arg !== 'function');
-}
-
-/**
- * @param {number} n
- * @returns {string}
- */
-function pad(n) {
-  return StringPrototypePadStart(n.toString(), 2, '0');
-}
-
-/**
  * @param {string} [code]
  * @returns {string}
  */
@@ -228,9 +114,9 @@ function escapeStyleCode(code) {
 /**
  * @param {string | string[]} format
  * @param {string} text
- * @param {object} [options={}]
- * @param {boolean} [options.validateStream=true] - Whether to validate the stream.
- * @param {Stream} [options.stream=process.stdout] - The stream used for validation.
+ * @param {object} [options]
+ * @param {boolean} [options.validateStream] - Whether to validate the stream.
+ * @param {Stream} [options.stream] - The stream used for validation.
  * @returns {string}
  */
 function styleText(format, text, { validateStream = true, stream = process.stdout } = {}) {
@@ -254,8 +140,7 @@ function styleText(format, text, { validateStream = true, stream = process.stdou
   // If the format is not an array, convert it to an array
   const formatArray = ArrayIsArray(format) ? format : [format];
 
-  let left = '';
-  let right = '';
+  const codes = [];
   for (const key of formatArray) {
     if (key === 'none') continue;
     const formatCodes = inspect.colors[key];
@@ -264,38 +149,56 @@ function styleText(format, text, { validateStream = true, stream = process.stdou
       validateOneOf(key, 'format', ObjectKeys(inspect.colors));
     }
     if (skipColorize) continue;
-    left += escapeStyleCode(formatCodes[0]);
-    right = `${escapeStyleCode(formatCodes[1])}${right}`;
+    ArrayPrototypePush(codes, formatCodes);
   }
 
-  return skipColorize ? text : `${left}${text}${right}`;
-}
+  if (skipColorize) {
+    return text;
+  }
 
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
-                'Oct', 'Nov', 'Dec'];
+  // Build opening codes
+  let openCodes = '';
+  for (let i = 0; i < codes.length; i++) {
+    openCodes += escapeStyleCode(codes[i][0]);
+  }
 
-/**
- * @returns {string}  26 Feb 16:19:34
- */
-function timestamp() {
-  const d = new Date();
-  const t = ArrayPrototypeJoin([
-    pad(DatePrototypeGetHours(d)),
-    pad(DatePrototypeGetMinutes(d)),
-    pad(DatePrototypeGetSeconds(d)),
-  ], ':');
-  return `${DatePrototypeGetDate(d)} ${months[DatePrototypeGetMonth(d)]} ${t}`;
-}
+  // Process the text to handle nested styles
+  let processedText;
+  if (codes.length > 0) {
+    processedText = ArrayPrototypeReduce(
+      codes,
+      (text, code) => RegExpPrototypeSymbolReplace(
+        // Find the reset code
+        new RegExp(`\\u001b\\[${code[1]}m`, 'g'),
+        text,
+        (match, offset) => {
+          // Check if there's more content after this reset
+          if (offset + match.length < text.length) {
+            if (
+              code[0] === inspect.colors.dim[0] ||
+              code[0] === inspect.colors.bold[0]
+            ) {
+              // Dim and bold are not mutually exclusive, so we need to reapply
+              return `${match}${escapeStyleCode(code[0])}`;
+            }
+            return escapeStyleCode(code[0]);
+          }
+          return match;
+        },
+      ),
+      text,
+    );
+  } else {
+    processedText = text;
+  }
 
-let console;
-/**
- * Log is just a thin wrapper to console.log that prepends a timestamp
- * @deprecated since v6.0.0
- * @type {(...args: any[]) => void}
- */
-function log(...args) {
-  console ??= require('internal/console/global');
-  console.log('%s - %s', timestamp(), format(...args));
+  // Build closing codes in reverse order
+  let closeCodes = '';
+  for (let i = codes.length - 1; i >= 0; i--) {
+    closeCodes += escapeStyleCode(codes[i][1]);
+  }
+
+  return `${openCodes}${processedText}${closeCodes}`;
 }
 
 /**
@@ -307,10 +210,10 @@ function log(...args) {
  * functions as prototype setup using normal JavaScript does not work as
  * expected during bootstrapping (see mirror.js in r114903).
  * @param {Function} ctor Constructor function which needs to inherit the
- *     prototype.
+ *   prototype.
  * @param {Function} superCtor Constructor function to inherit prototype from.
  * @throws {TypeError} Will error if either constructor is null, or if
- *     the super constructor lacks a prototype.
+ * the super constructor lacks a prototype.
  */
 function inherits(ctor, superCtor) {
 
@@ -339,7 +242,7 @@ function inherits(ctor, superCtor) {
  * @template S
  * @param {T} target
  * @param {S} source
- * @returns {S extends null ? T : (T & S)}
+ * @returns {(T & S) | null}
  */
 function _extend(target, source) {
   // Don't do anything if source isn't an object
@@ -366,12 +269,9 @@ const callbackifyOnRejected = (reason, cb) => {
 };
 
 /**
- * @template {(...args: any[]) => Promise<any>} T
- * @param {T} original
- * @returns {T extends (...args: infer TArgs) => Promise<infer TReturn> ?
- *   ((...params: [...TArgs, ((err: Error, ret: TReturn) => any)]) => void) :
- *   never
- * }
+ * Converts a Promise-returning function to callback style
+ * @param {Function} original
+ * @returns {Function}
  */
 function callbackify(original) {
   validateFunction(original, 'original');
@@ -439,7 +339,7 @@ function _errnoException(...args) {
     Error.stackTraceLimit = 0;
     const e = new ErrnoException(...args);
     Error.stackTraceLimit = limit;
-    ErrorCaptureStackTrace(e, _exceptionWithHostPort);
+    ErrorCaptureStackTrace(e, _errnoException);
     return e;
   }
   return new ErrnoException(...args);
@@ -472,7 +372,7 @@ const lazySourceMap = getLazy(() => require('internal/source_map/source_map_cach
 /**
  * @typedef {object} CallSite // The call site
  * @property {string} scriptName // The name of the resource that contains the
- * script for the function for this StackFrame
+ *   script for the function for this StackFrame
  * @property {string} functionName // The name of the function associated with this stack frame
  * @property {number} lineNumber // The number, 1-based, of the line for the associate function call
  * @property {number} columnNumber // The 1-based column offset on the line for the associated function call
@@ -503,7 +403,7 @@ function reconstructCallSite(callSite) {
  *
  * The call site array to map
  * @param {CallSite[]} callSites
- * Array of objects with the reconstructed call site
+ *   Array of objects with the reconstructed call site
  * @returns {CallSite[]}
  */
 function mapCallSite(callSites) {
@@ -559,13 +459,18 @@ function getCallSites(frameCount = 10, options) {
   return binding.getCallSites(frameCount);
 };
 
+// Public util.deprecate API
+function deprecate(fn, msg, code, { modifyPrototype } = {}) {
+  return internalDeprecate(fn, msg, code, undefined, modifyPrototype);
+}
+
 // Keep the `exports =` so that various functions can still be monkeypatched
 module.exports = {
   _errnoException,
   _exceptionWithHostPort,
-  _extend: deprecate(_extend,
-                     'The `util._extend` API is deprecated. Please use Object.assign() instead.',
-                     'DEP0060'),
+  _extend: internalDeprecate(_extend,
+                             'The `util._extend` API is deprecated. Please use Object.assign() instead.',
+                             'DEP0060'),
   callbackify,
   debug: debuglog,
   debuglog,
@@ -573,79 +478,21 @@ module.exports = {
   format,
   styleText,
   formatWithOptions,
-  // Deprecated getCallSite.
-  // This API can be removed in next semver-minor release.
-  getCallSite: deprecate(getCallSites,
-                         'The `util.getCallSite` API has been renamed to `util.getCallSites()`.',
-                         'ExperimentalWarning'),
   getCallSites,
   getSystemErrorMap,
   getSystemErrorName,
   getSystemErrorMessage,
   inherits,
   inspect,
-  isArray: deprecate(ArrayIsArray,
-                     'The `util.isArray` API is deprecated. Please use `Array.isArray()` instead.',
-                     'DEP0044'),
-  isBoolean: deprecate(isBoolean,
-                       'The `util.isBoolean` API is deprecated.  Please use `typeof arg === "boolean"` instead.',
-                       'DEP0045'),
-  isBuffer: deprecate(isBuffer,
-                      'The `util.isBuffer` API is deprecated. Please use `Buffer.isBuffer()` instead.',
-                      'DEP0046'),
-  isDeepStrictEqual(a, b) {
+  isArray: internalDeprecate(ArrayIsArray,
+                             'The `util.isArray` API is deprecated. Please use `Array.isArray()` instead.',
+                             'DEP0044'),
+  isDeepStrictEqual(a, b, skipPrototype) {
     if (internalDeepEqual === undefined) {
-      internalDeepEqual = require('internal/util/comparisons')
-        .isDeepStrictEqual;
+      internalDeepEqual = require('internal/util/comparisons').isDeepStrictEqual;
     }
-    return internalDeepEqual(a, b);
+    return internalDeepEqual(a, b, skipPrototype);
   },
-  isNull: deprecate(isNull,
-                    'The `util.isNull` API is deprecated. Please use `arg === null` instead.',
-                    'DEP0050'),
-  isNullOrUndefined: deprecate(isNullOrUndefined,
-                               'The `util.isNullOrUndefined` API is deprecated. ' +
-                               'Please use `arg === null || arg === undefined` instead.',
-                               'DEP0051'),
-  isNumber: deprecate(isNumber,
-                      'The `util.isNumber` API is deprecated. Please use `typeof arg === "number"` instead.',
-                      'DEP0052'),
-  isString: deprecate(isString,
-                      'The `util.isString` API is deprecated.  Please use `typeof arg === "string"` instead.',
-                      'DEP0056'),
-  isSymbol: deprecate(isSymbol,
-                      'The `util.isSymbol` API is deprecated.  Please use `arg === "symbol"` instead.',
-                      'DEP0057'),
-  isUndefined: deprecate(isUndefined,
-                         'The `util.isUndefined` API is deprecated. Please use `arg === undefined` instead.',
-                         'DEP0058'),
-  isRegExp: deprecate(types.isRegExp,
-                      'The `util.isRegExp` API is deprecated. Please use `arg instanceof RegExp` instead.',
-                      'DEP0055'),
-  isObject: deprecate(isObject,
-                      'The `util.isObject` API is deprecated. ' +
-                      'Please use `arg !== null && typeof arg === "object"` instead.',
-                      'DEP0053'),
-  isDate: deprecate(types.isDate,
-                    'The `util.isDate` API is deprecated.  Please use `arg instanceof Date` instead.',
-                    'DEP0047'),
-  isError: deprecate(isError,
-                     'The `util.isError` API is deprecated. ' +
-                     'Please use `ObjectPrototypeToString(e) === "[object Error]" ' +
-                     '|| e instanceof Error` instead.',
-                     'DEP0048'),
-  isFunction: deprecate(isFunction,
-                        'The `util.isFunction` API is deprecated.  Please use `typeof arg === "function"` instead.',
-                        'DEP0049'),
-  isPrimitive: deprecate(isPrimitive,
-                         'The `util.isPrimitive` API is deprecated. ' +
-                         'Please use `arg === null || ' +
-                         '(typeof arg !== "object" && typeof arg !== "function")` instead.',
-                         'DEP0054'),
-  log: deprecate(log,
-                 'The `util.log API is deprecated. ' +
-                 'Please use console.log() with a custom formatter or a third-party logger instead.',
-                 'DEP0059'),
   promisify,
   stripVTControlCharacters,
   toUSVString(input) {
@@ -686,4 +533,10 @@ defineLazyProperties(
   module.exports,
   'internal/util/diff',
   ['diff'],
+);
+
+defineLazyProperties(
+  module.exports,
+  'internal/util/trace_sigint',
+  ['setTraceSigInt'],
 );

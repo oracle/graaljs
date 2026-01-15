@@ -36,10 +36,10 @@ const {
 const {
   ErrnoException,
   codes: {
-    ERR_ASSERTION,
     ERR_FEATURE_UNAVAILABLE_ON_PLATFORM,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
+    ERR_OPERATION_FAILED,
     ERR_OUT_OF_RANGE,
     ERR_UNKNOWN_SIGNAL,
     ERR_WORKER_UNSUPPORTED_OPERATION,
@@ -63,9 +63,6 @@ let getValidatedPath; // We need to lazy load it because of the circular depende
 
 const kInternal = Symbol('internal properties');
 
-function assert(x, msg) {
-  if (!x) throw new ERR_ASSERTION(msg || 'assertion error');
-}
 const { exitCodes: { kNoFailure } } = internalBinding('errors');
 
 const binding = internalBinding('process_methods');
@@ -110,6 +107,7 @@ function nop() {}
 function wrapProcessMethods(binding) {
   const {
     cpuUsage: _cpuUsage,
+    threadCpuUsage: _threadCpuUsage,
     memoryUsage: _memoryUsage,
     rss,
     resourceUsage: _resourceUsage,
@@ -159,6 +157,50 @@ function wrapProcessMethods(binding) {
     return {
       user: cpuValues[0],
       system: cpuValues[1],
+    };
+  }
+
+  const threadCpuValues = new Float64Array(2);
+
+  // Replace the native function with the JS version that calls the native
+  // function.
+  function threadCpuUsage(prevValue) {
+    // If a previous value was passed in, ensure it has the correct shape.
+    if (prevValue) {
+      if (!previousValueIsValid(prevValue.user)) {
+        validateObject(prevValue, 'prevValue');
+
+        validateNumber(prevValue.user, 'prevValue.user');
+        throw new ERR_INVALID_ARG_VALUE.RangeError('prevValue.user',
+                                                   prevValue.user);
+      }
+
+      if (!previousValueIsValid(prevValue.system)) {
+        validateNumber(prevValue.system, 'prevValue.system');
+        throw new ERR_INVALID_ARG_VALUE.RangeError('prevValue.system',
+                                                   prevValue.system);
+      }
+    }
+
+    if (process.platform === 'sunos') {
+      throw new ERR_OPERATION_FAILED('threadCpuUsage is not available on SunOS');
+    }
+
+    // Call the native function to get the current values.
+    _threadCpuUsage(threadCpuValues);
+
+    // If a previous value was passed in, return diff of current from previous.
+    if (prevValue) {
+      return {
+        user: threadCpuValues[0] - prevValue.user,
+        system: threadCpuValues[1] - prevValue.system,
+      };
+    }
+
+    // If no previous value passed in, return current value.
+    return {
+      user: threadCpuValues[0],
+      system: threadCpuValues[1],
     };
   }
 
@@ -237,7 +279,7 @@ function wrapProcessMethods(binding) {
     return true;
   }
 
-  function execve(execPath, args, env) {
+  function execve(execPath, args = [], env = process.env) {
     emitExperimentalWarning('process.execve');
 
     const { isMainThread } = require('internal/worker');
@@ -259,22 +301,20 @@ function wrapProcessMethods(binding) {
     }
 
     const envArray = [];
-    if (env !== undefined) {
-      validateObject(env, 'env');
+    validateObject(env, 'env');
 
-      for (const { 0: key, 1: value } of ObjectEntries(env)) {
-        if (
-          typeof key !== 'string' ||
-          typeof value !== 'string' ||
-          StringPrototypeIncludes(key, '\u0000') ||
-          StringPrototypeIncludes(value, '\u0000')
-        ) {
-          throw new ERR_INVALID_ARG_VALUE(
-            'env', env, 'must be an object with string keys and values without null bytes',
-          );
-        } else {
-          ArrayPrototypePush(envArray, `${key}=${value}`);
-        }
+    for (const { 0: key, 1: value } of ObjectEntries(env)) {
+      if (
+        typeof key !== 'string' ||
+        typeof value !== 'string' ||
+        StringPrototypeIncludes(key, '\u0000') ||
+        StringPrototypeIncludes(value, '\u0000')
+      ) {
+        throw new ERR_INVALID_ARG_VALUE(
+          'env', env, 'must be an object with string keys and values without null bytes',
+        );
+      } else {
+        ArrayPrototypePush(envArray, `${key}=${value}`);
       }
     }
 
@@ -326,6 +366,7 @@ function wrapProcessMethods(binding) {
   return {
     _rawDebug,
     cpuUsage,
+    threadCpuUsage,
     resourceUsage,
     memoryUsage,
     kill,
@@ -500,7 +541,6 @@ function unref(maybeRefable) {
 
 module.exports = {
   toggleTraceCategoryState,
-  assert,
   buildAllowedFlags,
   wrapProcessMethods,
   hrtime,

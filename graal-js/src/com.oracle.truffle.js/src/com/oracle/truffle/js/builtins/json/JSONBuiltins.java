@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -126,7 +126,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         @Override
         public int getECMAScriptVersion() {
             return switch (this) {
-                case rawJSON, isRawJSON -> JSConfig.StagingECMAScriptVersion;
+                case rawJSON, isRawJSON -> JSConfig.ECMAScript2026;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }
@@ -200,7 +200,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                         @Cached @Shared JSToStringNode toStringNode,
                         @Cached("create(getContext(), EMPTY_STRING)") CreateDataPropertyNode createWrapperPropertyNode) {
             TruffleString text = toStringNode.executeString(value);
-            boolean withSource = getContext().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
+            boolean withSource = getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2026;
             JSRealm realm = getRealm();
             Object unfiltered = parseIntl(text, withSource ? Mode.WithReviverAndSource : Mode.WithReviver, realm);
 

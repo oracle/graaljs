@@ -22,7 +22,8 @@ function createImportMetaResolve(defaultParentURL, loader, allowParentURL) {
   /**
    * @param {string} specifier
    * @param {URL['href']} [parentURL] When `--experimental-import-meta-resolve` is specified, a
-   * second argument can be provided.
+   *   second argument can be provided.
+   * @returns {string}
    */
   return function resolve(specifier, parentURL = defaultParentURL) {
     let url;
@@ -32,7 +33,8 @@ function createImportMetaResolve(defaultParentURL, loader, allowParentURL) {
     }
 
     try {
-      ({ url } = loader.resolveSync(specifier, parentURL));
+      const request = { specifier, __proto__: null };
+      ({ url } = loader.resolveSync(parentURL, request));
       return url;
     } catch (error) {
       switch (error?.code) {
@@ -51,12 +53,12 @@ function createImportMetaResolve(defaultParentURL, loader, allowParentURL) {
 /**
  * Create the `import.meta` object for a module.
  * @param {object} meta
- * @param {{url: string}} context
+ * @param {{url: string, isMain?: boolean}} context
  * @param {typeof import('./loader.js').ModuleLoader} loader Reference to the current module loader
  * @returns {{dirname?: string, filename?: string, url: string, resolve?: Function}}
  */
 function initializeImportMeta(meta, context, loader) {
-  const { url } = context;
+  const { url, isMain } = context;
 
   // Alphabetical
   if (StringPrototypeStartsWith(url, 'file:') === true) {
@@ -64,6 +66,8 @@ function initializeImportMeta(meta, context, loader) {
     // filename
     setLazyPathHelpers(meta, url);
   }
+
+  meta.main = !!isMain;
 
   if (!loader || loader.allowImportMetaResolve) {
     meta.resolve = createImportMetaResolve(url, loader, experimentalImportMetaResolve);

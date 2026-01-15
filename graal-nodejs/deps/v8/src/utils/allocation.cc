@@ -80,8 +80,8 @@ v8::VirtualAddressSpace* GetPlatformVirtualAddressSpace() {
 
 #ifdef V8_ENABLE_SANDBOX
 v8::PageAllocator* GetSandboxPageAllocator() {
-  CHECK(GetProcessWideSandbox()->is_initialized());
-  return GetProcessWideSandbox()->page_allocator();
+  CHECK(Sandbox::current()->is_initialized());
+  return Sandbox::current()->page_allocator();
 }
 #endif
 
@@ -208,16 +208,13 @@ void OnCriticalMemoryPressure() {
 VirtualMemory::VirtualMemory() = default;
 
 VirtualMemory::VirtualMemory(v8::PageAllocator* page_allocator, size_t size,
-                             void* hint, size_t alignment, JitPermission jit)
+                             void* hint, size_t alignment,
+                             PageAllocator::Permission permissions)
     : page_allocator_(page_allocator) {
   DCHECK_NOT_NULL(page_allocator);
   DCHECK(IsAligned(size, page_allocator_->CommitPageSize()));
   size_t page_size = page_allocator_->AllocatePageSize();
   alignment = RoundUp(alignment, page_size);
-  PageAllocator::Permission permissions =
-      jit == JitPermission::kMapAsJittable
-          ? PageAllocator::kNoAccessWillJitLater
-          : PageAllocator::kNoAccess;
   Address address = reinterpret_cast<Address>(AllocatePages(
       page_allocator_, hint, RoundUp(size, page_size), alignment, permissions));
   if (address != kNullAddress) {
@@ -289,19 +286,6 @@ void VirtualMemory::Free() {
             RoundUp(region.size(), page_allocator->AllocatePageSize()));
 }
 
-void VirtualMemory::FreeReadOnly() {
-  DCHECK(IsReserved());
-  // The only difference to Free is that it doesn't call Reset which would write
-  // to the VirtualMemory object.
-  v8::PageAllocator* page_allocator = page_allocator_;
-  base::AddressRegion region = region_;
-
-  // FreePages expects size to be aligned to allocation granularity however
-  // ReleasePages may leave size at only commit granularity. Align it here.
-  FreePages(page_allocator, reinterpret_cast<void*>(region.begin()),
-            RoundUp(region.size(), page_allocator->AllocatePageSize()));
-}
-
 VirtualMemoryCage::VirtualMemoryCage() = default;
 
 VirtualMemoryCage::~VirtualMemoryCage() { Free(); }
@@ -345,7 +329,7 @@ bool VirtualMemoryCage::InitReservation(
     CHECK(IsAligned(hint, params.base_alignment));
     VirtualMemory reservation(params.page_allocator, params.reservation_size,
                               reinterpret_cast<void*>(hint),
-                              params.base_alignment, params.jit);
+                              params.base_alignment, params.permissions);
     // The virtual memory reservation fails only due to OOM.
     if (!reservation.IsReserved()) return false;
 
@@ -361,20 +345,10 @@ bool VirtualMemoryCage::InitReservation(
       params.reservation_size - (allocatable_base - base_), params.page_size);
   size_ = allocatable_base + allocatable_size - base_;
 
-  const base::PageFreeingMode page_freeing_mode =
-      V8_HEAP_USE_PTHREAD_JIT_WRITE_PROTECT &&
-              params.jit == JitPermission::kMapAsJittable
-          // On MacOS on ARM64 ("Apple M1"/Apple Silicon) setting permission to
-          // none might fail if the pages were allocated with RWX permissions,
-          // so use kDiscard mode instead.
-          ? base::PageFreeingMode::kDiscard
-          : base::PageFreeingMode::kMakeInaccessible;
-
   page_allocator_ = std::make_unique<base::BoundedPageAllocator>(
       params.page_allocator, allocatable_base, allocatable_size,
-      params.page_size,
-      base::PageInitializationMode::kAllocatedPagesCanBeUninitialized,
-      page_freeing_mode);
+      params.page_size, params.page_initialization_mode,
+      params.page_freeing_mode);
   return true;
 }
 

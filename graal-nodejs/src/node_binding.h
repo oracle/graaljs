@@ -8,7 +8,6 @@
 #endif
 
 #include "node.h"
-#define NAPI_EXPERIMENTAL
 #include "node_api.h"
 #include "uv.h"
 
@@ -53,6 +52,7 @@ static_assert(static_cast<int>(NM_F_LINKED) ==
   V(fs)                                                                        \
   V(fs_dir)                                                                    \
   V(http_parser)                                                               \
+  V(locks)                                                                     \
   V(messaging)                                                                 \
   V(mksnapshot)                                                                \
   V(modules)                                                                   \

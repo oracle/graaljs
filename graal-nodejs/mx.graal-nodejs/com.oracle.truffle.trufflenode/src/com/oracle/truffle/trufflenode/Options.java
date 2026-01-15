@@ -193,6 +193,7 @@ public final class Options {
             // Node.js-specific defaults, may be overridden by command line arguments.
             polyglotOptions.put("js.print", "false");
             polyglotOptions.put("js.string-length-limit", Integer.toString((1 << 29) - 24)); // v8::String::kMaxLength
+            polyglotOptions.put("js.ecmascript-version", "2026");
 
             List<String> unprocessedArguments = new ArrayList<>();
             Boolean optWebAssembly = null;
@@ -259,6 +260,10 @@ public final class Options {
                 }
                 if ("disallow-code-generation-from-strings".equals(normalizedKey)) {
                     polyglotOptions.put("js.disable-eval", "true");
+                    continue;
+                }
+                if ("js-source-phase-imports".equals(normalizedKey)) {
+                    polyglotOptions.put("js.source-phase-imports", "true");
                     continue;
                 }
                 if ("allow-natives-syntax".equals(normalizedKey)) {

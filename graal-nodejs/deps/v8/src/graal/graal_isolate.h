@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -214,7 +214,7 @@ enum GraalAccessMethod {
     isolate_get_int_placeholder,
     isolate_get_safe_int_placeholder,
     isolate_get_double_placeholder,
-    isolate_dispose,
+    isolate_deinitialize,
     isolate_enter_polyglot_engine,
     isolate_perform_gc,
     isolate_enable_promise_hook,
@@ -230,8 +230,11 @@ enum GraalAccessMethod {
     isolate_set_task_runner,
     isolate_execute_runnable,
     isolate_get_default_locale,
+    isolate_get_continuation_preserved_embedder_data,
+    isolate_set_continuation_preserved_embedder_data,
     template_set,
     template_set_accessor_property,
+    template_set_lazy_data_property,
     object_template_new,
     object_template_new_instance,
     object_template_set_accessor,
@@ -346,6 +349,8 @@ enum GraalAccessMethod {
     symbol_get_to_primitive,
     symbol_get_to_string_tag,
     symbol_get_unscopables,
+    symbol_get_dispose,
+    symbol_get_async_dispose,
     symbol_private_for_api,
     symbol_private_new,
     promise_result,
@@ -353,6 +358,7 @@ enum GraalAccessMethod {
     promise_resolver_new,
     promise_resolver_resolve,
     promise_resolver_reject,
+    promise_then,
     module_compile,
     module_instantiate,
     module_evaluate,
@@ -365,7 +371,9 @@ enum GraalAccessMethod {
     module_set_synthetic_module_export,
     module_get_module_requests,
     module_request_get_specifier,
-    module_request_get_import_assertions,
+    module_request_get_import_attributes,
+    module_request_get_phase,
+    module_has_top_level_await,
     module_is_graph_async,
     module_is_source_text_module,
     script_or_module_get_resource_name,
@@ -413,6 +421,7 @@ enum GraalAccessMethod {
     fixed_array_get,
     wasm_module_object_get_compiled_module,
     wasm_module_object_from_compiled_module,
+    dictionary_template_new_instance,
 
     count // Should be the last item of GraalAccessMethod
 };
@@ -451,8 +460,8 @@ public:
     void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
     void SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback);
     bool AbortOnUncaughtExceptionCallbackValue();
-    void Dispose();
-    void Dispose(bool exit, int status);
+    void Deinitialize();
+    void Deinitialize(bool exit, int status);
     inline double ReadDoubleFromSharedBuffer();
     inline int32_t ReadInt32FromSharedBuffer();
     inline int64_t ReadInt64FromSharedBuffer();
@@ -468,7 +477,9 @@ public:
     void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
     void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
-    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
+    void SetHostImportModuleWithPhaseDynamicallyCallback(v8::HostImportModuleWithPhaseDynamicallyCallback callback);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_attributes);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleWithPhaseDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::ModuleImportPhase phase, v8::Local<v8::FixedArray> import_attributes);
     void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
     v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
     void SetWasmStreamingCallback(v8::WasmStreamingCallback callback);
@@ -680,6 +691,8 @@ public:
     void SetFunctionTemplateFunction(unsigned id, GraalValue* function);
     void SetFunctionTemplateData(unsigned id, GraalValue* data);
     void SetFunctionTemplateCallback(unsigned id, v8::FunctionCallback callback);
+    void SetContinuationPreservedEmbedderData(v8::Local<v8::Value> data);
+    v8::Local<v8::Value> GetContinuationPreservedEmbedderData();
     void ReportAPIFailure(const char* location, const char* message);
     std::string GetDefaultLocale();
 
@@ -690,10 +703,11 @@ public:
     inline void SaveReturnValue(double value) {
         return_value_ = value;
     }
-    
+
     v8::Local<v8::Value> CorrectReturnValue(v8::internal::Address value);
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
+    v8::CppHeap* GetCppHeap() const;
     void SchedulePauseOnNextStatement();
 
     inline GraalObjectPool<GraalObject>* GetGraalObjectPool() {
@@ -819,6 +833,7 @@ private:
     bool sending_message_;
     v8::Isolate::AbortOnUncaughtExceptionCallback abort_on_uncaught_exception_callback_;
     std::shared_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
+    v8::CppHeap* cpp_heap_;
     int try_catch_count_;
     int function_template_count_;
     bool stack_check_enabled_;
@@ -868,6 +883,7 @@ private:
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
+    v8::HostImportModuleWithPhaseDynamicallyCallback import_module_with_phase_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
     v8::WasmStreamingCallback wasm_streaming_callback_;

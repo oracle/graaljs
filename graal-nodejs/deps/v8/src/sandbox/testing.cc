@@ -35,11 +35,18 @@ SandboxTesting::Mode SandboxTesting::mode_ = SandboxTesting::Mode::kDisabled;
 
 namespace {
 
+// Sandbox.base
+void SandboxGetBase(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  DCHECK(ValidateCallbackInfo(info));
+  v8::Isolate* isolate = info.GetIsolate();
+  double sandbox_base = Sandbox::current()->base();
+  info.GetReturnValue().Set(v8::Number::New(isolate, sandbox_base));
+}
 // Sandbox.byteLength
 void SandboxGetByteLength(const v8::FunctionCallbackInfo<v8::Value>& info) {
   DCHECK(ValidateCallbackInfo(info));
   v8::Isolate* isolate = info.GetIsolate();
-  double sandbox_size = GetProcessWideSandbox()->size();
+  double sandbox_size = Sandbox::current()->size();
   info.GetReturnValue().Set(v8::Number::New(isolate, sandbox_size));
 }
 
@@ -61,7 +68,7 @@ void SandboxMemoryView(const v8::FunctionCallbackInfo<v8::Value>& info) {
     return;
   }
 
-  Sandbox* sandbox = GetProcessWideSandbox();
+  Sandbox* sandbox = Sandbox::current();
   CHECK_LE(sandbox->size(), kMaxSafeIntegerUint64);
 
   uint64_t offset = arg1->Value();
@@ -106,13 +113,13 @@ static bool GetArgumentObjectPassedAsReference(
     return false;
   }
 
-  *out = HeapObject::cast(*arg);
+  *out = Cast<HeapObject>(*arg);
   return true;
 }
 
 static bool GetArgumentObjectPassedAsAddress(
     const v8::FunctionCallbackInfo<v8::Value>& info, Tagged<HeapObject>* out) {
-  Sandbox* sandbox = GetProcessWideSandbox();
+  Sandbox* sandbox = Sandbox::current();
   v8::Isolate* isolate = info.GetIsolate();
   Local<v8::Context> context = isolate->GetCurrentContext();
 
@@ -172,29 +179,40 @@ void SandboxGetObjectAt(const v8::FunctionCallbackInfo<v8::Value>& info) {
 void SandboxIsValidObjectAt(const v8::FunctionCallbackInfo<v8::Value>& info) {
   DCHECK(ValidateCallbackInfo(info));
   v8::Isolate* isolate = info.GetIsolate();
+  Sandbox* sandbox = Sandbox::current();
+  Heap* heap = reinterpret_cast<Isolate*>(isolate)->heap();
+  auto IsLocatedInMappedMemory = [&](Address address) {
+    if (heap->memory_allocator()->LookupChunkContainingAddress(address) !=
+        nullptr) {
+      return true;
+    }
+    return heap->read_only_space()->ContainsSlow(address);
+  };
 
   Tagged<HeapObject> obj;
   if (!GetArgumentObjectPassedAsAddress(info, &obj)) {
     return;
   }
 
-  Heap* heap = reinterpret_cast<Isolate*>(isolate)->heap();
-  auto IsLocatedInMappedMemory = [&](Tagged<HeapObject> obj) {
-    // Note that IsOutsideAllocatedSpace is imprecise and may return false for
-    // some addresses outside the allocated space. However, it's probably good
-    // enough for our purposes.
-    return !heap->memory_allocator()->IsOutsideAllocatedSpace(obj.address());
-  };
-
-  bool is_valid = false;
-  if (IsLocatedInMappedMemory(obj)) {
-    Tagged<Map> map = obj->map();
-    if (IsLocatedInMappedMemory(map)) {
-      is_valid = IsMap(map);
+  // Simple heuristic: follow the Map chain three times until we find a MetaMap
+  // (where the map pointer points to itself), or give up.
+  info.GetReturnValue().Set(false);
+  Address current = obj.address();
+  for (int i = 0; i < 3; i++) {
+    if (!IsLocatedInMappedMemory(current)) {
+      return;
     }
+    uint32_t map_word = *reinterpret_cast<uint32_t*>(current);
+    if ((map_word & kHeapObjectTag) != kHeapObjectTag) {
+      return;
+    }
+    Address map_address = sandbox->base() + map_word - kHeapObjectTag;
+    if (map_address == current) {
+      info.GetReturnValue().Set(true);
+      return;
+    }
+    current = map_address;
   }
-
-  info.GetReturnValue().Set(is_valid);
 }
 
 static void SandboxIsWritableImpl(
@@ -277,6 +295,123 @@ void SandboxGetInstanceTypeOfObjectAt(
   SandboxGetInstanceTypeOfImpl(info, &GetArgumentObjectPassedAsAddress);
 }
 
+static void SandboxGetInstanceTypeIdOfImpl(
+    const v8::FunctionCallbackInfo<v8::Value>& info,
+    ArgumentObjectExtractorFunction getArgumentObject) {
+  DCHECK(ValidateCallbackInfo(info));
+
+  Tagged<HeapObject> obj;
+  if (!getArgumentObject(info, &obj)) {
+    return;
+  }
+
+  InstanceType type = obj->map()->instance_type();
+  static_assert(std::is_same_v<std::underlying_type_t<InstanceType>, uint16_t>);
+  if (type > LAST_TYPE) {
+    // This can happen with corrupted objects. Canonicalize to a special
+    // "unknown" instance type to indicate that this is an unknown type.
+    const uint16_t kUnknownInstanceType = std::numeric_limits<uint16_t>::max();
+    type = static_cast<InstanceType>(kUnknownInstanceType);
+  }
+
+  info.GetReturnValue().Set(type);
+}
+
+// Sandbox.getInstanceTypeIdOf(Object) -> Number
+void SandboxGetInstanceTypeIdOf(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  SandboxGetInstanceTypeIdOfImpl(info, &GetArgumentObjectPassedAsReference);
+}
+
+// Sandbox.getInstanceTypeIdOfObjectAt(Number) -> Number
+void SandboxGetInstanceTypeIdOfObjectAt(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  SandboxGetInstanceTypeIdOfImpl(info, &GetArgumentObjectPassedAsAddress);
+}
+
+// Sandbox.getInstanceTypeIdFor(String) -> Number
+void SandboxGetInstanceTypeIdFor(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  DCHECK(ValidateCallbackInfo(info));
+  v8::Isolate* isolate = info.GetIsolate();
+
+  v8::String::Utf8Value type_name(isolate, info[0]);
+  if (!*type_name) {
+    isolate->ThrowError("First argument must be a string");
+    return;
+  }
+
+  auto& all_types = SandboxTesting::GetInstanceTypeMap();
+  if (all_types.find(*type_name) == all_types.end()) {
+    isolate->ThrowError(
+        "Unknown type name. If needed, add it in "
+        "SandboxTesting::GetInstanceTypeMap");
+    return;
+  }
+
+  InstanceType type_id = all_types[*type_name];
+  info.GetReturnValue().Set(type_id);
+}
+
+// Obtain the offset of a field in an object.
+//
+// This can be used to obtain the offsets of internal object fields in order to
+// avoid hardcoding offsets into testcases. It basically makes the various
+// Foo::kBarOffset constants accessible from JavaScript. The main benefit of
+// that is that testcases continue to work if the field offset changes.
+// Additionally, if a field is removed, testcases that use it will fail and can
+// then be deleted if they are no longer useful.
+//
+// TODO(saelo): instead of this, consider adding an API like
+// `Sandbox.getTypeDescriptor(Number|String) -> Object` which, given an
+// instance type id or name, returns an object containing the offset constants
+// as properties as well as potentially other information such as the types of
+// the object's fields.
+//
+// Sandbox.getFieldOffset(Number, String) -> Number
+void SandboxGetFieldOffset(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  DCHECK(ValidateCallbackInfo(info));
+  v8::Isolate* isolate = info.GetIsolate();
+  Local<v8::Context> context = isolate->GetCurrentContext();
+
+  if (!info[0]->IsInt32()) {
+    isolate->ThrowError("Second argument must be an integer");
+    return;
+  }
+
+  int raw_type = info[0]->Int32Value(context).FromMaybe(-1);
+  if (raw_type < FIRST_TYPE || raw_type > LAST_TYPE) {
+    isolate->ThrowError("Invalid instance type");
+    return;
+  }
+  InstanceType instance_type = static_cast<InstanceType>(raw_type);
+
+  v8::String::Utf8Value field_name(isolate, info[1]);
+  if (!*field_name) {
+    isolate->ThrowError("Second argument must be a string");
+    return;
+  }
+
+  auto& all_fields = SandboxTesting::GetFieldOffsetMap();
+  if (all_fields.find(instance_type) == all_fields.end()) {
+    isolate->ThrowError(
+        "Unknown object type. If needed, add it in "
+        "SandboxTesting::GetFieldOffsetMap");
+    return;
+  }
+
+  auto& obj_fields = all_fields[instance_type];
+  if (obj_fields.find(*field_name) == obj_fields.end()) {
+    isolate->ThrowError(
+        "Unknown field. If needed, add it in "
+        "SandboxTesting::GetFieldOffsetMap");
+    return;
+  }
+
+  int offset = obj_fields[*field_name];
+  info.GetReturnValue().Set(offset);
+}
+
 Handle<FunctionTemplateInfo> NewFunctionTemplate(
     Isolate* isolate, FunctionCallback func,
     ConstructorBehavior constructor_behavior) {
@@ -333,21 +468,20 @@ void InstallConstructor(Isolate* isolate, Handle<JSObject> holder,
 }
 }  // namespace
 
-void SandboxTesting::InstallMemoryCorruptionApiIfEnabled(Isolate* isolate) {
+void SandboxTesting::InstallMemoryCorruptionApi(Isolate* isolate) {
 #ifndef V8_ENABLE_MEMORY_CORRUPTION_API
 #error "This function should not be available in any shipping build "          \
        "where it could potentially be abused to facilitate exploitation."
 #endif
 
-  if (!IsEnabled()) return;
-
-  CHECK(GetProcessWideSandbox()->is_initialized());
+  CHECK(Sandbox::current()->is_initialized());
 
   // Create the special Sandbox object that provides read/write access to the
   // sandbox address space alongside other miscellaneous functionality.
   Handle<JSObject> sandbox = isolate->factory()->NewJSObject(
       isolate->object_function(), AllocationType::kOld);
 
+  InstallGetter(isolate, sandbox, SandboxGetBase, "base");
   InstallGetter(isolate, sandbox, SandboxGetByteLength, "byteLength");
   InstallConstructor(isolate, sandbox, SandboxMemoryView, "MemoryView", 2);
   InstallFunction(isolate, sandbox, SandboxGetAddressOf, "getAddressOf", 1);
@@ -364,6 +498,13 @@ void SandboxTesting::InstallMemoryCorruptionApiIfEnabled(Isolate* isolate) {
                   "getInstanceTypeOf", 1);
   InstallFunction(isolate, sandbox, SandboxGetInstanceTypeOfObjectAt,
                   "getInstanceTypeOfObjectAt", 1);
+  InstallFunction(isolate, sandbox, SandboxGetInstanceTypeIdOf,
+                  "getInstanceTypeIdOf", 1);
+  InstallFunction(isolate, sandbox, SandboxGetInstanceTypeIdOfObjectAt,
+                  "getInstanceTypeIdOfObjectAt", 1);
+  InstallFunction(isolate, sandbox, SandboxGetInstanceTypeIdFor,
+                  "getInstanceTypeIdFor", 1);
+  InstallFunction(isolate, sandbox, SandboxGetFieldOffset, "getFieldOffset", 2);
 
   // Install the Sandbox object as property on the global object.
   Handle<JSGlobalObject> global = isolate->global_object();
@@ -388,7 +529,14 @@ void PrintToStderr(const char* output) {
   // NOTE: This code MUST be async-signal safe.
   // NO malloc or stdio is allowed here.
   PrintToStderr(reason);
-  _exit(-1);
+  // In sandbox fuzzing mode, we want to exit with a non-zero status to
+  // indicate to the fuzzer that the sample "failed" (ran into an unrecoverable
+  // error) and should probably not be mutated further. Otherwise, we exit with
+  // zero, which is for example needed for regression tests to make them "pass"
+  // when no sandbox violation is detected.
+  int status =
+      SandboxTesting::mode() == SandboxTesting::Mode::kForFuzzing ? -1 : 0;
+  _exit(status);
 }
 
 // Signal handler checking whether a memory access violation happened inside or
@@ -438,9 +586,9 @@ void CrashFilter(int signal, siginfo_t* info, void* void_context) {
 
   Address faultaddr = reinterpret_cast<Address>(info->si_addr);
 
-  if (GetProcessWideSandbox()->Contains(faultaddr)) {
+  if (Sandbox::current()->Contains(faultaddr)) {
     FilterCrash(
-        "Caught harmless memory access violaton (inside sandbox address "
+        "Caught harmless memory access violation (inside sandbox address "
         "space). Exiting process...\n");
   }
 
@@ -452,7 +600,7 @@ void CrashFilter(int signal, siginfo_t* info, void* void_context) {
     // out here. However, testcases need to be written with this in mind and
     // must cause crashes at valid addresses.
     FilterCrash(
-        "Caught harmless memory access violaton (non-canonical address). "
+        "Caught harmless memory access violation (non-canonical address). "
         "Exiting process...\n");
   }
 
@@ -463,7 +611,7 @@ void CrashFilter(int signal, siginfo_t* info, void* void_context) {
     // addresses above, so here we can just test if the most-significant bit of
     // the address is set, and if so assume that it's a kernel address.
     FilterCrash(
-        "Caught harmless memory access violatation (kernel space address). "
+        "Caught harmless memory access violation (kernel space address). "
         "Exiting process...\n");
   }
 
@@ -472,15 +620,15 @@ void CrashFilter(int signal, siginfo_t* info, void* void_context) {
     // the typical page size (which is also the default value of mmap_min_addr
     // on Linux) to determine what counts as a nullptr dereference here.
     FilterCrash(
-        "Caught harmless memory access violaton (nullptr dereference). Exiting "
-        "process...\n");
+        "Caught harmless memory access violation (nullptr dereference). "
+        "Exiting process...\n");
   }
 
   if (faultaddr < 4ULL * GB) {
     // Currently we also ignore access violations in the first 4GB of the
     // virtual address space. See crbug.com/1470641 for more details.
     FilterCrash(
-        "Caught harmless memory access violaton (first 4GB of virtual address "
+        "Caught harmless memory access violation (first 4GB of virtual address "
         "space). Exiting process...\n");
   }
 
@@ -542,12 +690,9 @@ void CrashFilter(int signal, siginfo_t* info, void* void_context) {
     // testcases need to be written with this behavior in mind and should
     // typically try to access non-existing memory to demonstrate the ability
     // to escape from the sandbox.
-    //
-    // An exception to this rule is the target page: in sandbox testing mode a
-    // write access to this read-only page is considered a sandbox bypass.
     FilterCrash(
-        "Caught harmless memory access violaton (memory permission violation). "
-        "Exiting process...\n");
+        "Caught harmless memory access violation (memory permission "
+        "violation). Exiting process...\n");
   }
 
   // Otherwise it's a sandbox violation, so restore the original signal
@@ -569,7 +714,7 @@ void AsanFaultHandler() {
         "check if it is a sandbox violation. Exiting process...\n");
   }
 
-  if (GetProcessWideSandbox()->Contains(faultaddr)) {
+  if (Sandbox::current()->Contains(faultaddr)) {
     FilterCrash(
         "Caught harmless ASan fault (inside sandbox address space). Exiting "
         "process...\n");
@@ -630,15 +775,118 @@ void InstallCrashFilter() {
 void SandboxTesting::Enable(Mode mode) {
   CHECK_EQ(mode_, Mode::kDisabled);
   CHECK_NE(mode, Mode::kDisabled);
-  CHECK(GetProcessWideSandbox()->is_initialized());
+  CHECK(Sandbox::current()->is_initialized());
 
   mode_ = mode;
+
+  fprintf(stderr,
+          "Sandbox testing mode is enabled. Only sandbox violations will be "
+          "reported, all other crashes will be ignored.\n");
 
 #ifdef V8_OS_LINUX
   InstallCrashFilter();
 #else
   FATAL("The sandbox crash filter is currently only available on Linux");
 #endif  // V8_OS_LINUX
+}
+
+SandboxTesting::InstanceTypeMap& SandboxTesting::GetInstanceTypeMap() {
+  // This mechanism is currently very crude and needs to be manually maintained
+  // and extended (e.g. when adding a js test for the sandbox). In the future,
+  // it would be nice to somehow automatically generate this map from the
+  // object definitions and also support the class inheritance hierarchy.
+  static base::LeakyObject<InstanceTypeMap> g_known_instance_types;
+  auto& types = *g_known_instance_types.get();
+  bool is_initialized = types.size() != 0;
+  if (!is_initialized) {
+    types["JS_OBJECT_TYPE"] = JS_OBJECT_TYPE;
+    types["JS_FUNCTION_TYPE"] = JS_FUNCTION_TYPE;
+    types["JS_ARRAY_TYPE"] = JS_ARRAY_TYPE;
+    types["JS_ARRAY_BUFFER_TYPE"] = JS_ARRAY_BUFFER_TYPE;
+    types["JS_TYPED_ARRAY_TYPE"] = JS_TYPED_ARRAY_TYPE;
+    types["SEQ_ONE_BYTE_STRING_TYPE"] = SEQ_ONE_BYTE_STRING_TYPE;
+    types["SEQ_TWO_BYTE_STRING_TYPE"] = SEQ_TWO_BYTE_STRING_TYPE;
+    types["INTERNALIZED_ONE_BYTE_STRING_TYPE"] =
+        INTERNALIZED_ONE_BYTE_STRING_TYPE;
+    types["SLICED_ONE_BYTE_STRING_TYPE"] = SLICED_ONE_BYTE_STRING_TYPE;
+    types["CONS_ONE_BYTE_STRING_TYPE"] = CONS_ONE_BYTE_STRING_TYPE;
+    types["SHARED_FUNCTION_INFO_TYPE"] = SHARED_FUNCTION_INFO_TYPE;
+    types["SCRIPT_TYPE"] = SCRIPT_TYPE;
+#ifdef V8_ENABLE_WEBASSEMBLY
+    types["WASM_MODULE_OBJECT_TYPE"] = WASM_MODULE_OBJECT_TYPE;
+    types["WASM_INSTANCE_OBJECT_TYPE"] = WASM_INSTANCE_OBJECT_TYPE;
+    types["WASM_FUNC_REF_TYPE"] = WASM_FUNC_REF_TYPE;
+    types["WASM_TABLE_OBJECT_TYPE"] = WASM_TABLE_OBJECT_TYPE;
+#endif  // V8_ENABLE_WEBASSEMBLY
+  }
+  return types;
+}
+
+SandboxTesting::FieldOffsetMap& SandboxTesting::GetFieldOffsetMap() {
+  // This mechanism is currently very crude and needs to be manually maintained
+  // and extended (e.g. when adding a js test for the sandbox). In the future,
+  // it would be nice to somehow automatically generate this map from the
+  // object definitions and also support the class inheritance hierarchy.
+  static base::LeakyObject<FieldOffsetMap> g_known_fields;
+  auto& fields = *g_known_fields.get();
+  bool is_initialized = fields.size() != 0;
+  if (!is_initialized) {
+#ifdef V8_ENABLE_LEAPTIERING
+    fields[JS_FUNCTION_TYPE]["dispatch_handle"] =
+        JSFunction::kDispatchHandleOffset;
+#endif  // V8_ENABLE_LEAPTIERING
+    fields[JS_FUNCTION_TYPE]["shared_function_info"] =
+        JSFunction::kSharedFunctionInfoOffset;
+    fields[JS_ARRAY_TYPE]["elements"] = JSArray::kElementsOffset;
+    fields[JS_ARRAY_TYPE]["length"] = JSArray::kLengthOffset;
+    fields[JS_TYPED_ARRAY_TYPE]["length"] = JSTypedArray::kRawLengthOffset;
+    fields[JS_TYPED_ARRAY_TYPE]["byte_length"] =
+        JSTypedArray::kRawByteLengthOffset;
+    fields[JS_TYPED_ARRAY_TYPE]["byte_offset"] =
+        JSTypedArray::kRawByteOffsetOffset;
+    fields[JS_TYPED_ARRAY_TYPE]["external_pointer"] =
+        JSTypedArray::kExternalPointerOffset;
+    fields[JS_TYPED_ARRAY_TYPE]["base_pointer"] =
+        JSTypedArray::kBasePointerOffset;
+    fields[SEQ_ONE_BYTE_STRING_TYPE]["length"] =
+        offsetof(SeqOneByteString, length_);
+    fields[SEQ_TWO_BYTE_STRING_TYPE]["hash"] =
+        offsetof(SeqTwoByteString, raw_hash_field_);
+    fields[SEQ_TWO_BYTE_STRING_TYPE]["length"] =
+        offsetof(SeqTwoByteString, length_);
+    fields[INTERNALIZED_ONE_BYTE_STRING_TYPE]["length"] =
+        offsetof(InternalizedString, length_);
+    fields[SLICED_ONE_BYTE_STRING_TYPE]["parent"] =
+        offsetof(SlicedString, parent_);
+    fields[CONS_ONE_BYTE_STRING_TYPE]["length"] = offsetof(ConsString, length_);
+    fields[CONS_ONE_BYTE_STRING_TYPE]["first"] = offsetof(ConsString, first_);
+    fields[CONS_ONE_BYTE_STRING_TYPE]["second"] = offsetof(ConsString, second_);
+    fields[SHARED_FUNCTION_INFO_TYPE]["trusted_function_data"] =
+        SharedFunctionInfo::kTrustedFunctionDataOffset;
+    fields[SHARED_FUNCTION_INFO_TYPE]["length"] =
+        SharedFunctionInfo::kLengthOffset;
+    fields[SHARED_FUNCTION_INFO_TYPE]["formal_parameter_count"] =
+        SharedFunctionInfo::kFormalParameterCountOffset;
+    fields[SCRIPT_TYPE]["wasm_managed_native_module"] =
+        Script::kEvalFromPositionOffset;
+#ifdef V8_ENABLE_WEBASSEMBLY
+    fields[WASM_MODULE_OBJECT_TYPE]["managed_native_module"] =
+        WasmModuleObject::kManagedNativeModuleOffset;
+    fields[WASM_MODULE_OBJECT_TYPE]["script"] = WasmModuleObject::kScriptOffset;
+    fields[WASM_INSTANCE_OBJECT_TYPE]["module_object"] =
+        WasmInstanceObject::kModuleObjectOffset;
+    fields[WASM_FUNC_REF_TYPE]["trusted_internal"] =
+        WasmFuncRef::kTrustedInternalOffset;
+    fields[WASM_TABLE_OBJECT_TYPE]["entries"] = WasmTableObject::kEntriesOffset;
+    fields[WASM_TABLE_OBJECT_TYPE]["current_length"] =
+        WasmTableObject::kCurrentLengthOffset;
+    fields[WASM_TABLE_OBJECT_TYPE]["maximum_length"] =
+        WasmTableObject::kMaximumLengthOffset;
+    fields[WASM_TABLE_OBJECT_TYPE]["raw_type"] =
+        WasmTableObject::kRawTypeOffset;
+#endif  // V8_ENABLE_WEBASSEMBLY
+  }
+  return fields;
 }
 
 #endif  // V8_ENABLE_SANDBOX
