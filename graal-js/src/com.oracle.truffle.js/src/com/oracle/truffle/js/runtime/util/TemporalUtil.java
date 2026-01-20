@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1443,6 +1443,7 @@ public final class TemporalUtil {
         return JSTemporalDuration.createTemporalDuration(context, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, node, errorBranch);
     }
 
+    @SuppressWarnings("cast")
     @TruffleBoundary
     public static JSTemporalDurationObject nonISODateUntil(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject oneDate,
                     JSTemporalPlainDateObject twoDate, Unit largestUnit, int sign, Node node, InlinedBranchProfile errorBranch) {
