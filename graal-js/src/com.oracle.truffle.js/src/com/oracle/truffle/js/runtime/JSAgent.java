@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
@@ -145,6 +146,7 @@ public abstract class JSAgent {
 
     @TruffleBoundary
     public final void processAllPromises(boolean processWeakRefs) {
+        AbstractTruffleException topLevelRejection = null;
         try {
             interopBoundaryEnter();
             boolean checkWaiterRecords = !waitAsyncJobsQueue.isEmpty();
@@ -154,7 +156,11 @@ public abstract class JSAgent {
                 }
                 if (!promiseJobsQueue.isEmpty()) {
                     JSFunctionObject nextJob = promiseJobsQueue.pollLast();
-                    JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                    try {
+                        JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                    } catch (AbstractTruffleException ex) {
+                        topLevelRejection = ex;
+                    }
                     checkWaiterRecords = true;
                 }
             }
@@ -175,6 +181,9 @@ public abstract class JSAgent {
             if (promiseRejectionTracker != null) {
                 promiseRejectionTracker.promiseReactionJobsProcessed();
             }
+        }
+        if (topLevelRejection != null) {
+            throw topLevelRejection;
         }
     }
 
