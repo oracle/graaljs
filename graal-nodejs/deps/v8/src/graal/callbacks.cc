@@ -113,7 +113,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyPromiseHook", "(ILjava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyPromiseHook),
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
-    CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
+    CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;", &GraalExecuteResolveCallback),
     CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
     CALLBACK("executeImportModuleWithPhaseDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ILjava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleWithPhaseDynamicallyCallback),
     CALLBACK("executePrepareStackTraceCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePrepareStackTraceCallback),
@@ -771,7 +771,7 @@ void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject 
     );
 }
 
-jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_specifier, jobject java_import_attributes, jobject java_referrer) {
+jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_specifier, jobject java_import_attributes, jobject java_referrer, jboolean source_phase) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     v8::HandleScope scope(v8_isolate);
@@ -783,18 +783,32 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
     v8::String* v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
     v8::FixedArray* v8_import_attributes = reinterpret_cast<v8::FixedArray*> (graal_import_attributes);
     v8::Module* v8_referrer = reinterpret_cast<v8::Module*> (graal_referrer);
-    v8::MaybeLocal<v8::Module> v8_result = ((v8::Module::ResolveModuleCallback) callback)(
-        v8::Local<v8::Context>::New(v8_isolate, v8_context),
-        v8::Local<v8::String>::New(v8_isolate, v8_specifier),
-        v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_attributes),
-        v8::Local<v8::Module>::New(v8_isolate, v8_referrer)
-    );
+    v8::Local<v8::Context> local_context = v8::Local<v8::Context>::New(v8_isolate, v8_context);
+    v8::Local<v8::String> local_specifier = v8::Local<v8::String>::New(v8_isolate, v8_specifier);
+    v8::Local<v8::FixedArray> local_import_attributes = v8::Local<v8::FixedArray>::New(v8_isolate, v8_import_attributes);
+    v8::Local<v8::Module> local_referrer = v8::Local<v8::Module>::New(v8_isolate, v8_referrer);
+    v8::MaybeLocal<v8::Data> v8_result;
+    if (source_phase) {
+        v8_result = ((v8::Module::ResolveSourceCallback) callback)(
+            local_context,
+            local_specifier,
+            local_import_attributes,
+            local_referrer
+        );
+    } else {
+        v8_result = ((v8::Module::ResolveModuleCallback) callback)(
+            local_context,
+            local_specifier,
+            local_import_attributes,
+            local_referrer
+        );
+    }
     if (v8_result.IsEmpty()) {
         return NULL;
     } else {
-        v8::Local<v8::Module> v8_module = v8_result.ToLocalChecked();
-        GraalModule* graal_module = reinterpret_cast<GraalModule*> (*v8_module);
-        return env->NewLocalRef(graal_module->GetJavaObject());
+        v8::Local<v8::Data> local_result = v8_result.ToLocalChecked();
+        GraalHandleContent* graal_result = reinterpret_cast<GraalHandleContent*> (*local_result);
+        return env->NewLocalRef(graal_result->GetJavaObject());
     }
 }
 

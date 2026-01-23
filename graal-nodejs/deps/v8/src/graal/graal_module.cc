@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,12 +74,13 @@ v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8
     }
 }
 
-v8::Maybe<bool> GraalModule::InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveModuleCallback callback) {
+v8::Maybe<bool> GraalModule::InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveModuleCallback module_callback, v8::Module::ResolveSourceCallback source_callback) {
     GraalIsolate* graal_isolate = Isolate();
     GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
     jobject java_context = graal_context->GetJavaObject();
-    jlong java_callback = (jlong) callback;
-    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::module_instantiate, java_context, GetJavaObject(), java_callback);
+    jlong java_module_callback = (jlong) module_callback;
+    jlong java_source_callback = (jlong) source_callback;
+    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::module_instantiate, java_context, GetJavaObject(), java_module_callback, java_source_callback);
     return v8::Just(!graal_isolate->GetJNIEnv()->ExceptionCheck());
 }
 

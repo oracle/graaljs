@@ -142,7 +142,7 @@ jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAc
 
 jobject GraalExecuteImportModuleWithPhaseDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_host_defined_options, jobject java_resource_name, jobject java_specifier, jint java_phase, jobject java_import_attributes);
 
-jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_specifier, jobject java_import_attributes, jobject java_referrer);
+jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_specifier, jobject java_import_attributes, jobject java_referrer, jboolean source_phase);
 
 jboolean GraalHasCustomHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate);
 
