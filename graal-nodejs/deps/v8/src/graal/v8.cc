@@ -3441,6 +3441,20 @@ namespace v8 {
         TRACE
     }
 
+    CpuProfilingResult CpuProfiler::Start(Local<String> title, bool record_samples) {
+        TRACE
+        return {0, CpuProfilingStatus::kErrorTooManyProfilers};
+    }
+
+    CpuProfile* CpuProfiler::Stop(ProfilerId id) {
+        TRACE
+        return nullptr;
+    }
+
+    void CpuProfile::Serialize(OutputStream* stream, SerializationFormat format) const {
+        TRACE
+    }
+
     Local<String> CpuProfile::GetTitle() const {
         TRACE
         return String::NewFromUtf8Literal(Isolate::GetCurrent(), "ProfileTitle");
