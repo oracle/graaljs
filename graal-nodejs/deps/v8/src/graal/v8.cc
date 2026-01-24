@@ -3619,6 +3619,10 @@ namespace v8 {
         return std::unique_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store, data, byte_length)));
     }
 
+    std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStoreForNodeLTS(Isolate* isolate, size_t byte_length) {
+        return NewBackingStore(isolate, byte_length);
+    }
+
     std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStore(void* data, size_t byte_length, v8::BackingStore::DeleterCallback deleter, void* deleter_data) {
         GraalIsolate* graal_isolate = CurrentIsolate();
         jobject java_store;
