@@ -42,6 +42,7 @@ const {
   kEvaluated,
   kEvaluating,
   kInstantiated,
+  kErrored,
   throwIfPromiseRejected,
 } = internalBinding('module_wrap');
 const {
@@ -61,6 +62,8 @@ const onImport = tracingChannel('module.import');
 let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
   debug = fn;
 });
+
+const { isPromise } = require('internal/util/types');
 
 /**
  * @typedef {import('./hooks.js').HooksProxy} HooksProxy
@@ -246,10 +249,11 @@ class ModuleLoader {
    *
    * @param {string} source Source code of the module.
    * @param {string} url URL of the module.
+   * @param {{ isMain?: boolean }|undefined} context - context object containing module metadata.
    * @returns {object} The module wrap object.
    */
-  createModuleWrap(source, url) {
-    return compileSourceTextModule(url, source, this);
+  createModuleWrap(source, url, context = kEmptyObject) {
+    return compileSourceTextModule(url, source, this, context);
   }
 
   /**
@@ -288,7 +292,8 @@ class ModuleLoader {
    * @returns {Promise<object>} The module object.
    */
   eval(source, url, isEntryPoint = false) {
-    const wrap = this.createModuleWrap(source, url);
+    const context = isEntryPoint ? { isMain: true } : undefined;
+    const wrap = this.createModuleWrap(source, url, context);
     return this.executeModuleJob(url, wrap, isEntryPoint);
   }
 
@@ -392,6 +397,9 @@ class ModuleLoader {
         mod[kRequiredModuleSymbol] = job.module;
         const { namespace } = job.runSync(parent);
         return { wrap: job.module, namespace: namespace || job.module.getNamespace() };
+      } else if (status === kErrored) {
+        // If the module was previously imported and errored, throw the error.
+        throw job.module.getError();
       }
       // When the cached async job have already encountered a linking
       // error that gets wrapped into a rejection, but is still later
@@ -456,6 +464,10 @@ class ModuleLoader {
     const resolvedImportAttributes = resolveResult.importAttributes ?? importAttributes;
     let job = this.loadCache.get(url, resolvedImportAttributes.type);
     if (job !== undefined) {
+      // TODO(node:55782): this race may stop happening when the ESM resolution and loading become synchronous.
+      if (!job.module) {
+        assert.fail(getRaceMessage(url, parentURL));
+      }
       // This module is being evaluated, which means it's imported in a previous link
       // in a cycle.
       if (job.module.getStatus() === kEvaluating) {
@@ -521,7 +533,7 @@ class ModuleLoader {
    *                        matching translators.
    * @param {ModuleSource} source Source of the module to be translated.
    * @param {boolean} isMain Whether the module to be translated is the entry point.
-   * @returns {ModuleWrap | Promise<ModuleWrap>}
+   * @returns {ModuleWrap}
    */
   #translate(url, format, source, isMain) {
     this.validateLoadResult(url, format);
@@ -531,7 +543,9 @@ class ModuleLoader {
       throw new ERR_UNKNOWN_MODULE_FORMAT(format, url);
     }
 
-    return FunctionPrototypeCall(translator, this, url, source, isMain);
+    const result = FunctionPrototypeCall(translator, this, url, source, isMain);
+    assert(result instanceof ModuleWrap);
+    return result;
   }
 
   /**
@@ -570,15 +584,21 @@ class ModuleLoader {
 
   /**
    * Load a module and translate it into a ModuleWrap for ordinary imported ESM.
-   * This is run asynchronously.
+   * This may be run asynchronously if there are asynchronous module loader hooks registered.
    * @param {string} url URL of the module to be translated.
    * @param {object} loadContext See {@link load}
    * @param {boolean} isMain Whether the module to be translated is the entry point.
-   * @returns {Promise<ModuleWrap>}
+   * @returns {Promise<ModuleWrap>|ModuleWrap}
    */
-  async loadAndTranslate(url, loadContext, isMain) {
-    const { format, source } = await this.load(url, loadContext);
-    return this.#translate(url, format, source, isMain);
+  loadAndTranslate(url, loadContext, isMain) {
+    const maybePromise = this.load(url, loadContext);
+    const afterLoad = ({ format, source }) => {
+      return this.#translate(url, format, source, isMain);
+    };
+    if (isPromise(maybePromise)) {
+      return maybePromise.then(afterLoad);
+    }
+    return afterLoad(maybePromise);
   }
 
   /**
@@ -636,6 +656,7 @@ class ModuleLoader {
    * @param {string} parentURL Path of the parent importing the module.
    * @param {Record<string, string>} importAttributes Validations for the
    *                                                  module import.
+   * @param {boolean} [isEntryPoint] Whether this is the realm-level entry point.
    * @returns {Promise<ModuleExports>}
    */
   async import(specifier, parentURL, importAttributes, isEntryPoint = false) {
@@ -684,24 +705,30 @@ class ModuleLoader {
     if (this.#customizations) {  // Only has module.register hooks.
       return this.#customizations.resolve(specifier, parentURL, importAttributes);
     }
-    return this.#cachedDefaultResolve(specifier, parentURL, importAttributes);
+    return this.#cachedDefaultResolve(specifier, {
+      __proto__: null,
+      conditions: this.#defaultConditions,
+      parentURL,
+      importAttributes,
+    });
   }
 
   /**
    * Either return a cached resolution, or perform the default resolution which is synchronous, and
    * cache the result.
    * @param {string} specifier See {@link resolve}.
-   * @param {string} [parentURL] See {@link resolve}.
-   * @param {ImportAttributes} importAttributes See {@link resolve}.
+   * @param {{ parentURL?: string, importAttributes: ImportAttributes, conditions?: string[]}} context
    * @returns {{ format: string, url: string }}
    */
-  #cachedDefaultResolve(specifier, parentURL, importAttributes) {
+  #cachedDefaultResolve(specifier, context) {
+    const { parentURL, importAttributes } = context;
     const requestKey = this.#resolveCache.serializeKey(specifier, importAttributes);
     const cachedResult = this.#resolveCache.get(requestKey, parentURL);
     if (cachedResult != null) {
       return cachedResult;
     }
-    const result = this.defaultResolve(specifier, parentURL, importAttributes);
+    defaultResolve ??= require('internal/modules/esm/resolve').defaultResolve;
+    const result = defaultResolve(specifier, context);
     this.#resolveCache.set(requestKey, parentURL, result);
     return result;
   }
@@ -729,14 +756,15 @@ class ModuleLoader {
    * This is the default resolve step for module.registerHooks(), which incorporates asynchronous hooks
    * from module.register() which are run in a blocking fashion for it to be synchronous.
    * @param {string|URL} specifier See {@link resolveSync}.
-   * @param {{ parentURL?: string, importAttributes: ImportAttributes}} context See {@link resolveSync}.
+   * @param {{ parentURL?: string, importAttributes: ImportAttributes, conditions?: string[]}} context
+   *   See {@link resolveSync}.
    * @returns {{ format: string, url: string }}
    */
   #resolveAndMaybeBlockOnLoaderThread(specifier, context) {
     if (this.#customizations) {
       return this.#customizations.resolveSync(specifier, context.parentURL, context.importAttributes);
     }
-    return this.#cachedDefaultResolve(specifier, context.parentURL, context.importAttributes);
+    return this.#cachedDefaultResolve(specifier, context);
   }
 
   /**
@@ -759,25 +787,12 @@ class ModuleLoader {
       return resolveWithHooks(specifier, parentURL, importAttributes, this.#defaultConditions,
                               this.#resolveAndMaybeBlockOnLoaderThread.bind(this));
     }
-    return this.#resolveAndMaybeBlockOnLoaderThread(specifier, { parentURL, importAttributes });
-  }
-
-  /**
-   * Our `defaultResolve` is synchronous and can be used in both
-   * `resolve` and `resolveSync`. This function is here just to avoid
-   * repeating the same code block twice in those functions.
-   */
-  defaultResolve(originalSpecifier, parentURL, importAttributes) {
-    defaultResolve ??= require('internal/modules/esm/resolve').defaultResolve;
-
-    const context = {
+    return this.#resolveAndMaybeBlockOnLoaderThread(specifier, {
       __proto__: null,
       conditions: this.#defaultConditions,
-      importAttributes,
       parentURL,
-    };
-
-    return defaultResolve(originalSpecifier, context);
+      importAttributes,
+    });
   }
 
   /**
@@ -785,9 +800,9 @@ class ModuleLoader {
    * if any.
    * @param {string} url The URL of the module to be loaded.
    * @param {object} context Metadata about the module
-   * @returns {Promise<{ format: ModuleFormat, source: ModuleSource }>}
+   * @returns {Promise<{ format: ModuleFormat, source: ModuleSource }> | { format: ModuleFormat, source: ModuleSource }}
    */
-  async load(url, context) {
+  load(url, context) {
     if (loadHooks.length) {
       // Has module.registerHooks() hooks, use the synchronous variant that can handle both hooks.
       return this.#loadSync(url, context);

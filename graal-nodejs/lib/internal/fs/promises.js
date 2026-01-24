@@ -16,7 +16,6 @@ const {
   SafePromisePrototypeFinally,
   Symbol,
   Uint8Array,
-  uncurryThis,
 } = primordials;
 
 const { fs: constants } = internalBinding('constants');
@@ -30,8 +29,6 @@ const {
 
 const binding = internalBinding('fs');
 const { Buffer } = require('buffer');
-const { isBuffer: BufferIsBuffer } = Buffer;
-const BufferToString = uncurryThis(Buffer.prototype.toString);
 
 const {
   AbortError,
@@ -87,8 +84,6 @@ const {
   kValidateObjectAllowNullable,
 } = require('internal/validators');
 const pathModule = require('path');
-const { isAbsolute } = pathModule;
-const { toPathIfFileURL } = require('internal/url');
 const {
   getLazy,
   kEmptyObject,
@@ -111,6 +106,7 @@ const kHandle = Symbol('kHandle');
 const kFd = Symbol('kFd');
 const kRefs = Symbol('kRefs');
 const kClosePromise = Symbol('kClosePromise');
+const kCloseReason = Symbol('kCloseReason');
 const kCloseResolve = Symbol('kCloseResolve');
 const kCloseReject = Symbol('kCloseReject');
 const kRef = Symbol('kRef');
@@ -389,6 +385,7 @@ class FileHandle extends EventEmitter {
 
     const handle = this[kHandle];
     this[kFd] = -1;
+    this[kCloseReason] = 'The FileHandle has been transferred';
     this[kHandle] = null;
     this[kRefs] = 0;
 
@@ -455,7 +452,7 @@ async function fsCall(fn, handle, ...args) {
 
   if (handle.fd === -1) {
     // eslint-disable-next-line no-restricted-syntax
-    const err = new Error('file closed');
+    const err = new Error(handle[kCloseReason] ?? 'file closed');
     err.code = 'EBADF';
     err.syscall = fn.name;
     throw err;
@@ -915,7 +912,7 @@ async function readdirRecursive(originalPath, options) {
       const { 0: path, 1: readdir } = ArrayPrototypePop(queue);
       for (const ent of readdir) {
         const direntPath = pathModule.join(path, ent);
-        const stat = binding.internalModuleStat(binding, direntPath);
+        const stat = binding.internalModuleStat(direntPath);
         ArrayPrototypePush(
           result,
           pathModule.relative(originalPath, direntPath),
@@ -989,16 +986,11 @@ async function symlink(target, path, type_) {
     }
   }
 
-  if (permission.isEnabled()) {
-    // The permission model's security guarantees fall apart in the presence of
-    // relative symbolic links. Thus, we have to prevent their creation.
-    if (BufferIsBuffer(target)) {
-      if (!isAbsolute(BufferToString(target))) {
-        throw new ERR_ACCESS_DENIED('relative symbolic link target');
-      }
-    } else if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
-      throw new ERR_ACCESS_DENIED('relative symbolic link target');
-    }
+  // Due to the nature of Node.js runtime, symlinks has different edge cases that can bypass
+  // the permission model security guarantees. Thus, this API is disabled unless fs.read
+  // and fs.write permission has been given.
+  if (permission.isEnabled() && !permission.has('fs')) {
+    throw new ERR_ACCESS_DENIED('fs.symlink API requires full fs.read and fs.write permissions.');
   }
 
   target = getValidatedPath(target, 'target');

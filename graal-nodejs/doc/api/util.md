@@ -185,7 +185,7 @@ let log = debuglog('internals', (debug) => {
 added: v14.9.0
 -->
 
-* {boolean}
+* Type: {boolean}
 
 The `util.debuglog().enabled` getter is used to create a test that can be used
 in conditionals based on the existence of the `NODE_DEBUG` environment variable.
@@ -338,8 +338,8 @@ added: v22.15.0
 * `expected` {Array|string} The second value to compare
 
 * Returns: {Array} An array of difference entries. Each entry is an array with two elements:
-  * Index 0: {number} Operation code: `-1` for delete, `0` for no-op/unchanged, `1` for insert
-  * Index 1: {string} The value associated with the operation
+  * `0` {number} Operation code: `-1` for delete, `0` for no-op/unchanged, `1` for insert
+  * `1` {string} The value associated with the operation
 
 * Algorithm complexity: O(N\*D), where:
 
@@ -728,6 +728,16 @@ fs.access('file/that/does/not/exist', (err) => {
   console.error(message);  // No such file or directory
 });
 ```
+
+## `util.setTraceSigInt(enable)`
+
+<!-- YAML
+added: v22.19.0
+-->
+
+* `enable` {boolean}
+
+Enable or disable printing a stack trace on `SIGINT`. The API is only available on the main thread.
 
 ## `util.inherits(constructor, superConstructor)`
 
@@ -1295,19 +1305,19 @@ ignored, if not supported.
 * `reset` - Resets all (color) modifiers to their defaults
 * **bold** - Make text bold
 * _italic_ - Make text italic
-* <span style="border-bottom: 1px;">underline</span> - Make text underlined
+* <span style="border-bottom: 1px solid;">underline</span> - Make text underlined
 * ~~strikethrough~~ - Puts a horizontal line through the center of the text
   (Alias: `strikeThrough`, `crossedout`, `crossedOut`)
 * `hidden` - Prints the text, but makes it invisible (Alias: conceal)
 * <span style="opacity: 0.5;">dim</span> - Decreased color intensity (Alias:
   `faint`)
-* <span style="border-top: 1px">overlined</span> - Make text overlined
+* <span style="border-top: 1px solid;">overlined</span> - Make text overlined
 * blink - Hides and shows the text in an interval
-* <span style="filter: invert(100%)">inverse</span> - Swap foreground and
+* <span style="filter: invert(100%);">inverse</span> - Swap foreground and
   background colors (Alias: `swapcolors`, `swapColors`)
 * <span style="border-bottom: 1px double;">doubleunderline</span> - Make text
   double underlined (Alias: `doubleUnderline`)
-* <span style="border: 1px">framed</span> - Draw a frame around the text
+* <span style="border: 1px solid;">framed</span> - Draw a frame around the text
 
 #### Foreground colors
 
@@ -1466,7 +1476,7 @@ changes:
     description: This is now defined as a shared symbol.
 -->
 
-* {symbol} that can be used to declare custom inspect functions.
+* Type: {symbol} that can be used to declare custom inspect functions.
 
 In addition to being accessible through `util.inspect.custom`, this
 symbol is [registered globally][global symbol registry] and can be
@@ -1569,7 +1579,7 @@ A MIME string is a structured string containing multiple meaningful
 components. When parsed, a `MIMEType` object is returned containing
 properties for each of these components.
 
-### Constructor: `new MIMEType(input)`
+### `new MIMEType(input)`
 
 * `input` {string} The input MIME to parse
 
@@ -1607,7 +1617,7 @@ console.log(String(myMIME));
 
 ### `mime.type`
 
-* {string}
+* Type: {string}
 
 Gets and sets the type portion of the MIME.
 
@@ -1639,7 +1649,7 @@ console.log(String(myMIME));
 
 ### `mime.subtype`
 
-* {string}
+* Type: {string}
 
 Gets and sets the subtype portion of the MIME.
 
@@ -1671,7 +1681,7 @@ console.log(String(myMIME));
 
 ### `mime.essence`
 
-* {string}
+* Type: {string}
 
 Gets the essence of the MIME. This property is read only.
 Use `mime.type` or `mime.subtype` to alter the MIME.
@@ -1704,7 +1714,7 @@ console.log(String(myMIME));
 
 ### `mime.params`
 
-* {MIMEParams}
+* Type: {MIMEParams}
 
 Gets the [`MIMEParams`][] object representing the
 parameters of the MIME. This property is read-only. See
@@ -1761,7 +1771,7 @@ added:
 The `MIMEParams` API provides read and write access to the parameters of a
 `MIMEType`.
 
-### Constructor: `new MIMEParams()`
+### `new MIMEParams()`
 
 Creates a new `MIMEParams` object by with empty parameters
 
@@ -1941,10 +1951,12 @@ changes:
       times. If `true`, all values will be collected in an array. If
       `false`, values for the option are last-wins. **Default:** `false`.
     * `short` {string} A single character alias for the option.
-    * `default` {string | boolean | string\[] | boolean\[]} The default value to
-      be used if (and only if) the option does not appear in the arguments to be
-      parsed. It must be of the same type as the `type` property. When `multiple`
-      is `true`, it must be an array.
+    * `default` {string | boolean | string\[] | boolean\[]} The value to assign to
+      the option if it does not appear in the arguments to be parsed. The value
+      must match the type specified by the `type` property. If `multiple` is
+      `true`, it must be an array. No default value is applied when the option
+      does appear in the arguments to be parsed, even if the provided value
+      is falsy.
   * `strict` {boolean} Should an error be thrown when unknown arguments
     are encountered, or when arguments are passed that do not match the
     `type` configured in `options`.
@@ -2125,9 +2137,11 @@ $ node negate.js --no-logfile --logfile=test.log --color --no-color
 added:
   - v21.7.0
   - v20.12.0
+changes:
+  - version: v22.21.0
+    pr-url: https://github.com/nodejs/node/pull/59925
+    description: This API is no longer experimental.
 -->
-
-> Stability: 1.1 - Active development
 
 * `content` {string}
 
@@ -2351,7 +2365,7 @@ changes:
     description: This is now defined as a shared symbol.
 -->
 
-* {symbol} that can be used to declare custom promisified variants of functions,
+* Type: {symbol} that can be used to declare custom promisified variants of functions,
   see [Custom promisified functions][].
 
 In addition to being accessible through `util.promisify.custom`, this
@@ -2594,20 +2608,20 @@ If `textDecoder.fatal` is `true`, decoding errors that occur will result in a
 
 ### `textDecoder.encoding`
 
-* {string}
+* Type: {string}
 
 The encoding supported by the `TextDecoder` instance.
 
 ### `textDecoder.fatal`
 
-* {boolean}
+* Type: {boolean}
 
 The value will be `true` if decoding errors result in a `TypeError` being
 thrown.
 
 ### `textDecoder.ignoreBOM`
 
-* {boolean}
+* Type: {boolean}
 
 The value will be `true` if the decoding result will include the byte order
 mark.
@@ -2664,7 +2678,7 @@ const { read, written } = encoder.encodeInto(src, dest);
 
 ### `textEncoder.encoding`
 
-* {string}
+* Type: {string}
 
 The encoding supported by the `TextEncoder` instance. Always set to `'utf-8'`.
 

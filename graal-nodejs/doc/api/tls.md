@@ -193,7 +193,7 @@ the selected cipher's digest).
 
 It will be called first on the client:
 
-* hint: {string} optional message sent from the server to help the client
+* `hint` {string} optional message sent from the server to help the client
   decide which identity to use during negotiation.
   Always `null` if TLS 1.3 is used.
 * Returns: {Object} in the form
@@ -201,8 +201,8 @@ It will be called first on the client:
 
 Then on the server:
 
-* socket: {tls.TLSSocket} the server socket instance, equivalent to `this`.
-* identity: {string} identity parameter sent from the client.
+* `socket` {tls.TLSSocket} the server socket instance, equivalent to `this`.
+* `identity` {string} identity parameter sent from the client.
 * Returns: {Buffer|TypedArray|DataView} the PSK (or `null`).
 
 A return value of `null` stops the negotiation process and sends an
@@ -1070,7 +1070,7 @@ property is set only when `tlsSocket.authorized === false`.
 added: v0.11.4
 -->
 
-* {boolean}
+* Type: {boolean}
 
 This property is `true` if the peer certificate was signed by one of the CAs
 specified when creating the `tls.TLSSocket` instance, otherwise `false`.
@@ -1421,7 +1421,7 @@ See the OpenSSL [`SSL_get_version`][] documentation for more information.
 added: v0.11.4
 -->
 
-* {Buffer}
+* Type: {Buffer}
 
 Returns the TLS session data or `undefined` if no session was
 negotiated. On the client, the data can be provided to the `session` option of
@@ -1452,7 +1452,7 @@ for more information.
 added: v0.11.4
 -->
 
-* {Buffer}
+* Type: {Buffer}
 
 For a client, returns the TLS session ticket if one is available, or
 `undefined`. For a server, always returns `undefined`.
@@ -1490,7 +1490,7 @@ See [Session Resumption][] for more information.
 added: v0.11.4
 -->
 
-* {string}
+* Type: {string}
 
 Returns the string representation of the local IP address.
 
@@ -1500,7 +1500,7 @@ Returns the string representation of the local IP address.
 added: v0.11.4
 -->
 
-* {integer}
+* Type: {integer}
 
 Returns the numeric representation of the local port.
 
@@ -1510,7 +1510,7 @@ Returns the numeric representation of the local port.
 added: v0.11.4
 -->
 
-* {string}
+* Type: {string}
 
 Returns the string representation of the remote IP address. For example,
 `'74.125.127.100'` or `'2001:4860:a005::68'`.
@@ -1521,7 +1521,7 @@ Returns the string representation of the remote IP address. For example,
 added: v0.11.4
 -->
 
-* {string}
+* Type: {string}
 
 Returns the string representation of the remote IP family. `'IPv4'` or `'IPv6'`.
 
@@ -1531,7 +1531,7 @@ Returns the string representation of the remote IP family. `'IPv4'` or `'IPv6'`.
 added: v0.11.4
 -->
 
-* {integer}
+* Type: {integer}
 
 Returns the numeric representation of the remote port. For example, `443`.
 
@@ -1729,7 +1729,7 @@ changes:
     verification fails; `err.code` contains the OpenSSL error code. **Default:**
     `true`.
   * `pskCallback` {Function} For TLS-PSK negotiation, see [Pre-shared keys][].
-  * `ALPNProtocols`: {string\[]|Buffer\[]|TypedArray\[]|DataView\[]|Buffer|
+  * `ALPNProtocols` {string\[]|Buffer\[]|TypedArray\[]|DataView\[]|Buffer|
     TypedArray|DataView}
     An array of strings, `Buffer`s, `TypedArray`s, or `DataView`s, or a
     single `Buffer`, `TypedArray`, or `DataView` containing the supported ALPN
@@ -1738,7 +1738,7 @@ changes:
     next protocol name. Passing an array is usually much simpler, e.g.
     `['http/1.1', 'http/1.0']`. Protocols earlier in the list have higher
     preference than those later.
-  * `servername`: {string} Server name for the SNI (Server Name Indication) TLS
+  * `servername` {string} Server name for the SNI (Server Name Indication) TLS
     extension. It is the name of the host being connected to, and must be a host
     name, and not an IP address. It can be used by a multi-homed server to
     choose the correct certificate to present to the client, see the
@@ -1754,7 +1754,7 @@ changes:
     TLS connection. When a server offers a DH parameter with a size less
     than `minDHSize`, the TLS connection is destroyed and an error is thrown.
     **Default:** `1024`.
-  * `highWaterMark`: {number} Consistent with the readable stream `highWaterMark` parameter.
+  * `highWaterMark` {number} Consistent with the readable stream `highWaterMark` parameter.
     **Default:** `16 * 1024`.
   * `secureContext`: TLS context object created with
     [`tls.createSecureContext()`][]. If a `secureContext` is _not_ provided, one
@@ -2071,7 +2071,7 @@ changes:
     **Default:** none, see `minVersion`.
   * `sessionIdContext` {string} Opaque identifier used by servers to ensure
     session state is not shared between applications. Unused by clients.
-  * `ticketKeys`: {Buffer} 48-bytes of cryptographically strong pseudorandom
+  * `ticketKeys` {Buffer} 48-bytes of cryptographically strong pseudorandom
     data. See [Session Resumption][] for more information.
   * `sessionTimeout` {number} The number of seconds after which a TLS session
     created by the server will no longer be resumable. See
@@ -2202,7 +2202,7 @@ changes:
 -->
 
 * `options` {Object}
-  * `ALPNProtocols`: {string\[]|Buffer\[]|TypedArray\[]|DataView\[]|Buffer|
+  * `ALPNProtocols` {string\[]|Buffer\[]|TypedArray\[]|DataView\[]|Buffer|
     TypedArray|DataView}
     An array of strings, `Buffer`s, `TypedArray`s, or `DataView`s, or a single
     `Buffer`, `TypedArray`, or `DataView` containing the supported ALPN
@@ -2210,7 +2210,7 @@ changes:
     e.g. `0x05hello0x05world`, where the first byte is the length of the next
     protocol name. Passing an array is usually much simpler, e.g.
     `['hello', 'world']`. (Protocols should be ordered by their priority.)
-  * `ALPNCallback`: {Function} If set, this will be called when a
+  * `ALPNCallback` {Function} If set, this will be called when a
     client opens a connection using the ALPN extension. One argument will
     be passed to the callback: an object containing `servername` and
     `protocols` fields, respectively containing the server name from
@@ -2249,7 +2249,7 @@ changes:
     If `callback` is called with a falsy `ctx` argument, the default secure
     context of the server will be used. If `SNICallback` wasn't provided the
     default callback with high-level API will be used (see below).
-  * `ticketKeys`: {Buffer} 48-bytes of cryptographically strong pseudorandom
+  * `ticketKeys` {Buffer} 48-bytes of cryptographically strong pseudorandom
     data. See [Session Resumption][] for more information.
   * `pskCallback` {Function} For TLS-PSK negotiation, see [Pre-shared keys][].
   * `pskIdentityHint` {string} optional hint to send to a client to help
@@ -2342,6 +2342,54 @@ openssl pkcs12 -certpbe AES-256-CBC -export -out client-cert.pem \
 The server can be tested by connecting to it using the example client from
 [`tls.connect()`][].
 
+## `tls.setDefaultCACertificates(certs)`
+
+<!-- YAML
+added: v22.19.0
+-->
+
+* `certs` {string\[]|ArrayBufferView\[]} An array of CA certificates in PEM format.
+
+Sets the default CA certificates used by Node.js TLS clients. If the provided
+certificates are parsed successfully, they will become the default CA
+certificate list returned by [`tls.getCACertificates()`][] and used
+by subsequent TLS connections that don't specify their own CA certificates.
+The certificates will be deduplicated before being set as the default.
+
+This function only affects the current Node.js thread. Previous
+sessions cached by the HTTPS agent won't be affected by this change, so
+this method should be called before any unwanted cachable TLS connections are
+made.
+
+To use system CA certificates as the default:
+
+```cjs
+const tls = require('node:tls');
+tls.setDefaultCACertificates(tls.getCACertificates('system'));
+```
+
+```mjs
+import tls from 'node:tls';
+tls.setDefaultCACertificates(tls.getCACertificates('system'));
+```
+
+This function completely replaces the default CA certificate list. To add additional
+certificates to the existing defaults, get the current certificates and append to them:
+
+```cjs
+const tls = require('node:tls');
+const currentCerts = tls.getCACertificates('default');
+const additionalCerts = ['-----BEGIN CERTIFICATE-----\n...'];
+tls.setDefaultCACertificates([...currentCerts, ...additionalCerts]);
+```
+
+```mjs
+import tls from 'node:tls';
+const currentCerts = tls.getCACertificates('default');
+const additionalCerts = ['-----BEGIN CERTIFICATE-----\n...'];
+tls.setDefaultCACertificates([...currentCerts, ...additionalCerts]);
+```
+
 ## `tls.getCACertificates([type])`
 
 <!-- YAML
@@ -2399,7 +2447,7 @@ console.log(tls.getCiphers()); // ['aes128-gcm-sha256', 'aes128-sha', ...]
 added: v12.3.0
 -->
 
-* {string\[]}
+* Type: {string\[]}
 
 An immutable array of strings representing the root certificates (in PEM format)
 from the bundled Mozilla CA store as supplied by the current Node.js version.
@@ -2432,7 +2480,7 @@ information.
 added: v11.4.0
 -->
 
-* {string} The default value of the `maxVersion` option of
+* Type: {string} The default value of the `maxVersion` option of
   [`tls.createSecureContext()`][]. It can be assigned any of the supported TLS
   protocol versions, `'TLSv1.3'`, `'TLSv1.2'`, `'TLSv1.1'`, or `'TLSv1'`.
   **Default:** `'TLSv1.3'`, unless changed using CLI options. Using
@@ -2446,7 +2494,7 @@ added: v11.4.0
 added: v11.4.0
 -->
 
-* {string} The default value of the `minVersion` option of
+* Type: {string} The default value of the `minVersion` option of
   [`tls.createSecureContext()`][]. It can be assigned any of the supported TLS
   protocol versions, `'TLSv1.3'`, `'TLSv1.2'`, `'TLSv1.1'`, or `'TLSv1'`.
   Versions before TLSv1.2 may require downgrading the [OpenSSL Security Level][].
@@ -2459,12 +2507,10 @@ added: v11.4.0
 ## `tls.DEFAULT_CIPHERS`
 
 <!-- YAML
-added:
- - v19.8.0
- - v18.16.0
+added: v0.11.3
 -->
 
-* {string} The default value of the `ciphers` option of
+* Type: {string} The default value of the `ciphers` option of
   [`tls.createSecureContext()`][]. It can be assigned any of the supported
   OpenSSL ciphers.  Defaults to the content of
   `crypto.constants.defaultCoreCipherList`, unless changed using CLI options

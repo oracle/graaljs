@@ -635,7 +635,7 @@ class Test extends AsyncResource {
     this.expectedAssertions = plan;
     this.cancelled = false;
     this.skipped = skip !== undefined && skip !== false;
-    this.isTodo = todo !== undefined && todo !== false;
+    this.isTodo = (todo !== undefined && todo !== false) || this.parent?.isTodo;
     this.startTime = null;
     this.endTime = null;
     this.passed = false;
@@ -1459,6 +1459,8 @@ class Suite extends Test {
 }
 
 function getFullName(test) {
+  if (test === test.root) return test.name;
+
   let fullName = test.name;
 
   for (let t = test.parent; t !== t.root; t = t.parent) {

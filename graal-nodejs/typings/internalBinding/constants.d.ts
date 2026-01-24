@@ -285,6 +285,11 @@ export interface ConstantsBinding {
     UNZIP: 7;
     BROTLI_DECODE: 8;
     BROTLI_ENCODE: 9;
+    ZSTD_COMPRESS: 10;
+    ZSTD_DECOMPRESS: 11;
+    ZSTD_e_continue: 0;
+    ZSTD_e_flush: 1;
+    ZSTD_e_end: 2;
     Z_MIN_WINDOWBITS: 8;
     Z_MAX_WINDOWBITS: 15;
     Z_DEFAULT_WINDOWBITS: 15;

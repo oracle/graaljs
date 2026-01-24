@@ -27,6 +27,7 @@ const EXPECTED_EVENTS = {
           url: 'https://nodejs.org/en',
           method: 'GET',
           headers: {},
+          hasPostData: false,
         },
         timestamp: 1000,
         wallTime: 1000,
@@ -63,7 +64,12 @@ const EXPECTED_EVENTS = {
     },
     {
       name: 'dataReceived',
-      // Network.dataReceived is buffered until Network.streamResourceContent is invoked.
+      // Network.dataReceived is buffered until Network.streamResourceContent/Network.getResponseBody is invoked.
+      skip: true,
+    },
+    {
+      name: 'dataSent',
+      // Network.dataSent is buffered until Network.getRequestPostData is invoked.
       skip: true,
     },
     {

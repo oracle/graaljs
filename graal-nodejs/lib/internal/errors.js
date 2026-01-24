@@ -1146,6 +1146,7 @@ E('ERR_CHILD_PROCESS_STDIO_MAXBUFFER', '%s maxBuffer length exceeded',
   RangeError);
 E('ERR_CONSOLE_WRITABLE_STREAM',
   'Console expects a writable stream instance for %s', TypeError);
+E('ERR_CONSTRUCT_CALL_REQUIRED', 'Class constructor %s cannot be invoked without `new`', TypeError);
 E('ERR_CONTEXT_NOT_INITIALIZED', 'context used is not initialized', Error);
 E('ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED',
   'Custom engines not supported by this OpenSSL', Error);
@@ -1223,6 +1224,7 @@ E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than 2 GiB', RangeError);
 E('ERR_FS_INVALID_SYMLINK_TYPE',
   'Symlink type must be one of "dir", "file", or "junction". Received "%s"',
   Error); // Switch to TypeError. The current implementation does not seem right
+E('ERR_FS_WATCH_QUEUE_OVERFLOW', 'fs.watch() queued more than %d events', Error);
 E('ERR_HTTP2_ALTSVC_INVALID_ORIGIN',
   'HTTP/2 ALTSVC frames require a valid origin', TypeError);
 E('ERR_HTTP2_ALTSVC_LENGTH',
@@ -1474,7 +1476,10 @@ E('ERR_INVALID_FD',
 E('ERR_INVALID_FD_TYPE', 'Unsupported fd type: %s', TypeError);
 E('ERR_INVALID_FILE_URL_HOST',
   'File URL host must be "localhost" or empty on %s', TypeError);
-E('ERR_INVALID_FILE_URL_PATH', 'File URL path %s', TypeError);
+E('ERR_INVALID_FILE_URL_PATH', function(reason, input) {
+  this.input = input;
+  return `File URL path ${reason}`;
+}, TypeError);
 E('ERR_INVALID_HANDLE_TYPE', 'This handle type cannot be sent', TypeError);
 E('ERR_INVALID_HTTP_TOKEN', '%s must be a valid HTTP token ["%s"]', TypeError, HideStackFramesError);
 E('ERR_INVALID_IP_ADDRESS', 'Invalid IP address: %s', TypeError);
@@ -1531,7 +1536,7 @@ E('ERR_INVALID_SYNC_FORK_INPUT',
   'Asynchronous forks do not support ' +
     'Buffer, TypedArray, DataView or string input: %s',
   TypeError);
-E('ERR_INVALID_THIS', 'Value of "this" must be of type %s', TypeError);
+E('ERR_INVALID_THIS', 'Value of "this" must be of type %s', TypeError, HideStackFramesError);
 E('ERR_INVALID_TUPLE', '%s must be an iterable %s tuple', TypeError);
 E('ERR_INVALID_TYPESCRIPT_SYNTAX', '%s', SyntaxError);
 E('ERR_INVALID_URI', 'URI malformed', URIError);
@@ -1587,6 +1592,7 @@ E('ERR_MISSING_ARGS',
     return `${msg} must be specified`;
   }, TypeError);
 E('ERR_MISSING_OPTION', '%s is required', TypeError);
+E('ERR_MODULE_LINK_MISMATCH', '%s', TypeError);
 E('ERR_MODULE_NOT_FOUND', function(path, base, exactUrl) {
   if (exactUrl) {
     lazyInternalUtil().setOwnProperty(this, 'url', `${exactUrl}`);
@@ -1659,6 +1665,8 @@ E('ERR_PARSE_ARGS_UNKNOWN_OPTION', (option, allowPositionals) => {
 E('ERR_PERFORMANCE_INVALID_TIMESTAMP',
   '%d is not a valid timestamp', TypeError);
 E('ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS', '%s', TypeError);
+E('ERR_PROXY_INVALID_CONFIG', '%s', Error);
+E('ERR_PROXY_TUNNEL', '%s', Error);
 E('ERR_QUIC_APPLICATION_ERROR', 'A QUIC application error occurred. %d [%s]', Error);
 E('ERR_QUIC_CONNECTION_FAILED', 'QUIC connection failed', Error);
 E('ERR_QUIC_ENDPOINT_CLOSED', 'QUIC endpoint closed: %s (%d)', Error);

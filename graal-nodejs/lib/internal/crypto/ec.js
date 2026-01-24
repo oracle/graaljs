@@ -96,11 +96,14 @@ async function ecGenerateKey(algorithm, extractable, keyUsages) {
       // Fall through
   }
 
-  const keypair = await generateKeyPair('ec', { namedCurve }).catch((err) => {
+  let keyPair;
+  try {
+    keyPair = await generateKeyPair('ec', { namedCurve });
+  } catch (err) {
     throw lazyDOMException(
       'The operation failed for an operation-specific reason',
       { name: 'OperationError', cause: err });
-  });
+  }
 
   let publicUsages;
   let privateUsages;
@@ -119,14 +122,14 @@ async function ecGenerateKey(algorithm, extractable, keyUsages) {
 
   const publicKey =
     new InternalCryptoKey(
-      keypair.publicKey,
+      keyPair.publicKey,
       keyAlgorithm,
       publicUsages,
       true);
 
   const privateKey =
     new InternalCryptoKey(
-      keypair.privateKey,
+      keyPair.privateKey,
       keyAlgorithm,
       privateUsages,
       extractable);
@@ -250,6 +253,8 @@ function ecImportKey(
       keyObject = createECPublicKeyRaw(namedCurve, keyData);
       break;
     }
+    default:
+      return undefined;
   }
 
   switch (algorithm.name) {
@@ -278,7 +283,7 @@ function ecImportKey(
     extractable);
 }
 
-function ecdsaSignVerify(key, data, { name, hash }, signature) {
+async function ecdsaSignVerify(key, data, { name, hash }, signature) {
   const mode = signature === undefined ? kSignJobModeSign : kSignJobModeVerify;
   const type = mode === kSignJobModeSign ? 'private' : 'public';
 
@@ -287,7 +292,7 @@ function ecdsaSignVerify(key, data, { name, hash }, signature) {
 
   const hashname = normalizeHashName(hash.name);
 
-  return jobPromise(() => new SignJob(
+  return await jobPromise(() => new SignJob(
     kCryptoJobAsync,
     mode,
     key[kKeyObject][kHandle],

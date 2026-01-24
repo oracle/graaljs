@@ -26,6 +26,7 @@ const {
   ModuleWrap,
   kErrored,
   kEvaluated,
+  kEvaluating,
   kEvaluationPhase,
   kInstantiated,
   kUninstantiated,
@@ -36,6 +37,7 @@ const {
   },
 } = internalBinding('util');
 const { decorateErrorStack, kEmptyObject } = require('internal/util');
+const { isPromise } = require('internal/util/types');
 const {
   getSourceMapsSupport,
 } = require('internal/source_map/source_map_cache');
@@ -72,9 +74,16 @@ const isCommonJSGlobalLikeNotDefinedError = (errorMessage) =>
  * @param {string} url
  * @returns {void}
  */
-const explainCommonJSGlobalLikeNotDefinedError = (e, url) => {
+const explainCommonJSGlobalLikeNotDefinedError = (e, url, hasTopLevelAwait) => {
   if (e?.name === 'ReferenceError' &&
       isCommonJSGlobalLikeNotDefinedError(e.message)) {
+
+    if (hasTopLevelAwait) {
+      e.message = `Cannot determine intended module format because both require() and top-level await are present. If the code is intended to be CommonJS, wrap await in an async function. If the code is intended to be an ES module, replace require() with import.`;
+      e.code = 'ERR_AMBIGUOUS_MODULE_SYNTAX';
+      return;
+    }
+
     e.message += ' in ES module scope';
 
     if (StringPrototypeStartsWith(e.message, 'require ')) {
@@ -127,12 +136,11 @@ class ModuleJob extends ModuleJobBase {
     this.#loader = loader;
 
     // Expose the promise to the ModuleWrap directly for linking below.
-    if (isForRequireInImportedCJS) {
-      this.module = moduleOrModulePromise;
-      assert(this.module instanceof ModuleWrap);
-      this.modulePromise = PromiseResolve(this.module);
-    } else {
+    if (isPromise(moduleOrModulePromise)) {
       this.modulePromise = moduleOrModulePromise;
+    } else {
+      this.module = moduleOrModulePromise;
+      this.modulePromise = PromiseResolve(moduleOrModulePromise);
     }
 
     // Promise for the list of all dependencyJobs.
@@ -164,8 +172,7 @@ class ModuleJob extends ModuleJobBase {
     const dependencyJobs = Array(moduleRequests.length);
     ObjectSetPrototypeOf(dependencyJobs, null);
 
-    // Specifiers should be aligned with the moduleRequests array in order.
-    const specifiers = Array(moduleRequests.length);
+    // Modules should be aligned with the moduleRequests array in order.
     const modulePromises = Array(moduleRequests.length);
     // Iterate with index to avoid calling into userspace with `Symbol.iterator`.
     for (let idx = 0; idx < moduleRequests.length; idx++) {
@@ -181,11 +188,10 @@ class ModuleJob extends ModuleJobBase {
         return job.modulePromise;
       });
       modulePromises[idx] = modulePromise;
-      specifiers[idx] = specifier;
     }
 
     const modules = await SafePromiseAllReturnArrayLike(modulePromises);
-    this.module.link(specifiers, modules);
+    this.module.link(modules);
 
     return dependencyJobs;
   }
@@ -289,7 +295,7 @@ class ModuleJob extends ModuleJobBase {
     assert(this.module instanceof ModuleWrap);
     let status = this.module.getStatus();
 
-    debug('ModuleJob.runSync', this.module);
+    debug('ModuleJob.runSync()', status, this.module);
     // FIXME(joyeecheung): this cannot fully handle < kInstantiated. Make the linking
     // fully synchronous instead.
     if (status === kUninstantiated) {
@@ -310,14 +316,22 @@ class ModuleJob extends ModuleJobBase {
         return { __proto__: null, module: this.module, namespace };
       }
       throw this.module.getError();
-
-    } else if (status === kEvaluated) {
+    } else if (status === kEvaluating || status === kEvaluated) {
+      // kEvaluating can show up when this is being used to deal with CJS <-> CJS cycles.
+      // Allow it for now, since we only need to ban ESM <-> CJS cycles which would be
+      // detected earlier during the linking phase, though the CJS handling in the ESM
+      // loader won't be able to emit warnings on pending circular exports like what
+      // the CJS loader does.
+      // TODO(joyeecheung): remove the re-invented require() in the ESM loader and
+      // always handle CJS using the CJS loader to eliminate the quirks.
       return { __proto__: null, module: this.module, namespace: this.module.getNamespaceSync() };
     }
     assert.fail(`Unexpected module status ${status}.`);
   }
 
   async run(isEntryPoint = false) {
+    debug('ModuleJob.run()', this.module);
+    assert(this.phase === kEvaluationPhase);
     await this.instantiate();
     if (isEntryPoint) {
       globalThis[entry_point_module_private_symbol] = this.module;
@@ -328,7 +342,7 @@ class ModuleJob extends ModuleJobBase {
     try {
       await this.module.evaluate(timeout, breakOnSigint);
     } catch (e) {
-      explainCommonJSGlobalLikeNotDefinedError(e, this.module.url);
+      explainCommonJSGlobalLikeNotDefinedError(e, this.module.url, this.module.hasTopLevelAwait());
       throw e;
     }
     return { __proto__: null, module: this.module };
@@ -370,18 +384,16 @@ class ModuleJobSync extends ModuleJobBase {
 
     try {
       const moduleRequests = this.module.getModuleRequests();
-      // Specifiers should be aligned with the moduleRequests array in order.
-      const specifiers = Array(moduleRequests.length);
+      // Modules should be aligned with the moduleRequests array in order.
       const modules = Array(moduleRequests.length);
       const jobs = Array(moduleRequests.length);
       for (let i = 0; i < moduleRequests.length; ++i) {
         const { specifier, attributes } = moduleRequests[i];
-        const job = this.#loader.getModuleJobForRequire(specifier, url, attributes);
-        specifiers[i] = specifier;
+        const job = this.#loader.getModuleJobForRequire(specifier, this.url, attributes);
         modules[i] = job.module;
         jobs[i] = job;
       }
-      this.module.link(specifiers, modules);
+      this.module.link(modules);
       this.linked = jobs;
     } finally {
       // Restore it - if it succeeds, we'll reset in the caller; Otherwise it's
@@ -397,7 +409,11 @@ class ModuleJobSync extends ModuleJobBase {
   async run() {
     // This path is hit by a require'd module that is imported again.
     const status = this.module.getStatus();
-    if (status > kInstantiated) {
+    debug('ModuleJobSync.run()', status, this.module);
+    // If the module was previously required and errored, reject from import() again.
+    if (status === kErrored) {
+      throw this.module.getError();
+    } else if (status > kInstantiated) {
       if (this.evaluationPromise) {
         await this.evaluationPromise;
       }
@@ -418,6 +434,8 @@ class ModuleJobSync extends ModuleJobBase {
   }
 
   runSync(parent) {
+    debug('ModuleJobSync.runSync()', this.module);
+    assert(this.phase === kEvaluationPhase);
     // TODO(joyeecheung): add the error decoration logic from the async instantiate.
     this.module.async = this.module.instantiateSync();
     // If --experimental-print-required-tla is true, proceeds to evaluation even
@@ -436,7 +454,7 @@ class ModuleJobSync extends ModuleJobBase {
       const namespace = this.module.evaluateSync(filename, parentFilename);
       return { __proto__: null, module: this.module, namespace };
     } catch (e) {
-      explainCommonJSGlobalLikeNotDefinedError(e, this.module.url);
+      explainCommonJSGlobalLikeNotDefinedError(e, this.module.url, this.module.hasTopLevelAwait());
       throw e;
     }
   }

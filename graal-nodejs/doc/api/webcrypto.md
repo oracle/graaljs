@@ -553,9 +553,9 @@ added: v15.0.0
 added: v15.0.0
 -->
 
-* `algorithm`: {RsaOaepParams|AesCtrParams|AesCbcParams|AesGcmParams}
-* `key`: {CryptoKey}
-* `data`: {ArrayBuffer|TypedArray|DataView|Buffer}
+* `algorithm` {RsaOaepParams|AesCtrParams|AesCbcParams|AesGcmParams}
+* `key` {CryptoKey}
+* `data` {ArrayBuffer|TypedArray|DataView|Buffer}
 * Returns: {Promise} Fulfills with an {ArrayBuffer} upon success.
 
 Using the method and parameters specified in `algorithm` and the keying
@@ -588,9 +588,9 @@ changes:
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `algorithm`: {EcdhKeyDeriveParams|HkdfParams|Pbkdf2Params}
-* `baseKey`: {CryptoKey}
-* `length`: {number|null} **Default:** `null`
+* `algorithm` {EcdhKeyDeriveParams|HkdfParams|Pbkdf2Params}
+* `baseKey` {CryptoKey}
+* `length` {number|null} **Default:** `null`
 * Returns: {Promise} Fulfills with an {ArrayBuffer} upon success.
 
 <!--lint enable maximum-line-length remark-lint-->
@@ -628,11 +628,11 @@ changes:
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `algorithm`: {EcdhKeyDeriveParams|HkdfParams|Pbkdf2Params}
-* `baseKey`: {CryptoKey}
-* `derivedKeyAlgorithm`: {string|Algorithm|HmacImportParams|AesDerivedKeyParams}
-* `extractable`: {boolean}
-* `keyUsages`: {string\[]} See [Key usages][].
+* `algorithm` {EcdhKeyDeriveParams|HkdfParams|Pbkdf2Params}
+* `baseKey` {CryptoKey}
+* `derivedKeyAlgorithm` {string|Algorithm|HmacImportParams|AesDerivedKeyParams}
+* `extractable` {boolean}
+* `keyUsages` {string\[]} See [Key usages][].
 * Returns: {Promise} Fulfills with a {CryptoKey} upon success.
 
 <!--lint enable maximum-line-length remark-lint-->
@@ -660,8 +660,8 @@ The algorithms currently supported include:
 added: v15.0.0
 -->
 
-* `algorithm`: {string|Algorithm}
-* `data`: {ArrayBuffer|TypedArray|DataView|Buffer}
+* `algorithm` {string|Algorithm}
+* `data` {ArrayBuffer|TypedArray|DataView|Buffer}
 * Returns: {Promise} Fulfills with an {ArrayBuffer} upon success.
 
 Using the method identified by `algorithm`, `subtle.digest()` attempts to
@@ -684,9 +684,9 @@ whose value is one of the above.
 added: v15.0.0
 -->
 
-* `algorithm`: {RsaOaepParams|AesCtrParams|AesCbcParams|AesGcmParams}
-* `key`: {CryptoKey}
-* `data`: {ArrayBuffer|TypedArray|DataView|Buffer}
+* `algorithm` {RsaOaepParams|AesCtrParams|AesCbcParams|AesGcmParams}
+* `key` {CryptoKey}
+* `data` {ArrayBuffer|TypedArray|DataView|Buffer}
 * Returns: {Promise} Fulfills with an {ArrayBuffer} upon success.
 
 Using the method and parameters specified by `algorithm` and the keying
@@ -717,8 +717,8 @@ changes:
     description: Removed `'NODE-DSA'` JWK export.
 -->
 
-* `format`: {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
-* `key`: {CryptoKey}
+* `format` {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
+* `key` {CryptoKey}
 * Returns: {Promise} Fulfills with an {ArrayBuffer|Object} upon success.
 
 Exports the given key into the specified format, if supported.
@@ -756,17 +756,17 @@ added: v15.0.0
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `algorithm`: {string|Algorithm|RsaHashedKeyGenParams|EcKeyGenParams|HmacKeyGenParams|AesKeyGenParams}
+* `algorithm` {string|Algorithm|RsaHashedKeyGenParams|EcKeyGenParams|HmacKeyGenParams|AesKeyGenParams}
 
 <!--lint enable maximum-line-length remark-lint-->
 
-* `extractable`: {boolean}
-* `keyUsages`: {string\[]} See [Key usages][].
+* `extractable` {boolean}
+* `keyUsages` {string\[]} See [Key usages][].
 * Returns: {Promise} Fulfills with a {CryptoKey|CryptoKeyPair} upon success.
 
-Using the method and parameters provided in `algorithm`, `subtle.generateKey()`
-attempts to generate new keying material. Depending the method used, the method
-may generate either a single {CryptoKey} or a {CryptoKeyPair}.
+Using the parameters provided in `algorithm`, this method
+attempts to generate new keying material. Depending on the algorithm used
+either a single {CryptoKey} or a {CryptoKeyPair} is generated.
 
 The {CryptoKeyPair} (public and private key) generating algorithms supported
 include:
@@ -805,23 +805,24 @@ changes:
     description: Removed `'NODE-DSA'` JWK import.
 -->
 
-* `format`: {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
-* `keyData`: {ArrayBuffer|TypedArray|DataView|Buffer|Object}
+* `format` {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
+* `keyData` {ArrayBuffer|TypedArray|DataView|Buffer|Object}
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `algorithm`: {string|Algorithm|RsaHashedImportParams|EcKeyImportParams|HmacImportParams}
+* `algorithm` {string|Algorithm|RsaHashedImportParams|EcKeyImportParams|HmacImportParams}
 
 <!--lint enable maximum-line-length remark-lint-->
 
-* `extractable`: {boolean}
-* `keyUsages`: {string\[]} See [Key usages][].
+* `extractable` {boolean}
+* `keyUsages` {string\[]} See [Key usages][].
 * Returns: {Promise} Fulfills with a {CryptoKey} upon success.
 
-The `subtle.importKey()` method attempts to interpret the provided `keyData`
+This method attempts to interpret the provided `keyData`
 as the given `format` to create a {CryptoKey} instance using the provided
 `algorithm`, `extractable`, and `keyUsages` arguments. If the import is
-successful, the returned promise will be resolved with the created {CryptoKey}.
+successful, the returned promise will be resolved with a {CryptoKey}
+representation of the key material.
 
 If importing a `'PBKDF2'` key, `extractable` must be `false`.
 
@@ -860,9 +861,9 @@ changes:
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `algorithm`: {string|Algorithm|RsaPssParams|EcdsaParams|Ed448Params}
-* `key`: {CryptoKey}
-* `data`: {ArrayBuffer|TypedArray|DataView|Buffer}
+* `algorithm` {string|Algorithm|RsaPssParams|EcdsaParams|Ed448Params}
+* `key` {CryptoKey}
+* `data` {ArrayBuffer|TypedArray|DataView|Buffer}
 * Returns: {Promise} Fulfills with an {ArrayBuffer} upon success.
 
 <!--lint enable maximum-line-length remark-lint-->
@@ -887,19 +888,19 @@ The algorithms currently supported include:
 added: v15.0.0
 -->
 
-* `format`: {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
-* `wrappedKey`: {ArrayBuffer|TypedArray|DataView|Buffer}
-* `unwrappingKey`: {CryptoKey}
+* `format` {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
+* `wrappedKey` {ArrayBuffer|TypedArray|DataView|Buffer}
+* `unwrappingKey` {CryptoKey}
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `unwrapAlgo`: {string|Algorithm|RsaOaepParams|AesCtrParams|AesCbcParams|AesGcmParams}
-* `unwrappedKeyAlgo`: {string|Algorithm|RsaHashedImportParams|EcKeyImportParams|HmacImportParams}
+* `unwrapAlgo` {string|Algorithm|RsaOaepParams|AesCtrParams|AesCbcParams|AesGcmParams}
+* `unwrappedKeyAlgo` {string|Algorithm|RsaHashedImportParams|EcKeyImportParams|HmacImportParams}
 
 <!--lint enable maximum-line-length remark-lint-->
 
-* `extractable`: {boolean}
-* `keyUsages`: {string\[]} See [Key usages][].
+* `extractable` {boolean}
+* `keyUsages` {string\[]} See [Key usages][].
 * Returns: {Promise} Fulfills with a {CryptoKey} upon success.
 
 In cryptography, "wrapping a key" refers to exporting and then encrypting the
@@ -950,10 +951,10 @@ changes:
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `algorithm`: {string|Algorithm|RsaPssParams|EcdsaParams|Ed448Params}
-* `key`: {CryptoKey}
-* `signature`: {ArrayBuffer|TypedArray|DataView|Buffer}
-* `data`: {ArrayBuffer|TypedArray|DataView|Buffer}
+* `algorithm` {string|Algorithm|RsaPssParams|EcdsaParams|Ed448Params}
+* `key` {CryptoKey}
+* `signature` {ArrayBuffer|TypedArray|DataView|Buffer}
+* `data` {ArrayBuffer|TypedArray|DataView|Buffer}
 * Returns: {Promise} Fulfills with a {boolean} upon success.
 
 <!--lint enable maximum-line-length remark-lint-->
@@ -980,10 +981,10 @@ added: v15.0.0
 
 <!--lint disable maximum-line-length remark-lint-->
 
-* `format`: {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
-* `key`: {CryptoKey}
-* `wrappingKey`: {CryptoKey}
-* `wrapAlgo`: {string|Algorithm|RsaOaepParams|AesCtrParams|AesCbcParams|AesGcmParams}
+* `format` {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
+* `key` {CryptoKey}
+* `wrappingKey` {CryptoKey}
+* `wrapAlgo` {string|Algorithm|RsaOaepParams|AesCtrParams|AesCbcParams|AesGcmParams}
 * Returns: {Promise} Fulfills with an {ArrayBuffer} upon success.
 
 <!--lint enable maximum-line-length remark-lint-->
@@ -1567,7 +1568,7 @@ added: v15.0.0
 added: v15.0.0
 -->
 
-#### `pbkdb2Params.hash`
+#### `pbkdf2Params.hash`
 
 <!-- YAML
 added: v15.0.0

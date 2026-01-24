@@ -159,43 +159,48 @@ constexpr ContainerOfHelper<Inner, Outer> ContainerOf(Inner Outer::*field,
 
 inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
                                            const char* data,
-                                           int length) {
-  return v8::String::NewFromOneByte(isolate,
-                                    reinterpret_cast<const uint8_t*>(data),
-                                    v8::NewStringType::kNormal,
-                                    length).ToLocalChecked();
-}
-
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           const signed char* data,
-                                           int length) {
-  return v8::String::NewFromOneByte(isolate,
-                                    reinterpret_cast<const uint8_t*>(data),
-                                    v8::NewStringType::kNormal,
-                                    length).ToLocalChecked();
-}
-
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           const unsigned char* data,
-                                           int length) {
+                                           int length,
+                                           v8::NewStringType type) {
   return v8::String::NewFromOneByte(
-             isolate, data, v8::NewStringType::kNormal, length)
+             isolate, reinterpret_cast<const uint8_t*>(data), type, length)
       .ToLocalChecked();
 }
 
 inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           std::string_view str) {
-  return OneByteString(isolate, str.data(), str.size());
+                                           const signed char* data,
+                                           int length,
+                                           v8::NewStringType type) {
+  return v8::String::NewFromOneByte(
+             isolate, reinterpret_cast<const uint8_t*>(data), type, length)
+      .ToLocalChecked();
+}
+
+inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
+                                           const unsigned char* data,
+                                           int length,
+                                           v8::NewStringType type) {
+  return v8::String::NewFromOneByte(isolate, data, type, length)
+      .ToLocalChecked();
+}
+
+inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
+                                           std::string_view str,
+                                           v8::NewStringType type) {
+  return OneByteString(isolate, str.data(), str.size(), type);
 }
 
 char ToLower(char c) {
   return std::tolower(c, std::locale::classic());
 }
 
-std::string ToLower(const std::string& in) {
-  std::string out(in.size(), 0);
-  for (size_t i = 0; i < in.size(); ++i)
-    out[i] = ToLower(in[i]);
+template <typename T>
+std::string ToLower(const T& in) {
+  auto it = std::cbegin(in);
+  auto end = std::cend(in);
+  std::string out(std::distance(it, end), 0);
+  size_t i;
+  for (i = 0; it != end; ++it, ++i) out[i] = ToLower(*it);
+  DCHECK_EQ(i, out.size());
   return out;
 }
 
@@ -203,10 +208,14 @@ char ToUpper(char c) {
   return std::toupper(c, std::locale::classic());
 }
 
-std::string ToUpper(const std::string& in) {
-  std::string out(in.size(), 0);
-  for (size_t i = 0; i < in.size(); ++i)
-    out[i] = ToUpper(in[i]);
+template <typename T>
+std::string ToUpper(const T& in) {
+  auto it = std::cbegin(in);
+  auto end = std::cend(in);
+  std::string out(std::distance(it, end), 0);
+  size_t i;
+  for (i = 0; it != end; ++it, ++i) out[i] = ToUpper(*it);
+  DCHECK_EQ(i, out.size());
   return out;
 }
 
@@ -599,11 +608,59 @@ constexpr bool FastStringKey::operator==(const FastStringKey& other) const {
   return name_ == other.name_;
 }
 
-constexpr FastStringKey::FastStringKey(std::string_view name)
+consteval FastStringKey::FastStringKey(std::string_view name)
+    : FastStringKey(name, 0) {}
+
+constexpr FastStringKey FastStringKey::AllowDynamic(std::string_view name) {
+  return FastStringKey(name, 0);
+}
+
+constexpr FastStringKey::FastStringKey(std::string_view name, int dummy)
     : name_(name), cached_hash_(HashImpl(name)) {}
 
 constexpr std::string_view FastStringKey::as_string_view() const {
   return name_;
+}
+
+// Converts a V8 numeric value to a corresponding C++ primitive or enum type.
+template <typename T,
+          bool loose = false,
+          typename = std::enable_if_t<std::numeric_limits<T>::is_specialized ||
+                                      std::is_enum_v<T>>>
+T FromV8Value(v8::Local<v8::Value> value) {
+  if constexpr (std::is_enum_v<T>) {
+    using Underlying = std::underlying_type_t<T>;
+    return static_cast<T>(FromV8Value<Underlying, loose>(value));
+  } else if constexpr (std::is_integral_v<T> && std::is_unsigned_v<T>) {
+    static_assert(
+        std::numeric_limits<T>::max() <= std::numeric_limits<uint32_t>::max() &&
+            std::numeric_limits<T>::min() >=
+                std::numeric_limits<uint32_t>::min(),
+        "Type is out of unsigned integer range");
+    if constexpr (!loose) {
+      CHECK(value->IsUint32());
+    } else {
+      CHECK(value->IsNumber());
+    }
+    return static_cast<T>(value.As<v8::Uint32>()->Value());
+  } else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
+    static_assert(
+        std::numeric_limits<T>::max() <= std::numeric_limits<int32_t>::max() &&
+            std::numeric_limits<T>::min() >=
+                std::numeric_limits<int32_t>::min(),
+        "Type is out of signed integer range");
+    if constexpr (!loose) {
+      CHECK(value->IsInt32());
+    } else {
+      CHECK(value->IsNumber());
+    }
+    return static_cast<T>(value.As<v8::Int32>()->Value());
+  } else {
+    static_assert(std::is_floating_point_v<T>,
+                  "Type must be arithmetic or enum.");
+    CHECK(value->IsNumber());
+    return static_cast<T>(value.As<v8::Number>()->Value());
+  }
 }
 
 #ifdef _WIN32

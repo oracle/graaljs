@@ -194,6 +194,7 @@ const onServerStreamCreatedChannel = dc.channel('http2.server.stream.created');
 const onServerStreamStartChannel = dc.channel('http2.server.stream.start');
 const onServerStreamErrorChannel = dc.channel('http2.server.stream.error');
 const onServerStreamFinishChannel = dc.channel('http2.server.stream.finish');
+const onServerStreamCloseChannel = dc.channel('http2.server.stream.close');
 
 let debug = require('internal/util/debuglog').debuglog('http2', (fn) => {
   debug = fn;
@@ -251,6 +252,7 @@ const kProceed = Symbol('proceed');
 const kRemoteSettings = Symbol('remote-settings');
 const kRequestAsyncResource = Symbol('requestAsyncResource');
 const kSentHeaders = Symbol('sent-headers');
+const kRawHeaders = Symbol('raw-headers');
 const kSentTrailers = Symbol('sent-trailers');
 const kServer = Symbol('server');
 const kState = Symbol('state');
@@ -750,7 +752,7 @@ function onGoawayData(code, lastStreamID, buf) {
 // When a ClientHttp2Session is first created, the socket may not yet be
 // connected. If request() is called during this time, the actual request
 // will be deferred until the socket is ready to go.
-function requestOnConnect(headersList, headersParam, options) {
+function requestOnConnect(headersList, options) {
   const session = this[kSession];
 
   // At this point, the stream should have already been destroyed during
@@ -812,7 +814,7 @@ function requestOnConnect(headersList, headersParam, options) {
   if (onClientStreamStartChannel.hasSubscribers) {
     onClientStreamStartChannel.publish({
       stream: this,
-      headers: headersParam,
+      headers: this.sentHeaders,
     });
   }
 }
@@ -1812,12 +1814,14 @@ class ClientHttp2Session extends Http2Session {
 
     let headersList;
     let headersObject;
+    let rawHeaders;
     let scheme;
     let authority;
     let method;
 
     if (ArrayIsArray(headersParam)) {
       ({
+        rawHeaders,
         headersList,
         scheme,
         authority,
@@ -1864,6 +1868,7 @@ class ClientHttp2Session extends Http2Session {
     // eslint-disable-next-line no-use-before-define
     const stream = new ClientHttp2Stream(this, undefined, undefined, {});
     stream[kSentHeaders] = headersObject; // N.b. Only set for object headers, not raw headers
+    stream[kRawHeaders] = rawHeaders; // N.b. Only set for raw headers, not object headers
     stream[kOrigin] = `${scheme}://${authority}`;
     const reqAsync = new AsyncResource('PendingRequest');
     stream[kRequestAsyncResource] = reqAsync;
@@ -1889,7 +1894,7 @@ class ClientHttp2Session extends Http2Session {
       }
     }
 
-    const onConnect = reqAsync.bind(requestOnConnect.bind(stream, headersList, headersParam, options));
+    const onConnect = reqAsync.bind(requestOnConnect.bind(stream, headersList, options));
     if (this.connecting) {
       if (this[kPendingRequestCalls] !== null) {
         this[kPendingRequestCalls].push(onConnect);
@@ -1907,7 +1912,7 @@ class ClientHttp2Session extends Http2Session {
     if (onClientStreamCreatedChannel.hasSubscribers) {
       onClientStreamCreatedChannel.publish({
         stream,
-        headers: headersParam,
+        headers: stream.sentHeaders,
       });
     }
 
@@ -2017,9 +2022,12 @@ function closeStream(stream, code, rstStreamStatus = kSubmitRstStream) {
       stream.once('finish', finishFn);
   }
 
-  if (type === NGHTTP2_SESSION_CLIENT &&
-      onClientStreamCloseChannel.hasSubscribers) {
-    onClientStreamCloseChannel.publish({ stream });
+  if (type === NGHTTP2_SESSION_CLIENT) {
+    if (onClientStreamCloseChannel.hasSubscribers) {
+      onClientStreamCloseChannel.publish({ stream });
+    }
+  } else if (onServerStreamCloseChannel.hasSubscribers) {
+    onServerStreamCloseChannel.publish({ stream });
   }
 }
 
@@ -2130,6 +2138,33 @@ class Http2Stream extends Duplex {
   }
 
   get sentHeaders() {
+    if (this[kSentHeaders] || !this[kRawHeaders]) {
+      return this[kSentHeaders];
+    }
+
+    const rawHeaders = this[kRawHeaders];
+    const headersObject = { __proto__: null };
+
+    for (let i = 0; i < rawHeaders.length; i += 2) {
+      const key = rawHeaders[i];
+      const value = rawHeaders[i + 1];
+
+      const existing = headersObject[key];
+      if (existing === undefined) {
+        headersObject[key] = value;
+      } else if (ArrayIsArray(existing)) {
+        existing.push(value);
+      } else {
+        headersObject[key] = [existing, value];
+      }
+    }
+
+    if (rawHeaders[kSensitiveHeaders] !== undefined) {
+      headersObject[kSensitiveHeaders] = rawHeaders[kSensitiveHeaders];
+    }
+
+    this[kSentHeaders] = headersObject;
+
     return this[kSentHeaders];
   }
 
@@ -2525,8 +2560,31 @@ function callStreamClose(stream) {
   stream.close();
 }
 
-function processHeaders(oldHeaders, options) {
-  assertIsObject(oldHeaders, 'headers');
+function prepareResponseHeaders(stream, headersParam, options) {
+  let headers;
+  let statusCode;
+
+  if (ArrayIsArray(headersParam)) {
+    ({
+      headers,
+      statusCode,
+    } = prepareResponseHeadersArray(headersParam, options));
+    stream[kRawHeaders] = headers;
+  } else {
+    ({
+      headers,
+      statusCode,
+    } = prepareResponseHeadersObject(headersParam, options));
+    stream[kSentHeaders] = headers;
+  }
+
+  const headersList = buildNgHeaderString(headers, assertValidPseudoHeaderResponse);
+
+  return { headers, headersList, statusCode };
+}
+
+function prepareResponseHeadersObject(oldHeaders, options) {
+  assertIsObject(oldHeaders, 'headers', ['Object', 'Array']);
   const headers = { __proto__: null };
 
   if (oldHeaders !== null && oldHeaders !== undefined) {
@@ -2547,6 +2605,44 @@ function processHeaders(oldHeaders, options) {
     headers[HTTP2_HEADER_DATE] ??= utcDate();
   }
 
+  validatePreparedResponseHeaders(headers, statusCode);
+
+  return {
+    headers,
+    statusCode: headers[HTTP2_HEADER_STATUS],
+  };
+}
+
+function prepareResponseHeadersArray(headers, options) {
+  let statusCode;
+  let isDateSet = false;
+
+  for (let i = 0; i < headers.length; i += 2) {
+    const header = headers[i].toLowerCase();
+    const value = headers[i + 1];
+
+    if (header === HTTP2_HEADER_STATUS) {
+      statusCode = value | 0;
+    } else if (header === HTTP2_HEADER_DATE) {
+      isDateSet = true;
+    }
+  }
+
+  if (!statusCode) {
+    statusCode = HTTP_STATUS_OK;
+    headers.unshift(HTTP2_HEADER_STATUS, statusCode);
+  }
+
+  if (!isDateSet && (options.sendDate == null || options.sendDate)) {
+    headers.push(HTTP2_HEADER_DATE, utcDate());
+  }
+
+  validatePreparedResponseHeaders(headers, statusCode);
+
+  return { headers, statusCode };
+}
+
+function validatePreparedResponseHeaders(headers, statusCode) {
   // This is intentionally stricter than the HTTP/1 implementation, which
   // allows values between 100 and 999 (inclusive) in order to allow for
   // backwards compatibility with non-spec compliant code. With HTTP/2,
@@ -2554,15 +2650,12 @@ function processHeaders(oldHeaders, options) {
   // This will have an impact on the compatibility layer for anyone using
   // non-standard, non-compliant status codes.
   if (statusCode < 200 || statusCode > 599)
-    throw new ERR_HTTP2_STATUS_INVALID(headers[HTTP2_HEADER_STATUS]);
+    throw new ERR_HTTP2_STATUS_INVALID(statusCode);
 
   const neverIndex = headers[kSensitiveHeaders];
   if (neverIndex !== undefined && !ArrayIsArray(neverIndex))
     throw new ERR_INVALID_ARG_VALUE('headers[http2.neverIndex]', neverIndex);
-
-  return headers;
 }
-
 
 function onFileUnpipe() {
   const stream = this.sink[kOwner];
@@ -2866,7 +2959,7 @@ class ServerHttp2Stream extends Http2Stream {
   }
 
   // Initiate a response on this Http2Stream
-  respond(headers, options) {
+  respond(headersParam, options) {
     if (this.destroyed || this.closed)
       throw new ERR_HTTP2_INVALID_STREAM();
     if (this.headersSent)
@@ -2891,15 +2984,16 @@ class ServerHttp2Stream extends Http2Stream {
       state.flags |= STREAM_FLAGS_HAS_TRAILERS;
     }
 
-    headers = processHeaders(headers, options);
-    const headersList = buildNgHeaderString(headers, assertValidPseudoHeaderResponse);
-    this[kSentHeaders] = headers;
+    const {
+      headers,
+      headersList,
+      statusCode,
+    } = prepareResponseHeaders(this, headersParam, options);
 
     state.flags |= STREAM_FLAGS_HEADERS_SENT;
 
     // Close the writable side if the endStream option is set or status
     // is one of known codes with no payload, or it's a head request
-    const statusCode = headers[HTTP2_HEADER_STATUS] | 0;
     if (!!options.endStream ||
         statusCode === HTTP_STATUS_NO_CONTENT ||
         statusCode === HTTP_STATUS_RESET_CONTENT ||
@@ -2929,7 +3023,7 @@ class ServerHttp2Stream extends Http2Stream {
   // regular file, here the fd is passed directly. If the underlying
   // mechanism is not able to read from the fd, then the stream will be
   // reset with an error code.
-  respondWithFD(fd, headers, options) {
+  respondWithFD(fd, headersParam, options) {
     if (this.destroyed || this.closed)
       throw new ERR_HTTP2_INVALID_STREAM();
     if (this.headersSent)
@@ -2966,8 +3060,11 @@ class ServerHttp2Stream extends Http2Stream {
     this[kUpdateTimer]();
     this.ownsFd = false;
 
-    headers = processHeaders(headers, options);
-    const statusCode = headers[HTTP2_HEADER_STATUS] |= 0;
+    const {
+      headers,
+      statusCode,
+    } = prepareResponseHeadersObject(headersParam, options);
+
     // Payload/DATA frames are not permitted in these cases
     if (statusCode === HTTP_STATUS_NO_CONTENT ||
         statusCode === HTTP_STATUS_RESET_CONTENT ||
@@ -2995,7 +3092,7 @@ class ServerHttp2Stream extends Http2Stream {
   // giving the user an opportunity to verify the details and set additional
   // headers. If statCheck returns false, the operation is aborted and no
   // file details are sent.
-  respondWithFile(path, headers, options) {
+  respondWithFile(path, headersParam, options) {
     if (this.destroyed || this.closed)
       throw new ERR_HTTP2_INVALID_STREAM();
     if (this.headersSent)
@@ -3026,8 +3123,11 @@ class ServerHttp2Stream extends Http2Stream {
     this[kUpdateTimer]();
     this.ownsFd = true;
 
-    headers = processHeaders(headers, options);
-    const statusCode = headers[HTTP2_HEADER_STATUS] |= 0;
+    const {
+      headers,
+      statusCode,
+    } = prepareResponseHeadersObject(headersParam, options);
+
     // Payload/DATA frames are not permitted in these cases
     if (statusCode === HTTP_STATUS_NO_CONTENT ||
         statusCode === HTTP_STATUS_RESET_CONTENT ||
@@ -3279,6 +3379,9 @@ class Http2SecureServer extends TLSServer {
       this.headersTimeout = 60_000; // Minimum between 60 seconds or requestTimeout
       this.requestTimeout = 300_000; // 5 minutes
       this.connectionsCheckingInterval = 30_000; // 30 seconds
+      this.shouldUpgradeCallback = function() {
+        return this.listenerCount('upgrade') > 0;
+      };
       this.on('listening', setupConnectionsTracking);
     }
     if (typeof requestListener === 'function')

@@ -51,6 +51,7 @@ const {
   ReflectSet,
   RegExpPrototypeExec,
   SafeMap,
+  SafeSet,
   String,
   StringPrototypeCharAt,
   StringPrototypeCharCodeAt,
@@ -154,6 +155,7 @@ const internalFsBinding = internalBinding('fs');
 const { safeGetenv } = internalBinding('credentials');
 const {
   getCjsConditions,
+  getCjsConditionsArray,
   initializeCjsConditions,
   loadBuiltinModule,
   makeRequireFunction,
@@ -255,9 +257,9 @@ function stat(filename) {
     const result = statCache.get(filename);
     if (result !== undefined) { return result; }
   }
-  const result = internalFsBinding.internalModuleStat(internalFsBinding, filename);
+  const result = internalFsBinding.internalModuleStat(filename);
   if (statCache !== null && result >= 0) {
-    // Only set cache when `internalModuleStat(internalFsBinding, filename)` succeeds.
+    // Only set cache when `internalModuleStat(filename)` succeeds.
     statCache.set(filename, result);
   }
   return result;
@@ -450,17 +452,6 @@ function initializeCJS() {
   // TODO(joyeecheung): deprecate this in favor of a proper hook?
   Module.runMain =
     require('internal/modules/run_main').executeUserEntryPoint;
-
-  const tsEnabled = getOptionValue('--experimental-strip-types');
-  if (tsEnabled) {
-    Module._extensions['.cts'] = loadCTS;
-    Module._extensions['.ts'] = loadTS;
-  }
-  if (getOptionValue('--experimental-require-module')) {
-    if (tsEnabled) {
-      Module._extensions['.mts'] = loadMTS;
-    }
-  }
 }
 
 // Given a module name, and a list of paths to test, returns the first
@@ -643,6 +634,8 @@ const EXPORTS_PATTERN = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/;
  * Resolves the exports for a given module path and request.
  * @param {string} nmPath The path to the module.
  * @param {string} request The request for the module.
+ * @param {Set<string>} conditions The conditions to use for resolution.
+ * @returns {undefined|string}
  */
 function resolveExports(nmPath, request, conditions) {
   // The implementation's behavior is meant to mirror resolution in ESM.
@@ -664,31 +657,6 @@ function resolveExports(nmPath, request, conditions) {
       throw e;
     }
   }
-}
-
-// We don't cache this in case user extends the extensions.
-function getDefaultExtensions() {
-  let extensions = ObjectKeys(Module._extensions);
-  const tsEnabled = getOptionValue('--experimental-strip-types');
-  if (tsEnabled) {
-    // remove .ts and .cts from the default extensions
-    // to avoid extensionless require of .ts and .cts files.
-    extensions = ArrayPrototypeFilter(extensions, (ext) =>
-      (ext !== '.ts' || Module._extensions['.ts'] !== loadTS) &&
-      (ext !== '.cts' || Module._extensions['.cts'] !== loadCTS),
-    );
-  }
-
-  if (!getOptionValue('--experimental-require-module')) {
-    return extensions;
-  }
-
-  if (tsEnabled) {
-    extensions = ArrayPrototypeFilter(extensions, (ext) =>
-      ext !== '.mts' || Module._extensions['.mts'] !== loadMTS,
-    );
-  }
-  return extensions;
 }
 
 /**
@@ -782,7 +750,7 @@ Module._findPath = function(request, paths, isMain, conditions = getCjsCondition
       if (!filename) {
         // Try it with each of the extensions
         if (exts === undefined) {
-          exts = getDefaultExtensions();
+          exts = ObjectKeys(Module._extensions);
         }
         filename = tryExtensions(basePath, exts, isMain);
       }
@@ -791,7 +759,7 @@ Module._findPath = function(request, paths, isMain, conditions = getCjsCondition
     if (!filename && rc === 1) {  // Directory.
       // try it with each of the extensions at "index"
       if (exts === undefined) {
-        exts = getDefaultExtensions();
+        exts = ObjectKeys(Module._extensions);
       }
       filename = tryPackage(basePath, exts, isMain, request);
     }
@@ -1076,9 +1044,22 @@ function resolveForCJSWithHooks(specifier, parent, isMain) {
   function defaultResolve(specifier, context) {
     // TODO(joyeecheung): parent and isMain should be part of context, then we
     // no longer need to use a different defaultResolve for every resolution.
+    // In the hooks, context.conditions is passed around as an array, but internally
+    // the resolution helpers expect a SafeSet. Do the conversion here.
+    let conditionSet;
+    const conditions = context.conditions;
+    if (conditions !== undefined && conditions !== getCjsConditionsArray()) {
+      if (!ArrayIsArray(conditions)) {
+        throw new ERR_INVALID_ARG_VALUE('context.conditions', conditions,
+                                        'expected an array');
+      }
+      conditionSet = new SafeSet(conditions);
+    } else {
+      conditionSet = getCjsConditions();
+    }
     defaultResolvedFilename = defaultResolveImpl(specifier, parent, isMain, {
       __proto__: null,
-      conditions: context.conditions,
+      conditions: conditionSet,
     });
 
     defaultResolvedURL = convertCJSFilenameToURL(defaultResolvedFilename);
@@ -1086,7 +1067,7 @@ function resolveForCJSWithHooks(specifier, parent, isMain) {
   }
 
   const resolveResult = resolveWithHooks(specifier, parentURL, /* importAttributes */ undefined,
-                                         getCjsConditions(), defaultResolve);
+                                         getCjsConditionsArray(), defaultResolve);
   const { url } = resolveResult;
   format = resolveResult.format;
 
@@ -1162,7 +1143,7 @@ function loadBuiltinWithHooks(id, url, format) {
     url ??= `node:${id}`;
     // TODO(joyeecheung): do we really want to invoke the load hook for the builtins?
     const loadResult = loadWithHooks(url, format || 'builtin', /* importAttributes */ undefined,
-                                     getCjsConditions(), getDefaultLoad(url, id));
+                                     getCjsConditionsArray(), getDefaultLoad(url, id));
     if (loadResult.format && loadResult.format !== 'builtin') {
       return undefined;  // Format has been overridden, return undefined for the caller to continue loading.
     }
@@ -1313,7 +1294,8 @@ Module._load = function(request, parent, isMain) {
  * @param {ResolveFilenameOptions} options Options object
  * @typedef {object} ResolveFilenameOptions
  * @property {string[]} paths Paths to search for modules in
- * @property {string[]} conditions Conditions used for resolution.
+ * @property {Set<string>?} conditions The conditions to use for resolution.
+ * @returns {void|string}
  */
 Module._resolveFilename = function(request, parent, isMain, options) {
   if (BuiltinModule.normalizeRequirableId(request)) {
@@ -1455,12 +1437,6 @@ Module.prototype.load = function(filename) {
   this.paths ??= Module._nodeModulePaths(path.dirname(filename));
 
   const extension = findLongestRegisteredExtension(filename);
-
-  if (getOptionValue('--experimental-strip-types')) {
-    if (StringPrototypeEndsWith(filename, '.mts') && !Module._extensions['.mts']) {
-      throw new ERR_REQUIRE_ESM(filename, true);
-    }
-  }
 
   Module._extensions[extension](this, filename);
   this.loaded = true;
@@ -1762,7 +1738,8 @@ function loadSource(mod, filename, formatFromNode) {
     mod[kURL] = convertCJSFilenameToURL(filename);
   }
 
-  const loadResult = loadWithHooks(mod[kURL], mod[kFormat], /* importAttributes */ undefined, getCjsConditions(),
+  const loadResult = loadWithHooks(mod[kURL], mod[kFormat], /* importAttributes */ undefined,
+                                   getCjsConditionsArray(),
                                    getDefaultLoad(mod[kURL], filename));
 
   // Reset the module properties with load hook results.
@@ -1772,55 +1749,6 @@ function loadSource(mod, filename, formatFromNode) {
   mod[kModuleSource] = loadResult.source;
   return { source: mod[kModuleSource], format: mod[kFormat] };
 }
-
-/**
- * Built-in handler for `.mts` files.
- * @param {Module} mod CJS module instance
- * @param {string} filename The file path of the module
- */
-function loadMTS(mod, filename) {
-  const loadResult = loadSource(mod, filename, 'module-typescript');
-  mod._compile(loadResult.source, filename, loadResult.format);
-}
-
-/**
- * Built-in handler for `.cts` files.
- * @param {Module} module CJS module instance
- * @param {string} filename The file path of the module
- */
-function loadCTS(module, filename) {
-  const loadResult = loadSource(module, filename, 'commonjs-typescript');
-  module._compile(loadResult.source, filename, loadResult.format);
-}
-
-/**
- * Built-in handler for `.ts` files.
- * @param {Module} module CJS module instance
- * @param {string} filename The file path of the module
- */
-function loadTS(module, filename) {
-  const pkg = packageJsonReader.getNearestParentPackageJSON(filename);
-  const typeFromPjson = pkg?.data.type;
-
-  let format;
-  if (typeFromPjson === 'module') {
-    format = 'module-typescript';
-  } else if (typeFromPjson === 'commonjs') {
-    format = 'commonjs-typescript';
-  } else {
-    format = 'typescript';
-  }
-  const loadResult = loadSource(module, filename, format);
-
-  // Function require shouldn't be used in ES modules when require(esm) is disabled.
-  if (typeFromPjson === 'module' && !getOptionValue('--experimental-require-module')) {
-    const err = getRequireESMError(module, pkg, loadResult.source, filename);
-    throw err;
-  }
-
-  module[kFormat] = loadResult.format;
-  module._compile(loadResult.source, filename, loadResult.format);
-};
 
 function reconstructErrorStack(err, parentPath, parentSource) {
   const errLine = StringPrototypeSplit(
@@ -1875,6 +1803,7 @@ function getRequireESMError(mod, pkg, content, filename) {
  */
 Module._extensions['.js'] = function(module, filename) {
   let format, pkg;
+  const tsEnabled = getOptionValue('--experimental-strip-types');
   if (StringPrototypeEndsWith(filename, '.cjs')) {
     format = 'commonjs';
   } else if (StringPrototypeEndsWith(filename, '.mjs')) {
@@ -1885,10 +1814,25 @@ Module._extensions['.js'] = function(module, filename) {
     if (typeFromPjson === 'module' || typeFromPjson === 'commonjs' || !typeFromPjson) {
       format = typeFromPjson;
     }
+  } else if (StringPrototypeEndsWith(filename, '.mts') && tsEnabled) {
+    format = 'module-typescript';
+  } else if (StringPrototypeEndsWith(filename, '.cts') && tsEnabled) {
+    format = 'commonjs-typescript';
+  } else if (StringPrototypeEndsWith(filename, '.ts') && tsEnabled) {
+    pkg = packageJsonReader.getNearestParentPackageJSON(filename);
+    const typeFromPjson = pkg?.data.type;
+    if (typeFromPjson === 'module') {
+      format = 'module-typescript';
+    } else if (typeFromPjson === 'commonjs') {
+      format = 'commonjs-typescript';
+    } else {
+      format = 'typescript';
+    }
   }
   const { source, format: loadedFormat } = loadSource(module, filename, format);
   // Function require shouldn't be used in ES modules when require(esm) is disabled.
-  if (loadedFormat === 'module' && !getOptionValue('--experimental-require-module')) {
+  if ((loadedFormat === 'module' || loadedFormat === 'module-typescript') &&
+    !getOptionValue('--experimental-require-module')) {
     const err = getRequireESMError(module, pkg, source, filename);
     throw err;
   }

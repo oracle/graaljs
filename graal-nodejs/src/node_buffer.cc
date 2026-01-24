@@ -77,7 +77,6 @@ using v8::Object;
 using v8::SharedArrayBuffer;
 using v8::String;
 using v8::Uint32;
-using v8::Uint32Array;
 using v8::Uint8Array;
 using v8::Value;
 
@@ -1046,8 +1045,9 @@ void IndexOfBuffer(const FunctionCallbackInfo<Value>& args) {
 
   enum encoding enc = static_cast<enum encoding>(args[3].As<Int32>()->Value());
 
-  THROW_AND_RETURN_UNLESS_BUFFER(Environment::GetCurrent(args), args[0]);
-  THROW_AND_RETURN_UNLESS_BUFFER(Environment::GetCurrent(args), args[1]);
+  Environment* env = Environment::GetCurrent(args);
+  THROW_AND_RETURN_UNLESS_BUFFER(env, args[0]);
+  THROW_AND_RETURN_UNLESS_BUFFER(env, args[1]);
   ArrayBufferViewContents<char> haystack_contents(args[0]);
   ArrayBufferViewContents<char> needle_contents(args[1]);
   int64_t offset_i64 = args[2].As<Integer>()->Value();
@@ -1228,37 +1228,6 @@ void SetBufferPrototype(const FunctionCallbackInfo<Value>& args) {
   realm->set_buffer_prototype_object(proto);
 }
 
-void GetZeroFillToggle(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-  NodeArrayBufferAllocator* allocator = env->isolate_data()->node_allocator();
-  Local<ArrayBuffer> ab;
-  // It can be a nullptr when running inside an isolate where we
-  // do not own the ArrayBuffer allocator.
-  if (allocator == nullptr) {
-    // Create a dummy Uint32Array - the JS land can only toggle the C++ land
-    // setting when the allocator uses our toggle. With this the toggle in JS
-    // land results in no-ops.
-    ab = ArrayBuffer::New(env->isolate(), sizeof(uint32_t));
-  } else {
-    uint32_t* zero_fill_field = allocator->zero_fill_field();
-    std::unique_ptr<BackingStore> backing =
-        ArrayBuffer::NewBackingStore(zero_fill_field,
-                                     sizeof(*zero_fill_field),
-                                     [](void*, size_t, void*) {},
-                                     nullptr);
-    ab = ArrayBuffer::New(env->isolate(), std::move(backing));
-  }
-
-  if (ab->SetPrivate(env->context(),
-                     env->untransferable_object_private_symbol(),
-                     True(env->isolate()))
-          .IsNothing()) {
-    return;
-  }
-
-  args.GetReturnValue().Set(Uint32Array::New(ab, 0, 1));
-}
-
 static void Btoa(const FunctionCallbackInfo<Value>& args) {
   CHECK_EQ(args.Length(), 1);
   Environment* env = Environment::GetCurrent(args);
@@ -1432,6 +1401,52 @@ void CopyArrayBuffer(const FunctionCallbackInfo<Value>& args) {
   memcpy(dest, src, bytes_to_copy);
 }
 
+// Converts a number parameter to size_t suitable for ArrayBuffer sizes
+// Could be larger than uint32_t
+// See v8::internal::TryNumberToSize and v8::internal::NumberToSize
+inline size_t CheckNumberToSize(Local<Value> number) {
+  CHECK(number->IsNumber());
+  double value = number.As<Number>()->Value();
+  // See v8::internal::TryNumberToSize on this (and on < comparison)
+  double maxSize = static_cast<double>(std::numeric_limits<size_t>::max());
+  CHECK(value >= 0 && value < maxSize);
+  size_t size = static_cast<size_t>(value);
+#ifdef V8_ENABLE_SANDBOX
+  CHECK_LE(size, kMaxSafeBufferSizeForSandbox);
+#endif
+  return size;
+}
+
+void CreateUnsafeArrayBuffer(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  if (args.Length() != 1) {
+    env->ThrowRangeError("Invalid array buffer length");
+    return;
+  }
+
+  size_t size = CheckNumberToSize(args[0]);
+
+  Isolate* isolate = env->isolate();
+
+  Local<ArrayBuffer> buf;
+
+  NodeArrayBufferAllocator* allocator = env->isolate_data()->node_allocator();
+  // 0-length, or zero-fill flag is set, or building snapshot
+  if (size == 0 || per_process::cli_options->zero_fill_all_buffers ||
+      allocator == nullptr) {
+    buf = ArrayBuffer::New(isolate, size);
+  } else {
+    std::unique_ptr<BackingStore> store =
+        ArrayBuffer::NewBackingStoreForNodeLTS(isolate, size);
+    if (!store) {
+      return env->ThrowRangeError("Array buffer allocation failed");
+    }
+    buf = ArrayBuffer::New(isolate, std::move(store));
+  }
+
+  args.GetReturnValue().Set(buf);
+}
+
 template <encoding encoding>
 uint32_t WriteOneByteString(const char* src,
                             uint32_t src_len,
@@ -1549,6 +1564,8 @@ void Initialize(Local<Object> target,
   SetMethodNoSideEffect(context, target, "indexOfString", IndexOfString);
 
   SetMethod(context, target, "copyArrayBuffer", CopyArrayBuffer);
+  SetMethodNoSideEffect(
+      context, target, "createUnsafeArrayBuffer", CreateUnsafeArrayBuffer);
 
   SetMethod(context, target, "swap16", Swap16);
   SetMethod(context, target, "swap32", Swap32);
@@ -1598,8 +1615,6 @@ void Initialize(Local<Object> target,
                 "utf8WriteStatic",
                 SlowWriteString<UTF8>,
                 &fast_write_string_utf8);
-
-  SetMethod(context, target, "getZeroFillToggle", GetZeroFillToggle);
 }
 
 }  // anonymous namespace
@@ -1608,20 +1623,16 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(SetBufferPrototype);
 
   registry->Register(SlowByteLengthUtf8);
-  registry->Register(fast_byte_length_utf8.GetTypeInfo());
-  registry->Register(FastByteLengthUtf8);
+  registry->Register(fast_byte_length_utf8);
   registry->Register(SlowCopy);
-  registry->Register(fast_copy.GetTypeInfo());
-  registry->Register(FastCopy);
+  registry->Register(fast_copy);
   registry->Register(Compare);
-  registry->Register(FastCompare);
-  registry->Register(fast_compare.GetTypeInfo());
+  registry->Register(fast_compare);
   registry->Register(CompareOffset);
   registry->Register(Fill);
   registry->Register(IndexOfBuffer);
   registry->Register(SlowIndexOfNumber);
-  registry->Register(FastIndexOfNumber);
-  registry->Register(fast_index_of_number.GetTypeInfo());
+  registry->Register(fast_index_of_number);
   registry->Register(IndexOfString);
 
   registry->Register(Swap16);
@@ -1642,12 +1653,9 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(SlowWriteString<ASCII>);
   registry->Register(SlowWriteString<LATIN1>);
   registry->Register(SlowWriteString<UTF8>);
-  registry->Register(FastWriteString<ASCII>);
-  registry->Register(fast_write_string_ascii.GetTypeInfo());
-  registry->Register(FastWriteString<LATIN1>);
-  registry->Register(fast_write_string_latin1.GetTypeInfo());
-  registry->Register(FastWriteString<UTF8>);
-  registry->Register(fast_write_string_utf8.GetTypeInfo());
+  registry->Register(fast_write_string_ascii);
+  registry->Register(fast_write_string_latin1);
+  registry->Register(fast_write_string_utf8);
   registry->Register(StringWrite<ASCII>);
   registry->Register(StringWrite<BASE64>);
   registry->Register(StringWrite<BASE64URL>);
@@ -1655,9 +1663,9 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(StringWrite<HEX>);
   registry->Register(StringWrite<UCS2>);
   registry->Register(StringWrite<UTF8>);
-  registry->Register(GetZeroFillToggle);
 
   registry->Register(CopyArrayBuffer);
+  registry->Register(CreateUnsafeArrayBuffer);
 
   registry->Register(Atob);
   registry->Register(Btoa);

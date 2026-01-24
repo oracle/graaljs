@@ -347,12 +347,17 @@ test-snapshot-incompatible: SKIP
 [$system==win32]
 # https://github.com/nodejs/node/issues/54807
 test-runner-watch-mode-complex: PASS, FLAKY
+# https://github.com/nodejs/node/issues/59090
+test-inspector-network-fetch: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54808
 test-async-context-frame: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54534
 test-runner-run-watch: PASS, FLAKY
-# https://github.com/nodejs/node/issues/56794
-test-fs-cp: PASS, FLAKY
+# https://github.com/nodejs/node/issues/59636
+test-fs-cp-sync-error-on-exist: SKIP
+test-fs-cp-sync-symlink-points-to-dest-error: SKIP
+test-fs-cp-async-symlink-points-to-dest: SKIP
+test-fs-cp-sync-unicode-folder-names: SKIP
 
 # https://github.com/nodejs/node/issues/56751
 test-without-async-context-frame: PASS, FLAKY
@@ -414,6 +419,7 @@ test-domain-throw-error-then-throw-from-uncaught-exception-handler: PASS, FLAKY
 test-domain-with-abort-on-uncaught-exception: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54346
 test-esm-loader-hooks-inspect-wait: PASS, FLAKY
+test-fs-promises-watch-iterator: SKIP
 # https://github.com/nodejs/node/issues/50050
 test-tick-processor-arguments: SKIP
 # https://github.com/nodejs/node/issues/54534
@@ -422,6 +428,7 @@ test-runner-run-watch: PASS, FLAKY
 [$system==freebsd]
 # https://github.com/nodejs/node/issues/54346
 test-esm-loader-hooks-inspect-wait: PASS, FLAKY
+test-fs-promises-watch-iterator: SKIP
 
 [$system==aix]
 # https://github.com/nodejs/node/issues/54346
@@ -432,6 +439,7 @@ test-esm-loader-hooks-inspect-wait: PASS, FLAKY
 test-child-process-fork-net-server: SKIP
 test-cli-node-options: SKIP
 test-cluster-shared-leak: SKIP
+test-fs-promises-watch-iterator: SKIP
 test-http-writable-true-after-close: SKIP
 test-http2-connect-method: SKIP
 test-net-error-twice: SKIP
@@ -461,12 +469,14 @@ test-tls-write-error: PASS, FLAKY
 # https://github.com/nodejs/node/issues/48047
 test-http-pipeline-flood: SKIP
 # https://github.com/nodejs/node/issues/58582
-test-http-proxy-fetch: PASS, FLAKY
-test-https-proxy-fetch: PASS, FLAKY
-test-inspector-network-fetch:  PASS, FLAKY
-test-fetch:  PASS, FLAKY
-test-without-async-context-frame: PASS, FLAKY
+test-http-proxy-fetch: SKIP
+test-https-proxy-fetch: SKIP
+test-inspector-network-fetch:  SKIP
+test-inspector-network-content-type: SKIP
+test-fetch:  SKIP
+test-without-async-context-frame: SKIP
 test-process-cpuUsage: PASS, FLAKY
+test-web-locks: SKIP
 
 
 [$asan==on]

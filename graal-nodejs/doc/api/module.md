@@ -8,7 +8,7 @@ added: v0.3.7
 
 ## The `Module` object
 
-* {Object}
+* Type: {Object}
 
 Provides general utility methods when interacting with instances of
 `Module`, the [`module`][] variable often seen in [CommonJS][] modules. Accessed
@@ -23,7 +23,7 @@ added:
   - v6.13.0
 -->
 
-* {string\[]}
+* Type: {string\[]}
 
 A list of the names of all modules provided by Node.js. Can be used to verify
 if a module is maintained by a third party or not.
@@ -383,7 +383,7 @@ See [Customization hooks][].
 added: v22.13.0
 -->
 
-> Stability: 1.1 - Active development
+> Stability: 1.2 - Release candidate
 
 * `code` {string} The code to strip type annotations from.
 * `options` {Object}
@@ -1279,6 +1279,9 @@ changes:
   - version: v22.15.0
     pr-url: https://github.com/nodejs/node/pull/55698
     description: Add support for synchronous and in-thread version.
+  - version: v22.6.0
+    pr-url: https://github.com/nodejs/node/pull/56350
+    description: Add support for `source` with format `commonjs-typescript` and `module-typescript`.
   - version: v20.6.0
     pr-url: https://github.com/nodejs/node/pull/47999
     description: Add support for `source` with format `commonjs`.
@@ -1323,6 +1326,7 @@ The final value of `format` must be one of the following:
 
 | `format`                | Description                                           | Acceptable types for `source` returned by `load`   |
 | ----------------------- | ----------------------------------------------------- | -------------------------------------------------- |
+| `'addon'`               | Load a Node.js addon                                  | {null}                                             |
 | `'builtin'`             | Load a Node.js builtin module                         | {null}                                             |
 | `'commonjs-typescript'` | Load a Node.js CommonJS module with TypeScript syntax | {string\|ArrayBuffer\|TypedArray\|null\|undefined} |
 | `'commonjs'`            | Load a Node.js CommonJS module                        | {string\|ArrayBuffer\|TypedArray\|null\|undefined} |
@@ -1818,13 +1822,13 @@ Creates a new `sourceMap` instance.
 
 `payload` is an object with keys matching the [Source map format][]:
 
-* `file`: {string}
-* `version`: {number}
-* `sources`: {string\[]}
-* `sourcesContent`: {string\[]}
-* `names`: {string\[]}
-* `mappings`: {string}
-* `sourceRoot`: {string}
+* `file` {string}
+* `version` {number}
+* `sources` {string\[]}
+* `sourcesContent` {string\[]}
+* `names` {string\[]}
+* `mappings` {string}
+* `sourceRoot` {string}
 
 `lineLengths` is an optional array of the length of each line in the
 generated code.
@@ -1849,17 +1853,17 @@ original file if found, or an empty object if not.
 
 The object returned contains the following keys:
 
-* generatedLine: {number} The line offset of the start of the
+* `generatedLine` {number} The line offset of the start of the
   range in the generated source
-* generatedColumn: {number} The column offset of start of the
+* `generatedColumn` {number} The column offset of start of the
   range in the generated source
-* originalSource: {string} The file name of the original source,
+* `originalSource` {string} The file name of the original source,
   as reported in the SourceMap
-* originalLine: {number} The line offset of the start of the
+* `originalLine` {number} The line offset of the start of the
   range in the original source
-* originalColumn: {number} The column offset of start of the
+* `originalColumn` {number} The column offset of start of the
   range in the original source
-* name: {string}
+* `name` {string}
 
 The returned value represents the raw range as it appears in the
 SourceMap, based on zero-indexed offsets, _not_ 1-indexed line and
@@ -1893,13 +1897,13 @@ If the `lineNumber` and `columnNumber` provided are not found in any
 source map, then an empty object is returned. Otherwise, the
 returned object contains the following keys:
 
-* name: {string | undefined} The name of the range in the
+* `name` {string|undefined} The name of the range in the
   source map, if one was provided
-* fileName: {string} The file name of the original source, as
+* `fileName` {string} The file name of the original source, as
   reported in the SourceMap
-* lineNumber: {number} The 1-indexed lineNumber of the
+* `lineNumber` {number} The 1-indexed lineNumber of the
   corresponding call site in the original source
-* columnNumber: {number} The 1-indexed columnNumber of the
+* `columnNumber` {number} The 1-indexed columnNumber of the
   corresponding call site in the original source
 
 [CommonJS]: modules.md

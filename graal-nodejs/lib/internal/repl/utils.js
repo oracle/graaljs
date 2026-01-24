@@ -92,10 +92,6 @@ function isRecoverableError(e, code) {
     .extend(
       (Parser) => {
         return class extends Parser {
-          // eslint-disable-next-line no-useless-constructor
-          constructor(options, input, startPos) {
-            super(options, input, startPos);
-          }
           nextToken() {
             super.nextToken();
             if (this.type === tt.eof)
@@ -296,7 +292,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
   function getInputPreview(input, callback) {
     // For similar reasons as `defaultEval`, wrap expressions starting with a
     // curly brace with parenthesis.
-    if (!wrapped && input[0] === '{' && input[input.length - 1] !== ';') {
+    if (!wrapped && input[0] === '{' && input[input.length - 1] !== ';' && isValidSyntax(input)) {
       input = `(${input})`;
       wrapped = true;
     }
@@ -741,6 +737,25 @@ function setupReverseSearch(repl) {
 
 const startsWithBraceRegExp = /^\s*{/;
 const endsWithSemicolonRegExp = /;\s*$/;
+function isValidSyntax(input) {
+  try {
+    AcornParser.parse(input, {
+      ecmaVersion: 'latest',
+      allowAwaitOutsideFunction: true,
+    });
+    return true;
+  } catch {
+    try {
+      AcornParser.parse(`_=${input}`, {
+        ecmaVersion: 'latest',
+        allowAwaitOutsideFunction: true,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
 
 /**
  * Checks if some provided code represents an object literal.
@@ -763,4 +778,5 @@ module.exports = {
   setupPreview,
   setupReverseSearch,
   isObjectLiteral,
+  isValidSyntax,
 };

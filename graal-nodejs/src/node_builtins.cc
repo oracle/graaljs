@@ -123,8 +123,8 @@ BuiltinLoader::BuiltinCategories BuiltinLoader::GetBuiltinCategories() const {
 #if !HAVE_INSPECTOR
     "inspector", "inspector/promises", "internal/util/inspector",
         "internal/inspector/network", "internal/inspector/network_http",
-        "internal/inspector/network_undici", "internal/inspector_async_hook",
-        "internal/inspector_network_tracking",
+        "internal/inspector/network_http2", "internal/inspector/network_undici",
+        "internal/inspector_async_hook", "internal/inspector_network_tracking",
 #endif  // !HAVE_INSPECTOR
 
 #if !NODE_USE_V8_PLATFORM || !defined(NODE_HAVE_I18N_SUPPORT)
@@ -307,7 +307,7 @@ MaybeLocal<Function> BuiltinLoader::LookupAndCompileInternal(
   if (should_eager_compile_) {
     options = ScriptCompiler::kEagerCompile;
   } else if (!to_eager_compile_.empty()) {
-    if (to_eager_compile_.find(id) != to_eager_compile_.end()) {
+    if (to_eager_compile_.contains(id)) {
       options = ScriptCompiler::kEagerCompile;
     }
   }
@@ -416,6 +416,7 @@ MaybeLocal<Function> BuiltinLoader::LookupAndCompile(Local<Context> context,
         FIXED_ONE_BYTE_STRING(isolate, "exports"),
         FIXED_ONE_BYTE_STRING(isolate, "primordials"),
         FIXED_ONE_BYTE_STRING(isolate, "privateSymbols"),
+        FIXED_ONE_BYTE_STRING(isolate, "perIsolateSymbols"),
     };
   } else if (strncmp(id, "internal/main/", strlen("internal/main/")) == 0 ||
              strncmp(id,
