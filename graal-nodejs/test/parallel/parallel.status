@@ -13,6 +13,9 @@ test-aborted-util: FAIL
 test-worker-data-url: FAIL
 
 # Triggers stack-overflow that may not be handled well
+test-async-hooks-stack-overflow: SKIP
+test-async-hooks-stack-overflow-nested-async: SKIP
+test-async-hooks-stack-overflow-try-catch: SKIP
 test-async-wrap-pop-id-during-load: SKIP
 test-promise-reject-callback-exception: SKIP
 test-ttywrap-stack: SKIP
@@ -74,9 +77,18 @@ test-fs-write: FAIL
 # (which is a foreign object when chromeinspector is used)
 test-process-get-builtin: SKIP
 
+# Flag --max-old-space-size-percentage is not supported
+test-max-old-space-size-percentage: FAIL
+
+# Suspicious performance test
+test-repl-paste-big-data: FAIL
+
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint, %PrepareFunctionForOptimization)
 test-http-same-map: FAIL
 test-os-fast: FAIL
+test-process-hrtime: FAIL
+test-process-hrtime-bigint: FAIL
+test-timers-fast-calls: FAIL
 test-timers-now: FAIL
 test-util-types: FAIL
 test-v8-flags: FAIL
@@ -126,6 +138,7 @@ test-worker-sharedarraybuffer-from-worker-thread: SKIP
 # Profiling is not supported
 test-cli-node-options: SKIP
 test-tick-processor-arguments: FAIL
+test-worker-cpu-profile: FAIL
 
 # v8::Object::GetConstructorName() returns `Klass` for
 # Object.setPrototypeOf(new Klass(), null) (which graal-nodejs is unable to return)
@@ -157,6 +170,13 @@ test-vm-set-property-proxy: SKIP
 test-vm-timeout-escape-promise: FAIL
 test-vm-timeout-escape-promise-module: FAIL
 test-vm-timeout-escape-promise-2: FAIL
+
+# Separate MicrotaskQueue (in afterEvaluate mode) is not supported
+test-vm-module-after-evaluate: FAIL
+test-vm-script-after-evaluate: FAIL
+
+# v8::Module::GetModuleRequests() (i.e. Module.requestedModules) contains duplicate entries
+test-vm-module-modulerequests: FAIL
 
 # run-time user-land snapshots are not supported
 test-snapshot-api: FAIL
@@ -258,6 +278,7 @@ test-trace-env-stack: FAIL
 test-ttywrap-stack: FAIL
 test-vm-global-setter: FAIL
 test-vm-low-stack-space: SKIP
+test-vm-module-link: FAIL
 test-vm-new-script-new-context: FAIL
 test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP
