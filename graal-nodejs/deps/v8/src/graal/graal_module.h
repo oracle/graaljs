@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ class GraalModule : public GraalHandleContent {
 public:
     inline static GraalModule* Allocate(GraalIsolate* isolate, jobject java_module);
     static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::Data> options);
-    v8::Maybe<bool> InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveModuleCallback callback);
+    v8::Maybe<bool> InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveModuleCallback module_callback, v8::Module::ResolveSourceCallback source_callback);
     v8::MaybeLocal<v8::Value> Evaluate(v8::Local<v8::Context> context);
     v8::Module::Status GetStatus() const;
     v8::Local<v8::Value> GetModuleNamespace();

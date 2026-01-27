@@ -146,7 +146,7 @@ public final class NativeAccess {
 
     public static native void notifyImportMetaInitializer(Object importMeta, Object module);
 
-    public static native Object executeResolveCallback(long callback, Object context, Object specifier, Object importAttributes, Object referrer);
+    public static native Object executeResolveCallback(long callback, Object context, Object specifier, Object importAttributes, Object referrer, boolean sourcePhase);
 
     public static native Object executeImportModuleDynamicallyCallback(Object context, Object hostDefinedOptions, Object resourceName, Object specifier, Object importAttributes);
 

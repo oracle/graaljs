@@ -272,6 +272,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.objects.WebAssemblyModuleRecord;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -3961,16 +3962,16 @@ public final class GraalJSAccess {
         return new JSModuleRecord(parsedModule, getModuleLoader(), new NodeHostDefined());
     }
 
-    public void moduleInstantiate(Object context, Object module, long resolveCallback) {
+    public void moduleInstantiate(Object context, Object module, long moduleCallback, long sourceCallback) {
         JSRealm jsRealm = (JSRealm) context;
         AbstractModuleRecord moduleRecord = (AbstractModuleRecord) module;
         ESModuleLoader loader = getModuleLoader();
-        loader.setResolver(resolveCallback);
+        loader.setCallbacks(moduleCallback, sourceCallback);
         try {
             moduleRecord.loadRequestedModulesSync(jsRealm, moduleRecord.getHostDefined());
             moduleRecord.link(jsRealm);
         } finally {
-            loader.setResolver(0);
+            loader.setCallbacks(0L, 0L);
         }
     }
 
@@ -4426,10 +4427,12 @@ public final class GraalJSAccess {
 
     static class ESModuleLoader implements JSModuleLoader {
         private final Map<ScriptOrModule, Map<ModuleRequest, AbstractModuleRecord>> cache = new HashMap<>();
-        private long resolver;
+        private long moduleCallback;
+        private long sourceCallback;
 
-        void setResolver(long resolver) {
-            this.resolver = resolver;
+        void setCallbacks(long moduleCallback, long sourceCallback) {
+            this.moduleCallback = moduleCallback;
+            this.sourceCallback = sourceCallback;
         }
 
         @Override
@@ -4444,17 +4447,26 @@ public final class GraalJSAccess {
                     return cached;
                 }
             }
-            if (resolver == 0) {
+            TruffleString specifier = moduleRequest.specifier();
+            Object importAttributes = moduleRequestGetImportAttributesImpl(moduleRequest, true);
+            boolean sourcePhase = (moduleRequest.phase() == Module.ImportPhase.Source);
+            long callback = sourcePhase ? sourceCallback : moduleCallback;
+            if (callback == 0) {
                 Thread.dumpStack();
                 System.err.println("Cannot resolve module outside module instantiation!");
                 System.exit(1);
             }
-            TruffleString specifier = moduleRequest.specifier();
-            Object importAttributes = moduleRequestGetImportAttributesImpl(moduleRequest, true);
             JSRealm realm = JSRealm.get(null);
-            AbstractModuleRecord result = (AbstractModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, importAttributes, referrer);
-            referrerCache.put(moduleRequest, result);
-            return result;
+            Object result = NativeAccess.executeResolveCallback(callback, realm, specifier, importAttributes, referrer, sourcePhase);
+            AbstractModuleRecord module;
+            if (sourcePhase) {
+                JSWebAssemblyModuleObject moduleObject = (JSWebAssemblyModuleObject) result;
+                module = new WebAssemblyModuleRecord(realm.getContext(), moduleObject.getWASMSource(), moduleObject);
+            } else {
+                module = (AbstractModuleRecord) result;
+            }
+            referrerCache.put(moduleRequest, module);
+            return module;
         }
     }
 

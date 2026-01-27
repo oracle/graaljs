@@ -972,7 +972,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::promise_resolver_resolve, "promiseResolverResolve", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::promise_then, "promiseThen", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_compile, "moduleCompile", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::module_instantiate, "moduleInstantiate", "(Ljava/lang/Object;Ljava/lang/Object;J)V")
+    ACCESS_METHOD(GraalAccessMethod::module_instantiate, "moduleInstantiate", "(Ljava/lang/Object;Ljava/lang/Object;JJ)V")
     ACCESS_METHOD(GraalAccessMethod::module_evaluate, "moduleEvaluate", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_status, "moduleGetStatus", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::module_get_namespace, "moduleGetNamespace", "(Ljava/lang/Object;)Ljava/lang/Object;")
