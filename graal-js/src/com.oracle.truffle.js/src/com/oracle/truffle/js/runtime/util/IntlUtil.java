@@ -618,7 +618,7 @@ public final class IntlUtil {
     @TruffleBoundary
     public static String canonicalizeLanguageTag(String languageTag) {
         try {
-            ULocale locale = ULocale.createCanonical(ULocale.getName(languageTag));
+            ULocale locale = ULocale.createCanonical(ULocale.forLanguageTag(languageTag));
             ULocale.Builder builder = new ULocale.Builder().setLocale(locale);
 
             String variant = locale.getVariant();
