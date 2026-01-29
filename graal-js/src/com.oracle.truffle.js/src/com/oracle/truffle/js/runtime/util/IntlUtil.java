@@ -670,6 +670,15 @@ public final class IntlUtil {
                     builder.setUnicodeLocaleKeyword(key, type);
                 }
 
+                if (loc.getUnicodeLocaleAttributes().contains("yes")) {
+                    builder.removeUnicodeLocaleAttribute("yes");
+                    builder.addUnicodeLocaleAttribute(YES_PLACEHOLDER);
+                }
+                if (loc.getUnicodeLocaleAttributes().contains("true")) {
+                    builder.removeUnicodeLocaleAttribute("true");
+                    builder.addUnicodeLocaleAttribute(TRUE_PLACEHOLDER);
+                }
+
                 // Validate and canonicalize the transformed extension.
                 // We cannot start with locale.getExtension('t') here. locale is
                 // canonicalized and ICU started (ICU-21406) to remove duplicate
