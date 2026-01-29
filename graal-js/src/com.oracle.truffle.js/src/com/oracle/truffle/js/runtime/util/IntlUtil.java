@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
 
 import org.graalvm.shadowed.com.ibm.icu.text.CaseMap;
 import org.graalvm.shadowed.com.ibm.icu.text.CaseMap.Lower;
@@ -607,8 +608,14 @@ public final class IntlUtil {
         // We cannot use (U)Locale class to check whether the tag is well-formed.
         // Locale class allows wider range of tags (irregular grandfathered tags,
         // extlang subtags, private use only tags etc.)
-        if (!UTS35Validator.isWellFormedUnicodeBCP47LocaleIdentifier(languageTag)) {
+        Matcher matcher = UTS35Validator.wellFormedUnicodeBCP47LocaleIdentifierMatcher(languageTag);
+        if (!matcher.matches()) {
             throw Errors.createRangeErrorFormat("Language tag is not well-formed: %s", null, languageTag);
+        } else {
+            String[] variants = UTS35Validator.getVariants(matcher);
+            if (variants != null && new HashSet<>(Arrays.asList(variants)).size() != variants.length) {
+                throw Errors.createRangeErrorFormat("Language tag with duplicate variants: %s", null, languageTag);
+            }
         }
 
         return canonicalizeLanguageTag(languageTag);
@@ -623,11 +630,8 @@ public final class IntlUtil {
 
             String variant = locale.getVariant();
             if (variant.indexOf('_') != -1 || variant.indexOf('-') != -1) {
-                String[] variants = variant.split("[_-]");
-                if (new HashSet<>(Arrays.asList(variants)).size() != variants.length) {
-                    throw Errors.createRangeErrorFormat("Language tag with duplicate variants: %s", null, languageTag);
-                }
                 // Canonicalization is supposed to sort variants but (U)Locale fails to do so.
+                String[] variants = variant.split("[_-]");
                 Arrays.sort(variants);
                 StringBuilder sb = new StringBuilder(variants[0]);
                 for (int i = 1; i < variants.length; i++) {
