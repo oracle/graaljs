@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -57,7 +59,23 @@ public final class UTS35Validator {
 
     @TruffleBoundary
     public static boolean isWellFormedUnicodeBCP47LocaleIdentifier(String languageTag) {
-        return LOCALE_ID_PATTERN.matcher(languageTag).matches();
+        return wellFormedUnicodeBCP47LocaleIdentifierMatcher(languageTag).matches();
+    }
+
+    @TruffleBoundary
+    public static Matcher wellFormedUnicodeBCP47LocaleIdentifierMatcher(String languageTag) {
+        return LOCALE_ID_PATTERN.matcher(languageTag);
+    }
+
+    @TruffleBoundary
+    public static String[] getVariants(Matcher matcher) {
+        assert matcher.matches();
+        String variantGroup = matcher.group(1);
+        if (!variantGroup.isEmpty()) {
+            assert variantGroup.startsWith(sep());
+            return variantGroup.substring(1).toLowerCase(Locale.ROOT).split(sep());
+        }
+        return null;
     }
 
     public static boolean isDigit(char c) {
@@ -153,7 +171,7 @@ public final class UTS35Validator {
 
         // "root" and tags starting with a script subtag are backwards compatibility syntax
         // (not allowed in Unicode BCP 47 locale identifier)
-        return group(unicodeLanguageSubtag() + group(sep() + unicodeScriptSubtag()) + "?" + group(sep() + unicodeRegionSubtag()) + "?" + group(sep() + unicodeVariantSubtag()) + "*");
+        return group(unicodeLanguageSubtag() + group(sep() + unicodeScriptSubtag()) + "?" + group(group(sep() + unicodeRegionSubtag()) + "?" + group(sep() + unicodeVariantSubtag()) + "*", true));
     }
 
     private static String unicodeLanguageSubtag() {
@@ -270,8 +288,12 @@ public final class UTS35Validator {
         return group(sep() + alphanum() + "{3,8}") + "+";
     }
 
+    private static String group(String expression, boolean capture) {
+        return (capture ? "(" : "(?:") + expression + ")";
+    }
+
     private static String group(String expression) {
-        return "(?:" + expression + ")";
+        return group(expression, false);
     }
 
 }
