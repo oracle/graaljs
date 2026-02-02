@@ -636,13 +636,12 @@ def graalnodejs_standalone_deps():
 
 def libgraalnodejs_build_args():
     image_build_args = []
-    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
+    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() >= mx.VersionSpec("25"):
         image_build_args.extend([
-            '--exclude-config',
-            r'wasm\.jar',
-            r'META-INF/native-image/org\.graalvm\.wasm/wasm-language/native-image\.properties',
-            '--initialize-at-build-time=org.graalvm.wasm',
-            '-H:MaxRuntimeCompileMethods=2000',
+            '-H:MaxRuntimeCompileMethods=850',
+            '-H:+UnlockExperimentalVMOptions',
+            '-H:+VectorAPISupport',
+            '--add-modules=jdk.incubator.vector',
         ])
     if is_nativeimage_ee() and not mx.is_windows():
         image_build_args.extend([
