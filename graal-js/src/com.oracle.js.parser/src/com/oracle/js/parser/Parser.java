@@ -2727,6 +2727,10 @@ public class Parser extends AbstractParser {
             return arrayLiteral(yield, await, CoverExpressionError.IGNORE);
         } else if (type == LBRACE) {
             return objectLiteral(yield, await, CoverExpressionError.IGNORE);
+        } else if (type == VOID) {
+            long voidToken = token;
+            next();
+            return createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard();
         } else {
             throw error(AbstractParser.message(MSG_EXPECTED_BINDING));
         }
@@ -5602,6 +5606,25 @@ public class Parser extends AbstractParser {
         final long paramToken = token;
         final int paramLine = line;
         IdentNode ident;
+
+        if (type == VOID) {
+            next();
+            ident = createIdentNode(paramToken, finish, lexer.stringIntern("void")).setIsDiscard();
+            Expression initializer = null;
+            if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
+                next();
+                initializer = assignmentExpression(true, yield, await);
+                if (currentFunction != null) {
+                    addDefaultParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
+                }
+            } else {
+                if (currentFunction != null) {
+                    currentFunction.addParameter(ident);
+                }
+            }
+            return;
+        }
+
         if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
             ident = bindingIdentifier(yield, await, CONTEXT_FUNCTION_PARAMETER);
 
@@ -6005,6 +6028,12 @@ public class Parser extends AbstractParser {
                 return verifyDeleteExpression(unaryToken, expr);
             }
             case VOID:
+                // Check for cover grammar for arrow function parameters: (void) => or (void, a) =>
+                if (type == VOID && (lookahead() == RPAREN || lookahead() == COMMARIGHT || lookahead() == ASSIGN)) {
+                    next();
+                    return createIdentNode(unaryToken, finish, lexer.stringIntern("void")).setIsDiscard();
+                }
+                // Fall-through to standard void operator
             case TYPEOF:
             case ADD:
             case SUB:
