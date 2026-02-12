@@ -33,6 +33,8 @@ public class ParserDiscardBindingTest {
     @Test public void testArrowParamDiscard() { assertParses("array.map((void, i) => i);"); }
     @Test public void testMultipleParamDiscards() { assertParses("foo((void, a, void, void, b) => {});"); }
 
+    @Test public void testNullUndefined() { assertParses("void 0"); }
+    @Test public void testNullUndefinedElements() { assertParses("[1, 2, 3, void 0, void 0, void 0]"); }
     // Extractors and Pattern Matching (separate proposals)
     //@Test public void testExtractorDiscard() { assertParses("const Message(void, body) = msg;"); }
     //@Test public void testMatchPatternDiscard() {
