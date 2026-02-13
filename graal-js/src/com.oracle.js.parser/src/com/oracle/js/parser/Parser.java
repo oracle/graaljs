@@ -1030,7 +1030,7 @@ public class Parser extends AbstractParser {
             case ASSIGN_NULLCOAL:
                 if (lhs instanceof IdentNode) {
                     IdentNode ident = (IdentNode) lhs;
-                    if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
+                    if (!checkIdentLValue(ident) || ident.isMetaProperty() || ident.isDiscard()) {
                         throw invalidLHSError(lhs);
                     }
                     verifyStrictIdent(ident, CONTEXT_ASSIGNMENT_TARGET);
@@ -4163,16 +4163,6 @@ public class Parser extends AbstractParser {
         loop: while (true) {
             long spreadToken = 0;
             switch (type) {
-                case VOID:
-                    if (lookahead() == RBRACKET || lookahead() == COMMARIGHT) {
-                        long voidToken = token;
-                        next();
-                        elements.add(createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard());
-                        elision = false;
-                        continue loop;
-                    }
-                    // fall through
-
                 case RBRACKET:
                     next();
 
@@ -4199,6 +4189,14 @@ public class Parser extends AbstractParser {
                     // fall through
 
                 default:
+                    if (type == VOID && (lookahead() == RBRACKET || lookahead() == COMMARIGHT)) {
+                        long voidToken = token;
+                        next();
+                        elements.add(createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard());
+                        elision = false;
+                        break;
+                    }
+
                     if (!elision) {
                         throw error(AbstractParser.message(MSG_EXPECTED_COMMA, type.getNameOrType()));
                     }
