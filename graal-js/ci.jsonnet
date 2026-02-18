@@ -124,7 +124,7 @@ local ci = import '../ci.jsonnet';
     graalvmtests:: '../../graalvm-tests',
     run+: [
       ['mx', 'build', '--dependencies=GRAALJS_NATIVE_STANDALONE'],
-      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl', 'test/regression'],
+      ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', '--no-warning', 'paths', '--output', 'GRAALJS_NATIVE_STANDALONE'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache', 'test/repl', 'test/regression', 'test/smoketest'],
     ],
     timelimit: '1:00:00',
   },
