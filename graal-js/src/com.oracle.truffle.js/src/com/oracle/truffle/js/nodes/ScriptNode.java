@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -92,8 +93,13 @@ public final class ScriptNode {
         return JSArguments.create(thisObj, functionObj, args);
     }
 
+    @TruffleBoundary
+    private JSFunctionObject createFunction(JSRealm realm, MaterializedFrame materializedFrame) {
+        return JSFunction.create(realm, functionData, materializedFrame);
+    }
+
     public Object runEval(IndirectCallNode callNode, JSRealm realm, Object thisObj, MaterializedFrame materializedFrame) {
-        JSFunctionObject functionObj = JSFunction.create(realm, getFunctionData(), materializedFrame);
+        JSFunctionObject functionObj = createFunction(realm, materializedFrame);
         return callNode.call(callTarget, JSArguments.createZeroArg(thisObj, functionObj));
     }
 
