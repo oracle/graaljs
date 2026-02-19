@@ -229,7 +229,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                     }
                 } catch (AbstractTruffleException ex) {
                     errorBranch.enter(this);
-                    iteratorCloseNode.executeAbrupt(iterator.getIterator());
+                    iteratorCloseNode.executeAbrupt(iterator);
                     throw ex;
                 }
             }

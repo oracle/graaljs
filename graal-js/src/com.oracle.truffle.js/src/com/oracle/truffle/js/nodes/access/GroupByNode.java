@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -58,10 +63,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 public abstract class GroupByNode extends JavaScriptBaseNode {
     protected final boolean toPropertyKeyCoercion;
@@ -117,7 +118,7 @@ public abstract class GroupByNode extends JavaScriptBaseNode {
             }
         } catch (AbstractTruffleException ex) {
             errorBranch.enter(node);
-            iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
+            iteratorCloseNode.executeAbrupt(iteratorRecord);
             throw ex;
         }
     }

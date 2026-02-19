@@ -213,7 +213,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                     valueWrapper = (JSPromiseObject) promiseResolveNode.execute(realm.getPromiseConstructor(), returnValue);
                 } catch (AbstractTruffleException e) {
                     if (!done && closeOnRejection) {
-                        iteratorCloseNode.executeAbrupt(syncIteratorRecord.getIterator());
+                        iteratorCloseNode.executeAbrupt(syncIteratorRecord);
                     }
                     promiseCapabilityReject(promiseCapability, e);
                     return promiseCapability.getPromise();
@@ -285,7 +285,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 public Object execute(VirtualFrame frame) {
                     JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                     IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecordNode.getValue(functionObject);
-                    iteratorCloseNode.executeAbrupt(syncIteratorRecord.getIterator());
+                    iteratorCloseNode.executeAbrupt(syncIteratorRecord);
                     return throwNode.execute(frame);
                 }
             }
@@ -341,7 +341,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected abstract GetMethodNode getMethod();
 
-        protected abstract Object processUndefinedMethod(PromiseCapabilityRecord promiseCapability, Object value, Object syncIterator);
+        protected abstract Object processUndefinedMethod(PromiseCapabilityRecord promiseCapability, Object value, IteratorRecord syncIterator);
 
         @Specialization
         protected final Object doMethod(VirtualFrame frame, JSAsyncFromSyncIteratorObject thisObj, Object value,
@@ -351,7 +351,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             Object syncIterator = syncIteratorRecord.getIterator();
             Object method = getMethod().executeWithTarget(syncIterator);
             if (method == Undefined.instance) {
-                return processUndefinedMethod(promiseCapability, value, syncIterator);
+                return processUndefinedMethod(promiseCapability, value, syncIteratorRecord);
             }
             Object returnResult;
             try {
@@ -389,7 +389,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         @Override
-        protected Object processUndefinedMethod(PromiseCapabilityRecord promiseCapability, Object value, Object syncIterator) {
+        protected Object processUndefinedMethod(PromiseCapabilityRecord promiseCapability, Object value, IteratorRecord syncIterator) {
             JSDynamicObject iterResult = createIterResult.execute(value, true);
             promiseCapabilityResolve(promiseCapability, iterResult);
             return promiseCapability.getPromise();
@@ -411,7 +411,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         @Override
-        protected Object processUndefinedMethod(PromiseCapabilityRecord promiseCapability, Object value, Object syncIterator) {
+        protected Object processUndefinedMethod(PromiseCapabilityRecord promiseCapability, Object value, IteratorRecord syncIterator) {
             try {
                 iteratorCloseNode.executeVoid(syncIterator);
             } catch (AbstractTruffleException e) {

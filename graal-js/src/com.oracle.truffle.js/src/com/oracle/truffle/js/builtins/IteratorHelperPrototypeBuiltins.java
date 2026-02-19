@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -128,7 +128,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             var args = thisObj.getIteratorArgs();
             IteratorRecord outerIterator = args.iterated;
             if (outerIterator != null) {
-                outerIteratorCloseNode.executeVoid(outerIterator.getIterator());
+                outerIteratorCloseNode.executeVoid(outerIterator);
             }
             return createIterResultObjectNode.execute(Undefined.instance, true);
         }
@@ -154,17 +154,17 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                 if (innerIterator != null) {
                     try {
-                        innerIteratorCloseNode.executeVoid(innerIterator.getIterator());
+                        innerIteratorCloseNode.executeVoid(innerIterator);
                     } catch (AbstractTruffleException e) {
                         if (outerIterator != null) {
-                            outerIteratorCloseNode.executeAbrupt(outerIterator.getIterator());
+                            outerIteratorCloseNode.executeAbrupt(outerIterator);
                         }
                         throw e;
                     }
                 }
 
                 if (outerIterator != null) {
-                    outerIteratorCloseNode.executeVoid(outerIterator.getIterator());
+                    outerIteratorCloseNode.executeVoid(outerIterator);
                 }
             } finally {
                 thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);

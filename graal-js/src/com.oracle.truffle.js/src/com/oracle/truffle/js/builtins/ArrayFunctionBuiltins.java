@@ -229,7 +229,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
         }
 
-        protected void iteratorCloseAbrupt(Object iterator) {
+        protected void iteratorCloseAbrupt(IteratorRecord iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
@@ -320,7 +320,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     k++;
                 }
             } catch (AbstractTruffleException ex) {
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseAbrupt(iteratorRecord);
                 throw ex; // should be executed by iteratorClose
             }
         }

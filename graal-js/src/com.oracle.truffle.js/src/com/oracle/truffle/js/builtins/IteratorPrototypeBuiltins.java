@@ -387,7 +387,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
-            iteratorCloseNode.executeAbrupt(iterator);
+            iteratorCloseNode.executeDirectAbrupt(iterator);
         }
     }
 
@@ -577,7 +577,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 try {
                     mapped = callNode.executeCall(JSArguments.create(Undefined.instance, args.mapper, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException e) {
-                    iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
+                    iteratorCloseNode.executeAbrupt(args.iterated);
                     throw e;
                 }
                 args.counter++;
@@ -654,7 +654,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     try {
                         selected = callNode.executeCall(JSArguments.create(Undefined.instance, args.filterer, value, indexToJS(args.counter)));
                     } catch (AbstractTruffleException e) {
-                        iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
+                        iteratorCloseNode.executeAbrupt(args.iterated);
                         throw e;
                     }
                     args.counter++;
@@ -746,7 +746,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 double remaining = args.remaining;
 
                 if (remaining == 0) {
-                    iteratorCloseNode.executeVoid(args.iterated.getIterator());
+                    iteratorCloseNode.executeVoid(args.iterated);
                     return createResultDone(thisObj);
                 } else if (finiteProfile.profile(remaining != Double.POSITIVE_INFINITY)) {
                     args.remaining = remaining - 1;
@@ -919,7 +919,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         try {
                             innerValue = getNextValueNode.execute(frame, args.innerIterator);
                         } catch (AbstractTruffleException e) {
-                            iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
+                            iteratorCloseNode.executeAbrupt(args.iterated);
                             throw e;
                         }
                         if (innerValue == null) {
@@ -939,7 +939,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                             Object mapped = callNode.executeCall(JSArguments.create(Undefined.instance, args.mapper, value, indexToJS(args.counter)));
                             args.innerIterator = getIteratorFlattenableNode.execute(mapped);
                         } catch (AbstractTruffleException e) {
-                            iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
+                            iteratorCloseNode.executeAbrupt(args.iterated);
                             throw e;
                         }
                         args.counter++;
@@ -1003,7 +1003,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
                 }
-                iteratorCloseNode.executeAbrupt(iterated.getIterator());
+                iteratorCloseNode.executeAbrupt(iterated);
                 throw ex; // should be executed by iteratorClose
             }
         }
@@ -1029,7 +1029,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
                     }
-                    return iteratorCloseNode.execute(iterated.getIterator(), result);
+                    return iteratorCloseNode.execute(iterated, result);
                 }
             }
         }
@@ -1197,7 +1197,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     accumulator = callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value, counterToJSNumber.execute(this, counter)));
                     counter++;
                 } catch (AbstractTruffleException ex) {
-                    iteratorCloseNode().executeAbrupt(iterated.getIterator());
+                    iteratorCloseNode().executeAbrupt(iterated);
                     throw ex; // should be executed by iteratorClose
                 }
             }

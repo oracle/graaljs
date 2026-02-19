@@ -215,7 +215,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
-            iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
+            iteratorCloseNode.executeAbrupt(iteratorRecord);
         }
 
         @SuppressWarnings("unused")
