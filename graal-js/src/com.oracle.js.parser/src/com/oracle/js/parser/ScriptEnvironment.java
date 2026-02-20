@@ -133,6 +133,9 @@ public final class ScriptEnvironment {
     /** Are source phase imports enabled. */
     final boolean sourcePhaseImports;
 
+    /** Are discard bindings enabled? */
+    final boolean discardBindings;
+
     public ScriptEnvironment(boolean strict,
                     int ecmaScriptVersion,
                     boolean emptyStatements,
@@ -149,6 +152,7 @@ public final class ScriptEnvironment {
                     boolean privateFieldsIn,
                     boolean topLevelAwait,
                     boolean v8Intrinsics,
+                    boolean discardBindings,
                     FunctionStatementBehavior functionStatementBehavior) {
         this.constAsVar = constAsVar;
         this.emptyStatements = emptyStatements;
@@ -167,6 +171,7 @@ public final class ScriptEnvironment {
         this.privateFieldsIn = privateFieldsIn;
         this.topLevelAwait = topLevelAwait;
         this.v8Intrinsics = v8Intrinsics;
+        this.discardBindings = discardBindings;
     }
 
     public boolean isStrict() {
@@ -195,6 +200,7 @@ public final class ScriptEnvironment {
         private boolean privateFieldsIn = false;
         private boolean topLevelAwait = false;
         private boolean v8Intrinsics = false;
+        private boolean discardBindings = false;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
 
         private Builder() {
@@ -279,6 +285,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder discardBindings(boolean discardBindings) {
+            this.discardBindings = discardBindings;
+            return this;
+        }
+
         public Builder functionStatementBehavior(FunctionStatementBehavior functionStatementBehavior) {
             this.functionStatementBehavior = functionStatementBehavior;
             return this;
@@ -286,7 +297,7 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior);
+                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, discardBindings, functionStatementBehavior);
         }
     }
 }

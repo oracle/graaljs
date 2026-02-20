@@ -1,5 +1,7 @@
 package com.oracle.truffle.js.test.parser;
 
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -48,16 +50,20 @@ public class ParserDiscardBindingTest {
 
     // --- HELPERS ---
     private void assertParses(String code) {
-        try (Context ctx = JSTest.newContextBuilder().build()) {
-            ctx.parse("js", code);
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.DISCARD_BINDINGS_NAME, "true");
+        try (Context ctx = builder.build()) {
+            ctx.parse(JavaScriptLanguage.ID, code);
         } catch (PolyglotException e) {
             Assert.fail("Expected code to parse successfully, but got: " + e.getMessage() + "\nCode: " + code);
         }
     }
 
     private void assertNotParses(String code) {
-        try (Context ctx = JSTest.newContextBuilder().build()) {
-            ctx.parse("js", code);
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.DISCARD_BINDINGS_NAME, "true");
+        try (Context ctx = builder.build()) {
+            ctx.parse(JavaScriptLanguage.ID, code);
             Assert.fail("Expected syntax error, but parsing succeeded: " + code);
         } catch (PolyglotException e) {
             Assert.assertTrue("Expected SyntaxError", e.isSyntaxError());

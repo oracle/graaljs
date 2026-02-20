@@ -244,6 +244,7 @@ public class Parser extends AbstractParser {
     private static final boolean ES2019_OPTIONAL_CATCH_BINDING = Options.getBooleanProperty("parser.optional.catch.binding", true);
     private static final boolean ES2020_CLASS_FIELDS = Options.getBooleanProperty("parser.class.fields", true);
     private static final boolean ES2022_TOP_LEVEL_AWAIT = Options.getBooleanProperty("parser.top.level.await", true);
+    private static final boolean DISCARD_BINDINGS = Options.getBooleanProperty("parser.discard.bindings", true);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
@@ -1030,7 +1031,7 @@ public class Parser extends AbstractParser {
             case ASSIGN_NULLCOAL:
                 if (lhs instanceof IdentNode) {
                     IdentNode ident = (IdentNode) lhs;
-                    if (!checkIdentLValue(ident) || ident.isMetaProperty() || ident.isDiscard()) {
+                    if (!checkIdentLValue(ident) || ident.isMetaProperty() || isDiscardBindings() && ident.isDiscard()) {
                         throw invalidLHSError(lhs);
                     }
                     verifyStrictIdent(ident, CONTEXT_ASSIGNMENT_TARGET);
@@ -2483,7 +2484,7 @@ public class Parser extends AbstractParser {
             final Expression binding = bindingIdentifierOrPattern(yield, await, CONTEXT_VARIABLE_NAME);
 
             // Disallow top-level discard bindings for var/let/const (only allowed in patterns or using/await using)
-            if (binding instanceof IdentNode && ((IdentNode) binding).isDiscard()) {
+            if (isDiscardBindings() && binding instanceof IdentNode && ((IdentNode) binding).isDiscard()) {
                 throw error(AbstractParser.message(MSG_EXPECTED_BINDING_IDENTIFIER), binding.getToken());
             }
 
@@ -2707,7 +2708,7 @@ public class Parser extends AbstractParser {
     }
 
     private IdentNode bindingIdentifier(boolean yield, boolean await, String contextString) {
-        if (type == VOID) {
+        if (isDiscardBindings() && type == VOID) {
             long voidToken = token;
             next();
             return createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard();
@@ -2727,7 +2728,7 @@ public class Parser extends AbstractParser {
             return arrayLiteral(yield, await, CoverExpressionError.IGNORE);
         } else if (type == LBRACE) {
             return objectLiteral(yield, await, CoverExpressionError.IGNORE);
-        } else if (type == VOID) {
+        } else if (isDiscardBindings() && type == VOID) {
             long voidToken = token;
             next();
             return createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard();
@@ -2850,7 +2851,7 @@ public class Parser extends AbstractParser {
                 if (identNode.isParenthesized()) {
                     throw error("Expected a valid binding identifier", identNode.getToken());
                 }
-                if (!identNode.isDiscard()) {
+                if (!isDiscardBindings() || !identNode.isDiscard()) {
                     identifierCallback.accept(identNode);
                 }
                 return false;
@@ -4189,7 +4190,7 @@ public class Parser extends AbstractParser {
                     // fall through
 
                 default:
-                    if (type == VOID && (lookahead() == RBRACKET || lookahead() == COMMARIGHT)) {
+                    if (isDiscardBindings() && type == VOID && (lookahead() == RBRACKET || lookahead() == COMMARIGHT)) {
                         long voidToken = token;
                         next();
                         elements.add(createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard());
@@ -4518,7 +4519,7 @@ public class Parser extends AbstractParser {
         } else {
             expect(COLON);
 
-            if (type == VOID && (lookahead() == RBRACE || lookahead() == COMMARIGHT)) {
+            if (isDiscardBindings() && type == VOID && (lookahead() == RBRACE || lookahead() == COMMARIGHT)) {
                 long voidToken = token;
                 next();
                 propertyValue = createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard();
@@ -5493,7 +5494,7 @@ public class Parser extends AbstractParser {
     private void verifyParameterList(final ParserContextFunctionNode functionNode) {
         IdentNode duplicateParameter = functionNode.getDuplicateParameterBinding();
         if (duplicateParameter != null) {
-            if (duplicateParameter.isDiscard()) {
+            if (isDiscardBindings() && duplicateParameter.isDiscard()) {
                 return;
             }
             if (functionNode.isStrict() || functionNode.isMethod() || functionNode.isArrow() || !functionNode.isSimpleParameterList()) {
@@ -5605,7 +5606,7 @@ public class Parser extends AbstractParser {
         final int paramLine = line;
         IdentNode ident;
 
-        if (type == VOID) {
+        if (isDiscardBindings() && type == VOID) {
             next();
             ident = createIdentNode(paramToken, finish, lexer.stringIntern("void")).setIsDiscard();
             Expression initializer = null;
@@ -6027,7 +6028,7 @@ public class Parser extends AbstractParser {
             }
             case VOID:
                 // Check for cover grammar for arrow function parameters: (void) => or (void, a) =>
-                if (type == VOID && (lookahead() == RPAREN || lookahead() == COMMARIGHT || lookahead() == ASSIGN)) {
+                if (isDiscardBindings() && (lookahead() == RPAREN || lookahead() == COMMARIGHT || lookahead() == ASSIGN)) {
                     next();
                     return createIdentNode(unaryToken, finish, lexer.stringIntern("void")).setIsDiscard();
                 }
@@ -7053,6 +7054,10 @@ public class Parser extends AbstractParser {
 
     private boolean isTopLevelAwait() {
         return ES2022_TOP_LEVEL_AWAIT && env.topLevelAwait;
+    }
+
+    private boolean isDiscardBindings() {
+        return DISCARD_BINDINGS && env.discardBindings;
     }
 
     private boolean isImportExpression() {

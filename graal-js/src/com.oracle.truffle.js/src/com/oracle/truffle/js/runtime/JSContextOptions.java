@@ -755,6 +755,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> TEXT_ENCODING = new OptionKey<>(false);
     @CompilationFinal private boolean textEncoding;
 
+    public static final String DISCARD_BINDINGS_NAME = JS_OPTION_PREFIX + "discard-bindings";
+    @Option(name = DISCARD_BINDINGS_NAME, category = OptionCategory.USER, help = "Enable discard-bindings")
+    public static final OptionKey<Boolean> DISCARD_BINDINGS = new OptionKey<>(false);
+    @CompilationFinal private boolean discardBindings;
+
     private static OptionType<Integer> integerRange(int min, int max) {
         return new OptionType<>("Integer", sv -> {
             try {
@@ -869,6 +874,7 @@ public final class JSContextOptions {
         this.stackTraceAPI = STACK_TRACE_API.hasBeenSet(optionValues) ? readBooleanOption(STACK_TRACE_API) : (v8CompatibilityMode || nashornCompatibilityMode);
         this.worker = WORKER.hasBeenSet(optionValues) ? readBooleanOption(WORKER) : testV8Mode;
         this.textEncoding = readBooleanOption(TEXT_ENCODING);
+        this.discardBindings = readBooleanOption(DISCARD_BINDINGS);
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -1379,6 +1385,10 @@ public final class JSContextOptions {
 
     public boolean isWorker() {
         return worker;
+    }
+
+    public boolean isDiscardBindings() {
+        return discardBindings;
     }
 
 }
