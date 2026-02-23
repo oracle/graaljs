@@ -270,6 +270,10 @@ public abstract class TypedArray extends ScriptArray {
         return this;
     }
 
+    public final boolean isArray() {
+        return bufferType == BUFFER_TYPE_ARRAY;
+    }
+
     public final boolean isDirect() {
         return bufferType > 0;
     }

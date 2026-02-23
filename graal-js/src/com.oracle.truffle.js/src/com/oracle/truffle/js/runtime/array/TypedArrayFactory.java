@@ -335,5 +335,6 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     static final TypedArrayFactory[] FACTORIES_ALL = TypedArrayFactory.values();
     static final TypedArrayFactory[] FACTORIES_PRE_FLOAT16 = Arrays.copyOf(FACTORIES_ALL, Float16Array.ordinal());
     static final TypedArrayFactory[] FACTORIES_PRE_BIGINT = Arrays.copyOf(FACTORIES_ALL, BigInt64Array.ordinal());
+    public static final int NUMBER_OF_ELEMENT_TYPES = FACTORIES_ALL.length;
 
 }
