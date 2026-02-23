@@ -23,7 +23,6 @@ const {
   refreshOptions,
   getEmbedderOptions,
 } = require('internal/options');
-const { reconnectZeroFillToggle } = require('internal/buffer');
 const {
   exposeInterface,
   exposeLazyInterfaces,
@@ -98,7 +97,6 @@ function prepareExecution(options) {
   const { expandArgv1, initializeModules, isMainThread } = options;
 
   refreshRuntimeOptions();
-  reconnectZeroFillToggle();
 
   // Patch the process object and get the resolved main entry point.
   const mainEntry = patchProcessObject(expandArgv1);
@@ -127,6 +125,7 @@ function prepareExecution(options) {
   initializeConfigFileSupport();
 
   require('internal/dns/utils').initializeDns();
+  setupHttpProxy();
 
   setupSymbolDisposePolyfill();
 
@@ -187,6 +186,27 @@ function setupSymbolDisposePolyfill() {
       writable: false,
     });
   }
+}
+
+function setupHttpProxy() {
+  // This normalized from both --use-env-proxy and NODE_USE_ENV_PROXY settings.
+  if (!getOptionValue('--use-env-proxy')) {
+    return;
+  }
+  if (!process.env.HTTP_PROXY && !process.env.HTTPS_PROXY &&
+      !process.env.http_proxy && !process.env.https_proxy) {
+    return;
+  }
+
+  const { setGlobalDispatcher, EnvHttpProxyAgent } = require('internal/deps/undici/undici');
+  const envHttpProxyAgent = new EnvHttpProxyAgent();
+  setGlobalDispatcher(envHttpProxyAgent);
+  // For fetch, we need to set the global dispatcher from here.
+  // For http/https agents, we'll configure the global agent when they are
+  // actually created, in lib/_http_agent.js and lib/https.js.
+  // TODO(joyeecheung): This is currently guarded with NODE_USE_ENV_PROXY and --use-env-proxy.
+  // Investigate whether it's possible to enable it by default without stepping on other
+  // existing libraries that sets the global dispatcher or monkey patches the global agent.
 }
 
 function setupUserModules(forceDefaultLoader = false) {
@@ -449,10 +469,7 @@ function setupStacktracePrinterOnSigint() {
   if (!getOptionValue('--trace-sigint')) {
     return;
   }
-  const { SigintWatchdog } = require('internal/watchdog');
-
-  const watchdog = new SigintWatchdog();
-  watchdog.start();
+  require('internal/util/trace_sigint').setTraceSigInt(true);
 }
 
 function initializeReport() {
@@ -675,15 +692,8 @@ function initializePermission() {
       },
     });
   } else {
-    const availablePermissionFlags = [
-      '--allow-fs-read',
-      '--allow-fs-write',
-      '--allow-addons',
-      '--allow-child-process',
-      '--allow-wasi',
-      '--allow-worker',
-    ];
-    ArrayPrototypeForEach(availablePermissionFlags, (flag) => {
+    const { availableFlags } = require('internal/process/permission');
+    ArrayPrototypeForEach(availableFlags(), (flag) => {
       const value = getOptionValue(flag);
       if (value.length) {
         throw new ERR_MISSING_OPTION('--permission');

@@ -235,11 +235,6 @@ const {
   }
 
   class AsymmetricKeyObject extends KeyObject {
-    // eslint-disable-next-line no-useless-constructor
-    constructor(type, handle) {
-      super(type, handle);
-    }
-
     get asymmetricKeyType() {
       return this[kAsymmetricKeyType] ||= this[kHandle].getAsymmetricKeyType();
     }
@@ -922,15 +917,11 @@ function importGenericSecretKey(
       keyObject = createSecretKey(keyData);
       break;
     }
+    default:
+      return undefined;
   }
 
-  if (keyObject) {
-    return new InternalCryptoKey(keyObject, { name }, keyUsages, false);
-  }
-
-  throw lazyDOMException(
-    `Unable to import ${name} key with format ${format}`,
-    'NotSupportedError');
+  return new InternalCryptoKey(keyObject, { name }, keyUsages, false);
 }
 
 module.exports = {

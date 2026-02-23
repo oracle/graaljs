@@ -172,6 +172,7 @@ const {
   setupPreview,
   setupReverseSearch,
   isObjectLiteral,
+  isValidSyntax,
 } = require('internal/repl/utils');
 const {
   constants: {
@@ -306,7 +307,6 @@ function REPLServer(prompt,
     options.useColors = shouldColorize(options.output);
   }
 
-  // TODO(devsnek): Add a test case for custom eval functions.
   const preview = options.terminal &&
     (options.preview !== undefined ? !!options.preview : !eval_);
 
@@ -441,7 +441,7 @@ function REPLServer(prompt,
     let awaitPromise = false;
     const input = code;
 
-    if (isObjectLiteral(code)) {
+    if (isObjectLiteral(code) && isValidSyntax(code)) {
       // Add parentheses to make sure `code` is parsed as an expression
       code = `(${StringPrototypeTrim(code)})\n`;
       wrappedCmd = true;
@@ -746,7 +746,9 @@ function REPLServer(prompt,
         process.emit('uncaughtException', e);
         self.clearBufferedCommand();
         self.lines.level = [];
-        self.displayPrompt();
+        if (!self.closed) {
+          self.displayPrompt();
+        }
       });
     } else {
       if (errStack === '') {
@@ -776,7 +778,9 @@ function REPLServer(prompt,
       self.output.write(errStack);
       self.clearBufferedCommand();
       self.lines.level = [];
-      self.displayPrompt();
+      if (!self.closed) {
+        self.displayPrompt();
+      }
     }
   });
 
@@ -1212,7 +1216,7 @@ const importRE = /\bimport\s*\(\s*['"`](([\w@./:-]+\/)?(?:[\w@./:-]*))(?![^'"`])
 const requireRE = /\brequire\s*\(\s*['"`](([\w@./:-]+\/)?(?:[\w@./:-]*))(?![^'"`])$/;
 const fsAutoCompleteRE = /fs(?:\.promises)?\.\s*[a-z][a-zA-Z]+\(\s*["'](.*)/;
 const simpleExpressionRE =
-    /(?:[\w$'"`[{(](?:\w|\$|['"`\]})])*\??\.)*[a-zA-Z_$](?:\w|\$)*\??\.?$/;
+    /(?:[\w$'"`[{(](?:(\w| |\t)*?['"`]|\$|['"`\]})])*\??(?:\.|])?)*?(?:[a-zA-Z_$])?(?:\w|\$)*\??\.?$/;
 const versionedFileNamesRe = /-\d+\.\d+/;
 
 function isIdentifier(str) {
@@ -1343,7 +1347,7 @@ function complete(line, callback) {
     filter = completeOn;
     if (this.allowBlockingCompletions) {
       const subdir = match[2] || '';
-      const extensions = ObjectKeys(this.context.require.extensions);
+      const extensions = ObjectKeys(CJSModule._extensions);
       const indexes = ArrayPrototypeMap(extensions,
                                         (extension) => `index${extension}`);
       ArrayPrototypePush(indexes, 'package.json', 'index');
@@ -1860,6 +1864,7 @@ module.exports = {
   REPL_MODE_SLOPPY,
   REPL_MODE_STRICT,
   Recoverable,
+  isValidSyntax,
 };
 
 ObjectDefineProperty(module.exports, 'builtinModules', {

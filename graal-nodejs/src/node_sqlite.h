@@ -39,12 +39,40 @@ class DatabaseOpenConfiguration {
 
   inline int get_timeout() { return timeout_; }
 
+  inline void set_use_big_ints(bool flag) { use_big_ints_ = flag; }
+
+  inline bool get_use_big_ints() const { return use_big_ints_; }
+
+  inline void set_return_arrays(bool flag) { return_arrays_ = flag; }
+
+  inline bool get_return_arrays() const { return return_arrays_; }
+
+  inline void set_allow_bare_named_params(bool flag) {
+    allow_bare_named_params_ = flag;
+  }
+
+  inline bool get_allow_bare_named_params() const {
+    return allow_bare_named_params_;
+  }
+
+  inline void set_allow_unknown_named_params(bool flag) {
+    allow_unknown_named_params_ = flag;
+  }
+
+  inline bool get_allow_unknown_named_params() const {
+    return allow_unknown_named_params_;
+  }
+
  private:
   std::string location_;
   bool read_only_ = false;
   bool enable_foreign_keys_ = true;
   bool enable_dqs_ = false;
   int timeout_ = 0;
+  bool use_big_ints_ = false;
+  bool return_arrays_ = false;
+  bool allow_bare_named_params_ = true;
+  bool allow_unknown_named_params_ = false;
 };
 
 class StatementSync;
@@ -81,6 +109,14 @@ class DatabaseSync : public BaseObject {
   void FinalizeBackups();
   void UntrackStatement(StatementSync* statement);
   bool IsOpen();
+  bool use_big_ints() const { return open_config_.get_use_big_ints(); }
+  bool return_arrays() const { return open_config_.get_return_arrays(); }
+  bool allow_bare_named_params() const {
+    return open_config_.get_allow_bare_named_params();
+  }
+  bool allow_unknown_named_params() const {
+    return open_config_.get_allow_unknown_named_params();
+  }
   sqlite3* Connection();
 
   // In some situations, such as when using custom functions, it is possible
@@ -137,6 +173,8 @@ class StatementSync : public BaseObject {
       const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetReadBigInts(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetReturnArrays(const v8::FunctionCallbackInfo<v8::Value>& args);
+  v8::MaybeLocal<v8::Value> ColumnToValue(const int column);
+  v8::MaybeLocal<v8::Name> ColumnNameToName(const int column);
   void Finalize();
   bool IsFinalized();
 
@@ -154,8 +192,6 @@ class StatementSync : public BaseObject {
   std::optional<std::map<std::string, std::string>> bare_named_params_;
   bool BindParams(const v8::FunctionCallbackInfo<v8::Value>& args);
   bool BindValue(const v8::Local<v8::Value>& value, const int index);
-  v8::MaybeLocal<v8::Value> ColumnToValue(const int column);
-  v8::MaybeLocal<v8::Name> ColumnNameToName(const int column);
 
   friend class StatementSyncIterator;
 };

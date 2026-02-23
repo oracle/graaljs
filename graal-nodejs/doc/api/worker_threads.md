@@ -164,7 +164,7 @@ if (isMainThread) {
 added: v22.14.0
 -->
 
-* {boolean}
+* Type: {boolean}
 
 Is `true` if this code is running inside of an internal [`Worker`][] thread (e.g the loader thread).
 
@@ -206,7 +206,7 @@ console.log(isInternalThread);  // false
 added: v10.5.0
 -->
 
-* {boolean}
+* Type: {boolean}
 
 Is `true` if this code is not running inside of a [`Worker`][] thread.
 
@@ -427,7 +427,7 @@ events using it.
 added: v10.5.0
 -->
 
-* {null|MessagePort}
+* Type: {null|MessagePort}
 
 If this thread is a [`Worker`][], this is a [`MessagePort`][]
 allowing communication with the parent thread. Messages sent using
@@ -636,7 +636,7 @@ added:
  - v12.16.0
 -->
 
-* {Object}
+* Type: {Object}
   * `maxYoungGenerationSizeMb` {number}
   * `maxOldGenerationSizeMb` {number}
   * `codeRangeSizeMb` {number}
@@ -654,7 +654,7 @@ If this is used in the main thread, its value is an empty object.
 added: v11.14.0
 -->
 
-* {symbol}
+* Type: {symbol}
 
 A special value that can be passed as the `env` option of the [`Worker`][]
 constructor, to indicate that the current thread and the Worker thread should
@@ -709,11 +709,22 @@ instances spawned from the current context.
 added: v10.5.0
 -->
 
-* {integer}
+* Type: {integer}
 
 An integer identifier for the current thread. On the corresponding worker object
 (if there is any), it is available as [`worker.threadId`][].
 This value is unique for each [`Worker`][] instance inside a single process.
+
+## `worker.threadName`
+
+<!-- YAML
+added: v22.20.0
+-->
+
+* {string|null}
+
+A string identifier for the current thread or null if the thread is not running.
+On the corresponding worker object (if there is any), it is available as [`worker.threadName`][].
 
 ## `worker.workerData`
 
@@ -1596,6 +1607,19 @@ added: v10.5.0
 The `'online'` event is emitted when the worker thread has started executing
 JavaScript code.
 
+### `worker.cpuUsage([prev])`
+
+<!-- YAML
+added:
+- v22.19.0
+-->
+
+* Returns: {Promise}
+
+This method returns a `Promise` that will resolve to an object identical to [`process.threadCpuUsage()`][],
+or reject with an [`ERR_WORKER_NOT_RUNNING`][] error if the worker is no longer running.
+This methods allows the statistics to be observed from outside the actual thread.
+
 ### `worker.getHeapSnapshot([options])`
 
 <!-- YAML
@@ -1755,7 +1779,7 @@ added:
  - v12.16.0
 -->
 
-* {Object}
+* Type: {Object}
   * `maxYoungGenerationSizeMb` {number}
   * `maxOldGenerationSizeMb` {number}
   * `codeRangeSizeMb` {number}
@@ -1767,13 +1791,43 @@ this matches its values.
 
 If the worker has stopped, the return value is an empty object.
 
+### `worker.startCpuProfile(name)`
+
+<!-- YAML
+added: v22.20.0
+-->
+
+* name: {string}
+* Returns: {Promise}
+
+Starting a CPU profile with the given `name`, then return a Promise that fulfills
+with an error or an object which has a `stop` method. Calling the `stop` method will
+stop collecting the profile, then return a Promise that fulfills with an error or the
+profile data.
+
+```cjs
+const { Worker } = require('node:worker_threads');
+
+const worker = new Worker(`
+  const { parentPort } = require('worker_threads');
+  parentPort.on('message', () => {});
+  `, { eval: true });
+
+worker.on('online', async () => {
+  const handle = await worker.startCpuProfile('demo');
+  const profile = await handle.stop();
+  console.log(profile);
+  worker.terminate();
+});
+```
+
 ### `worker.stderr`
 
 <!-- YAML
 added: v10.5.0
 -->
 
-* {stream.Readable}
+* Type: {stream.Readable}
 
 This is a readable stream which contains data written to [`process.stderr`][]
 inside the worker thread. If `stderr: true` was not passed to the
@@ -1786,7 +1840,7 @@ inside the worker thread. If `stderr: true` was not passed to the
 added: v10.5.0
 -->
 
-* {null|stream.Writable}
+* Type: {null|stream.Writable}
 
 If `stdin: true` was passed to the [`Worker`][] constructor, this is a
 writable stream. The data written to this stream will be made available in
@@ -1798,7 +1852,7 @@ the worker thread as [`process.stdin`][].
 added: v10.5.0
 -->
 
-* {stream.Readable}
+* Type: {stream.Readable}
 
 This is a readable stream which contains data written to [`process.stdout`][]
 inside the worker thread. If `stdout: true` was not passed to the
@@ -1830,11 +1884,22 @@ Returns a Promise for the exit code that is fulfilled when the
 added: v10.5.0
 -->
 
-* {integer}
+* Type: {integer}
 
 An integer identifier for the referenced thread. Inside the worker thread,
 it is available as [`require('node:worker_threads').threadId`][].
 This value is unique for each `Worker` instance inside a single process.
+
+### `worker.threadName`
+
+<!-- YAML
+added: v22.20.0
+-->
+
+* {string|null}
+
+A string identifier for the referenced thread or null if the thread is not running.
+Inside the worker thread, it is available as [`require('node:worker_threads').threadName`][].
 
 ### `worker.unref()`
 
@@ -1845,6 +1910,14 @@ added: v10.5.0
 Calling `unref()` on a worker allows the thread to exit if this is the only
 active handle in the event system. If the worker is already `unref()`ed calling
 `unref()` again has no effect.
+
+### `worker[Symbol.asyncDispose]()`
+
+<!-- YAML
+added: v22.18.0
+-->
+
+Alias for [`worker.terminate()`][].
 
 ## Notes
 
@@ -1941,12 +2014,14 @@ thread spawned will spawn another until the application crashes.
 [`process.stderr`]: process.md#processstderr
 [`process.stdin`]: process.md#processstdin
 [`process.stdout`]: process.md#processstdout
+[`process.threadCpuUsage()`]: process.md#processthreadcpuusagepreviousvalue
 [`process.title`]: process.md#processtitle
 [`require('node:worker_threads').isMainThread`]: #workerismainthread
 [`require('node:worker_threads').parentPort.on('message')`]: #event-message
 [`require('node:worker_threads').parentPort.postMessage()`]: #workerpostmessagevalue-transferlist
 [`require('node:worker_threads').parentPort`]: #workerparentport
 [`require('node:worker_threads').threadId`]: #workerthreadid
+[`require('node:worker_threads').threadName`]: #workerthreadname
 [`require('node:worker_threads').workerData`]: #workerworkerdata
 [`trace_events`]: tracing.md
 [`v8.getHeapSnapshot()`]: v8.md#v8getheapsnapshotoptions
@@ -1957,6 +2032,7 @@ thread spawned will spawn another until the application crashes.
 [`worker.postMessage()`]: #workerpostmessagevalue-transferlist
 [`worker.terminate()`]: #workerterminate
 [`worker.threadId`]: #workerthreadid_1
+[`worker.threadName`]: #workerthreadname_1
 [async-resource-worker-pool]: async_context.md#using-asyncresource-for-a-worker-thread-pool
 [browser `MessagePort`]: https://developer.mozilla.org/en-US/docs/Web/API/MessagePort
 [child processes]: child_process.md

@@ -7,6 +7,7 @@
 #include "node_external_reference.h"
 #include "node_internals.h"
 #include "node_sea.h"
+#include "uv.h"
 #if HAVE_OPENSSL
 #include "openssl/opensslv.h"
 #endif
@@ -14,6 +15,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cstdint>
 #include <limits>
 #include <sstream>
 #include <string_view>
@@ -103,8 +105,54 @@ void PerProcessOptions::CheckOptions(std::vector<std::string>* errors,
   per_isolate->CheckOptions(errors, argv);
 }
 
+void PerIsolateOptions::HandleMaxOldSpaceSizePercentage(
+    std::vector<std::string>* errors,
+    std::string* max_old_space_size_percentage) {
+  std::string original_input_for_error = *max_old_space_size_percentage;
+  // Parse the percentage value
+  char* end_ptr;
+  double percentage =
+      std::strtod(max_old_space_size_percentage->c_str(), &end_ptr);
+
+  // Validate the percentage value
+  if (*end_ptr != '\0' || percentage <= 0.0 || percentage > 100.0) {
+    errors->push_back("--max-old-space-size-percentage must be greater "
+                      "than 0 and up to 100. Got: " +
+                      original_input_for_error);
+    return;
+  }
+
+  // Get available memory in bytes
+  uint64_t total_memory = uv_get_total_memory();
+  uint64_t constrained_memory = uv_get_constrained_memory();
+
+  // Use constrained memory if available, otherwise use total memory
+  // This logic correctly handles the documented guarantees.
+  // Use uint64_t for the result to prevent data loss on 32-bit systems.
+  uint64_t available_memory =
+      (constrained_memory > 0 && constrained_memory != UINT64_MAX)
+          ? constrained_memory
+          : total_memory;
+
+  if (available_memory == 0) {
+    errors->push_back("the available memory can not be calculated");
+    return;
+  }
+
+  // Convert to MB and calculate the percentage
+  uint64_t memory_mb = available_memory / (1024 * 1024);
+  uint64_t calculated_mb = static_cast<size_t>(memory_mb * percentage / 100.0);
+
+  // Convert back to string
+  max_old_space_size = std::to_string(calculated_mb);
+}
+
 void PerIsolateOptions::CheckOptions(std::vector<std::string>* errors,
                                      std::vector<std::string>* argv) {
+  if (!max_old_space_size_percentage.empty()) {
+    HandleMaxOldSpaceSizePercentage(errors, &max_old_space_size_percentage);
+  }
+
   per_env->CheckOptions(errors, argv);
 }
 
@@ -320,10 +368,6 @@ void Parse(
 // TODO(addaleax): Make that unnecessary.
 
 DebugOptionsParser::DebugOptionsParser() {
-#ifndef DISABLE_SINGLE_EXECUTABLE_APPLICATION
-  if (sea::IsSingleExecutable()) return;
-#endif
-
   AddOption("--inspect-port",
             "set host:port for inspector",
             &DebugOptions::host_port,
@@ -429,6 +473,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "Treat the entrypoint as a URL",
             &EnvironmentOptions::entry_is_url,
             kAllowedInEnvvar);
+  AddOption("--experimental-addon-modules",
+            "experimental import support for addons",
+            &EnvironmentOptions::experimental_addon_modules,
+            kAllowedInEnvvar);
   AddOption("--experimental-abortcontroller", "", NoOp{}, kAllowedInEnvvar);
   AddOption("--experimental-eventsource",
             "experimental EventSource API",
@@ -480,10 +528,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             kAllowedInEnvvar);
   AddAlias("--loader", "--experimental-loader");
   AddOption("--experimental-modules", "", NoOp{}, kAllowedInEnvvar);
-  AddOption("--experimental-wasm-modules",
-            "experimental ES Module support for webassembly modules",
-            &EnvironmentOptions::experimental_wasm_modules,
-            kAllowedInEnvvar);
+  AddOption("--experimental-wasm-modules", "", NoOp{}, kAllowedInEnvvar);
   AddOption("--experimental-import-meta-resolve",
             "experimental ES Module import.meta.resolve() parentURL support",
             &EnvironmentOptions::experimental_import_meta_resolve,
@@ -607,6 +652,12 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "emit pending deprecation warnings",
             &EnvironmentOptions::pending_deprecation,
             kAllowedInEnvvar);
+  AddOption("--use-env-proxy",
+            "parse proxy settings from HTTP_PROXY/HTTPS_PROXY/NO_PROXY"
+            "environment variables and apply the setting in global HTTP/HTTPS "
+            "clients",
+            &EnvironmentOptions::use_env_proxy,
+            kAllowedInEnvvar);
   AddOption("--preserve-symlinks",
             "preserve symbolic links when resolving",
             &EnvironmentOptions::preserve_symlinks,
@@ -651,6 +702,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--experimental-worker-inspection",
             "experimental worker inspection support",
             &EnvironmentOptions::experimental_worker_inspection);
+  AddOption("--experimental-inspector-network-resource",
+            "experimental load network resources via the inspector",
+            &EnvironmentOptions::experimental_inspector_network_resource);
   AddOption(
       "--heap-prof",
       "Start the V8 heap profiler on start up, and write the heap profile "
@@ -863,6 +917,11 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "path to watch",
             &EnvironmentOptions::watch_mode_paths,
             kAllowedInEnvvar);
+  AddOption("--watch-kill-signal",
+            "kill signal to send to the process on watch mode restarts"
+            "(default: SIGTERM)",
+            &EnvironmentOptions::watch_mode_kill_signal,
+            kAllowedInEnvvar);
   AddOption("--watch-preserve-output",
             "preserve outputs on watch mode restart",
             &EnvironmentOptions::watch_mode_preserve_output,
@@ -900,7 +959,8 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--experimental-strip-types",
             "Experimental type-stripping for TypeScript files.",
             &EnvironmentOptions::experimental_strip_types,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            true);
   Implies("--experimental-strip-types", "--experimental-detect-module");
 
   AddOption("--experimental-transform-types",
@@ -982,6 +1042,11 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             V8Option{},
             kAllowedInEnvvar);
   AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvvar);
+  AddOption("--max-old-space-size-percentage",
+            "set V8's max old space size as a percentage of available memory "
+            "(e.g., '50%'). Takes precedence over --max-old-space-size.",
+            &PerIsolateOptions::max_old_space_size_percentage,
+            kAllowedInEnvvar);
   AddOption("--max-semi-space-size", "", V8Option{}, kAllowedInEnvvar);
   AddOption("--perf-basic-prof", "", V8Option{}, kAllowedInEnvvar);
   AddOption(
@@ -1718,6 +1783,8 @@ void HandleEnvOptions(std::shared_ptr<EnvironmentOptions> env_options,
 
   env_options->preserve_symlinks_main =
       opt_getter("NODE_PRESERVE_SYMLINKS_MAIN") == "1";
+
+  env_options->use_env_proxy = opt_getter("NODE_USE_ENV_PROXY") == "1";
 
   if (env_options->redirect_warnings.empty())
     env_options->redirect_warnings = opt_getter("NODE_REDIRECT_WARNINGS");

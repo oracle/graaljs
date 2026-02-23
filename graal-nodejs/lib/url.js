@@ -22,10 +22,12 @@
 'use strict';
 
 const {
+  ArrayPrototypeJoin,
   Boolean,
   Int8Array,
   ObjectAssign,
   ObjectKeys,
+  StringPrototypeAt,
   StringPrototypeCharCodeAt,
   StringPrototypeIndexOf,
   StringPrototypeReplaceAll,
@@ -57,6 +59,7 @@ const {
   domainToASCII,
   domainToUnicode,
   fileURLToPath,
+  fileURLToPathBuffer,
   pathToFileURL: _pathToFileURL,
   urlToHttpOptions,
   unsafeProtocol,
@@ -922,7 +925,7 @@ Url.prototype.resolveObject = function resolveObject(relative) {
   // If a url ENDs in . or .., then it must get a trailing slash.
   // however, if it ends in anything else non-slashy,
   // then it must NOT get a trailing slash.
-  let last = srcPath.slice(-1)[0];
+  let last = srcPath[srcPath.length - 1];
   const hasTrailingSlash = (
     ((result.host || relative.host || srcPath.length > 1) &&
     (last === '.' || last === '..')) || last === '');
@@ -955,7 +958,7 @@ Url.prototype.resolveObject = function resolveObject(relative) {
     srcPath.unshift('');
   }
 
-  if (hasTrailingSlash && (srcPath.join('/').slice(-1) !== '/')) {
+  if (hasTrailingSlash && StringPrototypeAt(ArrayPrototypeJoin(srcPath, '/'), -1) !== '/') {
     srcPath.push('');
   }
 
@@ -1040,5 +1043,6 @@ module.exports = {
   // Utilities
   pathToFileURL,
   fileURLToPath,
+  fileURLToPathBuffer,
   urlToHttpOptions,
 };

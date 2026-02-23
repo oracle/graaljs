@@ -677,15 +677,22 @@ function prepareRequestHeadersArray(headers, session) {
       throw new ERR_HTTP2_CONNECT_PATH();
   }
 
-  const headersList = buildNgHeaderString(
+  const rawHeaders =
     additionalPsuedoHeaders.length ?
       additionalPsuedoHeaders.concat(headers) :
-      headers,
+      headers;
+
+  if (headers[kSensitiveHeaders] !== undefined) {
+    rawHeaders[kSensitiveHeaders] = headers[kSensitiveHeaders];
+  }
+
+  const headersList = buildNgHeaderString(
+    rawHeaders,
     assertValidPseudoHeader,
-    headers[kSensitiveHeaders],
   );
 
   return {
+    rawHeaders,
     headersList,
     scheme,
     authority: authority ?? headers[HTTP2_HEADER_HOST],
@@ -744,14 +751,14 @@ const kNoHeaderFlags = StringFromCharCode(NGHTTP2_NV_FLAG_NONE);
  * raw headers ([k1, v1, k2, v2]) or a header object ({ k1: v1, k2: [v2, v3] }).
  */
 function buildNgHeaderString(arrayOrMap,
-                             assertValuePseudoHeader = assertValidPseudoHeader,
-                             sensitiveHeaders = arrayOrMap[kSensitiveHeaders]) {
+                             assertValuePseudoHeader = assertValidPseudoHeader) {
   let headers = '';
   let pseudoHeaders = '';
   let count = 0;
 
   const singles = new SafeSet();
-  const neverIndex = (sensitiveHeaders || emptyArray).map((v) => v.toLowerCase());
+  const sensitiveHeaders = arrayOrMap[kSensitiveHeaders] || emptyArray;
+  const neverIndex = sensitiveHeaders.map((v) => v.toLowerCase());
 
   function processHeader(key, value) {
     key = key.toLowerCase();

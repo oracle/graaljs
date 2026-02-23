@@ -333,7 +333,8 @@ void DumpJavaScriptBacktrace(FILE* fp) {
   }
 
   Local<StackTrace> stack;
-  if (!GetCurrentStackTrace(isolate).ToLocal(&stack)) {
+  if (!GetCurrentStackTrace(isolate).ToLocal(&stack) ||
+      stack->GetFrameCount() == 0) {
     return;
   }
 
@@ -488,7 +489,7 @@ std::vector<std::string> NativeSymbolDebuggingContext::GetLoadedLibraries() {
           WideCharToMultiByte(
               CP_UTF8, 0, module_name, -1, str, size, nullptr, nullptr);
           list.emplace_back(str);
-          delete str;
+          delete[] str;
         }
       }
     }

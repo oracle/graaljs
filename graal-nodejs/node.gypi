@@ -87,6 +87,9 @@
     [ 'node_enable_d8=="true"', {
       'dependencies': [ 'tools/v8_gypfiles/d8.gyp:d8' ],
     }],
+    [ 'node_enable_v8windbg=="true"', {
+      'dependencies': [ 'tools/v8_gypfiles/v8windbg.gyp:build_v8windbg' ],
+    }],
     [ 'node_use_bundled_v8=="true"', {
       'dependencies': [
         'tools/v8_gypfiles/v8.gyp:v8_snapshot',
@@ -382,7 +385,10 @@
       'defines': [ 'HAVE_OPENSSL=1' ],
       'conditions': [
         [ 'node_shared_openssl=="false"', {
-          'defines': [ 'OPENSSL_API_COMPAT=0x10100000L', ],
+          'defines': [
+            'OPENSSL_API_COMPAT=0x10100000L',
+            'OPENSSL_TLS_SECURITY_LEVEL=1',
+          ],
           'dependencies': [
             './deps/openssl/openssl.gyp:openssl',
 

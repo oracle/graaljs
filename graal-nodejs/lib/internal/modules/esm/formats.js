@@ -9,20 +9,18 @@ const { getValidatedPath } = require('internal/fs/utils');
 const fsBindings = internalBinding('fs');
 const { internal: internalConstants } = internalBinding('constants');
 
-const experimentalWasmModules = getOptionValue('--experimental-wasm-modules');
-
 const extensionFormatMap = {
   '__proto__': null,
   '.cjs': 'commonjs',
   '.js': 'module',
   '.json': 'json',
   '.mjs': 'module',
+  '.wasm': 'wasm',
 };
 
-if (experimentalWasmModules) {
-  extensionFormatMap['.wasm'] = 'wasm';
+if (getOptionValue('--experimental-addon-modules')) {
+  extensionFormatMap['.node'] = 'addon';
 }
-
 if (getOptionValue('--experimental-strip-types')) {
   extensionFormatMap['.ts'] = 'module-typescript';
   extensionFormatMap['.mts'] = 'module-typescript';
@@ -41,7 +39,7 @@ function mimeToFormat(mime) {
     ) !== null
   ) { return 'module'; }
   if (mime === 'application/json') { return 'json'; }
-  if (experimentalWasmModules && mime === 'application/wasm') { return 'wasm'; }
+  if (mime === 'application/wasm') { return 'wasm'; }
   return null;
 }
 
@@ -52,7 +50,6 @@ function mimeToFormat(mime) {
  * @param {URL} url
  */
 function getFormatOfExtensionlessFile(url) {
-  if (!experimentalWasmModules) { return 'module'; }
   const path = getValidatedPath(url);
   switch (fsBindings.getFormatOfExtensionlessFile(path)) {
     case internalConstants.EXTENSIONLESS_FORMAT_WASM:

@@ -174,7 +174,7 @@ class ProgressIndicator(object):
       raise
     self.Done()
     return {
-      'allPassed': not self.failed,
+      'allPassed': not self.failed and not self.shutdown_event.is_set(),
       'failed': self.failed,
     }
 
@@ -781,6 +781,11 @@ def Execute(args, context, timeout=None, env=None, disable_core_files=False,
   # Extend environment
   for key, value in env.items():
     env_copy[key] = value
+
+  # We append NODE_SKIP_FLAG_CHECK (ref: test/common/index.js)
+  # to avoid parsing the test files twice when looking for
+  # flags or environment variables defined via // Flags: and // Env:
+  env_copy["NODE_SKIP_FLAG_CHECK"] = "true"
 
   preexec_fn = None
 
@@ -1599,7 +1604,7 @@ def ArgsToTestPaths(test_root, args, suites):
   if len(args) == 0 or 'default' in args:
     def_suites = [s for s in suites if s not in IGNORED_SUITES]
     args = [a for a in args if a != 'default'] + def_suites
-  subsystem_regex = re.compile(r'^[a-zA-Z-]*$')
+  subsystem_regex = re.compile(r'^[a-zA-Z0-9-]*$')
   check = lambda arg: subsystem_regex.match(arg) and (arg not in suites)
   mapped_args = ["*/test*-%s-*" % arg if check(arg) else arg for arg in args]
   paths = [SplitPath(NormalizePath(a)) for a in mapped_args]
@@ -1832,11 +1837,12 @@ def Main():
 
   if result['allPassed']:
     print("\nAll tests passed.")
-  else:
+  elif result['failed']:
     print("\nFailed tests:")
     for failure in result['failed']:
       print(EscapeCommand(failure.command))
-
+  else:
+    print("\nTest aborted.")
   return exitcode
 
 

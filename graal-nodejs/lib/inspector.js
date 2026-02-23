@@ -35,6 +35,9 @@ const {
 } = require('internal/validators');
 const { isMainThread } = require('worker_threads');
 const { _debugEnd } = internalBinding('process_methods');
+const {
+  put,
+} = require('internal/inspector/network_resources');
 
 const {
   Connection,
@@ -213,7 +216,12 @@ const Network = {
   responseReceived: (params) => broadcastToFrontend('Network.responseReceived', params),
   loadingFinished: (params) => broadcastToFrontend('Network.loadingFinished', params),
   loadingFailed: (params) => broadcastToFrontend('Network.loadingFailed', params),
+  dataSent: (params) => broadcastToFrontend('Network.dataSent', params),
   dataReceived: (params) => broadcastToFrontend('Network.dataReceived', params),
+};
+
+const NetworkResources = {
+  put,
 };
 
 module.exports = {
@@ -224,6 +232,7 @@ module.exports = {
   console,
   Session,
   Network,
+  NetworkResources,
 };
 
 // Use the mockup provided by 'inspect' instrument

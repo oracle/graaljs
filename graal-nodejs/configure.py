@@ -20,9 +20,9 @@ os.chdir(Path(__file__).parent)
 original_argv = sys.argv[1:]
 
 # gcc and g++ as defaults matches what GYP's Makefile generator does,
-# except on OS X.
-CC = os.environ.get('CC', 'cc' if sys.platform == 'darwin' else 'gcc')
-CXX = os.environ.get('CXX', 'c++' if sys.platform == 'darwin' else 'g++')
+# except on macOS and Windows.
+CC = os.environ.get('CC', 'cc' if sys.platform == 'darwin' else 'clang' if sys.platform == 'win32' else 'gcc')
+CXX = os.environ.get('CXX', 'c++' if sys.platform == 'darwin' else 'clang' if sys.platform == 'win32' else 'g++')
 
 tools_path = Path('tools')
 
@@ -643,6 +643,12 @@ parser.add_argument('--enable-d8',
     default=None,
     help=argparse.SUPPRESS)  # Unsupported, undocumented.
 
+parser.add_argument('--enable-v8windbg',
+    action='store_true',
+    dest='enable_v8windbg',
+    default=None,
+    help=argparse.SUPPRESS)  # Undocumented.
+
 parser.add_argument('--enable-trace-maps',
     action='store_true',
     dest='trace_maps',
@@ -883,7 +889,7 @@ parser.add_argument('--without-sqlite',
     action='store_true',
     dest='without_sqlite',
     default=None,
-    help='build without SQLite (disables SQLite and Web Stoage API)')
+    help='build without SQLite (disables SQLite and Web Storage API)')
 
 parser.add_argument('--ninja',
     action='store_true',
@@ -1131,7 +1137,7 @@ def try_check_compiler(cc, lang):
     proc = subprocess.Popen(shlex.split(cc) + ['-E', '-P', '-x', lang, '-'],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
   except OSError:
-    return (False, False, '', '')
+    return (False, False, '', '', False)
 
   with proc:
     proc.stdin.write(b'__clang__ __GNUC__ __GNUC_MINOR__ __GNUC_PATCHLEVEL__ '
@@ -1770,10 +1776,13 @@ def configure_v8(o, configs):
   o['variables']['node_use_bundled_v8'] = b(not options.without_bundled_v8)
   o['variables']['force_dynamic_crt'] = 1 if options.shared else 0
   o['variables']['node_enable_d8'] = b(options.enable_d8)
+  o['variables']['node_enable_v8windbg'] = b(options.enable_v8windbg)
   if options.enable_d8:
     o['variables']['test_isolation_mode'] = 'noop'  # Needed by d8.gyp.
   if options.without_bundled_v8 and options.enable_d8:
     raise Exception('--enable-d8 is incompatible with --without-bundled-v8.')
+  if options.without_bundled_v8 and options.enable_v8windbg:
+    raise Exception('--enable-v8windbg is incompatible with --without-bundled-v8.')
   if options.static_zoslib_gyp:
     o['variables']['static_zoslib_gyp'] = options.static_zoslib_gyp
   if flavor != 'linux' and options.v8_enable_hugepage:

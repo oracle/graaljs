@@ -787,14 +787,15 @@ Maybe<int> ParseSoaReply(Environment* env,
 }
 }  // anonymous namespace
 
-ChannelWrap::ChannelWrap(
-      Environment* env,
-      Local<Object> object,
-      int timeout,
-      int tries)
+ChannelWrap::ChannelWrap(Environment* env,
+                         Local<Object> object,
+                         int timeout,
+                         int tries,
+                         int max_timeout)
     : AsyncWrap(env, object, PROVIDER_DNSCHANNEL),
       timeout_(timeout),
-      tries_(tries) {
+      tries_(tries),
+      max_timeout_(max_timeout) {
   MakeWeak();
 
   Setup();
@@ -808,13 +809,15 @@ void ChannelWrap::MemoryInfo(MemoryTracker* tracker) const {
 
 void ChannelWrap::New(const FunctionCallbackInfo<Value>& args) {
   CHECK(args.IsConstructCall());
-  CHECK_EQ(args.Length(), 2);
+  CHECK_EQ(args.Length(), 3);
   CHECK(args[0]->IsInt32());
   CHECK(args[1]->IsInt32());
+  CHECK(args[2]->IsInt32());
   const int timeout = args[0].As<Int32>()->Value();
   const int tries = args[1].As<Int32>()->Value();
+  const int max_timeout = args[2].As<Int32>()->Value();
   Environment* env = Environment::GetCurrent(args);
-  new ChannelWrap(env, args.This(), timeout, tries);
+  new ChannelWrap(env, args.This(), timeout, tries, max_timeout);
 }
 
 GetAddrInfoReqWrap::GetAddrInfoReqWrap(Environment* env,
@@ -879,9 +882,14 @@ void ChannelWrap::Setup() {
   }
 
   /* We do the call to ares_init_option for caller. */
-  const int optmask = ARES_OPT_FLAGS | ARES_OPT_TIMEOUTMS |
-                      ARES_OPT_SOCK_STATE_CB | ARES_OPT_TRIES |
-                      ARES_OPT_QUERY_CACHE;
+  int optmask = ARES_OPT_FLAGS | ARES_OPT_TIMEOUTMS | ARES_OPT_SOCK_STATE_CB |
+                ARES_OPT_TRIES | ARES_OPT_QUERY_CACHE;
+
+  if (max_timeout_ > 0) {
+    options.maxtimeout = max_timeout_;
+    optmask |= ARES_OPT_MAXTIMEOUTMS;
+  }
+
   r = ares_init_options(&channel_, &options, optmask);
 
   if (r != ARES_SUCCESS) {
@@ -902,8 +910,7 @@ void ChannelWrap::StartTimer() {
     return;
   }
   int timeout = timeout_;
-  if (timeout == 0) timeout = 1;
-  if (timeout < 0 || timeout > 1000) timeout = 1000;
+  if (timeout <= 0 || timeout > 1000) timeout = 1000;
   uv_timer_start(timer_handle_, AresTimeout, timeout, timeout);
 }
 
@@ -1566,6 +1573,8 @@ Maybe<int> SoaTraits::Parse(QuerySoaWrap* wrap,
 
   if (status != ARES_SUCCESS) return Just<int>(status);
 
+  auto cleanup = OnScopeLeave([&]() { ares_free_data(soa_out); });
+
   Local<Object> soa_record = Object::New(env->isolate());
 
   if (soa_record
@@ -1605,8 +1614,6 @@ Maybe<int> SoaTraits::Parse(QuerySoaWrap* wrap,
           .IsNothing()) {
     return Nothing<int>();
   }
-
-  ares_free_data(soa_out);
 
   wrap->CallOnComplete(soa_record);
   return Just<int>(ARES_SUCCESS);
@@ -1661,7 +1668,6 @@ Maybe<int> ReverseTraits::Parse(QueryReverseWrap* wrap,
 namespace {
 template <class Wrap>
 static void Query(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
   ChannelWrap* channel;
   ASSIGN_OR_RETURN_UNWRAP(&channel, args.This());
 
@@ -1673,7 +1679,7 @@ static void Query(const FunctionCallbackInfo<Value>& args) {
   Local<String> string = args[1].As<String>();
   auto wrap = std::make_unique<Wrap>(channel, req_wrap_obj);
 
-  node::Utf8Value utf8name(env->isolate(), string);
+  node::Utf8Value utf8name(args.GetIsolate(), string);
   auto plain_name = utf8name.ToStringView();
   std::string name = ada::idna::to_ascii(plain_name);
   channel->ModifyActivityQueryCount(1);
@@ -1687,7 +1693,6 @@ static void Query(const FunctionCallbackInfo<Value>& args) {
 
   args.GetReturnValue().Set(err);
 }
-
 
 void AfterGetAddrInfo(uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
   auto cleanup = OnScopeLeave([&]() { uv_freeaddrinfo(res); });

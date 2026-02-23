@@ -3441,6 +3441,20 @@ namespace v8 {
         TRACE
     }
 
+    CpuProfilingResult CpuProfiler::Start(Local<String> title, bool record_samples) {
+        TRACE
+        return {0, CpuProfilingStatus::kErrorTooManyProfilers};
+    }
+
+    CpuProfile* CpuProfiler::Stop(ProfilerId id) {
+        TRACE
+        return nullptr;
+    }
+
+    void CpuProfile::Serialize(OutputStream* stream, SerializationFormat format) const {
+        TRACE
+    }
+
     Local<String> CpuProfile::GetTitle() const {
         TRACE
         return String::NewFromUtf8Literal(Isolate::GetCurrent(), "ProfileTitle");
@@ -3605,6 +3619,10 @@ namespace v8 {
         return std::unique_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store, data, byte_length)));
     }
 
+    std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStoreForNodeLTS(Isolate* isolate, size_t byte_length) {
+        return NewBackingStore(isolate, byte_length);
+    }
+
     std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStore(void* data, size_t byte_length, v8::BackingStore::DeleterCallback deleter, void* deleter_data) {
         GraalIsolate* graal_isolate = CurrentIsolate();
         jobject java_store;
@@ -3665,6 +3683,21 @@ namespace v8 {
         GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_array_buffer);
         SharedArrayBuffer* v8_object = reinterpret_cast<SharedArrayBuffer*> (graal_object);
         return Local<SharedArrayBuffer>::New(isolate, v8_object);
+    }
+
+    Local<SharedArrayBuffer> SharedArrayBuffer::New(Isolate* isolate, size_t byte_length) {
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::array_buffer_new_backing_store, Object, (jlong) byte_length);
+        if (java_buffer == NULL) {
+            // Backing store allocation failed.
+            return Local<SharedArrayBuffer>();
+        }
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        void* data = env->GetDirectBufferAddress(java_buffer);
+        jobject java_store = env->NewGlobalRef(java_buffer);
+        env->DeleteLocalRef(java_buffer);
+        std::unique_ptr<BackingStore> backing_store = std::unique_ptr<BackingStore>(reinterpret_cast<BackingStore*>(new GraalBackingStore(java_store, data, byte_length)));
+        return New(isolate, std::move(backing_store));
     }
 
     std::shared_ptr<BackingStore> SharedArrayBuffer::GetBackingStore() {

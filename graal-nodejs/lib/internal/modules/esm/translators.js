@@ -1,16 +1,16 @@
 'use strict';
 
 const {
-  ArrayPrototypeMap,
-  Boolean,
+  ArrayPrototypePush,
   FunctionPrototypeCall,
   JSONParse,
-  ObjectKeys,
+  ObjectAssign,
   ObjectPrototypeHasOwnProperty,
   ReflectApply,
   SafeArrayIterator,
   SafeMap,
   SafeSet,
+  SafeWeakMap,
   StringPrototypeIncludes,
   StringPrototypeReplaceAll,
   StringPrototypeSlice,
@@ -51,6 +51,7 @@ let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
 });
 const { emitExperimentalWarning, kEmptyObject, setOwnProperty, isWindows } = require('internal/util');
 const {
+  ERR_INVALID_RETURN_PROPERTY_VALUE,
   ERR_UNKNOWN_BUILTIN_MODULE,
 } = require('internal/errors').codes;
 const { maybeCacheSourceMap } = require('internal/source_map/source_map_cache');
@@ -102,7 +103,8 @@ translators.set('module', function moduleStrategy(url, source, isMain) {
   source = stringify(source);
   debug(`Translating StandardModule ${url}`);
   const { compileSourceTextModule } = require('internal/modules/esm/utils');
-  const module = compileSourceTextModule(url, source, this);
+  const context = isMain ? { isMain } : undefined;
+  const module = compileSourceTextModule(url, source, this, context);
   return module;
 });
 
@@ -184,7 +186,7 @@ function createCJSModuleWrap(url, source, isMain, format, loadCJS = loadCJSModul
   // In case the source was not provided by the `load` step, we need fetch it now.
   source = stringify(source ?? getSource(new URL(url)).source);
 
-  const { exportNames, module } = cjsPreparseModuleExports(filename, source, isMain, format);
+  const { exportNames, module } = cjsPreparseModuleExports(filename, source, format);
   cjsCache.set(url, module);
   const namesWithDefault = exportNames.has('default') ?
     [...exportNames] : ['default', ...exportNames];
@@ -222,6 +224,47 @@ function createCJSModuleWrap(url, source, isMain, format, loadCJS = loadCJSModul
       this.setExport(exportName, value);
     }
     this.setExport('default', exports);
+  }, module);
+}
+
+/**
+ * Creates a ModuleWrap object for a CommonJS module without source texts.
+ * @param {string} url - The URL of the module.
+ * @param {boolean} isMain - Whether the module is the main module.
+ * @returns {ModuleWrap} The ModuleWrap object for the CommonJS module.
+ */
+function createCJSNoSourceModuleWrap(url, isMain) {
+  debug(`Translating CJSModule without source ${url}`);
+
+  const filename = urlToFilename(url);
+
+  const module = cjsEmplaceModuleCacheEntry(filename);
+  cjsCache.set(url, module);
+
+  if (isMain) {
+    setOwnProperty(process, 'mainModule', module);
+  }
+
+  // Addon export names are not known until the addon is loaded.
+  const exportNames = ['default', 'module.exports'];
+  return new ModuleWrap(url, undefined, exportNames, function evaluationCallback() {
+    debug(`Loading CJSModule ${url}`);
+
+    if (!module.loaded) {
+      wrapModuleLoad(filename, null, isMain);
+    }
+
+    /** @type {import('./loader').ModuleExports} */
+    let exports;
+    if (module[kModuleExport] !== undefined) {
+      exports = module[kModuleExport];
+      module[kModuleExport] = undefined;
+    } else {
+      ({ exports } = module);
+    }
+
+    this.setExport('default', exports);
+    this.setExport('module.exports', exports);
   }, module);
 }
 
@@ -276,24 +319,36 @@ translators.set('commonjs', function commonjsStrategy(url, source, isMain) {
 });
 
 /**
+ * Get or create an entry in the CJS module cache for the given filename.
+ * @param {string} filename CJS module filename
+ * @returns {CJSModule} the cached CJS module entry
+ */
+function cjsEmplaceModuleCacheEntry(filename, exportNames) {
+  // TODO: Do we want to keep hitting the user mutable CJS loader here?
+  let cjsMod = CJSModule._cache[filename];
+  if (cjsMod) {
+    return cjsMod;
+  }
+
+  cjsMod = new CJSModule(filename);
+  cjsMod.filename = filename;
+  cjsMod.paths = CJSModule._nodeModulePaths(cjsMod.path);
+  cjsMod[kIsCachedByESMLoader] = true;
+  CJSModule._cache[filename] = cjsMod;
+
+  return cjsMod;
+}
+
+/**
  * Pre-parses a CommonJS module's exports and re-exports.
  * @param {string} filename - The filename of the module.
  * @param {string} [source] - The source code of the module.
- * @param {boolean} isMain - Whether it is pre-parsing for the entry point.
- * @param {string} format
+ * @param {string} [format]
  */
-function cjsPreparseModuleExports(filename, source, isMain, format) {
-  let module = CJSModule._cache[filename];
-  if (module && module[kModuleExportNames] !== undefined) {
+function cjsPreparseModuleExports(filename, source, format) {
+  const module = cjsEmplaceModuleCacheEntry(filename);
+  if (module[kModuleExportNames] !== undefined) {
     return { module, exportNames: module[kModuleExportNames] };
-  }
-  const loaded = Boolean(module);
-  if (!loaded) {
-    module = new CJSModule(filename);
-    module.filename = filename;
-    module.paths = CJSModule._nodeModulePaths(module.path);
-    module[kIsCachedByESMLoader] = true;
-    CJSModule._cache[filename] = module;
   }
 
   if (source === undefined) {
@@ -335,7 +390,7 @@ function cjsPreparseModuleExports(filename, source, isMain, format) {
 
       if (format === 'commonjs' ||
         (!BuiltinModule.normalizeRequirableId(resolved) && findLongestRegisteredExtension(resolved) === '.js')) {
-        const { exportNames: reexportNames } = cjsPreparseModuleExports(resolved, undefined, false, format);
+        const { exportNames: reexportNames } = cjsPreparseModuleExports(resolved, undefined, format);
         for (const name of reexportNames) {
           exportNames.add(name);
         }
@@ -422,53 +477,132 @@ translators.set('json', function jsonStrategy(url, source) {
 });
 
 // Strategy for loading a wasm module
-translators.set('wasm', async function(url, source) {
-  emitExperimentalWarning('Importing WebAssembly modules');
-
+// This logic should collapse into WebAssembly Module Record in future.
+/**
+ * @type {WeakMap<
+ *   import('internal/modules/esm/utils').ModuleNamespaceObject,
+ *   WebAssembly.Instance
+ * >} [[Instance]] slot proxy for WebAssembly Module Record
+ */
+const wasmInstances = new SafeWeakMap();
+translators.set('wasm', function(url, source) {
   assertBufferSource(source, false, 'load');
 
   debug(`Translating WASMModule ${url}`);
 
   let compiled;
   try {
-    // TODO(joyeecheung): implement a translator that just uses
-    // compiled = new WebAssembly.Module(source) to compile it
-    // synchronously.
-    compiled = await WebAssembly.compile(source);
+    compiled = new WebAssembly.Module(source, {
+      builtins: ['js-string'],
+    });
   } catch (err) {
     err.message = errPath(url) + ': ' + err.message;
     throw err;
   }
 
-  const imports =
-      ArrayPrototypeMap(WebAssembly.Module.imports(compiled),
-                        ({ module }) => module);
-  const exports =
-    ArrayPrototypeMap(WebAssembly.Module.exports(compiled),
-                      ({ name }) => name);
-
-  const createDynamicModule = require(
-    'internal/modules/esm/create_dynamic_module');
-  return createDynamicModule(imports, exports, url, (reflect) => {
-    const { exports } = new WebAssembly.Instance(compiled, reflect.imports);
-    for (const expt of ObjectKeys(exports)) {
-      reflect.exports[expt].set(exports[expt]);
+  const importsList = new SafeSet();
+  const wasmGlobalImports = [];
+  for (const impt of WebAssembly.Module.imports(compiled)) {
+    if (impt.kind === 'global') {
+      ArrayPrototypePush(wasmGlobalImports, impt);
     }
-  }).module;
+    // Prefix reservations per https://webassembly.github.io/esm-integration/js-api/index.html#parse-a-webassembly-module.
+    if (impt.module.startsWith('wasm-js:')) {
+      throw new WebAssembly.LinkError(`Invalid Wasm import "${impt.module}" in ${url}`);
+    }
+    if (impt.name.startsWith('wasm:') || impt.name.startsWith('wasm-js:')) {
+      throw new WebAssembly.LinkError(`Invalid Wasm import name "${impt.module}" in ${url}`);
+    }
+    importsList.add(impt.module);
+  }
+
+  const exportsList = new SafeSet();
+  const wasmGlobalExports = new SafeSet();
+  for (const expt of WebAssembly.Module.exports(compiled)) {
+    if (expt.kind === 'global') {
+      wasmGlobalExports.add(expt.name);
+    }
+    if (expt.name.startsWith('wasm:') || expt.name.startsWith('wasm-js:')) {
+      throw new WebAssembly.LinkError(`Invalid Wasm export name "${expt.name}" in ${url}`);
+    }
+    exportsList.add(expt.name);
+  }
+
+  const createDynamicModule = require('internal/modules/esm/create_dynamic_module');
+
+  const { module } = createDynamicModule([...importsList], [...exportsList], url, (reflect) => {
+    emitExperimentalWarning('Importing WebAssembly module instances');
+    for (const impt of importsList) {
+      const importNs = reflect.imports[impt];
+      const wasmInstance = wasmInstances.get(importNs);
+      if (wasmInstance) {
+        const wrappedModule = ObjectAssign({ __proto__: null }, reflect.imports[impt]);
+        for (const { module, name } of wasmGlobalImports) {
+          if (module !== impt) {
+            continue;
+          }
+          // Import of Wasm module global -> get direct WebAssembly.Global wrapped value.
+          // JS API validations otherwise remain the same.
+          wrappedModule[name] = wasmInstance[name];
+        }
+        reflect.imports[impt] = wrappedModule;
+      }
+    }
+
+    // In cycles importing unexecuted Wasm, wasmInstance will be undefined, which will fail during
+    // instantiation, since all bindings will be in the Temporal Deadzone (TDZ).
+    const { exports } = new WebAssembly.Instance(compiled, reflect.imports);
+    wasmInstances.set(module.getNamespace(), exports);
+    for (const expt of exportsList) {
+      let val = exports[expt];
+      // Unwrap WebAssembly.Global for JS bindings
+      if (wasmGlobalExports.has(expt)) {
+        try {
+          // v128 will throw in GetGlobalValue, see:
+          // https://webassembly.github.io/esm-integration/js-api/index.html#getglobalvalue
+          val = val.value;
+        } catch {
+          // v128 doesn't support ToJsValue() -> use undefined (ideally should stay in TDZ)
+          continue;
+        }
+      }
+      reflect.exports[expt].set(val);
+    }
+  });
+  return module;
+});
+
+// Strategy for loading a addon
+translators.set('addon', function translateAddon(url, source, isMain) {
+  emitExperimentalWarning('Importing addons');
+
+  // The addon must be loaded from file system with dlopen. Assert
+  // the source is null.
+  if (source !== null) {
+    throw new ERR_INVALID_RETURN_PROPERTY_VALUE(
+      'null',
+      'load',
+      'source',
+      source);
+  }
+
+  debug(`Translating addon ${url}`);
+
+  return createCJSNoSourceModuleWrap(url, isMain);
 });
 
 // Strategy for loading a commonjs TypeScript module
-translators.set('commonjs-typescript', function(url, source) {
+translators.set('commonjs-typescript', function(url, source, isMain) {
   assertBufferSource(source, true, 'load');
   const code = stripTypeScriptModuleTypes(stringify(source), url);
   debug(`Translating TypeScript ${url}`);
-  return FunctionPrototypeCall(translators.get('commonjs'), this, url, code, false);
+  return FunctionPrototypeCall(translators.get('commonjs'), this, url, code, isMain);
 });
 
 // Strategy for loading an esm TypeScript module
-translators.set('module-typescript', function(url, source) {
+translators.set('module-typescript', function(url, source, isMain) {
   assertBufferSource(source, true, 'load');
   const code = stripTypeScriptModuleTypes(stringify(source), url);
   debug(`Translating TypeScript ${url}`);
-  return FunctionPrototypeCall(translators.get('module'), this, url, code, false);
+  return FunctionPrototypeCall(translators.get('module'), this, url, code, isMain);
 });

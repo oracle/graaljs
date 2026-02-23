@@ -40,7 +40,6 @@ using v8::HandleScope;
 using v8::HeapCodeStatistics;
 using v8::HeapSpaceStatistics;
 using v8::HeapStatistics;
-using v8::Int32;
 using v8::Integer;
 using v8::Isolate;
 using v8::Local;
@@ -183,10 +182,8 @@ void BindingData::MemoryInfo(MemoryTracker* tracker) const {
 }
 
 void CachedDataVersionTag(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-  Local<Integer> result =
-      Integer::NewFromUnsigned(env->isolate(),
-                               ScriptCompiler::CachedDataVersionTag());
+  Local<Integer> result = Integer::NewFromUnsigned(
+      args.GetIsolate(), ScriptCompiler::CachedDataVersionTag());
   args.GetReturnValue().Set(result);
 }
 
@@ -482,8 +479,7 @@ static void GetCppHeapStatistics(const FunctionCallbackInfo<Value>& args) {
   CHECK(args[0]->IsInt32());
 
   cppgc::HeapStatistics stats = isolate->GetCppHeap()->CollectStatistics(
-      static_cast<cppgc::HeapStatistics::DetailLevel>(
-          args[0].As<Int32>()->Value()));
+      FromV8Value<cppgc::HeapStatistics::DetailLevel>(args[0]));
 
   Local<Object> result;
   if (!ConvertHeapStatsToJSObject(isolate, stats).ToLocal(&result)) {
@@ -718,8 +714,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GCProfiler::Stop);
   registry->Register(GetCppHeapStatistics);
   registry->Register(IsStringOneByteRepresentation);
-  registry->Register(FastIsStringOneByteRepresentation);
-  registry->Register(fast_is_string_one_byte_representation_.GetTypeInfo());
+  registry->Register(fast_is_string_one_byte_representation_);
 }
 
 }  // namespace v8_utils

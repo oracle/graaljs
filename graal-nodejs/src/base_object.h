@@ -27,6 +27,7 @@
 #include <type_traits>  // std::remove_reference
 #include "base_object_types.h"
 #include "memory_tracker.h"
+#include "util.h"
 #include "v8.h"
 
 namespace node {
@@ -124,11 +125,6 @@ class BaseObject : public MemoryRetainer {
   // a BaseObjectPtr to this object.
   inline void Detach();
 
-  static inline v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
-      Environment* env);
-  static v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
-      IsolateData* isolate_data);
-
   // Interface for transferring BaseObject instances using the .postMessage()
   // method of MessagePorts (and, by extension, Workers).
   // GetTransferMode() returns a transfer mode that indicates how to deal with
@@ -187,7 +183,7 @@ class BaseObject : public MemoryRetainer {
  private:
   v8::Local<v8::Object> WrappedObject() const override;
   bool IsRootNode() const override;
-  static void DeleteMe(void* data);
+  void DeleteMe();
 
   // persistent_handle_ needs to be at a fixed offset from the start of the
   // class because it is used by src/node_postmortem_metadata.cc to calculate
@@ -232,6 +228,20 @@ class BaseObject : public MemoryRetainer {
 
   Realm* realm_;
   PointerData* pointer_data_ = nullptr;
+  ListNode<BaseObject> base_object_list_node_;
+
+  friend class BaseObjectList;
+};
+
+class BaseObjectList
+    : public ListHead<BaseObject, &BaseObject::base_object_list_node_>,
+      public MemoryRetainer {
+ public:
+  void Cleanup();
+
+  SET_MEMORY_INFO_NAME(BaseObjectList)
+  SET_SELF_SIZE(BaseObjectList)
+  void MemoryInfo(node::MemoryTracker* tracker) const override;
 };
 
 // Global alias for FromJSObject() to avoid churn.

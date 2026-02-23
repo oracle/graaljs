@@ -80,7 +80,7 @@ async function digest(algorithm, data) {
 
   algorithm = normalizeAlgorithm(algorithm, 'digest');
 
-  return ReflectApply(asyncDigest, this, [algorithm, data]);
+  return await ReflectApply(asyncDigest, this, [algorithm, data]);
 }
 
 function randomUUID() {
@@ -210,13 +210,13 @@ async function deriveBits(algorithm, baseKey, length = null) {
     case 'X448':
       // Fall through
     case 'ECDH':
-      return require('internal/crypto/diffiehellman')
+      return await require('internal/crypto/diffiehellman')
         .ecdhDeriveBits(algorithm, baseKey, length);
     case 'HKDF':
-      return require('internal/crypto/hkdf')
+      return await require('internal/crypto/hkdf')
         .hkdfDeriveBits(algorithm, baseKey, length);
     case 'PBKDF2':
-      return require('internal/crypto/pbkdf2')
+      return await require('internal/crypto/pbkdf2')
         .pbkdf2DeriveBits(algorithm, baseKey, length);
   }
   throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
@@ -327,19 +327,13 @@ async function exportKeySpki(key) {
     case 'RSA-PSS':
       // Fall through
     case 'RSA-OAEP':
-      if (key.type === 'public') {
-        return require('internal/crypto/rsa')
-          .rsaExportKey(key, kWebCryptoKeyFormatSPKI);
-      }
-      break;
+      return await require('internal/crypto/rsa')
+        .rsaExportKey(key, kWebCryptoKeyFormatSPKI);
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      if (key.type === 'public') {
-        return require('internal/crypto/ec')
-          .ecExportKey(key, kWebCryptoKeyFormatSPKI);
-      }
-      break;
+      return await require('internal/crypto/ec')
+        .ecExportKey(key, kWebCryptoKeyFormatSPKI);
     case 'Ed25519':
       // Fall through
     case 'Ed448':
@@ -347,16 +341,11 @@ async function exportKeySpki(key) {
     case 'X25519':
       // Fall through
     case 'X448':
-      if (key.type === 'public') {
-        return require('internal/crypto/cfrg')
-          .cfrgExportKey(key, kWebCryptoKeyFormatSPKI);
-      }
-      break;
+      return await require('internal/crypto/cfrg')
+        .cfrgExportKey(key, kWebCryptoKeyFormatSPKI);
+    default:
+      return undefined;
   }
-
-  throw lazyDOMException(
-    `Unable to export a raw ${key.algorithm.name} ${key.type} key`,
-    'InvalidAccessError');
 }
 
 async function exportKeyPkcs8(key) {
@@ -366,19 +355,13 @@ async function exportKeyPkcs8(key) {
     case 'RSA-PSS':
       // Fall through
     case 'RSA-OAEP':
-      if (key.type === 'private') {
-        return require('internal/crypto/rsa')
-          .rsaExportKey(key, kWebCryptoKeyFormatPKCS8);
-      }
-      break;
+      return await require('internal/crypto/rsa')
+        .rsaExportKey(key, kWebCryptoKeyFormatPKCS8);
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      if (key.type === 'private') {
-        return require('internal/crypto/ec')
-          .ecExportKey(key, kWebCryptoKeyFormatPKCS8);
-      }
-      break;
+      return await require('internal/crypto/ec')
+        .ecExportKey(key, kWebCryptoKeyFormatPKCS8);
     case 'Ed25519':
       // Fall through
     case 'Ed448':
@@ -386,28 +369,20 @@ async function exportKeyPkcs8(key) {
     case 'X25519':
       // Fall through
     case 'X448':
-      if (key.type === 'private') {
-        return require('internal/crypto/cfrg')
-          .cfrgExportKey(key, kWebCryptoKeyFormatPKCS8);
-      }
-      break;
+      return await require('internal/crypto/cfrg')
+        .cfrgExportKey(key, kWebCryptoKeyFormatPKCS8);
+    default:
+      return undefined;
   }
-
-  throw lazyDOMException(
-    `Unable to export a pkcs8 ${key.algorithm.name} ${key.type} key`,
-    'InvalidAccessError');
 }
 
-async function exportKeyRaw(key) {
+async function exportKeyRawPublic(key) {
   switch (key.algorithm.name) {
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      if (key.type === 'public') {
-        return require('internal/crypto/ec')
-          .ecExportKey(key, kWebCryptoKeyFormatRaw);
-      }
-      break;
+      return await require('internal/crypto/ec')
+        .ecExportKey(key, kWebCryptoKeyFormatRaw);
     case 'Ed25519':
       // Fall through
     case 'Ed448':
@@ -415,11 +390,15 @@ async function exportKeyRaw(key) {
     case 'X25519':
       // Fall through
     case 'X448':
-      if (key.type === 'public') {
-        return require('internal/crypto/cfrg')
-          .cfrgExportKey(key, kWebCryptoKeyFormatRaw);
-      }
-      break;
+      return await require('internal/crypto/cfrg')
+        .cfrgExportKey(key, kWebCryptoKeyFormatRaw);
+    default:
+      return undefined;
+  }
+}
+
+async function exportKeyRawSecret(key) {
+  switch (key.algorithm.name) {
     case 'AES-CTR':
       // Fall through
     case 'AES-CBC':
@@ -429,51 +408,46 @@ async function exportKeyRaw(key) {
     case 'AES-KW':
       // Fall through
     case 'HMAC':
-      return key[kKeyObject].export().buffer;
+      return key[kKeyObject][kHandle].export().buffer;
+    default:
+      return undefined;
   }
-
-  throw lazyDOMException(
-    `Unable to export a raw ${key.algorithm.name} ${key.type} key`,
-    'InvalidAccessError');
 }
 
 async function exportKeyJWK(key) {
-  const jwk = key[kKeyObject][kHandle].exportJwk({
+  const parameters = {
     key_ops: key.usages,
     ext: key.extractable,
-  }, true);
+  };
   switch (key.algorithm.name) {
     case 'RSASSA-PKCS1-v1_5':
-      jwk.alg = normalizeHashName(
+      parameters.alg = normalizeHashName(
         key.algorithm.hash.name,
         normalizeHashName.kContextJwkRsa);
-      return jwk;
+      break;
     case 'RSA-PSS':
-      jwk.alg = normalizeHashName(
+      parameters.alg = normalizeHashName(
         key.algorithm.hash.name,
         normalizeHashName.kContextJwkRsaPss);
-      return jwk;
+      break;
     case 'RSA-OAEP':
-      jwk.alg = normalizeHashName(
+      parameters.alg = normalizeHashName(
         key.algorithm.hash.name,
         normalizeHashName.kContextJwkRsaOaep);
-      return jwk;
+      break;
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      jwk.crv ||= key.algorithm.namedCurve;
-      return jwk;
+      // Fall through
     case 'X25519':
       // Fall through
     case 'X448':
-      jwk.crv ||= key.algorithm.name;
-      return jwk;
+      break;
     case 'Ed25519':
       // Fall through
     case 'Ed448':
-      jwk.crv ||= key.algorithm.name;
-      jwk.alg = key.algorithm.name;
-      return jwk;
+      parameters.alg = key.algorithm.name;
+      break;
     case 'AES-CTR':
       // Fall through
     case 'AES-CBC':
@@ -481,19 +455,19 @@ async function exportKeyJWK(key) {
     case 'AES-GCM':
       // Fall through
     case 'AES-KW':
-      jwk.alg = require('internal/crypto/aes')
+      parameters.alg = require('internal/crypto/aes')
         .getAlgorithmName(key.algorithm.name, key.algorithm.length);
-      return jwk;
+      break;
     case 'HMAC':
-      jwk.alg = normalizeHashName(
+      parameters.alg = normalizeHashName(
         key.algorithm.hash.name,
         normalizeHashName.kContextJwkHmac);
-      return jwk;
+      break;
     default:
-      // Fall through
+      return undefined;
   }
 
-  throw lazyDOMException('Not yet supported', 'NotSupportedError');
+  return key[kKeyObject][kHandle].exportJwk(parameters, true);
 }
 
 async function exportKey(format, key) {
@@ -511,17 +485,55 @@ async function exportKey(format, key) {
     context: '2nd argument',
   });
 
+  try {
+    normalizeAlgorithm(key.algorithm, 'exportKey');
+  } catch {
+    throw lazyDOMException(
+      `${key.algorithm.name} key export is not supported`, 'NotSupportedError');
+  }
+
   if (!key.extractable)
     throw lazyDOMException('key is not extractable', 'InvalidAccessException');
 
+  let result;
   switch (format) {
-    case 'spki': return exportKeySpki(key);
-    case 'pkcs8': return exportKeyPkcs8(key);
-    case 'jwk': return exportKeyJWK(key);
-    case 'raw': return exportKeyRaw(key);
+    case 'spki': {
+      if (key.type === 'public') {
+        result = await exportKeySpki(key);
+      }
+      break;
+    }
+    case 'pkcs8': {
+      if (key.type === 'private') {
+        result = await exportKeyPkcs8(key);
+      }
+      break;
+    }
+    case 'jwk': {
+      result = await exportKeyJWK(key);
+      break;
+    }
+    case 'raw': {
+      if (key.type === 'secret') {
+        result = await exportKeyRawSecret(key);
+        break;
+      }
+
+      if (key.type === 'public') {
+        result = await exportKeyRawPublic(key);
+        break;
+      }
+      break;
+    }
   }
-  throw lazyDOMException(
-    'Export format is unsupported', 'NotSupportedError');
+
+  if (!result) {
+    throw lazyDOMException(
+      `Unable to export ${key.algorithm.name} ${key.type} key using ${format} format`,
+      'NotSupportedError');
+  }
+
+  return result;
 }
 
 async function importKey(
@@ -608,8 +620,12 @@ async function importKey(
         extractable,
         keyUsages);
       break;
-    default:
-      throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
+  }
+
+  if (!result) {
+    throw lazyDOMException(
+      `Unable to import ${algorithm.name} using ${format} format`,
+      'NotSupportedError');
   }
 
   if ((result.type === 'secret' || result.type === 'private') && result.usages.length === 0) {
@@ -666,7 +682,7 @@ async function wrapKey(format, key, wrappingKey, algorithm) {
     }
   }
 
-  return cipherOrWrap(
+  return await cipherOrWrap(
     kWebCryptoCipherEncrypt,
     algorithm,
     wrappingKey,
@@ -753,7 +769,7 @@ async function unwrapKey(
   );
 }
 
-function signVerify(algorithm, key, data, signature) {
+async function signVerify(algorithm, key, data, signature) {
   let usage = 'sign';
   if (signature !== undefined) {
     usage = 'verify';
@@ -771,19 +787,19 @@ function signVerify(algorithm, key, data, signature) {
     case 'RSA-PSS':
       // Fall through
     case 'RSASSA-PKCS1-v1_5':
-      return require('internal/crypto/rsa')
+      return await require('internal/crypto/rsa')
         .rsaSignVerify(key, data, algorithm, signature);
     case 'ECDSA':
-      return require('internal/crypto/ec')
+      return await require('internal/crypto/ec')
         .ecdsaSignVerify(key, data, algorithm, signature);
     case 'Ed25519':
       // Fall through
     case 'Ed448':
       // Fall through
-      return require('internal/crypto/cfrg')
+      return await require('internal/crypto/cfrg')
         .eddsaSignVerify(key, data, algorithm, signature);
     case 'HMAC':
-      return require('internal/crypto/mac')
+      return await require('internal/crypto/mac')
         .hmacSignVerify(key, data, algorithm, signature);
   }
   throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
@@ -808,7 +824,7 @@ async function sign(algorithm, key, data) {
     context: '3rd argument',
   });
 
-  return signVerify(algorithm, key, data);
+  return await signVerify(algorithm, key, data);
 }
 
 async function verify(algorithm, key, signature, data) {
@@ -834,7 +850,7 @@ async function verify(algorithm, key, signature, data) {
     context: '4th argument',
   });
 
-  return signVerify(algorithm, key, data, signature);
+  return await signVerify(algorithm, key, data, signature);
 }
 
 async function cipherOrWrap(mode, algorithm, key, data, op) {
@@ -857,18 +873,18 @@ async function cipherOrWrap(mode, algorithm, key, data, op) {
 
   switch (algorithm.name) {
     case 'RSA-OAEP':
-      return require('internal/crypto/rsa')
+      return await require('internal/crypto/rsa')
         .rsaCipher(mode, key, data, algorithm);
     case 'AES-CTR':
       // Fall through
     case 'AES-CBC':
       // Fall through
     case 'AES-GCM':
-      return require('internal/crypto/aes')
+      return await require('internal/crypto/aes')
         .aesCipher(mode, key, data, algorithm);
     case 'AES-KW':
       if (op === 'wrapKey' || op === 'unwrapKey') {
-        return require('internal/crypto/aes')
+        return await require('internal/crypto/aes')
           .aesCipher(mode, key, data, algorithm);
       }
   }
@@ -895,7 +911,13 @@ async function encrypt(algorithm, key, data) {
   });
 
   algorithm = normalizeAlgorithm(algorithm, 'encrypt');
-  return cipherOrWrap(kWebCryptoCipherEncrypt, algorithm, key, data, 'encrypt');
+  return await cipherOrWrap(
+    kWebCryptoCipherEncrypt,
+    algorithm,
+    key,
+    data,
+    'encrypt',
+  );
 }
 
 async function decrypt(algorithm, key, data) {
@@ -918,7 +940,13 @@ async function decrypt(algorithm, key, data) {
   });
 
   algorithm = normalizeAlgorithm(algorithm, 'decrypt');
-  return cipherOrWrap(kWebCryptoCipherDecrypt, algorithm, key, data, 'decrypt');
+  return await cipherOrWrap(
+    kWebCryptoCipherDecrypt,
+    algorithm,
+    key,
+    data,
+    'decrypt',
+  );
 }
 
 // The SubtleCrypto and Crypto classes are defined as part of the

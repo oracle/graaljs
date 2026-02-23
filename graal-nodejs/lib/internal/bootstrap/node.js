@@ -179,6 +179,7 @@ const rawMethods = internalBinding('process_methods');
   process.loadEnvFile = wrapped.loadEnvFile;
   process._rawDebug = wrapped._rawDebug;
   process.cpuUsage = wrapped.cpuUsage;
+  process.threadCpuUsage = wrapped.threadCpuUsage;
   process.resourceUsage = wrapped.resourceUsage;
   process.memoryUsage = wrapped.memoryUsage;
   process.constrainedMemory = rawMethods.constrainedMemory;

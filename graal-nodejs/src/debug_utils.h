@@ -33,15 +33,16 @@ inline std::string ToString(const T& value);
 // - Supports %p and %s. %d, %i and %u are aliases for %s.
 // - Accepts any class that has a ToString() method for stringification.
 template <typename... Args>
-inline std::string SPrintF(const char* format, Args&&... args);
+inline std::string SPrintF(std::string_view format, Args&&... args);
 template <typename... Args>
-inline void FPrintF(FILE* file, const char* format, Args&&... args);
+inline void FPrintF(FILE* file, std::string_view format, Args&&... args);
 void NODE_EXTERN_PRIVATE FWrite(FILE* file, const std::string& str);
 
 // Listing the AsyncWrap provider types first enables us to cast directly
 // from a provider type to a debug category.
 #define DEBUG_CATEGORY_NAMES(V)                                                \
   NODE_ASYNC_PROVIDER_TYPES(V)                                                 \
+  V(CRYPTO)                                                                    \
   V(COMPILE_CACHE)                                                             \
   V(DIAGNOSTICS)                                                               \
   V(HUGEPAGES)                                                                 \

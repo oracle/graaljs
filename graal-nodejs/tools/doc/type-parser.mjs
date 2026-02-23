@@ -1,4 +1,5 @@
-const jsDocPrefix = 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/';
+const mdnPrefix = 'https://developer.mozilla.org/en-US/docs/Web';
+const jsDocPrefix = `${mdnPrefix}/JavaScript/`;
 
 const jsDataStructuresUrl = `${jsDocPrefix}Data_structures`;
 const jsPrimitives = {
@@ -32,8 +33,7 @@ const customTypesMap = {
   'AbortController': 'globals.html#class-abortcontroller',
   'AbortSignal': 'globals.html#class-abortsignal',
 
-  'ArrayBufferView':
-    'https://developer.mozilla.org/en-US/docs/Web/API/ArrayBufferView',
+  'ArrayBufferView': `${mdnPrefix}/API/ArrayBufferView`,
 
   'AsyncIterator': 'https://tc39.github.io/ecma262/#sec-asynciterator-interface',
 
@@ -137,6 +137,14 @@ const customTypesMap = {
   'CustomEvent': 'events.html#class-customevent',
   'EventListener': 'events.html#event-listener',
 
+  'CloseEvent': `${mdnPrefix}/API/CloseEvent`,
+  'EventSource': `${mdnPrefix}/API/EventSource`,
+  'MessageEvent': `${mdnPrefix}/API/MessageEvent`,
+
+  'DOMException': `${mdnPrefix}/API/DOMException`,
+  'Storage': `${mdnPrefix}/API/Storage`,
+  'WebSocket': `${mdnPrefix}/API/WebSocket`,
+
   'FileHandle': 'fs.html#class-filehandle',
   'fs.Dir': 'fs.html#class-fsdir',
   'fs.Dirent': 'fs.html#class-fsdirent',
@@ -157,6 +165,7 @@ const customTypesMap = {
   'ClientHttp2Session': 'http2.html#class-clienthttp2session',
   'ClientHttp2Stream': 'http2.html#class-clienthttp2stream',
   'HTTP/2 Headers Object': 'http2.html#headers-object',
+  'HTTP/2 Raw Headers': 'http2.html#raw-headers',
   'HTTP/2 Settings Object': 'http2.html#settings-object',
   'http2.Http2ServerRequest': 'http2.html#class-http2http2serverrequest',
   'http2.Http2ServerResponse':
@@ -248,6 +257,7 @@ const customTypesMap = {
   'vm.Module': 'vm.html#class-vmmodule',
   'vm.Script': 'vm.html#class-vmscript',
   'vm.SourceTextModule': 'vm.html#class-vmsourcetextmodule',
+  'ModuleRequest': 'vm.html#type-modulerequest',
   'vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER':
       'vm.html#vmconstantsuse_main_context_default_loader',
   'vm.constants.DONT_CONTEXTIFY':

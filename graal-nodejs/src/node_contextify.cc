@@ -292,10 +292,10 @@ BaseObjectPtr<ContextifyContext> ContextifyContext::New(
                               options->allow_code_gen_wasm);
 
   Utf8Value name_val(env->isolate(), options->name);
-  ContextInfo info(*name_val);
+  ContextInfo info(name_val.ToString());
   if (!options->origin.IsEmpty()) {
     Utf8Value origin_val(env->isolate(), options->origin);
-    info.origin = *origin_val;
+    info.origin = origin_val.ToString();
   }
 
   BaseObjectPtr<ContextifyContext> result;
@@ -739,7 +739,6 @@ Intercepted ContextifyContext::PropertyDefinerCallback(
     // kYes to behave according to the expected semantics.
     return Intercepted::kNo;
   }
-  return Intercepted::kNo;
 }
 
 // static
@@ -1619,7 +1618,7 @@ MaybeLocal<Object> ContextifyFunction::CompileFunctionAndCacheResult(
 // While top-level `await` is not permitted in CommonJS, it returns the same
 // error message as when `await` is used in a sync function, so we don't use it
 // as a disambiguation.
-static std::vector<std::string_view> esm_syntax_error_messages = {
+static const auto esm_syntax_error_messages = std::array<std::string_view, 6>{
     "Expected an operand but found import",
     "Cannot use import statement outside a module",  // `import` statements
     "Expected an operand but found export",
@@ -1637,19 +1636,26 @@ static std::vector<std::string_view> esm_syntax_error_messages = {
 // - Top-level `await`: if the user writes `await` at the top level of a
 //   CommonJS module, it will throw a syntax error; but the same code is valid
 //   in ESM.
-static std::vector<std::string_view> throws_only_in_cjs_error_messages = {
-    "Identifier 'module' has already been declared",
-    "Variable \"module\" has already been declared",
-    "Identifier 'exports' has already been declared",
-    "Variable \"exports\" has already been declared",
-    "Identifier 'require' has already been declared",
-    "Variable \"require\" has already been declared",
-    "Identifier '__filename' has already been declared",
-    "Variable \"__filename\" has already been declared",
-    "Identifier '__dirname' has already been declared",
-    "Variable \"__dirname\" has already been declared",
-    "await is only valid in async functions and "
-    "the top level bodies of modules"};
+static const auto throws_only_in_cjs_error_messages =
+    std::array<std::string_view, 12>{
+        "Identifier 'module' has already been declared",
+        "Variable \"module\" has already been declared",
+        "Identifier 'exports' has already been declared",
+        "Variable \"exports\" has already been declared",
+        "Identifier 'require' has already been declared",
+        "Variable \"require\" has already been declared",
+        "Identifier '__filename' has already been declared",
+        "Variable \"__filename\" has already been declared",
+        "Identifier '__dirname' has already been declared",
+        "Variable \"__dirname\" has already been declared",
+        "await is only valid in async functions and "
+        "the top level bodies of modules"};
+
+static const auto maybe_top_level_await_errors =
+    std::array<std::string_view, 2>{
+        "missing ) after argument list",  // example: `func(await 1);`
+        "SyntaxError: Unexpected"         // example: `if(await 1)`
+    };
 
 // If cached_data is provided, it would be used for the compilation and
 // the on-disk compilation cache from NODE_COMPILE_CACHE (if configured)
@@ -1881,6 +1887,16 @@ bool ShouldRetryAsESM(Realm* realm,
       break;
     }
   }
+
+  for (const auto& error_message : maybe_top_level_await_errors) {
+    if (message_view.find(error_message) != std::string_view::npos) {
+      // If the error message is related to top-level await, we can try to
+      // compile it as ESM.
+      maybe_valid_in_esm = true;
+      break;
+    }
+  }
+
   if (!maybe_valid_in_esm) {
     return false;
   }

@@ -762,9 +762,7 @@ By doing this, Node.js achieves a few things:
 added: v0.1.27
 -->
 
-<!-- type=var -->
-
-* {string}
+* Type: {string}
 
 The directory name of the current module. This is the same as the
 [`path.dirname()`][] of the [`__filename`][].
@@ -784,9 +782,7 @@ console.log(path.dirname(__filename));
 added: v0.0.1
 -->
 
-<!-- type=var -->
-
-* {string}
+* Type: {string}
 
 The file name of the current module. This is the current module file's absolute
 path with symlinks resolved.
@@ -823,9 +819,7 @@ References to `__filename` within `b.js` will return
 added: v0.1.12
 -->
 
-<!-- type=var -->
-
-* {Object}
+* Type: {Object}
 
 A reference to the `module.exports` that is shorter to type.
 See the section about the [exports shortcut][] for details on when to use
@@ -837,9 +831,7 @@ See the section about the [exports shortcut][] for details on when to use
 added: v0.1.16
 -->
 
-<!-- type=var -->
-
-* {module}
+* Type: {module}
 
 A reference to the current module, see the section about the
 [`module` object][]. In particular, `module.exports` is used for defining what
@@ -850,8 +842,6 @@ a module exports and makes available through `require()`.
 <!-- YAML
 added: v0.1.13
 -->
-
-<!-- type=var -->
 
 * `id` {string} module name or path
 * Returns: {any} exported module content
@@ -882,7 +872,7 @@ const crypto = require('node:crypto');
 added: v0.3.0
 -->
 
-* {Object}
+* Type: {Object}
 
 Modules are cached in this object when they are required. By deleting a key
 value from this object, the next `require` will reload the module.
@@ -916,7 +906,7 @@ deprecated: v0.10.6
 
 > Stability: 0 - Deprecated
 
-* {Object}
+* Type: {Object}
 
 Instruct `require` on how to handle certain file extensions.
 
@@ -940,7 +930,7 @@ extensions gets slower with each registered extension.
 added: v0.1.17
 -->
 
-* {module | undefined}
+* Type: {module | undefined}
 
 The `Module` object representing the entry script loaded when the Node.js
 process launched, or `undefined` if the entry point of the program is not a
@@ -1018,11 +1008,9 @@ Returns an array containing the paths searched during resolution of `request` or
 added: v0.1.16
 -->
 
-<!-- type=var -->
-
 <!-- name=module -->
 
-* {Object}
+* Type: {Object}
 
 In each module, the `module` free variable is a reference to the object
 representing the current module. For convenience, `module.exports` is
@@ -1035,7 +1023,7 @@ a global but rather local to each module.
 added: v0.1.16
 -->
 
-* {module\[]}
+* Type: {module\[]}
 
 The module objects required for the first time by this one.
 
@@ -1045,7 +1033,7 @@ The module objects required for the first time by this one.
 added: v0.1.16
 -->
 
-* {Object}
+* Type: {Object}
 
 The `module.exports` object is created by the `Module` system. Sometimes this is
 not acceptable; many want their module to be an instance of some class. To do
@@ -1149,7 +1137,7 @@ function require(/* ... */) {
 added: v0.1.16
 -->
 
-* {string}
+* Type: {string}
 
 The fully resolved filename of the module.
 
@@ -1159,7 +1147,7 @@ The fully resolved filename of the module.
 added: v0.1.16
 -->
 
-* {string}
+* Type: {string}
 
 The identifier for the module. Typically this is the fully resolved
 filename.
@@ -1181,7 +1169,7 @@ added:
 added: v0.1.16
 -->
 
-* {boolean}
+* Type: {boolean}
 
 Whether or not the module is done loading, or is in the process of
 loading.
@@ -1198,7 +1186,7 @@ deprecated:
 > Stability: 0 - Deprecated: Please use [`require.main`][] and
 > [`module.children`][] instead.
 
-* {module | null | undefined}
+* Type: {module | null | undefined}
 
 The module that first required this one, or `null` if the current module is the
 entry point of the current process, or `undefined` if the module was loaded by
@@ -1210,7 +1198,7 @@ something that is not a CommonJS module (E.G.: REPL or `import`).
 added: v11.14.0
 -->
 
-* {string}
+* Type: {string}
 
 The directory name of the module. This is usually the same as the
 [`path.dirname()`][] of the [`module.id`][].
@@ -1221,7 +1209,7 @@ The directory name of the module. This is usually the same as the
 added: v0.4.0
 -->
 
-* {string\[]}
+* Type: {string\[]}
 
 The search paths for the module.
 

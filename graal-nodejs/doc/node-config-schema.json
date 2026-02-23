@@ -121,6 +121,9 @@
         "entry-url": {
           "type": "boolean"
         },
+        "experimental-addon-modules": {
+          "type": "boolean"
+        },
         "experimental-async-context-frame": {
           "type": "boolean"
         },
@@ -184,9 +187,6 @@
           "type": "boolean"
         },
         "experimental-vm-modules": {
-          "type": "boolean"
-        },
-        "experimental-wasm-modules": {
           "type": "boolean"
         },
         "experimental-websocket": {
@@ -277,6 +277,9 @@
         },
         "max-http-header-size": {
           "type": "number"
+        },
+        "max-old-space-size-percentage": {
+          "type": "string"
         },
         "network-family-autoselection": {
           "type": "boolean"
@@ -547,6 +550,9 @@
         "use-bundled-ca": {
           "type": "boolean"
         },
+        "use-env-proxy": {
+          "type": "boolean"
+        },
         "use-largepages": {
           "type": "string"
         },
@@ -567,6 +573,9 @@
         },
         "watch": {
           "type": "boolean"
+        },
+        "watch-kill-signal": {
+          "type": "string"
         },
         "watch-path": {
           "oneOf": [
