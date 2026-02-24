@@ -140,9 +140,7 @@ public class TestV8Runnable extends TestRunnable {
             extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));
             // TODO: remove after features are enabled by default in wasm
             extraOptions.put("wasm.Threads", "true");
-            extraOptions.put("wasm.TypedFunctionReferences", "true");
-            extraOptions.put("wasm.GC", "true");
-            extraOptions.put("wasm.Exceptions", "true");
+            extraOptions.put("wasm.Memory64", "true");
             // Required for using shared memories, for now
             extraOptions.put("wasm.UseUnsafeMemory", "true");
 
