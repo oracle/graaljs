@@ -780,13 +780,9 @@
     "status" : "PASS",
     "comment" : "Unflagged usage of JSON parse with source"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-defer-define-class-field.mjs",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
     "filePath" : "mjsunit/harmony/modules-import-defer-no-trigger.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
+    "comment" : "Incorrect test? Expects `super.x = 14` not to trigger module evaluation when `this` is deferred module namespace object"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-disallow-absolute-url.mjs",
     "status" : "FAIL",

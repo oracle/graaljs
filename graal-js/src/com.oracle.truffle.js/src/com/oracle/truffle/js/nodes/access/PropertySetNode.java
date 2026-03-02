@@ -79,6 +79,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyExportedGC;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -668,7 +669,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    public static final class ReadOnlyPropertySetNode extends LinkedPropertySetNode {
+    public static class ReadOnlyPropertySetNode extends LinkedPropertySetNode {
         private final boolean isStrict;
         private final Property property;
 
@@ -704,6 +705,24 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             return true;
         }
+    }
+
+    public static final class NamespaceObjectRedefineReadOnlyPropertyNode extends ReadOnlyPropertySetNode {
+
+        public NamespaceObjectRedefineReadOnlyPropertyNode(ReceiverCheckNode receiverCheck, boolean isStrict, Property property) {
+            super(receiverCheck, isStrict, property);
+        }
+
+        @Override
+        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
+            assert root.isOwnProperty();
+
+            // Trigger module evaluation if needed
+            ((JSModuleNamespaceObject) receiver).getModuleExportsList();
+
+            return super.setValue(thisObj, value, receiver, root, guard);
+        }
+
     }
 
     /**
@@ -1021,7 +1040,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (JSAttributes.isConfigurable(property.getFlags()) && property.getFlags() != JSAttributes.configurableEnumerableWritable()) {
                 return new DataPropertyPutWithFlagsNode(shapeCheck);
             } else if (!JSAttributes.isConfigurable(property.getFlags()) && JSAttributes.isConfigurable(getAttributeFlags())) {
-                return new ReadOnlyPropertySetNode(shapeCheck, isStrict(), property);
+                return createReadOnlyPropertySetNode(thisObj, shapeCheck, isStrict(), property);
             }
         }
 
@@ -1033,10 +1052,18 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
+    private SetCacheNode createReadOnlyPropertySetNode(JSDynamicObject thisObj, ReceiverCheckNode receiverCheck, boolean strict, Property property) {
+        if (isOwnProperty() && thisObj instanceof JSModuleNamespaceObject) {
+            return new NamespaceObjectRedefineReadOnlyPropertyNode(receiverCheck, strict, property);
+        } else {
+            return new ReadOnlyPropertySetNode(receiverCheck, strict, property);
+        }
+    }
+
     private SetCacheNode createCachedDataPropertyNodeJSObject(JSDynamicObject thisObj, JSDynamicObject proto, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
         assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isConstant() && property.getLocation().getConstantValue() == Dead.instance()) : "const assignment";
         if (!JSProperty.isWritable(property) || JSProperty.isModuleNamespaceExport(property)) {
-            return new ReadOnlyPropertySetNode(shapeCheck, isStrict(), property);
+            return createReadOnlyPropertySetNode(thisObj, shapeCheck, isStrict(), property);
         } else if (superProperty) {
             // define the property on the receiver; currently not handled, rewrite to generic
             return createGenericPropertyNode();
@@ -1115,6 +1142,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new JSAdapterPropertySetNode(createJSClassCheck(thisObj, proto, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, proto, depth), isStrict(), isOwnProperty(), getAttributeFlags());
+            } else if (store instanceof JSModuleNamespaceObject ns && ns.isDeferred() && !ns.isSymbolLikeNamespaceKey(key)) {
+                return createReadOnlyPropertySetNode(thisJSObj, createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false), isStrict, null);
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance) {
                 assert !JSArrayBufferView.isValidIntegerIndex((JSDynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString(indexStr));
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false), false);
