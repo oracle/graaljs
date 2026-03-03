@@ -1026,6 +1026,25 @@ globalThis['%SetWasmThreadsEnabled'] = function() {
 globalThis['%WasmTierUpFunction'] = function() {
 };
 
+globalThis['%FlushLiftoffCode'] = function() {
+};
+
+globalThis['%WasmDeoptsExecutedCount'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%WasmDeoptsExecutedForFunction'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%WasmCompiledExportWrappersCount'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%GetAbstractModuleSource'] = function() {
+    return Object.getPrototypeOf(WebAssembly.Module);
+};
+
 globalThis['%HandleDebuggerStatement'] = function() {
 };
 
