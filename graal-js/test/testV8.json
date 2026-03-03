@@ -762,10 +762,6 @@
     "status" : "FAIL",
     "comment" : "only fails because of different line number in error stack"
   }, {
-    "filePath" : "mjsunit/harmony/iterator-concat.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
     "filePath" : "mjsunit/harmony/json-parse-with-source-snapshot.js",
     "ecmaVersion" : {
       "minVersion" : 17
