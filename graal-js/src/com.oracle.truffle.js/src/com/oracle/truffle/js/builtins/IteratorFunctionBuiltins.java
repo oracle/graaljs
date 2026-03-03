@@ -99,7 +99,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Override
         public int getECMAScriptVersion() {
             if (this == concat) {
-                return JSConfig.StagingECMAScriptVersion;
+                return JSConfig.ECMAScript2026;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
