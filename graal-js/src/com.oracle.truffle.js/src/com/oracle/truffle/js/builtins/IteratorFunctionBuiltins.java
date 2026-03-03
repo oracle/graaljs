@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorArgs;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorFromGeneratorNode;
@@ -50,8 +51,8 @@ import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
-import com.oracle.truffle.js.nodes.access.IteratorNextNode;
+import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -198,9 +199,10 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected final Object next(JSIteratorHelperObject thisObj,
                         @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
-                        @Cached IteratorNextNode iteratorNextNode,
-                        @Cached IteratorCompleteNode iteratorCompleteNode,
-                        @Cached IteratorValueNode iteratorValueNode) {
+                        @Cached IteratorStepNode iteratorStepNode,
+                        @Cached IteratorValueNode iteratorValueNode,
+                        @Cached("create(context)") IteratorCloseNode iteratorCloseNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             ConcatArgs args = getArgs(thisObj);
             var iterables = args.iterables;
             int iterableIndex = args.iterableIndex;
@@ -213,17 +215,22 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                     args.innerAlive = true;
                 }
 
-                assert args.innerAlive && iterator != null;
-                Object result = iteratorNextNode.execute(iterator);
-                boolean done = iteratorCompleteNode.execute(result);
-                if (done) {
-                    args.innerAlive = false;
-                    args.innerIterator = null;
-                    args.iterableIndex = ++iterableIndex;
-                } else {
-                    Object innerValue = iteratorValueNode.execute(result);
-                    return createResultContinue(thisObj, innerValue);
-                    // Note: Abrupt completion is handled by IteratorHelperReturnNode.
+                try {
+                    assert args.innerAlive && iterator != null;
+                    Object result = iteratorStepNode.execute(iterator);
+                    if (result == Boolean.FALSE) {
+                        args.innerAlive = false;
+                        args.innerIterator = null;
+                        args.iterableIndex = ++iterableIndex;
+                    } else {
+                        Object innerValue = iteratorValueNode.execute(result);
+                        return createResultContinue(thisObj, innerValue);
+                        // Note: Abrupt completion is handled by IteratorHelperReturnNode.
+                    }
+                } catch (AbstractTruffleException ex) {
+                    errorBranch.enter(this);
+                    iteratorCloseNode.executeAbrupt(iterator.getIterator());
+                    throw ex;
                 }
             }
             return createResultDone(thisObj);
