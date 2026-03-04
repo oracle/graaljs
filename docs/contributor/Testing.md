@@ -26,6 +26,8 @@ mx testv8 gate
 # to include wasm-related tests as well
 mx --dy /wasm testv8 gate
 ```
+See [Maintaining TestV8 Expectations](TestV8.md) for the workflow used when
+triaging TestV8 failures and updating `graal-js/test/testV8.json`.
 
 Nashorn tests:
 ```bash
