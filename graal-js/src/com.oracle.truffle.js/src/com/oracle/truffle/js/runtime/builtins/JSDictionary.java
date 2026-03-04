@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,7 +143,7 @@ public final class JSDictionary extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
         assert JSRuntime.isPropertyKey(key);
         EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(thisObj);
         PropertyDescriptor desc = hashMap.get(key);
@@ -157,12 +157,12 @@ public final class JSDictionary extends JSNonProxy {
             hashMap.removeKey(key);
             return true;
         }
-        return super.delete(thisObj, key, isStrict);
+        return super.delete(thisObj, key, isStrict, resultWhenNotPresent);
     }
 
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
-        return delete(thisObj, Strings.fromLong(index), isStrict);
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
+        return delete(thisObj, Strings.fromLong(index), isStrict, resultWhenNotPresent);
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -207,9 +207,9 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
         JSDynamicObject overrides = getOverrides(thisObj);
-        if (overrides != null && JSObject.delete(overrides, index, isStrict)) {
+        if (overrides != null && JSObject.delete(overrides, index, isStrict, resultWhenNotPresent)) {
             return true;
         }
 
@@ -223,9 +223,9 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
         JSDynamicObject overrides = getOverrides(thisObj);
-        if (overrides != null && JSObject.delete(overrides, key, isStrict)) {
+        if (overrides != null && JSObject.delete(overrides, key, isStrict, resultWhenNotPresent)) {
             return true;
         }
 

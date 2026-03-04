@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -209,11 +209,11 @@ public abstract class JSNonProxy extends JSClass {
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
-        return deletePropertyDefault(thisObj, key, isStrict);
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
+        return deletePropertyDefault(thisObj, key, isStrict, resultWhenNotPresent);
     }
 
-    protected static boolean deletePropertyDefault(JSDynamicObject object, Object key, boolean isStrict) {
+    protected static boolean deletePropertyDefault(JSDynamicObject object, Object key, boolean isStrict, boolean resultWhenNotPresent) {
         Property foundProperty = object.getShape().getProperty(key);
         if (foundProperty != null) {
             if (!JSProperty.isConfigurable(foundProperty)) {
@@ -225,14 +225,14 @@ public abstract class JSNonProxy extends JSClass {
             return Properties.removeKeyUncached(object, key);
         } else {
             /* the prototype might have a property with that name, but we don't care */
-            return true;
+            return resultWhenNotPresent;
         }
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
-        return deletePropertyDefault(thisObj, Strings.fromLong(index), isStrict);
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
+        return deletePropertyDefault(thisObj, Strings.fromLong(index), isStrict, resultWhenNotPresent);
     }
 
     @TruffleBoundary

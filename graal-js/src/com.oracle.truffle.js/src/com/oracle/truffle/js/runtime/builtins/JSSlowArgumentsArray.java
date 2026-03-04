@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
         boolean isMappedArguments = isMappedArguments(thisObj);
         boolean indexDisconnected = isMappedArguments && wasIndexDisconnected(thisObj, index);
         Object oldValue = indexDisconnected ? null : get(thisObj, index);
@@ -72,7 +72,7 @@ public final class JSSlowArgumentsArray extends JSAbstractArgumentsArray {
             arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
             wasDeleted = true;
         } else {
-            wasDeleted = JSOrdinary.INSTANCE.delete(thisObj, index, isStrict);
+            wasDeleted = JSOrdinary.INSTANCE.delete(thisObj, index, isStrict, resultWhenNotPresent);
         }
 
         if (wasDeleted && isMappedArguments && !indexDisconnected) {

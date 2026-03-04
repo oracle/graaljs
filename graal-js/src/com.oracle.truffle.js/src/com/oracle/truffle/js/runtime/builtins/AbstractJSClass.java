@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -114,13 +114,13 @@ public abstract class AbstractJSClass extends JSClass {
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
         throw Errors.createTypeErrorCannotDeletePropertyOf(key, thisObj);
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
         throw Errors.createTypeErrorCannotDeletePropertyOf(Strings.fromLong(index), thisObj);
     }
 

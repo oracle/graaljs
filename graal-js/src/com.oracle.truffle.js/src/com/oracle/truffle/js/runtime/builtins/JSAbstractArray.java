@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -361,8 +361,11 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
         ScriptArray arrayType = arrayGetArrayType(thisObj);
+        if (!resultWhenNotPresent && !arrayType.hasElement(thisObj, index)) {
+            return resultWhenNotPresent;
+        }
         if (arrayType.canDeleteElement(thisObj, index, isStrict)) {
             arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, isStrict));
             return true;
@@ -693,12 +696,12 @@ public abstract class JSAbstractArray extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0) {
-            return delete(thisObj, index, isStrict);
+            return delete(thisObj, index, isStrict, resultWhenNotPresent);
         } else {
-            return super.delete(thisObj, key, isStrict);
+            return super.delete(thisObj, key, isStrict, resultWhenNotPresent);
         }
     }
 

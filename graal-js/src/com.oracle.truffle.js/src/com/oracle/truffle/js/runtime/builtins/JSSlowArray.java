@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,7 +96,7 @@ public final class JSSlowArray extends JSAbstractArray {
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
         ScriptArray array = arrayAccess().getArrayType(thisObj);
         if (array.hasElement(thisObj, index)) {
             ScriptArray arrayType = arrayGetArrayType(thisObj);
@@ -107,7 +107,7 @@ public final class JSSlowArray extends JSAbstractArray {
                 return false;
             }
         } else {
-            return JSOrdinary.INSTANCE.delete(thisObj, index, isStrict);
+            return JSOrdinary.INSTANCE.delete(thisObj, index, isStrict, resultWhenNotPresent);
         }
     }
 
