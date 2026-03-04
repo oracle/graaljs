@@ -215,15 +215,15 @@ In GraalJS you can create and access Java Maps, for example, `java.util.HashMap`
 ```js
 var HashMap = Java.type('java.util.HashMap');
 var map = new HashMap();
-map.put(1, "a");
-map.get(1);
+map.put('someKey', 'someValue');
+map.get('someKey');
 ```
 
-GraalJS supports iterating over such maps similar to Nashorn:
+GraalJS supports iterating over such maps:
 ```js
-for (var key in map) {
+for (var [key, value] of map.entries()) {
     print(key);
-    print(map.get(key));
+    print(value);
 }
 ```
 
@@ -234,12 +234,11 @@ In GraalJS you can create and access Java Lists, for example, `java.util.ArrayLi
 var ArrayList = Java.type('java.util.ArrayList');
 var list = new ArrayList();
 list.add(42);
-list.add("23");
+list.add('foo');
 list.add({});
 
-for (var idx in list) {
-    print(idx);
-    print(list.get(idx));
+for (var element of list) {
+    print(element);
 }
 ```
 
@@ -256,12 +255,13 @@ Note that GraalJS uses Java strings internally to represent JavaScript strings, 
 
 ### Iterating Properties
 
-Properties (fields and methods) of Java classes and Java objects can be iterated with a JavaScript `for..in` loop:
+Properties (fields and methods) of Java classes and Java objects can be listed with a JavaScript `Object.keys()` function:
 ```
-var m = Java.type('java.lang.Math')
-for (var i in m) { print(i); }
+var m = Java.type('java.lang.Math');
+for (var key of Object.keys(m)) { print(key); }
 > E
 > PI
+> TAU
 > abs
 > sin
 > ...
