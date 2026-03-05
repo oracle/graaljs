@@ -2077,10 +2077,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-361369297.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-361611472.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2102,10 +2098,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-366635354.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-369652650.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2573,14 +2565,6 @@
     "status" : "FAIL",
     "comment" : "Uses return_call_indirect from the tail calls proposal."
   }, {
-    "filePath" : "mjsunit/wasm/code-flushing-single-isolate.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/code-flushing.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/compare-exchange64-stress.js",
     "status" : "SKIP",
     "comment" : "Sometimes gets stuck."
@@ -2610,10 +2594,6 @@
     "comment" : "Different wording of divide-by-zero trap ('integer divide by zero' vs 'divide by zero')."
   }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-inlined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-metrics.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2702,15 +2682,7 @@
   }, {
     "filePath" : "mjsunit/wasm/esm/module-import-source-dynamic-not-found.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/esm/module-import-source-dynamic.mjs",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/esm/module-import-source.mjs",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses assertStringContains, but upstream mjsunit.js does not define this helper."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-gc.js",
     "status" : "FAIL",
@@ -2883,10 +2855,6 @@
     "status" : "FAIL",
     "runInIsolation" : true,
     "comment" : "Fails when trying to access the underlying ArrayBuffer of a WebAssembly.Memory. This is because GraalJS ArrayBuffers are currently capped at 2GB (- 1 byte) and this test exercises 4GB large memories."
-  }, {
-    "filePath" : "mjsunit/wasm/module-source.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/wasm/multi-memory.js",
     "status" : "FAIL",
@@ -3181,10 +3149,6 @@
     "filePath" : "mjsunit/wasm/worker-running-empty-loop-interruptible.js",
     "status" : "SKIP",
     "comment" : "Empty infinite wasm loop cannot be cancelled."
-  }, {
-    "filePath" : "mjsunit/wasm/wrapper-compilation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
