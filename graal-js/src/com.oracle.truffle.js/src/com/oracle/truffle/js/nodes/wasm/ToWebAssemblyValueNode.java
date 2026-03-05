@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyExportedGC;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyExportedGCObject;
@@ -69,6 +70,8 @@ import com.oracle.truffle.js.runtime.objects.Null;
 @ImportStatic(WebAssemblyType.class)
 @GenerateUncached
 public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
+    private static final int I31_MIN_VALUE = -(1 << 30);
+    private static final int I31_MAX_VALUE = (1 << 30) - 1;
 
     protected ToWebAssemblyValueNode() {
     }
@@ -127,6 +130,19 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
             return getRealm().getWasmRefNull();
         } else if (JSWebAssemblyExportedGC.isJSWebAssemblyExportedGCObject(value)) {
             return ((JSWebAssemblyExportedGCObject) value).getWASMGCObject();
+        } else if (JSRuntime.isNumber(value)) {
+            return normalizeI31CompatibleNumber(value);
+        } else {
+            return value;
+        }
+    }
+
+    private static Object normalizeI31CompatibleNumber(Object value) {
+        if (value instanceof Double d && !JSRuntime.isNegativeZero(d) && d >= I31_MIN_VALUE && d <= I31_MAX_VALUE && d == d.intValue()) {
+            assert Double.isFinite(d);
+            return d.intValue();
+        } else if (value instanceof SafeInteger safeInteger && safeInteger.longValue() >= I31_MIN_VALUE && safeInteger.longValue() <= I31_MAX_VALUE) {
+            return safeInteger.intValue();
         } else {
             return value;
         }

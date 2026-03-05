@@ -3446,10 +3446,6 @@
     "status" : "SKIP",
     "comment" : "Based on v8IsLiftoffFunction(), a concept unknown to graal.js"
   }, {
-    "filePath" : "mjsunit/wasm/wasm-gc-externalize-internalize.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
-  }, {
     "filePath" : "mjsunit/wasm/wasm-gc-inlining-stacktrace-api.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-19"
