@@ -977,6 +977,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
             }
             IdentNode param = function.getParameters().get(i);
+            if (param.isDiscard()) {
+                continue;
+            }
             if (param.isIgnoredParameter()) {
                 // Duplicate parameter names are allowed in non-strict mode but have no binding.
                 assert !currentFunction.isStrictMode();
@@ -2893,6 +2896,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric,
                     boolean initializationAssignment) {
+        if (identNode.isDiscard()) {
+            return assignedValue;
+        }
         JavaScriptNode rhs = assignedValue;
         TruffleString ident = identNode.getNameTS();
         VarRef scopeVar = findScopeVarCheckTDZ(ident, initializationAssignment);

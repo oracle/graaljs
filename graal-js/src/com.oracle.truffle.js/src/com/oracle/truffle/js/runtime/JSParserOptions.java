@@ -63,7 +63,8 @@ public record JSParserOptions(boolean strict,
                 boolean sourcePhaseImports,
                 boolean privateFieldsIn,
                 boolean topLevelAwait,
-                boolean v8Intrinsics) {
+                boolean v8Intrinsics,
+                boolean discardBindings) {
 
     public static JSParserOptions fromLanguageOptions(JSLanguageOptions options) {
         int ecmaScriptVersion = options.ecmaScriptVersion();
@@ -83,14 +84,15 @@ public record JSParserOptions(boolean strict,
         boolean privateFieldsIn = options.privateFieldsIn();
         boolean topLevelAwait = options.topLevelAwait();
         boolean v8Intrinsics = options.v8Intrinsics();
+        boolean discardBindings = options.discardBindings();
         return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, emptyStatements, annexB, allowBigInt,
-                        classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics);
+                        classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, discardBindings);
     }
 
     public JSParserOptions withStrict(@SuppressWarnings("hiding") boolean strict) {
         if (strict != this.strict) {
             return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics);
+                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, discardBindings);
         }
         return this;
     }
