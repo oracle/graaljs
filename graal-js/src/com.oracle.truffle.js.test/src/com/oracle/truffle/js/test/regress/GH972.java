@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,46 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.test.regress;
 
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.AbstractJSClass;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
+import static org.junit.Assert.assertFalse;
 
-public final class Null {
+import com.oracle.truffle.js.test.JSTest;
 
-    public static final TruffleString TYPE_NAME = Strings.OBJECT;
-    public static final TruffleString NAME = Strings.NULL;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
-    public static final JSClass NULL_CLASS = NullClass.INSTANCE;
-    static final Shape SHAPE = JSShape.makeStaticRoot(Null.NULL_CLASS);
-    public static final JSDynamicObject instance = new Nullish();
+import org.junit.Test;
 
-    private Null() {
-    }
+public class GH972 {
 
-    static final class NullClass extends AbstractJSClass {
-        static final NullClass INSTANCE = new NullClass();
-
-        private NullClass() {
-        }
-
-        @Override
-        public String toString() {
-            return "null|undefined";
-        }
-
-        @Override
-        public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
-            return delete(thisObj, Strings.fromLong(index), isStrict, resultWhenNotPresent);
-        }
-
-        @Override
-        public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
-            throw Errors.createTypeErrorCannotDeletePropertyOf(key, thisObj);
+    @Test
+    public void testIt() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value value = context.eval("js", "Object.create(null)");
+            assertFalse(value.removeMember("notExistent"));
         }
     }
+
 }

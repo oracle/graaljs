@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,18 +117,18 @@ public final class JSObjectPrototype extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
         long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0) {
-            return delete(thisObj, index, isStrict);
+            return delete(thisObj, index, isStrict, resultWhenNotPresent);
         } else {
-            return super.delete(thisObj, key, isStrict);
+            return super.delete(thisObj, key, isStrict, resultWhenNotPresent);
         }
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
         ScriptArray array = JSObject.getArray(thisObj);
         if (array.hasElement(thisObj, index)) {
             if (array.canDeleteElement(thisObj, index, isStrict)) {
@@ -138,7 +138,7 @@ public final class JSObjectPrototype extends JSNonProxy {
                 return false;
             }
         } else {
-            return JSOrdinary.INSTANCE.delete(thisObj, index, isStrict);
+            return JSOrdinary.INSTANCE.delete(thisObj, index, isStrict, resultWhenNotPresent);
         }
     }
 

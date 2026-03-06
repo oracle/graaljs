@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -229,11 +229,13 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     @ExportMessage
     public final void removeMember(String key,
-                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) throws UnsupportedMessageException {
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) throws UnsupportedMessageException, UnknownIdentifierException {
         if (testIntegrityLevel(false)) {
             throw UnsupportedMessageException.create();
         }
-        JSObject.delete(this, Strings.fromJavaString(fromJavaString, key), true);
+        if (!JSObject.delete(this, Strings.fromJavaString(fromJavaString, key), true, false)) {
+            throw UnknownIdentifierException.create(key);
+        }
     }
 
     @ExportMessage
@@ -415,6 +417,11 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
         return JSObject.getJSClass(obj).delete(obj, index, isStrict);
     }
 
+    @TruffleBoundary
+    public static boolean delete(JSDynamicObject obj, long index, boolean isStrict, boolean resultWhenNotPresent) {
+        return JSObject.getJSClass(obj).delete(obj, index, isStrict, resultWhenNotPresent);
+    }
+
     public static boolean delete(JSDynamicObject obj, long index, boolean isStrict, JSClassProfile classProfile) {
         return classProfile.getJSClass(obj).delete(obj, index, isStrict);
     }
@@ -428,6 +435,12 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
     public static boolean delete(JSDynamicObject obj, Object key, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).delete(obj, key, isStrict);
+    }
+
+    @TruffleBoundary
+    public static boolean delete(JSDynamicObject obj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
+        assert JSRuntime.isPropertyKey(key);
+        return JSObject.getJSClass(obj).delete(obj, key, isStrict, resultWhenNotPresent);
     }
 
     public static boolean delete(JSDynamicObject obj, Object key, boolean isStrict, JSClassProfile classProfile) {

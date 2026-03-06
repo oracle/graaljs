@@ -180,12 +180,12 @@ public class JSWebAssemblyExportedGC extends AbstractJSClass implements Prototyp
     }
 
     @Override
-    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict, boolean resultWhenNotPresent) {
         throw Errors.createTypeError("cannot delete property on exported Wasm GC object");
     }
 
     @Override
-    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict) {
+    public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
         throw Errors.createTypeError("cannot delete property on exported Wasm GC object");
     }
 

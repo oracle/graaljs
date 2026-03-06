@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -205,7 +206,7 @@ public final class JSProxyObject extends JSClassObject {
     @ExportMessage
     public void removeMember(String key,
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) throws UnsupportedMessageException {
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) throws UnsupportedMessageException, UnknownIdentifierException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
