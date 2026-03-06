@@ -383,7 +383,7 @@ public abstract class JSNonProxy extends JSClass {
         assert JSRuntime.isPropertyKey(key);
         JSDynamicObject current = JSObject.getPrototype(thisObj);
         while (current != Null.instance) {
-            if (JSProxy.isJSProxy(current) || JSArrayBufferView.isJSArrayBufferView(current)) {
+            if (JSProxy.isJSProxy(current) || JSArrayBufferView.isJSArrayBufferView(current) || JSModuleNamespace.isJSModuleNamespace(current)) {
                 return JSObject.getJSClass(current).set(current, key, value, receiver, isStrict, encapsulatingNode);
             } else {
                 PropertyDescriptor desc = JSObject.getOwnProperty(current, key);

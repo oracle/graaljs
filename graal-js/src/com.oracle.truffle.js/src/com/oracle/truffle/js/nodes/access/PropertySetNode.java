@@ -1142,7 +1142,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new JSAdapterPropertySetNode(createJSClassCheck(thisObj, proto, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, proto, depth), isStrict(), isOwnProperty(), getAttributeFlags());
-            } else if (store instanceof JSModuleNamespaceObject ns && ns.isDeferred() && !ns.isSymbolLikeNamespaceKey(key)) {
+            } else if (store instanceof JSModuleNamespaceObject ns && !(isOwnProperty() && ns.isSymbolLikeNamespaceKey(key))) {
                 return createReadOnlyPropertySetNode(thisJSObj, createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false), isStrict, null);
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance) {
                 assert !JSArrayBufferView.isValidIntegerIndex((JSDynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString(indexStr));
