@@ -189,7 +189,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @Override
     public boolean delete(JSDynamicObject thisObj, long index, boolean isStrict, boolean resultWhenNotPresent) {
-        return resultWhenNotPresent;
+        return delete(thisObj, Strings.fromLong(index), isStrict, resultWhenNotPresent);
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -265,7 +265,7 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
         BigInt daySpan = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(endEpochNs, startEpochNs);
         assert TemporalUtil.normalizedTimeDurationSign(daySpan) == sign;
         long unitLength = unit.getLengthInNanoseconds();
-        BigInt roundedNorm = TemporalUtil.roundNormalizedTimeDurationToIncrement(duration.normalizedTimeTotalNanoseconds(), unitLength, increment, roundingMode);
+        BigInt roundedNorm = TemporalUtil.roundTimeDurationToIncrement(duration.normalizedTimeTotalNanoseconds(), unitLength, increment, roundingMode);
         BigInt beyondDaySpan = TemporalUtil.subtractNormalizedTimeDuration(roundedNorm, daySpan);
         boolean didRoundBeyondDay;
         int dayDelta;
@@ -273,7 +273,7 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
         if (TemporalUtil.normalizedTimeDurationSign(beyondDaySpan) != -sign) {
             didRoundBeyondDay = true;
             dayDelta = sign;
-            roundedNorm = TemporalUtil.roundNormalizedTimeDurationToIncrement(beyondDaySpan, unitLength, increment, roundingMode);
+            roundedNorm = TemporalUtil.roundTimeDurationToIncrement(beyondDaySpan, unitLength, increment, roundingMode);
             nudgedEpochNs = TemporalUtil.addNormalizedTimeDurationToEpochNanoseconds(roundedNorm, endEpochNs);
         } else {
             didRoundBeyondDay = false;
@@ -288,7 +288,7 @@ public abstract class RoundRelativeDurationNode extends JavaScriptBaseNode {
         BigInt norm = TemporalUtil.add24HourDaysToNormalizedTimeDuration(duration.normalizedTimeTotalNanoseconds(), duration.days());
         long unitLength = unit.getLengthInNanoseconds();
         double total = TemporalUtil.divideNormalizedTimeDurationAsDouble(norm, unitLength);
-        BigInt roundedNorm = TemporalUtil.roundNormalizedTimeDurationToIncrement(norm, unitLength, increment, roundingMode);
+        BigInt roundedNorm = TemporalUtil.roundTimeDurationToIncrement(norm, unitLength, increment, roundingMode);
         BigInt diffNorm = TemporalUtil.subtractNormalizedTimeDuration(roundedNorm, norm);
         double wholeDays = TemporalUtil.divideNormalizedTimeDurationAsDoubleTruncate(norm, TemporalUtil.NS_PER_DAY_LONG);
         double roundedWholeDays = TemporalUtil.divideNormalizedTimeDurationAsDoubleTruncate(roundedNorm, TemporalUtil.NS_PER_DAY_LONG);

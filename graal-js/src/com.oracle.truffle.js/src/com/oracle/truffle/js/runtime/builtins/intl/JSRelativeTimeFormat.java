@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -167,7 +167,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
                 resultParts.add(IntlUtil.makePart(context, realm, "literal", formattedText.substring(0, numberIndex)));
             }
 
-            String esUnit = icuUnit.toString().toLowerCase();
+            String esUnit = icuUnit.toString().toLowerCase(Locale.ROOT);
             AttributedCharacterIterator iterator = numberFormat.formatToCharacterIterator(positiveAmount);
             String formatted = numberFormat.format(positiveAmount);
             resultParts.addAll(JSNumberFormat.innerFormatToParts(context, realm, iterator, positiveAmount, formatted, esUnit, false));
@@ -228,7 +228,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         }
 
         return RelativeDateTimeFormatter.getInstance(ulocale, numberFormat,
-                        RelativeDateTimeFormatter.Style.valueOf(style.toUpperCase()), DisplayContext.CAPITALIZATION_NONE);
+                        RelativeDateTimeFormatter.Style.valueOf(style.toUpperCase(Locale.ROOT)), DisplayContext.CAPITALIZATION_NONE);
     }
 
     @TruffleBoundary

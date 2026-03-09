@@ -238,7 +238,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 break;
             case IntlUtil.REGION:
                 IntlUtil.ensureIsStructurallyValidRegionSubtag(code);
-                result = displayNames.regionDisplayName(code.toUpperCase());
+                result = displayNames.regionDisplayName(code.toUpperCase(Locale.ROOT));
                 break;
             case IntlUtil.SCRIPT:
                 IntlUtil.ensureIsStructurallyValidScriptSubtag(code);
@@ -255,7 +255,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                         result = code;
                     }
                 } else {
-                    result = displayNames.keyValueDisplayName(IntlUtil.CALENDAR, displayNamesFriendlyCalendar(code.toLowerCase()));
+                    result = displayNames.keyValueDisplayName(IntlUtil.CALENDAR, displayNamesFriendlyCalendar(code.toLowerCase(Locale.ROOT)));
                 }
                 break;
             case IntlUtil.DATE_TIME_FIELD:
@@ -263,7 +263,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 break;
             case IntlUtil.CURRENCY:
                 IntlUtil.ensureIsWellFormedCurrencyCode(code);
-                String upperCaseCode = code.toUpperCase();
+                String upperCaseCode = code.toUpperCase(Locale.ROOT);
                 result = displayNames.keyValueDisplayName(IntlUtil.CURRENCY, upperCaseCode);
                 if (IntlUtil.NONE.equals(state.fallback) && upperCaseCode.equals(result)) {
                     // ICU4J seems to ignore DisplayContext.NO_SUBSTITUTE for currencies

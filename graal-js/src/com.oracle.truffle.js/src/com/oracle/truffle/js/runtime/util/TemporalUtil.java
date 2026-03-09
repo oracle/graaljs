@@ -810,8 +810,16 @@ public final class TemporalUtil {
         }
 
         UnsignedRoundingMode unsignedRoundingMode = getUnsignedRoundingMode(roundingMode, false);
-        BigInt r1 = sign < 0 ? quotient.subtract(BigInt.ONE) : quotient;
-        BigInt r2 = sign >= 0 ? quotient.add(BigInt.ONE) : quotient;
+        BigInt r1;
+        BigInt r2;
+        if (sign < 0) {
+            r1 = quotient.subtract(BigInt.ONE);
+            r2 = quotient;
+            remainder = remainder.add(increment);
+        } else {
+            r1 = quotient;
+            r2 = quotient.add(BigInt.ONE);
+        }
         BigInt rounded = applyUnsignedRoundingMode(remainder, increment, r1, r2, unsignedRoundingMode);
         return rounded.multiply(increment);
     }
@@ -846,7 +854,9 @@ public final class TemporalUtil {
      * calculated from the division's remainder and divisor.
      */
     private static int compareHalf(BigInt remainder, BigInt divisor) {
-        return remainder.multiply(BigInt.valueOf(2)).abs().compareTo(divisor.abs());
+        assert remainder.signum() >= 0;
+        assert divisor.signum() > 0;
+        return remainder.multiply(BigInt.TWO).compareTo(divisor);
     }
 
     private static boolean isEven(BigInt value) {
@@ -854,13 +864,13 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInt roundNormalizedTimeDurationToIncrement(BigInt normalizedTimeDuration, long unitLengthInNs, int increment, RoundingMode roundingMode) {
+    public static BigInt roundTimeDurationToIncrement(BigInt normalizedTimeDuration, long unitLengthInNs, int increment, RoundingMode roundingMode) {
         BigInt normalizedIncrement = BigInt.valueOf(unitLengthInNs).multiply(BigInt.valueOf(increment));
-        return roundNormalizedTimeDurationToIncrement(normalizedTimeDuration, normalizedIncrement, roundingMode);
+        return roundTimeDurationToIncrement(normalizedTimeDuration, normalizedIncrement, roundingMode);
     }
 
     @TruffleBoundary
-    public static BigInt roundNormalizedTimeDurationToIncrement(BigInt normalizedTimeDuration, BigInt increment, RoundingMode roundingMode) {
+    public static BigInt roundTimeDurationToIncrement(BigInt normalizedTimeDuration, BigInt increment, RoundingMode roundingMode) {
         BigInt[] divRes = normalizedTimeDuration.divideAndRemainder(increment);
         BigInt quotient = divRes[0];
         BigInt remainder = divRes[1];
@@ -872,6 +882,7 @@ public final class TemporalUtil {
         boolean isNegative = sign < 0;
         if (isNegative) {
             quotient = quotient.negate();
+            remainder = remainder.negate();
         }
         UnsignedRoundingMode unsignedRoundingMode = getUnsignedRoundingMode(roundingMode, isNegative);
         BigInt r1 = quotient;
@@ -2350,7 +2361,7 @@ public final class TemporalUtil {
         } else {
             long divisor = unit.getLengthInNanoseconds();
             total = divideNormalizedTimeDurationAsDouble(norm, divisor);
-            norm = roundNormalizedTimeDurationToIncrement(norm, divisor, increment, roundingMode);
+            norm = roundTimeDurationToIncrement(norm, divisor, increment, roundingMode);
         }
         return new NormalizedDurationWithTotalRecord(createNormalizedDurationRecord(0, 0, 0, days, norm), total);
     }
