@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1042,7 +1042,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                     return null;
                 }
                 break;
-            } else if (alwaysUseStore(store, key)) {
+            } else if (alwaysUseStore(store)) {
                 specialized = createUndefinedPropertyNode(thisObj, store, store, depth, value);
                 break;
             } else if (isOwnProperty()) {
@@ -1101,9 +1101,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return false;
     }
 
-    protected static boolean alwaysUseStore(JSDynamicObject store, Object key) {
+    protected boolean alwaysUseStore(JSDynamicObject store) {
         return (key instanceof HiddenKey) || JSProxy.isJSProxy(store) ||
-                        (store instanceof JSModuleNamespaceObject ns && ns.isDeferred() && !ns.isSymbolLikeNamespaceKey(key)) ||
+                        (store instanceof JSModuleNamespaceObject ns && ((this instanceof PropertySetNode && !isOwnProperty()) || !ns.isSymbolLikeNamespaceKey(key))) ||
                         (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance);
     }
 

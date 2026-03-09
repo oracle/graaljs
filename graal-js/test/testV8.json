@@ -1027,10 +1027,6 @@
     "status" : "FAIL",
     "comment" : "we throw a ReferenceError instead of the expected TypeError"
   }, {
-    "filePath" : "mjsunit/modules-namespace1.mjs",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
     "filePath" : "mjsunit/number-tostring-big-integer.js",
     "status" : "FAIL"
   }, {
