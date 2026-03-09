@@ -2066,14 +2066,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/round/negative-instant.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/toString/negative-instant-rounding.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDate/from/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2091,10 +2083,6 @@
     "comment" : "new failures 2026-01-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/offset-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/toString/negative-zoneddatetime-rounding.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
