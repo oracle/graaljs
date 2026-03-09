@@ -1053,7 +1053,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     private SetCacheNode createReadOnlyPropertySetNode(JSDynamicObject thisObj, ReceiverCheckNode receiverCheck, boolean strict, Property property) {
-        if (isOwnProperty() && thisObj instanceof JSModuleNamespaceObject) {
+        if (isOwnProperty() && thisObj instanceof JSModuleNamespaceObject ns && !ns.isSymbolLikeNamespaceKey(key)) {
             return new NamespaceObjectRedefineReadOnlyPropertyNode(receiverCheck, strict, property);
         } else {
             return new ReadOnlyPropertySetNode(receiverCheck, strict, property);
