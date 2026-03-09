@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -875,7 +875,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 assert thisNs.compareTo(endNs) < 0;
                 BigInt dayLengthNs = endNs.subtract(startNs);
                 BigInt dayProgressNs = thisNs.subtract(startNs);
-                BigInt roundedDayNs = TemporalUtil.roundNormalizedTimeDurationToIncrement(dayProgressNs, dayLengthNs, roundingMode);
+                BigInt roundedDayNs = TemporalUtil.roundTimeDurationToIncrement(dayProgressNs, dayLengthNs, roundingMode);
                 epochNanoseconds = roundedDayNs.add(startNs);
             } else {
                 JSTemporalDurationRecord roundResult = TemporalUtil.roundISODateTime(isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay(), isoDateTime.getHour(),

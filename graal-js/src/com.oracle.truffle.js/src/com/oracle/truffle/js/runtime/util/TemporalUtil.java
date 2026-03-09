@@ -864,13 +864,13 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInt roundNormalizedTimeDurationToIncrement(BigInt normalizedTimeDuration, long unitLengthInNs, int increment, RoundingMode roundingMode) {
+    public static BigInt roundTimeDurationToIncrement(BigInt normalizedTimeDuration, long unitLengthInNs, int increment, RoundingMode roundingMode) {
         BigInt normalizedIncrement = BigInt.valueOf(unitLengthInNs).multiply(BigInt.valueOf(increment));
-        return roundNormalizedTimeDurationToIncrement(normalizedTimeDuration, normalizedIncrement, roundingMode);
+        return roundTimeDurationToIncrement(normalizedTimeDuration, normalizedIncrement, roundingMode);
     }
 
     @TruffleBoundary
-    public static BigInt roundNormalizedTimeDurationToIncrement(BigInt normalizedTimeDuration, BigInt increment, RoundingMode roundingMode) {
+    public static BigInt roundTimeDurationToIncrement(BigInt normalizedTimeDuration, BigInt increment, RoundingMode roundingMode) {
         BigInt[] divRes = normalizedTimeDuration.divideAndRemainder(increment);
         BigInt quotient = divRes[0];
         BigInt remainder = divRes[1];
@@ -2361,7 +2361,7 @@ public final class TemporalUtil {
         } else {
             long divisor = unit.getLengthInNanoseconds();
             total = divideNormalizedTimeDurationAsDouble(norm, divisor);
-            norm = roundNormalizedTimeDurationToIncrement(norm, divisor, increment, roundingMode);
+            norm = roundTimeDurationToIncrement(norm, divisor, increment, roundingMode);
         }
         return new NormalizedDurationWithTotalRecord(createNormalizedDurationRecord(0, 0, 0, days, norm), total);
     }
