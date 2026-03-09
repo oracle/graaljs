@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,7 @@ public final class TemporalParser {
     // TimeZoneAnnotation
     // [!?(?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)]
     private static final String patternTimeZoneAnnotation = "(\\[!?((?:[-+](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*))\\])";
-    private static final String patternTimeZoneNumericUTCOffset = "^([-+])([01][0-9]|2[0-3])(:?([0-5][0-9])(?::?([0-5][0-9]|60)(?:[.,]([0-9]{1,9}))?)?)?";
+    private static final String patternTimeZoneNumericUTCOffset = "^([-+])([01][0-9]|2[0-3])(:?([0-5][0-9])(?::?([0-5][0-9])(?:[.,]([0-9]{1,9}))?)?)?";
     private static final String patternDateSpecYearMonth = "^([0-9]{4}|[+-][0-9]{6})-?(0[1-9]|1[0-2])";
     private static final String patternDateSpecMonthDay = "^(?:--)?(0[1-9]|1[012])-?(0[1-9]|[12][0-9]|3[01])";
     private static final String patternTimeZoneIANAName = "^[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*";
