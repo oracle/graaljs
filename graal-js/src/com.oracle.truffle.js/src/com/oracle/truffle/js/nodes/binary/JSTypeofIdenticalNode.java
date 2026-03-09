@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Locale;
 import java.util.Set;
 
 import com.oracle.js.parser.ParserException;
@@ -163,7 +164,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         if (materializedTags.contains(BinaryOperationTag.class) || materializedTags.contains(UnaryOperationTag.class) || materializedTags.contains(LiteralTag.class)) {
             Object[] info = parseMaterializationInfo();
             if (info == null) {
-                info = new Object[]{Strings.fromJavaString(type.name().toLowerCase()), true, true};
+                info = new Object[]{Strings.fromJavaString(type.name().toLowerCase(Locale.ROOT)), true, true};
             }
             JavaScriptNode lhs = JSConstantNode.create(info[0]);
             JavaScriptNode rhs = TypeOfNode.create(cloneUninitialized(getOperand(), materializedTags));

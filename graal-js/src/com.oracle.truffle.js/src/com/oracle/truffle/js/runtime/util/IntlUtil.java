@@ -549,7 +549,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String normalizeUnicodeLocaleIdentifierType(String type) {
-        return type.toLowerCase();
+        return type.toLowerCase(Locale.ROOT);
     }
 
     public static boolean isWellFormedCurrencyCode(String currency) {
@@ -643,7 +643,7 @@ public final class IntlUtil {
             Set<Character> extensions = locale.getExtensionKeys();
             if (!extensions.isEmpty()) {
                 // Singletons are case-insensitive.
-                String tag = languageTag.toLowerCase();
+                String tag = languageTag.toLowerCase(Locale.ROOT);
                 int privateExtIdx = extensions.contains('x') ? tag.indexOf("-x-") : tag.length();
                 for (Character ext : extensions) {
                     if (ext != 'x') {

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -526,7 +527,7 @@ public final class TemporalParser {
                 boolean critical = !matcher.group(2).isEmpty();
                 if ("u-ca".equals(key)) {
                     if (calendar == null) {
-                        foundCalendar = matcher.group(4).toLowerCase();
+                        foundCalendar = matcher.group(4).toLowerCase(Locale.ROOT);
                         calendar = group(rest, matcher, 4);
                         calendarWasCritical = critical;
                     } else {
