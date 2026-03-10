@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,8 +88,10 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
     /**
      * Prepares the module for linking by recursively loading all its dependencies.
      */
+    @TruffleBoundary
     public abstract JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefinedArg);
 
+    @TruffleBoundary
     public final void loadRequestedModulesSync(JSRealm realm, Object hostDefinedArg) {
         JSPromiseObject loadPromise = loadRequestedModules(realm, hostDefinedArg);
         assert !JSPromise.isPending(loadPromise);
@@ -102,6 +104,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
      *
      * LoadRequestedModules must have completed successfully prior to invoking this method.
      */
+    @TruffleBoundary
     public abstract void link(JSRealm realm);
 
     /**
@@ -111,6 +114,7 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
      *
      * Link must have completed successfully prior to invoking this method.
      */
+    @TruffleBoundary
     public abstract JSPromiseObject evaluate(JSRealm realm);
 
     /*
