@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,7 @@ import com.oracle.truffle.js.nodes.access.IterableToListNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -267,7 +268,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Specialization(guards = {"!isUndefined(newTarget)"})
     protected JSDynamicObject doTypedArray(JSDynamicObject newTarget, JSTypedArrayObject arrayBufferView, Object byteOffset0, Object length0,
                     @Cached @Shared InlinedBranchProfile errorBranch,
-                    @Cached @Shared InlinedConditionProfile bulkCopyProfile) {
+                    @Cached @Shared InlinedConditionProfile bulkCopyProfile,
+                    @Cached @Shared TypedArrayLengthNode sourceLengthNode) {
         JSDynamicObject proto = getPrototypeFromConstructorView(newTarget);
 
         if (JSArrayBufferView.isOutOfBounds(arrayBufferView, getContext())) {
@@ -276,7 +278,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
 
         TypedArray sourceType = arrayBufferView.getArrayType();
-        long length = sourceType.length(arrayBufferView);
+        long length = sourceLengthNode.execute(this, arrayBufferView, getContext());
 
         JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length, errorBranch);
 
