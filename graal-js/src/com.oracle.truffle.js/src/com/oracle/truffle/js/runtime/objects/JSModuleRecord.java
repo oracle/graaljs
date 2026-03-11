@@ -232,6 +232,7 @@ public class JSModuleRecord extends CyclicModuleRecord {
         return getModule().getRequestedModules();
     }
 
+    @TruffleBoundary
     @Override
     public JSPromiseObject loadRequestedModules(JSRealm realm, Object hostDefinedArg) {
         return context.getEvaluator().loadRequestedModules(realm, this, hostDefinedArg);

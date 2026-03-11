@@ -52,7 +52,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     graalvmtests:: '',
     graalvmtests_run:: if self.graalvmtests != '' then [
       ['git', 'clone', ['mx', 'urlrewrite', 'https://github.com/graalvm/graalvm-tests.git'], self.graalvmtests],
-      ['git', '-C', self.graalvmtests, 'checkout', '75b6a9e16ebbfd8b9b0a24e4be7c4378e3281204'],
+      ['git', '-C', self.graalvmtests, 'checkout', '8fa9b7b0953fdbdca825ae7dce97d9b49379851c'],
     ] else [],
     using_artifact:: false,
     build_standalones:: std.length(std.filter(function(dep) std.endsWith(dep, "_STANDALONE"), self.build_dependencies)) > 0,

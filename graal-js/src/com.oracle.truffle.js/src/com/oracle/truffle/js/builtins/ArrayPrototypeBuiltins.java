@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,8 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -73,7 +75,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
@@ -994,7 +995,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object shiftWithoutHoles(JSArrayObject thisObj,
                         @Shared @Cached("createHasHolesOrUnused()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
-                        @Shared @Cached InlinedExactClassProfile arrayTypeProfile,
+                        @Shared @Cached ShiftJSArrayNode shiftJSArrayNode,
                         @Shared @Cached InlinedConditionProfile lengthIsZero,
                         @Shared @Cached InlinedConditionProfile lengthLargerOne) {
             long len = getLength(thisObj);
@@ -1005,11 +1006,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 Object firstElement = read(thisObj, 0);
                 if (lengthLargerOne.profile(this, len > 1)) {
-                    ScriptArray array = arrayTypeProfile.profile(this, arrayGetArrayType(thisObj));
-                    arraySetArrayType(thisObj, array.shiftRange(thisObj, 1));
+                    arraySetArrayType(thisObj, shiftJSArrayNode.execute(this, thisObj, arrayGetArrayType(thisObj)));
                 }
                 setLength(thisObj, len - 1);
                 return firstElement;
+            }
+        }
+
+        @GenerateCached(false)
+        @GenerateInline
+        abstract static class ShiftJSArrayNode extends JavaScriptBaseNode {
+            abstract ScriptArray execute(Node node, JSArrayObject array, ScriptArray arrayType);
+
+            @Specialization(guards = {"cachedArrayType.isInstance(arrayType)"}, limit = "5")
+            static ScriptArray doCached(JSArrayObject array, ScriptArray arrayType,
+                            @Cached("arrayType") ScriptArray cachedArrayType) {
+                return cachedArrayType.cast(arrayType).shiftRange(array, 1);
+            }
+
+            @Specialization(replaces = "doCached")
+            static ScriptArray doGeneric(JSArrayObject array, ScriptArray arrayType) {
+                return arrayType.shiftRange(array, 1);
             }
         }
 
