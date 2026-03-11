@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 23.1.11
+* Limited Chrome inspector remote debugging to localhost.
+
 ## Version 23.1.7
 * Updated Node.js to version 18.20.6.
 
@@ -350,4 +353,3 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Added object rest/spread support.
 * Added support for async generators.
 * Unified Polyglot primitives across all Truffle languages; e.g., rename `Interop` builtin to `Polyglot`.
-
