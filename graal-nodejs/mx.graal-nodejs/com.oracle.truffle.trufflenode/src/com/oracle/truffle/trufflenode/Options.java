@@ -280,14 +280,15 @@ public final class Options {
                     continue;
                 }
                 if (INSPECT_SUSPEND.equals(key)) {
-                    polyglotOptions.put(INSPECT_SUSPEND, valueOrTrue(value));
+                    polyglotOptions.put(INSPECT_SUSPEND, (value == null) ? "true" : value);
                     continue;
                 }
                 // Convert --inspect[=port] to --inspect[=port] plus --inspect.Suspend=false
+                // and remove host specification if present
                 if (INSPECT.equals(key)) {
                     // Do not override port (from --inspect-brk=)
                     if (value != null || !polyglotOptions.containsKey(INSPECT)) {
-                        polyglotOptions.put(key, valueOrTrue(value));
+                        polyglotOptions.put(key, (value == null) ? "true" : getPort(value));
                     }
                     // Do not override inspect.Suspend=true
                     if (!polyglotOptions.containsKey(INSPECT_SUSPEND)) {
@@ -296,11 +297,11 @@ public final class Options {
                     continue;
                 }
                 // Convert --(inspect|debug)-brk[=port] to --inspect[=port]
-                // --inspect.WaitAttached=true
+                // --inspect.WaitAttached=true and remove host specification if present
                 if ("inspect-brk".equals(normalizedKey) || "debug-brk".equals(normalizedKey) || "inspect-brk-node".equals(normalizedKey)) {
                     // Do not override port (from --inspect=)
                     if (value != null || !polyglotOptions.containsKey(INSPECT)) {
-                        polyglotOptions.put(INSPECT, valueOrTrue(value));
+                        polyglotOptions.put(INSPECT, (value == null) ? "true" : getPort(value));
                     }
                     // Do not override inspect.Suspend=true
                     if (!polyglotOptions.containsKey(INSPECT_SUSPEND)) {
@@ -351,8 +352,13 @@ public final class Options {
             return unprocessedArguments;
         }
 
-        private static String valueOrTrue(String value) {
-            return (value == null) ? "true" : value;
+        // only return port part of endpoint string such as 127.0.0.1:9229
+        private static String getPort(String hostAndPort) {
+            int colon = hostAndPort.lastIndexOf(':');
+            if (colon != -1) {
+                return hostAndPort.substring(colon + 1);
+            }
+            return hostAndPort;
         }
 
         @Override
