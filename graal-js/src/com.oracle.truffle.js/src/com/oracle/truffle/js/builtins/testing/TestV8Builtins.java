@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.testing;
 
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,6 +48,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
@@ -82,9 +85,11 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -92,6 +97,7 @@ import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -101,10 +107,11 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyException;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyExceptionObject;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTagObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyType;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -149,7 +156,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         createPrivateSymbol(1),
         symbolIsPrivate(1),
 
-        getWasmExceptionTag(1);
+        getWasmExceptionValues(1);
 
         private final int length;
 
@@ -218,8 +225,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8CreatePrivateSymbolNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case symbolIsPrivate:
                 return TestV8SymbolIsPrivateNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case getWasmExceptionTag:
-                return TestV8BuiltinsFactory.TestV8GetWasmExceptionTagNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case getWasmExceptionValues:
+                return TestV8BuiltinsFactory.TestV8GetWasmExceptionValuesNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -535,15 +542,71 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
     }
 
-    public abstract static class TestV8GetWasmExceptionTagNode extends JSBuiltinNode {
+    public abstract static class TestV8GetWasmExceptionValuesNode extends JSBuiltinNode {
+        @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
-        public TestV8GetWasmExceptionTagNode(JSContext context, JSBuiltin builtin) {
+        public TestV8GetWasmExceptionValuesNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        static JSWebAssemblyTagObject doException(JSWebAssemblyExceptionObject exnObj) {
-            return exnObj.type();
+        @TruffleBoundary
+        final JSDynamicObject doException(JSWebAssemblyExceptionObject exnObj) {
+            // Match V8's %GetWasmExceptionValues encoding, which externalizes
+            // the internal exception payload array for test code:
+            // - i32 / f32: two unsigned 16-bit chunks, most significant first
+            // - i64 / f64: four unsigned 16-bit chunks, most significant first
+            // - v128: eight unsigned 16-bit chunks in big-endian byte order
+            // - ref-like values: JS null if the value is wasm ref.null,
+            // otherwise the external JS value is used directly
+            List<Object> encoded = new ArrayList<>();
+            Object[] payload = exnObj.payload();
+            WebAssemblyType[] parameterTypes = exnObj.type().parameterTypes();
+            assert payload.length == parameterTypes.length;
+            for (int i = 0; i < payload.length; i++) {
+                encodeValue(encoded, parameterTypes[i], payload[i]);
+            }
+            return JSArray.createConstant(getContext(), getRealm(), encoded.toArray());
+        }
+
+        private void encodeValue(List<Object> encoded, WebAssemblyType type, Object value) {
+            switch (type) {
+                case i32 -> encodeInt32(encoded, ((Number) value).intValue());
+                case i64 -> encodeInt64(encoded, toLong(value));
+                case f32 -> encodeInt32(encoded, Float.floatToRawIntBits(((Number) value).floatValue()));
+                case f64 -> encodeInt64(encoded, Double.doubleToRawLongBits(((Number) value).doubleValue()));
+                case v128 -> encodeVector128(encoded, value);
+                case funcref, externref, exnref, anyref -> encoded.add(value == getRealm().getWasmRefNull() ? Null.instance : value);
+            }
+        }
+
+        private static long toLong(Object value) {
+            if (value instanceof BigInt bigInt) {
+                return bigInt.longValue();
+            }
+            return ((Number) value).longValue();
+        }
+
+        private static void encodeInt32(List<Object> encoded, int value) {
+            encoded.add((value >>> 16) & 0xffff);
+            encoded.add(value & 0xffff);
+        }
+
+        private static void encodeInt64(List<Object> encoded, long value) {
+            encoded.add((int) ((value >>> 48) & 0xffff));
+            encoded.add((int) ((value >>> 32) & 0xffff));
+            encoded.add((int) ((value >>> 16) & 0xffff));
+            encoded.add((int) (value & 0xffff));
+        }
+
+        private void encodeVector128(List<Object> encoded, Object value) {
+            try {
+                for (long offset = 0; offset < 16; offset += 2) {
+                    encoded.add(interop.readBufferShort(value, ByteOrder.BIG_ENDIAN, offset) & 0xffff);
+                }
+            } catch (InteropException ex) {
+                throw Errors.shouldNotReachHere(ex);
+            }
         }
 
         @TruffleBoundary

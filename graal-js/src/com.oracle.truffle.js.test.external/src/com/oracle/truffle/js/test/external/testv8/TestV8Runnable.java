@@ -81,7 +81,6 @@ public class TestV8Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FLAGS = featureSet(new String[]{
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-custom-descriptors",
-                    "--experimental-wasm-exnref",
                     "--experimental-wasm-jspi",
                     "--experimental-wasm-rab-integration",
                     "--experimental-wasm-stringref",
@@ -136,6 +135,8 @@ public class TestV8Runnable extends TestRunnable {
             // TODO: remove after features are enabled by default in wasm
             extraOptions.put("wasm.Threads", "true");
             extraOptions.put("wasm.Memory64", "true");
+            extraOptions.put("wasm.Exceptions", "true");
+            extraOptions.put("wasm.LegacyExceptions", "true");
             // Required for using shared memories, for now
             extraOptions.put("wasm.UseUnsafeMemory", "true");
 

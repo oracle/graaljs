@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyExceptionObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTagObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.WebAssemblyType;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class WebAssemblyExceptionPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssemblyExceptionPrototypeBuiltins.WebAssemblyExceptionPrototype> {
 
@@ -143,6 +144,10 @@ public class WebAssemblyExceptionPrototypeBuiltins extends JSBuiltinsContainer.S
             if (tag != exn.type()) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("WebAssembly.Exception.getArg(): First argument does not match the exception tag", this);
+            }
+            if (index == Undefined.instance) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("WebAssembly.Exception.getArg(): Index must be convertible to a valid number", this);
             }
             long indexAsLong = toIndexNode.executeLong(index);
             if (Long.compareUnsigned(indexAsLong, exn.payload().length) >= 0) {

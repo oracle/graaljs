@@ -110,6 +110,21 @@ Number.isInteger = (function() {
     };
 })();
 
+// Web IDL mandates interface attributes be exposed as accessor properties. V8 currently exposes
+// WebAssembly.JSTag as a data property, and some testv8 tests assert that shape. Adjust only the
+// harness view to match V8's expectation without changing the engine semantics.
+(function() {
+    if (typeof WebAssembly === 'object') {
+        const jsTag = WebAssembly.JSTag;
+        Object.defineProperty(WebAssembly, 'JSTag', {
+            value: jsTag,
+            writable: false,
+            enumerable: false,
+            configurable: true,
+        });
+    }
+})();
+
 // Save `load` function in another binding so that tests that re-write ``load` binding can still
 // use d8.file.execute.
 let d8_file_execute_load = load;
@@ -986,17 +1001,7 @@ globalThis['%GetWasmExceptionTagId'] = function(exception, instance) {
 };
 
 globalThis['%GetWasmExceptionValues'] = function(exception) {
-    let tag = TestV8.getWasmExceptionTag(exception);
-    let exceptionValues = [];
-    let i = 0;
-    while (true) {
-        try {
-            exceptionValues.push(exception.getArg(tag, i++));
-        } catch {
-            break;
-        }
-    }
-    return exceptionValues;
+    return TestV8.getWasmExceptionValues(exception);
 };
 
 globalThis['%FreezeWasmLazyCompilation'] = function() {
