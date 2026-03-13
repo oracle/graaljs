@@ -616,6 +616,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ASYNC_CONTEXT = new OptionKey<>(false);
     @CompilationFinal private boolean asyncContext;
 
+    public static final String EXPLICIT_RESOURCE_MANAGEMENT_NAME = JS_OPTION_PREFIX + "explicit-resource-management";
+    @Option(name = EXPLICIT_RESOURCE_MANAGEMENT_NAME, category = OptionCategory.EXPERT, help = "Enable Explicit Resource Management proposal.") //
+    public static final OptionKey<Boolean> EXPLICIT_RESOURCE_MANAGEMENT = new OptionKey<>(false);
+    @CompilationFinal private boolean explicitResourceManagement;
+
     public static final String ALLOW_NARROW_SPACES_IN_DATE_FORMAT_NAME = JS_OPTION_PREFIX + "allow-narrow-spaces-in-date-format";
     @Option(name = ALLOW_NARROW_SPACES_IN_DATE_FORMAT_NAME, category = OptionCategory.EXPERT, help = "Allow narrow spaces when formatting dates.") //
     public static final OptionKey<Boolean> ALLOW_NARROW_SPACES_IN_DATE_FORMAT = new OptionKey<>(true);
@@ -846,6 +851,7 @@ public final class JSContextOptions {
                         (this.asyncIteratorHelpers || readBooleanOption(ITERATOR_HELPERS, JSConfig.ECMAScript2025));
         this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
         this.asyncContext = readBooleanOption(ASYNC_CONTEXT);
+        this.explicitResourceManagement = EXPLICIT_RESOURCE_MANAGEMENT.hasBeenSet(optionValues) ? readBooleanOption(EXPLICIT_RESOURCE_MANAGEMENT) : v8CompatibilityMode;
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = readBooleanOption(ERROR_CAUSE, JSConfig.ECMAScript2022);
         this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES, JSConfig.ECMAScript2025);
@@ -1279,6 +1285,10 @@ public final class JSContextOptions {
 
     public boolean isAsyncContext() {
         return asyncContext;
+    }
+
+    public boolean isExplicitResourceManagement() {
+        return explicitResourceManagement;
     }
 
     public boolean isOperatorOverloading() {

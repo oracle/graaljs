@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,8 @@ public final class ScriptEnvironment {
     public static final int ES_2022 = 13;
     public static final int ES_2023 = 14;
     public static final int ES_2024 = 15;
+    public static final int ES_2025 = 16;
+    public static final int ES_2026 = 17;
     public static final int ES_STAGING = Integer.MAX_VALUE;
 
     /** Accept "const" keyword and treat it as variable. Interim feature */
@@ -127,6 +129,9 @@ public final class ScriptEnvironment {
     /** Is top-level await enabled? */
     final boolean topLevelAwait;
 
+    /** Is Explicit Resource Management enabled? */
+    final boolean explicitResourceManagement;
+
     /** Are V8 intrinsics supported? */
     final boolean v8Intrinsics;
 
@@ -148,6 +153,7 @@ public final class ScriptEnvironment {
                     boolean sourcePhaseImports,
                     boolean privateFieldsIn,
                     boolean topLevelAwait,
+                    boolean explicitResourceManagement,
                     boolean v8Intrinsics,
                     FunctionStatementBehavior functionStatementBehavior) {
         this.constAsVar = constAsVar;
@@ -166,6 +172,7 @@ public final class ScriptEnvironment {
         this.sourcePhaseImports = sourcePhaseImports;
         this.privateFieldsIn = privateFieldsIn;
         this.topLevelAwait = topLevelAwait;
+        this.explicitResourceManagement = explicitResourceManagement;
         this.v8Intrinsics = v8Intrinsics;
     }
 
@@ -194,6 +201,7 @@ public final class ScriptEnvironment {
         private boolean sourcePhaseImports = false;
         private boolean privateFieldsIn = false;
         private boolean topLevelAwait = false;
+        private boolean explicitResourceManagement = false;
         private boolean v8Intrinsics = false;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
 
@@ -274,6 +282,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder explicitResourceManagement(boolean explicitResourceManagement) {
+            this.explicitResourceManagement = explicitResourceManagement;
+            return this;
+        }
+
         public Builder v8Intrinsics(boolean v8Intrinsics) {
             this.v8Intrinsics = v8Intrinsics;
             return this;
@@ -286,7 +299,8 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior);
+                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, explicitResourceManagement, v8Intrinsics,
+                            functionStatementBehavior);
         }
     }
 }

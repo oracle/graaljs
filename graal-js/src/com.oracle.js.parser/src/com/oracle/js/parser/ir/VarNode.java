@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,6 +87,12 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
      * the function scope. This flag corresponds to this transfer.
      */
     public static final int IS_ANNEXB_BLOCK_TO_FUNCTION_TRANSFER = 1 << 5;
+
+    /** Flag for explicit resource management using declaration. */
+    public static final int IS_USING = 1 << 6;
+
+    /** Flag for explicit resource management await using declaration. */
+    public static final int IS_AWAIT_USING = 1 << 7;
 
     /**
      * Constructor
@@ -188,7 +194,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
      * @return true if an ES6 LET or CONST node
      */
     public boolean isBlockScoped() {
-        return getFlag(IS_LET) || getFlag(IS_CONST);
+        return getFlag(IS_LET) || getFlag(IS_CONST) || getFlag(IS_USING) || getFlag(IS_AWAIT_USING);
     }
 
     /**
@@ -207,6 +213,24 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
      */
     public boolean isConst() {
         return getFlag(IS_CONST);
+    }
+
+    /**
+     * Is this an explicit resource management using declaration?
+     *
+     * @return true if using declaration
+     */
+    public boolean isUsing() {
+        return getFlag(IS_USING);
+    }
+
+    /**
+     * Is this an explicit resource management await using declaration?
+     *
+     * @return true if await using declaration
+     */
+    public boolean isAwaitUsing() {
+        return getFlag(IS_AWAIT_USING);
     }
 
     /**
@@ -264,7 +288,14 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     @Override
     public void toString(final StringBuilder sb, final boolean printType) {
-        sb.append(tokenType().getName()).append(' ');
+        if (isAwaitUsing()) {
+            sb.append("await using");
+        } else if (isUsing()) {
+            sb.append("using");
+        } else {
+            sb.append(tokenType().getName());
+        }
+        sb.append(' ');
         name.toString(sb, printType);
 
         if (init != null) {

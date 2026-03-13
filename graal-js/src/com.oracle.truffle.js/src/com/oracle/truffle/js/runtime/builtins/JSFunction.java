@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AsyncGeneratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.EnumerateIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltins;
@@ -721,6 +722,9 @@ public final class JSFunction extends JSNonProxy {
         });
         JSFunctionObject asyncIterator = JSFunction.create(realm, functionData);
         JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ASYNC_ITERATOR, asyncIterator, JSAttributes.getDefaultNotEnumerable());
+        if (context.isOptionExplicitResourceManagement()) {
+            JSObjectUtil.putFunctionFromContainer(realm, prototype, AsyncIteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_ASYNC_DISPOSE);
+        }
         return prototype;
     }
 

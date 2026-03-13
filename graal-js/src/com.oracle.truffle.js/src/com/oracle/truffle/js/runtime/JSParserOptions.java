@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ public record JSParserOptions(boolean strict,
                 boolean sourcePhaseImports,
                 boolean privateFieldsIn,
                 boolean topLevelAwait,
+                boolean explicitResourceManagement,
                 boolean v8Intrinsics) {
 
     public static JSParserOptions fromLanguageOptions(JSLanguageOptions options) {
@@ -82,15 +83,16 @@ public record JSParserOptions(boolean strict,
         boolean sourcePhaseImports = options.sourcePhaseImports();
         boolean privateFieldsIn = options.privateFieldsIn();
         boolean topLevelAwait = options.topLevelAwait();
+        boolean explicitResourceManagement = options.explicitResourceManagement();
         boolean v8Intrinsics = options.v8Intrinsics();
         return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, emptyStatements, annexB, allowBigInt,
-                        classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics);
+                        classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, explicitResourceManagement, v8Intrinsics);
     }
 
     public JSParserOptions withStrict(@SuppressWarnings("hiding") boolean strict) {
         if (strict != this.strict) {
             return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, v8Intrinsics);
+                            classFields, importAttributes, importAssertions, sourcePhaseImports, privateFieldsIn, topLevelAwait, explicitResourceManagement, v8Intrinsics);
         }
         return this;
     }

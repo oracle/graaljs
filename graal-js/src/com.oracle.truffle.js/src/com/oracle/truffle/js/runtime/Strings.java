@@ -162,6 +162,7 @@ public final class Strings {
     public static final TruffleString EMPTY = constant("empty");
     public static final TruffleString EMPTY_X = constant("empty \u00d7 ");
     public static final TruffleString ENTRIES = constant("entries");
+    public static final TruffleString ERROR = constant("error");
     public static final TruffleString UC_ERROR = constant("Error");
     public static final TruffleString FILE = constant("file");
     public static final TruffleString FORMAT = constant("format");
@@ -204,6 +205,7 @@ public final class Strings {
     public static final TruffleString STRING = constant("string");
     public static final TruffleString UC_STRING = constant("String");
     public static final TruffleString SUPER = constant("super");
+    public static final TruffleString SUPPRESSED = constant("suppressed");
     public static final TruffleString SWITCH = constant("switch");
     public static final TruffleString SYMBOL = constant("symbol");
     public static final TruffleString UC_SYMBOL = constant("Symbol");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -163,6 +163,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapp
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
 import com.oracle.truffle.js.nodes.cast.WithStatementToObjectNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
+import com.oracle.truffle.js.nodes.control.AsyncDisposeResourcesWrapperNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorYieldNode;
@@ -170,12 +171,14 @@ import com.oracle.truffle.js.nodes.control.AsyncIteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
+import com.oracle.truffle.js.nodes.control.CreateDisposeCapabilityNode;
 import com.oracle.truffle.js.nodes.control.ContinueNode;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTargetNode;
 import com.oracle.truffle.js.nodes.control.DebuggerNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.control.DirectBreakTargetNode;
+import com.oracle.truffle.js.nodes.control.DisposeResourcesWrapperNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.control.ExprBlockNode;
 import com.oracle.truffle.js.nodes.control.ForNode;
@@ -188,6 +191,7 @@ import com.oracle.truffle.js.nodes.control.LabelNode;
 import com.oracle.truffle.js.nodes.control.ModuleBodyNode;
 import com.oracle.truffle.js.nodes.control.ModuleInitializeEnvironmentNode;
 import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
+import com.oracle.truffle.js.nodes.control.RegisterDisposableResourceNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
@@ -705,6 +709,23 @@ public class NodeFactory {
 
     public JavaScriptNode createTryFinally(JavaScriptNode tryNode, JavaScriptNode finallyBlock) {
         return TryFinallyNode.create(tryNode, finallyBlock);
+    }
+
+    public JavaScriptNode createDisposeCapability() {
+        return CreateDisposeCapabilityNode.create();
+    }
+
+    public JavaScriptNode createRegisterDisposableResource(JSContext context, JavaScriptNode capabilityNode, JavaScriptNode valueNode, boolean asyncDispose) {
+        return RegisterDisposableResourceNode.create(context, capabilityNode, valueNode, asyncDispose);
+    }
+
+    public JavaScriptNode createDisposeResources(JavaScriptNode capabilityNode, JavaScriptNode errorNode) {
+        return DisposeResourcesWrapperNode.create(capabilityNode, errorNode);
+    }
+
+    public JavaScriptNode createAsyncDisposeResources(JSContext context, JSFrameSlot stateSlot, JavaScriptNode capabilityNode, JavaScriptNode errorNode,
+                    JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        return AsyncDisposeResourcesWrapperNode.create(context, stateSlot.getIndex(), capabilityNode, errorNode, asyncContextNode, asyncResultNode);
     }
 
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {

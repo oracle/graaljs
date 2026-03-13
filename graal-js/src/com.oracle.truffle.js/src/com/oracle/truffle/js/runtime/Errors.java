@@ -91,6 +91,18 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSErrorObject createSuppressedErrorObject(Object error, Object suppressed, Node originatingNode) {
+        JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
+        JSRealm realm = JSRealm.get(originatingNode);
+        JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.SuppressedError);
+        JSObjectUtil.putDataProperty(errorObj, Strings.ERROR, error, JSError.ERRORS_ATTRIBUTES);
+        JSObjectUtil.putDataProperty(errorObj, Strings.SUPPRESSED, suppressed, JSError.ERRORS_ATTRIBUTES);
+        JSException exception = JSException.createCapture(JSErrorType.SuppressedError, null, errorObj, realm);
+        JSError.setException(realm, errorObj, exception, false);
+        return errorObj;
+    }
+
+    @TruffleBoundary
     public static JSException createError(String message) {
         return JSException.create(JSErrorType.Error, message);
     }

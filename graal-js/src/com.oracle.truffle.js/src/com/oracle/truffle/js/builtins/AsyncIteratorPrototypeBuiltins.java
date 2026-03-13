@@ -74,10 +74,12 @@ import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorDrainQueueNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.AsyncHandlerRootNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
+import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -85,6 +87,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
@@ -129,7 +132,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         forEach(1),
         some(1),
         every(1),
-        find(1);
+        find(1),
+        symbolAsyncDispose(0);
 
         private final int length;
 
@@ -140,6 +144,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public Object getKey() {
+            return this == symbolAsyncDispose ? Symbol.SYMBOL_ASYNC_DISPOSE : BuiltinEnum.super.getKey();
         }
     }
 
@@ -168,8 +177,64 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 return AsyncIteratorPrototypeBuiltinsFactory.AsyncIteratorEveryNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case find:
                 return AsyncIteratorPrototypeBuiltinsFactory.AsyncIteratorFindNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case symbolAsyncDispose:
+                return AsyncIteratorPrototypeBuiltinsFactory.AsyncIteratorDisposeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class AsyncIteratorDisposeNode extends JSBuiltinNode {
+        @Child private GetMethodNode getReturnNode;
+        @Child private JSFunctionCallNode callNode;
+        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private PerformPromiseThenNode performPromiseThenNode;
+        @Child private PromiseResolveNode promiseResolveNode;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+
+        protected AsyncIteratorDisposeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
+            this.callNode = JSFunctionCallNode.createCall();
+            this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+            this.promiseResolveNode = PromiseResolveNode.create(context);
+        }
+
+        @Specialization
+        protected Object dispose(Object thisObj) {
+            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
+            try {
+                Object returnMethod = getReturnNode.executeWithTarget(thisObj);
+                if (returnMethod == Undefined.instance) {
+                    callResolve(promiseCapability, Undefined.instance);
+                } else {
+                    Object result = callNode.executeCall(JSArguments.createOneArg(thisObj, returnMethod, Undefined.instance));
+                    JSPromiseObject resultWrapper = promiseResolveNode.executeDefault(result);
+                    JSFunctionObject onFulfilled = JSFunction.create(getRealm(),
+                                    getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.Empty, c -> c.getNamedEmptyFunctionData(Strings.EMPTY_STRING)));
+                    performPromiseThenNode.execute(resultWrapper, onFulfilled, Undefined.instance, promiseCapability);
+                }
+            } catch (AbstractTruffleException ex) {
+                callReject(promiseCapability, getErrorObjectNode().execute(ex));
+            }
+            return promiseCapability.getPromise();
+        }
+
+        private void callResolve(PromiseCapabilityRecord promiseCapability, Object value) {
+            callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), value));
+        }
+
+        private void callReject(PromiseCapabilityRecord promiseCapability, Object error) {
+            callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getReject(), error));
+        }
+
+        private TryCatchNode.GetErrorObjectNode getErrorObjectNode() {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create());
+            }
+            return getErrorObjectNode;
+        }
     }
 
     public static class AsyncIteratorAwaitNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> extends JavaScriptBaseNode {

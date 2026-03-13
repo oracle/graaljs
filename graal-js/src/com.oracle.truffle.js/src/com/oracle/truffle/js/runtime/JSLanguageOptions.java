@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,6 +107,7 @@ public record JSLanguageOptions(
                 boolean asyncIteratorHelpers,
                 boolean shadowRealm,
                 boolean asyncContext,
+                boolean explicitResourceManagement,
                 boolean v8Intrinsics,
                 UnhandledRejectionsTrackingMode unhandledRejectionsMode,
                 boolean operatorOverloading,
@@ -188,6 +189,7 @@ public record JSLanguageOptions(
         boolean asyncIteratorHelpers = options.isAsyncIteratorHelpers();
         boolean shadowRealm = options.isShadowRealm();
         boolean asyncContext = options.isAsyncContext();
+        boolean explicitResourceManagement = options.isExplicitResourceManagement();
         boolean operatorOverloading = options.isOperatorOverloading();
         boolean errorCause = options.isErrorCauseEnabled();
         boolean importAttributes = options.isImportAttributes();
@@ -272,6 +274,7 @@ public record JSLanguageOptions(
                         asyncIteratorHelpers,
                         shadowRealm,
                         asyncContext,
+                        explicitResourceManagement,
                         v8Intrinsics,
                         unhandledRejectionsMode,
                         operatorOverloading,

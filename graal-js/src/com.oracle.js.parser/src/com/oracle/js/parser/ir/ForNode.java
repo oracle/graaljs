@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,12 @@ public final class ForNode extends LoopNode {
 
     /** Is this a for await of loop? */
     public static final int IS_FOR_AWAIT_OF = 1 << 4;
+
+    /** Is the loop head initialized by a using declaration? */
+    public static final int IS_USING_DECLARATION = 1 << 5;
+
+    /** Is the loop head initialized by an await using declaration? */
+    public static final int IS_AWAIT_USING_DECLARATION = 1 << 6;
 
     private final int flags;
 
@@ -237,6 +243,24 @@ public final class ForNode extends LoopNode {
      */
     public boolean isForAwaitOf() {
         return (flags & IS_FOR_AWAIT_OF) != 0;
+    }
+
+    /**
+     * Is the loop head initialized by a using declaration?
+     *
+     * @return true if the loop head uses a using declaration
+     */
+    public boolean isUsingDeclaration() {
+        return (flags & IS_USING_DECLARATION) != 0;
+    }
+
+    /**
+     * Is the loop head initialized by an await using declaration?
+     *
+     * @return true if the loop head uses an await using declaration
+     */
+    public boolean isAwaitUsingDeclaration() {
+        return (flags & IS_AWAIT_USING_DECLARATION) != 0;
     }
 
     /**
