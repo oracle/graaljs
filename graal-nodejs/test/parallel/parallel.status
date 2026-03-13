@@ -77,17 +77,8 @@ test-fs-write: FAIL
 # (which is a foreign object when chromeinspector is used)
 test-process-get-builtin: SKIP
 
-# Uses 'using' keyword
-test-filehandle-autoclose: FAIL
-test-fs-read-empty-buffer: FAIL
-test-fs-read-offset-null: FAIL
-test-perf-hooks-histogram: FAIL
+# Suspicious handling of filterFunc in DatabaseSync::ApplyChangeset()
 test-sqlite-session: FAIL
-test-stream-duplex-destroy: FAIL
-test-stream-readable-dispose: FAIL
-test-stream-transform-destroy: FAIL
-test-stream-writable-destroy: FAIL
-test-worker-dispose: FAIL
 
 # Different stack-trace format expected
 test-fs-promises: FAIL
