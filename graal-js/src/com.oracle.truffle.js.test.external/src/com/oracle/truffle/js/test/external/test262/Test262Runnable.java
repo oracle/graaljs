@@ -219,6 +219,7 @@ public class Test262Runnable extends TestRunnable {
                     "destructuring-binding",
                     "dynamic-import",
                     "error-cause",
+                    "explicit-resource-management",
                     "exponentiation",
                     "export-star-as-namespace-from-module",
                     "for-in-order",
@@ -279,7 +280,9 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "Intl.Era-monthcode",
                     "IsHTMLDDA",
-                    "explicit-resource-management",
+                    "await-dictionary",
+                    "import-bytes",
+                    "import-text",
                     "joint-iteration",
                     "tail-call-optimization",
     });
@@ -319,7 +322,7 @@ public class Test262Runnable extends TestRunnable {
         boolean asyncTest = flags.contains(ASYNC_FLAG);
         boolean module = flags.contains(MODULE_FLAG);
 
-        Map<String, String> extraOptions = new HashMap<>(4);
+        Map<String, String> extraOptions = new HashMap<>(5);
         if (flags.contains(CAN_BLOCK_IS_FALSE_FLAG)) {
             extraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
         }
@@ -331,6 +334,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("source-phase-imports")) {
             extraOptions.put(JSContextOptions.SOURCE_PHASE_IMPORTS_NAME, "true");
+        }
+        if (features.contains("explicit-resource-management")) {
+            extraOptions.put(JSContextOptions.EXPLICIT_RESOURCE_MANAGEMENT_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
