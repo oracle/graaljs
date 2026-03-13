@@ -244,6 +244,7 @@ public class Parser extends AbstractParser {
     private static final boolean ES2019_OPTIONAL_CATCH_BINDING = Options.getBooleanProperty("parser.optional.catch.binding", true);
     private static final boolean ES2020_CLASS_FIELDS = Options.getBooleanProperty("parser.class.fields", true);
     private static final boolean ES2022_TOP_LEVEL_AWAIT = Options.getBooleanProperty("parser.top.level.await", true);
+    private static final boolean DISCARD_BINDINGS = Options.getBooleanProperty("parser.discard.bindings", true);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
@@ -1030,7 +1031,7 @@ public class Parser extends AbstractParser {
             case ASSIGN_NULLCOAL:
                 if (lhs instanceof IdentNode) {
                     IdentNode ident = (IdentNode) lhs;
-                    if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
+                    if (!checkIdentLValue(ident) || ident.isMetaProperty() || isDiscardBindings() && ident.isDiscard()) {
                         throw invalidLHSError(lhs);
                     }
                     verifyStrictIdent(ident, CONTEXT_ASSIGNMENT_TARGET);
@@ -2481,6 +2482,12 @@ public class Parser extends AbstractParser {
 
             // Get name of var.
             final Expression binding = bindingIdentifierOrPattern(yield, await, CONTEXT_VARIABLE_NAME);
+
+            // Disallow top-level discard bindings for var/let/const (only allowed in patterns or using/await using)
+            if (isDiscardBindings() && binding instanceof IdentNode && ((IdentNode) binding).isDiscard()) {
+                throw error(AbstractParser.message(MSG_EXPECTED_BINDING_IDENTIFIER), binding.getToken());
+            }
+
             final boolean isDestructuring = !(binding instanceof IdentNode);
             if (isDestructuring) {
                 final int finalVarFlags = varFlags | VarNode.IS_DESTRUCTURING;
@@ -2701,6 +2708,11 @@ public class Parser extends AbstractParser {
     }
 
     private IdentNode bindingIdentifier(boolean yield, boolean await, String contextString) {
+        if (isDiscardBindings() && type == VOID) {
+            long voidToken = token;
+            next();
+            return createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard();
+        }
         IdentNode ident = identifier(yield, await, contextString, true);
         addIdentifierReference(ident.getName());
         return ident;
@@ -2716,6 +2728,10 @@ public class Parser extends AbstractParser {
             return arrayLiteral(yield, await, CoverExpressionError.IGNORE);
         } else if (type == LBRACE) {
             return objectLiteral(yield, await, CoverExpressionError.IGNORE);
+        } else if (isDiscardBindings() && type == VOID) {
+            long voidToken = token;
+            next();
+            return createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard();
         } else {
             throw error(AbstractParser.message(MSG_EXPECTED_BINDING));
         }
@@ -2835,7 +2851,9 @@ public class Parser extends AbstractParser {
                 if (identNode.isParenthesized()) {
                     throw error("Expected a valid binding identifier", identNode.getToken());
                 }
-                identifierCallback.accept(identNode);
+                if (!isDiscardBindings() || !identNode.isDiscard()) {
+                    identifierCallback.accept(identNode);
+                }
                 return false;
             }
 
@@ -4172,6 +4190,14 @@ public class Parser extends AbstractParser {
                     // fall through
 
                 default:
+                    if (isDiscardBindings() && type == VOID && (lookahead() == RBRACKET || lookahead() == COMMARIGHT)) {
+                        long voidToken = token;
+                        next();
+                        elements.add(createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard());
+                        elision = false;
+                        break;
+                    }
+
                     if (!elision) {
                         throw error(AbstractParser.message(MSG_EXPECTED_COMMA, type.getNameOrType()));
                     }
@@ -4493,23 +4519,29 @@ public class Parser extends AbstractParser {
         } else {
             expect(COLON);
 
-            if (!computed && PROTO_NAME.equals(((PropertyKey) propertyName).getPropertyName())) {
-                proto = true;
-            }
+            if (isDiscardBindings() && type == VOID && (lookahead() == RBRACE || lookahead() == COMMARIGHT)) {
+                long voidToken = token;
+                next();
+                propertyValue = createIdentNode(voidToken, finish, lexer.stringIntern("void")).setIsDiscard();
+            } else {
+                if (!computed && PROTO_NAME.equals(((PropertyKey) propertyName).getPropertyName())) {
+                    proto = true;
+                }
 
-            pushDefaultName(propertyName);
-            try {
-                propertyValue = assignmentExpression(true, yield, await, coverExpression);
-            } finally {
-                popDefaultName();
-            }
+                pushDefaultName(propertyName);
+                try {
+                    propertyValue = assignmentExpression(true, yield, await, coverExpression);
+                } finally {
+                    popDefaultName();
+                }
 
-            if (!proto) {
-                if (isAnonymousFunctionDefinition(propertyValue)) {
-                    if (!computed && propertyName instanceof PropertyKey) {
-                        propertyValue = setAnonymousFunctionName(propertyValue, ((PropertyKey) propertyName).getPropertyNameTS());
-                    } else {
-                        isAnonymousFunctionDefinition = true;
+                if (!proto) {
+                    if (isAnonymousFunctionDefinition(propertyValue)) {
+                        if (!computed && propertyName instanceof PropertyKey) {
+                            propertyValue = setAnonymousFunctionName(propertyValue, ((PropertyKey) propertyName).getPropertyNameTS());
+                        } else {
+                            isAnonymousFunctionDefinition = true;
+                        }
                     }
                 }
             }
@@ -5462,6 +5494,9 @@ public class Parser extends AbstractParser {
     private void verifyParameterList(final ParserContextFunctionNode functionNode) {
         IdentNode duplicateParameter = functionNode.getDuplicateParameterBinding();
         if (duplicateParameter != null) {
+            if (isDiscardBindings() && duplicateParameter.isDiscard()) {
+                return;
+            }
             if (functionNode.isStrict() || functionNode.isMethod() || functionNode.isArrow() || !functionNode.isSimpleParameterList()) {
                 throw error(AbstractParser.message(MSG_STRICT_PARAM_REDEFINITION, duplicateParameter.getName()), duplicateParameter.getToken());
             }
@@ -5570,6 +5605,25 @@ public class Parser extends AbstractParser {
         final long paramToken = token;
         final int paramLine = line;
         IdentNode ident;
+
+        if (isDiscardBindings() && type == VOID) {
+            next();
+            ident = createIdentNode(paramToken, finish, lexer.stringIntern("void")).setIsDiscard();
+            Expression initializer = null;
+            if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
+                next();
+                initializer = assignmentExpression(true, yield, await);
+                if (currentFunction != null) {
+                    addDefaultParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
+                }
+            } else {
+                if (currentFunction != null) {
+                    currentFunction.addParameter(ident);
+                }
+            }
+            return;
+        }
+
         if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
             ident = bindingIdentifier(yield, await, CONTEXT_FUNCTION_PARAMETER);
 
@@ -5973,6 +6027,12 @@ public class Parser extends AbstractParser {
                 return verifyDeleteExpression(unaryToken, expr);
             }
             case VOID:
+                // Check for cover grammar for arrow function parameters: (void) => or (void, a) =>
+                if (isDiscardBindings() && (lookahead() == RPAREN || lookahead() == COMMARIGHT || lookahead() == ASSIGN)) {
+                    next();
+                    return createIdentNode(unaryToken, finish, lexer.stringIntern("void")).setIsDiscard();
+                }
+                // Fall-through to standard void operator
             case TYPEOF:
             case ADD:
             case SUB:
@@ -6994,6 +7054,10 @@ public class Parser extends AbstractParser {
 
     private boolean isTopLevelAwait() {
         return ES2022_TOP_LEVEL_AWAIT && env.topLevelAwait;
+    }
+
+    private boolean isDiscardBindings() {
+        return DISCARD_BINDINGS && env.discardBindings;
     }
 
     private boolean isImportExpression() {

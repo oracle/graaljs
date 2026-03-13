@@ -66,6 +66,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int PRIVATE_IDENT     = 1 << 13;
     private static final int PRIVATE_IN_CHECK  = 1 << 14;
     private static final int IGNORED_PARAMETER = 1 << 15;
+    private static final int IS_DISCARD        = 1 << 16;
     //@formatter:on
 
     /** Identifier. */
@@ -331,5 +332,13 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     public boolean isIgnoredParameter() {
         return (flags & IGNORED_PARAMETER) != 0;
+    }
+
+    public IdentNode setIsDiscard() {
+        return new IdentNode(this, name, nameTS, flags | IS_DISCARD);
+    }
+
+    public boolean isDiscard() {
+        return (flags & IS_DISCARD) != 0;
     }
 }
