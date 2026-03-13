@@ -2316,6 +2316,14 @@
     },
     "comment" : "nonextensible-applies-to-private proposal"
   }, {
+    "filePath" : "staging/explicit-resource-management/await-using-in-switch-case-block.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete staging ERM test. Direct await using in case/default statement lists conflicts with the official syntax tests."
+  }, {
+    "filePath" : "staging/explicit-resource-management/call-dispose-methods.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete staging ERM test. Direct using in case/default statement lists conflicts with the official syntax tests."
+  }, {
     "filePath" : "staging/sm/Array/from-iterator-close.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-01-23"
