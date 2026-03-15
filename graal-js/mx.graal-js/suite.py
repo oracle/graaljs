@@ -25,7 +25,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "5b9a2b8fe161620bb433039a5cd170845ee88888",
+           "version" : "1f569a568459abc3866f556affec3bb6cc0b3f21",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
