@@ -200,7 +200,17 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             # copy libjsig.so from the jdk for inclusion in the standalone and `mx node`
             libjsig_name = mx.add_lib_suffix(mx.add_lib_prefix('jsig'))
             mx_util.ensure_dir_exists(join(self._out_dir, 'lib'))
-            mx.copyfile(join(_java_home(forBuild=True), 'lib', libjsig_name), join(self._out_dir, 'lib', libjsig_name))
+            if _is_graalos_musl_swcfi_target():
+                musl_libjsig = join(_java_home(forBuild=True), 'lib', 'musl-swcfi', libjsig_name)
+                if not exists(musl_libjsig):
+                    mx.abort(
+                        'GraalOS musl-swcfi build requires libjsig from the musl toolchain folder. '
+                        f"Missing '{musl_libjsig}' in the build JDK."
+                    )
+                libjsig_src = musl_libjsig
+            else:
+                libjsig_src = join(_java_home(forBuild=True), 'lib', libjsig_name)
+            mx.copyfile(libjsig_src, join(self._out_dir, 'lib', libjsig_name))
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
