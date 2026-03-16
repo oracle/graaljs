@@ -71,6 +71,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING = "--allow-natives-for-differential-fuzzing";
     private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
+    private static final String NO_JS_SOURCE_PHASE_IMPORTS = "--no-js-source-phase-imports";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_EXPERIMENTAL_SIMD = "--no-experimental-wasm-simd";
@@ -154,6 +155,9 @@ public class TestV8Runnable extends TestRunnable {
             if (flags.contains(EXPERIMENTAL_WASM_MULTIMEMORY)) {
                 extraOptions.put("wasm.MultiMemory", "true");
             }
+        }
+        if (flags.contains(NO_JS_SOURCE_PHASE_IMPORTS)) {
+            extraOptions.put(JSContextOptions.SOURCE_PHASE_IMPORTS_NAME, "false");
         }
 
         if (getConfig().isPrintScript()) {

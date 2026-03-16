@@ -3160,10 +3160,6 @@
     "runInIsolation" : true,
     "comment" : "Fails when trying to access the underlying ArrayBuffer of a WebAssembly.Memory. This is because GraalJS ArrayBuffers are currently capped at 2GB (- 1 byte) and this test exercises 4GB large memories."
   }, {
-    "filePath" : "mjsunit/wasm/module-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/module-source.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
