@@ -16,9 +16,9 @@ This document explains the public API it presents for user applications written 
 
 ## ECMAScript Language Compliance
 
-GraalJS implements the ECMAScript (ECMA-262) specification and is fully compatible with the [ECMAScript 2024 specification](https://262.ecma-international.org/) (sometimes referred to as the 15th edition).
-New features are frequently added to GraalVM when they are confirmed to be part of ECMAScript 2024, see the [CHANGELOG.md](https://github.com/oracle/graaljs/blob/master/CHANGELOG.md) for details.
-Older versions starting from ECMAScript 5 can be enabled with a configuration option (by number: `--js.ecmascript-version=5` or by year: `--js.ecmascript-version=2024`).
+GraalJS implements the ECMAScript (ECMA-262) specification and is fully compatible with the [ECMAScript 2025 specification](https://tc39.es/ecma262/2025/).
+New features are frequently added to GraalVM when they are confirmed to be part of ECMAScript 2025, see the [CHANGELOG.md](https://github.com/oracle/graaljs/blob/master/CHANGELOG.md) for details.
+Older versions starting from ECMAScript 5 can be enabled with a configuration option (by number: `--js.ecmascript-version=5` or by year: `--js.ecmascript-version=2025`).
 In a production environment, you might consider specifying a fixed ECMAScript version to be used, as future versions of GraalJS will use newer versions of the specification once available.
 
 GraalJS provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
@@ -50,7 +50,7 @@ The functionality of a few other built-ins, such as `toLocaleString`, is also up
 ### JavaScript Modules
 
 GraalJS supports modules as defined by ECMAScript 6 and later.
-Be aware that the support for this feature continues to increase. 
+Be aware that the support for this feature continues to increase.
 Be sure to use the latest ECMAScript version for the all the latest features.
 
 When loading modules via a polyglot `Source`, you can use the unofficial `application/javascript+module` MIME type to specify that you are loading a module.
