@@ -169,6 +169,8 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--openssl-no-asm']
+        elif _is_graalos_musl_swcfi_target():
+            extra_flags = ['--openssl-no-asm']
         else:
             extra_flags = []
 
