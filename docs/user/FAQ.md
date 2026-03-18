@@ -12,12 +12,12 @@ Below are the most frequently asked questions and answers about JavaScript runni
 ## Compatibility
 
 ### Is GraalJS compatible with the JavaScript language?
-GraalJS is compatible with the ECMAScript 2024 specification and is further developed alongside the 2025 draft specification.
+GraalJS is compatible with the  [ECMAScript 2025 specification](https://tc39.es/ecma262/2025/) and is further developed alongside the 2026 draft specification.
 The compatibility of GraalJS is verified by external sources, such as the [Kangax ECMAScript compatibility table](https://kangax.github.io/compat-table/es6/).
 
 GraalJS is tested against a set of test engines, such as the official test suite of ECMAScript, [test262](https://github.com/tc39/test262), as well as tests published by V8 and Nashorn, Node.js unit tests, and GraalJS's own unit tests.
 
-For reference documentation describing the JavaScript APIs that GraalVM supports, see [GRAAL.JS-API](https://github.com/graalvm/graaljs/blob/master/docs/user/JavaScriptCompatibility.md).
+For reference documentation describing the JavaScript APIs that GraalVM supports, see [GraalJS Compatibility](https://github.com/graalvm/graaljs/blob/master/docs/user/JavaScriptCompatibility.md).
 
 ### My application used to run on Nashorn, why does it not work on GraalJS?
 Reason:
@@ -44,12 +44,6 @@ This means that operations might fail (typically with a `TypeError`: `Message no
 Consider `Array.prototype.push` as an example: arrays can grow in size in JavaScript, whereas they are fixed-size in Java, thus pushing a value is semantically not possible and will fail.
 In such cases, you can wrap the Java object and handle that case explicitly.
 Use the interfaces `ProxyObject` and `ProxyArray` for that purpose.
-
-### How can I verify GraalJS works on my application?
-
-If your module ships with tests, execute them with GraalJS. Of course, this will only test your application, not its dependencies.
-You can use the [GraalVM Language Compatibility](https://www.graalvm.org/compatibility/) tool to discover if the module you are interested in is tested on GraalJS, and whether its tests pass successfully.
-Additionally, you can upload your _package-lock.json_ or _package.json_ file into that tool and it will analyze all your dependencies.
 
 ## Performance
 
