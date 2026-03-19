@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.IteratorFunctionBuiltins;
-import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.DisposableStackPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -52,53 +51,50 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.util.DisposeCapability;
 
-public final class JSIterator extends JSNonProxy implements JSConstructorFactory.WithFunctions, PrototypeSupplier {
+public final class JSDisposableStack extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
+    public static final JSDisposableStack INSTANCE = new JSDisposableStack();
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Iterator");
-    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Iterator.prototype");
+    public static final TruffleString CLASS_NAME = Strings.constant("DisposableStack");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("DisposableStack.prototype");
 
-    public static final JSIterator INSTANCE = new JSIterator();
-
-    private JSIterator() {
+    private JSDisposableStack() {
     }
 
-    public static JSIteratorObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
-        JSObjectFactory factory = context.getIteratorFactory();
+    public static JSDisposableStackObject create(JSContext context, JSRealm realm) {
+        return create(context, realm, realm.getDisposableStackPrototype(), new DisposeCapability());
+    }
+
+    public static JSDisposableStackObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        return create(context, realm, proto, new DisposeCapability());
+    }
+
+    public static JSDisposableStackObject create(JSContext context, JSRealm realm, JSDynamicObject proto, DisposeCapability disposeCapability) {
+        JSObjectFactory factory = context.getDisposableStackFactory();
         var shape = factory.getShape(realm, proto);
-        var newObj = factory.initProto(new JSIteratorObject(shape, proto), realm, proto);
+        var newObj = factory.initProto(new JSDisposableStackObject(shape, proto, disposeCapability), realm, proto);
         return factory.trackAllocation(newObj);
     }
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSObject iteratorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-
-        JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
-        if (realm.getContext().isOptionExplicitResourceManagement()) {
-            JSObjectUtil.putFunctionFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_DISPOSE);
-        }
-        JSObjectUtil.putAccessorsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
-        if (realm.getContext().getLanguageOptions().asyncIteratorHelpers()) {
-            JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.ASYNC_BUILTINS);
-        }
-
-        return iteratorPrototype;
-    }
-
-    private static JSDynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
-        return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, DisposableStackPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, DisposableStackPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_DISPOSE, JSObject.get(prototype, Strings.DISPOSE), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
+        return prototype;
     }
 
     @Override
     public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, IteratorFunctionBuiltins.BUILTINS);
+        return INSTANCE.createConstructorAndPrototype(realm);
     }
 
     @Override
@@ -108,6 +104,6 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
 
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getIteratorPrototype();
+        return realm.getDisposableStackPrototype();
     }
 }

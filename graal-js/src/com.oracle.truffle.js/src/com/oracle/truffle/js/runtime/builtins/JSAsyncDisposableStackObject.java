@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,63 +38,54 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.util.DisposeCapability;
 
-public enum JSErrorType implements PrototypeSupplier {
-    Error,
+public final class JSAsyncDisposableStackObject extends JSNonProxyObject {
+    private DisposeCapability disposeCapability;
+    private boolean disposed;
 
-    /**
-     * Currently not in use, only there for compatibility with previous versions of the
-     * specification ECMA262[15.11.6.1].
-     */
-    EvalError,
+    protected JSAsyncDisposableStackObject(Shape shape, JSDynamicObject proto, DisposeCapability disposeCapability) {
+        super(shape, proto);
+        this.disposeCapability = disposeCapability;
+    }
 
-    /**
-     * Indicates a numeric value has exceeded the allowable range ECMA262[15.11.6.2].
-     */
-    RangeError,
+    public DisposeCapability getDisposeCapability() {
+        return disposeCapability;
+    }
 
-    /**
-     * Indicate that an invalid reference value has been detected ECMA262[15.11.6.3].
-     */
-    ReferenceError,
+    public DisposeCapability takeDisposeCapability() {
+        assert !disposed;
+        DisposeCapability moved = disposeCapability;
+        disposeCapability = new DisposeCapability();
+        disposed = true;
+        return moved;
+    }
 
-    /**
-     * Indicates that a parsing error has occurred ECMA262[15.11.6.4].
-     */
-    SyntaxError,
+    public boolean isDisposed() {
+        return disposed;
+    }
 
-    /**
-     * Indicates the actual type of an operand is different than the expected type
-     * ECMA262[15.11.6.5].
-     */
-    TypeError,
-
-    /**
-     * Indicates that one of the global URI handling functions was used in a way that is
-     * incompatible with its definition ECMA262[15.11.6.6].
-     */
-    URIError,
-
-    AggregateError,
-    SuppressedError,
-
-    // WebAssembly
-    CompileError,
-    LinkError,
-    RuntimeError;
+    public void setDisposed(boolean disposed) {
+        this.disposed = disposed;
+    }
 
     @Override
-    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getErrorPrototype(this);
+    public TruffleString getClassName() {
+        return JSAsyncDisposableStack.CLASS_NAME;
     }
 
-    public static JSErrorType[] errorTypes() {
-        return VALUES;
+    @TruffleBoundary
+    @Override
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return Strings.addBrackets(getClassName());
     }
-
-    private static final JSErrorType[] VALUES = JSErrorType.values();
 }

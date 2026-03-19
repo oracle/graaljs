@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,6 +108,7 @@ import static com.oracle.js.parser.TokenType.TEMPLATE_MIDDLE;
 import static com.oracle.js.parser.TokenType.TEMPLATE_TAIL;
 import static com.oracle.js.parser.TokenType.TERNARY;
 import static com.oracle.js.parser.TokenType.THIS;
+import static com.oracle.js.parser.TokenType.USING;
 import static com.oracle.js.parser.TokenType.VAR;
 import static com.oracle.js.parser.TokenType.VOID;
 import static com.oracle.js.parser.TokenType.WHILE;
@@ -283,6 +284,8 @@ public class Parser extends AbstractParser {
     private static final String CONTEXT_OF = "of";
     private static final String CONTEXT_OPERAND_FOR_DEC_OPERATOR = "operand for -- operator";
     private static final String CONTEXT_OPERAND_FOR_INC_OPERATOR = "operand for ++ operator";
+    private static final String CONTEXT_AWAIT_USING_DECLARATION = "await using declaration";
+    private static final String CONTEXT_USING_DECLARATION = "using declaration";
     private static final String CONTEXT_VARIABLE_NAME = "variable name";
 
     private static final String MSG_ACCESSOR_CONSTRUCTOR = "accessor.constructor";
@@ -322,6 +325,7 @@ public class Parser extends AbstractParser {
     private static final String MSG_MISSING_CATCH_OR_FINALLY = "missing.catch.or.finally";
     private static final String MSG_MISSING_CONST_ASSIGNMENT = "missing.const.assignment";
     private static final String MSG_MISSING_DESTRUCTURING_ASSIGNMENT = "missing.destructuring.assignment";
+    private static final String MSG_MISSING_USING_ASSIGNMENT = "missing.using.assignment";
     private static final String MSG_MULTIPLE_CONSTRUCTORS = "multiple.constructors";
     private static final String MSG_MULTIPLE_PROTO_KEY = "multiple.proto.key";
     private static final String MSG_NEW_TARGET_IN_FUNCTION = "new.target.in.function";
@@ -964,6 +968,10 @@ public class Parser extends AbstractParser {
         return env.ecmaScriptVersion >= ES_2022;
     }
 
+    private boolean isExplicitResourceManagement() {
+        return env.explicitResourceManagement;
+    }
+
     private boolean isImportDefer() {
         return env.ecmaScriptVersion >= ES_STAGING;
     }
@@ -1553,6 +1561,15 @@ public class Parser extends AbstractParser {
                     return;
                 }
                 break;
+            case USING:
+                if (lookaheadIsUsingDeclaration(false)) {
+                    if (isUsingDeclarationDisallowedHere(singleStatement)) {
+                        throw error(AbstractParser.message(MSG_EXPECTED_STMT, CONTEXT_USING_DECLARATION), token);
+                    }
+                    usingStatement(false, yield, await);
+                    return;
+                }
+                break;
             case CLASS:
             case AT:
                 if (ES6_CLASS && isES6()) {
@@ -1560,6 +1577,15 @@ public class Parser extends AbstractParser {
                         throw error(AbstractParser.message(MSG_EXPECTED_STMT, CONTEXT_CLASS_DECLARATION), token);
                     }
                     classDeclaration(yield, await, false);
+                    return;
+                }
+                break;
+            case AWAIT:
+                if (await && lookaheadIsAwaitUsingDeclaration(false)) {
+                    if (isUsingDeclarationDisallowedHere(singleStatement)) {
+                        throw error(AbstractParser.message(MSG_EXPECTED_STMT, CONTEXT_AWAIT_USING_DECLARATION), token);
+                    }
+                    usingStatement(true, yield, await);
                     return;
                 }
                 break;
@@ -2421,6 +2447,10 @@ public class Parser extends AbstractParser {
         variableDeclarationList(varType, true, yield, await, -1);
     }
 
+    private void usingStatement(boolean awaitUsing, boolean yield, boolean await) {
+        usingDeclarationList(awaitUsing, true, yield, await, -1);
+    }
+
     private static final class ForVariableDeclarationListResult {
         /** First missing const or binding pattern initializer. */
         Expression missingAssignment;
@@ -2430,6 +2460,8 @@ public class Parser extends AbstractParser {
         Expression firstBinding;
         /** Second binding identifier or pattern for error reporting when only one is allowed. */
         Expression secondBinding;
+        /** Whether this declaration list corresponds to using or await using. */
+        boolean usingDeclaration;
 
         void recordMissingAssignment(Expression binding) {
             if (missingAssignment == null) {
@@ -2574,6 +2606,87 @@ public class Parser extends AbstractParser {
         return forResult;
     }
 
+    private ForVariableDeclarationListResult usingDeclarationList(boolean awaitUsing, boolean isStatement, boolean yield, boolean await, int sourceOrder) {
+        int varStart = Token.descPosition(token);
+        assert isExplicitResourceManagement();
+        if (awaitUsing) {
+            assert type == AWAIT;
+            if (isModule) {
+                ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+                if (currentFunction.isModule()) {
+                    // Top-level await using makes the module body asynchronous.
+                    currentFunction.setFlag(FunctionNode.IS_ASYNC);
+                }
+            }
+            next();
+            assert type == USING;
+        } else {
+            assert type == USING;
+        }
+        next();
+
+        int varFlags = VarNode.IS_CONST | VarNode.IS_USING | (awaitUsing ? VarNode.IS_AWAIT_USING : 0);
+        ForVariableDeclarationListResult forResult = isStatement ? null : new ForVariableDeclarationListResult();
+        if (forResult != null) {
+            forResult.usingDeclaration = true;
+        }
+        ParserContextBlockNode currentBlock = lc.getCurrentBlock();
+        currentBlock.setFlag(Block.HAS_DIRECT_USING_DECLARATIONS);
+        if (awaitUsing) {
+            currentBlock.setFlag(Block.HAS_DIRECT_AWAIT_USING_DECLARATIONS);
+        }
+        Scope scope = lc.getCurrentScope();
+        while (true) {
+            final int varLine = line;
+            final long varToken = Token.recast(token, USING);
+            if (!isBindingIdentifier()) {
+                throw error(AbstractParser.message(MSG_EXPECTED_BINDING_IDENTIFIER), token);
+            }
+            IdentNode ident = bindingIdentifier(yield, await, CONTEXT_VARIABLE_NAME);
+            if (ident.getName().equals(LET.getName())) {
+                throw error(AbstractParser.message(MSG_LET_LEXICAL_BINDING));
+            }
+
+            Expression init = null;
+            if (type == ASSIGN) {
+                if (!isStatement) {
+                    forResult.recordDeclarationWithInitializer(varToken);
+                }
+                next();
+                pushDefaultName(ident);
+                try {
+                    init = assignmentExpression(isStatement, yield, await);
+                } finally {
+                    popDefaultName();
+                }
+            } else if (isStatement) {
+                throw error(AbstractParser.message(MSG_MISSING_USING_ASSIGNMENT, ident.getName()), ident.getToken());
+            } else {
+                forResult.recordMissingAssignment(ident);
+            }
+
+            if (!isStatement) {
+                forResult.addBinding(ident);
+            }
+            if (isAnonymousFunctionDefinition(init)) {
+                init = setAnonymousFunctionName(init, ident.getNameTS());
+            }
+            VarNode var = new VarNode(varLine, varToken, sourceOrder, varStart, finish, ident.setIsDeclaredHere(), init, varFlags);
+            appendStatement(var);
+            declareVar(scope, var);
+
+            if (type != COMMARIGHT) {
+                break;
+            }
+            next();
+        }
+
+        if (isStatement) {
+            endOfLine();
+        }
+        return forResult;
+    }
+
     private void declareVar(Scope scope, VarNode varNode) {
         String name = varNode.getName().getName();
         if (detectVarNameConflict(scope, varNode)) {
@@ -2697,7 +2810,7 @@ public class Parser extends AbstractParser {
     }
 
     private boolean isBindingIdentifier() {
-        return type == IDENT || type.isContextualKeyword() || isNonStrictModeIdent();
+        return isBindingIdentifierToken(type);
     }
 
     private IdentNode bindingIdentifier(boolean yield, boolean await, String contextString) {
@@ -2985,6 +3098,26 @@ public class Parser extends AbstractParser {
                         varType = type;
                         varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
                         break;
+                    case USING:
+                        if (lookaheadIsUsingDeclaration(true)) {
+                            varType = USING;
+                            varDeclList = usingDeclarationList(false, false, yield, await, forStart);
+                            flags |= ForNode.IS_USING_DECLARATION;
+                            break;
+                        }
+                        initCoverExpr = new CoverExpressionError();
+                        init = expression(false, yield, await, initCoverExpr);
+                        break;
+                    case AWAIT:
+                        if (await && lookaheadIsAwaitUsingDeclaration(true)) {
+                            varType = USING;
+                            varDeclList = usingDeclarationList(true, false, yield, await, forStart);
+                            flags |= ForNode.IS_AWAIT_USING_DECLARATION;
+                            break;
+                        }
+                        initCoverExpr = new CoverExpressionError();
+                        init = expression(false, yield, await, initCoverExpr);
+                        break;
                     case SEMICOLON:
                         break;
                     default:
@@ -3027,6 +3160,10 @@ public class Parser extends AbstractParser {
                             // for (init; test; modify) loop
                             if (varDeclList.missingAssignment != null) {
                                 if (varDeclList.missingAssignment instanceof IdentNode) {
+                                    if (varDeclList.usingDeclaration) {
+                                        throw error(AbstractParser.message(MSG_MISSING_USING_ASSIGNMENT, ((IdentNode) varDeclList.missingAssignment).getName()),
+                                                        varDeclList.missingAssignment.getToken());
+                                    }
                                     throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) varDeclList.missingAssignment).getName()));
                                 } else {
                                     throw error(AbstractParser.message(MSG_MISSING_DESTRUCTURING_ASSIGNMENT), varDeclList.missingAssignment.getToken());
@@ -3086,7 +3223,10 @@ public class Parser extends AbstractParser {
                                  */
                                 throw error(AbstractParser.message(MSG_FOR_IN_LOOP_INITIALIZER, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.declarationWithInitializerToken);
                             }
-                            if (varType == CONST || varType == LET) {
+                            if (varDeclList.usingDeclaration && type == IN) {
+                                expect(SEMICOLON); // fail with expected message
+                            }
+                            if (varType == CONST || varType == LET || varDeclList.usingDeclaration) {
                                 flags |= ForNode.PER_ITERATION_SCOPE;
                             }
                         } else {
@@ -3137,7 +3277,10 @@ public class Parser extends AbstractParser {
 
         if (outer != null) {
             outer.getScope().close();
-            appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), 0, outer.getScope(), outer.getStatements())));
+            // Preserve direct using flags on the synthetic outer block that captures
+            // declarations from the for-loop initializer.
+            int blockFlags = outer.getFlags() & (Block.HAS_DIRECT_USING_DECLARATIONS | Block.HAS_DIRECT_AWAIT_USING_DECLARATIONS);
+            appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), blockFlags, outer.getScope(), outer.getStatements())));
         }
     }
 
@@ -3187,6 +3330,69 @@ public class Parser extends AbstractParser {
                     return null;
             }
         }
+    }
+
+    private boolean lookaheadIsUsingDeclaration(boolean forHeader) {
+        return isExplicitResourceManagement() && type == USING && lookaheadOfUsingDeclaration(1, false, forHeader);
+    }
+
+    private boolean lookaheadIsAwaitUsingDeclaration(boolean forHeader) {
+        if (!isExplicitResourceManagement() || type != AWAIT) {
+            return false;
+        }
+        int usingIndex = nextTokenIndexNoLineTerminator(1);
+        return usingIndex != -1 && T(k + usingIndex) == USING && lookaheadOfUsingDeclaration(usingIndex + 1, true, forHeader);
+    }
+
+    private boolean lookaheadOfUsingDeclaration(int startIndex, boolean awaitUsing, boolean forHeader) {
+        int bindingIndex = nextTokenIndexNoLineTerminator(startIndex);
+        if (bindingIndex == -1) {
+            return false;
+        }
+        TokenType bindingType = T(k + bindingIndex);
+        if (!isBindingIdentifierToken(bindingType)) {
+            return false;
+        }
+        if (forHeader && !awaitUsing && bindingType == OF) {
+            TokenType nextToken = nextTokenType(bindingIndex + 1);
+            return nextToken == ASSIGN || nextToken == COMMARIGHT || nextToken == SEMICOLON;
+        }
+        return true;
+    }
+
+    private int nextTokenIndexNoLineTerminator(int index) {
+        for (int i = index;; i++) {
+            TokenType t = T(k + i);
+            if (t == COMMENT) {
+                continue;
+            }
+            if (t == EOL) {
+                return -1;
+            }
+            return i;
+        }
+    }
+
+    private TokenType nextTokenType(int index) {
+        for (int i = index;; i++) {
+            TokenType t = T(k + i);
+            if (t == COMMENT || t == EOL) {
+                continue;
+            }
+            return t;
+        }
+    }
+
+    private boolean isBindingIdentifierToken(TokenType tokenType) {
+        return tokenType == IDENT || tokenType.isContextualKeyword() || (!isStrictMode && tokenType.isFutureStrict());
+    }
+
+    private boolean isUsingDeclarationDisallowedHere(boolean singleStatement) {
+        if (singleStatement || lc.getCurrentBlock().getFlag(Block.IS_SWITCH_BLOCK) != 0 || lc.getCurrentScope().isSwitchBlockScope()) {
+            return true;
+        }
+        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        return currentFunction.isProgram() && !currentFunction.isModule() && lc.getCurrentBlock().getScope() == currentFunction.getBodyScope();
     }
 
     private boolean lookaheadIsOf() {

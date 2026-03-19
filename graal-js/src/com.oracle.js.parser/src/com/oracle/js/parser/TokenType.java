@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -202,6 +202,7 @@ public enum TokenType {
     TRUE           (LITERAL,      "true"),
     TRY            (KEYWORD,      "try"),
     TYPEOF         (UNARY,        "typeof",     15, false),
+    USING          (CONTEXTUAL,   "using",       0, false, ES_STAGING),
     VAR            (KEYWORD,      "var"),
     VOID           (UNARY,        "void",       15, false),
 //  VOLATILE       (FUTURE,       "volatile"),

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,63 +38,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.nodes.control;
 
-import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import java.util.Set;
 
-public enum JSErrorType implements PrototypeSupplier {
-    Error,
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DisposeCapability;
 
-    /**
-     * Currently not in use, only there for compatibility with previous versions of the
-     * specification ECMA262[15.11.6.1].
-     */
-    EvalError,
+public final class DisposeResourcesWrapperNode extends JavaScriptNode {
+    @Child private JavaScriptNode capabilityNode;
+    @Child private JavaScriptNode errorNode;
+    @Child private DisposeResourcesNode disposeResourcesNode;
 
-    /**
-     * Indicates a numeric value has exceeded the allowable range ECMA262[15.11.6.2].
-     */
-    RangeError,
+    private DisposeResourcesWrapperNode(JavaScriptNode capabilityNode, JavaScriptNode errorNode) {
+        this.capabilityNode = capabilityNode;
+        this.errorNode = errorNode;
+        this.disposeResourcesNode = DisposeResourcesNode.create();
+    }
 
-    /**
-     * Indicate that an invalid reference value has been detected ECMA262[15.11.6.3].
-     */
-    ReferenceError,
-
-    /**
-     * Indicates that a parsing error has occurred ECMA262[15.11.6.4].
-     */
-    SyntaxError,
-
-    /**
-     * Indicates the actual type of an operand is different than the expected type
-     * ECMA262[15.11.6.5].
-     */
-    TypeError,
-
-    /**
-     * Indicates that one of the global URI handling functions was used in a way that is
-     * incompatible with its definition ECMA262[15.11.6.6].
-     */
-    URIError,
-
-    AggregateError,
-    SuppressedError,
-
-    // WebAssembly
-    CompileError,
-    LinkError,
-    RuntimeError;
+    public static JavaScriptNode create(JavaScriptNode capabilityNode, JavaScriptNode errorNode) {
+        return new DisposeResourcesWrapperNode(capabilityNode, errorNode);
+    }
 
     @Override
-    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getErrorPrototype(this);
+    public Object execute(VirtualFrame frame) {
+        executeVoid(frame);
+        return Undefined.instance;
     }
 
-    public static JSErrorType[] errorTypes() {
-        return VALUES;
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        DisposeCapability capability = (DisposeCapability) capabilityNode.execute(frame);
+        Object errorObject = errorNode.execute(frame);
+        disposeResourcesNode.execute(capability, errorObject);
     }
 
-    private static final JSErrorType[] VALUES = JSErrorType.values();
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return create(cloneUninitialized(capabilityNode, materializedTags), cloneUninitialized(errorNode, materializedTags));
+    }
 }

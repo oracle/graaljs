@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -130,6 +131,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         take(1),
         drop(1),
         flatMap(1),
+        symbolDispose(0),
 
         constructor(0),
         set_constructor(1),
@@ -140,6 +142,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public Object getKey() {
             return switch (this) {
                 case set_constructor -> constructor.getKey();
+                case symbolDispose -> Symbol.SYMBOL_DISPOSE;
                 case symbolToStringTag, set_symbolToStringTag -> Symbol.SYMBOL_TO_STRING_TAG;
                 default -> BuiltinEnum.super.getKey();
             };
@@ -153,6 +156,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Override
         public boolean isSetter() {
             return EnumSet.of(set_constructor, set_symbolToStringTag).contains(this);
+        }
+
+        @Override
+        public boolean isOptional() {
+            return this == symbolDispose;
         }
 
         private final int length;
@@ -192,6 +200,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorDropNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case flatMap:
                 return IteratorPrototypeBuiltinsFactory.IteratorFlatMapNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case symbolDispose:
+                return IteratorPrototypeBuiltinsFactory.IteratorDisposeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case constructor:
                 return IteratorPrototypeBuiltinsFactory.IteratorGetConstructorNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case set_constructor:
@@ -202,6 +212,26 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorSetSymbolToStringTagNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class IteratorDisposeNode extends JSBuiltinNode {
+        @Child private GetMethodNode getReturnNode;
+        @Child private JSFunctionCallNode callNode;
+
+        protected IteratorDisposeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
+            this.callNode = JSFunctionCallNode.createCall();
+        }
+
+        @Specialization
+        protected Object dispose(Object thisObj) {
+            Object returnMethod = getReturnNode.executeWithTarget(thisObj);
+            if (returnMethod != Undefined.instance) {
+                callNode.executeCall(JSArguments.createZeroArg(thisObj, returnMethod));
+            }
+            return Undefined.instance;
+        }
     }
 
     public abstract static class SetterThatIgnoresPrototypePropertiesNode extends JavaScriptBaseNode {

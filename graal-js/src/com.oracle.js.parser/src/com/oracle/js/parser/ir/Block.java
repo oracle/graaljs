@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,6 +103,16 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * Marks the module body block.
      */
     public static final int IS_MODULE_BODY = 1 << 9;
+
+    /**
+     * Marks a block with direct using declarations in its statement list.
+     */
+    public static final int HAS_DIRECT_USING_DECLARATIONS = 1 << 10;
+
+    /**
+     * Marks a block with direct await using declarations in its statement list.
+     */
+    public static final int HAS_DIRECT_AWAIT_USING_DECLARATIONS = 1 << 11;
 
     /**
      * Constructor
@@ -370,5 +380,13 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     public boolean isModuleBody() {
         return getFlag(IS_MODULE_BODY);
+    }
+
+    public boolean hasDirectUsingDeclarations() {
+        return getFlag(HAS_DIRECT_USING_DECLARATIONS);
+    }
+
+    public boolean hasDirectAwaitUsingDeclarations() {
+        return getFlag(HAS_DIRECT_AWAIT_USING_DECLARATIONS);
     }
 }

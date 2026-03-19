@@ -88,6 +88,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncDisposableStack;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncGenerator;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -96,6 +97,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
+import com.oracle.truffle.js.runtime.builtins.JSDisposableStack;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
@@ -331,6 +333,9 @@ public class JSContext {
         AsyncIteratorGeneratorReturn,
         AsyncIteratorClose,
         AsyncIteratorCloseAbrupt,
+        AsyncDisposeFromSyncDisposeMethod,
+        AsyncDisposeResourcesContinue,
+        AsyncDisposeResourcesReject,
         AsyncIteratorMap,
         AsyncIteratorMapWithValue,
         AsyncIteratorFilter,
@@ -360,6 +365,7 @@ public class JSContext {
         AsyncGeneratorAwaitReturnFulfilled,
         AsyncGeneratorAwaitReturnRejected,
         Crypto,
+        Empty,
         IteratorConcat,
         IteratorMap,
         IteratorFilter,
@@ -502,6 +508,8 @@ public class JSContext {
     private final JSObjectFactory weakRefFactory;
     private final JSObjectFactory weakMapFactory;
     private final JSObjectFactory weakSetFactory;
+    private final JSObjectFactory disposableStackFactory;
+    private final JSObjectFactory asyncDisposableStackFactory;
     private final JSObjectFactory proxyFactory;
     private final JSObjectFactory uncheckedProxyHandlerFactory;
     private final JSObjectFactory promiseFactory;
@@ -697,6 +705,8 @@ public class JSContext {
         this.setFactory = builder.create(JSSet.INSTANCE);
         this.setIteratorFactory = builder.create(JSSetIterator.INSTANCE);
         this.weakRefFactory = builder.create(JSWeakRef.INSTANCE);
+        this.disposableStackFactory = builder.create(JSDisposableStack.INSTANCE);
+        this.asyncDisposableStackFactory = builder.create(JSAsyncDisposableStack.INSTANCE);
         this.weakMapFactory = builder.create(JSWeakMap.INSTANCE);
         this.weakSetFactory = builder.create(JSWeakSet.INSTANCE);
         this.proxyFactory = builder.create(JSProxy.INSTANCE);
@@ -1121,6 +1131,14 @@ public class JSContext {
 
     public final JSObjectFactory getWeakRefFactory() {
         return weakRefFactory;
+    }
+
+    public final JSObjectFactory getDisposableStackFactory() {
+        return disposableStackFactory;
+    }
+
+    public final JSObjectFactory getAsyncDisposableStackFactory() {
+        return asyncDisposableStackFactory;
     }
 
     public final JSObjectFactory getWeakMapFactory() {
@@ -1605,6 +1623,10 @@ public class JSContext {
 
     public boolean isOptionTemporal() {
         return languageOptions.temporal();
+    }
+
+    public boolean isOptionExplicitResourceManagement() {
+        return languageOptions.explicitResourceManagement();
     }
 
     public boolean isOptionV8CompatibilityMode() {

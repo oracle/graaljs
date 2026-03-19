@@ -545,10 +545,6 @@
     "filePath" : "mjsunit/es6/generator-destructuring.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/iterator-prototype.js",
-    "status" : "FAIL",
-    "comment" : "Expects Symbol.dispose on iterator prototype"
-  }, {
     "filePath" : "mjsunit/es6/math-log2-log10.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -698,38 +694,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
   }, {
-    "filePath" : "mjsunit/harmony/await-using-assignment-in-for-loop.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/await-using-get-symbol.dispose-after-symbol.asyncDispose.is-null.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/await-using-null.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/await-using-throws-suppressed-error.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/await-using-tick-count.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/await-using-valid-assignments-in-for-loop.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/await-using-with-sync-async-null-undefined-tick-count.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/await-using-with-sync-null-undefined-tick-count.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
     "filePath" : "mjsunit/harmony/bigint/regressions.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -737,18 +701,6 @@
     "filePath" : "mjsunit/harmony/bigint/tostring-toolong.js",
     "status" : "SKIP",
     "comment" : "Tests for V8's limits on BigInts."
-  }, {
-    "filePath" : "mjsunit/harmony/disposable-stack-use-throws-if-disposed.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/explicit-resource-management-call-sync-from-async-receiver.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/for-using-of-await-using-of.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/harmony/function-tostring.js",
     "status" : "FAIL",
@@ -831,45 +783,13 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
-    "filePath" : "mjsunit/harmony/regress/regress-368503280.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
     "filePath" : "mjsunit/harmony/regress/regress-369010108.js",
     "status" : "SKIP",
     "comment" : "Triggers stack overflow"
   }, {
-    "filePath" : "mjsunit/harmony/regress/regress-369652654.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/regress/regress-380677637.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/regress/regress-385406640.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/regress/regress-409478039.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
     "filePath" : "mjsunit/harmony/regress/regress-418103036.js",
     "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/regress/regress-436181695.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/regress/regress-437612640.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
-  }, {
-    "filePath" : "mjsunit/harmony/regress/regress-440585463.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
+    "comment" : "Our mockup of d8.serializer.serialize does not throw the expected exception"
   }, {
     "filePath" : "mjsunit/harmony/regress/regress-454630441.js",
     "ecmaVersion" : {
@@ -910,10 +830,6 @@
     "filePath" : "mjsunit/harmony/sharedarraybuffer-stress.js",
     "runInIsolation" : true,
     "comment" : "GC stress test"
-  }, {
-    "filePath" : "mjsunit/harmony/suppressed-error.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/huge-typedarrays.js",
     "status" : "FAIL",
@@ -2680,10 +2596,6 @@
     "filePath" : "mjsunit/turboshaft/extras-cped.js",
     "status" : "FAIL",
     "comment" : "Test of V8-specific functionality (d8.getExtrasBindingObject)"
-  }, {
-    "filePath" : "mjsunit/turboshaft/regress-452671631.js",
-    "status" : "FAIL",
-    "comment" : "Test of Explicit Resource Management proposal"
   }, {
     "filePath" : "mjsunit/turboshaft/strict-equals-receiver-or-null-or-undefined.js",
     "status" : "FAIL",

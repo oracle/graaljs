@@ -99,6 +99,7 @@ import com.oracle.truffle.js.builtins.CryptoBuiltins;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltins;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
+import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.IteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.JavaBuiltins;
@@ -133,12 +134,14 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncDisposableStack;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDisposableStack;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -374,6 +377,10 @@ public class JSRealm {
     private final JSDynamicObject proxyPrototype;
     private final JSFunctionObject finalizationRegistryConstructor;
     private final JSDynamicObject finalizationRegistryPrototype;
+    private final JSFunctionObject disposableStackConstructor;
+    private final JSDynamicObject disposableStackPrototype;
+    private final JSFunctionObject asyncDisposableStackConstructor;
+    private final JSDynamicObject asyncDisposableStackPrototype;
 
     private final JSFunctionObject iteratorConstructor;
     private final JSDynamicObject iteratorPrototype;
@@ -916,6 +923,21 @@ public class JSRealm {
             this.weakRefPrototype = null;
             this.finalizationRegistryConstructor = null;
             this.finalizationRegistryPrototype = null;
+        }
+
+        if (context.isOptionExplicitResourceManagement()) {
+            ctor = JSDisposableStack.createConstructor(this);
+            this.disposableStackConstructor = ctor.getFunctionObject();
+            this.disposableStackPrototype = ctor.getPrototype();
+
+            ctor = JSAsyncDisposableStack.createConstructor(this);
+            this.asyncDisposableStackConstructor = ctor.getFunctionObject();
+            this.asyncDisposableStackPrototype = ctor.getPrototype();
+        } else {
+            this.disposableStackConstructor = null;
+            this.disposableStackPrototype = null;
+            this.asyncDisposableStackConstructor = null;
+            this.asyncDisposableStackPrototype = null;
         }
 
         this.ordinaryHasInstanceFunction = JSFunction.createOrdinaryHasInstanceFunction(this);
@@ -1497,6 +1519,22 @@ public class JSRealm {
         return finalizationRegistryPrototype;
     }
 
+    public final JSFunctionObject getDisposableStackConstructor() {
+        return disposableStackConstructor;
+    }
+
+    public final JSDynamicObject getDisposableStackPrototype() {
+        return disposableStackPrototype;
+    }
+
+    public final JSFunctionObject getAsyncDisposableStackConstructor() {
+        return asyncDisposableStackConstructor;
+    }
+
+    public final JSDynamicObject getAsyncDisposableStackPrototype() {
+        return asyncDisposableStackPrototype;
+    }
+
     public final JSFunctionObject getWeakMapConstructor() {
         return weakMapConstructor;
     }
@@ -1978,6 +2016,11 @@ public class JSRealm {
                         putGlobalProperty(Strings.fromJavaString(type.name()), getErrorConstructor(type));
                     }
                     break;
+                case SuppressedError:
+                    if (getContextOptions().isExplicitResourceManagement()) {
+                        putGlobalProperty(Strings.fromJavaString(type.name()), getErrorConstructor(type));
+                    }
+                    break;
                 default:
                     putGlobalProperty(Strings.fromJavaString(type.name()), getErrorConstructor(type));
                     break;
@@ -2063,6 +2106,10 @@ public class JSRealm {
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2021) {
             putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
             putGlobalProperty(JSFinalizationRegistry.CLASS_NAME, getFinalizationRegistryConstructor());
+        }
+        if (getContextOptions().isExplicitResourceManagement()) {
+            putGlobalProperty(JSDisposableStack.CLASS_NAME, getDisposableStackConstructor());
+            putGlobalProperty(JSAsyncDisposableStack.CLASS_NAME, getAsyncDisposableStackConstructor());
         }
         if (getContextOptions().isGraalBuiltin()) {
             putGraalObject();
@@ -2383,7 +2430,7 @@ public class JSRealm {
         putSymbolProperty(symbolFunction, Strings.TO_STRING_TAG, Symbol.SYMBOL_TO_STRING_TAG);
         putSymbolProperty(symbolFunction, Strings.TO_PRIMITIVE, Symbol.SYMBOL_TO_PRIMITIVE);
         putSymbolProperty(symbolFunction, Strings.UNSCOPABLES, Symbol.SYMBOL_UNSCOPABLES);
-        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2026) {
+        if (getContextOptions().isExplicitResourceManagement()) {
             putSymbolProperty(symbolFunction, Strings.DISPOSE, Symbol.SYMBOL_DISPOSE);
             putSymbolProperty(symbolFunction, Strings.ASYNC_DISPOSE, Symbol.SYMBOL_ASYNC_DISPOSE);
         }
@@ -2459,6 +2506,9 @@ public class JSRealm {
     private JSDynamicObject createIteratorPrototype() {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
+        if (getContextOptions().isExplicitResourceManagement()) {
+            JSObjectUtil.putFunctionFromContainer(this, prototype, IteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_DISPOSE);
+        }
         return prototype;
     }
 

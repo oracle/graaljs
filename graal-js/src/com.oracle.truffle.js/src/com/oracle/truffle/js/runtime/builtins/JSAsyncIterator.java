@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,9 @@ public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFa
 
         JSObjectUtil.putConstructorProperty(iteratorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, AsyncIteratorPrototypeBuiltins.BUILTINS);
+        if (realm.getContext().isOptionExplicitResourceManagement()) {
+            JSObjectUtil.putFunctionFromContainer(realm, iteratorPrototype, AsyncIteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_ASYNC_DISPOSE);
+        }
         JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_ASYNC_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_TO_STRING_TAG, TO_STRING_NAME, JSAttributes.getDefaultNotEnumerable());
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.parser;
 
 import java.math.BigInteger;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -187,6 +188,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DisposeCapability;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -224,6 +226,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     protected final int prologLength;
     protected final ScriptOrModule activeScriptOrModule;
     private final boolean isParentStrict;
+    private final ArrayDeque<UsingScopeInfo> usingScopes = new ArrayDeque<>();
+
+    private static final class UsingScopeInfo {
+        final VarRef capabilityVar;
+        final VarRef errorVar;
+        final boolean async;
+
+        UsingScopeInfo(VarRef capabilityVar, VarRef errorVar, boolean async) {
+            this.capabilityVar = capabilityVar;
+            this.errorVar = errorVar;
+            this.async = async;
+        }
+    }
 
     protected GraalJSTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, List<String> argumentNames, int prologLength, Environment environment,
                     boolean isParentStrict, ScriptOrModule scriptOrModule) {
@@ -1305,6 +1320,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode result;
         try (EnvironmentCloseable blockEnv = enterBlockEnvironment(block)) {
             List<Statement> blockStatements = block.getStatements();
+            UsingScopeInfo usingScopeInfo = null;
+            if (block.hasDirectUsingDeclarations()) {
+                usingScopeInfo = new UsingScopeInfo(environment.createTempVar(), environment.createTempVar(), block.hasDirectAwaitUsingDeclarations());
+                usingScopes.push(usingScopeInfo);
+            }
             List<JavaScriptNode> scopeInit = new ArrayList<>(block.getSymbolCount());
             if (block.getScope().hasBlockScopedOrRedeclaredSymbols() && !(environment instanceof GlobalEnvironment)) {
                 createTemporalDeadZoneInit(block.getScope(), scopeInit);
@@ -1333,59 +1353,76 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             JavaScriptNode blockNode;
-            if (block.isFunctionBody()) {
-                // Note: Parameters should already be initialized when entering the function body.
-                // Therefore, we need to create and tag the body block without the prolog.
-                blockNode = transformStatements(blockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock());
+            boolean usingScopeWrapped = false;
+            try {
+                if (block.isFunctionBody()) {
+                    // Note: Parameters should already be initialized when entering the function
+                    // body. Therefore, we need to create and tag the body block without the prolog.
+                    blockNode = transformStatements(blockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock());
 
-                if (block.isModuleBody()) {
-                    blockNode = splitModuleBodyAtYield(blockNode, scopeInit);
-                }
-
-                FunctionNode function = lc.getCurrentFunction();
-                blockNode = handleFunctionReturn(function, blockNode);
-                if (currentFunction.isDerivedConstructor()) {
-                    blockNode = finishDerivedConstructorBody(function, blockNode);
-                }
-                tagBody(blockNode, block);
-
-                if (!scopeInit.isEmpty()) {
-                    scopeInit.add(blockNode);
-                    blockNode = factory.createExprBlock(scopeInit.toArray(EMPTY_NODE_ARRAY));
-                }
-            } else {
-                // Move hoistable declaration to the front of the block
-                List<Statement> newBlockStatements = null;
-                for (Statement statement : blockStatements) {
-                    if (statement instanceof VarNode) {
-                        VarNode varNode = (VarNode) statement;
-                        if (varNode.isHoistableDeclaration()) {
-                            if (newBlockStatements == null) {
-                                newBlockStatements = new ArrayList<>();
-                            }
-                            newBlockStatements.add(statement);
-                        }
+                    boolean moduleAsyncUsingScope = block.isModuleBody() && usingScopeInfo != null && usingScopeInfo.async;
+                    if (block.isModuleBody()) {
+                        blockNode = splitModuleBodyAtYield(blockNode, scopeInit);
                     }
-                }
-                if (newBlockStatements == null) {
-                    // no hoistable declarations
-                    newBlockStatements = blockStatements;
+
+                    FunctionNode function = lc.getCurrentFunction();
+                    blockNode = handleFunctionReturn(function, blockNode);
+                    if (currentFunction.isDerivedConstructor()) {
+                        blockNode = finishDerivedConstructorBody(function, blockNode);
+                    }
+                    tagBody(blockNode, block);
+
+                    if (moduleAsyncUsingScope) {
+                        blockNode = wrapUsingScope(blockNode, true, usingScopeInfo.capabilityVar, usingScopeInfo.errorVar);
+                        usingScopeWrapped = true;
+                    }
+
+                    if (!scopeInit.isEmpty()) {
+                        scopeInit.add(blockNode);
+                        blockNode = factory.createExprBlock(scopeInit.toArray(EMPTY_NODE_ARRAY));
+                    }
                 } else {
-                    // append other statements
+                    // Move hoistable declaration to the front of the block
+                    List<Statement> newBlockStatements = null;
                     for (Statement statement : blockStatements) {
                         if (statement instanceof VarNode) {
                             VarNode varNode = (VarNode) statement;
                             if (varNode.isHoistableDeclaration()) {
-                                if (annexBBlockToFunctionTransfer(varNode)) {
-                                    newBlockStatements.add(varNode.setFlag(VarNode.IS_ANNEXB_BLOCK_TO_FUNCTION_TRANSFER));
-                                } // else among declarations already
-                                continue;
+                                if (newBlockStatements == null) {
+                                    newBlockStatements = new ArrayList<>();
+                                }
+                                newBlockStatements.add(statement);
                             }
                         }
-                        newBlockStatements.add(statement);
                     }
+                    if (newBlockStatements == null) {
+                        // no hoistable declarations
+                        newBlockStatements = blockStatements;
+                    } else {
+                        // append other statements
+                        for (Statement statement : blockStatements) {
+                            if (statement instanceof VarNode) {
+                                VarNode varNode = (VarNode) statement;
+                                if (varNode.isHoistableDeclaration()) {
+                                    if (annexBBlockToFunctionTransfer(varNode)) {
+                                        newBlockStatements.add(varNode.setFlag(VarNode.IS_ANNEXB_BLOCK_TO_FUNCTION_TRANSFER));
+                                    } // else among declarations already
+                                    continue;
+                                }
+                            }
+                            newBlockStatements.add(statement);
+                        }
+                    }
+                    blockNode = transformStatements(newBlockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock(), scopeInit);
                 }
-                blockNode = transformStatements(newBlockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock(), scopeInit);
+            } finally {
+                if (usingScopeInfo != null) {
+                    usingScopes.pop();
+                }
+            }
+
+            if (usingScopeInfo != null && !usingScopeWrapped) {
+                blockNode = wrapUsingScope(blockNode, usingScopeInfo.async, usingScopeInfo.capabilityVar, usingScopeInfo.errorVar);
             }
 
             result = blockEnv.wrapBlockScope(blockNode);
@@ -1966,6 +2003,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assignment = findScopeVar(varName, false).createWriteNode(rhs);
         }
 
+        if (varNode.isUsing()) {
+            UsingScopeInfo usingScopeInfo = usingScopes.peek();
+            assert usingScopeInfo != null : varNode;
+            JavaScriptNode registerNode = factory.createRegisterDisposableResource(context, usingScopeInfo.capabilityVar.createReadNode(), findScopeVar(varName, false).createReadNode(),
+                            varNode.isAwaitUsing());
+            assignment = createBlock(assignment, registerNode);
+        }
+
         // class declarations are not statements nor expressions
         if (varNode.isClassDeclaration()) {
             return discardResult(assignment);
@@ -2067,6 +2112,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createExprBlock(tempVar.createWriteNode(returnVar.createReadNode()), statement, returnVar.createWriteNode(tempVar.createReadNode()));
         }
         return statement;
+    }
+
+    private JavaScriptNode wrapUsingScope(JavaScriptNode blockBody, boolean async, VarRef capabilityVar, VarRef errorVar) {
+        JavaScriptNode catchBlock = factory.createThrow(context, errorVar.createReadNode());
+        JavaScriptNode tryCatch = factory.createTryCatch(context, blockBody, catchBlock, errorVar.createWriteNode(null), null, null, null);
+        JavaScriptNode finallyBlock;
+        if (async) {
+            currentFunction().addAwait();
+            JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
+            JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
+            JSFrameSlot stateSlot = addGeneratorStateSlot(currentFunction().getFunctionFrameDescriptor(), FrameSlotKind.Int);
+            finallyBlock = factory.createAsyncDisposeResources(context, stateSlot, capabilityVar.createReadNode(), errorVar.createReadNode(), asyncContextNode, asyncResultNode);
+        } else {
+            finallyBlock = factory.createDisposeResources(capabilityVar.createReadNode(), errorVar.createReadNode());
+        }
+        return createBlock(
+                        capabilityVar.createWriteNode(factory.createDisposeCapability()),
+                        errorVar.createWriteNode(factory.createConstant(DisposeCapability.NO_ERROR)),
+                        factory.createTryFinally(tryCatch, wrapSaveAndRestoreCompletionValue(wrapClearCompletionValue(finallyBlock))));
     }
 
     @Override
@@ -2183,9 +2247,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode nextBindingInit = tagStatement(desugarForHeadAssignment(forNode, nextValue), forNode);
             JavaScriptNode clearTempSlot = nextValueVarInner.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
             JavaScriptNode body = transform(forNode.getBody());
-            wrappedBody = blockEnv.wrapBlockScope(createBlock(
-                            factory.createTryFinally(nextBindingInit, clearTempSlot),
-                            body));
+            JavaScriptNode iterationBody;
+            if (forNode.isUsingDeclaration() || forNode.isAwaitUsingDeclaration()) {
+                boolean async = forNode.isAwaitUsingDeclaration();
+                VarRef capabilityVar = environment.createTempVar();
+                VarRef errorVar = environment.createTempVar();
+                JavaScriptNode registerNode = factory.createRegisterDisposableResource(context, capabilityVar.createReadNode(), nextValueVarInner.createReadNode(), async);
+                iterationBody = wrapUsingScope(createBlock(nextBindingInit, registerNode, body), async, capabilityVar, errorVar);
+            } else {
+                iterationBody = createBlock(nextBindingInit, body);
+            }
+            wrappedBody = blockEnv.wrapBlockScope(factory.createTryFinally(iterationBody, clearTempSlot));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
 

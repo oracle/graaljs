@@ -91,6 +91,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeG
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAggregateErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncDisposableStackNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBooleanNodeGen;
@@ -98,6 +99,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollat
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataViewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisposableStackNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisplayNamesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDurationFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
@@ -120,6 +122,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmen
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructShadowRealmNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSuppressedErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalDurationNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalInstantNodeGen;
@@ -211,6 +214,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseHook;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -230,6 +234,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferViewBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncDisposableStack;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
@@ -237,6 +242,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
+import com.oracle.truffle.js.runtime.builtins.JSDisposableStack;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
@@ -362,6 +368,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         EvalError(1),
         URIError(1),
         AggregateError(2),
+        SuppressedError(3),
 
         // WebAssembly
         CompileError(1),
@@ -386,6 +393,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Set(0),
         WeakRef(1),
         FinalizationRegistry(1),
+        DisposableStack(0),
+        AsyncDisposableStack(0),
         WeakMap(0),
         WeakSet(0),
         Iterator(0),
@@ -458,6 +467,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 case AsyncFunction, SharedArrayBuffer -> JSConfig.ECMAScript2017;
                 case AsyncGeneratorFunction -> JSConfig.ECMAScript2018;
                 case WeakRef, FinalizationRegistry -> JSConfig.ECMAScript2021;
+                case SuppressedError, DisposableStack, AsyncDisposableStack -> JSConfig.StagingECMAScriptVersion;
                 case DurationFormat -> JSConfig.ECMAScript2025;
                 case PlainTime, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, ZonedDateTime -> JSConfig.StagingECMAScriptVersion;
                 case Iterator, AsyncIterator -> JSConfig.StagingECMAScriptVersion;
@@ -497,6 +507,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case FinalizationRegistry:
                 if (construct) {
                     return ConstructFinalizationRegistryNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(1).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case DisposableStack:
+                if (construct) {
+                    return ConstructDisposableStackNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case AsyncDisposableStack:
+                if (construct) {
+                    return ConstructAsyncDisposableStackNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -566,6 +588,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return ConstructErrorNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
             case AggregateError:
                 return ConstructAggregateErrorNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(3).createArgumentNodes(context));
+            case SuppressedError:
+                return ConstructSuppressedErrorNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(3).createArgumentNodes(context));
 
             case TypedArray:
             case AbstractModuleSource:
@@ -2532,6 +2556,92 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 installErrorCauseNode = insert(new InstallErrorCauseNode(getContext()));
             }
             installErrorCauseNode.executeVoid(errorObj, options);
+        }
+    }
+
+    public abstract static class ConstructSuppressedErrorNode extends ConstructWithNewTargetNode {
+        @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
+        @Child private DynamicObject.PutNode setMessage;
+        @Child private DynamicObject.PutNode setError;
+        @Child private DynamicObject.PutNode setSuppressed;
+
+        public ConstructSuppressedErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+            this.stackTraceLimitNode = ErrorStackTraceLimitNode.create();
+            this.setMessage = DynamicObject.PutNode.create();
+            this.setError = DynamicObject.PutNode.create();
+            this.setSuppressed = DynamicObject.PutNode.create();
+        }
+
+        @Specialization
+        protected JSDynamicObject constructSuppressedError(JSDynamicObject newTarget, Object error, Object suppressed, Object message,
+                        @Cached JSToStringNode toStringNode) {
+            JSContext context = getContext();
+            JSRealm realm = getRealm();
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.SuppressedError, proto);
+
+            String messageAsJavaString = null;
+            if (message != Undefined.instance) {
+                TruffleString messageString = toStringNode.executeString(message);
+                Properties.putWithFlags(setMessage, errorObj, JSError.MESSAGE, messageString, JSError.MESSAGE_ATTRIBUTES);
+                messageAsJavaString = Strings.toJavaString(messageString);
+            }
+            Properties.putWithFlags(setError, errorObj, Strings.ERROR, error, JSError.ERRORS_ATTRIBUTES);
+            Properties.putWithFlags(setSuppressed, errorObj, Strings.SUPPRESSED, suppressed, JSError.ERRORS_ATTRIBUTES);
+
+            int stackTraceLimit = stackTraceLimitNode.executeInt();
+            JSFunctionObject errorFunction = realm.getErrorConstructor(JSErrorType.SuppressedError);
+            JSDynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
+            GraalJSException exception = JSException.createCapture(JSErrorType.SuppressedError, messageAsJavaString, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
+            JSError.setException(realm, errorObj, exception, false);
+            return errorObj;
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getErrorPrototype(JSErrorType.SuppressedError);
+        }
+
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
+    }
+
+    public abstract static class ConstructDisposableStackNode extends ConstructWithNewTargetNode {
+        public ConstructDisposableStackNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+        }
+
+        @Specialization
+        protected JSDynamicObject constructDisposableStack(JSDynamicObject newTarget) {
+            JSRealm realm = getRealm();
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            return JSDisposableStack.create(getContext(), realm, proto);
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getDisposableStackPrototype();
+        }
+    }
+
+    public abstract static class ConstructAsyncDisposableStackNode extends ConstructWithNewTargetNode {
+        public ConstructAsyncDisposableStackNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+        }
+
+        @Specialization
+        protected JSDynamicObject constructAsyncDisposableStack(JSDynamicObject newTarget) {
+            JSRealm realm = getRealm();
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            return JSAsyncDisposableStack.create(getContext(), realm, proto);
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getAsyncDisposableStackPrototype();
         }
     }
 
