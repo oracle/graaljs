@@ -1364,12 +1364,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                     boolean moduleAsyncUsingScope = block.isModuleBody() && usingScopeInfo != null && usingScopeInfo.async;
                     if (block.isModuleBody()) {
-                        if (moduleAsyncUsingScope) {
-                            // Top-level await using must resume in the module evaluation phase.
-                            scopeInit.add(factory.createModuleYield());
-                        } else {
-                            blockNode = splitModuleBodyAtYield(blockNode, scopeInit);
-                        }
+                        blockNode = splitModuleBodyAtYield(blockNode, scopeInit);
                     }
 
                     FunctionNode function = lc.getCurrentFunction();
