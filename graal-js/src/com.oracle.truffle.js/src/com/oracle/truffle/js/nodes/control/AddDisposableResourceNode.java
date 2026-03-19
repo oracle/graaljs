@@ -41,10 +41,14 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -68,7 +72,7 @@ import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DisposeCapability;
 
-public final class AddDisposableResourceNode extends JavaScriptBaseNode {
+public abstract class AddDisposableResourceNode extends JavaScriptBaseNode {
     private static final HiddenKey SYNC_DISPOSE_METHOD_ID = new HiddenKey("SyncDisposeMethod");
 
     @Child private IsObjectNode isObjectNode;
@@ -79,7 +83,7 @@ public final class AddDisposableResourceNode extends JavaScriptBaseNode {
     private final JSContext context;
     private final boolean asyncDispose;
 
-    private AddDisposableResourceNode(JSContext context, boolean asyncDispose) {
+    protected AddDisposableResourceNode(JSContext context, boolean asyncDispose) {
         this.context = context;
         this.asyncDispose = asyncDispose;
         this.isObjectNode = IsObjectNode.create();
@@ -90,14 +94,22 @@ public final class AddDisposableResourceNode extends JavaScriptBaseNode {
     }
 
     public static AddDisposableResourceNode create(JSContext context, boolean asyncDispose) {
-        return new AddDisposableResourceNode(context, asyncDispose);
+        return AddDisposableResourceNodeGen.create(context, asyncDispose);
+    }
+
+    public final void execute(DisposeCapability capability, Object value) {
+        executeImpl(capability, value);
     }
 
     // AddDisposableResource without method
-    public void execute(DisposeCapability capability, Object value) {
+    protected abstract void executeImpl(DisposeCapability capability, Object value);
+
+    @Specialization
+    protected void doResource(DisposeCapability capability, Object value,
+                    @Cached InlinedBranchProfile growProfile) {
         if (JSRuntime.isNullish(value)) {
             if (asyncDispose) {
-                capability.pushResource(DisposeCapability.forResource(Undefined.instance, true, Undefined.instance));
+                capability.pushResource(DisposeCapability.forResource(Undefined.instance, true, Undefined.instance), this, growProfile);
             }
             return;
         }
@@ -107,12 +119,12 @@ public final class AddDisposableResourceNode extends JavaScriptBaseNode {
             errorProfile.enter();
             throw Errors.createTypeError("Object is not disposable", this);
         }
-        capability.pushResource(DisposeCapability.forResource(value, asyncDispose, disposeMethod));
+        capability.pushResource(DisposeCapability.forResource(value, asyncDispose, disposeMethod), this, growProfile);
     }
 
     // AddDisposableResource with method
-    public static void addCallback(DisposeCapability capability, Object disposeMethod, Object argument, boolean asyncDispose) {
-        capability.pushResource(DisposeCapability.forCallback(disposeMethod, argument, asyncDispose));
+    public static void addCallback(DisposeCapability capability, Object disposeMethod, Object argument, boolean asyncDispose, Node node, InlinedBranchProfile growProfile) {
+        capability.pushResource(DisposeCapability.forCallback(disposeMethod, argument, asyncDispose), node, growProfile);
     }
 
     private Object getDisposeMethod(Object value) {

@@ -127,7 +127,7 @@ public final class AsyncDisposeResourcesNode extends AbstractDisposeResourcesNod
         boolean needsAwait = needsAwaitParam;
         while ((resource = capability.popResource()) != null) {
             if (!resource.isAsyncDispose() && needsAwait && !hasAwaited) {
-                capability.pushResource(resource);
+                capability.pushResourceUnchecked(resource);
                 return awaitResult(capability, errorObject, promiseCapability, false, hasAwaited, Undefined.instance);
             }
 

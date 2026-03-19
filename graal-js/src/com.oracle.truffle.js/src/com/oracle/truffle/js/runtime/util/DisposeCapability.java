@@ -40,28 +40,32 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
-import java.util.ArrayDeque;
-
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DisposeCapability {
     public static final Object NO_ERROR = new Object();
-    private final ArrayDeque<DisposableResource> disposableResourceStack;
+    private final SimpleArrayList<DisposableResource> disposableResourceStack;
 
     public DisposeCapability() {
-        this.disposableResourceStack = new ArrayDeque<>();
+        this.disposableResourceStack = new SimpleArrayList<>();
     }
 
-    public void pushResource(DisposableResource resource) {
-        disposableResourceStack.push(resource);
+    public void pushResource(DisposableResource resource, Node node, InlinedBranchProfile growProfile) {
+        disposableResourceStack.add(resource, node, growProfile);
+    }
+
+    public void pushResourceUnchecked(DisposableResource resource) {
+        disposableResourceStack.addUnchecked(resource);
     }
 
     public DisposableResource popResource() {
-        return (isEmpty() ? null : disposableResourceStack.pop());
+        return isEmpty() ? null : (DisposableResource) disposableResourceStack.pop();
     }
 
     public boolean isEmpty() {
-        return disposableResourceStack.isEmpty();
+        return disposableResourceStack.size() == 0;
     }
 
     public static DisposableResource forResource(Object resourceValue, boolean asyncDispose, Object disposeMethod) {

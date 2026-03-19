@@ -161,14 +161,15 @@ public final class DisposableStackPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected Object adopt(Object thisObj, Object value, Object onDispose,
                         @Cached IsCallableNode isCallableNode,
-                        @Cached InlinedBranchProfile errorProfile) {
+                        @Cached InlinedBranchProfile errorProfile,
+                        @Cached InlinedBranchProfile growProfile) {
             JSDisposableStackObject stack = requireDisposableStack(thisObj, errorProfile);
             ensureNotDisposed(stack, errorProfile);
             if (!isCallableNode.executeBoolean(onDispose)) {
                 errorProfile.enter(this);
                 throw Errors.createTypeErrorNotAFunction(onDispose, this);
             }
-            AddDisposableResourceNode.addCallback(stack.getDisposeCapability(), onDispose, value, false);
+            AddDisposableResourceNode.addCallback(stack.getDisposeCapability(), onDispose, value, false, this, growProfile);
             return value;
         }
     }
@@ -181,14 +182,15 @@ public final class DisposableStackPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected Object defer(Object thisObj, Object onDispose,
                         @Cached IsCallableNode isCallableNode,
-                        @Cached InlinedBranchProfile errorProfile) {
+                        @Cached InlinedBranchProfile errorProfile,
+                        @Cached InlinedBranchProfile growProfile) {
             JSDisposableStackObject stack = requireDisposableStack(thisObj, errorProfile);
             ensureNotDisposed(stack, errorProfile);
             if (!isCallableNode.executeBoolean(onDispose)) {
                 errorProfile.enter(this);
                 throw Errors.createTypeErrorNotAFunction(onDispose, this);
             }
-            AddDisposableResourceNode.addCallback(stack.getDisposeCapability(), onDispose, null, false);
+            AddDisposableResourceNode.addCallback(stack.getDisposeCapability(), onDispose, null, false, this, growProfile);
             return Undefined.instance;
         }
     }
