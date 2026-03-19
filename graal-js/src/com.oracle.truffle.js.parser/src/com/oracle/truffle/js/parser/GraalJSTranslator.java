@@ -1320,11 +1320,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode result;
         try (EnvironmentCloseable blockEnv = enterBlockEnvironment(block)) {
             List<Statement> blockStatements = block.getStatements();
-            boolean hasDirectUsingDeclarations = hasDirectUsingDeclarations(blockStatements);
-            boolean hasDirectAwaitUsingDeclarations = hasDirectAwaitUsingDeclarations(blockStatements);
             UsingScopeInfo usingScopeInfo = null;
-            if (hasDirectUsingDeclarations) {
-                usingScopeInfo = new UsingScopeInfo(environment.createTempVar(), environment.createTempVar(), hasDirectAwaitUsingDeclarations);
+            if (block.hasDirectUsingDeclarations()) {
+                usingScopeInfo = new UsingScopeInfo(environment.createTempVar(), environment.createTempVar(), block.hasDirectAwaitUsingDeclarations());
                 usingScopes.push(usingScopeInfo);
             }
             List<JavaScriptNode> scopeInit = new ArrayList<>(block.getSymbolCount());
@@ -2114,24 +2112,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createExprBlock(tempVar.createWriteNode(returnVar.createReadNode()), statement, returnVar.createWriteNode(tempVar.createReadNode()));
         }
         return statement;
-    }
-
-    private static boolean hasDirectUsingDeclarations(List<Statement> statements) {
-        for (Statement statement : statements) {
-            if (statement instanceof VarNode varNode && varNode.isUsing()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean hasDirectAwaitUsingDeclarations(List<Statement> statements) {
-        for (Statement statement : statements) {
-            if (statement instanceof VarNode varNode && varNode.isAwaitUsing()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private JavaScriptNode wrapUsingScope(JavaScriptNode blockBody, boolean async, VarRef capabilityVar, VarRef errorVar) {

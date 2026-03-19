@@ -2630,6 +2630,11 @@ public class Parser extends AbstractParser {
         if (forResult != null) {
             forResult.usingDeclaration = true;
         }
+        ParserContextBlockNode currentBlock = lc.getCurrentBlock();
+        currentBlock.setFlag(Block.HAS_DIRECT_USING_DECLARATIONS);
+        if (awaitUsing) {
+            currentBlock.setFlag(Block.HAS_DIRECT_AWAIT_USING_DECLARATIONS);
+        }
         Scope scope = lc.getCurrentScope();
         while (true) {
             final int varLine = line;
@@ -3272,7 +3277,10 @@ public class Parser extends AbstractParser {
 
         if (outer != null) {
             outer.getScope().close();
-            appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), 0, outer.getScope(), outer.getStatements())));
+            // Preserve direct using flags on the synthetic outer block that captures
+            // declarations from the for-loop initializer.
+            int blockFlags = outer.getFlags() & (Block.HAS_DIRECT_USING_DECLARATIONS | Block.HAS_DIRECT_AWAIT_USING_DECLARATIONS);
+            appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), blockFlags, outer.getScope(), outer.getStatements())));
         }
     }
 
