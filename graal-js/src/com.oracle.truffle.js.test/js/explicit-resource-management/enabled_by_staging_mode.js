@@ -6,7 +6,7 @@
  */
 
 /*
- * @option v8-compat
+ * @option ecmascript-version=staging
  */
 
 load('./enabled_common.js');

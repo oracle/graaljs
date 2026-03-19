@@ -851,7 +851,8 @@ public final class JSContextOptions {
                         (this.asyncIteratorHelpers || readBooleanOption(ITERATOR_HELPERS, JSConfig.ECMAScript2025));
         this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
         this.asyncContext = readBooleanOption(ASYNC_CONTEXT);
-        this.explicitResourceManagement = EXPLICIT_RESOURCE_MANAGEMENT.hasBeenSet(optionValues) ? readBooleanOption(EXPLICIT_RESOURCE_MANAGEMENT) : v8CompatibilityMode;
+        this.explicitResourceManagement = EXPLICIT_RESOURCE_MANAGEMENT.hasBeenSet(optionValues) ? readBooleanOption(EXPLICIT_RESOURCE_MANAGEMENT)
+                        : (v8CompatibilityMode || getEcmaScriptVersion() == JSConfig.StagingECMAScriptVersion);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = readBooleanOption(ERROR_CAUSE, JSConfig.ECMAScript2022);
         this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES, JSConfig.ECMAScript2025);

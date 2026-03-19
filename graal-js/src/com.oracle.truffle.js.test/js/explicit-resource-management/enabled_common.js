@@ -6,7 +6,15 @@
  */
 
 /*
- * @option v8-compat
+ * @option explicit-resource-management
  */
 
-load('./enabled_common.js');
+load('../assert.js');
+
+let disposed = 0;
+{
+    using x = { [Symbol.dispose]() { disposed++; } };
+}
+assertSame(1, disposed);
+assertSame('function', typeof DisposableStack);
+assertSame('symbol', typeof Symbol.dispose);
