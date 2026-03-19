@@ -42,11 +42,18 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DisposeCapability;
 import com.oracle.truffle.js.runtime.util.DisposeCapability.DisposableResource;
@@ -54,6 +61,8 @@ import com.oracle.truffle.js.runtime.util.DisposeCapability.DisposableResource;
 abstract class AbstractDisposeResourcesNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callNode;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+    @Child private DynamicObject.PutNode setErrorNode;
+    @Child private DynamicObject.PutNode setSuppressedNode;
 
     protected AbstractDisposeResourcesNode() {
         this.callNode = JSFunctionCallNode.createCall();
@@ -94,10 +103,36 @@ abstract class AbstractDisposeResourcesNode extends JavaScriptBaseNode {
         if (currentError == DisposeCapability.NO_ERROR) {
             return newError;
         }
-        return Errors.createSuppressedErrorObject(newError, currentError, this);
+        return createSuppressedErrorObject(newError, currentError);
     }
 
     protected final void throwError(Object errorObject) {
         throw JSRuntime.getException(errorObject, this);
+    }
+
+    protected final JSErrorObject createSuppressedErrorObject(Object error, Object suppressed) {
+        JSRealm realm = getRealm();
+        JSErrorObject errorObj = JSError.createErrorObject(getJSContext(), realm, JSErrorType.SuppressedError);
+        Properties.putWithFlags(getSetErrorNode(), errorObj, Strings.ERROR, error, JSError.ERRORS_ATTRIBUTES);
+        Properties.putWithFlags(getSetSuppressedNode(), errorObj, Strings.SUPPRESSED, suppressed, JSError.ERRORS_ATTRIBUTES);
+        JSException exception = JSException.createCapture(JSErrorType.SuppressedError, null, errorObj, realm);
+        JSError.setException(realm, errorObj, exception, false);
+        return errorObj;
+    }
+
+    private DynamicObject.PutNode getSetErrorNode() {
+        if (setErrorNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setErrorNode = insert(DynamicObject.PutNode.create());
+        }
+        return setErrorNode;
+    }
+
+    private DynamicObject.PutNode getSetSuppressedNode() {
+        if (setSuppressedNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setSuppressedNode = insert(DynamicObject.PutNode.create());
+        }
+        return setSuppressedNode;
     }
 }
