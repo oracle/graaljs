@@ -2249,10 +2249,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode body = transform(forNode.getBody());
             JavaScriptNode iterationBody;
             if (forNode.isUsingDeclaration() || forNode.isAwaitUsingDeclaration()) {
-                UsingScopeInfo usingScopeInfo = new UsingScopeInfo(environment.createTempVar(), environment.createTempVar(), forNode.isAwaitUsingDeclaration());
-                JavaScriptNode registerNode = factory.createRegisterDisposableResource(context, usingScopeInfo.capabilityVar.createReadNode(), nextValueVarInner.createReadNode(),
-                                usingScopeInfo.async);
-                iterationBody = wrapUsingScope(createBlock(nextBindingInit, registerNode, body), usingScopeInfo.async, usingScopeInfo.capabilityVar, usingScopeInfo.errorVar);
+                boolean async = forNode.isAwaitUsingDeclaration();
+                VarRef capabilityVar = environment.createTempVar();
+                VarRef errorVar = environment.createTempVar();
+                JavaScriptNode registerNode = factory.createRegisterDisposableResource(context, capabilityVar.createReadNode(), nextValueVarInner.createReadNode(), async);
+                iterationBody = wrapUsingScope(createBlock(nextBindingInit, registerNode, body), async, capabilityVar, errorVar);
             } else {
                 iterationBody = createBlock(nextBindingInit, body);
             }
