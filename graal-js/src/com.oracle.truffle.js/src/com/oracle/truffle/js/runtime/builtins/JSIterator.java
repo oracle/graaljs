@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,9 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
 
         JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
+        if (realm.getContext().isOptionExplicitResourceManagement()) {
+            JSObjectUtil.putFunctionFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS, Symbol.SYMBOL_DISPOSE);
+        }
         JSObjectUtil.putAccessorsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
         if (realm.getContext().getLanguageOptions().asyncIteratorHelpers()) {
             JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.ASYNC_BUILTINS);

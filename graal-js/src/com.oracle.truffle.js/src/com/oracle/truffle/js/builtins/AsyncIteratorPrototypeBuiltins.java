@@ -150,6 +150,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public Object getKey() {
             return this == symbolAsyncDispose ? Symbol.SYMBOL_ASYNC_DISPOSE : BuiltinEnum.super.getKey();
         }
+
+        @Override
+        public boolean isOptional() {
+            return this == symbolAsyncDispose;
+        }
     }
 
     @Override

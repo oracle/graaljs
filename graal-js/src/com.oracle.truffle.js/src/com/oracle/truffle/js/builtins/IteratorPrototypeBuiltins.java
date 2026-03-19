@@ -158,6 +158,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return EnumSet.of(set_constructor, set_symbolToStringTag).contains(this);
         }
 
+        @Override
+        public boolean isOptional() {
+            return this == symbolDispose;
+        }
+
         private final int length;
 
         IteratorPrototype(int length) {
