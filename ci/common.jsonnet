@@ -166,8 +166,8 @@ local common_json = import "../common.json";
         "Graal diagnostic output saved in '(?P<filename>[^']+)'",
         # Keep in sync with jdk.graal.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
         "Dumping debug output to '(?P<filename>[^']+)'",
-        # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
-        " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
+        # Keep in sync with com.oracle.svm.hosted.ProgressReporter#printErrorMessage
+        "Please inspect the generated error report at: '(?P<filename>[^']+)'",
         # Keep in sync with jdk.graal.compiler.test.SubprocessUtil#makeArgfile
         "@(?P<filename>.*SubprocessUtil-argfiles.*\\.argfile)",
         # Keep in sync with com.oracle.truffle.api.test.SubprocessTestUtils#makeArgfile
@@ -190,19 +190,6 @@ local common_json = import "../common.json";
     # As a note, Native Image needs this to build.
     windows_devkit:: {
       packages+: if self.os == "windows" then $.devkits["windows-" + self.jdk_name].packages else {},
-    },
-
-    eclipse: {
-      downloads+: {
-        ECLIPSE: {
-          name: "eclipse",
-          version: common_json.eclipse.version,
-          platformspecific: true,
-        }
-      },
-      environment+: {
-        ECLIPSE_EXE: "$ECLIPSE/eclipse",
-      },
     },
 
     jdt: {

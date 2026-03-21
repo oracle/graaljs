@@ -122,7 +122,7 @@ targets +
     timelimit: if 'timelimit' in super then super.timelimit else '45:00',
   },
 
-  gateStyleFullBuild:: common.deps.pylint + common.deps.black + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + {
+  gateStyleFullBuild:: common.deps.pylint + common.deps.black + common.deps.jdt + common.deps.spotbugs + {
     local is_jdk_latest = 'jdk_name' in self && self.jdk_name == 'jdk-latest',
     local strict = !is_jdk_latest,
     components+: ['style'],
