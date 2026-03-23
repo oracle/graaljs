@@ -496,7 +496,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 super(context);
 
                 this.promiseResolveNode = PromiseResolveNode.create(context);
-                this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+                this.performPromiseThenNode = PerformPromiseThenNode.create();
                 this.setArgs = PropertySetNode.createSetHidden(AsyncIteratorAwaitNode.ARGS_ID, context);
                 this.setLengthNode = JSSetLengthNode.create(context, THROW_ERROR);
                 this.writeOwnElementNode = WriteElementNode.create(context, THROW_ERROR, true);

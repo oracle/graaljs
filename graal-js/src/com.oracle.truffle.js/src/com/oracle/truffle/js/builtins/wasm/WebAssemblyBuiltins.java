@@ -248,7 +248,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             this.exportByteSourceNode = ExportByteSourceNode.create(context, "WebAssembly.instantiate(): Argument 0 must be a buffer source or a WebAssembly.Module object",
                             "WebAssembly.instantiate(): BufferSource argument is empty");
             this.isObjectNode = IsObjectNode.create();
-            this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+            this.performPromiseThenNode = PerformPromiseThenNode.create();
             this.instantiateModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 

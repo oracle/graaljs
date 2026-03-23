@@ -103,7 +103,7 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
         JSPromiseObject promise = promiseResolve(next.getCompletionValue());
         if (performPromiseThenNode == null || setGeneratorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.performPromiseThenNode = insert(PerformPromiseThenNode.create(context));
+            this.performPromiseThenNode = insert(PerformPromiseThenNode.create());
             this.setGeneratorNode = insert(PropertySetNode.createSetHidden(AsyncIteratorAwaitNode.THIS_ID, context));
         }
         JSFunctionObject onFulfilled = createAsyncGeneratorReturnProcessorFulfilledFunction(generator);

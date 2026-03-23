@@ -88,7 +88,7 @@ public final class AsyncDisposeResourcesNode extends AbstractDisposeResourcesNod
         this.context = context;
         this.promiseResolveNode = PromiseResolveNode.create(context);
         this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-        this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+        this.performPromiseThenNode = PerformPromiseThenNode.create();
         this.callNode = JSFunctionCallNode.createCall();
         this.setCapability = PropertySetNode.createSetHidden(CAPABILITY_ID, context);
         this.setError = PropertySetNode.createSetHidden(ERROR_ID, context);

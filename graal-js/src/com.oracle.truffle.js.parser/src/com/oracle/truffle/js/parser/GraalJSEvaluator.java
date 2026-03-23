@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,7 +121,6 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -280,7 +279,7 @@ public final class GraalJSEvaluator implements JSParser {
             this.context = context;
             this.parsedModule = parsedModule;
             this.source = source;
-            this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+            this.performPromiseThenNode = PerformPromiseThenNode.create();
         }
 
         @Override
@@ -826,8 +825,7 @@ public final class GraalJSEvaluator implements JSParser {
         PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
         JSFunctionObject onFulfilled = createCallAsyncModuleFulfilled(realm, module);
         JSFunctionObject onRejected = createCallAsyncModuleRejected(realm, module);
-        Object then = JSObject.get(capability.getPromise(), Strings.THEN);
-        JSFunction.call(JSArguments.create(capability.getPromise(), then, onFulfilled, onRejected));
+        PerformPromiseThenNode.getUncached().execute((JSPromiseObject) capability.getPromise(), onFulfilled, onRejected, null);
         module.executeModule(realm, capability);
     }
 

@@ -197,7 +197,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     private void enterReturnBranch() {
         if (performPromiseThenNode == null || setGeneratorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.performPromiseThenNode = insert(PerformPromiseThenNode.create(context));
+            this.performPromiseThenNode = insert(PerformPromiseThenNode.create());
             this.setGeneratorNode = insert(PropertySetNode.createSetHidden(RETURN_PROCESSOR_GENERATOR, context));
         }
     }

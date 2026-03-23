@@ -73,19 +73,15 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
-import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -315,7 +311,7 @@ public class ImportCallNode extends JavaScriptNode {
             @Child protected JavaScriptNode payloadArgument = AccessIndexedArgumentNode.create(0);
             @Child protected JavaScriptNode moduleRecordArgument = AccessIndexedArgumentNode.create(1);
 
-            @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
+            @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create();
             @Child private PropertySetNode setPromiseCapability = PropertySetNode.createSetHidden(PROMISE_CAPABILITY_KEY, context);
             @Child private PropertySetNode setLinkAndEvaluateCaptures = PropertySetNode.createSetHidden(LINK_AND_EVALUATE_KEY, context);
 
@@ -362,7 +358,7 @@ public class ImportCallNode extends JavaScriptNode {
             @Child private PropertyGetNode getCaptures = PropertyGetNode.createGetHidden(LINK_AND_EVALUATE_KEY, context);
             @Child private PropertySetNode setCaptures = PropertySetNode.createSetHidden(LINK_AND_EVALUATE_KEY, context);
 
-            @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create(context);
+            @Child private PerformPromiseThenNode promiseThenNode = PerformPromiseThenNode.create();
             @Child private JSFunctionCallNode callPromiseReject;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
@@ -370,7 +366,6 @@ public class ImportCallNode extends JavaScriptNode {
             @Child private JSFunctionCallNode callOnFulfilled;
             @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
             @Child private PerformPromiseAllNode performPromiseAllNode;
-            @Child private PropertyGetNode getNext;
 
             protected LinkAndEvaluateRootNode(JavaScriptLanguage lang) {
                 super(lang);
@@ -421,21 +416,17 @@ public class ImportCallNode extends JavaScriptNode {
             }
 
             private JSPromiseObject evaluateDeferred(JSRealm realm, List<AbstractModuleRecord> evaluationList) {
-                if (newPromiseCapabilityNode == null || performPromiseAllNode == null || getNext == null) {
+                if (newPromiseCapabilityNode == null || performPromiseAllNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     newPromiseCapabilityNode = insert(NewPromiseCapabilityNode.create(context));
                     performPromiseAllNode = insert(PerformPromiseAllNode.create(context));
-                    getNext = insert(PropertyGetNode.create(Strings.NEXT, context));
                 }
                 JSPromiseObject[] asyncDepsEvaluationPromises = new JSPromiseObject[Boundaries.listSize(evaluationList)];
                 for (int i = 0; i < asyncDepsEvaluationPromises.length; i++) {
                     asyncDepsEvaluationPromises[i] = Boundaries.listGet(evaluationList, i).evaluate(realm);
                 }
-                var arrayObj = JSArray.createConstant(context, realm, asyncDepsEvaluationPromises);
-                var iteratorObj = JSArrayIterator.create(context, realm, arrayObj, 0L, JSRuntime.ITERATION_KIND_VALUE);
-                var iterator = IteratorRecord.create(iteratorObj, getNext.getValue(iteratorObj), false);
                 PromiseCapabilityRecord pc = newPromiseCapabilityNode.executeDefault();
-                return (JSPromiseObject) performPromiseAllNode.execute(iterator, realm.getPromiseConstructor(), pc, realm.getPromiseResolveFunctionObject());
+                return performPromiseAllNode.executeSafe(asyncDepsEvaluationPromises, pc);
             }
 
             private void rejectPromise(PromiseCapabilityRecord moduleLoadedCapability, AbstractTruffleException ex) {
