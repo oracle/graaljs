@@ -71,6 +71,10 @@ public abstract class ExportResolution {
         return false;
     }
 
+    public boolean isDeferredNamespace() {
+        return false;
+    }
+
     public boolean isSource() {
         return false;
     }
@@ -107,7 +111,10 @@ public abstract class ExportResolution {
         Resolved(AbstractModuleRecord module, TruffleString bindingName) {
             this.module = module;
             this.bindingName = bindingName;
-            assert bindingName == Module.NAMESPACE_EXPORT_BINDING_NAME || !bindingName.equals(Module.NAMESPACE_EXPORT_BINDING_NAME);
+            assert bindingName == Module.NAMESPACE_EXPORT_BINDING_NAME || bindingName == Module.DEFERRED_NAMESPACE_EXPORT_BINDING_NAME || bindingName == Module.SOURCE_IMPORT_NAME ||
+                            (!bindingName.equals(Module.NAMESPACE_EXPORT_BINDING_NAME) &&
+                                            !bindingName.equals(Module.DEFERRED_NAMESPACE_EXPORT_BINDING_NAME) &&
+                                            !bindingName.equals(Module.SOURCE_IMPORT_NAME)) : bindingName;
         }
 
         @Override
@@ -123,6 +130,11 @@ public abstract class ExportResolution {
         @Override
         public boolean isNamespace() {
             return bindingName == Module.NAMESPACE_EXPORT_BINDING_NAME;
+        }
+
+        @Override
+        public boolean isDeferredNamespace() {
+            return bindingName == Module.DEFERRED_NAMESPACE_EXPORT_BINDING_NAME;
         }
 
         @Override
@@ -144,13 +156,9 @@ public abstract class ExportResolution {
             if (this == obj) {
                 return true;
             }
-            if (obj == null) {
+            if (!(obj instanceof Resolved other)) {
                 return false;
             }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            Resolved other = (Resolved) obj;
             return Objects.equals(this.module, other.module) && Objects.equals(this.bindingName, other.bindingName);
         }
     }

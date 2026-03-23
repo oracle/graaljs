@@ -89,7 +89,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     public abstract Object execute(ExportResolution resolution);
 
-    @Specialization(guards = {"!resolution.isNamespace()", "!resolution.isSource()",
+    @Specialization(guards = {"!resolution.isNamespace()", "!resolution.isDeferredNamespace()", "!resolution.isSource()",
                     "frameDescriptor == resolution.getModule().getFrameDescriptor()",
                     "equals(equalNode, bindingName, resolution.getBindingName())"}, limit = "1")
     static Object doCached(ExportResolution.Resolved resolution,
@@ -106,7 +106,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    @Specialization(guards = {"!resolution.isNamespace()", "!resolution.isSource()"}, replaces = {"doCached"})
+    @Specialization(guards = {"!resolution.isNamespace()", "!resolution.isDeferredNamespace()", "!resolution.isSource()"}, replaces = {"doCached"})
     final Object doUncached(ExportResolution.Resolved resolution) {
         AbstractModuleRecord module = resolution.getModule();
         assert !(module instanceof CyclicModuleRecord cyclicModule) || cyclicModule.isLinked() : module;
@@ -128,17 +128,18 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
         return JSFrameUtil.findRequiredFrameSlotIndex(module.getFrameDescriptor(), bindingName);
     }
 
-    @Specialization(guards = {"resolution.isNamespace()"})
+    @Specialization(guards = {"resolution.isNamespace() || resolution.isDeferredNamespace()"})
     final Object doGetNamespace(ExportResolution.Resolved resolution,
                     @Cached InlinedBranchProfile slowPath) {
         AbstractModuleRecord module = resolution.getModule();
+        ImportPhase phase = resolution.isDeferredNamespace() ? ImportPhase.Defer : ImportPhase.Evaluation;
         assert !(module instanceof CyclicModuleRecord cyclicModule) || cyclicModule.isLinked() : module;
-        var namespace = module.getModuleNamespaceOrNull(ImportPhase.Evaluation);
+        var namespace = module.getModuleNamespaceOrNull(phase);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, namespace != null)) {
             return namespace;
         } else {
             slowPath.enter(this);
-            return module.getModuleNamespace(ImportPhase.Evaluation);
+            return module.getModuleNamespace(phase);
         }
     }
 
