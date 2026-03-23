@@ -2034,17 +2034,25 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-zoneddatetime.js",
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-invalid.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/from/argument-string-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/case-where-relativeto-affects-rounding-mode-half-even.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-datetime.js",
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-invalid.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/rounding-window.js",
     "status" : "FAIL",
@@ -2054,9 +2062,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-datetime.js",
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-invalid.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/rounding-window.js",
     "status" : "FAIL",
@@ -2078,6 +2086,38 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/argument-lower-units.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/overflow.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/subtract-from-last-representable-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-lower-units.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/options-read-before-algorithmic-validation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/overflow.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/subtract-from-last-representable-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2097,21 +2137,89 @@
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaindatetime-unsupported-options.js",
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-ignore-timezone.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "new failures 2026-03-22"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-plaindatetime-unsupported-options.js",
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-no-time-clip-non-latin-numerals.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "new failures 2026-03-22"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-plaindatetime-unsupported-options.js",
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-no-time-clip-weekday.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "new failures 2026-03-22"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-plaindatetime-unsupported-options.js",
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-no-time-clip.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaindatetime-formatting-timezonename.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaintime-formatting-timezonename.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-ignore-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-no-time-clip-weekday.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-no-time-clip.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-plaindatetime-formatting-timezonename.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-plaintime-formatting-timezonename.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-ignore-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-no-time-clip-weekday.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-no-time-clip.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-plaindatetime-formatting-timezonename.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-plaintime-formatting-timezonename.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-ignore-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-no-time-clip-weekday.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-no-time-clip.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-plaindatetime-formatting-timezonename.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-plaintime-formatting-timezonename.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
@@ -2161,6 +2269,22 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/from/japanese-pre-meiji.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/add/leap-month-chinese-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/add/leap-month-dangi-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/add/leap-month-hebrew-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2168,6 +2292,22 @@
     "filePath" : "intl402/Temporal/PlainDate/prototype/since/leap-year-since.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/subtract/leap-month-chinese-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/subtract/leap-month-dangi-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/subtract/leap-month-hebrew-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/ignore-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/from/calendar-invalid-era-with-era-year.js",
     "status" : "FAIL",
@@ -2177,6 +2317,18 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/add/leap-month-chinese-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/add/leap-month-dangi-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/add/leap-month-hebrew-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2185,25 +2337,65 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/subtract/leap-month-chinese-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/subtract/leap-month-dangi-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/subtract/leap-month-hebrew-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/hourcycle.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/ignore-timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/datestyle-and-timestyle.js",
+    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/basic.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/hourcycle.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/add/leap-month-chinese-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/add/leap-month-dangi-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/add/leap-month-hebrew-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/subtract/leap-month-chinese-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/subtract/leap-month-dangi-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/subtract/leap-month-hebrew-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/from/calendar-invalid-era-with-era-year.js",
     "status" : "FAIL",
@@ -2213,6 +2405,18 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/add/leap-month-chinese-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/add/leap-month-dangi-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/add/leap-month-hebrew-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2220,6 +2424,18 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/leap-year-since.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/subtract/leap-month-chinese-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/subtract/leap-month-dangi-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/subtract/leap-month-hebrew-numerical-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/hourcycle.js",
     "status" : "FAIL",
@@ -2238,6 +2454,14 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/import/import-defer/evaluation-triggers/ignore-super-property-set-exported.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: Expects `super.exported = 14` not to trigger module evaluation when `this` is deferred module namespace object; see https://github.com/tc39/test262/issues/4980"
+  }, {
+    "filePath" : "language/import/import-defer/evaluation-triggers/ignore-super-property-set-not-exported.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: Expects `super.notExported = 14` not to trigger module evaluation when `this` is deferred module namespace object; see https://github.com/tc39/test262/issues/4980"
   }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
@@ -2315,14 +2539,6 @@
       "STAGING" : "PASS"
     },
     "comment" : "nonextensible-applies-to-private proposal"
-  }, {
-    "filePath" : "staging/explicit-resource-management/await-using-in-switch-case-block.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete staging ERM test. Direct await using in case/default statement lists conflicts with the official syntax tests."
-  }, {
-    "filePath" : "staging/explicit-resource-management/call-dispose-methods.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete staging ERM test. Direct using in case/default statement lists conflicts with the official syntax tests."
   }, {
     "filePath" : "staging/sm/Array/from-iterator-close.js",
     "status" : "FAIL",
@@ -2474,21 +2690,10 @@
     },
     "comment" : "requires Unicode 16.0"
   }, {
-    "filePath" : "staging/sm/String/string-upper-lower-mapping.js",
-    "javaVersion" : {
-      "minVersion" : 24
-    },
-    "status" : "FAIL",
-    "comment" : "Obsolete test: based on Unicode 16."
-  }, {
     "filePath" : "staging/sm/TypedArray/prototype-constructor-identity.js",
     "ecmaVersion" : {
       "minVersion" : 17
     },
     "comment" : "expects uint8array-base64 to be enabled"
-  }, {
-    "filePath" : "staging/Temporal/v8/duration-from.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
   } ]
 }
