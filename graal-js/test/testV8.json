@@ -3193,7 +3193,7 @@
   }, {
     "filePath" : "mjsunit/wasm/reference-globals-import.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Only remaining failure is TestReferenceGlobalsStrings, which imports stringref globals and requires the unsupported stringref proposal."
   }, {
     "filePath" : "mjsunit/wasm/reference-globals.js",
     "status" : "FAIL",
