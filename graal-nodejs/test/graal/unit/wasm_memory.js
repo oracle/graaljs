@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -125,6 +125,9 @@ if (typeof WebAssembly !== 'undefined') {
         assert.strictEqual(module.WasmMemory_Buffer(memory), memory.buffer);
       });
 
+      // Shared-memory worker tests can take more than 10s on slow CI machines.
+      const WORKER_TEST_TIMEOUT = 20000;
+
       it('can be sent to a Worker', function(done) {
         const { Worker } = require('worker_threads');
 
@@ -162,7 +165,7 @@ if (typeof WebAssembly !== 'undefined') {
         w.postMessage(memory);
 
         assert.strictEqual(Atomics.wait(new Int32Array(memory.buffer), 0, 0), 'ok');
-      }).timeout(10000);
+      }).timeout(WORKER_TEST_TIMEOUT);
 
       const wasmModuleBuilderCode = fs.readFileSync('../../../graal-nodejs/deps/v8/test/mjsunit/wasm/wasm-module-builder.js');
       const NUM_ITERATIONS = 50000;
@@ -271,7 +274,7 @@ if (typeof WebAssembly !== 'undefined') {
 
             w.postMessage({module: module, memory: memory});
         }
-      }).timeout(10000);
+      }).timeout(WORKER_TEST_TIMEOUT);
 
       it('works with a fast mutex', function(done) {
         let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
@@ -395,7 +398,7 @@ if (typeof WebAssembly !== 'undefined') {
 
             w.postMessage({module: module, memory: memory});
         }
-      }).timeout(10000);
+      }).timeout(WORKER_TEST_TIMEOUT);
 
       it('works with an atomic increment', function(done) {
         let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
@@ -447,7 +450,7 @@ if (typeof WebAssembly !== 'undefined') {
 
             w.postMessage({module: module, memory: memory});
         }
-      }).timeout(10000);
+      }).timeout(WORKER_TEST_TIMEOUT);
     });
   });
 }
