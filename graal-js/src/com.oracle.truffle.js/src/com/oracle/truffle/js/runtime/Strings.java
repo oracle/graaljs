@@ -209,6 +209,7 @@ public final class Strings {
     public static final TruffleString SWITCH = constant("switch");
     public static final TruffleString SYMBOL = constant("symbol");
     public static final TruffleString UC_SYMBOL = constant("Symbol");
+    public static final TruffleString TEXT = constant("text");
     public static final TruffleString THEN = Strings.constant("then");
     public static final TruffleString THIS = Strings.constant("this");
     public static final TruffleString THROW = Strings.constant("throw");

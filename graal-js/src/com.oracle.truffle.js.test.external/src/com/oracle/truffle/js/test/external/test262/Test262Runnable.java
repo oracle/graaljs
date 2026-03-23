@@ -231,6 +231,7 @@ public class Test262Runnable extends TestRunnable {
                     "immutable-arraybuffer",
                     "import-attributes",
                     "import-defer",
+                    "import-text",
                     "import.meta",
                     "intl-normative-optional",
                     "iterator-helpers",
@@ -281,7 +282,6 @@ public class Test262Runnable extends TestRunnable {
                     "IsHTMLDDA",
                     "await-dictionary",
                     "import-bytes",
-                    "import-text",
                     "joint-iteration",
                     "tail-call-optimization",
     });
@@ -296,6 +296,7 @@ public class Test262Runnable extends TestRunnable {
                     "decorators",
                     "immutable-arraybuffer",
                     "import-defer",
+                    "import-text",
                     "iterator-sequencing",
                     "json-parse-with-source",
                     "uint8array-base64",

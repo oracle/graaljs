@@ -430,6 +430,12 @@ public final class GraalJSEvaluator implements JSParser {
         return createDefaultExportSyntheticModule(realm.getContext(), source, json);
     }
 
+    @TruffleBoundary
+    @Override
+    public AbstractModuleRecord parseTextModule(JSRealm realm, Source source) {
+        return createDefaultExportSyntheticModule(realm.getContext(), source, Strings.fromJavaString(source.getCharacters().toString()));
+    }
+
     private static SyntheticModuleRecord createDefaultExportSyntheticModule(JSContext ctx, Source source, Object defaultExport) {
         return new SyntheticModuleRecord(ctx, source, defaultExport, List.of(Strings.DEFAULT), (module) -> {
             module.setSyntheticModuleExport(Strings.DEFAULT, module.getHostDefined());
