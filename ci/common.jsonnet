@@ -275,7 +275,6 @@ local common_json = import "../common.json";
 
     graalnodejs:: {
       local this = self,
-      capabilities+: if self.os == "darwin" then ["!darwin_bigsur", "!darwin_monterey", "!darwin_ventura"] else [],
       packages+: if self.os == "linux" then {
         cmake: "==3.22.2",
       } else {},
@@ -377,7 +376,6 @@ local common_json = import "../common.json";
         "*/*.log",
         "*/svmbuild/*.log",
         "*/svmbuild/images/*.log",
-        "*/*/stripped/*.map",
         "*/callgrind.*",
         "*.log",
       ],
@@ -489,8 +487,8 @@ local common_json = import "../common.json";
     },
 
     local linux   = { os:: "linux",   capabilities+: [self.os] },
-    # Run darwin jobs on Big Sur or later by excluding all older versions
-    local darwin  = { os:: "darwin",  capabilities+: [self.os, "!darwin_sierra", "!darwin_mojave", "!darwin_catalina"] },
+    # Run darwin jobs on Sonoma or later by excluding all older versions
+    local darwin  = { os:: "darwin",  capabilities+: [self.os, "!darwin_bigsur", "!darwin_ventura", "!darwin_monterey"] },
     local windows = { os:: "windows", capabilities+: [self.os] },
 
     local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },
