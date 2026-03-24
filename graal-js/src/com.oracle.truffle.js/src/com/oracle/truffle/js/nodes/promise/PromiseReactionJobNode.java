@@ -44,6 +44,10 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -51,11 +55,11 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -76,29 +80,35 @@ import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public class PromiseReactionJobNode extends JavaScriptBaseNode {
+@GenerateUncached
+public abstract class PromiseReactionJobNode extends JavaScriptBaseNode {
     static final HiddenKey REACTION_KEY = new HiddenKey("Reaction");
     static final HiddenKey ARGUMENT_KEY = new HiddenKey("Argument");
 
-    private final JSContext context;
-    @Child private PropertySetNode setReaction;
-    @Child private PropertySetNode setArgument;
-
-    protected PromiseReactionJobNode(JSContext context) {
-        this.context = context;
-        this.setReaction = PropertySetNode.createSetHidden(REACTION_KEY, context);
-        this.setArgument = PropertySetNode.createSetHidden(ARGUMENT_KEY, context);
+    protected PromiseReactionJobNode() {
     }
 
-    public static PromiseReactionJobNode create(JSContext context) {
-        return new PromiseReactionJobNode(context);
+    @NeverDefault
+    public static PromiseReactionJobNode create() {
+        return PromiseReactionJobNodeGen.create();
     }
 
-    public JSFunctionObject execute(PromiseReactionRecord reaction, Object argument) {
+    @NeverDefault
+    public static PromiseReactionJobNode getUncached() {
+        return PromiseReactionJobNodeGen.getUncached();
+    }
+
+    public abstract JSFunctionObject execute(PromiseReactionRecord reaction, Object argument);
+
+    @Specialization
+    protected JSFunctionObject doExecute(PromiseReactionRecord reaction, Object argument,
+                    @Cached DynamicObject.PutNode setReaction,
+                    @Cached DynamicObject.PutNode setArgument) {
+        JSContext context = getJSContext();
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseReactionJob, (c) -> createPromiseReactionJobImpl(c));
         JSFunctionObject function = JSFunction.create(getRealm(), functionData);
-        setReaction.setValue(function, reaction);
-        setArgument.setValue(function, argument);
+        setReaction.execute(function, REACTION_KEY, reaction);
+        setArgument.execute(function, ARGUMENT_KEY, argument);
         return function;
     }
 

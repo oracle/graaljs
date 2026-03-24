@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,8 +97,8 @@ public class ResolveNamedImportNode extends StatementNode {
             throw Errors.createSyntaxErrorFormat(message, this, moduleRequest.specifier(), importName);
         }
         Object resolutionOrNamespace;
-        if (resolution.isNamespace()) {
-            resolutionOrNamespace = resolution.getModule().getModuleNamespace(moduleRequest.phase());
+        if (resolution.isNamespace() || resolution.isDeferredNamespace()) {
+            resolutionOrNamespace = resolution.getModule().getModuleNamespace(resolution.isDeferredNamespace() ? Module.ImportPhase.Defer : Module.ImportPhase.Evaluation);
         } else {
             resolutionOrNamespace = resolution;
         }

@@ -201,7 +201,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
             this.callNode = JSFunctionCallNode.createCall();
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-            this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+            this.performPromiseThenNode = PerformPromiseThenNode.create();
             this.promiseResolveNode = PromiseResolveNode.create(context);
         }
 
@@ -665,7 +665,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.getThisNode = PropertyGetNode.createGetHidden(THIS_ID, context);
             this.getConstructorNode = PropertyGetNode.create(JSObject.CONSTRUCTOR, context);
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-            this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+            this.performPromiseThenNode = PerformPromiseThenNode.create();
             this.callNode = JSFunctionCallNode.createCall();
         }
 

@@ -166,7 +166,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             this.iteratorCloseNode = IteratorCloseNode.create(context);
             this.setDoneNode = PropertySetNode.createSetHidden(DONE, context);
             this.setSyncIteratorRecordNode = PropertySetNode.createSetHidden(SYNC_ITERATOR_RECORD, context);
-            this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+            this.performPromiseThenNode = PerformPromiseThenNode.create();
             this.promiseResolveNode = PromiseResolveNode.create(context);
         }
 

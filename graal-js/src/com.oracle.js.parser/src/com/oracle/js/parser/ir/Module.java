@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ public final class Module {
     public static final TruffleString DEFAULT_NAME = ParserStrings.constant("default");
     public static final TruffleString STAR_NAME = ParserStrings.constant("\uD800*");
     public static final TruffleString NAMESPACE_EXPORT_BINDING_NAME = ParserStrings.constant("\uD800*namespace*");
+    public static final TruffleString DEFERRED_NAMESPACE_EXPORT_BINDING_NAME = ParserStrings.constant("\uD800*deferred-namespace*");
     public static final TruffleString SOURCE_IMPORT_NAME = ParserStrings.constant("\uD800source");
 
     public static final class ExportEntry {

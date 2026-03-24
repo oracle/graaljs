@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -69,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -100,6 +102,7 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
     @Child protected PropertyGetNode getThen;
     @Child protected JSFunctionCallNode callThen;
     @Child protected PropertySetNode setArgs;
+    @Child protected PerformPromiseThenNode performPromiseThenNode;
 
     protected PerformPromiseAllNode(JSContext context) {
         super(context);
@@ -126,7 +129,7 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
                 iteratorRecord.setDone(true);
                 remainingElementsCount.value--;
                 if (remainingElementsCount.value == 0) {
-                    JSDynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), values.toArray());
+                    var valuesArray = JSArray.createConstantObjectArray(context, getRealm(), values.toArray());
                     callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, resultCapability.getResolve(), valuesArray));
                 }
                 return resultCapability.getPromise();
@@ -139,6 +142,34 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
             remainingElementsCount.value++;
             callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, rejectElement));
         }
+    }
+
+    /**
+     * Abstract operation SafePerformPromiseAll.
+     */
+    public final JSPromiseObject executeSafe(JSPromiseObject[] promises, PromiseCapabilityRecord resultCapability) {
+        if (promises.length == 0) {
+            var valuesArray = JSArray.createConstantEmptyArray(context, getRealm());
+            callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, resultCapability.getResolve(), valuesArray));
+            return (JSPromiseObject) resultCapability.getPromise();
+        }
+        SimpleArrayList<Object> values = new SimpleArrayList<>(promises.length);
+        BoxedInt remainingElementsCount = new BoxedInt(promises.length);
+        PerformPromiseThenNode performPromiseThen = getPerformPromiseThenNode();
+        for (int index = 0; index < promises.length; index++) {
+            values.addUnchecked(Undefined.instance);
+            JSFunctionObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
+            performPromiseThen.execute(promises[index], resolveElement, resultCapability.getReject(), null);
+        }
+        return (JSPromiseObject) resultCapability.getPromise();
+    }
+
+    private PerformPromiseThenNode getPerformPromiseThenNode() {
+        if (performPromiseThenNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            performPromiseThenNode = insert(PerformPromiseThenNode.create());
+        }
+        return performPromiseThenNode;
     }
 
     protected JSFunctionObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
@@ -171,7 +202,7 @@ public abstract class PerformPromiseAllNode extends PerformPromiseCombinatorNode
                 args.values.set(args.index, value);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    JSDynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
+                    var valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;

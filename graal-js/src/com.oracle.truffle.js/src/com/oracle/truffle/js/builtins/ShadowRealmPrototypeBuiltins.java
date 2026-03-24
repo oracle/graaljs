@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -328,7 +328,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected Object importValue(@SuppressWarnings("unused") JSShadowRealmObject thisObj, Object specifier, Object exportName,
                         @Cached JSToStringNode toStringNode,
                         @Cached("create(getContext())") NewPromiseCapabilityNode newPromiseCapabilityNode,
-                        @Cached("create(getContext())") PerformPromiseThenNode performPromiseThenNode,
+                        @Cached PerformPromiseThenNode performPromiseThenNode,
                         @Cached("createSetHidden(EXPORT_NAME_STRING, getContext())") PropertySetNode setExportNameStringNode,
                         @Cached("create(getContext())") ImportCallNode importNode) {
             TruffleString specifierString = toStringNode.executeString(specifier);

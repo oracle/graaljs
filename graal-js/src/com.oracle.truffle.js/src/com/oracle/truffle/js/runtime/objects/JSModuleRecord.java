@@ -192,7 +192,12 @@ public class JSModuleRecord extends CyclicModuleRecord {
                 AbstractModuleRecord importedModule = getImportedModule(exportEntry.getModuleRequest());
                 if (exportEntry.getImportName().equals(Module.STAR_NAME)) {
                     // Assert: module does not provide the direct binding for this export.
-                    return ExportResolution.resolved(importedModule, Module.NAMESPACE_EXPORT_BINDING_NAME);
+                    if (exportEntry.getModuleRequest().phase() == Module.ImportPhase.Defer) {
+                        return ExportResolution.resolved(importedModule, Module.DEFERRED_NAMESPACE_EXPORT_BINDING_NAME);
+                    } else {
+                        assert exportEntry.getModuleRequest().phase() == Module.ImportPhase.Evaluation;
+                        return ExportResolution.resolved(importedModule, Module.NAMESPACE_EXPORT_BINDING_NAME);
+                    }
                 } else if (exportEntry.getImportName().equals(Module.SOURCE_IMPORT_NAME)) {
                     return ExportResolution.resolved(importedModule, Module.SOURCE_IMPORT_NAME);
                 } else {

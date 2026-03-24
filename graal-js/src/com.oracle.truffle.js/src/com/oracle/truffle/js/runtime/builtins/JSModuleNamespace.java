@@ -142,10 +142,9 @@ public final class JSModuleNamespace extends JSNonProxy {
             throw Errors.createReferenceErrorNotDefined(bindingName, null);
         }
         if (binding.isNamespace()) {
-            // NOTE: The phase here is always evaluation because in:
-            // `import defer * as x from "..."; export { x };`
-            // binding.[[BindingName]] is "x" and not namespace.
             return targetModule.getModuleNamespace(ImportPhase.Evaluation);
+        } else if (binding.isDeferredNamespace()) {
+            return targetModule.getModuleNamespace(ImportPhase.Defer);
         }
         FrameDescriptor targetEnvDesc = targetEnv.getFrameDescriptor();
         int slot = JSFrameUtil.findRequiredFrameSlotIndex(targetEnvDesc, bindingName);
