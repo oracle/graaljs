@@ -798,7 +798,7 @@ public class JSContext {
         this.regexOptions = createRegexOptions(languageOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAttributes = (languageOptions.importAttributes() || languageOptions.importAssertions()) ? Set.of(Strings.TYPE) : Set.of();
+        this.supportedImportAttributes = languageOptions.importAttributes() ? Set.of(Strings.TYPE) : Set.of();
 
         this.webAssemblyCache = new JSWebAssemblyInstance.Cache();
     }

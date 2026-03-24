@@ -140,7 +140,6 @@ public enum TokenType {
 //  ABSTRACT       (FUTURE,       "abstract"),
     ACCESSOR       (CONTEXTUAL,   "accessor"),
     AS             (CONTEXTUAL,   "as"),
-    ASSERT         (CONTEXTUAL,   "assert"),
     ASYNC          (CONTEXTUAL,   "async"),
     AWAIT          (CONTEXTUAL,   "await"),
 //  BOOLEAN        (FUTURE,       "boolean"),

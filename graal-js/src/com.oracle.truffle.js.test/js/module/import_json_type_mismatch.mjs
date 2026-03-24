@@ -21,10 +21,10 @@ try {
     if (!(e instanceof TypeError)) throw e;
 }
 
-await import("./import_call_assertion_error_imported.mjs");
+await import("./import_call_attributes_error_imported.mjs");
 
 try {
-    await import("./import_call_assertion_error_imported.mjs", {with: {type: "json"}});
+    await import("./import_call_attributes_error_imported.mjs", {with: {type: "json"}});
     throw new Error(`should have thrown a TypeError`);
 } catch (e) {
     if (!(e instanceof TypeError)) throw e;

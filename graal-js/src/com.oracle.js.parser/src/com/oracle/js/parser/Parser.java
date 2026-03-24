@@ -50,7 +50,6 @@ import static com.oracle.js.parser.ScriptEnvironment.ES_STAGING;
 import static com.oracle.js.parser.TokenType.ACCESSOR;
 import static com.oracle.js.parser.TokenType.ARROW;
 import static com.oracle.js.parser.TokenType.AS;
-import static com.oracle.js.parser.TokenType.ASSERT;
 import static com.oracle.js.parser.TokenType.ASSIGN;
 import static com.oracle.js.parser.TokenType.ASSIGN_INIT;
 import static com.oracle.js.parser.TokenType.ASYNC;
@@ -5371,7 +5370,7 @@ public class Parser extends AbstractParser {
         next();
         List<Expression> arguments = new ArrayList<>();
         arguments.add(assignmentExpression(true, yield, await));
-        if (type == COMMARIGHT && (env.importAttributes || env.importAssertions)) {
+        if (type == COMMARIGHT && env.importAttributes) {
             next();
             if (type != RPAREN) {
                 arguments.add(assignmentExpression(true, yield, await));
@@ -7399,7 +7398,7 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse optional with clause (or legacy assert clause).
+     * Parse optional with clause.
      *
      * <pre>
      *     AttributesKeyword { }
@@ -7408,7 +7407,7 @@ public class Parser extends AbstractParser {
      */
     private Map<TruffleString, TruffleString> withClause() {
         Map<TruffleString, TruffleString> attributes = Map.of();
-        if ((env.importAttributes && type == WITH) || (env.importAssertions && type == ASSERT && last != EOL)) {
+        if (env.importAttributes && type == WITH) {
             next();
             expect(LBRACE);
             attributes = withEntries();

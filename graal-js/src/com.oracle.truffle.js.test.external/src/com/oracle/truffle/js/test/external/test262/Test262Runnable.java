@@ -229,7 +229,6 @@ public class Test262Runnable extends TestRunnable {
                     "hashbang",
                     "host-gc-required",
                     "immutable-arraybuffer",
-                    "import-assertions",
                     "import-attributes",
                     "import-defer",
                     "import.meta",
