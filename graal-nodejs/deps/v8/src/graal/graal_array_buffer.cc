@@ -46,7 +46,7 @@
 #include "graal_array_buffer-inl.h"
 
 GraalHandleContent* GraalArrayBuffer::CopyImpl(jobject java_object_copy) {
-    return new GraalArrayBuffer(Isolate(), java_object_copy, IsDirect());
+    return new GraalArrayBuffer(Isolate(), java_object_copy, IsDirect(), IsShared());
 }
 
 size_t GraalArrayBuffer::ByteLength() const {
@@ -97,7 +97,7 @@ v8::Local<v8::ArrayBuffer> GraalArrayBuffer::New(v8::Isolate* isolate, size_t by
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_array_buffer, graal_isolate, GraalAccessMethod::array_buffer_new, Object, java_context, (jint) byte_length);
-    GraalArrayBuffer* graal_array_buffer = new GraalArrayBuffer(graal_isolate, java_array_buffer, true);
+    GraalArrayBuffer* graal_array_buffer = new GraalArrayBuffer(graal_isolate, java_array_buffer, true, false);
     v8::ArrayBuffer* v8_array_buffer = reinterpret_cast<v8::ArrayBuffer*> (graal_array_buffer);
     return v8::Local<v8::ArrayBuffer>::New(isolate, v8_array_buffer);
 }
@@ -107,13 +107,17 @@ v8::Local<v8::ArrayBuffer> GraalArrayBuffer::New(v8::Isolate* isolate, std::shar
     jobject java_context = graal_isolate->CurrentJavaContext();
     jobject java_store = reinterpret_cast<GraalBackingStore*> (backing_store.get())->GetJavaStore();
     JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::array_buffer_new_buffer, Object, java_context, java_store);
-    GraalArrayBuffer* graal_array_buffer = new GraalArrayBuffer(graal_isolate, java_array_buffer, true);
+    GraalArrayBuffer* graal_array_buffer = new GraalArrayBuffer(graal_isolate, java_array_buffer, true, false);
     v8::ArrayBuffer* v8_array_buffer = reinterpret_cast<v8::ArrayBuffer*> (graal_array_buffer);
     return v8::Local<v8::ArrayBuffer>::New(isolate, v8_array_buffer);
 }
 
 bool GraalArrayBuffer::IsArrayBuffer() const {
-    return true;
+    return !IsShared();
+}
+
+bool GraalArrayBuffer::IsSharedArrayBuffer() const {
+    return IsShared();
 }
 
 void GraalArrayBuffer::Detach() {

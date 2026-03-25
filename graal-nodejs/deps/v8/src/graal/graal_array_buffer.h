@@ -48,25 +48,28 @@ class GraalIsolate;
 
 class GraalArrayBuffer : public GraalObject {
 public:
-    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct);
-    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, void* placement);
+    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, bool shared);
+    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, bool shared, void* placement);
     size_t ByteLength() const;
     void* Data() const;
-    bool IsArrayBuffer() const;
+    bool IsArrayBuffer() const override;
+    bool IsSharedArrayBuffer() const override;
     inline bool IsDirect() const;
+    inline bool IsShared() const;
     void Detach();
     bool WasDetached() const;
     std::shared_ptr<v8::BackingStore> GetBackingStore();
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, size_t byte_length);
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, std::shared_ptr<v8::BackingStore> backing_store);
 protected:
-    inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer, bool direct);
+    inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer, bool direct, bool shared);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
     inline void Recycle() override {
         delete this;
     }
 private:
     bool direct_;
+    bool shared_;
 };
 
 #endif /* GRAAL_ARRAY_BUFFER_H_ */

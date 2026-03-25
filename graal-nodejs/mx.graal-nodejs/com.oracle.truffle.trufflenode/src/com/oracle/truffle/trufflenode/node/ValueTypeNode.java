@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,6 +80,7 @@ import static com.oracle.truffle.trufflenode.ValueType.ORDINARY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROMISE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROXY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.REGEXP_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SET_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
@@ -123,6 +124,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSetObject;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
@@ -134,7 +136,7 @@ import com.oracle.truffle.trufflenode.JSExternalObject;
  * Keep in sync with {@link GraalJSAccess#valueType}.
  */
 @SuppressWarnings("unused")
-@ImportStatic({JSExternal.class, JSRuntime.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
+@ImportStatic({JSExternal.class, JSSharedArrayBuffer.class, JSRuntime.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
 abstract class ValueTypeNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final boolean useSharedBuffer;
@@ -344,6 +346,11 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return INTEROP_ARRAY_BUFFER_OBJECT;
     }
 
+    @Specialization(guards = "isJSSharedArrayBuffer(value)")
+    protected static int doSharedArrayBuffer(Object value) {
+        return SHARED_ARRAY_BUFFER_OBJECT;
+    }
+
     @Specialization
     protected static int doOrdinaryObject(JSOrdinaryObject value) {
         return ORDINARY_OBJECT;
@@ -361,7 +368,9 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     "!isJSProxy(value)",
                     "!isJSArrayBufferView(value)",
                     "!isJSDataView(value)",
-                    "!isJSDirectArrayBuffer(value)"}, replaces = {"doOrdinaryObject"})
+                    "!isJSDirectArrayBuffer(value)",
+                    "!isJSInteropArrayBuffer(value)",
+                    "!isJSSharedArrayBuffer(value)"}, replaces = {"doOrdinaryObject"})
     protected static int doObject(JSObject value) {
         return ORDINARY_OBJECT;
     }
