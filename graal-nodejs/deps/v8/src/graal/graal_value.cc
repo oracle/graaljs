@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -156,6 +156,10 @@ bool GraalValue::IsUint32Array() const {
 }
 
 bool GraalValue::IsInt32Array() const {
+    return false;
+}
+
+bool GraalValue::IsFloat16Array() const {
     return false;
 }
 
@@ -684,6 +688,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case DIRECT_INT32ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectInt32Array, use_shared_buffer, placement);
             break;
+        case DIRECT_FLOAT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectFloat16Array, use_shared_buffer, placement);
+            break;
         case DIRECT_FLOAT32ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectFloat32Array, use_shared_buffer, placement);
             break;
@@ -719,6 +726,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case INTEROP_INT32ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kInteropInt32Array, use_shared_buffer, placement);
+            break;
+        case INTEROP_FLOAT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kInteropFloat16Array, use_shared_buffer, placement);
             break;
         case INTEROP_FLOAT32ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kInteropFloat32Array, use_shared_buffer, placement);

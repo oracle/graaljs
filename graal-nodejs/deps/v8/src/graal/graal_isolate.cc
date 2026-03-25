@@ -797,6 +797,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::int16_array_new, "int16ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::uint32_array_new, "uint32ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::int32_array_new, "int32ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::float16_array_new, "float16ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::float32_array_new, "float32ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::float64_array_new, "float64ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::big_int64_array_new, "bigInt64ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")

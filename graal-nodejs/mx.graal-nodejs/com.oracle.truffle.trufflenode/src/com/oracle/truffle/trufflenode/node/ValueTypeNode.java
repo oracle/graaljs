@@ -50,6 +50,7 @@ import static com.oracle.truffle.trufflenode.ValueType.DATE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_BIGINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT16ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT32ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_INT16ARRAY_OBJECT;
@@ -64,6 +65,7 @@ import static com.oracle.truffle.trufflenode.ValueType.FUNCTION_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_BIGINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT16ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT32ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_INT16ARRAY_OBJECT;
@@ -299,6 +301,8 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
             return DIRECT_UINT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt32Array) {
             return DIRECT_INT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.DirectFloat16Array) {
+            return DIRECT_FLOAT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat32Array) {
             return DIRECT_FLOAT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat64Array) {
@@ -321,6 +325,8 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
             return INTEROP_UINT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropInt32Array) {
             return INTEROP_INT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropFloat16Array) {
+            return INTEROP_FLOAT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropFloat32Array) {
             return INTEROP_FLOAT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropFloat64Array) {

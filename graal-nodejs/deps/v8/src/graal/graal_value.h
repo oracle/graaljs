@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,6 +93,8 @@ enum ValueType {
     INTEROP_BIGINT64ARRAY_OBJECT = 43,
     INTEROP_BIGUINT64ARRAY_OBJECT = 44,
     MODULE_REQUEST = 45,
+    DIRECT_FLOAT16ARRAY_OBJECT = 46,
+    INTEROP_FLOAT16ARRAY_OBJECT = 47,
 };
 
 class GraalValue : public GraalData {
@@ -121,6 +123,7 @@ public:
     virtual bool IsInt16Array() const;
     virtual bool IsUint32Array() const;
     virtual bool IsInt32Array() const;
+    virtual bool IsFloat16Array() const;
     virtual bool IsFloat32Array() const;
     virtual bool IsFloat64Array() const;
     virtual bool IsBigInt64Array() const;

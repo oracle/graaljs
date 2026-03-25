@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,6 +112,10 @@ bool GraalArrayBufferView::IsUint32Array() const {
 
 bool GraalArrayBufferView::IsInt32Array() const {
     return type_ == kDirectInt32Array || type_ == kInteropInt32Array;
+}
+
+bool GraalArrayBufferView::IsFloat16Array() const {
+    return type_ == kDirectFloat16Array || type_ == kInteropFloat16Array;
 }
 
 bool GraalArrayBufferView::IsFloat32Array() const {

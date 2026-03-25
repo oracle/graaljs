@@ -1118,6 +1118,7 @@ namespace v8 {
     ArrayBufferViewNew(Int16Array, kDirectInt16Array, kInteropInt16Array, int16_array_new)
     ArrayBufferViewNew(Uint32Array, kDirectUint32Array, kInteropUint32Array, uint32_array_new)
     ArrayBufferViewNew(Int32Array, kDirectInt32Array, kInteropInt32Array, int32_array_new)
+    ArrayBufferViewNew(Float16Array, kDirectFloat16Array, kInteropFloat16Array, float16_array_new)
     ArrayBufferViewNew(Float32Array, kDirectFloat32Array, kInteropFloat32Array, float32_array_new)
     ArrayBufferViewNew(Float64Array, kDirectFloat64Array, kInteropFloat64Array, float64_array_new)
     ArrayBufferViewNew(DataView, kDataView, kDataView, data_view_new)
@@ -1818,6 +1819,10 @@ namespace v8 {
         return reinterpret_cast<const GraalValue*> (this)->IsInt32Array();
     }
 
+    bool Value::IsFloat16Array() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsFloat16Array();
+    }
+
     bool Value::IsFloat32Array() const {
         return reinterpret_cast<const GraalValue*> (this)->IsFloat32Array();
     }
@@ -2093,6 +2098,7 @@ namespace v8 {
                 IsInt16Array() ||
                 IsUint32Array() ||
                 IsInt32Array() ||
+                IsFloat16Array() ||
                 IsFloat32Array() ||
                 IsFloat64Array() ||
                 IsBigInt64Array() ||
@@ -4328,6 +4334,7 @@ namespace v8 {
     void DataView::CheckCast(v8::Value* obj) {}
     void Date::CheckCast(v8::Value* obj) {}
     void External::CheckCast(v8::Value* that) {}
+    void Float16Array::CheckCast(class v8::Value* that) {}
     void FixedArray::CheckCast(v8::Data* that) {}
     void Float32Array::CheckCast(class v8::Value* that) {}
     void Float64Array::CheckCast(v8::Value* obj) {}
