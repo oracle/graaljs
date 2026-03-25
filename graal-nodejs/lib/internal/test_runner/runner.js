@@ -78,6 +78,7 @@ const {
   kTestTimeoutFailure,
   Test,
 } = require('internal/test_runner/test');
+const { FastBuffer } = require('internal/buffer');
 
 const {
   convertStringToRegExp,
@@ -153,6 +154,22 @@ function getRunArgs(path, { forceExit,
                             cwd }) {
   const processNodeOptions = getOptionsAsFlagsFromBinding();
   const runArgs = ArrayPrototypeFilter(processNodeOptions, filterExecArgv);
+
+  /**
+   * Node supports V8 options passed via cli.
+   * These options are being consumed by V8 and are not stored in nodeOptions.
+   *
+   * We need to propagate these options to the child processes manually.
+   *
+   * An example of such option are --allow-natives-syntax and --expose-gc
+   */
+  const nodeOptionsSet = new SafeSet(processNodeOptions);
+  const unknownProcessExecArgv = ArrayPrototypeFilter(
+    process.execArgv,
+    (arg) => !nodeOptionsSet.has(arg),
+  );
+  ArrayPrototypePushApply(runArgs, unknownProcessExecArgv);
+
   if (forceExit === true) {
     ArrayPrototypePush(runArgs, '--test-force-exit');
   }
@@ -324,7 +341,7 @@ class FileTest extends Test {
     // This method is called when it is known that there is at least one message
     let bufferHead = this.#rawBuffer[0];
     let headerIndex = bufferHead.indexOf(v8Header);
-    let nonSerialized = Buffer.alloc(0);
+    let nonSerialized = new FastBuffer();
 
     while (bufferHead && headerIndex !== 0) {
       const nonSerializedData = headerIndex === -1 ?
@@ -386,7 +403,7 @@ function runTestFile(path, filesWatcher, opts) {
   const subtest = opts.root.createSubtest(FileTest, testPath, testOpts, async (t) => {
     const args = getRunArgs(path, opts);
     const stdio = ['pipe', 'pipe', 'pipe'];
-    const env = { __proto__: null, ...process.env, NODE_TEST_CONTEXT: 'child-v8' };
+    const env = { __proto__: null, NODE_TEST_CONTEXT: 'child-v8', ...(opts.env || process.env) };
     if (watchMode) {
       stdio.push('ipc');
       env.WATCH_REPORT_DEPENDENCIES = '1';
@@ -442,6 +459,9 @@ function runTestFile(path, filesWatcher, opts) {
       once(child, 'exit', { __proto__: null, signal: t.signal }),
       finished(child.stdout, { __proto__: null, signal: t.signal }),
     ]);
+
+    // Close readline interface to prevent memory leak
+    rl.close();
 
     if (watchMode) {
       filesWatcher.runningProcesses.delete(path);
@@ -505,7 +525,7 @@ function watchFiles(testFiles, opts) {
   }
 
   // Watch for changes in current filtered files
-  watcher.on('changed', ({ owners, eventType }) => {
+  const onChanged = ({ owners, eventType }) => {
     if (!opts.hasFiles && (eventType === 'rename' || eventType === 'change')) {
       const updatedTestFiles = createTestFileList(opts.globPatterns, opts.cwd);
       const newFileName = ArrayPrototypeFind(updatedTestFiles, (x) => !ArrayPrototypeIncludes(testFiles, x));
@@ -546,18 +566,28 @@ function watchFiles(testFiles, opts) {
         triggerUncaughtException(error, true /* fromPromise */);
       }));
     }
-  });
+  };
+
+  watcher.on('changed', onChanged);
+
+  // Cleanup function to remove event listener and prevent memory leak
+  const cleanup = () => {
+    watcher.removeListener('changed', onChanged);
+    opts.root.harness.watching = false;
+    opts.root.postRun();
+  };
+
   if (opts.signal) {
     kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
     opts.signal.addEventListener(
       'abort',
-      () => {
-        opts.root.harness.watching = false;
-        opts.root.postRun();
-      },
+      cleanup,
       { __proto__: null, once: true, [kResistStopPropagation]: true },
     );
   }
+
+  // Expose cleanup method for proper resource management
+  filesWatcher.cleanup = cleanup;
 
   return filesWatcher;
 }
@@ -593,6 +623,7 @@ function run(options = kEmptyObject) {
     argv = [],
     cwd = process.cwd(),
     rerunFailuresFilePath,
+    env,
   } = options;
 
   if (files != null) {
@@ -701,6 +732,14 @@ function run(options = kEmptyObject) {
     validatePath(globalSetupPath, 'options.globalSetupPath');
   }
 
+  if (env != null) {
+    validateObject(env);
+
+    if (isolation === 'none') {
+      throw new ERR_INVALID_ARG_VALUE('options.env', env, 'is not supported with isolation=\'none\'');
+    }
+  }
+
   const rootTestOptions = { __proto__: null, concurrency, timeout, signal };
   const globalOptions = {
     __proto__: null,
@@ -746,6 +785,7 @@ function run(options = kEmptyObject) {
     argv,
     execArgv,
     rerunFailuresFilePath,
+    env,
   };
 
   if (isolation === 'process') {
@@ -834,7 +874,10 @@ function run(options = kEmptyObject) {
             );
             if (topLevelTestCount === root.subtests.length) {
               // This file had no tests in it. Add the placeholder test.
-              const subtest = root.createSubtest(Test, testFile);
+              const subtest = root.createSubtest(Test, testFile, kEmptyObject, undefined, {
+                __proto__: null,
+                loc: [1, 1, resolve(testFile)],
+              });
               if (threw) {
                 subtest.fail(importError);
               }

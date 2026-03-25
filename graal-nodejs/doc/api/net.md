@@ -554,7 +554,8 @@ changes:
     multiple sockets on the same host to bind to the same port. Incoming connections
     are distributed by the operating system to listening sockets. This option is
     available only on some platforms, such as Linux 3.9+, DragonFlyBSD 3.6+, FreeBSD 12.0+,
-    Solaris 11.4, and AIX 7.2.5+. **Default:** `false`.
+    Solaris 11.4, and AIX 7.2.5+. On unsupported platforms, this option raises
+    an error. **Default:** `false`.
   * `path` {string} Will be ignored if `port` is specified. See
     [Identifying paths for IPC connections][].
   * `port` {number}
@@ -675,7 +676,7 @@ When the number of connections reaches the `server.maxConnections` threshold:
 
 1. If the process is not running in cluster mode, Node.js will close the connection.
 
-2. If the process is running in cluster mode, Node.js will, by default, route the connection to another worker process. To close the connection instead, set \[`server.dropMaxConnection`]\[] to `true`.
+2. If the process is running in cluster mode, Node.js will, by default, route the connection to another worker process. To close the connection instead, set [`server.dropMaxConnection`][] to `true`.
 
 It is not recommended to use this option once a socket has been sent to a child
 with [`child_process.fork()`][].
@@ -755,8 +756,17 @@ changes:
     automatically end the writable side when the readable side ends. See
     [`net.createServer()`][] and the [`'end'`][] event for details. **Default:**
     `false`.
+  * `blockList` {net.BlockList} `blockList` can be used for disabling outbound
+    access to specific IP addresses, IP ranges, or IP subnets.
   * `fd` {number} If specified, wrap around an existing socket with
     the given file descriptor, otherwise a new socket will be created.
+  * `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality on
+    the socket immediately after the connection is established, similarly on what
+    is done in [`socket.setKeepAlive()`][]. **Default:** `false`.
+  * `keepAliveInitialDelay` {number} If set to a positive number, it sets the
+    initial delay before the first keepalive probe is sent on an idle socket. **Default:** `0`.
+  * `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm
+    immediately after the socket is established. **Default:** `false`.
   * `onread` {Object} If specified, incoming data is stored in a single `buffer`
     and passed to the supplied `callback` when data arrives on the socket.
     This will cause the streaming functionality to not provide any data.
@@ -1119,20 +1129,10 @@ For TCP connections, available `options` are:
   `0` indicates that both IPv4 and IPv6 addresses are allowed. **Default:** `0`.
 * `hints` {number} Optional [`dns.lookup()` hints][].
 * `host` {string} Host the socket should connect to. **Default:** `'localhost'`.
-* `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality on
-  the socket immediately after the connection is established, similarly on what
-  is done in [`socket.setKeepAlive()`][]. **Default:** `false`.
-* `keepAliveInitialDelay` {number} If set to a positive number, it sets the
-  initial delay before the first keepalive probe is sent on an idle socket.
-  **Default:** `0`.
 * `localAddress` {string} Local address the socket should connect from.
 * `localPort` {number} Local port the socket should connect from.
 * `lookup` {Function} Custom lookup function. **Default:** [`dns.lookup()`][].
-* `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm
-  immediately after the socket is established. **Default:** `false`.
 * `port` {number} Required. Port the socket should connect to.
-* `blockList` {net.BlockList} `blockList` can be used for disabling outbound
-  access to specific IP addresses, IP ranges, or IP subnets.
 
 For [IPC][] connections, available `options` are:
 
@@ -2009,6 +2009,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`new net.Socket(options)`]: #new-netsocketoptions
 [`readable.setEncoding()`]: stream.md#readablesetencodingencoding
 [`server.close()`]: #serverclosecallback
+[`server.dropMaxConnection`]: #serverdropmaxconnection
 [`server.listen()`]: #serverlisten
 [`server.listen(handle)`]: #serverlistenhandle-backlog-callback
 [`server.listen(options)`]: #serverlistenoptions-callback

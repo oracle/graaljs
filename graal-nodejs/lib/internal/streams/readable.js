@@ -47,8 +47,9 @@ const { Buffer } = require('buffer');
 
 const {
   addAbortSignal,
+  addAbortSignalNoValidate,
 } = require('internal/streams/add-abort-signal');
-const eos = require('internal/streams/end-of-stream');
+const { eos } = require('internal/streams/end-of-stream');
 
 let debug = require('internal/util/debuglog').debuglog('stream', (fn) => {
   debug = fn;
@@ -85,7 +86,10 @@ const {
     ERR_UNKNOWN_ENCODING,
   },
 } = require('internal/errors');
-const { validateObject } = require('internal/validators');
+const {
+  validateAbortSignal,
+  validateObject,
+} = require('internal/validators');
 
 const FastBuffer = Buffer[SymbolSpecies];
 
@@ -1409,6 +1413,30 @@ async function* createAsyncIterator(stream, options) {
   }
 }
 
+let composeImpl;
+
+Readable.prototype.compose = function compose(stream, options) {
+  if (options != null) {
+    validateObject(options, 'options');
+  }
+  if (options?.signal != null) {
+    validateAbortSignal(options.signal, 'options.signal');
+  }
+
+  composeImpl ??= require('internal/streams/compose');
+  const composedStream = composeImpl(this, stream);
+
+  if (options?.signal) {
+    // Not validating as we already validated before
+    addAbortSignalNoValidate(
+      options.signal,
+      composedStream,
+    );
+  }
+
+  return composedStream;
+};
+
 // Making it explicit these properties are not enumerable
 // because otherwise some prototype manipulation in
 // userland will fail.
@@ -1605,7 +1633,7 @@ function fromList(n, state) {
         buf[idx++] = null;
       }
     } else if (len - idx === 0) {
-      ret = Buffer.alloc(0);
+      ret = new FastBuffer();
     } else if (len - idx === 1) {
       ret = buf[idx];
       buf[idx++] = null;

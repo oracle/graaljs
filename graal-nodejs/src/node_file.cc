@@ -1625,9 +1625,9 @@ static void RmSync(const FunctionCallbackInfo<Value>& args) {
   ToNamespacedPath(env, &path);
   THROW_IF_INSUFFICIENT_PERMISSIONS(
       env, permission::PermissionScope::kFileSystemWrite, path.ToStringView());
-  auto file_path = std::filesystem::path(path.ToStringView());
+  auto file_path = path.ToPath();
   std::error_code error;
-  auto file_status = std::filesystem::status(file_path, error);
+  auto file_status = std::filesystem::symlink_status(file_path, error);
 
   if (file_status.type() == std::filesystem::file_type::not_found) {
     return;
@@ -1640,8 +1640,7 @@ static void RmSync(const FunctionCallbackInfo<Value>& args) {
   // File is a directory and recursive is false
   if (file_status.type() == std::filesystem::file_type::directory &&
       !recursive) {
-    return THROW_ERR_FS_EISDIR(
-        isolate, "Path is a directory: %s", file_path.c_str());
+    return THROW_ERR_FS_EISDIR(isolate, "Path is a directory: %s", path);
   }
 
   // Allowed errors are:
@@ -1947,11 +1946,18 @@ static void RealPath(const FunctionCallbackInfo<Value>& args) {
   if (argc > 2) {  // realpath(path, encoding, req)
     FSReqBase* req_wrap_async = GetReqWrap(args, 2);
     CHECK_NOT_NULL(req_wrap_async);
+    ASYNC_THROW_IF_INSUFFICIENT_PERMISSIONS(
+        env,
+        req_wrap_async,
+        permission::PermissionScope::kFileSystemRead,
+        path.ToStringView());
     FS_ASYNC_TRACE_BEGIN1(
         UV_FS_REALPATH, req_wrap_async, "path", TRACE_STR_COPY(*path))
     AsyncCall(env, req_wrap_async, args, "realpath", encoding, AfterStringPtr,
               uv_fs_realpath, *path);
   } else {  // realpath(path, encoding, undefined, ctx)
+    THROW_IF_INSUFFICIENT_PERMISSIONS(
+        env, permission::PermissionScope::kFileSystemRead, path.ToStringView());
     FSReqWrapSync req_wrap_sync("realpath", *path);
     FS_SYNC_TRACE_BEGIN(realpath);
     int err =
@@ -2306,8 +2312,10 @@ static void WriteBuffer(const FunctionCallbackInfo<Value>& args) {
   const int argc = args.Length();
   CHECK_GE(argc, 4);
 
-  CHECK(args[0]->IsInt32());
-  const int fd = args[0].As<Int32>()->Value();
+  int fd;
+  if (!GetValidatedFd(env, args[0]).To(&fd)) {
+    return;
+  }
 
   CHECK(Buffer::HasInstance(args[1]));
   Local<Object> buffer_obj = args[1].As<Object>();
@@ -2373,8 +2381,10 @@ static void WriteBuffers(const FunctionCallbackInfo<Value>& args) {
   const int argc = args.Length();
   CHECK_GE(argc, 3);
 
-  CHECK(args[0]->IsInt32());
-  const int fd = args[0].As<Int32>()->Value();
+  int fd;
+  if (!GetValidatedFd(env, args[0]).To(&fd)) {
+    return;
+  }
 
   CHECK(args[1]->IsArray());
   Local<Array> chunks = args[1].As<Array>();
@@ -2433,8 +2443,10 @@ static void WriteString(const FunctionCallbackInfo<Value>& args) {
 
   const int argc = args.Length();
   CHECK_GE(argc, 4);
-  CHECK(args[0]->IsInt32());
-  const int fd = args[0].As<Int32>()->Value();
+  int fd;
+  if (!GetValidatedFd(env, args[0]).To(&fd)) {
+    return;
+  }
 
   const int64_t pos = GetOffset(args[2]);
 
@@ -2626,8 +2638,10 @@ static void Read(const FunctionCallbackInfo<Value>& args) {
   const int argc = args.Length();
   CHECK_GE(argc, 5);
 
-  CHECK(args[0]->IsInt32());
-  const int fd = args[0].As<Int32>()->Value();
+  int fd;
+  if (!GetValidatedFd(env, args[0]).To(&fd)) {
+    return;
+  }
 
   CHECK(Buffer::HasInstance(args[1]));
   Local<Object> buffer_obj = args[1].As<Object>();
@@ -2757,8 +2771,10 @@ static void ReadBuffers(const FunctionCallbackInfo<Value>& args) {
   const int argc = args.Length();
   CHECK_GE(argc, 3);
 
-  CHECK(args[0]->IsInt32());
-  const int fd = args[0].As<Int32>()->Value();
+  int fd;
+  if (!GetValidatedFd(env, args[0]).To(&fd)) {
+    return;
+  }
 
   CHECK(args[1]->IsArray());
   Local<Array> buffers = args[1].As<Array>();

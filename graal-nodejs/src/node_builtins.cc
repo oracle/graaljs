@@ -39,18 +39,6 @@ using v8::Value;
 BuiltinLoader::BuiltinLoader()
     : config_(GetConfig()), code_cache_(std::make_shared<BuiltinCodeCache>()) {
   LoadJavaScriptSource();
-#ifdef NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_LEXER_PATH
-  AddExternalizedBuiltin(
-      "internal/deps/cjs-module-lexer/lexer",
-      STRINGIFY(NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_LEXER_PATH));
-#endif  // NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_LEXER_PATH
-
-#ifdef NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_DIST_LEXER_PATH
-  AddExternalizedBuiltin(
-      "internal/deps/cjs-module-lexer/dist/lexer",
-      STRINGIFY(NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_DIST_LEXER_PATH));
-#endif  // NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_DIST_LEXER_PATH
-
 #ifdef NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH
   AddExternalizedBuiltin("internal/deps/undici/undici",
                          STRINGIFY(NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH));
@@ -115,9 +103,6 @@ BuiltinLoader::BuiltinCategories BuiltinLoader::GetBuiltinCategories() const {
     "internal/main/"
   };
 
-  builtin_categories.can_be_required.emplace(
-      "internal/deps/cjs-module-lexer/lexer");
-
   builtin_categories.cannot_be_required = std::set<std::string> {
 #if !HAVE_INSPECTOR
     "inspector", "inspector/promises", "internal/util/inspector",
@@ -132,9 +117,10 @@ BuiltinLoader::BuiltinCategories BuiltinLoader::GetBuiltinCategories() const {
 
 #if !HAVE_OPENSSL
         "crypto", "crypto/promises", "https", "http2", "tls", "_tls_common",
-        "_tls_wrap", "internal/tls/parse-cert-string",
-        "internal/tls/secure-context", "internal/http2/core",
-        "internal/http2/compat", "internal/streams/lazy_transform",
+        "_tls_wrap", "internal/tls/parse-cert-string", "internal/tls/common",
+        "internal/tls/wrap", "internal/tls/secure-context",
+        "internal/http2/core", "internal/http2/compat",
+        "internal/streams/lazy_transform",
 #endif           // !HAVE_OPENSSL
 #if !NODE_OPENSSL_HAS_QUIC
         "internal/quic/quic", "internal/quic/symbols", "internal/quic/stats",
@@ -158,7 +144,7 @@ BuiltinLoader::BuiltinCategories BuiltinLoader::GetBuiltinCategories() const {
       if (prefix.length() > id.length()) {
         continue;
       }
-      if (id.find(prefix) == 0 &&
+      if (id.starts_with(prefix) &&
           builtin_categories.can_be_required.count(id) == 0) {
         builtin_categories.cannot_be_required.emplace(id);
       }

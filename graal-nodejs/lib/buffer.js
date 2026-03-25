@@ -74,6 +74,17 @@ const {
   kStringMaxLength,
   atob: _atob,
   btoa: _btoa,
+  asciiSlice,
+  base64Slice,
+  base64urlSlice,
+  latin1Slice,
+  hexSlice,
+  ucs2Slice,
+  utf8Slice,
+  base64Write,
+  base64urlWrite,
+  hexWrite,
+  ucs2Write,
 } = internalBinding('buffer');
 const {
   constants: {
@@ -130,6 +141,9 @@ const {
   markAsUntransferable,
   addBufferPrototypeMethods,
   createUnsafeBuffer,
+  asciiWrite,
+  latin1Write,
+  utf8Write,
 } = require('internal/buffer');
 
 FastBuffer.prototype.constructor = Buffer;
@@ -183,15 +197,14 @@ function showFlaggedDeprecation() {
   if (bufferWarningAlreadyEmitted ||
       ++nodeModulesCheckCounter > 10000 ||
       (!require('internal/options').getOptionValue('--pending-deprecation') &&
-       isInsideNodeModules(100, true))) {
+       isInsideNodeModules(3))) {
     // We don't emit a warning, because we either:
     // - Already did so, or
     // - Already checked too many times whether a call is coming
     //   from node_modules and want to stop slowing down things, or
     // - We aren't running with `--pending-deprecation` enabled,
     //   and the code is inside `node_modules`.
-    // - We found node_modules in up to the topmost 100 frames, or
-    //   there are more than 100 frames and we don't want to search anymore.
+    // - If the topmost non-internal frame is not inside `node_modules`.
     return;
   }
 
@@ -357,13 +370,13 @@ Buffer.copyBytesFrom = function copyBytesFrom(view, offset, length) {
 
   const viewLength = TypedArrayPrototypeGetLength(view);
   if (viewLength === 0) {
-    return Buffer.alloc(0);
+    return new FastBuffer();
   }
 
   if (offset !== undefined || length !== undefined) {
     if (offset !== undefined) {
       validateInteger(offset, 'offset', 0);
-      if (offset >= viewLength) return Buffer.alloc(0);
+      if (offset >= viewLength) return new FastBuffer();
     } else {
       offset = 0;
     }
@@ -391,8 +404,9 @@ Buffer.copyBytesFrom = function copyBytesFrom(view, offset, length) {
 // Refs: https://tc39.github.io/ecma262/#sec-%typedarray%.of
 // Refs: https://esdiscuss.org/topic/isconstructor#content-11
 const of = (...items) => {
-  const newObj = createUnsafeBuffer(items.length);
-  for (let k = 0; k < items.length; k++)
+  const len = items.length;
+  const newObj = new FastBuffer(len); // In heap for small sizes
+  for (let k = 0; k < len; k++)
     newObj[k] = items[k];
   return newObj;
 };
@@ -649,8 +663,8 @@ const encodingOps = {
     encoding: 'utf8',
     encodingVal: encodingsMap.utf8,
     byteLength: byteLengthUtf8,
-    write: (buf, string, offset, len) => buf.utf8Write(string, offset, len),
-    slice: (buf, start, end) => buf.utf8Slice(start, end),
+    write: utf8Write,
+    slice: utf8Slice,
     indexOf: (buf, val, byteOffset, dir) =>
       indexOfString(buf, val, byteOffset, encodingsMap.utf8, dir),
   },
@@ -658,8 +672,8 @@ const encodingOps = {
     encoding: 'ucs2',
     encodingVal: encodingsMap.utf16le,
     byteLength: (string) => string.length * 2,
-    write: (buf, string, offset, len) => buf.ucs2Write(string, offset, len),
-    slice: (buf, start, end) => buf.ucs2Slice(start, end),
+    write: ucs2Write,
+    slice: ucs2Slice,
     indexOf: (buf, val, byteOffset, dir) =>
       indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir),
   },
@@ -667,8 +681,8 @@ const encodingOps = {
     encoding: 'utf16le',
     encodingVal: encodingsMap.utf16le,
     byteLength: (string) => string.length * 2,
-    write: (buf, string, offset, len) => buf.ucs2Write(string, offset, len),
-    slice: (buf, start, end) => buf.ucs2Slice(start, end),
+    write: ucs2Write,
+    slice: ucs2Slice,
     indexOf: (buf, val, byteOffset, dir) =>
       indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir),
   },
@@ -676,8 +690,8 @@ const encodingOps = {
     encoding: 'latin1',
     encodingVal: encodingsMap.latin1,
     byteLength: (string) => string.length,
-    write: (buf, string, offset, len) => buf.latin1Write(string, offset, len),
-    slice: (buf, start, end) => buf.latin1Slice(start, end),
+    write: latin1Write,
+    slice: latin1Slice,
     indexOf: (buf, val, byteOffset, dir) =>
       indexOfString(buf, val, byteOffset, encodingsMap.latin1, dir),
   },
@@ -685,8 +699,8 @@ const encodingOps = {
     encoding: 'ascii',
     encodingVal: encodingsMap.ascii,
     byteLength: (string) => string.length,
-    write: (buf, string, offset, len) => buf.asciiWrite(string, offset, len),
-    slice: (buf, start, end) => buf.asciiSlice(start, end),
+    write: asciiWrite,
+    slice: asciiSlice,
     indexOf: (buf, val, byteOffset, dir) =>
       indexOfBuffer(buf,
                     fromStringFast(val, encodingOps.ascii),
@@ -698,8 +712,8 @@ const encodingOps = {
     encoding: 'base64',
     encodingVal: encodingsMap.base64,
     byteLength: (string) => base64ByteLength(string, string.length),
-    write: (buf, string, offset, len) => buf.base64Write(string, offset, len),
-    slice: (buf, start, end) => buf.base64Slice(start, end),
+    write: base64Write,
+    slice: base64Slice,
     indexOf: (buf, val, byteOffset, dir) =>
       indexOfBuffer(buf,
                     fromStringFast(val, encodingOps.base64),
@@ -711,9 +725,8 @@ const encodingOps = {
     encoding: 'base64url',
     encodingVal: encodingsMap.base64url,
     byteLength: (string) => base64ByteLength(string, string.length),
-    write: (buf, string, offset, len) =>
-      buf.base64urlWrite(string, offset, len),
-    slice: (buf, start, end) => buf.base64urlSlice(start, end),
+    write: base64urlWrite,
+    slice: base64urlSlice,
     indexOf: (buf, val, byteOffset, dir) =>
       indexOfBuffer(buf,
                     fromStringFast(val, encodingOps.base64url),
@@ -725,8 +738,8 @@ const encodingOps = {
     encoding: 'hex',
     encodingVal: encodingsMap.hex,
     byteLength: (string) => string.length >>> 1,
-    write: (buf, string, offset, len) => buf.hexWrite(string, offset, len),
-    slice: (buf, start, end) => buf.hexSlice(start, end),
+    write: hexWrite,
+    slice: hexSlice,
     indexOf: (buf, val, byteOffset, dir) =>
       indexOfBuffer(buf,
                     fromStringFast(val, encodingOps.hex),
@@ -851,7 +864,7 @@ Buffer.prototype.copy =
 // to their upper/lower bounds if the value passed is out of range.
 Buffer.prototype.toString = function toString(encoding, start, end) {
   if (arguments.length === 0) {
-    return this.utf8Slice(0, this.length);
+    return utf8Slice(this, 0, this.length);
   }
 
   const len = this.length;
@@ -872,7 +885,7 @@ Buffer.prototype.toString = function toString(encoding, start, end) {
     return '';
 
   if (encoding === undefined)
-    return this.utf8Slice(start, end);
+    return utf8Slice(this, start, end);
 
   const ops = getEncodingOps(encoding);
   if (ops === undefined)
@@ -903,7 +916,7 @@ Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
   const actualMax = MathMin(max, this.length);
   const remaining = this.length - max;
   let str = StringPrototypeTrim(RegExpPrototypeSymbolReplace(
-    /(.{2})/g, this.hexSlice(0, actualMax), '$1 '));
+    /(.{2})/g, hexSlice(this, 0, actualMax), '$1 '));
   if (remaining > 0)
     str += ` ... ${remaining} more byte${remaining > 1 ? 's' : ''}`;
   // Inspect special properties as well, if possible.
@@ -1042,7 +1055,7 @@ Buffer.prototype.lastIndexOf = function lastIndexOf(val, byteOffset, encoding) {
 };
 
 Buffer.prototype.includes = function includes(val, byteOffset, encoding) {
-  return this.indexOf(val, byteOffset, encoding) !== -1;
+  return bidirectionalIndexOf(this, val, byteOffset, encoding, true) !== -1;
 };
 
 // Usage:
@@ -1127,7 +1140,7 @@ function _fill(buf, value, offset, end, encoding) {
 Buffer.prototype.write = function write(string, offset, length, encoding) {
   // Buffer#write(string);
   if (offset === undefined) {
-    return this.utf8Write(string, 0, this.length);
+    return utf8Write(this, string, 0, this.length);
   }
   // Buffer#write(string, encoding)
   if (length === undefined && typeof offset === 'string') {
@@ -1154,9 +1167,9 @@ Buffer.prototype.write = function write(string, offset, length, encoding) {
   }
 
   if (!encoding || encoding === 'utf8')
-    return this.utf8Write(string, offset, length);
+    return utf8Write(this, string, offset, length);
   if (encoding === 'ascii')
-    return this.asciiWrite(string, offset, length);
+    return asciiWrite(this, string, offset, length);
 
   const ops = getEncodingOps(encoding);
   if (ops === undefined)
@@ -1276,7 +1289,7 @@ if (internalBinding('config').hasIntl) {
       throw new ERR_INVALID_ARG_TYPE('source',
                                      ['Buffer', 'Uint8Array'], source);
     }
-    if (source.length === 0) return Buffer.alloc(0);
+    if (source.length === 0) return new FastBuffer();
 
     fromEncoding = normalizeEncoding(fromEncoding) || fromEncoding;
     toEncoding = normalizeEncoding(toEncoding) || toEncoding;

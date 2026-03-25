@@ -13,7 +13,6 @@ const {
   MathMax,
   Number,
   NumberPrototypeToFixed,
-  ObjectDefineProperty,
   ObjectSeal,
   Promise,
   PromisePrototypeThen,
@@ -55,6 +54,7 @@ const {
 const {
   kEmptyObject,
   once: runOnce,
+  setOwnProperty,
 } = require('internal/util');
 const { isPromise } = require('internal/util/types');
 const {
@@ -82,6 +82,7 @@ const kParentAlreadyFinished = 'parentAlreadyFinished';
 const kSubtestsFailed = 'subtestsFailed';
 const kTestCodeFailure = 'testCodeFailure';
 const kTestTimeoutFailure = 'testTimeoutFailure';
+const kExpectedFailure = 'expectedFailure';
 const kHookFailure = 'hookFailed';
 const kDefaultTimeout = null;
 const noop = FunctionPrototype;
@@ -133,20 +134,14 @@ function stopTest(timeout, signal) {
   if (timeout === kDefaultTimeout) {
     disposeFunction = abortListener[SymbolDispose];
   } else {
-    timer = setTimeout(() => deferred.resolve(), timeout);
+    timer = setTimeout(deferred.resolve, timeout);
     timer.unref();
-
-    ObjectDefineProperty(deferred, 'promise', {
-      __proto__: null,
-      configurable: true,
-      writable: true,
-      value: PromisePrototypeThen(deferred.promise, () => {
-        throw new ERR_TEST_FAILURE(
-          `test timed out after ${timeout}ms`,
-          kTestTimeoutFailure,
-        );
-      }),
-    });
+    setOwnProperty(deferred, 'promise', PromisePrototypeThen(deferred.promise, () => {
+      throw new ERR_TEST_FAILURE(
+        `test timed out after ${timeout}ms`,
+        kTestTimeoutFailure,
+      );
+    }));
 
     disposeFunction = () => {
       abortListener[SymbolDispose]();
@@ -154,12 +149,7 @@ function stopTest(timeout, signal) {
     };
   }
 
-  ObjectDefineProperty(deferred.promise, SymbolDispose, {
-    __proto__: null,
-    configurable: true,
-    writable: true,
-    value: disposeFunction,
-  });
+  setOwnProperty(deferred.promise, SymbolDispose, disposeFunction);
   return deferred.promise;
 }
 
@@ -507,7 +497,7 @@ class Test extends AsyncResource {
     super('Test');
 
     let { fn, name, parent } = options;
-    const { concurrency, entryFile, loc, only, timeout, todo, skip, signal, plan } = options;
+    const { concurrency, entryFile, expectFailure, loc, only, timeout, todo, skip, signal, plan } = options;
 
     if (typeof fn !== 'function') {
       fn = noop;
@@ -646,6 +636,7 @@ class Test extends AsyncResource {
     this.plan = null;
     this.expectedAssertions = plan;
     this.cancelled = false;
+    this.expectFailure = expectFailure !== undefined && expectFailure !== false;
     this.skipped = skip !== undefined && skip !== false;
     this.isTodo = (todo !== undefined && todo !== false) || this.parent?.isTodo;
     this.startTime = null;
@@ -709,10 +700,18 @@ class Test extends AsyncResource {
         this.root.testDisambiguator.set(testIdentifier, 1);
       }
       this.attempt = this.root.harness.previousRuns.length;
-      const previousAttempt = this.root.harness.previousRuns[this.attempt - 1]?.[testIdentifier]?.passed_on_attempt;
+      const previousAttempt = this.root.harness.previousRuns[this.attempt - 1]?.[testIdentifier];
       if (previousAttempt != null) {
-        this.passedAttempt = previousAttempt;
-        this.fn = noop;
+        this.passedAttempt = previousAttempt.passed_on_attempt;
+        this.fn = () => {
+          for (let i = 0; i < (previousAttempt.children?.length ?? 0); i++) {
+            const child = previousAttempt.children[i];
+            this.createSubtest(Test, child.name, { __proto__: null }, noop, {
+              __proto__: null,
+              loc: [child.line, child.column, child.file],
+            }, noop).start();
+          }
+        };
       }
     }
   }
@@ -949,11 +948,24 @@ class Test extends AsyncResource {
       return;
     }
 
-    this.passed = false;
+    if (this.expectFailure === true) {
+      this.passed = true;
+    } else {
+      this.passed = false;
+    }
+
     this.error = err;
   }
 
   pass() {
+    if (this.error == null && this.expectFailure === true && !this.skipped) {
+      this.passed = false;
+      this.error = new ERR_TEST_FAILURE(
+        'test was expected to fail but passed',
+        kExpectedFailure,
+      );
+      return;
+    }
     if (this.error !== null) {
       return;
     }
@@ -994,7 +1006,7 @@ class Test extends AsyncResource {
     if (this.root.harness.buildPromise || !this.parent.hasConcurrency()) {
       const deferred = PromiseWithResolvers();
 
-      deferred.test = this;
+      setOwnProperty(deferred, 'test', this);
       this.parent.addPendingSubtest(deferred);
       return deferred.promise;
     }
@@ -1346,6 +1358,8 @@ class Test extends AsyncResource {
       directive = this.reporter.getSkip(this.message);
     } else if (this.isTodo) {
       directive = this.reporter.getTodo(this.message);
+    } else if (this.expectFailure) {
+      directive = this.reporter.getXFail(this.expectFailure); // TODO(@JakobJingleheimer): support specifying failure
     }
 
     if (this.reportedType) {
@@ -1360,6 +1374,7 @@ class Test extends AsyncResource {
     if (this.passedAttempt !== undefined) {
       details.passed_on_attempt = this.passedAttempt;
     }
+
     return { __proto__: null, details, directive };
   }
 

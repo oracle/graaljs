@@ -11,7 +11,7 @@ if /i "%arg:~-4%"=="help" goto help
 cd %~dp0
 
 set JS_SUITES=default
-set NATIVE_SUITES=addons js-native-api node-api
+set NATIVE_SUITES=addons js-native-api node-api embedding
 @rem CI_* variables should be kept synchronized with the ones in Makefile
 set "CI_NATIVE_SUITES=%NATIVE_SUITES% benchmark"
 set "CI_JS_SUITES=%JS_SUITES% pummel"
@@ -88,6 +88,7 @@ if /i "%1"=="x86"           set target_arch=x86&goto arg-ok
 if /i "%1"=="x64"           set target_arch=x64&goto arg-ok
 if /i "%1"=="arm64"         set target_arch=arm64&goto arg-ok
 if /i "%1"=="vs2022"        set target_env=vs2022&goto arg-ok
+if /i "%1"=="vs2026"        set target_env=vs2026&goto arg-ok
 if /i "%1"=="noprojgen"     set noprojgen=1&goto arg-ok
 if /i "%1"=="projgen"       set projgen=1&goto arg-ok
 if /i "%1"=="clang-cl"      set clang_cl=1&goto arg-ok
@@ -194,8 +195,9 @@ if defined package set stage_package=1
 :: assign path to node_exe
 set "node_exe=%config%\node.exe"
 set "node_gyp_exe="%node_exe%" deps\npm\node_modules\node-gyp\bin\node-gyp"
-set "npm_exe="%~dp0%node_exe%" %~dp0deps\npm\bin\npm-cli.js"
+set "npm_exe="%node_exe%" deps\npm\bin\npm-cli.js"
 if "%target_env%"=="vs2022" set "node_gyp_exe=%node_gyp_exe% --msvs_version=2022"
+if "%target_env%"=="vs2026" set "node_gyp_exe=%node_gyp_exe% --msvs_version=2026"
 
 :: skip building if the only argument received was lint
 if "%*"=="lint" if exist "%node_exe%" goto lint-cpp
@@ -258,7 +260,7 @@ call :getnodeversion || exit /b 1
 set NODE_MAJOR_VERSION=
 for /F "tokens=1 delims=." %%i in ("%NODE_VERSION%") do set "NODE_MAJOR_VERSION=%%i"
 if %NODE_MAJOR_VERSION% GEQ 24 (
-  echo Using ClangCL because the Node.js version being compiled is ^>= 24.
+  echo ClangCL is required because the Node.js version being compiled is ^>= 24.
   set clang_cl=1
 )
 
@@ -279,6 +281,33 @@ set vcvarsall_arg=%msvs_host_arch%_%target_arch%
 @rem unless both the host and the target are the same
 if %target_arch%==x64 if %msvs_host_arch%==amd64 set vcvarsall_arg=amd64
 if %target_arch%==%msvs_host_arch% set vcvarsall_arg=%target_arch%
+
+@rem Look for Visual Studio 2026
+:vs-set-2026
+if defined target_env if "%target_env%" NEQ "vs2026" goto vs-set-2022
+echo Looking for Visual Studio 2026
+@rem VCINSTALLDIR may be set if run from a VS Command Prompt and needs to be
+@rem cleared first as vswhere_usability_wrapper.cmd doesn't when it fails to
+@rem detect the version searched for
+if not defined target_env set "VCINSTALLDIR="
+call tools\msvs\vswhere_usability_wrapper.cmd "[18.0,19.0)" %target_arch% "prerelease" %clang_cl%
+if "_%VCINSTALLDIR%_" == "__" goto vs-set-2022
+@rem check if VS2026 is already setup, and for the requested arch
+if "_%VisualStudioVersion%_" == "_18.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%target_arch%_" goto found_vs2026
+@rem need to clear VSINSTALLDIR for vcvarsall to work as expected
+set "VSINSTALLDIR="
+@rem prevent VsDevCmd.bat from changing the current working directory
+set "VSCMD_START_DIR=%CD%"
+set vcvars_call="%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vcvarsall_arg%
+echo calling: %vcvars_call%
+call %vcvars_call%
+if errorlevel 1 goto vs-set-2022
+if defined DEBUG_HELPER @ECHO ON
+:found_vs2026
+echo Found MSVS version %VisualStudioVersion%
+set GYP_MSVS_VERSION=2026
+set PLATFORM_TOOLSET=v145
+goto msbuild-found
 
 @rem Look for Visual Studio 2022
 :vs-set-2022
@@ -309,7 +338,7 @@ goto msbuild-found
 
 :msbuild-not-found
 set "clang_echo="
-if defined clang_cl set "clang_echo= or Clang compiler/LLVM toolset"
+if defined clang_cl set "clang_echo= with Clang compiler/LLVM toolset"
 echo Failed to find a suitable Visual Studio installation%clang_echo%.
 echo Try to run in a "Developer Command Prompt" or consult
 echo https://github.com/nodejs/node/blob/HEAD/BUILDING.md#windows
@@ -619,9 +648,7 @@ if not defined doc if not defined build_addons (
 )
 if exist "tools\doc\node_modules\unified\package.json" goto skip-install-doctools
 SETLOCAL
-cd tools\doc
-%npm_exe% ci
-cd ..\..
+%npm_exe% --prefix tools\doc ci
 if errorlevel 1 goto exit
 ENDLOCAL
 :skip-install-doctools
@@ -732,9 +759,6 @@ if not exist "%config%\cctest.exe" echo cctest.exe not found. Run "vcbuild test"
 echo running 'cctest %cctest_args%'
 "%config%\cctest" %cctest_args%
 if %errorlevel% neq 0 set exit_code=%errorlevel%
-echo running '%node_exe% test\embedding\test-embedding.js'
-"%node_exe%" test\embedding\test-embedding.js
-if %errorlevel% neq 0 set exit_code=%errorlevel%
 :run-test-py
 echo running 'python tools\test.py %test_args%'
 python tools\test.py %test_args%
@@ -748,7 +772,7 @@ if errorlevel 1 goto exit
 goto lint-cpp
 
 :lint-cpp
-if not defined lint_cpp goto lint-js
+if not defined lint_cpp goto lint-js-build
 if defined NODEJS_MAKE goto run-make-lint
 where make > NUL 2>&1 && make -v | findstr /C:"GNU Make" 1> NUL
 if "%ERRORLEVEL%"=="0" set "NODEJS_MAKE=make PYTHON=python" & goto run-make-lint
@@ -756,7 +780,7 @@ where wsl > NUL 2>&1
 if "%ERRORLEVEL%"=="0" set "NODEJS_MAKE=wsl make" & goto run-make-lint
 echo Could not find GNU Make, needed for linting C/C++
 echo Alternatively, you can use WSL
-goto lint-js
+goto lint-js-build
 
 :run-make-lint
 %NODEJS_MAKE% lint-cpp
@@ -764,9 +788,7 @@ goto lint-js-build
 
 :lint-js-build
 if not defined lint_js_build if not defined lint_js if not defined lint_js_fix goto lint-md-build
-cd tools\eslint
-%npm_exe% ci
-cd ..\..
+%npm_exe% --prefix tools\eslint ci
 
 :lint-js
 if not defined lint_js goto lint-js-fix
@@ -784,9 +806,7 @@ goto lint-md-build
 
 :lint-md-build
 if not defined lint_md if not defined format_md goto lint-md
-cd tools\lint-md
-%npm_exe% ci
-cd ..\..
+%npm_exe% --prefix tools\lint-md ci
 
 :lint-md
 if not defined lint_md goto format-md
@@ -797,6 +817,11 @@ set lint_md_files=
 for /D %%D IN (doc\*) do (
   for %%F IN (%%D\*.md) do (
     set "lint_md_files="%%F" !lint_md_files!"
+  )
+  for /D %%S IN (%%D\*) do (
+    for %%F IN (%%S\*.md) do (
+      set "lint_md_files="%%F" !lint_md_files!"
+    )
   )
 )
 %node_exe% tools\lint-md\lint-md.mjs %lint_md_files%
@@ -812,6 +837,11 @@ set lint_md_files=
 for /D %%D IN (doc\*) do (
   for %%F IN (%%D\*.md) do (
     set "lint_md_files="%%F" !lint_md_files!"
+  )
+  for /D %%S IN (%%D\*) do (
+    for %%F IN (%%S\*.md) do (
+      set "lint_md_files="%%F" !lint_md_files!"
+    )
   )
 )
 %node_exe% tools\lint-md\lint-md.mjs --format %lint_md_files%
@@ -829,7 +859,7 @@ set exit_code=1
 goto exit
 
 :help
-echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-doc/test-js-native-api/test-node-api/test-internet/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [clang-cl] [ccache path-to-ccache] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [nonpm] [nocorepack] [ltcg] [licensetf] [sign] [x64/arm64] [vs2022] [download-all] [enable-vtune] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [format-md] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
+echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-doc/test-js-native-api/test-node-api/test-internet/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [clang-cl] [ccache path-to-ccache] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [nonpm] [nocorepack] [ltcg] [licensetf] [sign] [x64/arm64] [vs2022/vs2026] [download-all] [enable-vtune] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [format-md] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
 echo Examples:
 echo   vcbuild.bat                          : builds release build
 echo   vcbuild.bat debug                    : builds debug build

@@ -84,6 +84,7 @@ const { getOptionValue } = require('internal/options');
 const binding = internalBinding('util');
 
 const {
+  convertProcessSignalToExitCode,
   deprecate: internalDeprecate,
   getLazy,
   getSystemErrorMap,
@@ -452,7 +453,7 @@ function getCallSites(frameCount = 10, options) {
 
   // Using kDefaultMaxCallStackSizeToCapture as reference
   validateNumber(frameCount, 'frameCount', 1, 200);
-  // If options.sourceMaps is true or if sourceMaps are enabled but the option.sourceMaps is not set explictly to false
+  // If options.sourceMaps is true or if sourceMaps are enabled but the option.sourceMaps is not set explicitly to false
   if (options.sourceMap === true || (getOptionValue('--enable-source-maps') && options.sourceMap !== false)) {
     return mapCallSite(binding.getCallSites(frameCount));
   }
@@ -472,6 +473,7 @@ module.exports = {
                              'The `util._extend` API is deprecated. Please use Object.assign() instead.',
                              'DEP0060'),
   callbackify,
+  convertProcessSignalToExitCode,
   debug: debuglog,
   debuglog,
   deprecate,

@@ -43,6 +43,7 @@
   V(buffer)                                                                    \
   V(builtins)                                                                  \
   V(cares_wrap)                                                                \
+  V(cjs_lexer)                                                                 \
   V(config)                                                                    \
   V(constants)                                                                 \
   V(contextify)                                                                \
@@ -526,7 +527,7 @@ void DLOpen(const FunctionCallbackInfo<Value>& args) {
       }
     }
 
-    // -1 is used for N-API modules
+    // -1 is used for Node-API modules
     if ((mp->nm_version != -1) && (mp->nm_version != -NODE_MODULE_VERSION)) {
       if (mp->nm_version == NODE_MODULE_VERSION) {
         dlib->Close();

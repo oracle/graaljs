@@ -50,9 +50,11 @@
           'defines': [
             'USING_UV_SHARED',
             'USING_V8_SHARED',
+            'USING_V8_PLATFORM_SHARED',
             'BUILDING_NODE_EXTENSION'
           ],
           'defines!': [
+            'BUILDING_V8_PLATFORM_SHARED=1',
             'BUILDING_V8_SHARED=1',
             'BUILDING_UV_SHARED=1'
           ]
@@ -224,6 +226,10 @@
 
     [ 'node_shared_ada=="false"', {
         'dependencies': [ 'deps/ada/ada.gyp:ada' ],
+    }],
+
+    [ 'node_shared_merve=="false"', {
+        'dependencies': [ 'deps/merve/merve.gyp:merve' ],
     }],
 
     [ 'node_shared_simdjson=="false"', {
@@ -408,7 +414,7 @@
               'conditions': [
                 ['OS in "linux freebsd openharmony" and node_shared=="false"', {
                   'ldflags': [
-                    '-Wl,--whole-archive,'
+                    '-Wl,--whole-archive',
                       '<(obj_dir)/deps/openssl/<(openssl_product)',
                     '-Wl,--no-whole-archive',
                   ],
@@ -439,6 +445,11 @@
       'defines': [ 'HAVE_AMARO=1' ],
     }, {
       'defines': [ 'HAVE_AMARO=0' ]
+    }],
+    [ 'node_use_sqlite=="true"', {
+      'defines': [ 'HAVE_SQLITE=1' ],
+    }, {
+      'defines': [ 'HAVE_SQLITE=0' ]
     }],
   ],
 }
