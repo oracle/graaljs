@@ -96,7 +96,6 @@ public class ImportCallNode extends JavaScriptNode {
 
     private static final HiddenKey PROMISE_CAPABILITY_KEY = new HiddenKey("%promiseCapability");
     private static final HiddenKey LINK_AND_EVALUATE_KEY = new HiddenKey("%linkAndEvaluate");
-    private static final TruffleString ASSERT = Strings.constant("assert");
 
     private final ImportPhase phase;
     @Child private JavaScriptNode argRefNode;
@@ -110,7 +109,6 @@ public class ImportCallNode extends JavaScriptNode {
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
     @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
     @Child private PropertyGetNode getWithNode;
-    @Child private PropertyGetNode getAssertNode;
 
     private final JSContext context;
 
@@ -176,21 +174,10 @@ public class ImportCallNode extends JavaScriptNode {
             }
             attributesObj = getWithNode.getValue(options);
         }
-        if (attributesObj == Undefined.instance) {
-            if (context.getLanguageOptions().importAssertions()) {
-                if (getAssertNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getAssertNode = insert(PropertyGetNode.create(ASSERT, context));
-                }
-                attributesObj = getAssertNode.getValue(options);
-            }
-        }
         Map.Entry<TruffleString, TruffleString>[] attributes = null;
         if (attributesObj != Undefined.instance) {
             if (!(attributesObj instanceof JSObject obj)) {
-                throw Errors.createTypeError(context.getLanguageOptions().importAssertions()
-                                ? "The 'assert' option must be an object"
-                                : "The 'with' option must be an object", this);
+                throw Errors.createTypeError("The 'with' option must be an object", this);
             }
             if (enumerableOwnPropertyNamesNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -211,9 +198,7 @@ public class ImportCallNode extends JavaScriptNode {
                 }
             }
             if (!allStrings) {
-                throw Errors.createTypeError(context.getLanguageOptions().importAssertions()
-                                ? "Import assertion value must be a string"
-                                : "Import attribute value must be a string", this);
+                throw Errors.createTypeError("Import attribute value must be a string", this);
             }
         }
         return attributes;

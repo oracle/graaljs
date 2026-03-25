@@ -5,6 +5,6 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 
-// Dummy module that is imported by import_call_assertion_error.mjs.
+// Dummy module that is imported by import_call_attributes_error.mjs.
 {
 }

@@ -196,7 +196,6 @@ public final class GraalJSParserHelper {
         builder.annexB(parserOptions.annexB());
         builder.classFields(parserOptions.classFields());
         builder.importAttributes(parserOptions.importAttributes());
-        builder.importAssertions(parserOptions.importAssertions());
         builder.sourcePhaseImports(parserOptions.sourcePhaseImports());
         builder.privateFieldsIn(parserOptions.privateFieldsIn());
         builder.topLevelAwait(parserOptions.topLevelAwait());

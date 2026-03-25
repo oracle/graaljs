@@ -15,7 +15,7 @@ function shouldHaveThrown(err) {
     throw new Error(`should have thrown ${err}`);
 }
 
-const from = './import_call_assertion_error_imported.mjs';
+const from = './import_call_attributes_error_imported.mjs';
 
 try {
     // The second argument to import() must be an object
