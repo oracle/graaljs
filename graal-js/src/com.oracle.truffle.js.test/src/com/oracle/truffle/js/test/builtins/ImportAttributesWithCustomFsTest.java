@@ -72,8 +72,6 @@ import com.oracle.truffle.js.test.JSTest;
 
 public class ImportAttributesWithCustomFsTest {
 
-    private static final String KEYWORD = "with";
-
     private static void executeTest(TestTuple source) throws IOException {
         executeTest(source, "./test.js");
     }
@@ -121,33 +119,33 @@ public class ImportAttributesWithCustomFsTest {
     private static TestTuple[] getTestTuples(String assertVal, String importName) {
         TestTuple[] testTuples = new TestTuple[5];
         testTuples[0] = new TestTuple(
-                        "import { val } from '" + importName + "' " + KEYWORD + " " + assertVal + "; val;",
+                        "import { val } from '" + importName + "' with " + assertVal + "; val;",
                         "export const val = 'value';",
                         "value");
         testTuples[1] = new TestTuple(
-                        "import json from '" + importName + "' " + KEYWORD + " " + assertVal + "; json.val;",
+                        "import json from '" + importName + "' with " + assertVal + "; json.val;",
                         "let json = { val: 'value' }; export { json as default };",
                         "value");
         testTuples[2] = new TestTuple(
                         "import { val } from '" + importName + "'; val;",
-                        "export { val } from './test2.js' " + KEYWORD + " " + assertVal + ";",
+                        "export { val } from './test2.js' with " + assertVal + ";",
                         "value",
                         "./test2.js",
                         "export const val = 'value';", false);
         testTuples[3] = new TestTuple(String.format("""
                         (async function () {
-                            let {default:json} = await import('%s', { %s: %s } );
+                            let {default:json} = await import('%s', { with: %s } );
                             console.log(json.val);
                         });
-                        """, importName, KEYWORD, assertVal),
+                        """, importName, assertVal),
                         "let json = { val: 'value' }; export { json as default };",
                         "value", true);
         testTuples[4] = new TestTuple(String.format("""
                         (async function () {
-                            let {default:json} = await import('%s', { %s: %s }, );
+                            let {default:json} = await import('%s', { with: %s }, );
                             console.log(json.val);
                         });
-                        """, importName, KEYWORD, assertVal),
+                        """, importName, assertVal),
                         "let json = { val: 'value' }; export { json as default };",
                         "value", true);
         return testTuples;
@@ -213,24 +211,24 @@ public class ImportAttributesWithCustomFsTest {
     public void testNoLineTerminator() throws IOException {
         // import attributes may be on a separate line.
         String expectedResult = "none,value";
-        TestTuple t = new TestTuple(String.format("""
+        TestTuple t = new TestTuple("""
                         var access = 'none';
-                        Object.defineProperty(globalThis, '%1$s', {get:function() { access = '%1$s'; }});
+                        Object.defineProperty(globalThis, 'with', {get:function() { access = 'with'; }});
                         import { val } from './test.js'
-                        %1$s
+                        with
                          {};
                         access + ',' + val;
-                        """, KEYWORD),
+                        """,
                         "export const val = 'value';",
                         expectedResult);
-        TestTuple t2 = new TestTuple(String.format("""
+        TestTuple t2 = new TestTuple("""
                         var access = 'none';
-                        Object.defineProperty(globalThis, '%1$s', {get:function() { access = '%1$s'; }});
+                        Object.defineProperty(globalThis, 'with', {get:function() { access = 'with'; }});
                         import json from './test.js'
-                        %1$s\s
+                        with\s
                          {};
                         access + ',' + json.val;
-                        """, KEYWORD), """
+                        """, """
                         let json = { val: 'value' };
                         export { json as default };
                         """,
@@ -238,13 +236,13 @@ public class ImportAttributesWithCustomFsTest {
         TestTuple t3 = new TestTuple("""
                         import { val, access } from './test.js';
                         access + ',' + val;
-                        """, String.format("""
+                        """, """
                         export var access = 'none';
-                        Object.defineProperty(globalThis, '%1$s', {get:function() { access = '%1$s'; }});
+                        Object.defineProperty(globalThis, 'with', {get:function() { access = 'with'; }});
                         export { val } from './test2.js'\s
-                         %1$s\s
+                         with\s
                          {};
-                        """, KEYWORD),
+                        """,
                         expectedResult,
                         "./test2.js",
                         "export const val = 'value';", false);
