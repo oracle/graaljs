@@ -60,7 +60,8 @@ v8::Local<v8::ArrayBuffer> GraalArrayBufferView::Buffer() {
         JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::array_buffer_view_buffer, Object, GetJavaObject());
         java_array_buffer = java_buffer;
     }
-    GraalArrayBuffer* graal_array_buffer = GraalArrayBuffer::Allocate(graal_isolate, java_array_buffer, direct);
+    JNI_CALL(jboolean, shared, graal_isolate, GraalAccessMethod::value_is_shared_array_buffer, Boolean, java_array_buffer);
+    GraalArrayBuffer* graal_array_buffer = GraalArrayBuffer::Allocate(graal_isolate, java_array_buffer, direct, shared);
     v8::ArrayBuffer* v8_array_buffer = reinterpret_cast<v8::ArrayBuffer*> (graal_array_buffer);
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     return v8::Local<v8::ArrayBuffer>::New(v8_isolate, v8_array_buffer);

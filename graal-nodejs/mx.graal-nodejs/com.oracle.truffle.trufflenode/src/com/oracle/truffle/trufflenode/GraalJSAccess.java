@@ -91,6 +91,7 @@ import static com.oracle.truffle.trufflenode.ValueType.ORDINARY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROMISE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROXY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.REGEXP_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SET_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
@@ -589,6 +590,8 @@ public final class GraalJSAccess {
             return REGEXP_OBJECT;
         } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
             return valueTypeArrayBufferView(obj, useSharedBuffer);
+        } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(obj)) {
+            return SHARED_ARRAY_BUFFER_OBJECT;
         } else if (JSArrayBuffer.isJSDirectArrayBuffer(obj)) {
             return DIRECT_ARRAY_BUFFER_OBJECT;
         } else if (JSArrayBuffer.isJSInteropArrayBuffer(obj)) {
@@ -1573,7 +1576,8 @@ public final class GraalJSAccess {
     }
 
     private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArrayFactory factory) {
-        TypedArray arrayType = factory.createArrayType(TypedArray.BUFFER_TYPE_DIRECT, offset != 0, true);
+        boolean shared = JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer);
+        TypedArray arrayType = factory.createArrayType(shared ? TypedArray.BUFFER_TYPE_SHARED : TypedArray.BUFFER_TYPE_DIRECT, offset != 0, true);
         JSArrayBufferObject dynamicObject = (JSArrayBufferObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
         JSRealm realm = getCurrentRealm();

@@ -119,6 +119,10 @@ bool GraalValue::IsArrayBuffer() const {
     return false;
 }
 
+bool GraalValue::IsSharedArrayBuffer() const {
+    return false;
+}
+
 bool GraalValue::IsArrayBufferView() const {
     return false;
 }
@@ -239,11 +243,6 @@ bool GraalValue::IsMapIterator() const {
 
 bool GraalValue::IsSetIterator() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_set_iterator, Boolean, GetJavaObject());
-    return result;
-}
-
-bool GraalValue::IsSharedArrayBuffer() const {
-    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_shared_array_buffer, Boolean, GetJavaObject());
     return result;
 }
 
@@ -744,16 +743,23 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case DIRECT_ARRAY_BUFFER_OBJECT:
             if (placement) {
-                result = GraalArrayBuffer::Allocate(isolate, java_object, true, placement);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, true, false, placement);
             } else {
-                result = GraalArrayBuffer::Allocate(isolate, java_object, true);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, true, false);
             }
             break;
         case INTEROP_ARRAY_BUFFER_OBJECT:
             if (placement) {
-                result = GraalArrayBuffer::Allocate(isolate, java_object, false, placement);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, false, false, placement);
             } else {
-                result = GraalArrayBuffer::Allocate(isolate, java_object, false);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, false, false);
+            }
+            break;
+        case SHARED_ARRAY_BUFFER_OBJECT:
+            if (placement) {
+                result = GraalArrayBuffer::Allocate(isolate, java_object, true, true, placement);
+            } else {
+                result = GraalArrayBuffer::Allocate(isolate, java_object, true, true);
             }
             break;
         case SYMBOL_VALUE:

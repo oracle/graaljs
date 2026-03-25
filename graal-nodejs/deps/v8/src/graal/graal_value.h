@@ -63,6 +63,7 @@ enum ValueType {
     ARRAY_BUFFER_VIEW_OBJECT = 14,
     DIRECT_ARRAY_BUFFER_OBJECT = 15,
     INTEROP_ARRAY_BUFFER_OBJECT = 45,
+    SHARED_ARRAY_BUFFER_OBJECT = 48,
     SYMBOL_VALUE = 16,
     DIRECT_UINT8ARRAY_OBJECT = 17,
     DIRECT_UINT8CLAMPEDARRAY_OBJECT = 18,
@@ -113,6 +114,7 @@ public:
     virtual bool IsNumber() const;
     virtual bool IsBoolean() const;
     virtual bool IsArrayBuffer() const;
+    virtual bool IsSharedArrayBuffer() const;
     virtual bool IsArrayBufferView() const;
     virtual bool IsDate() const;
     virtual bool IsRegExp() const;
@@ -143,7 +145,6 @@ public:
     bool IsNativeError() const;
     bool IsMapIterator() const;
     bool IsSetIterator() const;
-    bool IsSharedArrayBuffer() const;
     bool IsArgumentsObject() const;
     bool IsBooleanObject() const;
     bool IsNumberObject() const;

@@ -1109,6 +1109,15 @@ namespace v8 {
         view_class* v8_view = reinterpret_cast<view_class*> (GraalArrayBufferView::Allocate(graal_isolate, java_array_buffer_view, view_type)); \
         Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate); \
         return Local<view_class>::New(v8_isolate, v8_view); \
+    } \
+    Local<view_class> view_class::New(Local<SharedArrayBuffer> shared_array_buffer, size_t byte_offset, size_t length) { \
+        GraalArrayBuffer* graal_shared_array_buffer = reinterpret_cast<GraalArrayBuffer*> (*shared_array_buffer); \
+        jobject java_shared_array_buffer = graal_shared_array_buffer->GetJavaObject(); \
+        GraalIsolate* graal_isolate = graal_shared_array_buffer->Isolate(); \
+        JNI_CALL(jobject, java_array_buffer_view, graal_isolate, GraalAccessMethod::graal_access_method, Object, java_shared_array_buffer, (jint) byte_offset, (jint) length); \
+        view_class* v8_view = reinterpret_cast<view_class*> (GraalArrayBufferView::Allocate(graal_isolate, java_array_buffer_view, GraalArrayBufferView::direct_view_type)); \
+        Isolate* v8_isolate = reinterpret_cast<Isolate*> (graal_isolate); \
+        return Local<view_class>::New(v8_isolate, v8_view); \
     }
 
     ArrayBufferViewNew(Uint8Array, kDirectUint8Array, kInteropUint8Array, uint8_array_new)
@@ -3650,7 +3659,7 @@ namespace v8 {
         jobject java_store = reinterpret_cast<GraalBackingStore*> (backing_store.get())->GetJavaStore();
         void* data = backing_store->Data();
         JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_store, (jlong) data);
-        GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_array_buffer);
+        GraalArrayBuffer* graal_object = GraalArrayBuffer::Allocate(graal_isolate, java_array_buffer, true, true);
         SharedArrayBuffer* v8_object = reinterpret_cast<SharedArrayBuffer*> (graal_object);
         return Local<SharedArrayBuffer>::New(isolate, v8_object);
     }
