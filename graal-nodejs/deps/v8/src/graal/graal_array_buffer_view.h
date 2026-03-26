@@ -54,6 +54,7 @@ public:
     inline static GraalArrayBufferView* Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset, void* placement);
     v8::Local<v8::ArrayBuffer> Buffer();
     bool IsDirect() const;
+    bool IsShared() const;
     bool IsArrayBufferView() const override;
     bool IsUint8Array() const override;
     bool IsUint8ClampedArray() const override;
@@ -96,6 +97,20 @@ public:
     static const int kDirectFloat64Array = 23;
     static const int kDirectBigInt64Array = 24;
     static const int kDirectBigUint64Array = 25;
+    static const int kSharedArrayView = 26;
+    static const int kSharedUint8Array = 27;
+    static const int kSharedUint8ClampedArray = 28;
+    static const int kSharedInt8Array = 29;
+    static const int kSharedUint16Array = 30;
+    static const int kSharedInt16Array = 31;
+    static const int kSharedUint32Array = 32;
+    static const int kSharedInt32Array = 33;
+    static const int kSharedFloat16Array = 34;
+    static const int kSharedFloat32Array = 35;
+    static const int kSharedFloat64Array = 36;
+    static const int kSharedBigInt64Array = 37;
+    static const int kSharedBigUint64Array = 38;
+    static const int kSharedDataView = 39;
 protected:
     inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
     inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);

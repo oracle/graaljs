@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,6 +90,20 @@ public interface ValueType {
     int MODULE_REQUEST = 45;
     int DIRECT_FLOAT16ARRAY_OBJECT = 46;
     int INTEROP_FLOAT16ARRAY_OBJECT = 47;
+    int SHARED_ARRAY_BUFFER_VIEW_OBJECT = 49;
+    int SHARED_UINT8ARRAY_OBJECT = 50;
+    int SHARED_UINT8CLAMPEDARRAY_OBJECT = 51;
+    int SHARED_INT8ARRAY_OBJECT = 52;
+    int SHARED_UINT16ARRAY_OBJECT = 53;
+    int SHARED_INT16ARRAY_OBJECT = 54;
+    int SHARED_UINT32ARRAY_OBJECT = 55;
+    int SHARED_INT32ARRAY_OBJECT = 56;
+    int SHARED_FLOAT16ARRAY_OBJECT = 57;
+    int SHARED_FLOAT32ARRAY_OBJECT = 58;
+    int SHARED_FLOAT64ARRAY_OBJECT = 59;
+    int SHARED_BIGINT64ARRAY_OBJECT = 60;
+    int SHARED_BIGUINT64ARRAY_OBJECT = 61;
+    int SHARED_DATA_VIEW_OBJECT = 62;
 
     int UNKNOWN_TYPE = -1;
 }

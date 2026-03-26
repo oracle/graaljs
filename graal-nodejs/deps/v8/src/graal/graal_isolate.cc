@@ -724,7 +724,6 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::value_is_native_error, "valueIsNativeError", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_set_iterator, "valueIsSetIterator", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_map_iterator, "valueIsMapIterator", "(Ljava/lang/Object;)Z")
-    ACCESS_METHOD(GraalAccessMethod::value_is_shared_array_buffer, "valueIsSharedArrayBuffer", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_arguments_object, "valueIsArgumentsObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_boolean_object, "valueIsBooleanObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_number_object, "valueIsNumberObject", "(Ljava/lang/Object;)Z")

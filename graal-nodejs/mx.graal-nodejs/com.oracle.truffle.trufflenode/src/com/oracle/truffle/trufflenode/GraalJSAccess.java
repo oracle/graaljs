@@ -92,6 +92,20 @@ import static com.oracle.truffle.trufflenode.ValueType.PROMISE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROXY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.REGEXP_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SHARED_ARRAY_BUFFER_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_ARRAY_BUFFER_VIEW_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_BIGINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_DATA_VIEW_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_FLOAT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_FLOAT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_FLOAT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_INT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_INT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_INT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SET_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
@@ -207,7 +221,6 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.UserScriptException;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
@@ -588,21 +601,22 @@ public final class GraalJSAccess {
             return DATE_OBJECT;
         } else if (JSRegExp.isJSRegExp(obj)) {
             return REGEXP_OBJECT;
-        } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
-            return valueTypeArrayBufferView(obj, useSharedBuffer);
+        } else if (obj instanceof JSTypedArrayObject typedArray) {
+            return valueTypeArrayBufferView(typedArray, useSharedBuffer);
         } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(obj)) {
             return SHARED_ARRAY_BUFFER_OBJECT;
         } else if (JSArrayBuffer.isJSDirectArrayBuffer(obj)) {
             return DIRECT_ARRAY_BUFFER_OBJECT;
         } else if (JSArrayBuffer.isJSInteropArrayBuffer(obj)) {
             return INTEROP_ARRAY_BUFFER_OBJECT;
-        } else if (JSDataView.isJSDataView(obj)) {
+        } else if (obj instanceof JSDataViewObject dataView) {
             if (useSharedBuffer) {
                 JSContext context = JSObject.getJSContext(obj);
                 sharedBuffer.putInt(arrayBufferViewByteLength(context, obj));
                 sharedBuffer.putInt(arrayBufferViewByteOffset(context, obj));
             }
-            return DATA_VIEW_OBJECT;
+            boolean shared = JSSharedArrayBuffer.isJSSharedArrayBuffer(dataView.getArrayBuffer());
+            return shared ? SHARED_DATA_VIEW_OBJECT : DATA_VIEW_OBJECT;
         } else if (JSMap.isJSMap(obj)) {
             return MAP_OBJECT;
         } else if (JSSet.isJSSet(obj)) {
@@ -616,37 +630,38 @@ public final class GraalJSAccess {
         }
     }
 
-    private int valueTypeArrayBufferView(JSDynamicObject obj, boolean useSharedBuffer) {
+    private int valueTypeArrayBufferView(JSTypedArrayObject obj, boolean useSharedBuffer) {
         if (useSharedBuffer) {
             JSContext context = JSObject.getJSContext(obj);
             sharedBuffer.putInt(arrayBufferViewByteLength(context, obj));
             sharedBuffer.putInt(arrayBufferViewByteOffset(context, obj));
         }
-        ScriptArray array = JSObject.getArray(obj);
+        TypedArray array = obj.getArrayType();
+        boolean shared = array.getBufferType() == TypedArray.BUFFER_TYPE_SHARED;
         if (array instanceof TypedArray.DirectUint8Array) {
-            return DIRECT_UINT8ARRAY_OBJECT;
+            return shared ? SHARED_UINT8ARRAY_OBJECT : DIRECT_UINT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint8ClampedArray) {
-            return DIRECT_UINT8CLAMPEDARRAY_OBJECT;
+            return shared ? SHARED_UINT8CLAMPEDARRAY_OBJECT : DIRECT_UINT8CLAMPEDARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt8Array) {
-            return DIRECT_INT8ARRAY_OBJECT;
+            return shared ? SHARED_INT8ARRAY_OBJECT : DIRECT_INT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint16Array) {
-            return DIRECT_UINT16ARRAY_OBJECT;
+            return shared ? SHARED_UINT16ARRAY_OBJECT : DIRECT_UINT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt16Array) {
-            return DIRECT_INT16ARRAY_OBJECT;
+            return shared ? SHARED_INT16ARRAY_OBJECT : DIRECT_INT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint32Array) {
-            return DIRECT_UINT32ARRAY_OBJECT;
+            return shared ? SHARED_UINT32ARRAY_OBJECT : DIRECT_UINT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt32Array) {
-            return DIRECT_INT32ARRAY_OBJECT;
+            return shared ? SHARED_INT32ARRAY_OBJECT : DIRECT_INT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat16Array) {
-            return DIRECT_FLOAT16ARRAY_OBJECT;
+            return shared ? SHARED_FLOAT16ARRAY_OBJECT : DIRECT_FLOAT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat32Array) {
-            return DIRECT_FLOAT32ARRAY_OBJECT;
+            return shared ? SHARED_FLOAT32ARRAY_OBJECT : DIRECT_FLOAT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat64Array) {
-            return DIRECT_FLOAT64ARRAY_OBJECT;
+            return shared ? SHARED_FLOAT64ARRAY_OBJECT : DIRECT_FLOAT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectBigInt64Array) {
-            return DIRECT_BIGINT64ARRAY_OBJECT;
+            return shared ? SHARED_BIGINT64ARRAY_OBJECT : DIRECT_BIGINT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectBigUint64Array) {
-            return DIRECT_BIGUINT64ARRAY_OBJECT;
+            return shared ? SHARED_BIGUINT64ARRAY_OBJECT : DIRECT_BIGUINT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropUint8Array) {
             return INTEROP_UINT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropUint8ClampedArray) {
@@ -672,7 +687,7 @@ public final class GraalJSAccess {
         } else if (array instanceof TypedArray.InteropBigUint64Array) {
             return INTEROP_BIGUINT64ARRAY_OBJECT;
         } else {
-            return ARRAY_BUFFER_VIEW_OBJECT;
+            return shared ? SHARED_ARRAY_BUFFER_VIEW_OBJECT : ARRAY_BUFFER_VIEW_OBJECT;
         }
     }
 
@@ -768,10 +783,6 @@ public final class GraalJSAccess {
 
     public boolean valueIsMapIterator(Object object) {
         return object instanceof JSMapIteratorObject;
-    }
-
-    public boolean valueIsSharedArrayBuffer(Object object) {
-        return JSSharedArrayBuffer.isJSSharedArrayBuffer(object);
     }
 
     public boolean valueIsArgumentsObject(Object object) {

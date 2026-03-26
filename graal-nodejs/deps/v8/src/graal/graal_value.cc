@@ -666,6 +666,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case ARRAY_BUFFER_VIEW_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kUnknownArray, use_shared_buffer, placement);
             break;
+        case SHARED_ARRAY_BUFFER_VIEW_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedArrayView, use_shared_buffer, placement);
+            break;
         case DIRECT_UINT8ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectUint8Array, use_shared_buffer, placement);
             break;
@@ -698,6 +701,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case DATA_VIEW_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDataView, use_shared_buffer, placement);
+            break;
+        case SHARED_DATA_VIEW_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedDataView, use_shared_buffer, placement);
             break;
         case DIRECT_BIGINT64ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectBigInt64Array, use_shared_buffer, placement);
@@ -740,6 +746,42 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case INTEROP_BIGUINT64ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kInteropBigUint64Array, use_shared_buffer, placement);
+            break;
+        case SHARED_UINT8ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedUint8Array, use_shared_buffer, placement);
+            break;
+        case SHARED_UINT8CLAMPEDARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedUint8ClampedArray, use_shared_buffer, placement);
+            break;
+        case SHARED_INT8ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedInt8Array, use_shared_buffer, placement);
+            break;
+        case SHARED_UINT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedUint16Array, use_shared_buffer, placement);
+            break;
+        case SHARED_INT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedInt16Array, use_shared_buffer, placement);
+            break;
+        case SHARED_UINT32ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedUint32Array, use_shared_buffer, placement);
+            break;
+        case SHARED_INT32ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedInt32Array, use_shared_buffer, placement);
+            break;
+        case SHARED_FLOAT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedFloat16Array, use_shared_buffer, placement);
+            break;
+        case SHARED_FLOAT32ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedFloat32Array, use_shared_buffer, placement);
+            break;
+        case SHARED_FLOAT64ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedFloat64Array, use_shared_buffer, placement);
+            break;
+        case SHARED_BIGINT64ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedBigInt64Array, use_shared_buffer, placement);
+            break;
+        case SHARED_BIGUINT64ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedBigUint64Array, use_shared_buffer, placement);
             break;
         case DIRECT_ARRAY_BUFFER_OBJECT:
             if (placement) {
