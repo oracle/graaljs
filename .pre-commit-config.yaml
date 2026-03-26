@@ -1,0 +1,66 @@
+repos:
+- repo: local
+  hooks:
+  - id: checkcopyrights
+    name: Copyright check
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-checkcopyrights.sh
+    types: [text]
+    files: '^(graal-js/|graal-nodejs/mx\.graal-nodejs/.*\.java$)'
+  - id: verifymultireleaseprojects
+    name: Verify multi-release projects
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-verifymultireleaseprojects.sh
+    types: [text]
+    files: '(^|/)(mx\.[^/]+/suite\.py|.*\.java)$'
+  - id: pyformat
+    name: Python format check
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-pyformat.sh
+    types: [text]
+    files: '\.py$'
+  - id: pylint
+    name: Pylint on mx Python files
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-pylint.sh
+    types: [text]
+    files: '(^|/)mx\.[^/]+/.*\.py$'
+  - id: checkoverlap
+    name: Check distribution overlap
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-checkoverlap.sh
+    types: [text]
+    files: '(^|/)mx\.[^/]+/suite\.py$'
+  - id: canonicalizeprojects
+    name: Canonicalize projects
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-canonicalizeprojects.sh
+    types: [text]
+    files: '(^|/)(mx\.[^/]+/suite\.py|.*\.java)$'
+  - id: verifysourceinproject
+    name: Verify sources in projects
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-verifysourceinproject.sh
+    types: [text]
+    files: '(^|/)(mx\.[^/]+/suite\.py|.*\.java)$'
+  - id: eclipseformat
+    name: Eclipse formatter
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-eclipseformat.sh
+    types: [text]
+    files: '\.java$'
+  - id: checkstyle
+    name: Checkstyle
+    language: system
+    require_serial: true
+    entry: bash ../graal/scripts/pre-commit-checkstyle.sh
+    types: [text]
+    files: '\.java$'
