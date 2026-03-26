@@ -27,6 +27,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_sdk_vm_ng, mx_graal_js, os, tempfile
+import mx_native
 import mx_util
 
 import mx_graal_nodejs_benchmark
@@ -152,7 +153,8 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
 
         build_env = os.environ.copy()
-        _prepare_build_env(build_env)
+        resolved_toolchain = _resolve_graalos_toolchain() if _is_graalos_musl_swcfi_target() else None
+        _prepare_build_env(build_env, resolved_toolchain=resolved_toolchain)
 
         debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
@@ -167,6 +169,8 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--openssl-no-asm']
+        elif _is_graalos_musl_swcfi_target():
+            extra_flags = ['--openssl-no-asm']
         else:
             extra_flags = []
 
@@ -196,7 +200,17 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             # copy libjsig.so from the jdk for inclusion in the standalone and `mx node`
             libjsig_name = mx.add_lib_suffix(mx.add_lib_prefix('jsig'))
             mx_util.ensure_dir_exists(join(self._out_dir, 'lib'))
-            mx.copyfile(join(_java_home(forBuild=True), 'lib', libjsig_name), join(self._out_dir, 'lib', libjsig_name))
+            if _is_graalos_musl_swcfi_target():
+                musl_libjsig = join(_java_home(forBuild=True), 'lib', 'musl-swcfi', libjsig_name)
+                if not exists(musl_libjsig):
+                    mx.abort(
+                        'GraalOS musl-swcfi build requires libjsig from the musl toolchain folder. '
+                        f"Missing '{musl_libjsig}' in the build JDK."
+                    )
+                libjsig_src = musl_libjsig
+            else:
+                libjsig_src = join(_java_home(forBuild=True), 'lib', libjsig_name)
+            mx.copyfile(libjsig_src, join(self._out_dir, 'lib', libjsig_name))
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
@@ -415,7 +429,62 @@ def processDevkitRoot(env=None):
         if devkit_version is not None:
             _setEnvVar('GYP_MSVS_VERSION', devkit_version, _env)
 
-def _prepare_build_env(build_env=None):
+def _get_selected_multitarget_libc():
+    try:
+        full_spec = mx_native.TargetSelection.get_selection()
+    except BaseException:  # pylint: disable=broad-except
+        return None
+    if not full_spec:
+        return None
+    target = full_spec[0]
+    libc = target.libc
+    if target.variant is not None:
+        libc = f'{libc}-{target.variant}'
+    return libc
+
+def _is_graalos_musl_swcfi_target():
+    selected_libc = _get_selected_multitarget_libc()
+    return selected_libc == 'musl-swcfi'
+
+def _get_graalos_toolchain_from_jdk_homes():
+    java_homes = []
+    build_jdk = get_jdk(forBuild=True)
+    if build_jdk is not None:
+        java_homes.append(build_jdk.home)
+    env_java_home = mx.get_env('JAVA_HOME')
+    if env_java_home is not None:
+        java_homes.append(env_java_home)
+    bootstrap_graalvm = mx.get_env('BOOTSTRAP_GRAALVM')
+    if bootstrap_graalvm is not None:
+        java_homes.append(bootstrap_graalvm)
+
+    seen = set()
+    for java_home in java_homes:
+        normalized_home = os.path.realpath(java_home)
+        if normalized_home in seen:
+            continue
+        seen.add(normalized_home)
+        toolchain = join(normalized_home, 'lib', 'toolchains', 'musl-swcfi')
+        if exists(toolchain):
+            return toolchain, normalized_home
+    return None, None
+
+def _resolve_graalos_toolchain():
+    toolchain, source_home = _get_graalos_toolchain_from_jdk_homes()
+    if toolchain is not None:
+        mx.logv(f'Using GraalOS musl-swcfi toolchain from {source_home}')
+        return toolchain
+
+    if mx.suite('sandbox-toolchains', fatalIfMissing=False):
+        toolchain = mx_subst.path_substitutions.substitute('<path:sandbox-toolchains:SANDBOXED_MUSL_TOOLCHAIN>/toolchains/musl-swcfi')
+        if exists(toolchain):
+            mx.logv(f'Using GraalOS musl-swcfi toolchain from sandbox-toolchains: {toolchain}')
+            return toolchain
+
+    mx.abort('Could not find a GraalOS musl-swcfi toolchain for the selected linux-amd64-musl-swcfi target. '
+             'Looked in the build JDK/JAVA_HOME lib/toolchains/musl-swcfi, then BOOTSTRAP_GRAALVM, then sandbox-toolchains.')
+
+def _prepare_build_env(build_env=None, resolved_toolchain=None):
     env = build_env or os.environ
 
     # GR-59703: Migrate sun.misc.* usages.
@@ -424,6 +493,34 @@ def _prepare_build_env(build_env=None):
         java_version = mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version().parts[0]
         _setEnvVar(flags_var, f"-DJAVA_FEATURE_VERSION={java_version}{' ' + other_flags if other_flags else ''}", env)
 
+    if resolved_toolchain is not None:
+        toolchain_bin = join(resolved_toolchain, 'bin')
+        existing_path = env.get('PATH')
+        _setEnvVar('PATH', pathsep.join([toolchain_bin, existing_path]) if existing_path else toolchain_bin, env)
+
+        target_toolchain_env = {
+            'CC': join(toolchain_bin, 'clang'),
+            'CXX': join(toolchain_bin, 'clang++'),
+            'AR': join(toolchain_bin, 'llvm-ar'),
+            'LD': join(toolchain_bin, 'ld.lld'),
+            'RANLIB': join(toolchain_bin, 'llvm-ranlib'),
+            'NM': join(toolchain_bin, 'llvm-nm'),
+        }
+        for env_var, tool_path in target_toolchain_env.items():
+            _setEnvVar(env_var, tool_path, env)
+        _setEnvVar('CC_target', target_toolchain_env['CC'], env)
+        _setEnvVar('CXX_target', target_toolchain_env['CXX'], env)
+
+        clang_runtime_lib_dir = _find_clang_runtime_lib_dir(resolved_toolchain)
+        if clang_runtime_lib_dir is not None:
+            atomic_shim_lib_dir = _ensure_libatomic_shim_dir(clang_runtime_lib_dir)
+            _prepend_env_flags('LDFLAGS', f'-L{atomic_shim_lib_dir}', env)
+            _prepend_env_flags('LDFLAGS_host', f'-L{atomic_shim_lib_dir}', env)
+            _prepend_env_flags('LDFLAGS', f'-L{clang_runtime_lib_dir}', env)
+            _prepend_env_flags('LDFLAGS_host', f'-L{clang_runtime_lib_dir}', env)
+            _prepend_env_path('LD_LIBRARY_PATH', atomic_shim_lib_dir, env)
+            _prepend_env_path('LD_LIBRARY_PATH', clang_runtime_lib_dir, env)
+
     if _current_os == 'darwin' and _current_arch == 'amd64':
         min_version = env.get('MACOSX_DEPLOYMENT_TARGET')
         if min_version:
@@ -431,6 +528,42 @@ def _prepare_build_env(build_env=None):
             for flags_var in ('CXXFLAGS', 'CFLAGS', 'LDFLAGS'):
                 other_flags = env.get(flags_var)
                 _setEnvVar(flags_var, f"-mmacosx-version-min={min_version}{' ' + other_flags if other_flags else ''}", env)
+
+def _find_clang_runtime_lib_dir(resolved_toolchain):
+    clang_lib_root = join(resolved_toolchain, 'lib', 'clang')
+    if not exists(clang_lib_root) or not isdir(clang_lib_root):
+        return None
+
+    for version in sorted(os.listdir(clang_lib_root), reverse=True):
+        runtime_dir = join(clang_lib_root, version, 'lib', 'x86_64-unknown-linux-musl')
+        if exists(join(runtime_dir, 'libclang_rt.atomic.so')):
+            return runtime_dir
+    return None
+
+def _ensure_libatomic_shim_dir(clang_runtime_lib_dir):
+    shim_dir = join(_suite.dir, 'out', 'toolchain-linker-shims')
+    mx_util.ensure_dir_exists(shim_dir)
+
+    target_atomic_lib = join(clang_runtime_lib_dir, 'libclang_rt.atomic.so')
+    shim_atomic_lib = join(shim_dir, 'libatomic.so')
+
+    if os.path.lexists(shim_atomic_lib):
+        if os.path.islink(shim_atomic_lib):
+            current_target = os.readlink(shim_atomic_lib)
+            if current_target == target_atomic_lib:
+                return shim_dir
+        os.unlink(shim_atomic_lib)
+
+    os.symlink(target_atomic_lib, shim_atomic_lib)
+    return shim_dir
+
+def _prepend_env_flags(name, flags, env):
+    existing_flags = env.get(name)
+    _setEnvVar(name, f"{flags}{' ' + existing_flags if existing_flags else ''}", env)
+
+def _prepend_env_path(name, path, env):
+    existing_path = env.get(name)
+    _setEnvVar(name, pathsep.join([path, existing_path]) if existing_path else path, env)
 
 def setupNodeEnvironment(args, add_graal_vm_args=True):
     args = args if args else []
@@ -635,7 +768,12 @@ def graalnodejs_standalone_deps():
     return deps
 
 def libgraalnodejs_dynamic_build_args():
-    return libgraalnodejs_dynamic_build_args_common() + (libgraalnodejs_dynamic_build_args_ee() if is_nativeimage_ee() else [])
+    image_build_args = libgraalnodejs_dynamic_build_args_common()
+    if _is_graalos_musl_swcfi_target():
+        image_build_args += ['-H:+GraalOS']
+    if is_nativeimage_ee():
+        image_build_args += libgraalnodejs_dynamic_build_args_ee()
+    return image_build_args
 
 def libgraalnodejs_dynamic_build_args_common():
     if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() >= mx.VersionSpec("25") and is_wasm_available():
