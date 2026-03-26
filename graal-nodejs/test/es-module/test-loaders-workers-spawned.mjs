@@ -38,7 +38,7 @@ describe('Worker threads do not spawn infinitely', { concurrency: !process.env.T
     const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
       '--no-warnings',
       '--eval',
-      'setTimeout(() => console.log("D"),99)',
+      'setTimeout(() => console.log("D"),5000)',
       '--import',
       fixtures.fileURL('printC.js'),
       '--experimental-loader',
