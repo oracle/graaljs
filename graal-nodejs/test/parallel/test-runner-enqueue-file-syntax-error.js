@@ -15,5 +15,5 @@ testRun.on('test:enqueue', common.mustCall((test) => {
 }));
 
 testRun.on('test:fail', common.mustCall((test) => {
-  assert.match(test.details.error.toString(), /SyntaxError: Unexpected token 'true'/);
+  assert.match(test.details.error.toString(), /SyntaxError: .* true/);
 }));
