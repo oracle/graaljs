@@ -77,9 +77,6 @@ test-fs-write: FAIL
 # (which is a foreign object when chromeinspector is used)
 test-process-get-builtin: SKIP
 
-# Suspicious handling of filterFunc in DatabaseSync::ApplyChangeset()
-test-sqlite-session: FAIL
-
 # Different stack-trace format expected
 test-fs-promises: FAIL
 
