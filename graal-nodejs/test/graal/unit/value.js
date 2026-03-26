@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,6 +111,32 @@ describe('Value - Is*()', function () {
         it('should return false for new RegExp("a+b*c")', function () {
             assert.strictEqual(module.Value_IsBoolean(new RegExp("a+b*c")), false);
         });
+    });
+    describe('IsArrayBuffer', function () {
+        it('should return true for ArrayBuffer', function () {
+            assert.strictEqual(module.Value_IsArrayBuffer(new ArrayBuffer(8)), true);
+        });
+        it('should return false for SharedArrayBuffer', function () {
+            assert.strictEqual(module.Value_IsArrayBuffer(new SharedArrayBuffer(8)), false);
+        });
+        if (module.hasJavaInterop()) {
+            it('should return true for interop ArrayBuffer', function () {
+                assert.strictEqual(module.Value_IsArrayBuffer(new ArrayBuffer(java.nio.ByteBuffer.allocate(8))), true);
+            });
+        }
+    });
+    describe('IsSharedArrayBuffer', function () {
+        it('should return false for ArrayBuffer', function () {
+            assert.strictEqual(module.Value_IsSharedArrayBuffer(new ArrayBuffer(8)), false);
+        });
+        it('should return true for SharedArrayBuffer', function () {
+            assert.strictEqual(module.Value_IsSharedArrayBuffer(new SharedArrayBuffer(8)), true);
+        });
+        if (module.hasJavaInterop()) {
+            it('should return false for interop ArrayBuffer', function () {
+                assert.strictEqual(module.Value_IsSharedArrayBuffer(new ArrayBuffer(java.nio.ByteBuffer.allocate(8))), false);
+            });
+        }
     });
     describe('IsNumber', function () {
         it('should return false for undefined', function () {
