@@ -293,7 +293,6 @@
       { "name": "valueIsNativeError" },
       { "name": "valueIsNumberObject" },
       { "name": "valueIsSetIterator" },
-      { "name": "valueIsSharedArrayBuffer" },
       { "name": "valueIsStringObject" },
       { "name": "valueIsSymbolObject" },
       { "name": "valueIsWasmMemoryObject" },

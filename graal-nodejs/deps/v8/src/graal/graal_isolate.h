@@ -112,7 +112,6 @@ enum GraalAccessMethod {
     value_is_native_error,
     value_is_set_iterator,
     value_is_map_iterator,
-    value_is_shared_array_buffer,
     value_is_arguments_object,
     value_is_boolean_object,
     value_is_number_object,
