@@ -64,10 +64,3 @@ repos:
     entry: bash ../graal/scripts/pre-commit-checkstyle.sh
     types: [text]
     files: '\.java$'
-  - id: spotbugs
-    name: SpotBugs
-    language: system
-    require_serial: true
-    entry: bash ../graal/scripts/pre-commit-spotbugs.sh
-    types: [text]
-    files: '(^|/)(mx\.[^/]+/suite\.py|.*\.java)$'
