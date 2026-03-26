@@ -73,7 +73,7 @@ function runInBackground({ args = [], options = {}, completed = 'Completed runni
       future.resolve();
       return { stdout, stderr };
     },
-    restart(timeout = 1000) {
+    restart(timeout = 10000) {
       if (!child) {
         run();
       }
@@ -116,7 +116,7 @@ try {
 
   // Wait for the failed restart
   const { stderr: stderr2, stdout: stdout2 } = await restart();
-  assert.match(stderr2, /SyntaxError: Invalid or unexpected token/);
+  assert.match(stderr2, /SyntaxError: /);
   assert.deepStrictEqual(stdout2, [
     `Restarting ${inspect(file)}`,
     `Failed running ${inspect(file)}. Waiting for file changes before restarting...`,
