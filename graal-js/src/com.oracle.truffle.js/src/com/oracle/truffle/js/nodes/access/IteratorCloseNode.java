@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -71,7 +72,11 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
         return new IteratorCloseNode(context);
     }
 
-    public final void executeVoid(Object iterator) {
+    public final void executeVoid(IteratorRecord iterator) {
+        executeDirect(iterator.getIterator());
+    }
+
+    public final void executeDirect(Object iterator) {
         Object returnMethod = getReturnNode.executeWithTarget(iterator);
         if (returnMethod != Undefined.instance) {
             Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -81,12 +86,16 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
         }
     }
 
-    public final Object execute(Object iterator, Object value) {
+    public final Object execute(IteratorRecord iterator, Object value) {
         executeVoid(iterator);
         return value;
     }
 
-    public final void executeAbrupt(Object iterator) {
+    public final void executeAbrupt(IteratorRecord iterator) {
+        executeDirectAbrupt(iterator.getIterator());
+    }
+
+    public final void executeDirectAbrupt(Object iterator) {
         try {
             Object returnMethod = getReturnNode.executeWithTarget(iterator);
             if (returnMethod != Undefined.instance) {
