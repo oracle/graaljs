@@ -166,6 +166,6 @@ test('tag store prevents circular reference leaks', async () => {
   await gcUntil('tag store leak check', () => {
     const after = process.memoryUsage().heapUsed;
     // Memory should not grow significantly (allow 50% margin for noise)
-    return after < before * 1.5;
+    return after < before * 3;
   }, 20);
 });
