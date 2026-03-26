@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,11 +51,14 @@ describe('ArrayBuffer', function () {
         'Int16Array',
         'Uint32Array',
         'Int32Array',
+        'Float16Array',
         'Float32Array',
         'Float64Array',
         'BigInt64Array',
         'BigUint64Array'
     ];
+    var arrayBufferViews = typedArrays.concat(['DataView']);
+
     describe('Detach', function () {
         it('should set byteLength to 0', function () {
             var buffer = new ArrayBuffer(10);
@@ -118,17 +121,34 @@ describe('ArrayBuffer', function () {
             });
         }
     });
-    typedArrays.forEach(function (type) {
+    function assertViewAndBuffer(view, viewType, buffer) {
+        assert.strictEqual(view.buffer, buffer);
+        assert.ok(view instanceof globalThis[viewType]);
+        assert.strictEqual(
+            module.ArrayBuffer_ViewBufferIsArrayBuffer(view),
+            buffer instanceof ArrayBuffer
+        );
+        assert.strictEqual(
+            module.ArrayBuffer_ViewBufferIsSharedArrayBuffer(view),
+            buffer instanceof SharedArrayBuffer
+        );
+    }
+    arrayBufferViews.forEach(function (type) {
         it(type + '::New() can be used on a regular buffer', function () {
             var buffer = new ArrayBuffer(8);
-            var array = module['ArrayBuffer_New' + type](buffer);
-            assert.ok(array instanceof global[type]);
+            var view = module['ArrayBuffer_New' + type](buffer);
+            assertViewAndBuffer(view, type, buffer);
+        });
+        it(type + '::New() can be used on a shared buffer', function () {
+            var buffer = new SharedArrayBuffer(8);
+            var view = module['ArrayBuffer_NewShared' + type](buffer);
+            assertViewAndBuffer(view, type, buffer);
         });
         if (module.hasJavaInterop()) {
             it(type + '::New() can be used on an interop buffer', function () {
                 var buffer = new ArrayBuffer(java.nio.ByteBuffer.allocate(8));
-                var array = module['ArrayBuffer_New' + type](buffer);
-                assert.ok(array instanceof global[type]);
+                var view = module['ArrayBuffer_New' + type](buffer);
+                assertViewAndBuffer(view, type, buffer);
             });
         }
     });
