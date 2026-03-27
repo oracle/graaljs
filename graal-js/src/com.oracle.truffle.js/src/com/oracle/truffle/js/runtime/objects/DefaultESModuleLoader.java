@@ -252,7 +252,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
         URL url = uriToURL(moduleURI);
         TruffleString typeAttribute = moduleRequest.attributes().get(Strings.TYPE);
-        String mimeType = isTextModuleType(typeAttribute) ? null : findMimeType(url);
+        String mimeType = findMimeType(url, typeAttribute);
         String language = findLanguage(mimeType);
 
         Source source = Source.newBuilder(language, url).mimeType(mimeType).build();
@@ -285,7 +285,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
 
         TruffleString typeAttribute = moduleRequest.attributes().get(Strings.TYPE);
-        String mimeType = isTextModuleType(typeAttribute) ? null : findMimeType(canonicalFile);
+        String mimeType = findMimeType(canonicalFile, typeAttribute);
         String language = findLanguage(mimeType);
 
         Source source = Source.newBuilder(language, canonicalFile).name(Strings.toJavaString(moduleRequest.specifier())).mimeType(mimeType).build();
@@ -301,6 +301,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         AbstractModuleRecord newModule;
         if (isTextModuleType(typeAttribute)) {
             newModule = realm.getContext().getEvaluator().parseTextModule(realm, source);
+        } else if (isBytesModuleType(typeAttribute)) {
+            newModule = realm.getContext().getEvaluator().parseBytesModule(realm, source);
         } else {
             newModule = switch (mimeType) {
                 case JavaScriptLanguage.JSON_MIME_TYPE -> realm.getContext().getEvaluator().parseJSONModule(realm, source);
@@ -375,10 +377,9 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
 
         TruffleString typeAttribute = moduleRequest.attributes().get(Strings.TYPE);
-        String mimeType = input.substring(mimeTypeStart, mimeTypeEnd);
-        mimeType = isTextModuleType(typeAttribute) ? null : filterSupportedMimeType(mimeType, JavaScriptLanguage.MODULE_MIME_TYPE);
+        String mimeType = findMimeType(input.substring(mimeTypeStart, mimeTypeEnd), typeAttribute);
         String language = findLanguage(mimeType);
-        boolean useByteSource = JavaScriptLanguage.WASM_MIME_TYPE.equals(mimeType);
+        boolean useByteSource = JavaScriptLanguage.WASM_MIME_TYPE.equals(mimeType) || isBytesModuleType(typeAttribute);
 
         Charset charset;
         if (useByteSource) {
@@ -490,7 +491,12 @@ public class DefaultESModuleLoader implements JSModuleLoader {
      * Try to detect the mime type of the imported module, considering only supported mime types,
      * and assuming ES module by default.
      */
-    private String findMimeType(TruffleFile moduleFile) {
+    private String findMimeType(TruffleFile moduleFile, TruffleString typeAttribute) {
+        if (isTextModuleType(typeAttribute)) {
+            return null;
+        } else if (isBytesModuleType(typeAttribute)) {
+            return JavaScriptLanguage.BYTES_MIME_TYPE;
+        }
         final String defaultMimeType = JavaScriptLanguage.MODULE_MIME_TYPE;
         if (moduleFile == null) {
             return defaultMimeType;
@@ -508,7 +514,12 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         return filterSupportedMimeType(foundMimeType, defaultMimeType);
     }
 
-    private String findMimeType(URL moduleUrl) {
+    private String findMimeType(URL moduleUrl, TruffleString typeAttribute) {
+        if (isTextModuleType(typeAttribute)) {
+            return null;
+        } else if (isBytesModuleType(typeAttribute)) {
+            return JavaScriptLanguage.BYTES_MIME_TYPE;
+        }
         final String defaultMimeType = JavaScriptLanguage.MODULE_MIME_TYPE;
         if (moduleUrl == null) {
             return defaultMimeType;
@@ -524,6 +535,15 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             foundMimeType = findMimeTypeFromExtension(moduleUrl.getPath());
         }
         return filterSupportedMimeType(foundMimeType, defaultMimeType);
+    }
+
+    private String findMimeType(String mimeType, TruffleString typeAttribute) {
+        if (isTextModuleType(typeAttribute)) {
+            return null;
+        } else if (isBytesModuleType(typeAttribute)) {
+            return JavaScriptLanguage.BYTES_MIME_TYPE;
+        }
+        return filterSupportedMimeType(mimeType, JavaScriptLanguage.MODULE_MIME_TYPE);
     }
 
     private String filterSupportedMimeType(String foundMimeType, String defaultMimeType) {
@@ -569,7 +589,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         if (isJsonModuleType(typeAttribute)) {
             return mimeType.equals(JavaScriptLanguage.JSON_MIME_TYPE);
         }
-        if (isTextModuleType(typeAttribute)) {
+        if (isTextModuleType(typeAttribute) || isBytesModuleType(typeAttribute)) {
             return true;
         }
         return false;
@@ -581,6 +601,10 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     private boolean isTextModuleType(TruffleString typeAttribute) {
         return realm.getContextOptions().isImportText() && typeAttribute != null && Strings.equals(Strings.TEXT, typeAttribute);
+    }
+
+    private boolean isBytesModuleType(TruffleString typeAttribute) {
+        return realm.getContextOptions().isImportBytes() && typeAttribute != null && Strings.equals(Strings.BYTES, typeAttribute);
     }
 
     @Override

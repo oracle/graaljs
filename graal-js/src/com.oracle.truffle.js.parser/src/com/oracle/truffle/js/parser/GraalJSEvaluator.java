@@ -107,10 +107,16 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
@@ -434,6 +440,18 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public AbstractModuleRecord parseTextModule(JSRealm realm, Source source) {
         return createDefaultExportSyntheticModule(realm.getContext(), source, Strings.fromJavaString(source.getCharacters().toString()));
+    }
+
+    @TruffleBoundary
+    @Override
+    public AbstractModuleRecord parseBytesModule(JSRealm realm, Source source) {
+        assert source.hasBytes() : source;
+        JSContext context = realm.getContext();
+        byte[] bytes = source.getBytes().toByteArray();
+        JSArrayBufferObject arrayBuffer = JSArrayBuffer.createArrayBuffer(context, realm, bytes, bytes.length, JSArrayBuffer.IMMUTABLE_BUFFER);
+        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(TypedArray.BUFFER_TYPE_ARRAY, false, true);
+        JSTypedArrayObject uint8Array = JSArrayBufferView.createArrayBufferView(context, realm, arrayBuffer, TypedArrayFactory.Uint8Array, arrayType, 0, bytes.length);
+        return createDefaultExportSyntheticModule(realm.getContext(), source, uint8Array);
     }
 
     private static SyntheticModuleRecord createDefaultExportSyntheticModule(JSContext ctx, Source source, Object defaultExport) {

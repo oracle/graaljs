@@ -106,6 +106,8 @@ public interface Evaluator {
 
     AbstractModuleRecord parseTextModule(JSRealm realm, Source source);
 
+    AbstractModuleRecord parseBytesModule(JSRealm realm, Source source);
+
     void hostLoadImportedModule(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest, Object hostDefined, Object payload);
 
     JSPromiseObject loadRequestedModules(JSRealm realm, CyclicModuleRecord moduleRecord, Object hostDefined);
