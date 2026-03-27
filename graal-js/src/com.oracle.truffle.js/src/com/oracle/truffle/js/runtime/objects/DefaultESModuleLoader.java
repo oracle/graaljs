@@ -251,7 +251,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             throw new AccessDeniedException(canonicalPath, null, "Socket IO is not allowed");
         }
         URL url = uriToURL(moduleURI);
-        String mimeType = findMimeType(url);
+        TruffleString typeAttribute = moduleRequest.attributes().get(Strings.TYPE);
+        String mimeType = isTextModuleType(typeAttribute) ? null : findMimeType(url);
         String language = findLanguage(mimeType);
 
         Source source = Source.newBuilder(language, url).mimeType(mimeType).build();
@@ -283,7 +284,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             return existingModule;
         }
 
-        String mimeType = findMimeType(canonicalFile);
+        TruffleString typeAttribute = moduleRequest.attributes().get(Strings.TYPE);
+        String mimeType = isTextModuleType(typeAttribute) ? null : findMimeType(canonicalFile);
         String language = findLanguage(mimeType);
 
         Source source = Source.newBuilder(language, canonicalFile).name(Strings.toJavaString(moduleRequest.specifier())).mimeType(mimeType).build();
@@ -292,24 +294,29 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     private AbstractModuleRecord loadModuleFromSource(ScriptOrModule referrer, ModuleRequest moduleRequest, Source source, String mimeType, String canonicalPath) {
         Map<TruffleString, TruffleString> attributes = moduleRequest.attributes();
-        TruffleString assertedType = attributes.get(Strings.TYPE);
-        if (!doesModuleTypeMatchAssertionType(assertedType, mimeType)) {
+        TruffleString typeAttribute = attributes.get(Strings.TYPE);
+        if (!doesModuleTypeMatchAttributeType(typeAttribute, mimeType)) {
             throw Errors.createTypeError("Invalid module type was asserted");
         }
-        AbstractModuleRecord newModule = switch (mimeType) {
-            case JavaScriptLanguage.JSON_MIME_TYPE -> realm.getContext().getEvaluator().parseJSONModule(realm, source);
-            case JavaScriptLanguage.WASM_MIME_TYPE -> {
-                if (realm.getContextOptions().isWebAssembly()) {
-                    yield realm.getContext().getEvaluator().parseWasmModuleSource(realm, source);
-                } else {
-                    throw createErrorUnsupportedPhase(referrer, moduleRequest);
+        AbstractModuleRecord newModule;
+        if (isTextModuleType(typeAttribute)) {
+            newModule = realm.getContext().getEvaluator().parseTextModule(realm, source);
+        } else {
+            newModule = switch (mimeType) {
+                case JavaScriptLanguage.JSON_MIME_TYPE -> realm.getContext().getEvaluator().parseJSONModule(realm, source);
+                case JavaScriptLanguage.WASM_MIME_TYPE -> {
+                    if (realm.getContextOptions().isWebAssembly()) {
+                        yield realm.getContext().getEvaluator().parseWasmModuleSource(realm, source);
+                    } else {
+                        throw createErrorUnsupportedPhase(referrer, moduleRequest);
+                    }
                 }
-            }
-            default -> {
-                JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
-                yield new JSModuleRecord(parsedModule, this);
-            }
-        };
+                default -> {
+                    JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
+                    yield new JSModuleRecord(parsedModule, this);
+                }
+            };
+        }
 
         moduleMap.put(new CanonicalModuleKey(canonicalPath, attributes), newModule);
 
@@ -367,15 +374,11 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             mimeTypeEnd = firstSemicolon;
         }
 
+        TruffleString typeAttribute = moduleRequest.attributes().get(Strings.TYPE);
         String mimeType = input.substring(mimeTypeStart, mimeTypeEnd);
-        mimeType = filterSupportedMimeType(mimeType, JavaScriptLanguage.MODULE_MIME_TYPE);
+        mimeType = isTextModuleType(typeAttribute) ? null : filterSupportedMimeType(mimeType, JavaScriptLanguage.MODULE_MIME_TYPE);
         String language = findLanguage(mimeType);
-        String sourceName = switch (mimeType) {
-            case JavaScriptLanguage.JSON_MIME_TYPE -> DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX;
-            case JavaScriptLanguage.WASM_MIME_TYPE -> DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.WASM_SOURCE_NAME_SUFFIX;
-            default -> DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
-        };
-        boolean useByteSource = mimeType.equals(JavaScriptLanguage.WASM_MIME_TYPE);
+        boolean useByteSource = JavaScriptLanguage.WASM_MIME_TYPE.equals(mimeType);
 
         Charset charset;
         if (useByteSource) {
@@ -390,6 +393,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
 
         String encodedBody = specifier.substring(encodedBodyStart, encodedBodyEnd);
+        String sourceName = makeDataURISourceName(typeAttribute, mimeType);
         Source source;
         if (base64) {
             byte[] decodedBytes = Base64.getDecoder().decode(encodedBody);
@@ -410,6 +414,24 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             }
         }
         return loadModuleFromSource(referrer, moduleRequest, source, mimeType, specifier);
+    }
+
+    private static String makeDataURISourceName(TruffleString typeAttribute, String mimeType) {
+        if (typeAttribute != null) {
+            if (Strings.equals(Strings.JSON, typeAttribute)) {
+                return DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX;
+            } else if (Strings.equals(Strings.TEXT, typeAttribute)) {
+                return DATA_URI_SOURCE_NAME_PREFIX + ".txt";
+            }
+        }
+        if (mimeType != null) {
+            if (mimeType.equals(JavaScriptLanguage.WASM_MIME_TYPE)) {
+                return DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.WASM_SOURCE_NAME_SUFFIX;
+            } else if (mimeType.equals(JavaScriptLanguage.MODULE_MIME_TYPE)) {
+                return DATA_URI_SOURCE_NAME_PREFIX + JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+            }
+        }
+        return DATA_URI_SOURCE_NAME_PREFIX;
     }
 
     private static boolean regionEqualsIgnoreCase(String input, int start, int end, String match) {
@@ -540,14 +562,25 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         return language;
     }
 
-    private static boolean doesModuleTypeMatchAssertionType(TruffleString assertedType, String mimeType) {
-        if (assertedType == null) {
+    private boolean doesModuleTypeMatchAttributeType(TruffleString typeAttribute, String mimeType) {
+        if (typeAttribute == null) {
             return !mimeType.equals(JavaScriptLanguage.JSON_MIME_TYPE);
         }
-        if (Strings.equals(Strings.JSON, assertedType)) {
+        if (isJsonModuleType(typeAttribute)) {
             return mimeType.equals(JavaScriptLanguage.JSON_MIME_TYPE);
         }
+        if (isTextModuleType(typeAttribute)) {
+            return true;
+        }
         return false;
+    }
+
+    private boolean isJsonModuleType(TruffleString typeAttribute) {
+        return realm.getContextOptions().isJsonModules() && typeAttribute != null && Strings.equals(Strings.JSON, typeAttribute);
+    }
+
+    private boolean isTextModuleType(TruffleString typeAttribute) {
+        return realm.getContextOptions().isImportText() && typeAttribute != null && Strings.equals(Strings.TEXT, typeAttribute);
     }
 
     @Override
