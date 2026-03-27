@@ -40,7 +40,7 @@ const {
   kProxyConfig,
   checkShouldUseProxy,
   kWaitForProxyTunnel,
-  filterEnvForProxies,
+  getGlobalAgent,
 } = require('internal/http');
 const { AsyncResource } = require('async_hooks');
 const { async_id_symbol } = require('internal/async_hooks').symbols;
@@ -284,9 +284,8 @@ function handleSocketAfterProxy(err, req) {
   if (err.code === 'ERR_PROXY_TUNNEL') {
     if (err.proxyTunnelTimeout) {
       req.emit('timeout');  // Propagate the timeout from the tunnel to the request.
-    } else {
-      req.emit('error', err);
     }
+    req.emit('error', err);
   }
 }
 
@@ -628,9 +627,5 @@ function asyncResetHandle(socket) {
 
 module.exports = {
   Agent,
-  globalAgent: new Agent({
-    keepAlive: true, scheduling: 'lifo', timeout: 5000,
-    // This normalized from both --use-env-proxy and NODE_USE_ENV_PROXY settings.
-    proxyEnv: getOptionValue('--use-env-proxy') ? filterEnvForProxies(process.env) : undefined,
-  }),
+  globalAgent: getGlobalAgent(getOptionValue('--use-env-proxy') ? process.env : undefined, Agent),
 };

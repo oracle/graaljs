@@ -77,9 +77,6 @@ test-fs-write: FAIL
 # (which is a foreign object when chromeinspector is used)
 test-process-get-builtin: SKIP
 
-# Suspicious handling of filterFunc in DatabaseSync::ApplyChangeset()
-test-sqlite-session: FAIL
-
 # Different stack-trace format expected
 test-fs-promises: FAIL
 
@@ -380,8 +377,6 @@ test-snapshot-incompatible: SKIP
 test-inspector-network-fetch: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54808
 test-async-context-frame: PASS, FLAKY
-# https://github.com/nodejs/node/issues/54534
-test-runner-run-watch: PASS, FLAKY
 # https://github.com/nodejs/node/issues/59636
 test-fs-cp-sync-error-on-exist: SKIP
 test-fs-cp-sync-symlink-points-to-dest-error: SKIP
@@ -399,8 +394,6 @@ test-without-async-context-frame: PASS, FLAKY
 test-performance-function: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54346
 test-esm-loader-hooks-inspect-wait: PASS, FLAKY
-# https://github.com/nodejs/node/issues/54534
-test-runner-run-watch: PASS, FLAKY
 
 [$system==linux && $arch==s390x]
 # https://github.com/nodejs/node/issues/58353
@@ -410,8 +403,6 @@ test-http2-debug: PASS, FLAKY
 # https://github.com/nodejs/node/issues/42741
 test-http-server-headers-timeout-keepalive: PASS,FLAKY
 test-http-server-request-timeout-keepalive: PASS,FLAKY
-# https://github.com/nodejs/node/issues/54534
-test-runner-run-watch: PASS, FLAKY
 # https://github.com/nodejs/node/issues/60050
 test-cluster-dgram-1: SKIP
 
@@ -438,16 +429,32 @@ test-domain-throw-error-then-throw-from-uncaught-exception-handler: PASS, FLAKY
 test-domain-with-abort-on-uncaught-exception: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54346
 test-esm-loader-hooks-inspect-wait: PASS, FLAKY
+# https://github.com/nodejs/node/issues/61520
 test-fs-promises-watch-iterator: SKIP
+test-fs-promises-watch-ignore-function: SKIP
+test-fs-promises-watch-ignore-glob: SKIP
+test-fs-promises-watch-ignore-mixed: SKIP
+test-fs-promises-watch-ignore-regexp: SKIP
+test-fs-watch-ignore-function: SKIP
+test-fs-watch-ignore-glob: SKIP
+test-fs-watch-ignore-mixed: SKIP
+test-fs-watch-ignore-regexp: SKIP
 # https://github.com/nodejs/node/issues/50050
 test-tick-processor-arguments: SKIP
-# https://github.com/nodejs/node/issues/54534
-test-runner-run-watch: PASS, FLAKY
 
 [$system==freebsd]
 # https://github.com/nodejs/node/issues/54346
 test-esm-loader-hooks-inspect-wait: PASS, FLAKY
+# https://github.com/nodejs/node/issues/61520
 test-fs-promises-watch-iterator: SKIP
+test-fs-promises-watch-ignore-function: SKIP
+test-fs-promises-watch-ignore-glob: SKIP
+test-fs-promises-watch-ignore-mixed: SKIP
+test-fs-promises-watch-ignore-regexp: SKIP
+test-fs-watch-ignore-function: SKIP
+test-fs-watch-ignore-glob: SKIP
+test-fs-watch-ignore-mixed: SKIP
+test-fs-watch-ignore-regexp: SKIP
 
 [$system==aix]
 # https://github.com/nodejs/node/issues/54346
@@ -458,7 +465,6 @@ test-esm-loader-hooks-inspect-wait: PASS, FLAKY
 test-child-process-fork-net-server: SKIP
 test-cli-node-options: SKIP
 test-cluster-shared-leak: SKIP
-test-fs-promises-watch-iterator: SKIP
 test-http-writable-true-after-close: SKIP
 test-http2-connect-method: SKIP
 test-net-error-twice: SKIP
@@ -498,6 +504,7 @@ test-http2-allow-http1-upgrade-ws: SKIP
 test-inspector-network-websocket: SKIP
 test-tls-set-default-ca-certificates-append-fetch: SKIP
 test-tls-set-default-ca-certificates-reset-fetch: SKIP
+test-inspector-invalid-protocol: SKIP
 
 [$asan==on]
 # https://github.com/nodejs/node/issues/39655

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,14 @@ EXPORT_TO_JS(New ## view_class) { \
     args.GetReturnValue().Set(array); \
 }
 
+#define SharedArrayBufferViewNewTest(view_class, bytes_per_element) \
+EXPORT_TO_JS(NewShared ## view_class) { \
+    Local<SharedArrayBuffer> buffer = args[0].As<SharedArrayBuffer>(); \
+    size_t byte_length = buffer->ByteLength(); \
+    Local<view_class> array = view_class::New(buffer, 0, byte_length/bytes_per_element); \
+    args.GetReturnValue().Set(array); \
+}
+
 ArrayBufferViewNewTest(Uint8Array, 1)
 ArrayBufferViewNewTest(Uint8ClampedArray, 1)
 ArrayBufferViewNewTest(Int8Array, 1)
@@ -80,11 +88,26 @@ ArrayBufferViewNewTest(Uint16Array, 2)
 ArrayBufferViewNewTest(Int16Array, 2)
 ArrayBufferViewNewTest(Uint32Array, 4)
 ArrayBufferViewNewTest(Int32Array, 4)
+ArrayBufferViewNewTest(Float16Array, 2)
 ArrayBufferViewNewTest(Float32Array, 4)
 ArrayBufferViewNewTest(Float64Array, 8)
 ArrayBufferViewNewTest(BigInt64Array, 8)
 ArrayBufferViewNewTest(BigUint64Array, 8)
 ArrayBufferViewNewTest(DataView, 1)
+
+SharedArrayBufferViewNewTest(Uint8Array, 1)
+SharedArrayBufferViewNewTest(Uint8ClampedArray, 1)
+SharedArrayBufferViewNewTest(Int8Array, 1)
+SharedArrayBufferViewNewTest(Uint16Array, 2)
+SharedArrayBufferViewNewTest(Int16Array, 2)
+SharedArrayBufferViewNewTest(Uint32Array, 4)
+SharedArrayBufferViewNewTest(Int32Array, 4)
+SharedArrayBufferViewNewTest(Float16Array, 2)
+SharedArrayBufferViewNewTest(Float32Array, 4)
+SharedArrayBufferViewNewTest(Float64Array, 8)
+SharedArrayBufferViewNewTest(BigInt64Array, 8)
+SharedArrayBufferViewNewTest(BigUint64Array, 8)
+SharedArrayBufferViewNewTest(DataView, 1)
 
 // Extracted from a test of sodium npm package
 EXPORT_TO_JS(NewBackingStoreSodium) {
@@ -116,4 +139,16 @@ EXPORT_TO_JS(TypedArrayLength) {
     args.GetReturnValue().Set((uint32_t)result);
 }
 
+EXPORT_TO_JS(ViewBufferIsSharedArrayBuffer) {
+    Local<Value> buffer = args[0].As<ArrayBufferView>()->Buffer();
+    args.GetReturnValue().Set(buffer->IsSharedArrayBuffer());
+}
+
+EXPORT_TO_JS(ViewBufferIsArrayBuffer) {
+    Local<Value> buffer = args[0].As<ArrayBufferView>()->Buffer();
+    args.GetReturnValue().Set(buffer->IsArrayBuffer());
+}
+
+#undef ArrayBufferViewNewTest
+#undef SharedArrayBufferViewNewTest
 #undef SUITE

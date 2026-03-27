@@ -515,6 +515,12 @@ declare_args() {
 
   # Deinterleaving load support.
   v8_enable_wasm_deinterleaved_mem_ops = false
+
+  # Use a hard-coded secret value when hashing.
+  v8_use_default_hasher_secret = true
+
+  # Enable seeded array index hash.
+  v8_enable_seeded_array_index_hash = false
 }
 
 # Derived defaults.
@@ -977,6 +983,7 @@ external_v8_defines = [
   "V8_ARRAY_BUFFER_INTERNAL_FIELD_COUNT=${v8_array_buffer_internal_field_count}",
   "V8_ARRAY_BUFFER_VIEW_INTERNAL_FIELD_COUNT=${v8_array_buffer_view_internal_field_count}",
   "V8_PROMISE_INTERNAL_FIELD_COUNT=${v8_promise_internal_field_count}",
+  "V8_USE_DEFAULT_HASHER_SECRET=${v8_use_default_hasher_secret}",
   "V8_ENABLE_CHECKS",
   "V8_ENABLE_MEMORY_ACCOUNTING_CHECKS",
   "V8_COMPRESS_POINTERS",
@@ -1006,6 +1013,7 @@ enabled_external_v8_defines = [
   "V8_ARRAY_BUFFER_INTERNAL_FIELD_COUNT=${v8_array_buffer_internal_field_count}",
   "V8_ARRAY_BUFFER_VIEW_INTERNAL_FIELD_COUNT=${v8_array_buffer_view_internal_field_count}",
   "V8_PROMISE_INTERNAL_FIELD_COUNT=${v8_promise_internal_field_count}",
+  "V8_USE_DEFAULT_HASHER_SECRET=${v8_use_default_hasher_secret}",
 ]
 
 if (v8_enable_v8_checks) {
@@ -1203,6 +1211,9 @@ config("features") {
   }
   if (v8_enable_lite_mode) {
     defines += [ "V8_LITE_MODE" ]
+  }
+  if (v8_enable_seeded_array_index_hash) {
+    defines += [ "V8_ENABLE_SEEDED_ARRAY_INDEX_HASH" ]
   }
   if (v8_enable_gdbjit) {
     defines += [ "ENABLE_GDB_JIT_INTERFACE" ]
@@ -2879,6 +2890,7 @@ generated_file("v8_generate_features_json") {
     v8_random_seed = v8_random_seed
     v8_use_perfetto = v8_use_perfetto
     v8_use_siphash = v8_use_siphash
+    v8_use_default_hasher_secret = v8_use_default_hasher_secret
   }
 }
 
@@ -3910,6 +3922,7 @@ v8_header_set("v8_internal_headers") {
     "src/numbers/conversions-inl.h",
     "src/numbers/conversions.h",
     "src/numbers/hash-seed-inl.h",
+    "src/numbers/hash-seed.h",
     "src/numbers/ieee754.h",
     "src/numbers/math-random.h",
     "src/objects/all-objects-inl.h",
@@ -4280,6 +4293,7 @@ v8_header_set("v8_internal_headers") {
     "src/tasks/operations-barrier.h",
     "src/tasks/task-utils.h",
     "src/temporal/temporal-parser.h",
+    "third_party/rapidhash-v8/rapidhash.h",
     "src/torque/runtime-macro-shims.h",
     "src/tracing/trace-event-no-perfetto.h",
     "src/tracing/trace-event.h",
@@ -4318,6 +4332,7 @@ v8_header_set("v8_internal_headers") {
     "src/zone/zone-type-traits.h",
     "src/zone/zone-utils.h",
     "src/zone/zone.h",
+    "third_party/rapidhash-v8/secret.h",
     "third_party/siphash/halfsiphash.h",
     "third_party/utf8-decoder/utf8-decoder.h",
   ]
@@ -5589,6 +5604,7 @@ v8_source_set("v8_base_without_compiler") {
     "src/logging/runtime-call-stats.cc",
     "src/logging/tracing-flags.cc",
     "src/numbers/conversions.cc",
+    "src/numbers/hash-seed.cc",
     "src/numbers/ieee754.cc",
     "src/numbers/math-random.cc",
     "src/objects/abstract-code.cc",

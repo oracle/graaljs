@@ -13,6 +13,15 @@ const { test, it, describe } = require('node:test');
 const { chmodSync, writeFileSync, constants } = require('node:fs');
 const { join } = require('node:path');
 
+const onlyIfNodeOptionsSupport = { skip: process.config.variables.node_without_node_options };
+const onlyWithAmaro = { skip: !process.config.variables.node_use_amaro };
+const onlyWithAmaroAndNodeOptions = {
+  skip: !process.config.variables.node_use_amaro || process.config.variables.node_without_node_options,
+};
+const onlyWithInspectorAndNodeOptions = {
+  skip: !process.features.inspector || process.config.variables.node_without_node_options,
+};
+
 test('should handle non existing json', async () => {
   const result = await spawnPromisified(process.execPath, [
     '--experimental-config-file',
@@ -49,7 +58,7 @@ test('should handle empty object json', async () => {
   assert.strictEqual(result.code, 0);
 });
 
-test('should parse boolean flag', async () => {
+test('should parse boolean flag', onlyWithAmaroAndNodeOptions, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--experimental-config-file',
     fixtures.path('rc/transform-types.json'),
@@ -60,7 +69,7 @@ test('should parse boolean flag', async () => {
   assert.strictEqual(result.code, 0);
 });
 
-test('should parse boolean flag defaulted to true', async () => {
+test('should parse boolean flag defaulted to true', onlyIfNodeOptionsSupport, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--experimental-config-file',
     fixtures.path('rc/warnings-false.json'),
@@ -83,8 +92,7 @@ test('should throw an error when a flag is declared twice', async () => {
   assert.strictEqual(result.code, 9);
 });
 
-
-test('should override env-file', async () => {
+test('should override env-file', onlyWithAmaroAndNodeOptions, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--experimental-config-file',
@@ -97,7 +105,7 @@ test('should override env-file', async () => {
   assert.strictEqual(result.code, 0);
 });
 
-test('should not override NODE_OPTIONS', async () => {
+test('should not override NODE_OPTIONS', onlyWithAmaro, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--experimental-config-file',
@@ -114,7 +122,7 @@ test('should not override NODE_OPTIONS', async () => {
   assert.strictEqual(result.code, 1);
 });
 
-test('should not override CLI flags', async () => {
+test('should not override CLI flags', onlyWithAmaro, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--no-experimental-transform-types',
@@ -127,7 +135,7 @@ test('should not override CLI flags', async () => {
   assert.strictEqual(result.code, 1);
 });
 
-test('should parse array flag correctly', async () => {
+test('should parse array flag correctly', onlyIfNodeOptionsSupport, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--experimental-config-file',
@@ -151,7 +159,7 @@ test('should validate invalid array flag', async () => {
   assert.strictEqual(result.code, 9);
 });
 
-test('should validate array flag as string', async () => {
+test('should validate array flag as string', onlyIfNodeOptionsSupport, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--experimental-config-file',
@@ -187,7 +195,7 @@ test('should throw at flag not available in NODE_OPTIONS', async () => {
   assert.strictEqual(result.code, 9);
 });
 
-test('unsigned flag should be parsed correctly', async () => {
+test('unsigned flag should be parsed correctly', onlyIfNodeOptionsSupport, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--experimental-config-file',
@@ -224,7 +232,7 @@ test('v8 flag should not be allowed in config file', async () => {
   assert.strictEqual(result.code, 9);
 });
 
-test('string flag should be parsed correctly', async () => {
+test('string flag should be parsed correctly', onlyIfNodeOptionsSupport, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--test',
@@ -237,7 +245,7 @@ test('string flag should be parsed correctly', async () => {
   assert.strictEqual(result.code, 0);
 });
 
-test('host port flag should be parsed correctly', { skip: !process.features.inspector }, async () => {
+test('host port flag should be parsed correctly', onlyWithInspectorAndNodeOptions, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--expose-internals',
@@ -250,7 +258,7 @@ test('host port flag should be parsed correctly', { skip: !process.features.insp
   assert.strictEqual(result.code, 0);
 });
 
-test('--inspect=true should be parsed correctly', { skip: !process.features.inspector }, async () => {
+test('--inspect=true should be parsed correctly', onlyWithInspectorAndNodeOptions, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--experimental-config-file',
@@ -350,7 +358,7 @@ test('broken value in node_options', async () => {
   assert.strictEqual(result.code, 9);
 });
 
-test('should use node.config.json as default', async () => {
+test('should use node.config.json as default', onlyIfNodeOptionsSupport, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--experimental-default-config-file',
@@ -363,7 +371,7 @@ test('should use node.config.json as default', async () => {
   assert.strictEqual(result.code, 0);
 });
 
-test('should override node.config.json when specificied', async () => {
+test('should override node.config.json when specificied', onlyIfNodeOptionsSupport, async () => {
   const result = await spawnPromisified(process.execPath, [
     '--no-warnings',
     '--experimental-default-config-file',

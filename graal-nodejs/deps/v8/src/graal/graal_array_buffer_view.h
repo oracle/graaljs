@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ public:
     inline static GraalArrayBufferView* Allocate(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset, void* placement);
     v8::Local<v8::ArrayBuffer> Buffer();
     bool IsDirect() const;
+    bool IsShared() const;
     bool IsArrayBufferView() const override;
     bool IsUint8Array() const override;
     bool IsUint8ClampedArray() const override;
@@ -62,6 +63,7 @@ public:
     bool IsInt16Array() const override;
     bool IsUint32Array() const override;
     bool IsInt32Array() const override;
+    bool IsFloat16Array() const override;
     bool IsFloat32Array() const override;
     bool IsFloat64Array() const override;
     bool IsBigInt64Array() const override;
@@ -77,22 +79,38 @@ public:
     static const int kInteropInt16Array = 5;
     static const int kInteropUint32Array = 6;
     static const int kInteropInt32Array = 7;
-    static const int kInteropFloat32Array = 8;
-    static const int kInteropFloat64Array = 9;
-    static const int kInteropBigInt64Array = 10;
-    static const int kInteropBigUint64Array = 11;
-    static const int kDataView = 12;
-    static const int kDirectUint8Array = 13;
-    static const int kDirectUint8ClampedArray = 14;
-    static const int kDirectInt8Array = 15;
-    static const int kDirectUint16Array = 16;
-    static const int kDirectInt16Array = 17;
-    static const int kDirectUint32Array = 18;
-    static const int kDirectInt32Array = 19;
-    static const int kDirectFloat32Array = 20;
-    static const int kDirectFloat64Array = 21;
-    static const int kDirectBigInt64Array = 22;
-    static const int kDirectBigUint64Array = 23;
+    static const int kInteropFloat16Array = 8;
+    static const int kInteropFloat32Array = 9;
+    static const int kInteropFloat64Array = 10;
+    static const int kInteropBigInt64Array = 11;
+    static const int kInteropBigUint64Array = 12;
+    static const int kDataView = 13;
+    static const int kDirectUint8Array = 14;
+    static const int kDirectUint8ClampedArray = 15;
+    static const int kDirectInt8Array = 16;
+    static const int kDirectUint16Array = 17;
+    static const int kDirectInt16Array = 18;
+    static const int kDirectUint32Array = 19;
+    static const int kDirectInt32Array = 20;
+    static const int kDirectFloat16Array = 21;
+    static const int kDirectFloat32Array = 22;
+    static const int kDirectFloat64Array = 23;
+    static const int kDirectBigInt64Array = 24;
+    static const int kDirectBigUint64Array = 25;
+    static const int kSharedArrayView = 26;
+    static const int kSharedUint8Array = 27;
+    static const int kSharedUint8ClampedArray = 28;
+    static const int kSharedInt8Array = 29;
+    static const int kSharedUint16Array = 30;
+    static const int kSharedInt16Array = 31;
+    static const int kSharedUint32Array = 32;
+    static const int kSharedInt32Array = 33;
+    static const int kSharedFloat16Array = 34;
+    static const int kSharedFloat32Array = 35;
+    static const int kSharedFloat64Array = 36;
+    static const int kSharedBigInt64Array = 37;
+    static const int kSharedBigUint64Array = 38;
+    static const int kSharedDataView = 39;
 protected:
     inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type);
     inline GraalArrayBufferView(GraalIsolate* isolate, jobject java_array_buffer_view, int type, int byte_length, int byte_offset);

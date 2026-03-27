@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@
 #include "graal_array_buffer_view-inl.h"
 
 GraalHandleContent* GraalArrayBufferView::CopyImpl(jobject java_object_copy) {
-    return new GraalArrayBufferView(Isolate(), java_object_copy, type_);
+    return new GraalArrayBufferView(Isolate(), java_object_copy, type_, byte_length_, byte_offset_);
 }
 
 v8::Local<v8::ArrayBuffer> GraalArrayBufferView::Buffer() {
@@ -60,7 +60,7 @@ v8::Local<v8::ArrayBuffer> GraalArrayBufferView::Buffer() {
         JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::array_buffer_view_buffer, Object, GetJavaObject());
         java_array_buffer = java_buffer;
     }
-    GraalArrayBuffer* graal_array_buffer = GraalArrayBuffer::Allocate(graal_isolate, java_array_buffer, direct);
+    GraalArrayBuffer* graal_array_buffer = GraalArrayBuffer::Allocate(graal_isolate, java_array_buffer, direct, IsShared());
     v8::ArrayBuffer* v8_array_buffer = reinterpret_cast<v8::ArrayBuffer*> (graal_array_buffer);
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     return v8::Local<v8::ArrayBuffer>::New(v8_isolate, v8_array_buffer);
@@ -87,53 +87,61 @@ size_t GraalArrayBufferView::ByteOffset() {
 }
 
 bool GraalArrayBufferView::IsUint8Array() const {
-    return type_ == kDirectUint8Array || type_ == kInteropUint8Array;
+    return type_ == kDirectUint8Array || type_ == kInteropUint8Array || type_ == kSharedUint8Array;
 }
 
 bool GraalArrayBufferView::IsUint8ClampedArray() const {
-    return type_ == kDirectUint8ClampedArray || type_ == kInteropUint8ClampedArray;
+    return type_ == kDirectUint8ClampedArray || type_ == kInteropUint8ClampedArray || type_ == kSharedUint8ClampedArray;
 }
 
 bool GraalArrayBufferView::IsInt8Array() const {
-    return type_ == kDirectInt8Array || type_ == kInteropInt8Array;
+    return type_ == kDirectInt8Array || type_ == kInteropInt8Array || type_ == kSharedInt8Array;
 }
 
 bool GraalArrayBufferView::IsUint16Array() const {
-    return type_ == kDirectUint16Array || type_ == kInteropUint16Array;
+    return type_ == kDirectUint16Array || type_ == kInteropUint16Array || type_ == kSharedUint16Array;
 }
 
 bool GraalArrayBufferView::IsInt16Array() const {
-    return type_ == kDirectInt16Array || type_ == kInteropInt16Array;
+    return type_ == kDirectInt16Array || type_ == kInteropInt16Array || type_ == kSharedInt16Array;
 }
 
 bool GraalArrayBufferView::IsUint32Array() const {
-    return type_ == kDirectUint32Array || type_ == kInteropUint32Array;
+    return type_ == kDirectUint32Array || type_ == kInteropUint32Array || type_ == kSharedUint32Array;
 }
 
 bool GraalArrayBufferView::IsInt32Array() const {
-    return type_ == kDirectInt32Array || type_ == kInteropInt32Array;
+    return type_ == kDirectInt32Array || type_ == kInteropInt32Array || type_ == kSharedInt32Array;
+}
+
+bool GraalArrayBufferView::IsFloat16Array() const {
+    return type_ == kDirectFloat16Array || type_ == kInteropFloat16Array || type_ == kSharedFloat16Array;
 }
 
 bool GraalArrayBufferView::IsFloat32Array() const {
-    return type_ == kDirectFloat32Array || type_ == kInteropFloat32Array;
+    return type_ == kDirectFloat32Array || type_ == kInteropFloat32Array || type_ == kSharedFloat32Array;
 }
 
 bool GraalArrayBufferView::IsFloat64Array() const {
-    return type_ == kDirectFloat64Array || type_ == kInteropFloat64Array;
+    return type_ == kDirectFloat64Array || type_ == kInteropFloat64Array || type_ == kSharedFloat64Array;
 }
 
 bool GraalArrayBufferView::IsBigInt64Array() const {
-    return type_ == kDirectBigInt64Array || type_ == kInteropBigInt64Array;
+    return type_ == kDirectBigInt64Array || type_ == kInteropBigInt64Array || type_ == kSharedBigInt64Array;
 }
 
 bool GraalArrayBufferView::IsBigUint64Array() const {
-    return type_ == kDirectBigUint64Array || type_ == kInteropBigUint64Array;
+    return type_ == kDirectBigUint64Array || type_ == kInteropBigUint64Array || type_ == kSharedBigUint64Array;
 }
 
 bool GraalArrayBufferView::IsDataView() const {
-    return type_ == kDataView;
+    return type_ == kDataView || type_ == kSharedDataView;
 }
 
 bool GraalArrayBufferView::IsDirect() const {
     return type_ >= kDirectUint8Array;
+}
+
+inline bool GraalArrayBufferView::IsShared() const {
+    return type_ >= kSharedArrayView;
 }

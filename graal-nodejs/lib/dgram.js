@@ -29,7 +29,6 @@ const {
   FunctionPrototypeCall,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
-  ReflectApply,
   SymbolAsyncDispose,
   SymbolDispose,
 } = primordials;
@@ -74,6 +73,7 @@ const {
   defaultTriggerAsyncIdScope,
   symbols: { async_id_symbol, owner_symbol },
 } = require('internal/async_hooks');
+const { FastBuffer } = require('internal/buffer');
 const { UV_UDP_REUSEADDR } = internalBinding('constants').os;
 
 const {
@@ -436,7 +436,7 @@ Socket.prototype.connect = function(port, address, callback) {
     return;
   }
 
-  ReflectApply(_connect, this, [port, address, callback]);
+  FunctionPrototypeCall(_connect, this, port, address, callback);
 };
 
 
@@ -689,7 +689,7 @@ Socket.prototype.send = function(buffer,
     this.bind({ port: 0, exclusive: true }, null);
 
   if (list.length === 0)
-    ArrayPrototypePush(list, Buffer.alloc(0));
+    ArrayPrototypePush(list, new FastBuffer());
 
   // If the socket hasn't been bound yet, push the outbound packet onto the
   // send queue and send after binding is complete.

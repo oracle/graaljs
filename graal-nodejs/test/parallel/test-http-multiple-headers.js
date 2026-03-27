@@ -26,15 +26,15 @@ const server = createServer(
       host,
       'transfer-encoding': 'chunked'
     });
-    assert.deepStrictEqual(req.headersDistinct, {
+    assert.deepStrictEqual(req.headersDistinct, Object.assign({ __proto__: null }, {
       'connection': ['close'],
       'x-req-a': ['eee', 'fff', 'ggg', 'hhh'],
       'x-req-b': ['iii; jjj; kkk; lll'],
       'host': [host],
-      'transfer-encoding': ['chunked']
-    });
+      'transfer-encoding': ['chunked'],
+    }));
 
-    req.on('end', function() {
+    req.on('end', common.mustCall(() => {
       assert.deepStrictEqual(req.rawTrailers, [
         'x-req-x', 'xxx',
         'x-req-x', 'yyy',
@@ -45,7 +45,7 @@ const server = createServer(
       );
       assert.deepStrictEqual(
         req.trailersDistinct,
-        { 'x-req-x': ['xxx', 'yyy'], 'x-req-y': ['zzz; www'] }
+        Object.assign({ __proto__: null }, { 'x-req-x': ['xxx', 'yyy'], 'x-req-y': ['zzz; www'] })
       );
 
       res.setHeader('X-Res-a', 'AAA');
@@ -93,7 +93,7 @@ const server = createServer(
         'x-res-d': [ 'JJJ', 'KKK', 'LLL' ]
       });
       assert.deepStrictEqual(res.getHeaders(), headers);
-    });
+    }));
 
     req.resume();
   }
@@ -132,16 +132,16 @@ server.listen(0, common.mustCall(() => {
       'x-res-d': 'JJJ; KKK; LLL',
       'transfer-encoding': 'chunked'
     });
-    assert.deepStrictEqual(res.headersDistinct, {
+    assert.deepStrictEqual(res.headersDistinct, Object.assign({ __proto__: null }, {
       'x-res-a': [ 'AAA', 'BBB', 'CCC' ],
       'x-res-b': [ 'DDD; EEE; FFF; GGG' ],
       'connection': [ 'close' ],
       'x-res-c': [ 'HHH', 'III' ],
       'x-res-d': [ 'JJJ; KKK; LLL' ],
-      'transfer-encoding': [ 'chunked' ]
-    });
+      'transfer-encoding': [ 'chunked' ],
+    }));
 
-    res.on('end', function() {
+    res.on('end', common.mustCall(() => {
       assert.deepStrictEqual(res.rawTrailers, [
         'x-res-x', 'XXX',
         'x-res-x', 'YYY',
@@ -153,10 +153,10 @@ server.listen(0, common.mustCall(() => {
       );
       assert.deepStrictEqual(
         res.trailersDistinct,
-        { 'x-res-x': ['XXX', 'YYY'], 'x-res-y': ['ZZZ; WWW'] }
+        Object.assign({ __proto__: null }, { 'x-res-x': ['XXX', 'YYY'], 'x-res-y': ['ZZZ; WWW'] })
       );
       server.close();
-    });
+    }));
     res.resume();
   }));
 

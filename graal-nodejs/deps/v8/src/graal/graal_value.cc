@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -119,6 +119,10 @@ bool GraalValue::IsArrayBuffer() const {
     return false;
 }
 
+bool GraalValue::IsSharedArrayBuffer() const {
+    return false;
+}
+
 bool GraalValue::IsArrayBufferView() const {
     return false;
 }
@@ -156,6 +160,10 @@ bool GraalValue::IsUint32Array() const {
 }
 
 bool GraalValue::IsInt32Array() const {
+    return false;
+}
+
+bool GraalValue::IsFloat16Array() const {
     return false;
 }
 
@@ -235,11 +243,6 @@ bool GraalValue::IsMapIterator() const {
 
 bool GraalValue::IsSetIterator() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_set_iterator, Boolean, GetJavaObject());
-    return result;
-}
-
-bool GraalValue::IsSharedArrayBuffer() const {
-    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_shared_array_buffer, Boolean, GetJavaObject());
     return result;
 }
 
@@ -663,6 +666,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case ARRAY_BUFFER_VIEW_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kUnknownArray, use_shared_buffer, placement);
             break;
+        case SHARED_ARRAY_BUFFER_VIEW_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedArrayView, use_shared_buffer, placement);
+            break;
         case DIRECT_UINT8ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectUint8Array, use_shared_buffer, placement);
             break;
@@ -684,6 +690,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case DIRECT_INT32ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectInt32Array, use_shared_buffer, placement);
             break;
+        case DIRECT_FLOAT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectFloat16Array, use_shared_buffer, placement);
+            break;
         case DIRECT_FLOAT32ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectFloat32Array, use_shared_buffer, placement);
             break;
@@ -692,6 +701,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case DATA_VIEW_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDataView, use_shared_buffer, placement);
+            break;
+        case SHARED_DATA_VIEW_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedDataView, use_shared_buffer, placement);
             break;
         case DIRECT_BIGINT64ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDirectBigInt64Array, use_shared_buffer, placement);
@@ -720,6 +732,9 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case INTEROP_INT32ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kInteropInt32Array, use_shared_buffer, placement);
             break;
+        case INTEROP_FLOAT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kInteropFloat16Array, use_shared_buffer, placement);
+            break;
         case INTEROP_FLOAT32ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kInteropFloat32Array, use_shared_buffer, placement);
             break;
@@ -732,18 +747,61 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case INTEROP_BIGUINT64ARRAY_OBJECT:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kInteropBigUint64Array, use_shared_buffer, placement);
             break;
+        case SHARED_UINT8ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedUint8Array, use_shared_buffer, placement);
+            break;
+        case SHARED_UINT8CLAMPEDARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedUint8ClampedArray, use_shared_buffer, placement);
+            break;
+        case SHARED_INT8ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedInt8Array, use_shared_buffer, placement);
+            break;
+        case SHARED_UINT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedUint16Array, use_shared_buffer, placement);
+            break;
+        case SHARED_INT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedInt16Array, use_shared_buffer, placement);
+            break;
+        case SHARED_UINT32ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedUint32Array, use_shared_buffer, placement);
+            break;
+        case SHARED_INT32ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedInt32Array, use_shared_buffer, placement);
+            break;
+        case SHARED_FLOAT16ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedFloat16Array, use_shared_buffer, placement);
+            break;
+        case SHARED_FLOAT32ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedFloat32Array, use_shared_buffer, placement);
+            break;
+        case SHARED_FLOAT64ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedFloat64Array, use_shared_buffer, placement);
+            break;
+        case SHARED_BIGINT64ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedBigInt64Array, use_shared_buffer, placement);
+            break;
+        case SHARED_BIGUINT64ARRAY_OBJECT:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kSharedBigUint64Array, use_shared_buffer, placement);
+            break;
         case DIRECT_ARRAY_BUFFER_OBJECT:
             if (placement) {
-                result = GraalArrayBuffer::Allocate(isolate, java_object, true, placement);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, true, false, placement);
             } else {
-                result = GraalArrayBuffer::Allocate(isolate, java_object, true);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, true, false);
             }
             break;
         case INTEROP_ARRAY_BUFFER_OBJECT:
             if (placement) {
-                result = GraalArrayBuffer::Allocate(isolate, java_object, false, placement);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, false, false, placement);
             } else {
-                result = GraalArrayBuffer::Allocate(isolate, java_object, false);
+                result = GraalArrayBuffer::Allocate(isolate, java_object, false, false);
+            }
+            break;
+        case SHARED_ARRAY_BUFFER_OBJECT:
+            if (placement) {
+                result = GraalArrayBuffer::Allocate(isolate, java_object, true, true, placement);
+            } else {
+                result = GraalArrayBuffer::Allocate(isolate, java_object, true, true);
             }
             break;
         case SYMBOL_VALUE:

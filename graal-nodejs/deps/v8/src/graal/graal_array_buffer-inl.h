@@ -46,19 +46,23 @@
 
 #include "graal_object-inl.h"
 
-inline GraalArrayBuffer::GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer, bool direct) : GraalObject(isolate, java_array_buffer), direct_(direct) {
+inline GraalArrayBuffer::GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer, bool direct, bool shared) : GraalObject(isolate, java_array_buffer), direct_(direct), shared_(shared) {
 }
 
-inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct) {
-    return new GraalArrayBuffer(isolate, java_array_buffer, direct);
+inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, bool shared) {
+    return new GraalArrayBuffer(isolate, java_array_buffer, direct, shared);
 }
 
-inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, void* placement) {
-    return new(placement) GraalArrayBuffer(isolate, java_array_buffer, direct);
+inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, bool shared, void* placement) {
+    return new(placement) GraalArrayBuffer(isolate, java_array_buffer, direct, shared);
 }
 
 inline bool GraalArrayBuffer::IsDirect() const {
     return direct_;
+}
+
+inline bool GraalArrayBuffer::IsShared() const {
+    return shared_;
 }
 
 #endif /* GRAAL_ARRAY_BUFFER_INL_H_ */

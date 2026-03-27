@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import static com.oracle.truffle.trufflenode.ValueType.DATE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_BIGINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT16ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT32ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DIRECT_INT16ARRAY_OBJECT;
@@ -64,6 +65,7 @@ import static com.oracle.truffle.trufflenode.ValueType.FUNCTION_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_BIGINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT16ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT32ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.INTEROP_INT16ARRAY_OBJECT;
@@ -80,6 +82,21 @@ import static com.oracle.truffle.trufflenode.ValueType.ORDINARY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROMISE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROXY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.REGEXP_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_ARRAY_BUFFER_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_ARRAY_BUFFER_VIEW_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_BIGINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_DATA_VIEW_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_FLOAT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_FLOAT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_FLOAT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_INT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_INT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_INT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SET_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
@@ -107,7 +124,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
@@ -123,6 +139,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSetObject;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
@@ -134,7 +151,7 @@ import com.oracle.truffle.trufflenode.JSExternalObject;
  * Keep in sync with {@link GraalJSAccess#valueType}.
  */
 @SuppressWarnings("unused")
-@ImportStatic({JSExternal.class, JSRuntime.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
+@ImportStatic({JSExternal.class, JSSharedArrayBuffer.class, JSRuntime.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
 abstract class ValueTypeNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final boolean useSharedBuffer;
@@ -281,32 +298,35 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
             sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteLength(context, value));
             sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
-        return DATA_VIEW_OBJECT;
+        return JSSharedArrayBuffer.isJSSharedArrayBuffer(value.getArrayBuffer()) ? SHARED_DATA_VIEW_OBJECT : DATA_VIEW_OBJECT;
     }
 
-    protected int identifyType(ScriptArray array) {
+    protected int identifyType(TypedArray array) {
+        boolean shared = array.getBufferType() == TypedArray.BUFFER_TYPE_SHARED;
         if (array instanceof TypedArray.DirectUint8Array) {
-            return DIRECT_UINT8ARRAY_OBJECT;
+            return shared ? SHARED_UINT8ARRAY_OBJECT : DIRECT_UINT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint8ClampedArray) {
-            return DIRECT_UINT8CLAMPEDARRAY_OBJECT;
+            return shared ? SHARED_UINT8CLAMPEDARRAY_OBJECT : DIRECT_UINT8CLAMPEDARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt8Array) {
-            return DIRECT_INT8ARRAY_OBJECT;
+            return shared ? SHARED_INT8ARRAY_OBJECT : DIRECT_INT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint16Array) {
-            return DIRECT_UINT16ARRAY_OBJECT;
+            return shared ? SHARED_UINT16ARRAY_OBJECT : DIRECT_UINT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt16Array) {
-            return DIRECT_INT16ARRAY_OBJECT;
+            return shared ? SHARED_INT16ARRAY_OBJECT : DIRECT_INT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint32Array) {
-            return DIRECT_UINT32ARRAY_OBJECT;
+            return shared ? SHARED_UINT32ARRAY_OBJECT : DIRECT_UINT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt32Array) {
-            return DIRECT_INT32ARRAY_OBJECT;
+            return shared ? SHARED_INT32ARRAY_OBJECT : DIRECT_INT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.DirectFloat16Array) {
+            return shared ? SHARED_FLOAT16ARRAY_OBJECT : DIRECT_FLOAT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat32Array) {
-            return DIRECT_FLOAT32ARRAY_OBJECT;
+            return shared ? SHARED_FLOAT32ARRAY_OBJECT : DIRECT_FLOAT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat64Array) {
-            return DIRECT_FLOAT64ARRAY_OBJECT;
+            return shared ? SHARED_FLOAT64ARRAY_OBJECT : DIRECT_FLOAT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectBigInt64Array) {
-            return DIRECT_BIGINT64ARRAY_OBJECT;
+            return shared ? SHARED_BIGINT64ARRAY_OBJECT : DIRECT_BIGINT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectBigUint64Array) {
-            return DIRECT_BIGUINT64ARRAY_OBJECT;
+            return shared ? SHARED_BIGUINT64ARRAY_OBJECT : DIRECT_BIGUINT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropUint8Array) {
             return INTEROP_UINT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropUint8ClampedArray) {
@@ -321,6 +341,8 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
             return INTEROP_UINT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropInt32Array) {
             return INTEROP_INT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropFloat16Array) {
+            return INTEROP_FLOAT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropFloat32Array) {
             return INTEROP_FLOAT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.InteropFloat64Array) {
@@ -330,7 +352,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         } else if (array instanceof TypedArray.InteropBigUint64Array) {
             return INTEROP_BIGUINT64ARRAY_OBJECT;
         } else {
-            return ARRAY_BUFFER_VIEW_OBJECT;
+            return shared ? SHARED_ARRAY_BUFFER_VIEW_OBJECT : ARRAY_BUFFER_VIEW_OBJECT;
         }
     }
 
@@ -342,6 +364,11 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization(guards = "isJSInteropArrayBuffer(value)")
     protected static int doInteropArrayBuffer(Object value) {
         return INTEROP_ARRAY_BUFFER_OBJECT;
+    }
+
+    @Specialization(guards = "isJSSharedArrayBuffer(value)")
+    protected static int doSharedArrayBuffer(Object value) {
+        return SHARED_ARRAY_BUFFER_OBJECT;
     }
 
     @Specialization
@@ -361,7 +388,9 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     "!isJSProxy(value)",
                     "!isJSArrayBufferView(value)",
                     "!isJSDataView(value)",
-                    "!isJSDirectArrayBuffer(value)"}, replaces = {"doOrdinaryObject"})
+                    "!isJSDirectArrayBuffer(value)",
+                    "!isJSInteropArrayBuffer(value)",
+                    "!isJSSharedArrayBuffer(value)"}, replaces = {"doOrdinaryObject"})
     protected static int doObject(JSObject value) {
         return ORDINARY_OBJECT;
     }

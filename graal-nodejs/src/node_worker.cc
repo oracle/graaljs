@@ -268,7 +268,6 @@ class WorkerThreadData {
   uv_loop_t loop_;
   bool loop_init_failed_ = true;
   DeleteFnPtr<IsolateData, FreeIsolateData> isolate_data_;
-  const SnapshotData* snapshot_data_ = nullptr;
   friend class Worker;
 };
 
@@ -410,7 +409,7 @@ void Worker::Run() {
 
         Debug(this, "Created message port for worker %llu", thread_id_.id);
         if (LoadEnvironment(env_.get(),
-                            StartExecutionCallback{},
+                            StartExecutionCallbackWithModule{},
                             std::move(embedder_preload_))
                 .IsEmpty()) {
           return;

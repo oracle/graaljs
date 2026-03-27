@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,14 +62,13 @@ enum ValueType {
     LAZY_STRING_VALUE = 13,
     ARRAY_BUFFER_VIEW_OBJECT = 14,
     DIRECT_ARRAY_BUFFER_OBJECT = 15,
-    INTEROP_ARRAY_BUFFER_OBJECT = 45,
     SYMBOL_VALUE = 16,
     DIRECT_UINT8ARRAY_OBJECT = 17,
     DIRECT_UINT8CLAMPEDARRAY_OBJECT = 18,
+    DIRECT_UINT32ARRAY_OBJECT = 19,
     DIRECT_INT8ARRAY_OBJECT = 20,
     DIRECT_UINT16ARRAY_OBJECT = 21,
     DIRECT_INT16ARRAY_OBJECT = 22,
-    DIRECT_UINT32ARRAY_OBJECT = 19,
     DIRECT_INT32ARRAY_OBJECT = 23,
     DIRECT_FLOAT32ARRAY_OBJECT = 24,
     DIRECT_FLOAT64ARRAY_OBJECT = 25,
@@ -92,7 +91,25 @@ enum ValueType {
     INTEROP_FLOAT64ARRAY_OBJECT = 42,
     INTEROP_BIGINT64ARRAY_OBJECT = 43,
     INTEROP_BIGUINT64ARRAY_OBJECT = 44,
-    MODULE_REQUEST = 45,
+    INTEROP_ARRAY_BUFFER_OBJECT = 45,
+    DIRECT_FLOAT16ARRAY_OBJECT = 46,
+    INTEROP_FLOAT16ARRAY_OBJECT = 47,
+    SHARED_ARRAY_BUFFER_OBJECT = 48,
+    SHARED_ARRAY_BUFFER_VIEW_OBJECT = 49,
+    SHARED_UINT8ARRAY_OBJECT = 50,
+    SHARED_UINT8CLAMPEDARRAY_OBJECT = 51,
+    SHARED_INT8ARRAY_OBJECT = 52,
+    SHARED_UINT16ARRAY_OBJECT = 53,
+    SHARED_INT16ARRAY_OBJECT = 54,
+    SHARED_UINT32ARRAY_OBJECT = 55,
+    SHARED_INT32ARRAY_OBJECT = 56,
+    SHARED_FLOAT16ARRAY_OBJECT = 57,
+    SHARED_FLOAT32ARRAY_OBJECT = 58,
+    SHARED_FLOAT64ARRAY_OBJECT = 59,
+    SHARED_BIGINT64ARRAY_OBJECT = 60,
+    SHARED_BIGUINT64ARRAY_OBJECT = 61,
+    SHARED_DATA_VIEW_OBJECT = 62,
+    MODULE_REQUEST = 63,
 };
 
 class GraalValue : public GraalData {
@@ -111,6 +128,7 @@ public:
     virtual bool IsNumber() const;
     virtual bool IsBoolean() const;
     virtual bool IsArrayBuffer() const;
+    virtual bool IsSharedArrayBuffer() const;
     virtual bool IsArrayBufferView() const;
     virtual bool IsDate() const;
     virtual bool IsRegExp() const;
@@ -121,6 +139,7 @@ public:
     virtual bool IsInt16Array() const;
     virtual bool IsUint32Array() const;
     virtual bool IsInt32Array() const;
+    virtual bool IsFloat16Array() const;
     virtual bool IsFloat32Array() const;
     virtual bool IsFloat64Array() const;
     virtual bool IsBigInt64Array() const;
@@ -140,7 +159,6 @@ public:
     bool IsNativeError() const;
     bool IsMapIterator() const;
     bool IsSetIterator() const;
-    bool IsSharedArrayBuffer() const;
     bool IsArgumentsObject() const;
     bool IsBooleanObject() const;
     bool IsNumberObject() const;

@@ -29,6 +29,7 @@ const {
   ArrayPrototypePush,
   BigIntPrototypeToString,
   Boolean,
+  FunctionPrototypeCall,
   MathMax,
   Number,
   ObjectDefineProperties,
@@ -370,7 +371,7 @@ function readFile(path, options, callback) {
   }
   if (context.isUserFd) {
     process.nextTick(function tick(context) {
-      ReflectApply(readFileAfterOpen, { context }, [null, path]);
+      FunctionPrototypeCall(readFileAfterOpen, { context }, null, path);
     }, context);
     return;
   }
@@ -601,7 +602,6 @@ function openAsBlob(path, options = kEmptyObject) {
  */
 function read(fd, buffer, offsetOrOptions, length, position, callback) {
   fd = getValidatedFd(fd);
-
   let offset = offsetOrOptions;
   let params = null;
   if (arguments.length <= 4) {
@@ -693,8 +693,6 @@ ObjectDefineProperty(read, kCustomPromisifyArgsSymbol,
  * @returns {number}
  */
 function readSync(fd, buffer, offsetOrOptions, length, position) {
-  fd = getValidatedFd(fd);
-
   validateBuffer(buffer);
 
   let offset = offsetOrOptions;
@@ -783,7 +781,6 @@ ObjectDefineProperty(readv, kCustomPromisifyArgsSymbol,
  * @returns {number}
  */
 function readvSync(fd, buffers, position) {
-  fd = getValidatedFd(fd);
   validateBufferArray(buffers);
 
   if (typeof position !== 'number')
@@ -813,7 +810,6 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
   }
 
   fd = getValidatedFd(fd);
-
   let offset = offsetOrOptions;
   if (isArrayBufferView(buffer)) {
     callback ||= position || length || offset;
@@ -884,7 +880,6 @@ ObjectDefineProperty(write, kCustomPromisifyArgsSymbol,
  * @returns {number}
  */
 function writeSync(fd, buffer, offsetOrOptions, length, position) {
-  fd = getValidatedFd(fd);
   const ctx = {};
   let result;
 
@@ -974,7 +969,6 @@ ObjectDefineProperty(writev, kCustomPromisifyArgsSymbol, {
  * @returns {number}
  */
 function writevSync(fd, buffers, position) {
-  fd = getValidatedFd(fd);
   validateBufferArray(buffers);
 
   if (buffers.length === 0) {
@@ -1118,11 +1112,7 @@ function lazyLoadRimraf() {
 /**
  * Asynchronously removes a directory.
  * @param {string | Buffer | URL} path
- * @param {{
- *   maxRetries?: number;
- *   recursive?: boolean;
- *   retryDelay?: number;
- *   }} [options]
+ * @param {object} [options]
  * @param {(err?: Error) => any} callback
  * @returns {void}
  */
@@ -1166,11 +1156,7 @@ function rmdir(path, options, callback) {
 /**
  * Synchronously removes a directory.
  * @param {string | Buffer | URL} path
- * @param {{
- *   maxRetries?: number;
- *   recursive?: boolean;
- *   retryDelay?: number;
- *   }} [options]
+ * @param {object} [options]
  * @returns {void}
  */
 function rmdirSync(path, options) {
@@ -1678,7 +1664,7 @@ function statfs(path, options = { bigint: false }, callback) {
 
     callback(err, getStatFsFromBinding(stats));
   };
-  binding.statfs(getValidatedPath(path), options.bigint, req);
+  binding.statfs(path, options.bigint, req);
 }
 
 /**
@@ -1713,7 +1699,7 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
     throw new ERR_ACCESS_DENIED('Access to this API has been restricted', 'FileSystemRead', resource);
   }
   const stats = binding.lstat(
-    getValidatedPath(path),
+    path,
     options.bigint,
     undefined,
     options.throwIfNoEntry,
@@ -2551,7 +2537,8 @@ function watch(filename, options, listener) {
     watcher[watchers.kFSWatchStart](path,
                                     options.persistent,
                                     options.recursive,
-                                    options.encoding);
+                                    options.encoding,
+                                    options.ignore);
   }
 
   if (listener) {

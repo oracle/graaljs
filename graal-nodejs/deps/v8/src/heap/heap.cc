@@ -5915,20 +5915,6 @@ void Heap::SetUpSpaces(LinearAllocationArea& new_allocation_info,
   }
 }
 
-void Heap::InitializeHashSeed() {
-  DCHECK(!deserialization_complete_);
-  uint64_t new_hash_seed;
-  if (v8_flags.hash_seed == 0) {
-    int64_t rnd = isolate()->random_number_generator()->NextInt64();
-    new_hash_seed = static_cast<uint64_t>(rnd);
-  } else {
-    new_hash_seed = static_cast<uint64_t>(v8_flags.hash_seed);
-  }
-  Tagged<ByteArray> hash_seed = ReadOnlyRoots(this).hash_seed();
-  MemCopy(hash_seed->begin(), reinterpret_cast<uint8_t*>(&new_hash_seed),
-          kInt64Size);
-}
-
 std::shared_ptr<v8::TaskRunner> Heap::GetForegroundTaskRunner(
     TaskPriority priority) const {
   return V8::GetCurrentPlatform()->GetForegroundTaskRunner(
