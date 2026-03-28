@@ -96,7 +96,7 @@ def _graal_js_gate_runner(args, tasks):
             retcode = js(['-e', 'throw new Error(`bye!`);'], nonZeroIsFatal=False)
             assert retcode > 1, retcode
 
-            with open(os.devnull, 'w') as devnull:
+            with open(os.devnull, 'w') as devnull:  # pylint: disable=unspecified-encoding
                 js(['--help'], out=devnull)
 
     webassemblyTestSuite = re.escape('com.oracle.truffle.js.test.wasm.')
@@ -130,21 +130,22 @@ def _graal_js_gate_runner(args, tasks):
         'TestV8': testv8,
     }
 
-    for testCommandName in gateTestCommands:
-        for testConfigName in gateTestConfigs:
+    for testCommandName, testCommand in gateTestCommands.items():
+        for testConfigName, testConfig in gateTestConfigs.items():
             # TestNashorn is not sensitive to ES version
             if testCommandName == 'TestNashorn' and testConfigName == 'latestversion':
                 continue
-            testName = '%s-%s' % (testCommandName, testConfigName)
+            testName = f'{testCommandName}-{testConfigName}'
             report = True if testConfigName == GraalJsDefaultTags.default else None
             with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all], report=report) as t:
                 if t:
-                    gateTestCommands[testCommandName](gateTestConfigs[testConfigName])
+                    testCommand(testConfig)
 
     with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
             import mx_gate
-            jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz') as fp:
+                jsonResultsFile = fp.name
             try:
                 mx_truffle.tck(['--json-results=' + jsonResultsFile])
                 mx_gate.make_test_report(jsonResultsFile, task=t.title)
@@ -155,7 +156,7 @@ def _graal_js_gate_runner(args, tasks):
 class JsUnittestConfig(mx_unittest.MxUnittestConfig):
 
     def __init__(self):
-        super(JsUnittestConfig, self).__init__('js')
+        super().__init__('js')
 
     def processDeps(self, deps):
         wasm = mx.distribution('WASM', False)
@@ -308,13 +309,13 @@ def _fetch_test_suite(dest, library_names):
     _extract = False
     for _lib_name in library_names:
         if not exists(dest) or getmtime(_get_lib_path(_lib_name)) > getmtime(dest):
-            mx.logv('{} needs to be extracted'.format(_lib_name))
+            mx.logv(f'{_lib_name} needs to be extracted')
             _extract = True
             break
 
     if _extract:
         if exists(dest):
-            mx.logv('Deleting the old test directory {}'.format(dest))
+            mx.logv(f'Deleting the old test directory {dest}')
             shutil.rmtree(dest)
             mx_util.ensure_dir_exists(dest)
         for _lib_name in library_names:
@@ -372,7 +373,7 @@ class NoCRLFGitConfig(mx.GitConfig):
         if mx.is_windows() and len(args) == 1 and len(args[0]) >= 2 and args[0][0] == 'git' and args[0][1] == 'clone':
             _cmd = args[0]
             _new_cmd = _cmd[:2] + ['-c', 'core.autocrlf=false'] + _cmd[2:]
-            return super(NoCRLFGitConfig, self).run(_new_cmd, **kwargs)
+            return super().run(_new_cmd, **kwargs)
         else:
             return super().run(*args, **kwargs)
 
@@ -404,7 +405,7 @@ def jsnative(args):
     jdk = mx.get_jdk(tag='graalvm')
     image = _native_image_js(jdk, vm_args, target_dir, use_optimized_runtime=True, hosted_assertions=False)
     if js_args:
-        mx.log("Image build completed. Running {}".format(" ".join([image] + js_args)))
+        mx.log(f"Image build completed. Running {' '.join([image] + js_args)}")
         return mx.run([image] + js_args)
     else:
         mx.log(f"Image build completed. JavaScript image has been generated at {image}.")
@@ -425,7 +426,7 @@ def _native_image_js(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
     native_image_args += mx.get_runtime_jvm_args(names=dist_names)
     native_image_args += ["com.oracle.truffle.js.shell.JSLauncher"]
     native_image_args += [target_path]
-    mx.log("Running {} {}".format(mx.exe_suffix('native-image'), " ".join(native_image_args)))
+    mx.log(f"Running {mx.exe_suffix('native-image')} {' '.join(native_image_args)}")
     mx.run([native_image_path] + native_image_args)
     return target_path
 
@@ -434,7 +435,7 @@ def _native_image(jdk):
     if not exists(native_image_path):
         native_image_path = os.path.join(jdk.home, 'bin', mx.cmd_suffix('native-image'))
     if not exists(native_image_path):
-        mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(jdk.home))
+        mx.abort(f"No native-image installed in GraalVM {jdk.home}. Switch to an environment that has an installed native-image command.")
     return native_image_path
 
 def testnashorn(args, nonZeroIsFatal=True):
@@ -498,7 +499,7 @@ def deploy_binary_if_master(args):
     if active_branch == primary_branch:
         return deploy_binary(args)
     else:
-        mx.warn('The active branch is "%s". Binaries are deployed only if the active branch is "%s".' % (active_branch, primary_branch))
+        mx.warn(f'The active branch is "{active_branch}". Binaries are deployed only if the active branch is "{primary_branch}".')
         return 0
 
 def mx_post_parse_cmd_line(args):

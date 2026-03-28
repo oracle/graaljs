@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -70,8 +70,9 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 if exists(p):
                     mx.rmtree(p)
 
-            jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
-            testArgs = ['--', '--json-results=' + jsonResultsFile]
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz') as fp:
+                jsonResultsFile = fp.name
+            testArgs = ['--', f'--json-results={jsonResultsFile}']
             try:
                 npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
                 npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs + testArgs, cwd=unitTestDir)
@@ -135,10 +136,10 @@ class GraalNodeJsProject(mx.NativeProject):  # pylint: disable=too-many-ancestor
         return GraalNodeJsBuildTask(self, args)
 
     def getResults(self, replaceVar=mx_subst.results_substitutions):
-        res = super(GraalNodeJsProject, self).getResults(replaceVar)
+        res = super().getResults(replaceVar)
         for result in res:
             if not exists(result):
-                mx.warn('GraalNodeJsProject %s in %s did not find %s' % (self.name, self.suite.name, result))
+                mx.warn(f'GraalNodeJsProject {self.name} in {self.suite.name} did not find {result}')
         return res
 
 
@@ -187,10 +188,10 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         if _is_windows:
             verbose = ['-v'] if mx.get_opts().verbose else []
             # The custom env is not used to resolve the location of the executable
-            _mxrun([join(mx.library('NINJA').get_path(True), 'ninja.exe')] + verbose + ['-j%d' % self.parallelism, '-C', self._build_dir], print_cmd=True, quiet_if_successful=quiet_build, env=build_env)
+            _mxrun([join(mx.library('NINJA').get_path(True), 'ninja.exe')] + verbose + [f'-j{self.parallelism}', '-C', self._build_dir], print_cmd=True, quiet_if_successful=quiet_build, env=build_env)
         else:
-            verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
-            _mxrun([mx.gmake_cmd(), '-j%d' % self.parallelism, verbose], cwd=_suite.dir, print_cmd=True, quiet_if_successful=quiet_build, env=build_env)
+            verbose = f"V={'1' if mx.get_opts().verbose else ''}"
+            _mxrun([mx.gmake_cmd(), f'-j{self.parallelism}', verbose], cwd=_suite.dir, print_cmd=True, quiet_if_successful=quiet_build, env=build_env)
 
         # put headers for native modules into out/headers
         _setEnvVar('HEADERS_ONLY', '1', build_env)
@@ -213,7 +214,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             mx.copyfile(libjsig_src, join(self._out_dir, 'lib', libjsig_name))
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
-        mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
+        mx.logv(f'Newest time-stamp before building: {pre_ts}\nNewest time-stamp after building: {post_ts}\nHas built? {post_ts.isNewerThan(pre_ts)}')
         built = post_ts.isNewerThan(pre_ts)
         return built
 
@@ -236,7 +237,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         paths = []
         for f in files:
             if not exists(f):
-                mx.abort_or_warn("Result file '{}' does not exist".format(f), fatalIfMissing)
+                mx.abort_or_warn(f"Result file '{f}' does not exist", fatalIfMissing)
                 return TimeStampFile(f)
             if isdir(f):
                 for _root, _, _files in os.walk(f):
@@ -251,7 +252,7 @@ class GraalNodeJsArchiveProject(mx.ArchivableProject):
         for attr in ['outputDir', 'prefix', 'results']:
             setattr(self, attr, args.pop(attr))
             if getattr(self, attr, None) is None:
-                mx.abort("Missing '{}' attribute".format(attr), context="GraalNodeJsArchiveProject {}".format(name))
+                mx.abort(f"Missing '{attr}' attribute", context=f'GraalNodeJsArchiveProject {name}')
         mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense)
 
     def output_dir(self):
@@ -267,7 +268,7 @@ class PreparsedCoreModulesProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
         self.outputDir = join(suite.dir, args['outputDir'])
         self.prefix = args['prefix']
-        super(PreparsedCoreModulesProject, self).__init__(suite, name, deps, workingSets, theLicense)
+        super().__init__(suite, name, deps, workingSets, theLicense)
 
     def getBuildTask(self, args):
         return PreparsedCoreModulesBuildTask(self, args, 1)
@@ -283,7 +284,7 @@ class PreparsedCoreModulesProject(mx.ArchivableProject):
 
 class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
     def __str__(self):
-        return 'Snapshotting {}'.format(self.subject)
+        return f'Snapshotting {self.subject}'
 
     def newestInput(self):
         relInputPaths = [join('lib', m) for m in self.modulesToSnapshot()] + \
@@ -420,9 +421,9 @@ def processDevkitRoot(env=None):
     devkit_root = _env.get('DEVKIT_ROOT')
     if devkit_root is not None:
         _setEnvVar('GYP_MSVS_OVERRIDE_PATH', devkit_root, _env)
-        _setEnvVar('PATH', '%s%s%s' % (join(devkit_root, 'VC', 'bin', 'x64'), pathsep, _env['PATH']), _env)
+        _setEnvVar('PATH', f"{join(devkit_root, 'VC', 'bin', 'x64')}{pathsep}{_env['PATH']}", _env)
         _setEnvVar('WINDOWSSDKDIR', join(devkit_root, '10'), _env)
-        _setEnvVar('VCINSTALLDIR', r'{devkit}\VC'.format(devkit=devkit_root))
+        _setEnvVar('VCINSTALLDIR', fr'{devkit_root}\VC')
         _setEnvVar('INCLUDE', r'{devkit}\VC\include;{devkit}\VC\atlmfc\include;{devkit}\10\include\shared;{devkit}\10\include\ucrt;{devkit}\10\include\um;{devkit}\10\include\winrt;{prev}'.format(devkit=devkit_root, prev=_env['INCLUDE']), _env)
         _setEnvVar('LIB', r'{devkit}\VC\lib\x64;{devkit}\VC\atlmfc\lib\x64;{devkit}\10\lib\x64;{prev}'.format(devkit=devkit_root, prev=_env['LIB']), _env)
         devkit_version = _env.get('DEVKIT_VERSION')
@@ -612,7 +613,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     _setEnvVar('JAVA_HOME', _java_home(forBuild=True))  # when running with the Graal compiler, setting `$JAVA_HOME` to the GraalJDK should be done after calling `mx.classpath()`, which resets `$JAVA_HOME` to the value of the `--java-home` mx cmd line argument
 
     prevPATH = os.environ['PATH']
-    _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))
+    _setEnvVar('PATH', f"{join(_suite.mxDir, 'fake_launchers')}{pathsep}{prevPATH}")
 
     return mode, vmArgs, progArgs, nodeExe
 
@@ -639,7 +640,7 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
         # The node launcher (i.e., JNI) does not support @argfile vm args, so we have to expand them to ordinary args
         def expandArgFile(arg):
             if arg.startswith('@'):
-                with open(arg[1:], 'r') as f:
+                with open(arg[1:], 'r', encoding='utf-8') as f:
                     return f.readlines()
             assert arg[0] == '-', arg
             return [arg]
@@ -664,7 +665,7 @@ def parse_js_args(args):
 def _mxrun(args, cwd=_suite.dir, print_cmd=False, quiet_if_successful=False, env=None):
     out = mx.OutputCapture() if quiet_if_successful else None
     if print_cmd:
-        mx.log('Running \'{}\''.format(' '.join(args)))
+        mx.log(f"Running '{' '.join(args)}'")
     status = mx.run(args, nonZeroIsFatal=False, cwd=cwd, out=out, err=out, env=env)
     if status:
         if quiet_if_successful:
@@ -674,7 +675,7 @@ def _mxrun(args, cwd=_suite.dir, print_cmd=False, quiet_if_successful=False, env
 def _setEnvVar(name, val, env=None):
     _env = env or os.environ
     if val:
-        mx.logv('Setting environment variable %s=%s' % (name, val))
+        mx.logv(f'Setting environment variable {name}={val}')
         _env[name] = val
 
 def _java_home(forBuild=False):
@@ -710,13 +711,13 @@ def _parseArgs(args):
 
     for arg in ['-d64', '-server']:
         if arg in vmArgs:
-            mx.logv('[_parseArgs] removing {} from vmArgs'.format(arg))
+            mx.logv(f'[_parseArgs] removing {arg} from vmArgs')
             vmArgs.remove(arg)
 
-    mx.logv('[_parseArgs] mode: %s' % mode)
-    mx.logv('[_parseArgs] vmArgs: %s' % vmArgs)
-    mx.logv('[_parseArgs] progArgs: %s' % progArgs)
-    mx.logv('[_parseArgs] standalone: %s' % standalone)
+    mx.logv(f'[_parseArgs] mode: {mode}')
+    mx.logv(f'[_parseArgs] vmArgs: {vmArgs}')
+    mx.logv(f'[_parseArgs] progArgs: {progArgs}')
+    mx.logv(f'[_parseArgs] standalone: {standalone}')
 
     return mode, vmArgs, progArgs, standalone
 

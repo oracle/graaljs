@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ _suite = mx.suite('graal-nodejs')
 
 class GraalNodeJsVm(GuestVm):
     def __init__(self, config_name, options, host_vm=None):
-        super(GraalNodeJsVm, self).__init__(host_vm=host_vm)
+        super().__init__(host_vm=host_vm)
         self._config_name = config_name
         self._options = options
 
@@ -57,7 +57,7 @@ class GraalNodeJsVm(GuestVm):
         else:
             out = mx.TeeOutputCapture(mx.OutputCapture())
             args = self.host_vm().post_process_command_line_args(args)
-            mx.log("Running {} with args: {}".format(self.name(), args))
+            mx.log(f"Running {self.name()} with args: {args}")
             code = mx_graal_nodejs.node(args, add_graal_vm_args=False, nonZeroIsFatal=False, out=out, err=out, cwd=cwd)
             out = out.underlying.data
             dims = self.host_vm().dimensions(cwd, args, code, out)
