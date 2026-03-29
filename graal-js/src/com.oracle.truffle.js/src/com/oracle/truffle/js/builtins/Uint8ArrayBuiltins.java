@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -347,7 +347,7 @@ public final class Uint8ArrayBuiltins {
                             ch = '/';
                         }
                     }
-                    if (ch > FROM_BASE64_TABLE.length || FROM_BASE64_TABLE[ch] < 0) {
+                    if (ch >= FROM_BASE64_TABLE.length || FROM_BASE64_TABLE[ch] < 0) {
                         throw syntaxError("unexpected character");
                     }
                     int remaining = maxLength - written;
@@ -441,7 +441,7 @@ public final class Uint8ArrayBuiltins {
                     char c1 = Strings.charAt(charAtNode, string, read + 1);
                     byte b0;
                     byte b1;
-                    if (c0 > FROM_HEX_TABLE.length || c1 > FROM_HEX_TABLE.length ||
+                    if (c0 >= FROM_HEX_TABLE.length || c1 >= FROM_HEX_TABLE.length ||
                                     (b0 = FROM_HEX_TABLE[c0]) < 0 ||
                                     (b1 = FROM_HEX_TABLE[c1]) < 0) {
                         throw syntaxError("unexpected character");
