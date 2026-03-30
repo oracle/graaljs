@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -99,6 +100,7 @@ public abstract class ToJSValueNode extends JavaScriptBaseNode {
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary isFuncLib,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary funcTypeLib,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asTStringLib,
+                    @Cached ImportValueNode importValueNode,
                     @Cached TruffleString.SwitchEncodingNode switchEncoding) {
         JSRealm realm = getRealm();
         if (value == realm.getWasmRefNull()) {
@@ -115,7 +117,7 @@ public abstract class ToJSValueNode extends JavaScriptBaseNode {
                     TruffleString funcType = Strings.interopAsTruffleString(funcTypeLib.execute(realm.getWASMFuncType(), value), asTStringLib, switchEncoding);
                     return JSWebAssemblyInstance.exportFunction(realm.getContext(), realm, value, funcType);
                 }
-                return value;
+                return importValueNode.executeWithTarget(value);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
