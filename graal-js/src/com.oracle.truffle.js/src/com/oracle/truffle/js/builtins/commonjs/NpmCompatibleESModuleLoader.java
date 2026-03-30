@@ -181,10 +181,10 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                     // on Windows, remove first "/" from /c:/dir/ style paths
                     path = path.substring(1);
                 }
-                return tryLoadingAsCommonjsModule(path);
+                return tryLoadingAsCommonjsModule(referencingModule, moduleRequest, path);
             } else if (resolution == TryCommonJS || format == Format.CommonJS) {
                 // Compatibility mode: try loading as a CommonJS module.
-                return tryLoadingAsCommonjsModule(specifier);
+                return tryLoadingAsCommonjsModule(referencingModule, moduleRequest, specifier);
             } else if (resolution != null) {
                 TruffleFile file = env.getPublicTruffleFile(resolution);
                 return loadModuleFromFile(referencingModule, moduleRequest, file, file.getPath());
@@ -201,7 +201,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         String specifier = moduleRequest.specifier().toJavaStringUncached();
         log("IMPORT resolve built-in ", specifier);
         CanonicalModuleKey moduleKey = new CanonicalModuleKey(specifier, moduleRequest.attributes());
-        AbstractModuleRecord existingModule = moduleMap.get(moduleKey);
+        AbstractModuleRecord existingModule = lookupLoadedModule(moduleKey);
         if (existingModule != null) {
             log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;
@@ -234,17 +234,17 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             }
         } else {
             // Else, try loading as commonjs built-in module replacement
-            return tryLoadingAsCommonjsModule(specifier);
+            return tryLoadingAsCommonjsModule(referencingModule, moduleRequest, specifier);
         }
         JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
         JSModuleRecord record = new JSModuleRecord(parsedModule, this);
-        moduleMap.put(moduleKey, record);
+        insertLoadedModule(referencingModule, moduleRequest, src, moduleKey, record);
         return record;
     }
 
-    private AbstractModuleRecord tryLoadingAsCommonjsModule(String specifier) {
+    private AbstractModuleRecord tryLoadingAsCommonjsModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String specifier) {
         CanonicalModuleKey moduleKey = new CanonicalModuleKey(specifier, Map.of());
-        AbstractModuleRecord existingModule = moduleMap.get(moduleKey);
+        AbstractModuleRecord existingModule = lookupLoadedModule(moduleKey);
         if (existingModule != null) {
             log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;
@@ -273,7 +273,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         Source src = Source.newBuilder(ID, moduleBody.toString(), specifier + "-internal.mjs").build();
         JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
         JSModuleRecord record = new JSModuleRecord(parsedModule, this);
-        moduleMap.put(moduleKey, record);
+        insertLoadedModule(referencingModule, moduleRequest, src, moduleKey, record);
         return record;
     }
 

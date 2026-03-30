@@ -234,7 +234,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     protected AbstractModuleRecord loadModuleFromURL(ScriptOrModule referrer, ModuleRequest moduleRequest, URI moduleURI) throws IOException {
         assert !isFileURI(moduleURI) : moduleURI;
         String canonicalPath = moduleURI.toString();
-        AbstractModuleRecord existingModule = moduleMap.get(new CanonicalModuleKey(canonicalPath, moduleRequest.attributes()));
+        AbstractModuleRecord existingModule = lookupLoadedModule(new CanonicalModuleKey(canonicalPath, moduleRequest.attributes()));
         if (existingModule != null) {
             return existingModule;
         }
@@ -282,7 +282,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             canonicalPath = maybeCanonicalPath;
         }
 
-        AbstractModuleRecord existingModule = moduleMap.get(new CanonicalModuleKey(canonicalPath, moduleRequest.attributes()));
+        AbstractModuleRecord existingModule = lookupLoadedModule(new CanonicalModuleKey(canonicalPath, moduleRequest.attributes()));
         if (existingModule != null) {
             return existingModule;
         }
@@ -323,11 +323,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             };
         }
 
-        moduleMap.put(new CanonicalModuleKey(canonicalPath, attributes), newModule);
-
-        if (referrer != null) {
-            referrer.rememberImportedModuleSource(moduleRequest.specifier(), source);
-        }
+        var moduleKey = new CanonicalModuleKey(canonicalPath, attributes);
+        insertLoadedModule(referrer, moduleRequest, source, moduleKey, newModule);
         return newModule;
     }
 
@@ -340,7 +337,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         int startPos = "data:".length();
         String input = specifier;
 
-        AbstractModuleRecord existingModule = moduleMap.get(new CanonicalModuleKey(specifier, moduleRequest.attributes()));
+        AbstractModuleRecord existingModule = lookupLoadedModule(new CanonicalModuleKey(specifier, moduleRequest.attributes()));
         if (existingModule != null) {
             return existingModule;
         }
@@ -686,6 +683,18 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             return URI.create(refURI.getScheme() + ":" + schemeSpecificPart.substring(0, pathStart) + newPath);
         }
         return refURI.resolve(uri);
+    }
+
+    protected final AbstractModuleRecord lookupLoadedModule(CanonicalModuleKey moduleKey) {
+        return moduleMap.get(moduleKey);
+    }
+
+    protected final void insertLoadedModule(ScriptOrModule referrer, ModuleRequest moduleRequest, Source source, CanonicalModuleKey moduleKey, AbstractModuleRecord newModule) {
+        moduleMap.put(moduleKey, newModule);
+
+        if (referrer != null) {
+            referrer.rememberImportedModuleSource(moduleRequest.specifier(), source);
+        }
     }
 
     public record CanonicalModuleKey(String canonicalPath, Map<TruffleString, TruffleString> importAttributes) {
