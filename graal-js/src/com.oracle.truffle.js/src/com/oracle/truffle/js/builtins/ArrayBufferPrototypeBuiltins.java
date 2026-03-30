@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -593,26 +593,26 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (arrayBuffer instanceof JSArrayBufferObject.Heap heapArrayBuffer) {
                 byte[] array = heapArrayBuffer.getByteArray();
                 if (oldByteLength < newByteLength) {
-                    if (newByteLength <= array.length) {
-                        Arrays.fill(array, oldByteLength, newByteLength, (byte) 0);
-                    } else {
+                    if (newByteLength > array.length) {
                         byte[] newArray = new byte[newByteLength];
                         System.arraycopy(array, 0, newArray, 0, oldByteLength);
                         array = newArray;
                     }
+                } else {
+                    Arrays.fill(array, newByteLength, oldByteLength, (byte) 0);
                 }
                 newBuffer = JSArrayBuffer.createArrayBuffer(context, realm, array, newByteLength, newMaxByteLength);
             } else if (arrayBuffer instanceof JSArrayBufferObject.Direct directArrayBuffer) {
                 ByteBuffer byteBuffer = directArrayBuffer.getByteBuffer();
                 if (oldByteLength < newByteLength) {
-                    if (newByteLength <= byteBuffer.capacity()) {
-                        for (int i = oldByteLength; i < newByteLength; i++) {
-                            byteBuffer.put(i, (byte) 0);
-                        }
-                    } else {
+                    if (newByteLength > byteBuffer.capacity()) {
                         ByteBuffer newByteBuffer = DirectByteBufferHelper.allocateDirect(newByteLength);
                         Boundaries.byteBufferPutSlice(newByteBuffer, 0, byteBuffer, 0, oldByteLength);
                         byteBuffer = newByteBuffer;
+                    }
+                } else {
+                    for (int i = newByteLength; i < oldByteLength; i++) {
+                        byteBuffer.put(i, (byte) 0);
                     }
                 }
                 newBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteBuffer, newByteLength, newMaxByteLength);
