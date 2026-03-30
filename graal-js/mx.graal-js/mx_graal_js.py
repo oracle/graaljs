@@ -176,6 +176,7 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.polyglot/*=com.oracle.truffle.js.test']
         return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.register_unittest_config(JsUnittestConfig())

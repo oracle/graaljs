@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
 import static org.junit.Assert.assertEquals;
@@ -48,22 +49,27 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -71,6 +77,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.interop.AsyncInteropTest.Thenable;
@@ -149,6 +156,100 @@ public class CommonJSWithCustomFsTest {
         context.eval(Source.newBuilder("js", jsFile).build());
         out.flush();
         Assert.assertEquals("42\n", out.toString());
+    }
+
+    @Test
+    public void testMultiContextCachedCJSModuleSourceWithImport() throws IOException {
+        Path importedModuleFile = Paths.get("imported.js").toAbsolutePath().normalize();
+        Path importedModuleDir = requireParent(importedModuleFile);
+        String importedModuleName = requireFileName(importedModuleFile);
+        String commonJSModuleBody = "exports.foo = 42;";
+        Source src = Source.newBuilder("js", "import {foo} from './imported.js'; foo;", "main.mjs").mimeType(MODULE_MIME_TYPE).build();
+        StringBuilder log = new StringBuilder();
+
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).build()) {
+            SourceCacheFs fs = new SourceCacheFs(importedModuleFile, commonJSModuleBody);
+            final int numIters = 3;
+            int[] sourceIdentityHashes = new int[numIters];
+            for (int i = 0; i < numIters; i++) {
+                System.gc();
+
+                try (Context cx = createTestContext(engine, fs, importedModuleDir.toString())) {
+                    Value v = cx.eval(src);
+                    Assert.assertEquals(42, v.asInt());
+
+                    log.append("sources(").append(i).append("): ");
+                    log.append(engine.getCachedSources().stream().map(source -> source.getName() + ":" + getSourceIdentityHash(source)).collect(Collectors.joining(", ", "[", "]")));
+                    log.append("\n");
+
+                    Source importedCommonJsSource = findImportedCommonJsSource(engine, importedModuleName);
+                    sourceIdentityHashes[i] = getSourceIdentityHash(importedCommonJsSource);
+                }
+
+                if (i > 0) {
+                    Assert.assertEquals("Source should be stable across contexts: " + importedModuleName + "\n" + log, sourceIdentityHashes[i - 1], sourceIdentityHashes[i]);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testMultiContextCachedCJSModuleSourceWithRequire() throws IOException {
+        Path importedModuleFile = Paths.get("imported.js").toAbsolutePath().normalize();
+        Path importedModuleDir = requireParent(importedModuleFile);
+        String importedModuleName = requireFileName(importedModuleFile);
+        String commonJSModuleBody = "exports.foo = 42;";
+        Source src = Source.newBuilder("js", "const {foo} = require('./imported.js'); foo;", "main.js").build();
+        StringBuilder log = new StringBuilder();
+
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).build()) {
+            SourceCacheFs fs = new SourceCacheFs(importedModuleFile, commonJSModuleBody);
+            final int numIters = 3;
+            int[] sourceIdentityHashes = new int[numIters];
+            for (int i = 0; i < numIters; i++) {
+                System.gc();
+
+                try (Context cx = createTestContext(engine, fs, importedModuleDir.toString())) {
+                    Value v = cx.eval(src);
+                    Assert.assertEquals(42, v.asInt());
+
+                    log.append("sources(").append(i).append("): ");
+                    log.append(engine.getCachedSources().stream().map(source -> source.getName() + ":" + getSourceIdentityHash(source)).collect(Collectors.joining(", ", "[", "]")));
+                    log.append("\n");
+
+                    Source importedCommonJsSource = findImportedCommonJsSource(engine, importedModuleName);
+                    sourceIdentityHashes[i] = getSourceIdentityHash(importedCommonJsSource);
+                }
+
+                if (i > 0) {
+                    Assert.assertEquals("Source should be stable across contexts: " + importedModuleName + "\n" + log, sourceIdentityHashes[i - 1], sourceIdentityHashes[i]);
+                }
+            }
+        }
+    }
+
+    private static Source findImportedCommonJsSource(Engine engine, String expectedSourceName) {
+        Source importedSource = null;
+        for (Source source : engine.getCachedSources()) {
+            if (expectedSourceName.equals(source.getName())) {
+                Assert.assertNull("Expected a single imported CommonJS source.", importedSource);
+                importedSource = source;
+            }
+        }
+        Assert.assertNotNull("Expected to find the imported CommonJS source.", importedSource);
+        return importedSource;
+    }
+
+    private static int getSourceIdentityHash(Source polyglotSource) {
+        try {
+            Field receiver = Source.class.getDeclaredField("receiver");
+            receiver.setAccessible(true);
+            Object truffleSource = receiver.get(polyglotSource);
+            return System.identityHashCode(truffleSource);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            Assume.assumeNoException("Unable to make org.graalvm.polyglot.Source.receiver accessible", e);
+            return polyglotSource.hashCode();
+        }
     }
 
     private static class DenyAllFs implements FileSystem {
@@ -293,11 +394,188 @@ public class CommonJSWithCustomFsTest {
         }
     }
 
+    private static final class SourceCacheFs implements FileSystem {
+
+        private final Path moduleFile;
+        private final Path moduleDir;
+        private final String moduleBody;
+        private final String modulePathString;
+        private final String moduleRawPath;
+        private final String moduleDirString;
+        private final String moduleDirRawPath;
+
+        private SourceCacheFs(Path moduleFile, String moduleBody) {
+            this.moduleFile = moduleFile;
+            this.moduleDir = requireParent(moduleFile);
+            this.moduleBody = moduleBody;
+            this.modulePathString = normalizePath(moduleFile.toString());
+            this.moduleRawPath = normalizePath(moduleFile.toUri().getRawPath());
+            this.moduleDirString = normalizePath(moduleDir.toString());
+            this.moduleDirRawPath = normalizePath(moduleDir.toUri().getRawPath());
+        }
+
+        @Override
+        public Path parsePath(URI uri) {
+            if (matchesModule(uri.getPath())) {
+                return moduleFile;
+            } else if (matchesModuleDir(uri.getPath())) {
+                return moduleDir;
+            }
+            return Paths.get(uri);
+        }
+
+        @Override
+        public Path parsePath(String path) {
+            if (matchesModule(path)) {
+                return moduleFile;
+            } else if (matchesModuleDir(path)) {
+                return moduleDir;
+            }
+            return Paths.get(path);
+        }
+
+        @Override
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) {
+        }
+
+        @Override
+        public void createDirectory(Path dir, FileAttribute<?>... attrs) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public void delete(Path path) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public void copy(Path source, Path target, CopyOption... options) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public void move(Path source, Path target, CopyOption... options) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
+            if (moduleFile.equals(path)) {
+                return new ReadOnlySeekableByteArrayChannel(moduleBody.getBytes(StandardCharsets.UTF_8));
+            }
+            throw new AssertionError();
+        }
+
+        @Override
+        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) {
+            if (moduleFile.equals(path)) {
+                return Map.of(
+                                "isRegularFile", true,
+                                "isDirectory", false);
+            } else if (moduleDir.equals(path)) {
+                return Map.of(
+                                "isRegularFile", false,
+                                "isDirectory", true);
+            } else {
+                return Map.of(
+                                "isRegularFile", false,
+                                "isDirectory", false);
+            }
+        }
+
+        @Override
+        public void setAttribute(Path path, String attribute, Object value, LinkOption... options) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public Path toAbsolutePath(Path path) {
+            return path.isAbsolute() ? path : moduleDir.resolve(path).normalize();
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+        }
+
+        @Override
+        public Path toRealPath(Path path, LinkOption... linkOptions) {
+            return toAbsolutePath(path);
+        }
+
+        @Override
+        public Path getTempDirectory() {
+            return moduleDir;
+        }
+
+        @Override
+        public void createLink(Path link, Path existing) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public Path readSymbolicLink(Path link) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) {
+            return path1.normalize().equals(path2.normalize());
+        }
+
+        private boolean matchesModule(String path) {
+            String normalizedPath = normalizePath(path);
+            return normalizedPath.equals(modulePathString) || normalizedPath.equals(moduleRawPath);
+        }
+
+        private boolean matchesModuleDir(String path) {
+            String normalizedPath = normalizePath(path);
+            return normalizedPath.equals(moduleDirString) || normalizedPath.equals(moduleDirRawPath);
+        }
+
+        private static String normalizePath(String path) {
+            return path.replace('\\', '/');
+        }
+    }
+
+    private static Path requireParent(Path path) {
+        Path parent = path.getParent();
+        if (parent == null) {
+            throw new AssertionError("Expected parent path for " + path);
+        }
+        return parent;
+    }
+
+    private static String requireFileName(Path path) {
+        Path fileName = path.getFileName();
+        if (fileName == null) {
+            throw new AssertionError("Expected file name for " + path);
+        }
+        return fileName.toString();
+    }
+
     private static Context createTestContext(FileSystem fs, String cwd) {
+        return createTestContext(null, fs, cwd);
+    }
+
+    private static Context createTestContext(Engine engine, FileSystem fs, String cwd) {
         final Map<String, String> options = new HashMap<>();
         options.put(COMMONJS_REQUIRE_NAME, "true");
         options.put(COMMONJS_REQUIRE_CWD_NAME, cwd);
 
-        return Context.newBuilder("js").allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).options(options).allowIO(IOAccess.newBuilder().fileSystem(fs).build()).build();
+        Context.Builder builder = Context.newBuilder("js").allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).options(options).allowIO(IOAccess.newBuilder().fileSystem(fs).build());
+        if (engine != null) {
+            builder.engine(engine);
+        }
+        return builder.build();
     }
 }
