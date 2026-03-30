@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,7 +86,7 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
     private static final String SCRIPT_SUFFIX = ".js";
     private static final String MODULE_SUFFIX = ".mjs";
 
-    private static final String OPTION_REGEX = "@option\\s+([^=\\s]+)(?:\\s*=\\s*(\\S+))?$";
+    private static final String OPTION_REGEX = "@option\\s+([^=\\s]+)(?:\\s*=\\s*(\\S+))?\\s*$";
     private static final String ARGUMENT_REGEX = "@argument\\s+([^=\\s]+)$";
 
     private static final String LF = System.getProperty("line.separator");
