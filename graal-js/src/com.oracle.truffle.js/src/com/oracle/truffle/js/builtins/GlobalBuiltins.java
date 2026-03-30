@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -562,7 +562,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected Source sourceFromPath(String path, JSRealm realm) {
+        protected static Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
             try {
                 TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
@@ -673,33 +673,19 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Override
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected Source sourceFromPath(String path, JSRealm realm) {
-            Source source = null;
+        protected Source sourceFromPathOrURI(String path, JSRealm realm) {
             JSContext ctx = getContext();
             if (path.indexOf(':') >= 2) {
                 if (ctx.isOptionNashornCompatibilityMode() || realm.getContextOptions().isLoadFromURL() || realm.getContextOptions().isLoadFromClasspath()) {
-                    source = sourceFromURI(path, realm);
+                    Source source = sourceFromURI(path, realm);
                     if (source != null) {
                         return source;
                     }
                 }
-            } else {
-                try {
-                    TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
-                    if (file.isRegularFile()) {
-                        source = sourceFromTruffleFile(file);
-                    }
-                } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
-                    throw Errors.createErrorFromException(e);
-                }
-            }
-
-            if (source == null) {
                 throw cannotLoadScript(path);
             }
-            return source;
+            return sourceFromPath(path, realm);
         }
 
         public static final String LOAD_CLASSPATH = "classpath:";
@@ -1457,7 +1443,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         protected Object loadFromPath(TruffleString path, JSRealm realm, @SuppressWarnings("unused") Object[] args) {
-            Source source = sourceFromPath(Strings.toJavaString(path), realm);
+            Source source = sourceFromPathOrURI(Strings.toJavaString(path), realm);
             return runImpl(realm, source);
         }
 
@@ -1565,7 +1551,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 JSDynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
-                Source source = sourceFromPath(Strings.toJavaString(path), childRealm);
+                Source source = sourceFromPathOrURI(Strings.toJavaString(path), childRealm);
                 return runImpl(childRealm, source);
             } finally {
                 mainRealm.leaveRealm(this, prevRealm);
