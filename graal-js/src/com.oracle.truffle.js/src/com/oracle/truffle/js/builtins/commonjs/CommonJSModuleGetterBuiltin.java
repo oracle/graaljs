@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class CommonJSModuleGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
@@ -88,18 +87,18 @@ public abstract class CommonJSModuleGetterBuiltin extends GlobalBuiltins.JSFileL
         }
     }
 
-    private static JSDynamicObject getOrCreateModuleObject(JSContext context, JSRealm realm) {
+    private static JSObject getOrCreateModuleObject(JSContext context, JSRealm realm) {
         CompilerAsserts.neverPartOfCompilation();
         String filePath = CommonJSResolution.getCurrentFileNameFromStack();
         if (filePath != null) {
             TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(filePath);
             assert truffleFile.isRegularFile();
-            Map<TruffleFile, JSDynamicObject> requireCache = realm.getCommonJSRequireCache();
-            JSDynamicObject cached = requireCache.get(truffleFile);
+            Map<TruffleFile, JSObject> requireCache = realm.getCommonJSRequireCache();
+            JSObject cached = requireCache.get(truffleFile);
             if (cached != null) {
                 return cached;
             } else {
-                JSDynamicObject moduleObject = createModuleObject(context, realm);
+                JSObject moduleObject = createModuleObject(context, realm);
                 requireCache.put(truffleFile, moduleObject);
                 return moduleObject;
             }
@@ -136,7 +135,7 @@ public abstract class CommonJSModuleGetterBuiltin extends GlobalBuiltins.JSFileL
             assert truffleFile.isRegularFile() && truffleFile.getParent().isDirectory();
             return Strings.fromJavaString(truffleFile.getParent().normalize().toString());
         }
-        return Strings.fromJavaString(CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(realm, env).getAbsoluteFile().toString());
+        return Strings.fromJavaString(CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(realm).getAbsoluteFile().toString());
     }
 
 }

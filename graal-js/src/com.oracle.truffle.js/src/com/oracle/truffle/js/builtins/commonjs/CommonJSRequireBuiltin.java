@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,9 +57,12 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -72,8 +75,11 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
@@ -83,10 +89,19 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     private static final String MODULE_PREAMBLE_PREFIX = "(function (";
     private static final String MODULE_PREAMBLE_POST = ") {";
-    private static final String MODULE_END = "});";
+    private static final String MODULE_END = "\n});";
     private static final String MODULE_FUNCTION_ARGS = "exports, require, module, __filename, __dirname";
+    private static final String[] MODULE_PARSE_ARGS = {
+                    JavaScriptLanguage.NODE_ENV_PARSE_TOKEN,
+                    MODULE_PREAMBLE_PREFIX + MODULE_FUNCTION_ARGS + MODULE_PREAMBLE_POST,
+                    MODULE_END,
+                    String.valueOf(false)
+    };
 
     public static final String UNSUPPORTED_NODE_FILE = "Unsupported .node file: ";
+
+    /** Used to store the {@link Source} of a CJS module in its module object. */
+    public static final HiddenKey MODULE_SOURCE_KEY = new HiddenKey("Source");
 
     static {
         requireDebugStack = LOG_REQUIRE_PATH_RESOLUTION ? new Stack<>() : null;
@@ -127,8 +142,13 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     @TruffleBoundary
-    static TruffleFile getModuleResolveCurrentWorkingDirectory(JSRealm realm, TruffleLanguage.Env env) {
+    static TruffleFile getModuleResolveCurrentWorkingDirectory(JSRealm realm) {
         String currentFileNameFromStack = CommonJSResolution.getCurrentFileNameFromStack();
+        return getModuleResolveCurrentWorkingDirectory(realm, currentFileNameFromStack);
+    }
+
+    static TruffleFile getModuleResolveCurrentWorkingDirectory(JSRealm realm, String currentFileNameFromStack) {
+        TruffleLanguage.Env env = realm.getEnv();
         if (currentFileNameFromStack != null) {
             TruffleFile truffleFile = env.getPublicTruffleFile(currentFileNameFromStack);
             if (truffleFile.isRegularFile() && truffleFile.getParent() != null) {
@@ -151,11 +171,12 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     @Specialization
     protected Object require(JSDynamicObject currentRequire, TruffleString moduleIdentifier) {
         JSRealm realm = getRealm();
-        TruffleLanguage.Env env = realm.getEnv();
         String moduleIdentifierJavaString = moduleIdentifier.toJavaStringUncached();
         try {
-            TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, realm, env);
-            return requireImpl(moduleIdentifierJavaString, resolutionEntryPath, realm);
+            TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, realm);
+            ScriptOrModule activeScriptOrModule = EvalNode.findActiveScriptOrModule(EvalNode.findCallNode(realm));
+            JSObject module = requireImpl(moduleIdentifierJavaString, resolutionEntryPath, realm, activeScriptOrModule);
+            return JSObject.get(module, Strings.EXPORTS_PROPERTY_NAME);
         } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
             throw fail(moduleIdentifierJavaString, e.getMessage());
         }
@@ -167,12 +188,12 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     @TruffleBoundary
-    private Object requireImpl(String moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
+    static JSObject requireImpl(String moduleIdentifier, TruffleFile entryPath, JSRealm realm, ScriptOrModule activeScriptOrModule) {
         log("required module '", moduleIdentifier, "' from path ", entryPath);
         String moduleReplacementName = getCoreModuleReplacement(realm, moduleIdentifier);
         if (moduleReplacementName != null) {
             log("using module replacement for module '", moduleIdentifier, "' with ", moduleReplacementName);
-            return requireImpl(moduleReplacementName, getRequireCwd(realm, realm.getEnv()), realm);
+            return requireImpl(moduleReplacementName, getRequireCwd(realm, realm.getEnv()), realm, activeScriptOrModule);
         } // no core module replacement alias was found: continue and search in the FS.
         TruffleFile maybeModule;
         try {
@@ -195,29 +216,28 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             }
         }
         if (isJsFile(maybeModule) || isCjsFile(maybeModule)) {
-            return evalJavaScriptFile(maybeModule, moduleIdentifier);
+            return evalJavaScriptFile(maybeModule, moduleIdentifier, realm, activeScriptOrModule);
         } else if (isJsonFile(maybeModule)) {
-            return evalJsonFile(maybeModule);
+            return evalJsonFile(maybeModule, realm);
         } else if (isNodeBinFile(maybeModule)) {
             throw fail(UNSUPPORTED_NODE_FILE, moduleIdentifier);
         } else if (maybeModule.exists() && !isMjsFile(maybeModule)) {
             // No extension matched: still try loading as a CJS file
-            return evalJavaScriptFile(maybeModule, moduleIdentifier);
+            return evalJavaScriptFile(maybeModule, moduleIdentifier, realm, activeScriptOrModule);
         } else {
             throw fail(moduleIdentifier);
         }
     }
 
-    private Object evalJavaScriptFile(TruffleFile modulePath, String moduleIdentifier) {
-        JSRealm realm = getRealm();
+    private static JSObject evalJavaScriptFile(TruffleFile modulePath, String moduleIdentifier, JSRealm realm, ScriptOrModule activeScriptOrModule) {
+        JSContext context = realm.getContext();
         TruffleFile normalizedPath = modulePath.normalize();
         // If cached, return from cache. This is by design to avoid infinite require loops.
-        Map<TruffleFile, JSDynamicObject> commonJSCache = realm.getCommonJSRequireCache();
+        Map<TruffleFile, JSObject> commonJSCache = realm.getCommonJSRequireCache();
         if (commonJSCache.containsKey(normalizedPath)) {
-            JSDynamicObject moduleBuiltin = commonJSCache.get(normalizedPath);
-            Object cached = JSObject.get(moduleBuiltin, Strings.EXPORTS_PROPERTY_NAME);
-            log("returning cached '", modulePath, cached);
-            return cached;
+            JSObject moduleBuiltin = commonJSCache.get(normalizedPath);
+            log("returning cached ", modulePath);
+            return moduleBuiltin;
         }
         // Read the file.
         Source source = sourceFromPath(modulePath.toString(), realm);
@@ -228,51 +248,58 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         // Create `require` and other builtins for this module.
         String dirnameBuiltin = modulePath.getParent() == null ? "." : modulePath.getParent().getAbsoluteFile().normalize().toString();
         JSObject exportsBuiltin = createExportsBuiltin(realm);
-        JSObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
+        JSObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, false, source);
+        addJSModuleProperties(moduleBuiltin, filenameBuiltin);
         JSObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
-        JSObject env = JSOrdinary.create(getContext(), getRealm());
-        JSObject.set(env, Strings.ENV_PROPERTY_NAME, JSOrdinary.create(getContext(), getRealm()));
+        JSObject env = createEnvObject(realm, context);
         // Parse the module
         Object moduleExecutableFunction = parseModule(realm, source);
+        if (activeScriptOrModule != null) {
+            activeScriptOrModule.rememberImportedModuleSource(filenameBuiltin, source);
+        }
         // Execute the module.
         if (JSFunction.isJSFunction(moduleExecutableFunction)) {
             log("adding to cache ", normalizedPath);
             commonJSCache.put(normalizedPath, moduleBuiltin);
             try {
                 debugStackPush(moduleIdentifier);
-                log("executing '", filenameBuiltin, "' for ", moduleIdentifier);
+                log("executing '", filenameBuiltin, "' for '", moduleIdentifier, "'");
                 JSFunction.call(JSArguments.create(moduleExecutableFunction, moduleExecutableFunction, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin,
                                 Strings.fromJavaString(dirnameBuiltin), env));
                 JSObject.set(moduleBuiltin, Strings.LOADED_PROPERTY_NAME, true);
-                return JSObject.get(moduleBuiltin, Strings.EXPORTS_PROPERTY_NAME);
+                log("done '", moduleIdentifier, "'");
+                return moduleBuiltin;
             } catch (Exception e) {
-                log("EXCEPTION: '", e.getMessage(), "'");
+                log("EXCEPTION: '", moduleIdentifier, "': ", e);
                 throw e;
             } finally {
                 debugStackPop();
-                Object module = JSObject.get(moduleBuiltin, Strings.EXPORTS_PROPERTY_NAME);
-                log("done '", moduleIdentifier, "' module.exports: ", module, module);
             }
         }
-        return null;
+        throw fail(moduleIdentifier);
     }
 
     private static Object parseModule(JSRealm realm, Source source) {
         JSContext context = realm.getContext();
-        String body = source.getCharacters() + "\n";
+        String body = source.getCharacters().toString();
         // Will throw a JS error (if syntax is wrong).
         context.getEvaluator().checkFunctionSyntax(context, context.getParserOptions(), MODULE_FUNCTION_ARGS, body, false, false, source.getPath());
-        CharSequence characters = MODULE_PREAMBLE_PREFIX + MODULE_FUNCTION_ARGS + MODULE_PREAMBLE_POST + body + MODULE_END;
-        Source moduleSources = Source.newBuilder(source).content(characters).build();
-        CallTarget moduleCallTarget = realm.getEnv().parsePublic(moduleSources);
+        CallTarget moduleCallTarget = realm.getEnv().parsePublic(source, MODULE_PARSE_ARGS);
         return moduleCallTarget.call();
     }
 
-    private JSDynamicObject evalJsonFile(TruffleFile jsonFile) {
+    private static JSObject evalJsonFile(TruffleFile jsonFile, JSRealm realm) {
+        TruffleFile normalizedPath = jsonFile.normalize();
+        // If cached, return from cache. This is by design to avoid infinite require loops.
+        Map<TruffleFile, JSObject> commonJSCache = realm.getCommonJSRequireCache();
+        if (commonJSCache.containsKey(normalizedPath)) {
+            JSObject moduleBuiltin = commonJSCache.get(normalizedPath);
+            log("returning cached ", jsonFile);
+            return moduleBuiltin;
+        }
         try {
             if (fileExists(jsonFile)) {
                 Source source;
-                JSRealm realm = getRealm();
                 TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(jsonFile.toString(), realm.getEnv());
                 if (file.isRegularFile()) {
                     source = sourceFromTruffleFile(file);
@@ -283,9 +310,11 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 assert source != null;
                 TruffleString jsonString = Strings.fromJavaString(source.getCharacters().toString());
                 Object jsonObj = JSFunction.call(JSArguments.create(Undefined.instance, parse, jsonString));
-                if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
-                    return (JSDynamicObject) jsonObj;
-                }
+
+                JSObject moduleBuiltin = createModuleBuiltin(realm, jsonObj, true, source);
+                log("adding to cache ", normalizedPath);
+                commonJSCache.put(normalizedPath, moduleBuiltin);
+                return moduleBuiltin;
             }
             throw fail(jsonFile.toString());
         } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
@@ -301,31 +330,41 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return JSException.create(JSErrorType.TypeError, "Cannot load module: '" + moduleIdentifier + "': " + extraMessage);
     }
 
-    private static JSObject createModuleBuiltin(JSRealm realm, JSDynamicObject exportsBuiltin, TruffleString fileNameBuiltin) {
+    private static JSObject createModuleBuiltin(JSRealm realm, Object exports, boolean loaded, Source source) {
         JSObject module = JSOrdinary.create(realm.getContext(), realm);
-        JSObject.set(module, Strings.EXPORTS_PROPERTY_NAME, exportsBuiltin);
-        JSObject.set(module, Strings.ID_PROPERTY_NAME, fileNameBuiltin);
-        JSObject.set(module, Strings.FILENAME_PROPERTY_NAME, fileNameBuiltin);
-        JSObject.set(module, Strings.LOADED_PROPERTY_NAME, false);
+        JSObjectUtil.putDataProperty(module, Strings.EXPORTS_PROPERTY_NAME, exports, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(module, Strings.LOADED_PROPERTY_NAME, loaded, JSAttributes.getDefault());
+        JSObjectUtil.putHiddenProperty(module, MODULE_SOURCE_KEY, source);
         return module;
     }
 
-    private static JSObject createRequireBuiltin(JSRealm realm, JSDynamicObject moduleBuiltin, TruffleString fileNameBuiltin) {
+    private static void addJSModuleProperties(JSObject module, TruffleString filename) {
+        JSObjectUtil.putDataProperty(module, Strings.ID_PROPERTY_NAME, filename, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(module, Strings.FILENAME_PROPERTY_NAME, filename, JSAttributes.getDefault());
+    }
+
+    private static JSObject createRequireBuiltin(JSRealm realm, JSObject moduleBuiltin, TruffleString fileNameBuiltin) {
         JSFunctionObject mainRequire = (JSFunctionObject) realm.getCommonJSRequireFunctionObject();
         Object mainResolve = JSObject.get(mainRequire, Strings.RESOLVE_PROPERTY_NAME);
         JSFunctionData functionData = JSFunction.getFunctionData(mainRequire);
         JSObject newRequire = JSFunction.create(realm, functionData);
-        JSObject.set(newRequire, Strings.MODULE_PROPERTY_NAME, moduleBuiltin);
-        JSObject.set(newRequire, Strings.RESOLVE_PROPERTY_NAME, mainResolve);
+        JSObjectUtil.putDataProperty(newRequire, Strings.MODULE_PROPERTY_NAME, moduleBuiltin, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(newRequire, Strings.RESOLVE_PROPERTY_NAME, mainResolve, JSAttributes.getDefault());
         // XXX(db) Here, we store the current filename in the (new) require builtin.
         // In this way, we avoid managing a shadow stack to track the current require's parent.
         // In Node.js, this is done using a (closed) level variable.
-        JSObject.set(newRequire, Strings.FILENAME_VAR_NAME, fileNameBuiltin);
+        JSObjectUtil.putDataProperty(newRequire, Strings.FILENAME_VAR_NAME, fileNameBuiltin, JSAttributes.getDefault());
         return newRequire;
     }
 
     private static JSObject createExportsBuiltin(JSRealm realm) {
         return JSOrdinary.create(realm.getContext(), realm);
+    }
+
+    private static JSObject createEnvObject(JSRealm realm, JSContext context) {
+        JSObject env = JSOrdinary.create(context, realm);
+        JSObjectUtil.putDataProperty(env, Strings.ENV_PROPERTY_NAME, JSOrdinary.create(context, realm));
+        return env;
     }
 
     private static boolean isNodeBinFile(TruffleFile maybeModule) {
@@ -352,7 +391,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return modulePath.isRegularFile();
     }
 
-    private static TruffleFile getModuleResolutionEntryPath(JSDynamicObject currentRequire, JSRealm realm, TruffleLanguage.Env env) {
+    private static TruffleFile getModuleResolutionEntryPath(JSDynamicObject currentRequire, JSRealm realm) {
+        TruffleLanguage.Env env = realm.getEnv();
         if (JSDynamicObject.isJSDynamicObject(currentRequire)) {
             Object maybeFilename = JSObject.get(currentRequire, Strings.FILENAME_VAR_NAME);
             if (maybeFilename instanceof TruffleString str) {
@@ -367,7 +407,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             // dirname not a string. Use default cwd.
         }
         // This is not a nested `require()` call, so we use the default cwd.
-        return getModuleResolveCurrentWorkingDirectory(realm, env);
+        return getModuleResolveCurrentWorkingDirectory(realm);
     }
 
     private static TruffleFile getParent(TruffleLanguage.Env env, String fileName) {
@@ -382,4 +422,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return fileName.endsWith(ext);
     }
 
+    @Override
+    public boolean isCallerSensitive() {
+        return true;
+    }
 }

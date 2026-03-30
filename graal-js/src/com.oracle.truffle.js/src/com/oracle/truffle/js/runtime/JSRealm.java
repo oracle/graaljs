@@ -99,8 +99,8 @@ import com.oracle.truffle.js.builtins.CryptoBuiltins;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.DebugBuiltins;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
-import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.IteratorHelperPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.JavaBuiltins;
 import com.oracle.truffle.js.builtins.MLEBuiltins;
@@ -620,7 +620,7 @@ public class JSRealm {
     /**
      * Per-realm CommonJs `require` cache.
      */
-    private final Map<TruffleFile, JSDynamicObject> commonJSRequireCache;
+    private final Map<TruffleFile, JSObject> commonJSRequireCache;
 
     /**
      * Stack of receivers of (Typed)Array.prototype.join. Used to avoid cyclic calls.
@@ -3229,7 +3229,7 @@ public class JSRealm {
         joinStack.pop();
     }
 
-    public final Map<TruffleFile, JSDynamicObject> getCommonJSRequireCache() {
+    public final Map<TruffleFile, JSObject> getCommonJSRequireCache() {
         assert getContextOptions().isCommonJSRequire();
         return commonJSRequireCache;
     }

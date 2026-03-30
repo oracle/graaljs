@@ -52,6 +52,7 @@ import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getCore
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.joinPaths;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadJsonObject;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 import static com.oracle.truffle.js.runtime.Strings.EXPORTS_PROPERTY_NAME;
 import static com.oracle.truffle.js.runtime.Strings.IMPORTS_PROPERTY_NAME;
 import static com.oracle.truffle.js.runtime.Strings.NAME;
@@ -62,6 +63,7 @@ import static com.oracle.truffle.js.runtime.Strings.fromJavaString;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -75,7 +77,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -83,13 +84,12 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
 import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -249,32 +249,73 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;
         }
-        JSFunctionObject require = (JSFunctionObject) realm.getCommonJSRequireFunctionObject();
+        TruffleFile entryPath = CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(realm,
+                        referencingModule != null ? referencingModule.getSource().getPath() : null);
         // Any exception thrown during module loading will be propagated
-        Object maybeModule = JSFunction.call(JSArguments.create(Undefined.instance, require, Strings.fromJavaString(specifier)));
-        if (!(maybeModule instanceof JSObject)) {
+        Object maybeModule = CommonJSRequireBuiltin.requireImpl(specifier, entryPath, realm, null);
+        if (!(maybeModule instanceof JSObject module)) {
             throw fail(FAILED_BUILTIN, specifier);
         }
-        JSObject module = (JSObject) maybeModule;
-        // Wrap any exported symbol in an ES module.
-        List<TruffleString> exportedNames = JSObject.enumerableOwnNames(module);
-        var moduleBody = new StringBuilder(64);
-        moduleBody.append("const builtinModule = require('");
-        moduleBody.append(specifier);
-        moduleBody.append("');\n");
-        for (TruffleString name : exportedNames) {
-            moduleBody.append("export const ");
-            moduleBody.append(name.toJavaStringUncached());
-            moduleBody.append(" = builtinModule.");
-            moduleBody.append(name.toJavaStringUncached());
-            moduleBody.append(";\n");
+        // Wrap the CJS module's exports in a synthetic ES module.
+        Object exportsValue = JSObject.get(module, Strings.EXPORTS_PROPERTY_NAME);
+        List<TruffleString> exportedNames = getExportedNamesFromCJSModuleExports(exportsValue);
+        Source wrapperSource = buildCJSModuleWrapperSource(specifier, exportedNames);
+        JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, wrapperSource);
+        AbstractModuleRecord record = new JSModuleRecord(parsedModule, this);
+        if (JSObjectUtil.getHiddenProperty(module, CommonJSRequireBuiltin.MODULE_SOURCE_KEY) instanceof Source cjsSource) {
+            record.rememberImportedModuleSource(moduleRequest.specifier(), cjsSource);
         }
-        moduleBody.append("export default builtinModule;");
-        Source src = Source.newBuilder(ID, moduleBody.toString(), specifier + "-internal.mjs").build();
-        JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
-        JSModuleRecord record = new JSModuleRecord(parsedModule, this);
-        insertLoadedModule(referencingModule, moduleRequest, src, moduleKey, record);
+        insertLoadedModule(referencingModule, moduleRequest, wrapperSource, moduleKey, record);
         return record;
+    }
+
+    private static List<TruffleString> getExportedNamesFromCJSModuleExports(Object exportsValue) {
+        List<TruffleString> exportedNames;
+        if (exportsValue instanceof JSObject exportsObj) {
+            exportedNames = new ArrayList<>(JSObject.enumerableOwnNames(exportsObj));
+            if (!exportedNames.contains(Strings.DEFAULT)) {
+                exportedNames.add(Strings.DEFAULT);
+            }
+            exportedNames.sort(TruffleString::compareCharsUTF16Uncached);
+        } else {
+            exportedNames = List.of(Strings.DEFAULT);
+        }
+        return exportedNames;
+    }
+
+    /**
+     * Builds an ESM source that imports a CJS module and reexports its exports. The resulting code
+     * looks like this and is safe for all names:
+     *
+     * <pre>{@code
+     * var exports = require("./dep.cjs");
+     * export default exports;
+     * var _0 = exports["named"];
+     * export {_0 as "named"};
+     * // ...
+     * }</pre>
+     */
+    private static Source buildCJSModuleWrapperSource(String specifier, List<TruffleString> exportedNames) {
+        final String defaultBinding = "exports";
+        var moduleBody = new StringBuilder(64);
+        moduleBody.append("var ").append(defaultBinding).append(" = require(");
+        moduleBody.append(JSRuntime.quote(specifier));
+        moduleBody.append(");\n");
+        moduleBody.append("export default ").append(defaultBinding).append(";\n");
+        if (exportedNames.size() > 1) {
+            int index = 0;
+            for (TruffleString exportedName : exportedNames) {
+                if (Strings.equals(exportedName, Strings.DEFAULT)) {
+                    continue;
+                }
+                TruffleString quotedName = JSRuntime.quote(exportedName);
+                moduleBody.append("var ").append("_").append(index).append(" = ").append(defaultBinding).append("[").append(quotedName).append("];\n");
+                moduleBody.append("export {").append("_").append(index).append(" as ").append(quotedName).append("};\n");
+                index++;
+            }
+        }
+
+        return Source.newBuilder(ID, moduleBody.toString(), specifier + "-cjs-wrap.mjs").mimeType(MODULE_MIME_TYPE).build();
     }
 
     //
