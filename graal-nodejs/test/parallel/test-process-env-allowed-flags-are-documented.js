@@ -49,6 +49,8 @@ if (!hasOpenSSL3) {
   documented.delete('--openssl-shared-config');
 }
 
+const isV8Sandboxed = process.config.variables.v8_enable_sandbox;
+
 // Filter out options that are conditionally present.
 const conditionalOpts = [
   {
@@ -71,6 +73,9 @@ const conditionalOpts = [
   }, {
     include: common.hasIntl,
     filter: (opt) => opt === '--icu-data-dir'
+  }, {
+    include: !isV8Sandboxed,
+    filter: (opt) => ['--secure-heap', '--secure-heap-min'].includes(opt)
   },
 ];
 documented.forEach((opt) => {

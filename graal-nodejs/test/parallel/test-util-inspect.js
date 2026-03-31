@@ -172,56 +172,67 @@ assert.doesNotMatch(
   const dv = new DataView(ab, 1, 2);
   assert.strictEqual(
     util.inspect(ab, showHidden),
-    'ArrayBuffer { [Uint8Contents]: <01 02 03 04>, byteLength: 4 }'
+    'ArrayBuffer { [Uint8Contents]: <01 02 03 04>, [byteLength]: 4 }'
   );
   assert.strictEqual(util.inspect(new DataView(ab, 1, 2), showHidden),
                      'DataView {\n' +
-                     '  byteLength: 2,\n' +
-                     '  byteOffset: 1,\n' +
-                     '  buffer: ArrayBuffer {' +
-                      ' [Uint8Contents]: <01 02 03 04>, byteLength: 4 }\n}');
+                     '  [byteLength]: 2,\n' +
+                     '  [byteOffset]: 1,\n' +
+                     '  [buffer]: ArrayBuffer {' +
+                      ' [Uint8Contents]: <01 02 03 04>, [byteLength]: 4 }\n}');
   assert.strictEqual(
     util.inspect(ab, showHidden),
-    'ArrayBuffer { [Uint8Contents]: <01 02 03 04>, byteLength: 4 }'
+    'ArrayBuffer { [Uint8Contents]: <01 02 03 04>, [byteLength]: 4 }'
   );
   assert.strictEqual(util.inspect(dv, showHidden),
                      'DataView {\n' +
-                     '  byteLength: 2,\n' +
-                     '  byteOffset: 1,\n' +
-                     '  buffer: ArrayBuffer { [Uint8Contents]: ' +
-                       '<01 02 03 04>, byteLength: 4 }\n}');
+                     '  [byteLength]: 2,\n' +
+                     '  [byteOffset]: 1,\n' +
+                     '  [buffer]: ArrayBuffer { [Uint8Contents]: ' +
+                       '<01 02 03 04>, [byteLength]: 4 }\n}');
   ab.x = 42;
   dv.y = 1337;
   assert.strictEqual(util.inspect(ab, showHidden),
                      'ArrayBuffer { [Uint8Contents]: <01 02 03 04>, ' +
-                       'byteLength: 4, x: 42 }');
-  assert.strictEqual(util.inspect(dv, showHidden),
+                       '[byteLength]: 4, x: 42 }');
+  assert.strictEqual(util.inspect(dv, { showHidden, breakLength: 82 }),
                      'DataView {\n' +
-                     '  byteLength: 2,\n' +
-                     '  byteOffset: 1,\n' +
-                     '  buffer: ArrayBuffer { [Uint8Contents]: <01 02 03 04>,' +
-                       ' byteLength: 4, x: 42 },\n' +
+                     '  [byteLength]: 2,\n' +
+                     '  [byteOffset]: 1,\n' +
+                     '  [buffer]: ArrayBuffer { [Uint8Contents]: <01 02 03 04>,' +
+                       ' [byteLength]: 4, x: 42 },\n' +
                      '  y: 1337\n}');
 }
 
 {
   const ab = new ArrayBuffer(42);
+  const dv = new DataView(ab);
+
   assert.strictEqual(ab.byteLength, 42);
   new MessageChannel().port1.postMessage(ab, [ ab ]);
   assert.strictEqual(ab.byteLength, 0);
   assert.strictEqual(util.inspect(ab),
-                     'ArrayBuffer { (detached), byteLength: 0 }');
+                     'ArrayBuffer { (detached), [byteLength]: 0 }');
+
+  assert.strictEqual(
+    util.inspect(dv),
+    'DataView {\n' +
+    '      [byteLength]: 0,\n' +
+    '      [byteOffset]: undefined,\n' +
+    '      [buffer]: ArrayBuffer { (detached), [byteLength]: 0 }\n' +
+    '    }',
+  );
 }
 
 // Truncate output for ArrayBuffers using plural or singular bytes
 {
   const ab = new ArrayBuffer(3);
-  assert.strictEqual(util.inspect(ab, { showHidden: true, maxArrayLength: 2 }),
+  assert.strictEqual(util.inspect(ab, { showHidden: true, maxArrayLength: 2, breakLength: 82 }),
                      'ArrayBuffer { [Uint8Contents]' +
-                      ': <00 00 ... 1 more byte>, byteLength: 3 }');
-  assert.strictEqual(util.inspect(ab, { showHidden: true, maxArrayLength: 1 }),
+                      ': <00 00 ... 1 more byte>, [byteLength]: 3 }');
+  assert.strictEqual(util.inspect(ab, { showHidden: true, maxArrayLength: 1, breakLength: 82 }),
                      'ArrayBuffer { [Uint8Contents]' +
-                      ': <00 ... 2 more bytes>, byteLength: 3 }');
+                      ': <00 ... 2 more bytes>, [byteLength]: 3 }');
 }
 
 // Now do the same checks but from a different context.
@@ -231,35 +242,35 @@ assert.doesNotMatch(
   const dv = vm.runInNewContext('new DataView(ab, 1, 2)', { ab });
   assert.strictEqual(
     util.inspect(ab, showHidden),
-    'ArrayBuffer { [Uint8Contents]: <00 00 00 00>, byteLength: 4 }'
+    'ArrayBuffer { [Uint8Contents]: <00 00 00 00>, [byteLength]: 4 }'
   );
   assert.strictEqual(util.inspect(new DataView(ab, 1, 2), showHidden),
                      'DataView {\n' +
-                     '  byteLength: 2,\n' +
-                     '  byteOffset: 1,\n' +
-                     '  buffer: ArrayBuffer { [Uint8Contents]: <00 00 00 00>,' +
-                       ' byteLength: 4 }\n}');
+                     '  [byteLength]: 2,\n' +
+                     '  [byteOffset]: 1,\n' +
+                     '  [buffer]: ArrayBuffer { [Uint8Contents]: <00 00 00 00>,' +
+                       ' [byteLength]: 4 }\n}');
   assert.strictEqual(
     util.inspect(ab, showHidden),
-    'ArrayBuffer { [Uint8Contents]: <00 00 00 00>, byteLength: 4 }'
+    'ArrayBuffer { [Uint8Contents]: <00 00 00 00>, [byteLength]: 4 }'
   );
   assert.strictEqual(util.inspect(dv, showHidden),
                      'DataView {\n' +
-                     '  byteLength: 2,\n' +
-                     '  byteOffset: 1,\n' +
-                     '  buffer: ArrayBuffer { [Uint8Contents]: <00 00 00 00>,' +
-                       ' byteLength: 4 }\n}');
+                     '  [byteLength]: 2,\n' +
+                     '  [byteOffset]: 1,\n' +
+                     '  [buffer]: ArrayBuffer { [Uint8Contents]: <00 00 00 00>,' +
+                       ' [byteLength]: 4 }\n}');
   ab.x = 42;
   dv.y = 1337;
   assert.strictEqual(util.inspect(ab, showHidden),
                      'ArrayBuffer { [Uint8Contents]: <00 00 00 00>, ' +
-                       'byteLength: 4, x: 42 }');
-  assert.strictEqual(util.inspect(dv, showHidden),
+                       '[byteLength]: 4, x: 42 }');
+  assert.strictEqual(util.inspect(dv, { showHidden, breakLength: 82 }),
                      'DataView {\n' +
-                     '  byteLength: 2,\n' +
-                     '  byteOffset: 1,\n' +
-                     '  buffer: ArrayBuffer { [Uint8Contents]: <00 00 00 00>,' +
-                       ' byteLength: 4, x: 42 },\n' +
+                     '  [byteLength]: 2,\n' +
+                     '  [byteOffset]: 1,\n' +
+                     '  [buffer]: ArrayBuffer { [Uint8Contents]: <00 00 00 00>,' +
+                       ' [byteLength]: 4, x: 42 },\n' +
                      '  y: 1337\n}');
 }
 
@@ -286,7 +297,7 @@ assert.doesNotMatch(
       `  [length]: ${length},\n` +
       `  [byteLength]: ${byteLength},\n` +
       '  [byteOffset]: 0,\n' +
-      `  [buffer]: ArrayBuffer { byteLength: ${byteLength} }\n]`);
+      `  [buffer]: ArrayBuffer { [byteLength]: ${byteLength} }\n]`);
   assert.strictEqual(
     util.inspect(array, false),
     `${constructor.name}(${length}) [ 65, 97 ]`
@@ -320,7 +331,7 @@ assert.doesNotMatch(
       `  [length]: ${length},\n` +
       `  [byteLength]: ${byteLength},\n` +
       '  [byteOffset]: 0,\n' +
-      `  [buffer]: ArrayBuffer { byteLength: ${byteLength} }\n]`);
+      `  [buffer]: ArrayBuffer { [byteLength]: ${byteLength} }\n]`);
   assert.strictEqual(
     util.inspect(array, false),
     `${constructor.name}(${length}) [ 65, 97 ]`
@@ -675,6 +686,53 @@ assert.strictEqual(util.inspect(-5e-324), '-5e-324');
     util.inspect(undefinedCause),
     '[Error] { [cause]: undefined }'
   );
+}
+
+{
+  // No own errors or cause property.
+  const { stackTraceLimit } = Error;
+  Error.stackTraceLimit = 0;
+
+  const e1 = new Error('e1');
+  const e2 = new TypeError('e2');
+  const e3 = false;
+
+  const errors = [e1, e2, e3];
+  const aggregateError = new AggregateError(errors, 'Foobar');
+
+  assert.deepStrictEqual(aggregateError.errors, errors);
+  assert.strictEqual(
+    util.inspect(aggregateError),
+    '[AggregateError: Foobar] {\n  [errors]: [ [Error: e1], [TypeError: e2], false ]\n}'
+  );
+
+
+  const custom = new Error('No own errors property');
+  Object.setPrototypeOf(custom, aggregateError);
+
+  assert.strictEqual(
+    util.inspect(custom),
+    '[AggregateError: No own errors property]'
+  );
+
+  const cause = [new Error('cause')];
+  const causeError = new TypeError('Foobar', { cause: [new Error('cause')] });
+
+  assert.strictEqual(
+    util.inspect(causeError),
+    '[TypeError: Foobar] { [cause]: [ [Error: cause] ] }'
+  );
+
+  const custom2 = new Error('No own cause property');
+  Object.setPrototypeOf(custom2, causeError);
+
+  assert.deepStrictEqual(custom2.cause, cause);
+  assert.strictEqual(
+    util.inspect(custom2),
+    '[TypeError: No own cause property]'
+  );
+
+  Error.stackTraceLimit = stackTraceLimit;
 }
 
 {
@@ -1831,7 +1889,7 @@ util.inspect(process);
     '    [byteLength]: 0,',
     '    [byteOffset]: 0,',
     '    [buffer]: ArrayBuffer {',
-    '      byteLength: 0,',
+    '      [byteLength]: 0,',
     '      foo: true',
     '    }',
     '  ],',
@@ -1849,7 +1907,7 @@ util.inspect(process);
     '      [byteLength]: 0,',
     '      [byteOffset]: 0,',
     '      [buffer]: ArrayBuffer {',
-    '        byteLength: 0,',
+    '        [byteLength]: 0,',
     '        foo: true',
     '      }',
     '    ],',
@@ -1879,7 +1937,7 @@ util.inspect(process);
     '    [length]: 0,',
     '    [byteLength]: 0,',
     '    [byteOffset]: 0,',
-    '    [buffer]: ArrayBuffer { byteLength: 0, foo: true }',
+    '    [buffer]: ArrayBuffer { [byteLength]: 0, foo: true }',
     '  ],',
     '  [Set Iterator] {',
     '    [ 1, 2, [length]: 2 ],',
@@ -1890,7 +1948,7 @@ util.inspect(process);
     '      [length]: 0,',
     '      [byteLength]: 0,',
     '      [byteOffset]: 0,',
-    '      [buffer]: ArrayBuffer { byteLength: 0, foo: true }',
+    '      [buffer]: ArrayBuffer { [byteLength]: 0, foo: true }',
     '    ],',
     '    [Circular *1],',
     "    [Symbol(Symbol.toStringTag)]: 'Map Iterator'",
@@ -1918,7 +1976,7 @@ util.inspect(process);
     '    [byteLength]: 0,',
     '    [byteOffset]: 0,',
     '    [buffer]: ArrayBuffer {',
-    '      byteLength: 0,',
+    '      [byteLength]: 0,',
     '      foo: true } ],',
     '  [Set Iterator] {',
     '    [ 1,',
@@ -1932,7 +1990,7 @@ util.inspect(process);
     '      [byteLength]: 0,',
     '      [byteOffset]: 0,',
     '      [buffer]: ArrayBuffer {',
-    '        byteLength: 0,',
+    '        [byteLength]: 0,',
     '        foo: true } ],',
     '    [Circular *1],',
     '    [Symbol(Symbol.toStringTag)]:',
@@ -2238,12 +2296,12 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
   [new BigUint64Array(2), '[BigUint64Array(2): null prototype] [ 0n, 0n ]'],
   [new ArrayBuffer(16), '[ArrayBuffer: null prototype] {\n' +
      '  [Uint8Contents]: <00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00>,\n' +
-     '  byteLength: undefined\n}'],
+     '  [byteLength]: undefined\n}'],
   [new DataView(new ArrayBuffer(16)),
-   '[DataView: null prototype] {\n  byteLength: undefined,\n  ' +
-     'byteOffset: undefined,\n  buffer: undefined\n}'],
+   '[DataView: null prototype] {\n  [byteLength]: undefined,\n  ' +
+     '[byteOffset]: undefined,\n  [buffer]: undefined\n}'],
   [new SharedArrayBuffer(2), '[SharedArrayBuffer: null prototype] ' +
-     '{\n  [Uint8Contents]: <00 00>,\n  byteLength: undefined\n}'],
+     '{\n  [Uint8Contents]: <00 00>,\n  [byteLength]: undefined\n}'],
   [/foobar/, '[RegExp: null prototype] /foobar/'],
   [new Date('Sun, 14 Feb 2010 11:48:40 GMT'),
    '[Date: null prototype] 2010-02-14T11:48:40.000Z'],
@@ -2372,6 +2430,20 @@ assert.strictEqual(
   inspect.styles.string = 'UNKNOWN';
   assert.strictEqual(inspect('foobar', { colors: true }), "'foobar'");
   inspect.styles.string = stringStyle;
+}
+
+// Special (extra) properties follow normal coloring:
+// only the name is colored, ":" and space are unstyled.
+{
+  const [open, close] = inspect.colors[inspect.styles.string];
+  const keyPattern = (k) => new RegExp(
+    `\\u001b\\[${open}m\\[${k}\\]\\u001b\\[${close}m: `
+  );
+  const colored = util.inspect(new Uint8Array(0), { showHidden: true, colors: true });
+  assert.match(colored, keyPattern('BYTES_PER_ELEMENT'));
+  assert.match(colored, keyPattern('length'));
+  assert.match(colored, keyPattern('byteLength'));
+  assert.match(colored, keyPattern('byteOffset'));
 }
 
 assert.strictEqual(
@@ -3596,7 +3668,7 @@ assert.strictEqual(
   assert.strictEqual(
     util.inspect(o),
     '{\n' +
-    '  arrayBuffer: ArrayBuffer { [Uint8Contents]: <>, byteLength: 0 },\n' +
+    '  arrayBuffer: ArrayBuffer { [Uint8Contents]: <>, [byteLength]: 0 },\n' +
     '  buffer: <Buffer 48 65 6c 6c 6f>,\n' +
     '  typedArray: TypedArray(5) [Uint8Array] [ 72, 101, 108, 108, 111 ],\n' +
     '  array: [],\n' +
@@ -3668,4 +3740,29 @@ ${error.stack.split('\n').slice(1).join('\n')}`,
   error2.stack = error;
 
   assert.strictEqual(inspect(error), '[Error: foo\n    [Error: bar\n        [Circular *1]]]');
+}
+
+{
+  Object.defineProperty(Error, Symbol.hasInstance,
+                        { __proto__: null, value: common.mustNotCall(), configurable: true });
+  const error = new Error();
+
+  const throwingGetter = {
+    __proto__: null,
+    get() {
+      throw error;
+    },
+    configurable: true,
+    enumerable: true,
+  };
+
+  Object.defineProperties(error, {
+    name: throwingGetter,
+    stack: throwingGetter,
+    cause: throwingGetter,
+  });
+
+  assert.strictEqual(inspect(error), `[object Error] {\n  stack: [Getter/Setter],\n  name: [Getter],\n  cause: [Getter]\n}`);
+  assert.match(inspect(DOMException.prototype), /^\[object DOMException\] \{/);
+  delete Error[Symbol.hasInstance];
 }

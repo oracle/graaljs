@@ -11,6 +11,9 @@ if (!common.isLinux)
   common.skip('linux only');
 if (common.isASan)
   common.skip('strace does not work well with address sanitizer builds');
+if (process.config.variables.node_shared_openssl) {
+  common.skip('external shared openssl may open other files');
+}
 if (spawnSync('strace').error !== undefined) {
   common.skip('missing strace');
 }
@@ -19,9 +22,13 @@ if (spawnSync('strace').error !== undefined) {
   const allowedOpenCalls = new Set([
     '/etc/ssl/openssl.cnf',
   ]);
+  const syscalls = ['openat'];
+  if (process.arch !== 'riscv64' && process.arch !== 'riscv32') {
+    syscalls.push('open');
+  }
   const strace = spawn('strace', [
     '-f', '-ff',
-    '-e', 'trace=open,openat',
+    '-e', `trace=${syscalls.join(',')}`,
     '-s', '512',
     '-D', process.execPath, '-e', 'require("crypto")',
   ]);

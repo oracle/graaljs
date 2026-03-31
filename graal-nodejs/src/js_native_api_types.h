@@ -1,9 +1,24 @@
 #ifndef SRC_JS_NATIVE_API_TYPES_H_
 #define SRC_JS_NATIVE_API_TYPES_H_
 
+// Use INT_MAX, this should only be consumed by the pre-processor anyway.
+#define NAPI_VERSION_EXPERIMENTAL 2147483647
+#ifndef NAPI_VERSION
+#ifdef NAPI_EXPERIMENTAL
+#define NAPI_VERSION NAPI_VERSION_EXPERIMENTAL
+#else
+// The baseline version for Node-API.
+// NAPI_VERSION controls which version is used by default when compiling
+// a native addon. If the addon developer wants to use functions from a
+// newer Node-API version not yet available in all LTS versions, they can
+// set NAPI_VERSION to explicitly depend on that version.
+#define NAPI_VERSION 8
+#endif
+#endif
+
 // This file needs to be compatible with C compilers.
 // This is a public include file, and these includes have essentially
-// became part of it's API.
+// become part of its API.
 #include <stddef.h>  // NOLINT(modernize-deprecated-headers)
 #include <stdint.h>  // NOLINT(modernize-deprecated-headers)
 

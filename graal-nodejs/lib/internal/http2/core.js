@@ -188,6 +188,8 @@ const dc = require('diagnostics_channel');
 const onClientStreamCreatedChannel = dc.channel('http2.client.stream.created');
 const onClientStreamStartChannel = dc.channel('http2.client.stream.start');
 const onClientStreamErrorChannel = dc.channel('http2.client.stream.error');
+const onClientStreamBodyChunkSentChannel = dc.channel('http2.client.stream.bodyChunkSent');
+const onClientStreamBodySentChannel = dc.channel('http2.client.stream.bodySent');
 const onClientStreamFinishChannel = dc.channel('http2.client.stream.finish');
 const onClientStreamCloseChannel = dc.channel('http2.client.stream.close');
 const onServerStreamCreatedChannel = dc.channel('http2.server.stream.created');
@@ -226,6 +228,7 @@ function debugSessionObj(session, message, ...args) {
 
 const kMaxFrameSize = (2 ** 24) - 1;
 const kMaxInt = (2 ** 32) - 1;
+const kMaxInitialWindowSize = (2 ** 31) - 1;  // HTTP/2 spec maximum
 const kMaxStreams = (2 ** 32) - 1;
 const kMaxALTSVC = (2 ** 14) - 2;
 
@@ -1000,7 +1003,7 @@ function pingCallback(cb) {
 
 // Validates the values in a settings object. Specifically:
 // 1. headerTableSize must be a number in the range 0 <= n <= kMaxInt
-// 2. initialWindowSize must be a number in the range 0 <= n <= kMaxInt
+// 2. initialWindowSize must be a number in the range 0 <= n <= 2^31-1
 // 3. maxFrameSize must be a number in the range 16384 <= n <= kMaxFrameSize
 // 4. maxConcurrentStreams must be a number in the range 0 <= n <= kMaxStreams
 // 5. maxHeaderListSize must be a number in the range 0 <= n <= kMaxInt
@@ -1025,7 +1028,7 @@ const validateSettings = hideStackFrames((settings) => {
                                       0, kMaxInt);
   assertWithinRange.withoutStackTrace('initialWindowSize',
                                       settings.initialWindowSize,
-                                      0, kMaxInt);
+                                      0, kMaxInitialWindowSize);
   assertWithinRange.withoutStackTrace('maxFrameSize',
                                       settings.maxFrameSize,
                                       16384, kMaxFrameSize);
@@ -1453,9 +1456,9 @@ class Http2Session extends EventEmitter {
     }
     if (payload) {
       validateBuffer(payload, 'payload');
-    }
-    if (payload && payload.length !== 8) {
-      throw new ERR_HTTP2_PING_LENGTH();
+      if (payload.byteLength !== 8) {
+        throw new ERR_HTTP2_PING_LENGTH();
+      }
     }
     validateFunction(callback, 'callback');
 
@@ -2306,6 +2309,15 @@ class Http2Stream extends Duplex {
       req = writeGeneric(this, data, encoding, writeCallback);
 
     trackWriteState(this, req.bytes);
+
+    if (this.session[kType] === NGHTTP2_SESSION_CLIENT && onClientStreamBodyChunkSentChannel.hasSubscribers) {
+      onClientStreamBodyChunkSentChannel.publish({
+        stream: this,
+        writev,
+        data,
+        encoding,
+      });
+    }
   }
 
   _write(data, encoding, cb) {
@@ -2323,6 +2335,10 @@ class Http2Stream extends Duplex {
     }
     debugStreamObj(this, 'shutting down writable on _final');
     ReflectApply(shutdownWritable, this, [cb]);
+
+    if (this.session[kType] === NGHTTP2_SESSION_CLIENT && onClientStreamBodySentChannel.hasSubscribers) {
+      onClientStreamBodySentChannel.publish({ stream: this });
+    }
   }
 
   _read(nread) {

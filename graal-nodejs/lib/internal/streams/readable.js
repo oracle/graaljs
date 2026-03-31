@@ -855,7 +855,7 @@ function emitReadable_(stream) {
 // However, if we're not ended, or reading, and the length < hwm,
 // then go ahead and try to read some more preemptively.
 function maybeReadMore(stream, state) {
-  if ((state[kState] & (kReadingMore | kConstructed)) === kConstructed) {
+  if ((state[kState] & (kReadingMore | kReading | kConstructed)) === kConstructed) {
     state[kState] |= kReadingMore;
     process.nextTick(maybeReadMore_, stream, state);
   }
@@ -1602,7 +1602,7 @@ function fromList(n, state) {
         buf[idx++] = null;
       }
     } else if (len - idx === 0) {
-      ret = Buffer.alloc(0);
+      ret = new FastBuffer();
     } else if (len - idx === 1) {
       ret = buf[idx];
       buf[idx++] = null;

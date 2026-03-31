@@ -1169,7 +1169,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
             for rule_source in rule.get("rule_sources", []):
                 dirs = set()
                 (rule_source_dirname, rule_source_basename) = os.path.split(rule_source)
-                (rule_source_root, rule_source_ext) = os.path.splitext(
+                (rule_source_root, _rule_source_ext) = os.path.splitext(
                     rule_source_basename
                 )
 
@@ -2169,7 +2169,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
             # - The multi-output rule will have an do-nothing recipe.
 
             # Hash the target name to avoid generating overlong filenames.
-            cmddigest = hashlib.sha1(
+            cmddigest = hashlib.sha256(
                 (command or self.target).encode("utf-8")
             ).hexdigest()
             intermediate = "%s.intermediate" % cmddigest

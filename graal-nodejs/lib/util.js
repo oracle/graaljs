@@ -486,7 +486,7 @@ function _errnoException(...args) {
     Error.stackTraceLimit = 0;
     const e = new ErrnoException(...args);
     Error.stackTraceLimit = limit;
-    ErrorCaptureStackTrace(e, _exceptionWithHostPort);
+    ErrorCaptureStackTrace(e, _errnoException);
     return e;
   }
   return new ErrnoException(...args);
@@ -599,7 +599,7 @@ function getCallSites(frameCount = 10, options) {
 
   // Using kDefaultMaxCallStackSizeToCapture as reference
   validateNumber(frameCount, 'frameCount', 1, 200);
-  // If options.sourceMaps is true or if sourceMaps are enabled but the option.sourceMaps is not set explictly to false
+  // If options.sourceMaps is true or if sourceMaps are enabled but the option.sourceMaps is not set explicitly to false
   if (options.sourceMap === true || (getOptionValue('--enable-source-maps') && options.sourceMap !== false)) {
     return mapCallSite(binding.getCallSites(frameCount));
   }

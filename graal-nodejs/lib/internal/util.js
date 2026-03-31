@@ -8,6 +8,7 @@ const {
   Error,
   ErrorCaptureStackTrace,
   FunctionPrototypeCall,
+  FunctionPrototypeSymbolHasInstance,
   NumberParseInt,
   ObjectDefineProperties,
   ObjectDefineProperty,
@@ -44,6 +45,7 @@ const {
   SymbolPrototypeGetDescription,
   SymbolReplace,
   SymbolSplit,
+  globalThis,
 } = primordials;
 
 const {
@@ -51,6 +53,7 @@ const {
     ERR_NO_CRYPTO,
     ERR_NO_TYPESCRIPT,
     ERR_UNKNOWN_SIGNAL,
+    ERR_WEBASSEMBLY_NOT_SUPPORTED,
   },
   isErrorStackTraceLimitWritable,
   overrideStackTrace,
@@ -96,7 +99,7 @@ function isError(e) {
   // An error could be an instance of Error while not being a native error
   // or could be from a different realm and not be instance of Error but still
   // be a native error.
-  return isNativeError(e) || e instanceof Error;
+  return isNativeError(e) || FunctionPrototypeSymbolHasInstance(Error, e);
 }
 
 // Keep a list of deprecation codes that have been warned on so we only warn on
@@ -221,6 +224,8 @@ function assertCrypto() {
 function assertTypeScript() {
   if (noTypeScript)
     throw new ERR_NO_TYPESCRIPT();
+  if (globalThis.WebAssembly === undefined)
+    throw new ERR_WEBASSEMBLY_NOT_SUPPORTED('TypeScript');
 }
 
 /**

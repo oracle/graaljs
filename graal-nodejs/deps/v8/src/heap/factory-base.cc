@@ -272,9 +272,9 @@ Handle<WeakFixedArray> FactoryBase<Impl>::NewWeakFixedArray(
 }
 
 template <typename Impl>
-Handle<ByteArray> FactoryBase<Impl>::NewByteArray(int length,
-                                                  AllocationType allocation) {
-  return ByteArray::New(isolate(), length, allocation);
+Handle<ByteArray> FactoryBase<Impl>::NewByteArray(
+    int length, AllocationType allocation, AllocationAlignment alignment) {
+  return ByteArray::New(isolate(), length, allocation, alignment);
 }
 
 template <typename Impl>
@@ -1077,7 +1077,8 @@ inline Handle<String> FactoryBase<Impl>::SmiToString(Tagged<Smi> number,
     if (raw->raw_hash_field() == String::kEmptyHashField &&
         number.value() >= 0) {
       uint32_t raw_hash_field = StringHasher::MakeArrayIndexHash(
-          static_cast<uint32_t>(number.value()), raw->length());
+          static_cast<uint32_t>(number.value()), raw->length(),
+          HashSeed(read_only_roots()));
       raw->set_raw_hash_field(raw_hash_field);
     }
   }
@@ -1225,8 +1226,8 @@ FactoryBase<Impl>::AllocateRawTwoByteInternalizedString(
 
 template <typename Impl>
 Tagged<HeapObject> FactoryBase<Impl>::AllocateRawArray(
-    int size, AllocationType allocation) {
-  Tagged<HeapObject> result = AllocateRaw(size, allocation);
+    int size, AllocationType allocation, AllocationAlignment alignment) {
+  Tagged<HeapObject> result = AllocateRaw(size, allocation, alignment);
   if (!V8_ENABLE_THIRD_PARTY_HEAP_BOOL &&
       (size >
        isolate()->heap()->AsHeap()->MaxRegularHeapObjectSize(allocation)) &&
