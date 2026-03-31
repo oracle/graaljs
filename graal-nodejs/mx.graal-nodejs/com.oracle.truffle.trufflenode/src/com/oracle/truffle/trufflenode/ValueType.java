@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,14 +56,13 @@ public interface ValueType {
     int LAZY_STRING_VALUE = 13;
     int ARRAY_BUFFER_VIEW_OBJECT = 14;
     int DIRECT_ARRAY_BUFFER_OBJECT = 15;
-    int INTEROP_ARRAY_BUFFER_OBJECT = 45;
     int SYMBOL_VALUE = 16;
     int DIRECT_UINT8ARRAY_OBJECT = 17;
     int DIRECT_UINT8CLAMPEDARRAY_OBJECT = 18;
+    int DIRECT_UINT32ARRAY_OBJECT = 19;
     int DIRECT_INT8ARRAY_OBJECT = 20;
     int DIRECT_UINT16ARRAY_OBJECT = 21;
     int DIRECT_INT16ARRAY_OBJECT = 22;
-    int DIRECT_UINT32ARRAY_OBJECT = 19;
     int DIRECT_INT32ARRAY_OBJECT = 23;
     int DIRECT_FLOAT32ARRAY_OBJECT = 24;
     int DIRECT_FLOAT64ARRAY_OBJECT = 25;
@@ -86,7 +85,8 @@ public interface ValueType {
     int INTEROP_FLOAT64ARRAY_OBJECT = 42;
     int INTEROP_BIGINT64ARRAY_OBJECT = 43;
     int INTEROP_BIGUINT64ARRAY_OBJECT = 44;
-    int MODULE_REQUEST = 45;
+    int INTEROP_ARRAY_BUFFER_OBJECT = 45;
+    int MODULE_REQUEST = 46;
 
     int UNKNOWN_TYPE = -1;
 }
