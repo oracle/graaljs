@@ -368,6 +368,15 @@ public class CommonJSRequireTest {
     }
 
     @Test
+    public void testLoadJsonFromCache() {
+        Path f = getTestRootFolder();
+        try (Context cx = testContext(f)) {
+            Value js = cx.eval(ID, "const a = require('./valid.json'); a.extra = 99; const b = require('./valid.json'); JSON.stringify([a === b, b.foo, b.extra]);");
+            Assert.assertEquals("[true,42,99]", js.asString());
+        }
+    }
+
+    @Test
     public void testHasGlobals() {
         Path f = getTestRootFolder();
         String[] builtins = new String[]{"require", "__dirname", "__filename"};
@@ -424,7 +433,7 @@ public class CommonJSRequireTest {
         options.put(COMMONJS_REQUIRE_CWD_NAME, "/wrong/or/not/existing/folder");
         try (Context cx = testContext(options)) {
             cx.eval("js", "__dirname");
-            assert false : "Should throw";
+            Assert.fail("Should throw");
         } catch (PolyglotException e) {
             Assert.assertEquals("Error: Invalid CommonJS root folder: /wrong/or/not/existing/folder", e.getMessage());
         }
@@ -579,7 +588,7 @@ public class CommonJSRequireTest {
         options.put(COMMONJS_REQUIRE_NAME, "true");
         try (Context cx = testContext(options)) {
             cx.eval("js", "require('./iDontExist.mjs');");
-            assert false : "Should throw";
+            Assert.fail("Should throw");
         } catch (PolyglotException e) {
             Assert.assertEquals("TypeError: Cannot load module: './iDontExist.mjs'", e.getMessage());
         }
@@ -607,7 +616,7 @@ public class CommonJSRequireTest {
         Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
             cx.eval(ID, "require('fs').foo;");
-            assert false : "Should throw";
+            Assert.fail("Should throw");
         } catch (PolyglotException e) {
             Assert.assertEquals("TypeError: Cannot load module: 'fs'", e.getMessage());
         }
@@ -618,7 +627,7 @@ public class CommonJSRequireTest {
         Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
             cx.eval(ID, "require('').foo;");
-            assert false : "Should throw";
+            Assert.fail("Should throw");
         } catch (PolyglotException e) {
             Assert.assertEquals("TypeError: Cannot load module: ''", e.getMessage());
         }
@@ -629,7 +638,7 @@ public class CommonJSRequireTest {
         Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
             cx.eval(ID, "require('./github-621').foo;");
-            assert false : "Should throw";
+            Assert.fail("Should throw");
         } catch (PolyglotException e) {
             Assert.assertTrue(e.getMessage().contains("Expected eof but found }"));
         }
