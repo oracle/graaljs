@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,7 +81,7 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
 
     protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled, JSRealm realm, JSDynamicObject proto, Object namedCaptureGroups, boolean hasNamedCG);
 
-    @Specialization(guards = {"!b(hasNamedCaptureGroups)"})
+    @Specialization(guards = {"!hasNamedCaptureGroups"})
     protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled, JSRealm realm, JSDynamicObject proto,
                     @SuppressWarnings("unused") Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
         JSRegExpObject reObj = JSRegExp.create(context, realm, proto, compiledRegex, null, legacyFeaturesEnabled);
@@ -89,16 +89,11 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
         return reObj;
     }
 
-    @Specialization(guards = {"b(hasNamedCaptureGroups)"})
+    @Specialization(guards = {"hasNamedCaptureGroups"})
     protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled, JSRealm realm, JSDynamicObject proto,
                     Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
         JSRegExpObject reObj = JSRegExp.create(context, realm, proto, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
-    }
-
-    // Workaround for SpotBugs warning: Useless condition
-    static boolean b(boolean value) {
-        return value;
     }
 }
