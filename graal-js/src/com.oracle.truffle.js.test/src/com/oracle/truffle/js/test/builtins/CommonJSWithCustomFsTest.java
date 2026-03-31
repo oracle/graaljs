@@ -86,13 +86,14 @@ public class CommonJSWithCustomFsTest {
 
     @Test
     public void testDeniedSync() {
-        String src = "(function() {" +
-                        "  try {" +
-                        "    require('does.not.exist');" +
-                        "  } catch(e) {" +
-                        "    return 'got exception: ' + e;" +
-                        "  }" +
-                        "})";
+        String src = """
+                        (function() {
+                          try {
+                            require('does.not.exist');
+                          } catch(e) {
+                            return 'got exception: ' + e;
+                          }
+                        })""";
         DenyAllFs fs = new DenyAllFs();
         Context ctx = createTestContext(fs, "./");
         fs.denyAll();
@@ -103,14 +104,15 @@ public class CommonJSWithCustomFsTest {
 
     @Test
     public void testDeniedAsync() {
-        String js = "async function asyncFun(thenable) {" +
-                        "  await thenable();" +
-                        "  try {" +
-                        "    require('does.not.exist');" +
-                        "  } catch (e) {" +
-                        "    return 'got exception: ' + e;" +
-                        "  }" +
-                        "}";
+        String js = """
+                        async function asyncFun(thenable) {
+                          await thenable();
+                          try {
+                            require('does.not.exist');
+                          } catch (e) {
+                            return 'got exception: ' + e;
+                          }
+                        }""";
         DenyAllFs fs = new DenyAllFs();
         Context ctx = createTestContext(fs, "./");
         ctx.eval(Source.create("js", js));
@@ -225,6 +227,69 @@ public class CommonJSWithCustomFsTest {
                     Assert.assertEquals("Source should be stable across contexts: " + importedModuleName + "\n" + log, sourceIdentityHashes[i - 1], sourceIdentityHashes[i]);
                 }
             }
+        }
+    }
+
+    @Test
+    public void testImportCjsModuleWithEnumerableDefaultProperty() throws IOException {
+        Path importedModuleFile = Paths.get("imported.js").toAbsolutePath().normalize();
+        Path importedModuleDir = requireParent(importedModuleFile);
+        String commonJSModuleBody = "module.exports = {default: 41, foo: 42};";
+        Source src = Source.newBuilder("js", """
+                        import pkg, {default as pkgViaBinding, foo} from './imported.js';
+                        JSON.stringify([foo, pkg.foo, pkg.default, pkgViaBinding.foo, pkgViaBinding.default, pkg === pkgViaBinding]);
+                        """, "main.mjs").mimeType(MODULE_MIME_TYPE).build();
+
+        try (Context cx = createTestContext(new SourceCacheFs(importedModuleFile, commonJSModuleBody), importedModuleDir.toString())) {
+            Value v = cx.eval(src);
+            Assert.assertEquals("[42,42,41,42,41,true]", v.asString());
+        }
+    }
+
+    @Test
+    public void testImportCjsModuleWithDefaultOnlyExport() throws IOException {
+        Path importedModuleFile = Paths.get("imported.js").toAbsolutePath().normalize();
+        Path importedModuleDir = requireParent(importedModuleFile);
+        String commonJSModuleBody = "module.exports = 42;";
+        Source src = Source.newBuilder("js", """
+                        import value, {default as valueViaBinding} from './imported.js';
+                        JSON.stringify([value, valueViaBinding, value === valueViaBinding]);
+                        """, "main.mjs").mimeType(MODULE_MIME_TYPE).build();
+
+        try (Context cx = createTestContext(new SourceCacheFs(importedModuleFile, commonJSModuleBody), importedModuleDir.toString())) {
+            Value v = cx.eval(src);
+            Assert.assertEquals("[42,42,true]", v.asString());
+        }
+    }
+
+    @Test
+    public void testImportCjsModuleWithQuotedSpecifier() throws IOException {
+        Path importedModuleFile = Paths.get("quo'ted.js").toAbsolutePath().normalize();
+        Path importedModuleDir = requireParent(importedModuleFile);
+        String commonJSModuleBody = "module.exports = 42;";
+        Source src = Source.newBuilder("js", """
+                        import value from "./quo'ted.js"; value;
+                        """, "main.mjs").mimeType(MODULE_MIME_TYPE).build();
+
+        try (Context cx = createTestContext(new SourceCacheFs(importedModuleFile, commonJSModuleBody), importedModuleDir.toString())) {
+            Value v = cx.eval(src);
+            Assert.assertEquals(42, v.asInt());
+        }
+    }
+
+    @Test
+    public void testImportCjsModuleWithNonIdentifierExportNames() throws IOException {
+        Path importedModuleFile = Paths.get("imported.js").toAbsolutePath().normalize();
+        Path importedModuleDir = requireParent(importedModuleFile);
+        String commonJSModuleBody = "module.exports = {'a-b': 1, 'sp ace': 2};";
+        Source src = Source.newBuilder("js", """
+                        import * as ns from './imported.js';
+                        JSON.stringify([ns['a-b'], ns['sp ace'], ns.default['a-b'], ns.default['sp ace']]);
+                        """, "main.mjs").mimeType(MODULE_MIME_TYPE).build();
+
+        try (Context cx = createTestContext(new SourceCacheFs(importedModuleFile, commonJSModuleBody), importedModuleDir.toString())) {
+            Value v = cx.eval(src);
+            Assert.assertEquals("[1,2,1,2]", v.asString());
         }
     }
 
