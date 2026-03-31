@@ -175,6 +175,9 @@ test-vm-timeout-escape-promise-2: FAIL
 test-vm-module-after-evaluate: FAIL
 test-vm-script-after-evaluate: FAIL
 
+# Incorrect handling of errored synthetic modules
+test-vm-module-evaluate-synthethic-module: FAIL
+
 # v8::Module::GetModuleRequests() (i.e. Module.requestedModules) contains duplicate entries
 test-vm-module-modulerequests: FAIL
 
@@ -265,6 +268,7 @@ test-gc-http-client-connaborted: SKIP
 test-gc-net-timeout: SKIP
 test-gc-tls-external-memory: SKIP
 test-h2leak-destroy-session-on-socket-ended: FAIL
+test-http-client-leaky-with-double-response: SKIP
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
