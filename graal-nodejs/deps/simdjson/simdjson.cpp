@@ -3036,7 +3036,10 @@ concept string_like =
 // Now uses iterator-based approach for broader container support
 template <typename T>
 concept container_but_not_string =
-  std::ranges::input_range<T> && !string_like<T> && !concepts::string_view_keyed_map<T>;
+  requires(T& t) {
+    { std::begin(t) } -> std::input_iterator;
+    { std::end(t) } -> std::sentinel_for<decltype(std::begin(t))>;
+  } && !string_like<T> && !concepts::string_view_keyed_map<T>;
 
 
 
