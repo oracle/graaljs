@@ -95,6 +95,7 @@ import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -133,6 +134,7 @@ import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.objects.WebAssemblyModuleRecord;
+import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 /**
  * This is the main external entry into the GraalJS parser.
@@ -446,12 +448,24 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public AbstractModuleRecord parseBytesModule(JSRealm realm, Source source) {
         assert source.hasBytes() : source;
-        JSContext context = realm.getContext();
         byte[] bytes = source.getBytes().toByteArray();
-        JSArrayBufferObject arrayBuffer = JSArrayBuffer.createArrayBuffer(context, realm, bytes, bytes.length, JSArrayBuffer.IMMUTABLE_BUFFER);
-        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(TypedArray.BUFFER_TYPE_ARRAY, false, true);
-        JSTypedArrayObject uint8Array = JSArrayBufferView.createArrayBufferView(context, realm, arrayBuffer, TypedArrayFactory.Uint8Array, arrayType, 0, bytes.length);
-        return createDefaultExportSyntheticModule(realm.getContext(), source, uint8Array);
+        return createDefaultExportSyntheticModule(realm.getContext(), source, createImmutableUint8Array(realm.getContext(), realm, bytes));
+    }
+
+    private static JSTypedArrayObject createImmutableUint8Array(JSContext context, JSRealm realm, byte[] bytes) {
+        JSArrayBufferObject arrayBuffer;
+        byte bufferType;
+        if (context.isOptionDirectByteBuffer()) {
+            ByteBuffer directBuffer = DirectByteBufferHelper.allocateDirect(bytes.length);
+            Boundaries.byteBufferPutArray(directBuffer, 0, bytes, 0, bytes.length);
+            arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, directBuffer, bytes.length, JSArrayBuffer.IMMUTABLE_BUFFER);
+            bufferType = TypedArray.BUFFER_TYPE_DIRECT;
+        } else {
+            arrayBuffer = JSArrayBuffer.createArrayBuffer(context, realm, bytes, bytes.length, JSArrayBuffer.IMMUTABLE_BUFFER);
+            bufferType = TypedArray.BUFFER_TYPE_ARRAY;
+        }
+        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(bufferType, false, true);
+        return JSArrayBufferView.createArrayBufferView(context, realm, arrayBuffer, TypedArrayFactory.Uint8Array, arrayType, 0, bytes.length);
     }
 
     private static SyntheticModuleRecord createDefaultExportSyntheticModule(JSContext ctx, Source source, Object defaultExport) {
