@@ -586,7 +586,7 @@ public final class GraalJSEvaluator implements JSParser {
                             ? referrer.addLoadedModule(realm, moduleRequest, moduleResult)
                             : realm.getModuleLoader().addLoadedModule(moduleRequest, moduleResult);
             if (existing != null) {
-                assert existing == moduleResult;
+                assert existing == moduleResult : moduleRequest;
             }
         }
         if (payload instanceof GraphLoadingState state) {
