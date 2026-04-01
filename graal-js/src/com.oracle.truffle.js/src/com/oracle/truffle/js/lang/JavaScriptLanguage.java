@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.lang;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -218,7 +217,10 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             String prolog = argumentNames.get(1);
             String epilog = argumentNames.get(2);
             boolean strict = Boolean.parseBoolean(argumentNames.get(3));
-            program = parseScript(context, source, prolog, epilog, strict, new ArrayList<>());
+            // Parse function body to check for syntax errors.
+            // Assume that the prolog and epilog are always valid.
+            context.getEvaluator().checkFunctionSyntax(context, context.getParserOptions(), "", source.getCharacters().toString(), false, false, source.getName());
+            program = parseScript(context, source, prolog, epilog, strict, List.of());
         } else {
             program = parseScript(context, source, "", "", context.getParserOptions().strict(), argumentNames);
         }

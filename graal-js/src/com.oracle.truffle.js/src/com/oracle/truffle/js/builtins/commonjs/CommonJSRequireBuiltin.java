@@ -280,10 +280,6 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private static Object parseModule(JSRealm realm, Source source) {
-        JSContext context = realm.getContext();
-        String body = source.getCharacters().toString();
-        // Will throw a JS error (if syntax is wrong).
-        context.getEvaluator().checkFunctionSyntax(context, context.getParserOptions(), MODULE_FUNCTION_ARGS, body, false, false, source.getPath());
         CallTarget moduleCallTarget = realm.getEnv().parsePublic(source, MODULE_PARSE_ARGS);
         return moduleCallTarget.call();
     }
