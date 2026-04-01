@@ -644,6 +644,15 @@ public class CommonJSRequireTest {
         }
     }
 
+    @Test
+    public void testTopLevelReturn() {
+        Path f = getTestRootFolder();
+        try (Context cx = testContext(f)) {
+            Value result = cx.eval(ID, "require('./top_level_return.js').foo;");
+            Assert.assertEquals(42, result.asInt());
+        }
+    }
+
     // ##### ES Modules
 
     @Test
