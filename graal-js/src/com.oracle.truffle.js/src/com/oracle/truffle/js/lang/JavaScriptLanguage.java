@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,6 +154,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
                 JavaScriptLanguage.APPLICATION_MIME_TYPE,
                 JavaScriptLanguage.TEXT_MIME_TYPE,
                 JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, //
+                byteMimeTypes = JavaScriptLanguage.BYTES_MIME_TYPE, //
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 dependentLanguages = "regex", //
                 fileTypeDetectors = JSFileTypeDetector.class, //
@@ -163,6 +164,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_MIME_TYPE = "application/javascript+module";
     public static final String JSON_MIME_TYPE = "application/json";
+    public static final String BYTES_MIME_TYPE = "application/octet-stream";
     public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
     public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
     public static final String JSON_SOURCE_NAME_SUFFIX = ".json";

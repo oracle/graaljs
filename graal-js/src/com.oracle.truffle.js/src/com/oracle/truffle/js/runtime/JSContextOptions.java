@@ -695,6 +695,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> IMPORT_TEXT = new OptionKey<>(false);
     @CompilationFinal private boolean importText;
 
+    public static final String IMPORT_BYTES_NAME = JS_OPTION_PREFIX + "import-bytes";
+    @Option(name = IMPORT_BYTES_NAME, category = OptionCategory.USER, help = "Enable loading of binary files as Uint8Array") //
+    public static final OptionKey<Boolean> IMPORT_BYTES = new OptionKey<>(false);
+    @CompilationFinal private boolean importBytes;
+
     public static final String SOURCE_PHASE_IMPORTS_NAME = JS_OPTION_PREFIX + "source-phase-imports";
     @Option(name = SOURCE_PHASE_IMPORTS_NAME, category = OptionCategory.USER, help = "" +
                     "Enable source phase imports (`import source` and `import.source()`). " +
@@ -858,6 +863,7 @@ public final class JSContextOptions {
         this.importAttributes = readBooleanOption(IMPORT_ATTRIBUTES, JSConfig.ECMAScript2025);
         this.jsonModules = readBooleanOption(JSON_MODULES, JSConfig.ECMAScript2025);
         this.importText = readBooleanOption(IMPORT_TEXT, JSConfig.StagingECMAScriptVersion);
+        this.importBytes = readBooleanOption(IMPORT_BYTES, JSConfig.StagingECMAScriptVersion);
         this.sourcePhaseImports = SOURCE_PHASE_IMPORTS.hasBeenSet(optionValues) ? readBooleanOption(SOURCE_PHASE_IMPORTS) : webAssembly;
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
@@ -1310,6 +1316,10 @@ public final class JSContextOptions {
 
     public boolean isImportText() {
         return importText;
+    }
+
+    public boolean isImportBytes() {
+        return importBytes;
     }
 
     public boolean isSourcePhaseImports() {

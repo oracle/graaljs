@@ -19,8 +19,8 @@ import js from './fixtures/import_text_FIXTURE.js' with { type: 'text' };
 import * as jsNamespace from './fixtures/import_text_FIXTURE.js' with { type: 'text' };
 import mjs from './fixtures/import_text_FIXTURE.mjs' with { type: 'text' };
 import * as mjsNamespace from './fixtures/import_text_FIXTURE.mjs' with { type: 'text' };
-import wasm from './fixtures/import_text_FIXTURE.wasm' with { type: 'text' };
-import * as wasmNamespace from './fixtures/import_text_FIXTURE.wasm' with { type: 'text' };
+import wasm from './fixtures/dummy.wasm' with { type: 'text' };
+import * as wasmNamespace from './fixtures/dummy.wasm' with { type: 'text' };
 import wat from './fixtures/import_text_FIXTURE.wat' with { type: 'text' };
 import * as watNamespace from './fixtures/import_text_FIXTURE.wat' with { type: 'text' };
 
@@ -70,14 +70,16 @@ async function assertDynamicTextModule(label, specifier, expected) {
     assertTextNamespace(`${label} import()`, namespace, expected);
 }
 
+const wasmBinaryAsText = String.fromCharCode(0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00);
+
 assertStaticTextModule('.json', json, jsonNamespace, 'a string value');
 assertStaticTextModule('.js', js, jsNamespace, 'invalid { javascript');
 assertStaticTextModule('.mjs', mjs, mjsNamespace, 'invalid { javascript module');
-assertStaticTextModule('.wasm', wasm, wasmNamespace, 'wasm string value');
+assertStaticTextModule('.wasm', wasm, wasmNamespace, wasmBinaryAsText);
 assertStaticTextModule('.wat', wat, watNamespace, 'wat string value');
 
 await assertDynamicTextModule('.json', './fixtures/import_text_FIXTURE.json', 'a string value');
 await assertDynamicTextModule('.js', './fixtures/import_text_FIXTURE.js', 'invalid { javascript');
 await assertDynamicTextModule('.mjs', './fixtures/import_text_FIXTURE.mjs', 'invalid { javascript module');
-await assertDynamicTextModule('.wasm', './fixtures/import_text_FIXTURE.wasm', 'wasm string value');
+await assertDynamicTextModule('.wasm', './fixtures/dummy.wasm', wasmBinaryAsText);
 await assertDynamicTextModule('.wat', './fixtures/import_text_FIXTURE.wat', 'wat string value');

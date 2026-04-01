@@ -95,6 +95,7 @@ import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -107,10 +108,16 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.AbstractModuleRecord;
@@ -127,6 +134,7 @@ import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.SyntheticModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.objects.WebAssemblyModuleRecord;
+import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 /**
  * This is the main external entry into the GraalJS parser.
@@ -436,6 +444,30 @@ public final class GraalJSEvaluator implements JSParser {
         return createDefaultExportSyntheticModule(realm.getContext(), source, Strings.fromJavaString(source.getCharacters().toString()));
     }
 
+    @TruffleBoundary
+    @Override
+    public AbstractModuleRecord parseBytesModule(JSRealm realm, Source source) {
+        assert source.hasBytes() : source;
+        byte[] bytes = source.getBytes().toByteArray();
+        return createDefaultExportSyntheticModule(realm.getContext(), source, createImmutableUint8Array(realm.getContext(), realm, bytes));
+    }
+
+    private static JSTypedArrayObject createImmutableUint8Array(JSContext context, JSRealm realm, byte[] bytes) {
+        JSArrayBufferObject arrayBuffer;
+        byte bufferType;
+        if (context.isOptionDirectByteBuffer()) {
+            ByteBuffer directBuffer = DirectByteBufferHelper.allocateDirect(bytes.length);
+            Boundaries.byteBufferPutArray(directBuffer, 0, bytes, 0, bytes.length);
+            arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, directBuffer, bytes.length, JSArrayBuffer.IMMUTABLE_BUFFER);
+            bufferType = TypedArray.BUFFER_TYPE_DIRECT;
+        } else {
+            arrayBuffer = JSArrayBuffer.createArrayBuffer(context, realm, bytes, bytes.length, JSArrayBuffer.IMMUTABLE_BUFFER);
+            bufferType = TypedArray.BUFFER_TYPE_ARRAY;
+        }
+        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(bufferType, false, true);
+        return JSArrayBufferView.createArrayBufferView(context, realm, arrayBuffer, TypedArrayFactory.Uint8Array, arrayType, 0, bytes.length);
+    }
+
     private static SyntheticModuleRecord createDefaultExportSyntheticModule(JSContext ctx, Source source, Object defaultExport) {
         return new SyntheticModuleRecord(ctx, source, defaultExport, List.of(Strings.DEFAULT), (module) -> {
             module.setSyntheticModuleExport(Strings.DEFAULT, module.getHostDefined());
@@ -554,7 +586,7 @@ public final class GraalJSEvaluator implements JSParser {
                             ? referrer.addLoadedModule(realm, moduleRequest, moduleResult)
                             : realm.getModuleLoader().addLoadedModule(moduleRequest, moduleResult);
             if (existing != null) {
-                assert existing == moduleResult;
+                assert existing == moduleResult : moduleRequest;
             }
         }
         if (payload instanceof GraphLoadingState state) {

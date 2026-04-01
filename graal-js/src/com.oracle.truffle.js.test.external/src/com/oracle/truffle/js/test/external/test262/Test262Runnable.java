@@ -230,6 +230,7 @@ public class Test262Runnable extends TestRunnable {
                     "host-gc-required",
                     "immutable-arraybuffer",
                     "import-attributes",
+                    "import-bytes",
                     "import-defer",
                     "import-text",
                     "import.meta",
@@ -281,7 +282,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.Era-monthcode",
                     "IsHTMLDDA",
                     "await-dictionary",
-                    "import-bytes",
                     "joint-iteration",
                     "tail-call-optimization",
     });
@@ -295,6 +295,7 @@ public class Test262Runnable extends TestRunnable {
                     "ShadowRealm",
                     "decorators",
                     "immutable-arraybuffer",
+                    "import-bytes",
                     "import-defer",
                     "import-text",
                     "iterator-sequencing",

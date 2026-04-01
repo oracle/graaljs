@@ -175,6 +175,7 @@ public final class Strings {
     public static final TruffleString JOIN = constant("join");
     public static final String JOIN_JLS = toJavaString(JOIN);
     public static final TruffleString JSON = constant("json");
+    public static final TruffleString BYTES = constant("bytes");
     public static final TruffleString KEY = constant("key");
     public static final TruffleString KEYS = constant("keys");
     public static final TruffleString LAST_CHUNK_HANDLING = constant("lastChunkHandling");
