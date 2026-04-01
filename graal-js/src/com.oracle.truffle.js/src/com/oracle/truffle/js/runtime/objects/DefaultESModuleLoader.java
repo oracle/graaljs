@@ -76,6 +76,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     public static final String SLASH = "/";
     public static final String DOT_SLASH = "./";
     public static final String DOT_DOT_SLASH = "../";
+    private static final String FILE_SCHEME = "file";
+    private static final String TRUFFLE_SCHEME = "truffle";
     private static final String DATA_URI_SOURCE_NAME_PREFIX = "data-uri";
 
     protected final JSRealm realm;
@@ -109,7 +111,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         String refPathOrName = null;
         if (referrer != null) {
             Source referrerSource = referrer.getSource();
-            refURI = isNonFileURLSource(referrerSource) ? referrerSource.getURI() : null;
+            refURI = isNonFileURISource(referrerSource) ? referrerSource.getURI() : null;
             refPath = referrerSource.getPath();
             refPathOrName = refPath != null ? refPath : referrerSource.getName();
         }
@@ -221,11 +223,12 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     private static boolean isFileURI(URI uri) {
-        return uri.isAbsolute() && "file".equals(uri.getScheme());
+        return uri.isAbsolute() && FILE_SCHEME.equals(uri.getScheme());
     }
 
-    private static boolean isNonFileURLSource(Source source) {
-        return source.getURL() != null && !"file".equals(source.getURL().getProtocol());
+    private static boolean isNonFileURISource(Source source) {
+        URI uri = source.getURI();
+        return !FILE_SCHEME.equals(uri.getScheme()) && !TRUFFLE_SCHEME.equals(uri.getScheme());
     }
 
     protected AbstractModuleRecord loadModuleFromURL(ScriptOrModule referrer, ModuleRequest moduleRequest, URI moduleURI) throws IOException {
@@ -337,8 +340,13 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         int startPos = "data:".length();
         String input = specifier;
 
+        AbstractModuleRecord existingModule = moduleMap.get(new CanonicalModuleKey(specifier, moduleRequest.attributes()));
+        if (existingModule != null) {
+            return existingModule;
+        }
+
         // Validate URI syntax (RFC 2396).
-        URI.create(input);
+        URI uri = URI.create(input);
 
         // Drop any fragment part.
         int fragmentPos = specifier.indexOf('#', startPos);
@@ -399,19 +407,19 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         if (base64) {
             byte[] decodedBytes = Base64.getDecoder().decode(encodedBody);
             if (useByteSource) {
-                source = Source.newBuilder(language, ByteSequence.create(decodedBytes), sourceName).mimeType(mimeType).build();
+                source = Source.newBuilder(language, ByteSequence.create(decodedBytes), sourceName).uri(uri).mimeType(mimeType).build();
             } else {
                 String decoded = new String(decodedBytes, charset);
-                source = Source.newBuilder(language, decoded, sourceName).mimeType(mimeType).build();
+                source = Source.newBuilder(language, decoded, sourceName).uri(uri).mimeType(mimeType).build();
             }
         } else {
             // Data part is in URL percent-encoding.
             String decoded = JSURLDecoder.decodePercentEncoding(encodedBody, charset);
             if (useByteSource) {
                 byte[] decodedBytes = decoded.getBytes(StandardCharsets.ISO_8859_1);
-                source = Source.newBuilder(language, ByteSequence.create(decodedBytes), sourceName).mimeType(mimeType).build();
+                source = Source.newBuilder(language, ByteSequence.create(decodedBytes), sourceName).uri(uri).mimeType(mimeType).build();
             } else {
-                source = Source.newBuilder(language, decoded, sourceName).mimeType(mimeType).build();
+                source = Source.newBuilder(language, decoded, sourceName).uri(uri).mimeType(mimeType).build();
             }
         }
         return loadModuleFromSource(referrer, moduleRequest, source, mimeType, specifier);
@@ -614,7 +622,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     private String getCanonicalPath(Source source) {
-        if (isNonFileURLSource(source)) {
+        if (isNonFileURISource(source)) {
             return source.getURI().toString();
         }
         String path = source.getPath();
