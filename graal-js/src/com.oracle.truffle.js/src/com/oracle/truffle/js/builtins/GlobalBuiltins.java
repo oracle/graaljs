@@ -1710,8 +1710,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 final JSDynamicObject arrayBuffer;
                 if (getContext().isOptionDirectByteBuffer()) {
                     ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
-                    buffer.put(bytes);
-                    buffer.rewind();
+                    buffer.put(0, bytes);
                     arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), realm, buffer);
                 } else {
                     arrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), realm, bytes);

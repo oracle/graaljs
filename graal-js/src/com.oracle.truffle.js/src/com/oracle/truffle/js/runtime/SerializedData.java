@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -244,7 +244,7 @@ public class SerializedData {
         } else if (arrayBuffer instanceof JSArrayBufferObject.Direct directBuffer) {
             ByteBuffer original = directBuffer.getByteBuffer();
             ByteBuffer copy = ByteBuffer.allocateDirect(original.capacity());
-            copy.put(original.duplicate().rewind());
+            copy.put(0, original, 0, original.limit());
             content = copy;
         } else {
             JSArrayBufferObject.Interop interopBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
@@ -255,7 +255,7 @@ public class SerializedData {
                 InteropLibrary.getUncached().readBuffer(foreignBuffer, 0, array, 0, length);
                 if (arrayBuffer.getJSContext().isOptionDirectByteBuffer()) {
                     ByteBuffer byteBuffer = ByteBuffer.allocateDirect(length);
-                    byteBuffer.put(array);
+                    byteBuffer.put(0, array);
                     content = byteBuffer;
                 } else {
                     content = array;
