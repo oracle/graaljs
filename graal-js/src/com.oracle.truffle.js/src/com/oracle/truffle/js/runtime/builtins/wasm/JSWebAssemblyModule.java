@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,7 +77,8 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getAbstractModuleSourcePrototype());
+        JSDynamicObject parentPrototype = realm.getContextOptions().isSourcePhaseImports() ? realm.getAbstractModuleSourcePrototype() : realm.getObjectPrototype();
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, parentPrototype);
         JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_MODULE);
         return prototype;
@@ -95,7 +96,10 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
 
     @Override
     public JSFunctionObject createConstructorObject(JSRealm realm) {
-        return realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, getClassName(), realm.getAbstractModuleSourceConstructor());
+        if (realm.getContextOptions().isSourcePhaseImports()) {
+            return realm.lookupFunctionWithPrototype(ConstructorBuiltins.BUILTINS, getClassName(), realm.getAbstractModuleSourceConstructor());
+        }
+        return realm.lookupFunction(ConstructorBuiltins.BUILTINS, getClassName());
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {

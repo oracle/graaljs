@@ -2998,7 +2998,7 @@
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-objects.js",
     "status" : "FAIL",
-    "comment" : "GC proposal."
+    "comment" : "Bug in GC JS interop object behavior (expected TypeError not thrown)."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop.js",
     "status" : "FAIL",
@@ -3160,10 +3160,6 @@
     "runInIsolation" : true,
     "comment" : "Fails when trying to access the underlying ArrayBuffer of a WebAssembly.Memory. This is because GraalJS ArrayBuffers are currently capped at 2GB (- 1 byte) and this test exercises 4GB large memories."
   }, {
-    "filePath" : "mjsunit/wasm/module-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/module-source.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -3173,10 +3169,6 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/wasm/multi-memory64-memorysize.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/multi-memory64-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -3197,7 +3189,7 @@
   }, {
     "filePath" : "mjsunit/wasm/reference-globals-import.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Only remaining failure is TestReferenceGlobalsStrings, which imports stringref globals and requires the unsupported stringref proposal."
   }, {
     "filePath" : "mjsunit/wasm/reference-globals.js",
     "status" : "FAIL",
@@ -3445,10 +3437,6 @@
     "filePath" : "mjsunit/wasm/wasm-dynamic-tiering.js",
     "status" : "SKIP",
     "comment" : "Based on v8IsLiftoffFunction(), a concept unknown to graal.js"
-  }, {
-    "filePath" : "mjsunit/wasm/wasm-gc-externalize-internalize.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/wasm/wasm-gc-inlining-stacktrace-api.js",
     "status" : "FAIL",

@@ -71,6 +71,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING = "--allow-natives-for-differential-fuzzing";
     private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
+    private static final String NO_JS_SOURCE_PHASE_IMPORTS = "--no-js-source-phase-imports";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_EXPERIMENTAL_SIMD = "--no-experimental-wasm-simd";
@@ -139,9 +140,7 @@ public class TestV8Runnable extends TestRunnable {
             extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));
             // TODO: remove after features are enabled by default in wasm
             extraOptions.put("wasm.Threads", "true");
-            extraOptions.put("wasm.TypedFunctionReferences", "true");
-            extraOptions.put("wasm.GC", "true");
-            extraOptions.put("wasm.Exceptions", "true");
+            extraOptions.put("wasm.Memory64", "true");
             // Required for using shared memories, for now
             extraOptions.put("wasm.UseUnsafeMemory", "true");
 
@@ -154,6 +153,9 @@ public class TestV8Runnable extends TestRunnable {
             if (flags.contains(EXPERIMENTAL_WASM_MULTIMEMORY)) {
                 extraOptions.put("wasm.MultiMemory", "true");
             }
+        }
+        if (flags.contains(NO_JS_SOURCE_PHASE_IMPORTS)) {
+            extraOptions.put(JSContextOptions.SOURCE_PHASE_IMPORTS_NAME, "false");
         }
 
         if (getConfig().isPrintScript()) {

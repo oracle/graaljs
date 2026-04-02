@@ -477,12 +477,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                                 throw ex;
                             }
                         }
-                        try {
-                            Object createGlobal = realm.getWASMGlobalAlloc();
-                            wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueTypeStr, false, webAssemblyValue);
-                        } catch (InteropException ex) {
-                            throw Errors.shouldNotReachHere(ex);
-                        }
+                        wasmValue = webAssemblyValue;
                     }
                 } else if (Strings.equals(Strings.MEMORY, externType)) {
                     if (JSWebAssemblyMemory.isJSWebAssemblyMemory(value)) {
