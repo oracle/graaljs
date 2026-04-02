@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,20 +131,22 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
 
     @Specialization
     protected int doString(TruffleString value,
-                    @Cached JSToIntegerAsIntNode nestedToIntegerNode,
+                    @Shared @Cached JSToIntegerAsIntNode nestedToIntegerNode,
                     @Cached JSStringToNumberNode stringToNumberNode) {
         return nestedToIntegerNode.executeInt(stringToNumberNode.execute(value));
     }
 
     @Specialization
     protected int doJSObject(JSObject value,
+                    @Shared @Cached JSToIntegerAsIntNode nestedToIntegerNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
-        return JSRuntime.toInt32(toNumberNode.executeNumber(value));
+        return nestedToIntegerNode.executeInt(toNumberNode.executeNumber(value));
     }
 
     @Specialization(guards = {"isJSObject(value) || isForeignObject(value)"}, replaces = "doJSObject")
     protected int doJSOrForeignObject(Object value,
+                    @Shared @Cached JSToIntegerAsIntNode nestedToIntegerNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
-        return JSRuntime.toInt32(toNumberNode.executeNumber(value));
+        return nestedToIntegerNode.executeInt(toNumberNode.executeNumber(value));
     }
 }
