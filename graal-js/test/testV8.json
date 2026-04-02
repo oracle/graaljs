@@ -2998,7 +2998,7 @@
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-objects.js",
     "status" : "FAIL",
-    "comment" : "GC proposal."
+    "comment" : "Bug in GC JS interop object behavior (expected TypeError not thrown)."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop.js",
     "status" : "FAIL",
@@ -3169,10 +3169,6 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/wasm/multi-memory64-memorysize.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/multi-memory64-wrong-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {

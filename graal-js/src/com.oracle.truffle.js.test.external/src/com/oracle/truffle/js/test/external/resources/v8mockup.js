@@ -1262,6 +1262,10 @@ globalThis['%IsTurboFanFunction'] = function(fun) {
     return v8IgnoreResult;
 };
 
+globalThis['%IsWasmTieringPredictable'] = function() {
+    return v8IgnoreResult;
+};
+
 globalThis['%ArrayBufferSetDetachKey'] = function(arrayBuffer, key) {
 };
 
