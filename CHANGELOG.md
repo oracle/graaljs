@@ -7,6 +7,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 
 ## Version 25.0.3
 * Updated Node.js to version 22.22.0.
+* Limited Chrome inspector remote debugging to localhost.
 
 ## Version 25.0.0
 * ECMAScript 2025 mode/features enabled by default.
@@ -382,4 +383,3 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Added object rest/spread support.
 * Added support for async generators.
 * Unified Polyglot primitives across all Truffle languages; e.g., rename `Interop` builtin to `Polyglot`.
-
