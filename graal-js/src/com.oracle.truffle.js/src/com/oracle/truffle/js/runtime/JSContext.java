@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSNonProxy.GET_SYMBOL_SPECI
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -250,8 +251,8 @@ public class JSContext {
 
     @CompilationFinal private Object tRegexEmptyResult;
 
-    private final String regexOptions;
-    private final String regexValidateOptions;
+    private final Map<String, String> regexOptions;
+    private final Map<String, String> regexValidateOptions;
 
     private final Shape regExpGroupsEmptyShape;
 
@@ -796,7 +797,7 @@ public class JSContext {
         this.regExpGroupsEmptyShape = JSRegExp.makeInitialGroupsObjectShape(this);
 
         this.regexOptions = createRegexOptions(languageOptions);
-        this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
+        this.regexValidateOptions = createRegexValidateOptions(regexOptions);
 
         this.supportedImportAttributes = languageOptions.importAttributes() ? Set.of(Strings.TYPE) : Set.of();
 
@@ -1390,34 +1391,49 @@ public class JSContext {
         return textEncoderFactory;
     }
 
-    private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
-    private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
-    private static final String REGEX_OPTION_STEP_EXECUTION = "StepExecution";
-    private static final String REGEX_OPTION_ALWAYS_EAGER = "AlwaysEager";
-    private static final String REGEX_OPTION_VALIDATE = "Validate=true";
+    private static final String REGEX_OPTION_PREFIX = "regex.";
+    private static final String REGEX_OPTION_REGRESSION_TEST_MODE = REGEX_OPTION_PREFIX + "RegressionTestMode";
+    private static final String REGEX_OPTION_DUMP_AUTOMATA = REGEX_OPTION_PREFIX + "DumpAutomata";
+    private static final String REGEX_OPTION_STEP_EXECUTION = REGEX_OPTION_PREFIX + "StepExecution";
+    private static final String REGEX_OPTION_ALWAYS_EAGER = REGEX_OPTION_PREFIX + "AlwaysEager";
+    private static final String REGEX_OPTION_VALIDATE = REGEX_OPTION_PREFIX + "Validate";
+    private static final Map<String, String> REGEX_VALIDATE_OPTIONS = Map.of(REGEX_OPTION_VALIDATE, "true");
 
-    private static String createRegexOptions(JSLanguageOptions jsOptions) {
-        StringBuilder regexOptions = new StringBuilder();
+    private static Map<String, String> createRegexOptions(JSLanguageOptions jsOptions) {
+        if (!jsOptions.regexRegressionTestMode() && !jsOptions.regexDumpAutomata() && !jsOptions.regexStepExecution() && !jsOptions.regexAlwaysEager()) {
+            return Map.of();
+        }
+        Map<String, String> regexOptions = new HashMap<>();
         if (jsOptions.regexRegressionTestMode()) {
-            regexOptions.append(REGEX_OPTION_REGRESSION_TEST_MODE).append("=true,");
+            regexOptions.put(REGEX_OPTION_REGRESSION_TEST_MODE, "true");
         }
         if (jsOptions.regexDumpAutomata()) {
-            regexOptions.append(REGEX_OPTION_DUMP_AUTOMATA).append("=true,");
+            regexOptions.put(REGEX_OPTION_DUMP_AUTOMATA, "true");
         }
         if (jsOptions.regexStepExecution()) {
-            regexOptions.append(REGEX_OPTION_STEP_EXECUTION).append("=true,");
+            regexOptions.put(REGEX_OPTION_STEP_EXECUTION, "true");
         }
         if (jsOptions.regexAlwaysEager()) {
-            regexOptions.append(REGEX_OPTION_ALWAYS_EAGER).append("=true,");
+            regexOptions.put(REGEX_OPTION_ALWAYS_EAGER, "true");
         }
-        return regexOptions.toString();
+        return Map.copyOf(regexOptions);
     }
 
-    public String getRegexOptions() {
+    private static Map<String, String> createRegexValidateOptions(Map<String, String> regexOptions) {
+        if (regexOptions.isEmpty()) {
+            return REGEX_VALIDATE_OPTIONS;
+        }
+        Map<String, String> combined = new HashMap<>();
+        combined.putAll(REGEX_VALIDATE_OPTIONS);
+        combined.putAll(regexOptions);
+        return Map.copyOf(combined);
+    }
+
+    public Map<String, String> getRegexOptions() {
         return regexOptions;
     }
 
-    public String getRegexValidateOptions() {
+    public Map<String, String> getRegexValidateOptions() {
         return regexValidateOptions;
     }
 

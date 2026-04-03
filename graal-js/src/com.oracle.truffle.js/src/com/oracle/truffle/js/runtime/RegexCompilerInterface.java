@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.js.runtime;
+
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -93,9 +95,9 @@ public final class RegexCompilerInterface {
     }
 
     @TruffleBoundary
-    public static Source createRegexSource(String pattern, String flags, String options) {
-        String regexStr = options + '/' + pattern + '/' + flags;
-        return Source.newBuilder("regex", regexStr, regexStr).mimeType("application/tregex").internal(true).build();
+    public static Source createRegexSource(String pattern, String flags, Map<String, String> options) {
+        String regexStr = '/' + pattern + '/' + flags;
+        return Source.newBuilder("regex", regexStr, regexStr).mimeType("application/tregex").options(options).internal(true).build();
     }
 
     @TruffleBoundary
