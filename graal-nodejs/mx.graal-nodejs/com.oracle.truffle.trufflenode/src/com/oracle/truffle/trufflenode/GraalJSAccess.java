@@ -91,6 +91,7 @@ import static com.oracle.truffle.trufflenode.ValueType.ORDINARY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROMISE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.PROXY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.REGEXP_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.SET_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SHARED_ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SHARED_ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SHARED_BIGINT64ARRAY_OBJECT;
@@ -106,7 +107,6 @@ import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT16ARRAY_OBJECT
 import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT32ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT8ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SHARED_UINT8CLAMPEDARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.SET_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.UNDEFINED_VALUE;
@@ -2287,8 +2287,8 @@ public final class GraalJSAccess {
 
         String bodyJavaString = Strings.toJavaString((TruffleString) body);
         String sourceNameJavaString = Strings.toJavaString(sourceName);
-        // Will throw a JS error (if syntax is wrong).
-        nodeEvaluator.checkFunctionSyntax(jsContext, parserOptions, parameterList, bodyJavaString, false, false, sourceNameJavaString);
+        // The syntax of the body (on its own) will be checked as part of parsePublic.
+        nodeEvaluator.checkFunctionSyntax(jsContext, parserOptions, parameterList, "", false, false, sourceNameJavaString);
 
         StringBuilder code = new StringBuilder();
 

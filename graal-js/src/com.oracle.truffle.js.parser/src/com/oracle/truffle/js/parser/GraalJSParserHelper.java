@@ -213,10 +213,14 @@ public final class GraalJSParserHelper {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         ScriptEnvironment env = makeScriptEnvironment(parserOptions);
         ErrorManager errors = new com.oracle.js.parser.ErrorManager.ThrowErrorManager();
-        Parser parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(sourceName, parameterList), errors, parserOptions);
-        parser.parseFormalParameterList();
-        parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(sourceName, body), errors, parserOptions);
-        parser.parseFunctionBody(generator, async);
+        if (!parameterList.isEmpty()) {
+            Parser parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(sourceName, parameterList), errors, parserOptions);
+            parser.parseFormalParameterList();
+        }
+        if (!body.isEmpty()) {
+            Parser parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(sourceName, body), errors, parserOptions);
+            parser.parseFunctionBody(generator, async);
+        }
     }
 
     private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors, int prologueLength, JSContext context) {
