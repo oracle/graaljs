@@ -10,6 +10,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Removed support and builds for macOS x86-64 (darwin-amd64).
 * Added an experimental option `js.crypto` that provides `getRandomValues()` and `randomUUID()` from the [Web Crypto API](https://w3c.github.io/webcrypto/#crypto-interface).
 * Added stable option `js.performance` that provides `performance.now()`, `timeOrigin`, and `toJSON()` from the [Web High Resolution Time API](https://w3c.github.io/hr-time/).
+* Finished support for [Temporal](https://github.com/tc39/proposal-temporal). It is available in ECMAScript 2027 mode (`--js.ecmascript-version=2027`).
 * Implemented the [`Immutable ArrayBuffers`](https://github.com/tc39/proposal-immutable-arraybuffer) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Explicit Resource Management`](https://github.com/tc39/proposal-explicit-resource-management) proposal. It is available behind the experimental option (`--js.explicit-resource-management`).
 * Updated Node.js to version 24.14.1.

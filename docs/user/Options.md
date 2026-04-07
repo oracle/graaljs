@@ -124,7 +124,7 @@ These are the frequently used experimental options:
 * `--js.nashorn-compat`: provide compatibility mode with the Nashorn engine. Sets ECMAScript version to 5 by default. Might conflict with newer ECMAScript versions. Boolean value, default is `false`.
 * `--js.timezone`: set the local time zone. String value, default is the system default.
 * `--js.v8-compat`: provide better compatibility with Google's V8 engine. Boolean value, default is `false`.
-* `--js.temporal`: enable [`Temporal` API](https://github.com/tc39/proposal-temporal).
+* `--js.temporal`: explicitly enable or disable the [`Temporal` API](https://github.com/tc39/proposal-temporal). It is enabled by default in ECMAScript 2027 and later.
 * `--js.webassembly`: enable `WebAssembly` API.
 
 ### Related Documentation

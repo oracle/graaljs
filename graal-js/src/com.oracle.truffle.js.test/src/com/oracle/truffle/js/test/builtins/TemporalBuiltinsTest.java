@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@
 package com.oracle.truffle.js.test.builtins;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.TEMPORAL_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -810,4 +812,27 @@ public class TemporalBuiltinsTest extends JSTest {
         }
     }
 
+    private static boolean hasTemporal(Context context) {
+        return context.eval(ID, "typeof Temporal !== 'undefined'").asBoolean();
+    }
+
+    @Test
+    public void testTemporalDisabledByDefaultInES2026() {
+        try (Context context = JSTest.newContextBuilder(ID).option(ECMASCRIPT_VERSION_NAME, "2026").build()) {
+            Assert.assertFalse(hasTemporal(context));
+        }
+        try (Context context = JSTest.newContextBuilder(ID).option(ECMASCRIPT_VERSION_NAME, "2026").option(TEMPORAL_NAME, "true").build()) {
+            Assert.assertTrue(hasTemporal(context));
+        }
+    }
+
+    @Test
+    public void testTemporalEnabledByDefaultInES2027() {
+        try (Context context = JSTest.newContextBuilder(ID).option(ECMASCRIPT_VERSION_NAME, "2027").build()) {
+            Assert.assertTrue(hasTemporal(context));
+        }
+        try (Context context = JSTest.newContextBuilder(ID).option(ECMASCRIPT_VERSION_NAME, "2027").option(TEMPORAL_NAME, "false").build()) {
+            Assert.assertFalse(hasTemporal(context));
+        }
+    }
 }

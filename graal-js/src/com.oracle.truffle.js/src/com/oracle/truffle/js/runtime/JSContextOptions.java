@@ -871,7 +871,7 @@ public final class JSContextOptions {
         this.mleMode = readBooleanOption(MLE_MODE) || readBooleanOption(INTEROP_COMPLETE_PROMISES);
         this.privateFieldsIn = readBooleanOption(PRIVATE_FIELDS_IN, JSConfig.ECMAScript2022);
         this.esmBareSpecifierRelativeLookup = readBooleanOption(ESM_BARE_SPECIFIER_RELATIVE_LOOKUP);
-        this.temporal = readBooleanOption(TEMPORAL);
+        this.temporal = readBooleanOption(TEMPORAL, JSConfig.ECMAScript2027);
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
         this.frequencyBasedPropertyCacheLimit = (short) readIntegerOption(FREQUENCY_BASED_PROPERTY_CACHE_LIMIT);

@@ -469,7 +469,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 case WeakRef, FinalizationRegistry -> JSConfig.ECMAScript2021;
                 case SuppressedError, DisposableStack, AsyncDisposableStack -> JSConfig.StagingECMAScriptVersion;
                 case DurationFormat -> JSConfig.ECMAScript2025;
-                case PlainTime, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, ZonedDateTime -> JSConfig.StagingECMAScriptVersion;
+                case PlainTime, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, ZonedDateTime -> JSConfig.ECMAScript2027;
                 case Iterator, AsyncIterator -> JSConfig.StagingECMAScriptVersion;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
