@@ -101,7 +101,7 @@ For contributing, see also a [guide on how to build GraalJS from source code](do
 
 ## Compatibility
 
-GraalJS is compatible with the [ECMAScript 2024 specification](https://262.ecma-international.org/).
+GraalJS is compatible with the [ECMAScript 2026 specification](https://tc39.es/ecma262/2026/).
 New features, new ECMAScript proposals, scheduled to land in future editions, are added frequently and are accessible behind an option.
 See the [CHANGELOG.md](CHANGELOG.md) for the proposals already adopted.
 

@@ -12,7 +12,7 @@ Below are the most frequently asked questions and answers about JavaScript runni
 ## Compatibility
 
 ### Is GraalJS compatible with the JavaScript language?
-GraalJS is compatible with the  [ECMAScript 2025 specification](https://tc39.es/ecma262/2025/) and is further developed alongside the 2026 draft specification.
+GraalJS is compatible with the  [ECMAScript 2026 specification](https://tc39.es/ecma262/2026/) and is further developed alongside the 2027 draft specification.
 The compatibility of GraalJS is verified by external sources, such as the [Kangax ECMAScript compatibility table](https://kangax.github.io/compat-table/es6/).
 
 GraalJS is tested against a set of test engines, such as the official test suite of ECMAScript, [test262](https://github.com/tc39/test262), as well as tests published by V8 and Nashorn, Node.js unit tests, and GraalJS's own unit tests.

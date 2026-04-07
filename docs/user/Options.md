@@ -65,7 +65,7 @@ See [ScriptEngine Implementation](ScriptEngine.md) on how to use experimental op
 ### Frequently Used Stable Options
 
 The following stable options are frequently relevant:
-   * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2022`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals). Default is `"latest"`.
+   * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2026`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals). Default is `"latest"`.
    * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects, and Functions). Boolean value, default is `true`.
    * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `true`.
    * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, for example, `RegExp.$1` (legacy). Boolean value, default is `true`.
@@ -83,12 +83,12 @@ For a complete list, use `js --help:js:internal`
 The `--js.ecmascript-version` option provides compatibility with a specific version of the ECMAScript specification.
 It expects an integer value, where both the edition numbers (`5`, `6`, ...) and the publication years (starting from `2015`) are supported.
 As of GraalVM 21.2, `latest`, `staging` are also supported.
-The default in GraalVM 23.1 is the [`ECMAScript 2023 specification`](https://262.ecma-international.org/14.0/).
+The default is the latest supported finalized specification, currently [ECMAScript 2026](https://tc39.es/ecma262/2026/).
 GraalJS implements some features of the future draft specification and of open proposals, if you explicitly select that version and/or enable specific experimental options.
 For production settings, it is recommended to set the `ecmascript-version` to a released, finalized version of the specification (for example, `2022`).
 
 Available versions are:
-* `5` for ECMAScript 5.x
+* `5` for ECMAScript 5.1
 * `2015` (or `6`) for ECMAScript 2015
 * `2016` (or `7`) for ECMAScript 2016
 * `2017` (or `8`) for ECMAScript 2017
@@ -99,6 +99,8 @@ Available versions are:
 * `2022` (or `13`) for ECMAScript 2022 (**default** in 22.0+)
 * `2023` (or `14`) for [ECMAScript 2023](https://262.ecma-international.org/14.0/) (**default** in 23.1)
 * `2024` (or `15`) for [ECMAScript 2024](https://262.ecma-international.org/15.0/) (**default** in 24.1)
+* `2025` (or `16`) for [ECMAScript 2025](https://262.ecma-international.org/16.0/) (**default** in 25.0)
+* `2026` (or `17`) for [ECMAScript 2026](https://tc39.es/ecma262/2026/) (**default** in 25.1)
 * `latest` for the latest supported language version (the default version)
 * `staging` for the latest supported language features including experimental unstable, unfinished [proposals](https://github.com/tc39/proposals) (_do not use in production!_)
 
