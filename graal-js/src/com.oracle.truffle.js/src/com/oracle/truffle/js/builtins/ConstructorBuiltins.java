@@ -99,8 +99,8 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollat
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataViewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisposableStackNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisplayNamesNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisposableStackNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDurationFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFinalizationRegistryNodeGen;
@@ -470,7 +470,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 case SuppressedError, DisposableStack, AsyncDisposableStack -> JSConfig.StagingECMAScriptVersion;
                 case DurationFormat -> JSConfig.ECMAScript2025;
                 case PlainTime, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, ZonedDateTime -> JSConfig.ECMAScript2027;
-                case Iterator, AsyncIterator -> JSConfig.StagingECMAScriptVersion;
+                case Iterator -> JSConfig.ECMAScript2025;
+                case AsyncIterator -> JSConfig.StagingECMAScriptVersion;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }
