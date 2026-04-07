@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1015,7 +1015,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return truncated;
             } else {
                 needsRadixConversion.enter(this);
-                return convertToRadix(truncated, radix);
+                return convertToRadix(truncated, value < 0, radix);
             }
         }
 
@@ -1191,9 +1191,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @SuppressFBWarnings(value = "FL_FLOATS_AS_LOOP_COUNTERS", justification = "intentional use of floating-point variable as loop counter")
-        private static double convertToRadix(double inputValue, int radix) {
+        private static double convertToRadix(double inputValue, boolean negative, int radix) {
             assert (radix >= 2 && radix <= 36);
-            boolean negative = inputValue < 0;
             double value = negative ? -inputValue : inputValue;
             double result = 0;
             double radixVal = 1;
