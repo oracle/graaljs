@@ -65,7 +65,7 @@ See [ScriptEngine Implementation](ScriptEngine.md) on how to use experimental op
 ### Frequently Used Stable Options
 
 The following stable options are frequently relevant:
-   * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2026`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals). Default is `"latest"`.
+   * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2027`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals). Default is `"latest"`.
    * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects, and Functions). Boolean value, default is `true`.
    * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `true`.
    * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, for example, `RegExp.$1` (legacy). Boolean value, default is `true`.
@@ -101,6 +101,7 @@ Available versions are:
 * `2024` (or `15`) for [ECMAScript 2024](https://262.ecma-international.org/15.0/) (**default** in 24.1)
 * `2025` (or `16`) for [ECMAScript 2025](https://262.ecma-international.org/16.0/) (**default** in 25.0)
 * `2026` (or `17`) for [ECMAScript 2026](https://tc39.es/ecma262/2026/) (**default** in 25.1)
+* `2027` (or `18`) for the ECMAScript 2027 draft
 * `latest` for the latest supported language version (the default version)
 * `staging` for the latest supported language features including experimental unstable, unfinished [proposals](https://github.com/tc39/proposals) (_do not use in production!_)
 

@@ -18,7 +18,7 @@ This document explains the public API it presents for user applications written 
 
 GraalJS implements the ECMAScript (ECMA-262) specification and is fully compatible with the [ECMAScript 2026 specification](https://tc39.es/ecma262/2026/).
 New features are frequently added to GraalVM when they are confirmed to be part of ECMAScript 2026, see the [CHANGELOG.md](https://github.com/oracle/graaljs/blob/master/CHANGELOG.md) for details.
-Older versions starting from ECMAScript 5 can be enabled with a configuration option (by number: `--js.ecmascript-version=5` or by year: `--js.ecmascript-version=2026`).
+Older versions starting from ECMAScript 5 can be enabled with a configuration option (by edition: `--js.ecmascript-version=5` or by year: `--js.ecmascript-version=2015`).
 In a production environment, you might consider specifying a fixed ECMAScript version to be used, as future versions of GraalJS will use newer versions of the specification once available.
 
 GraalJS provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
