@@ -105,8 +105,8 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, //
                     usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|" +
-                                    "[5, " + JSConfig.ECMAScript2027 + "]|" +
-                                    "[2015, " + (JSConfig.ECMAScript2027 + JSConfig.ECMAScriptVersionYearDelta) + "]", //
+                                    "[5, " + JSConfig.NextECMAScriptVersion + "]|" +
+                                    "[2015, " + (JSConfig.NextECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", //
                     help = "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
                                     ECMASCRIPT_VERSION_STAGING + "'.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
@@ -120,7 +120,7 @@ public final class JSContextOptions {
             }
             try {
                 final int minVersion = 5;
-                final int maxVersion = JSConfig.ECMAScript2027;
+                final int maxVersion = JSConfig.NextECMAScriptVersion;
                 final int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptVersionYearDelta;
                 final int maxYearVersion = maxVersion + JSConfig.ECMAScriptVersionYearDelta;
                 int version = Integer.parseInt(in);

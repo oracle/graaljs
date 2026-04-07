@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,15 @@ public class TestNashornCompatECMAScriptVersion {
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("polyglot.js.ecmascript-version", "latest");
         Assert.assertEquals(JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta, engine.eval("Graal.versionECMAScript"));
+    }
+
+    @Test
+    public void testExplicitFutureECMAScriptVersion() throws ScriptException {
+        ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        int version = JSConfig.NextECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta;
+        bindings.put("polyglot.js.ecmascript-version", version);
+        Assert.assertEquals(version, engine.eval("Graal.versionECMAScript"));
     }
 
     @Test

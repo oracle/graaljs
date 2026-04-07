@@ -84,6 +84,7 @@ public final class JSConfig {
     public static final int ECMAScript2028 = 19;
     public static final int ECMAScriptVersionYearDelta = 2009; // ES6==ES2015
     public static final int LatestECMAScriptVersion = ECMAScript2026;
+    public static final int NextECMAScriptVersion = ECMAScript2027;
     public static final int StagingECMAScriptVersion = ECMAScript2028;
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = true;
