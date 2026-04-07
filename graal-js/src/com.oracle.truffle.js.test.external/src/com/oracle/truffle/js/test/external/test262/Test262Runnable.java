@@ -286,22 +286,15 @@ public class Test262Runnable extends TestRunnable {
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
-                    "Array.fromAsync",
                     "Atomics.pause",
-                    "Error.isError",
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Intl.Locale-info",
-                    "Math.sumPrecise",
                     "ShadowRealm",
                     "decorators",
                     "immutable-arraybuffer",
                     "import-bytes",
                     "import-defer",
                     "import-text",
-                    "iterator-sequencing",
-                    "json-parse-with-source",
-                    "uint8array-base64",
-                    "upsert",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

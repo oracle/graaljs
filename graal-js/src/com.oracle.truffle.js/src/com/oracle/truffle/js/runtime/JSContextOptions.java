@@ -105,8 +105,8 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, //
                     usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|" +
-                                    "[5, " + JSConfig.LatestECMAScriptVersion + "]|" +
-                                    "[2015, " + (JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", //
+                                    "[5, " + JSConfig.NextECMAScriptVersion + "]|" +
+                                    "[2015, " + (JSConfig.NextECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", //
                     help = "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
                                     ECMASCRIPT_VERSION_STAGING + "'.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
@@ -120,7 +120,7 @@ public final class JSContextOptions {
             }
             try {
                 final int minVersion = 5;
-                final int maxVersion = JSConfig.ECMAScript2026;
+                final int maxVersion = JSConfig.NextECMAScriptVersion;
                 final int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptVersionYearDelta;
                 final int maxYearVersion = maxVersion + JSConfig.ECMAScriptVersionYearDelta;
                 int version = Integer.parseInt(in);
@@ -871,7 +871,7 @@ public final class JSContextOptions {
         this.mleMode = readBooleanOption(MLE_MODE) || readBooleanOption(INTEROP_COMPLETE_PROMISES);
         this.privateFieldsIn = readBooleanOption(PRIVATE_FIELDS_IN, JSConfig.ECMAScript2022);
         this.esmBareSpecifierRelativeLookup = readBooleanOption(ESM_BARE_SPECIFIER_RELATIVE_LOOKUP);
-        this.temporal = readBooleanOption(TEMPORAL);
+        this.temporal = readBooleanOption(TEMPORAL, JSConfig.ECMAScript2027);
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
         this.frequencyBasedPropertyCacheLimit = (short) readIntegerOption(FREQUENCY_BASED_PROPERTY_CACHE_LIMIT);

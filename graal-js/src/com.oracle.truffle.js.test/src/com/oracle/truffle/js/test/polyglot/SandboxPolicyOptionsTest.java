@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 
 @RunWith(Parameterized.class)
@@ -78,11 +79,15 @@ public class SandboxPolicyOptionsTest {
     @Parameters(name = "{0} {1}")
     public static Collection<Object[]> parameters() {
         var policies = EnumSet.of(SandboxPolicy.TRUSTED, SandboxPolicy.CONSTRAINED);
+        var latestEcmaScriptVersion = String.valueOf(JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta);
+        var nextEcmaScriptVersion = String.valueOf(JSConfig.NextECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta);
         var options = List.of(
                         new Option(JSContextOptions.STRICT_NAME, "true", SandboxPolicy.UNTRUSTED),
                         new Option(JSContextOptions.STRICT_NAME, "false", SandboxPolicy.UNTRUSTED),
                         new Option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2021", SandboxPolicy.UNTRUSTED),
                         new Option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "latest", SandboxPolicy.UNTRUSTED),
+                        new Option(JSContextOptions.ECMASCRIPT_VERSION_NAME, latestEcmaScriptVersion, SandboxPolicy.UNTRUSTED),
+                        new Option(JSContextOptions.ECMASCRIPT_VERSION_NAME, nextEcmaScriptVersion, SandboxPolicy.UNTRUSTED),
                         new Option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "staging", SandboxPolicy.TRUSTED),
                         new Option(JSContextOptions.CONSOLE_NAME, "true", SandboxPolicy.UNTRUSTED),
                         new Option(JSContextOptions.CONSOLE_NAME, "false", SandboxPolicy.UNTRUSTED),

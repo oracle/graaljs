@@ -96,18 +96,13 @@ public class TestV8Runnable extends TestRunnable {
     });
     private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
                     "--harmony",
-                    "--harmony-array-from-async",
                     "--harmony-intl-locale-info-func",
-                    "--harmony-json-parse-with-source",
                     "--harmony-shadow-realm",
                     "--harmony-weak-refs-with-cleanup-some",
-                    "--js-base-64",
                     "--js-decorators",
                     "--js-defer-import-eval",
                     "--js-immutable-arraybuffer",
-                    "--js-iterator-sequencing",
                     "--js-staging",
-                    "--js-sum-precise",
     });
 
     private static final String FLAGS_PREFIX = "// Flags: ";
