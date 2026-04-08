@@ -1092,7 +1092,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization
         protected Object doNotify(Object maybeTarget, Object index, Object count,
                         @Cached JSToIndexNode toIndexNode,
-                        @Cached JSToInt32Node toInt32Node,
+                        @Cached JSToIntegerAsIntNode toIntNode,
                         @Cached InlinedBranchProfile notSharedArrayBuffer) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
@@ -1101,7 +1101,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             int c = Integer.MAX_VALUE;
             if (count != Undefined.instance) {
-                int tmp = toInt32Node.executeInt(count);
+                int tmp = toIntNode.executeInt(count);
                 c = Integer.max(tmp, 0);
             }
             // Note: this check must happen after 'c' is computed.
