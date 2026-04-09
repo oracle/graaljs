@@ -1724,8 +1724,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSStringObject constructString(JSDynamicObject newTarget, Object[] args,
                         @Cached JSToStringNode toStringNode) {
             JSRealm realm = getRealm();
+            TruffleString s = toStringNode.executeString(args[0]);
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSString.create(getContext(), realm, proto, toStringNode.executeString(args[0]));
+            return JSString.create(getContext(), realm, proto, s);
         }
 
         @Override
