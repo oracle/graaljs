@@ -1938,7 +1938,7 @@ public class JSContext {
                 return JSObject.SET_PROTO_NAME.toJavaStringUncached();
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(this, callTarget, 0, JSObject.SET_PROTO_NAME);
+        return JSFunctionData.createCallOnly(this, callTarget, 1, JSObject.SET_PROTO_NAME);
     }
 
     private JSFunctionData protoGetterFunction() {
