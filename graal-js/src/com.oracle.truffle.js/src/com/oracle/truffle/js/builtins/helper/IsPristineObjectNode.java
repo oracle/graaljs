@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
+import java.util.ArrayList;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
@@ -47,12 +49,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -97,16 +99,44 @@ public abstract class IsPristineObjectNode extends JavaScriptBaseNode {
         return IsPristineObjectNodeGen.create(jsClass, initialPrototypeShape, propertyKeys);
     }
 
-    public static IsPristineObjectNode createRegExpExecAndMatch(JSContext context) {
+    /**
+     * Guard for RegExpExec dispatch. This only needs to ensure that looking up {@code exec} is
+     * unobservable. RegExpBuiltinExec uses internal slots rather than the public flag accessors.
+     */
+    public static IsPristineObjectNode createRegExpExec(JSContext context) {
         assert context.getEcmaScriptVersion() >= 6;
         assert Strings.equals(Strings.EXEC, (TruffleString) RegExpPrototypeBuiltins.RegExpPrototype.exec.getKey());
         return IsPristineObjectNode.create(JSRegExp.INSTANCE, JSRealm.get(null).getInitialRegExpPrototypeShape(),
-                        Symbol.SYMBOL_MATCH,
-                        Strings.EXEC,
-                        JSRegExp.FLAGS,
-                        JSRegExp.GLOBAL,
-                        JSRegExp.UNICODE,
-                        JSRegExp.STICKY);
+                        Strings.EXEC);
+    }
+
+    /**
+     * Guard for fast paths that bypass both RegExpExec dispatch and the built-in flag getters,
+     * optionally with additional guarded properties for callers that bypass more observable work.
+     */
+    public static IsPristineObjectNode createRegExpExecAndFlagGetter(JSContext context, Object... extraPropertyKeys) {
+        assert context.getEcmaScriptVersion() >= 6;
+        ArrayList<Object> propertyKeys = new ArrayList<>(10 + extraPropertyKeys.length);
+        for (Object extraPropertyKey : extraPropertyKeys) {
+            propertyKeys.add(extraPropertyKey);
+        }
+        propertyKeys.add(Strings.EXEC);
+        propertyKeys.add(JSRegExp.FLAGS);
+        propertyKeys.add(JSRegExp.GLOBAL);
+        propertyKeys.add(JSRegExp.IGNORE_CASE);
+        propertyKeys.add(JSRegExp.MULTILINE);
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2018) {
+            propertyKeys.add(JSRegExp.DOT_ALL);
+        }
+        propertyKeys.add(JSRegExp.UNICODE);
+        if (context.isOptionRegexpUnicodeSets()) {
+            propertyKeys.add(JSRegExp.UNICODE_SETS);
+        }
+        propertyKeys.add(JSRegExp.STICKY);
+        if (context.isOptionRegexpMatchIndices()) {
+            propertyKeys.add(JSRegExp.HAS_INDICES);
+        }
+        return IsPristineObjectNode.create(JSRegExp.INSTANCE, JSRealm.get(null).getInitialRegExpPrototypeShape(), propertyKeys.toArray());
     }
 
     public abstract boolean execute(JSDynamicObject object);
