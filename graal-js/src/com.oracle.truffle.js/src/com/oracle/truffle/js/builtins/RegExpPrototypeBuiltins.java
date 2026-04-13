@@ -634,30 +634,27 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         JSArrayObject splitIntLimit(JSDynamicObject rx, Object input, int limit,
                         @Cached @Shared JSToUInt32Node toUInt32,
-                        @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
                         @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             return doSplit(rx, input, toUInt32.executeLong(limit),
-                            this, limitZeroBranch, splitInternal, splitAccordingToSpec);
+                            splitInternal, splitAccordingToSpec);
         }
 
         @Specialization
         JSArrayObject splitLongLimit(JSDynamicObject rx, Object input, long limit,
                         @Cached @Shared JSToUInt32Node toUInt32,
-                        @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
                         @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             return doSplit(rx, input, toUInt32.executeLong(limit),
-                            this, limitZeroBranch, splitInternal, splitAccordingToSpec);
+                            splitInternal, splitAccordingToSpec);
         }
 
         @Specialization(guards = "isUndefined(limit)")
         JSArrayObject splitUndefinedLimit(JSDynamicObject rx, Object input, @SuppressWarnings("unused") Object limit,
-                        @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
                         @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             return doSplit(rx, input, JSRuntime.MAX_SAFE_INTEGER_LONG,
-                            this, limitZeroBranch, splitInternal, splitAccordingToSpec);
+                            splitInternal, splitAccordingToSpec);
         }
 
         @Specialization(guards = "!isUndefined(limit)")
@@ -675,13 +672,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private JSArrayObject doSplit(JSDynamicObject rx, Object input, long limit,
-                        Node node, InlinedBranchProfile limitZeroBranch, SplitInternalNode splitInternal, SplitAccordingToSpecNode splitAccordingToSpec) {
+                        SplitInternalNode splitInternal, SplitAccordingToSpecNode splitAccordingToSpec) {
             checkObject(rx);
             TruffleString str = toString1(input);
-            if (limit == 0) {
-                limitZeroBranch.enter(node);
-                return JSArray.createEmptyZeroLength(getContext(), getRealm());
-            }
             var constructor = getSpeciesConstructor(rx);
             if (constructor == getRealm().getRegExpConstructor() && isPristine(rx)) {
                 return splitInternal.execute((JSRegExpObject) rx, str, limit, getContext(), this);
@@ -804,6 +797,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected static JSArrayObject doCached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
                             @Bind Node node,
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
+                            @Cached @Shared InlinedBranchProfile limitZeroBranch,
                             @Cached @Shared InteropReadMemberNode readFlags,
                             @Cached @Shared InteropReadBooleanMemberNode readSticky,
                             @Cached @Shared InteropReadBooleanMemberNode readUnicode,
@@ -821,9 +815,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached @Shared InlinedConditionProfile resultIsNull,
                             @Cached @Shared InlinedConditionProfile stickyFlagSet,
                             @Cached @Shared InlinedBranchProfile prematureReturnBranch) {
+                JSRealm realm = JSRealm.get(node);
+                JSArrayObject array = JSArray.createEmptyZeroLength(context, realm);
+                if (lim == 0) {
+                    limitZeroBranch.enter(node);
+                    return array;
+                }
                 Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
                 boolean unicodeMatching = TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode) || TRegexFlagsAccessor.unicodeSets(tRegexFlags, node, readUnicodeSets);
-                JSRealm realm = JSRealm.get(node);
                 JSRegExpObject splitter;
                 if (stickyFlagSet.profile(node, TRegexFlagsAccessor.sticky(tRegexFlags, node, readSticky))) {
                     JSDynamicObject regexpConstructor = realm.getRegExpConstructor();
@@ -832,7 +831,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 } else {
                     splitter = rx;
                 }
-                JSArrayObject array = JSArray.createEmptyZeroLength(context, realm);
                 int size = Strings.length(str);
                 int arrayLength = 0;
                 int prevMatchEnd = 0;
@@ -895,6 +893,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             @Specialization(replaces = "doCached")
             protected static JSArrayObject doUncached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
                             @Bind Node node,
+                            @Cached @Shared InlinedBranchProfile limitZeroBranch,
                             @Cached @Shared InteropReadMemberNode readFlags,
                             @Cached @Shared InteropReadBooleanMemberNode readSticky,
                             @Cached @Shared InteropReadBooleanMemberNode readUnicode,
@@ -913,8 +912,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached @Shared InlinedConditionProfile stickyFlagSet,
                             @Cached @Shared InlinedBranchProfile prematureReturnBranch) {
                 return doCached(rx, str, lim, context, parent, node, JSRegExp.getCompiledRegex(rx),
-                                readFlags, readSticky, readUnicode, readUnicodeSets, removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, constructorCall, execIgnoreLastIndex,
-                                substringNode, advanceStringIndex, sizeIsZero, resultIsNull, stickyFlagSet, prematureReturnBranch);
+                                limitZeroBranch, readFlags, readSticky, readUnicode, readUnicodeSets, removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, constructorCall,
+                                execIgnoreLastIndex, substringNode, advanceStringIndex, sizeIsZero, resultIsNull, stickyFlagSet, prematureReturnBranch);
             }
         }
 
