@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -132,9 +132,10 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
         @Specialization
         protected double utc(Object[] args,
                         @Cached JSToNumberNode toNumberNode) {
-            double[] argsEvaluated = new double[args.length];
+            int usedArgCount = Math.min(args.length, DateFunction.UTC.getLength());
+            double[] argsEvaluated = new double[usedArgCount];
             boolean isNaN = false;
-            for (int i = 0; i < args.length; i++) {
+            for (int i = 0; i < usedArgCount; i++) {
                 double d = JSRuntime.doubleValue(toNumberNode.executeNumber(args[i]));
                 if (Double.isNaN(d)) {
                     isNaN = true;
