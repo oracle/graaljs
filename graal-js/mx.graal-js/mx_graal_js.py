@@ -287,7 +287,7 @@ def graaljs_cmd_line(args, append_default_args=True, jdk=None):
         jdk = get_jdk()
     runtime_jvm_args = mx.get_runtime_jvm_args(['GRAALJS_LAUNCHER', 'GRAALJS']
             + mx_truffle.resolve_truffle_dist_names()
-            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:INSIGHT_HEAP'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
+            + (['tools:CHROMEINSPECTOR', 'tools:DAP', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:INSIGHT_HEAP'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
             + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []),
             jdk=jdk)
     main_dist = mx.distribution('GRAALJS_LAUNCHER')
@@ -327,7 +327,7 @@ def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_cla
     jdk = get_jdk()
     runtime_jvm_args = mx.get_runtime_jvm_args(['TRUFFLE_JS_TESTS']
             + mx_truffle.resolve_truffle_dist_names()
-            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
+            + (['tools:CHROMEINSPECTOR', 'tools:DAP', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
             + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else [])
             + ['NASHORN_INTERNAL_TESTS'],
             jdk=jdk)
