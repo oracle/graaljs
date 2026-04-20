@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugStackTraceElement;
@@ -997,10 +998,11 @@ public class JSDebugTest {
     @Test
     public void testVarDeclInGlobalScope() {
         try (DebuggerSession session = startSession()) {
-            startEval(Source.create("js", "" +
-                            "debugger;\n" +
-                            "gv *= 2;\n" +
-                            "debugger;\n"));
+            startEval(Source.create("js", """
+                            debugger;
+                            gv *= 2;
+                            debugger;
+                            """));
 
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
@@ -1060,10 +1062,11 @@ public class JSDebugTest {
     @Test
     public void testFunctionDeclInGlobalScope() {
         try (DebuggerSession session = startSession()) {
-            startEval(Source.create("js", "" +
-                            "var gv = 10;\n" +
-                            "debugger;\n" +
-                            "debugger;\n"));
+            startEval(Source.create("js", """
+                            var gv = 10;
+                            debugger;
+                            debugger;
+                            """));
 
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
@@ -1093,6 +1096,55 @@ public class JSDebugTest {
                 event.prepareContinue();
             });
             expectDone();
+        }
+    }
+
+    @Test
+    public void testLexicalDeclInGlobalScope() {
+        try (DebuggerSession session = startSession()) {
+            startEval(Source.create("js", """
+                            let gl = 40;
+                            const gc = 2;
+                            debugger;
+                            function f() {
+                              debugger;
+                              return gl + gc;
+                            }
+                            f();
+                            """));
+
+            SuspendedCallback verifyVariablesCallback = (SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+
+                DebugValue gl = frame.eval("gl");
+                assertEquals(40, gl.asInt());
+                DebugValue gc = frame.eval("gc");
+                assertEquals(2, gc.asInt());
+                DebugValue sum = frame.eval("gl + gc");
+                assertEquals(42, sum.asInt());
+
+                frame.eval("gl = 41");
+                gl = frame.eval("gl");
+                assertEquals(41, gl.asInt());
+                sum = frame.eval("gl + gc");
+                assertEquals(43, sum.asInt());
+                frame.eval("gl = 40");
+                gl = frame.eval("gl");
+                assertEquals(40, gl.asInt());
+
+                try {
+                    frame.eval("gc = 3");
+                    Assert.fail("Expected const assignment to fail");
+                } catch (DebugException ex) {
+                    assertTrue(ex.getMessage(), ex.getMessage().contains("Assignment to constant variable") || ex.getMessage().contains("const"));
+                }
+                assertEquals(2, frame.eval("gc").asInt());
+
+                event.prepareContinue();
+            };
+            expectSuspended(verifyVariablesCallback);
+            expectSuspended(verifyVariablesCallback);
+            assertEquals("42", expectDone());
         }
     }
 

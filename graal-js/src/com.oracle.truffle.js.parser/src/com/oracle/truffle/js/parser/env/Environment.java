@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -260,9 +260,11 @@ public abstract class Environment {
                 } else if (!globalEnv.hasVarDeclaration(name)) {
                     wrapClosure = makeGlobalWrapClosure(wrapClosure, name);
                 }
-            } else if (current instanceof DebugEnvironment) {
-                if (((DebugEnvironment) current).hasMember(name)) {
+            } else if (current instanceof DebugEnvironment debugEnv) {
+                if (debugEnv.hasMember(name)) {
                     wrapClosure = makeDebugWrapClosure(wrapClosure, name, frameLevel);
+                } else {
+                    wrapClosure = makeGlobalWrapClosure(wrapClosure, name);
                 }
             } else {
                 int effectiveScopeLevel = scopeLevel;
