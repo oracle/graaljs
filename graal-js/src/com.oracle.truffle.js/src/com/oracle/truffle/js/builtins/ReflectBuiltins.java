@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -71,6 +70,7 @@ import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
+import com.oracle.truffle.js.nodes.access.OwnPropertyKeysNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
@@ -434,41 +434,21 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
     }
 
     @ImportStatic({JSConfig.class})
-    public abstract static class ReflectOwnKeysNode extends ReflectOperation {
+    public abstract static class ReflectOwnKeysNode extends JSBuiltinNode {
 
         public ReflectOwnKeysNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject reflectOwnKeys(JSObject target,
-                        @Cached JSClassProfile jsclassProfile,
+        protected JSDynamicObject reflectOwnKeys(Object target,
+                        @Cached OwnPropertyKeysNode ownPropertyKeysNode,
                         @Cached ListSizeNode listSize) {
-            List<Object> list = JSObject.ownPropertyKeys(target, jsclassProfile);
+            List<Object> list = ownPropertyKeysNode.execute(target);
             if (getContext().isOptionV8CompatibilityMode()) {
                 list = JSRuntime.filterPrivateSymbols(list);
             }
             return JSArray.createLazyArray(getContext(), getRealm(), list, listSize.execute(list));
-        }
-
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
-        protected Object doForeignObject(Object target,
-                        @CachedLibrary("target") InteropLibrary interop) {
-            if (interop.hasMembers(target)) {
-                try {
-                    return interop.getMembers(target);
-                } catch (UnsupportedMessageException e) {
-                    throw Errors.createTypeErrorInteropException(target, e, "getMembers", this);
-                }
-            } else {
-                throw Errors.createTypeErrorCalledOnNonObject();
-            }
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSObject(target)", "!isForeignObject(target)"})
-        protected Object doNonObject(Object target) {
-            throw Errors.createTypeErrorCalledOnNonObject();
         }
     }
 
