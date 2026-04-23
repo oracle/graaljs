@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectApplyNodeGen;
@@ -341,7 +342,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
     }
 
-    public abstract static class ReflectGetOwnPropertyDescriptorNode extends ReflectOperation {
+    public abstract static class ReflectGetOwnPropertyDescriptorNode extends JSBuiltinNode {
 
         public ReflectGetOwnPropertyDescriptorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -349,13 +350,19 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization
         protected JSDynamicObject reflectGetOwnPropertyDescriptor(Object target, Object key,
+                        @Cached IsObjectNode isObjectNode,
                         @Cached JSToPropertyKeyNode toPropertyKeyNode,
                         @Cached JSGetOwnPropertyNode getOwnPropertyNode,
-                        @Cached FromPropertyDescriptorNode fromPropertyDescriptorNode) {
-            ensureJSObject(target);
-            Object propertyKey = toPropertyKeyNode.execute(key);
-            PropertyDescriptor desc = getOwnPropertyNode.execute((JSDynamicObject) target, propertyKey);
-            return fromPropertyDescriptorNode.execute(desc, getContext());
+                        @Cached FromPropertyDescriptorNode fromPropertyDescriptorNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (isObjectNode.executeBoolean(target)) {
+                Object propertyKey = toPropertyKeyNode.execute(key);
+                PropertyDescriptor desc = getOwnPropertyNode.execute(target, propertyKey);
+                return fromPropertyDescriptorNode.execute(desc, getContext());
+            } else {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorCalledOnNonObject();
+            }
         }
     }
 

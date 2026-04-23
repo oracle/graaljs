@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.Property;
@@ -60,6 +62,8 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.GetPropertyProxyValueNodeGen;
 import com.oracle.truffle.js.nodes.array.JSArrayGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
@@ -67,6 +71,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -81,7 +86,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  *
  * Property descriptor entries not requested may be omitted for better performance.
  */
-@ImportStatic({JSRuntime.class, JSShape.class})
+@ImportStatic({JSRuntime.class, JSShape.class, JSConfig.class})
 public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     private final boolean needValue;
     private final boolean needEnumerability;
@@ -117,7 +122,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return JSGetOwnPropertyNodeGen.create(needValue, needEnumerability, needConfigurability, needWritability, allowCaching);
     }
 
-    public abstract PropertyDescriptor execute(JSDynamicObject object, Object key);
+    public abstract PropertyDescriptor execute(Object object, Object key);
 
     /** @see JSArray#getOwnProperty */
     @SuppressWarnings("truffle-static-method")
@@ -230,6 +235,17 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
                     @Cached JSClassProfile jsclassProfile) {
         assert !JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty() && !JSArray.isJSArray(thisObj) && !JSString.isJSString(thisObj) : thisObj;
         return JSObject.getOwnProperty(thisObj, key, jsclassProfile);
+    }
+
+    @Specialization(guards = "!isJSDynamicObject(thisObj)")
+    static PropertyDescriptor doForeignObject(Object thisObj, Object propertyKey,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                    @Cached ImportValueNode importValueNode,
+                    @Cached TruffleString.ReadCharUTF16Node charAtNode) {
+        if (propertyKey instanceof TruffleString propertyName) {
+            return JSInteropUtil.getOwnProperty(thisObj, propertyName, interop, importValueNode, charAtNode);
+        }
+        return null;
     }
 
     private long toArrayIndex(Object propertyKey, ToArrayIndexNode toArrayIndexNode) {
