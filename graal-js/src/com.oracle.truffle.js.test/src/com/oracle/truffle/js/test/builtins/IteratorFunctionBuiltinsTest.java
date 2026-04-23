@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,21 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
+
 public class IteratorFunctionBuiltinsTest {
+
     @Test
     public void testConstructor() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, String.valueOf(2025)).build()) {
             try {
                 context.eval(JavaScriptLanguage.ID, "new Iterator()");
                 Assert.fail("No exception thrown");
@@ -68,13 +68,14 @@ public class IteratorFunctionBuiltinsTest {
             Assert.assertTrue(result.hasMember("map"));
             Assert.assertTrue(result.getMember("map").canExecute());
         }
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, String.valueOf(2024)).build()) {
+            Assert.assertFalse("'Iterator' in globalThis", context.eval(JavaScriptLanguage.ID, "'Iterator' in globalThis").asBoolean());
+        }
     }
 
     @Test
     public void testFrom() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, String.valueOf(2025)).build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.from({[Symbol.iterator]: () => ({next: () => ({done: true})})})");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasMember("next"));

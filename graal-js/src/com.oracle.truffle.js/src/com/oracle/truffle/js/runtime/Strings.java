@@ -44,14 +44,14 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Locale;
 
+import org.graalvm.shadowed.com.ibm.icu.text.CaseMap;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
-
-import org.graalvm.shadowed.com.ibm.icu.text.CaseMap;
 
 public final class Strings {
 
@@ -180,7 +180,9 @@ public final class Strings {
     public static final TruffleString KEYS = constant("keys");
     public static final TruffleString LAST_CHUNK_HANDLING = constant("lastChunkHandling");
     public static final TruffleString LENGTH = constant("length");
+    public static final TruffleString LONGEST = constant("longest");
     public static final TruffleString MESSAGE = constant("message");
+    public static final TruffleString MODE = constant("mode");
     public static final TruffleString MODULE = constant("module");
     public static final TruffleString NAME = constant("name");
     public static final TruffleString NATIVE = constant("native");
@@ -191,6 +193,7 @@ public final class Strings {
     public static final TruffleString UC_NUMBER = constant("Number");
     public static final TruffleString OBJECT = constant("object");
     public static final TruffleString OMIT_PADDING = constant("omitPadding");
+    public static final TruffleString PADDING = constant("padding");
     public static final TruffleString PARSE = constant("parse");
     public static final TruffleString POS = constant("pos");
     public static final TruffleString PRIMITIVE_VALUE = constant("PrimitiveValue");
@@ -202,7 +205,9 @@ public final class Strings {
     public static final TruffleString RESOLVE = constant("resolve");
     public static final TruffleString RETURN = constant("return");
     public static final TruffleString SCRIPT = constant("script");
+    public static final TruffleString SHORTEST = constant("shortest");
     public static final TruffleString SOURCE = constant("source");
+    public static final TruffleString STRICT = constant("strict");
     public static final TruffleString STRING = constant("string");
     public static final TruffleString UC_STRING = constant("String");
     public static final TruffleString SUPER = constant("super");

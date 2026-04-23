@@ -374,6 +374,7 @@ public class JSContext {
         IteratorDrop,
         IteratorIndexed,
         IteratorFlatMap,
+        IteratorZip,
         CollatorCompare,
         DateTimeFormatFormat,
         NumberFormatFormat,

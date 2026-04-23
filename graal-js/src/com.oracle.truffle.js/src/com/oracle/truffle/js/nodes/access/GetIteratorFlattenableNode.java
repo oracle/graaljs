@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -74,6 +75,7 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
 
     public abstract IteratorRecord execute(Object iteratedObject);
 
+    @NeverDefault
     public static GetIteratorFlattenableNode create(boolean rejectStrings, boolean async, JSContext context) {
         return GetIteratorFlattenableNodeGen.create(rejectStrings, async, context);
     }
