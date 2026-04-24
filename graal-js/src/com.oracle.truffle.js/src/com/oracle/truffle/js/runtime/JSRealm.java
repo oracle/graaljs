@@ -355,6 +355,8 @@ public class JSRealm {
     private Object evalFunctionObject;
     private final Object applyFunctionObject;
     private final Object callFunctionObject;
+    private final Object objectToStringFunctionObject;
+    private final Object errorToStringFunctionObject;
     private Object reflectApplyFunctionObject;
     private Object reflectConstructFunctionObject;
     private Object commonJSRequireFunctionObject;
@@ -696,6 +698,7 @@ public class JSRealm {
 
         this.applyFunctionObject = JSDynamicObject.getOrNull(getFunctionPrototype(), Strings.APPLY);
         this.callFunctionObject = JSDynamicObject.getOrNull(getFunctionPrototype(), Strings.CALL);
+        this.objectToStringFunctionObject = JSDynamicObject.getOrNull(getObjectPrototype(), Strings.TO_STRING);
 
         JSConstructor ctor;
         ctor = JSArray.createConstructor(this);
@@ -761,6 +764,7 @@ public class JSRealm {
         this.errorConstructors = new JSFunctionObject[JSErrorType.errorTypes().length];
         this.errorPrototypes = new JSDynamicObject[JSErrorType.errorTypes().length];
         initializeErrorConstructors();
+        this.errorToStringFunctionObject = JSDynamicObject.getOrNull(getErrorPrototype(JSErrorType.Error), Strings.TO_STRING);
         ctor = JSError.createCallSiteConstructor(this);
         this.callSiteConstructor = ctor.getFunctionObject();
         this.callSitePrototype = ctor.getPrototype();
@@ -1800,6 +1804,14 @@ public class JSRealm {
 
     public final Object getCallFunctionObject() {
         return callFunctionObject;
+    }
+
+    public final Object getObjectToStringFunctionObject() {
+        return objectToStringFunctionObject;
+    }
+
+    public final Object getErrorToStringFunctionObject() {
+        return errorToStringFunctionObject;
     }
 
     public final Object getReflectApplyFunctionObject() {

@@ -55,7 +55,9 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -66,6 +68,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Utility class to to create all kinds of ECMAScript-defined Error Objects.
  */
 public final class Errors {
+
+    private static final TruffleString V8_RECEIVER_PREFIX = Strings.constant("#<");
 
     private Errors() {
         // don't instantiate this
@@ -352,6 +356,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorInvalidPropertyDescriptor(Object descriptor, Node originatingNode) {
+        if (isV8CompatibilityMode()) {
+            return Errors.createTypeError("Invalid property descriptor. Cannot both specify accessors and a value or writable attribute, " + noSideEffectsToString(descriptor), originatingNode);
+        }
+        return Errors.createTypeError("Invalid property. A property cannot both have accessors and be writable or have a value", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorInvalidPrototype(Object value) {
         return Errors.createTypeError("Object prototype may only be an Object or null: " + JSRuntime.safeToString(value));
     }
@@ -405,12 +417,14 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorIncompatibleReceiver(String methodName, Object receiver) {
-        return Errors.createTypeError("Method " + methodName + " called on incompatible receiver " + JSRuntime.safeToString(receiver));
+        String receiverString = isV8CompatibilityMode() ? noSideEffectsToString(receiver) : JSRuntime.safeToString(receiver).toString();
+        return Errors.createTypeError("Method " + methodName + " called on incompatible receiver " + receiverString);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorIncompatibleReceiver(Object what) {
-        return Errors.createTypeError("incompatible receiver: " + JSRuntime.safeToString(what));
+        String receiverString = isV8CompatibilityMode() ? noSideEffectsToString(what) : JSRuntime.safeToString(what).toString();
+        return Errors.createTypeError("incompatible receiver: " + receiverString);
     }
 
     @TruffleBoundary
@@ -428,8 +442,11 @@ public final class Errors {
     public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj, Node originatingNode) {
         String message;
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
-        if (language.getJSContext().isOptionNashornCompatibilityMode()) {
+        JSContext context = language.getJSContext();
+        if (context.isOptionNashornCompatibilityMode()) {
             message = quoteIfString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj);
+        } else if (context.isOptionV8CompatibilityMode()) {
+            message = "Cannot assign to read only property '" + keyToString(key) + "' of object '" + noSideEffectsToString(thisObj) + "'";
         } else {
             message = "Cannot assign to read only property '" + keyToString(key) + "' of " + JSRuntime.safeToString(thisObj);
         }
@@ -515,15 +532,19 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetAccessorProperty(Object key, JSDynamicObject store, Node originatingNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
-        String message = language.getJSContext().isOptionNashornCompatibilityMode()
+        JSContext context = language.getJSContext();
+        String message = context.isOptionNashornCompatibilityMode()
                         ? "Cannot set property \"%s\" of %s that has only a getter"
                         : "Cannot set property %s of %s which has only a getter";
-        return createTypeError(String.format(message, keyToString(key), JSObject.defaultToString(store)), originatingNode);
+        String storeString = context.isOptionV8CompatibilityMode() ? noSideEffectsToString(store) : Strings.toJavaString(JSObject.defaultToString(store));
+        return createTypeError(String.format(message, keyToString(key), storeString), originatingNode);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotGetAccessorProperty(Object key, JSDynamicObject store, Node originatingNode) {
-        return createTypeError(String.format("Cannot get property %s of %s which has only a setter", keyToString(key), JSObject.defaultToString(store)), originatingNode);
+        JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
+        String receiverString = language.getJSContext().isOptionV8CompatibilityMode() ? noSideEffectsToString(store) : Strings.toJavaString(JSObject.defaultToString(store));
+        return createTypeError(String.format("Cannot get property %s of %s which has only a setter", keyToString(key), receiverString), originatingNode);
     }
 
     @TruffleBoundary
@@ -837,7 +858,82 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotDeletePropertyOf(Object key, Object object) {
+        if (isV8CompatibilityMode()) {
+            return createTypeError("Cannot delete property '" + keyToString(key) + "' of " + noSideEffectsToString(object));
+        }
         return createTypeError("Cannot delete property \"" + keyToString(key) + "\" of " + JSRuntime.safeToString(object));
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorStrictDeleteProperty(Object key, Object object) {
+        if (isV8CompatibilityMode()) {
+            return createTypeErrorCannotDeletePropertyOf(key, object);
+        }
+        return createTypeErrorNotConfigurableProperty(key);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorPropertyNotFunction(Object value, Object propertyKey, Object object, Node originatingNode) {
+        if (isV8CompatibilityMode()) {
+            return createTypeError("'" + keyToString(value) + "' returned for property '" + keyToString(propertyKey) + "' of object '" + noSideEffectsToString(object) + "' is not a function",
+                            originatingNode);
+        }
+        return createTypeErrorNotAFunction(value, originatingNode);
+    }
+
+    private static boolean isV8CompatibilityMode() {
+        return JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionV8CompatibilityMode();
+    }
+
+    @TruffleBoundary
+    private static String noSideEffectsToString(Object value) {
+        return Strings.toJavaString(noSideEffectsToTruffleString(value));
+    }
+
+    private static TruffleString noSideEffectsToTruffleString(Object value) {
+        TruffleString maybeString = noSideEffectsToMaybeString(value);
+        if (maybeString != null) {
+            return maybeString;
+        } else if (value instanceof JSObject receiver) {
+            return JSObject.defaultToString(receiver);
+        }
+        return JSRuntime.safeToString(value);
+    }
+
+    private static TruffleString noSideEffectsToMaybeString(Object value) {
+        if (JSProxy.isJSProxy(value)) {
+            return noSideEffectsToTruffleString(JSProxy.getTargetNonProxy((JSDynamicObject) value));
+        } else if (!(value instanceof JSObject)) {
+            return null;
+        }
+        JSObject receiver = (JSObject) value;
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        Object toString = JSRuntime.getDataProperty(receiver, Strings.TO_STRING);
+        if (JSError.isJSError(receiver) || toString == realm.getErrorToStringFunctionObject()) {
+            return noSideEffectsErrorToString(receiver);
+        } else if (toString == realm.getObjectToStringFunctionObject()) {
+            Object constructor = JSRuntime.getDataProperty(receiver, JSObject.CONSTRUCTOR);
+            if (constructor instanceof JSFunctionObject function) {
+                TruffleString name = JSFunction.getName(function);
+                if (name != null && !Strings.isEmpty(name)) {
+                    return Strings.concatAll(V8_RECEIVER_PREFIX, name, Strings.ANGLE_BRACKET_CLOSE);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static TruffleString noSideEffectsErrorToString(JSObject errorObj) {
+        Object name = JSRuntime.getDataProperty(errorObj, Strings.NAME);
+        TruffleString nameStr = name instanceof TruffleString str ? str : Strings.EMPTY_STRING;
+        Object message = JSRuntime.getDataProperty(errorObj, Strings.MESSAGE);
+        TruffleString messageStr = message instanceof TruffleString str ? str : Strings.EMPTY_STRING;
+        if (Strings.isEmpty(nameStr)) {
+            return messageStr;
+        } else if (Strings.isEmpty(messageStr)) {
+            return nameStr;
+        }
+        return Strings.concatAll(nameStr, Strings.COLON_SPACE, messageStr);
     }
 
     @TruffleBoundary

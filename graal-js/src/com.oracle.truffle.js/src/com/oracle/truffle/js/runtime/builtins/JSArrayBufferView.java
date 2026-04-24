@@ -558,7 +558,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             if (numericIndex != Undefined.instance) {
                 if (hasNumericIndex(thisObj, numericIndex)) {
                     if (isStrict) {
-                        throw Errors.createTypeErrorNotConfigurableProperty(key);
+                        throw Errors.createTypeErrorStrictDeleteProperty(key, thisObj);
                     }
                     return false;
                 } else {

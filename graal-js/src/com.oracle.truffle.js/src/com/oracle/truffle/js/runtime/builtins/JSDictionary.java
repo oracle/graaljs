@@ -150,7 +150,7 @@ public final class JSDictionary extends JSNonProxy {
         if (desc != null) {
             if (!desc.getConfigurable()) {
                 if (isStrict) {
-                    throw Errors.createTypeErrorNotConfigurableProperty(key);
+                    throw Errors.createTypeErrorStrictDeleteProperty(key, thisObj);
                 }
                 return false;
             }

@@ -218,7 +218,7 @@ public abstract class JSNonProxy extends JSClass {
         if (foundProperty != null) {
             if (!JSProperty.isConfigurable(foundProperty)) {
                 if (isStrict) {
-                    throw Errors.createTypeErrorNotConfigurableProperty(key);
+                    throw Errors.createTypeErrorStrictDeleteProperty(key, object);
                 }
                 return false;
             }

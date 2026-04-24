@@ -201,7 +201,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         TruffleString name = (TruffleString) key;
         if (ns.getModuleExportsList().containsKey(name)) {
             if (isStrict) {
-                throw Errors.createTypeErrorNotConfigurableProperty(key);
+                throw Errors.createTypeErrorStrictDeleteProperty(key, thisObj);
             } else {
                 return false;
             }
