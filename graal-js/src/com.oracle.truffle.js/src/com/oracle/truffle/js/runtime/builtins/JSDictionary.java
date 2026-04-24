@@ -58,7 +58,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -151,7 +150,7 @@ public final class JSDictionary extends JSNonProxy {
         if (desc != null) {
             if (!desc.getConfigurable()) {
                 if (isStrict) {
-                    throw Errors.createTypeErrorStrictDeleteProperty(JavaScriptLanguage.get(null).getJSContext(), key, thisObj);
+                    throw Errors.createTypeErrorStrictDeleteProperty(key, thisObj);
                 }
                 return false;
             }

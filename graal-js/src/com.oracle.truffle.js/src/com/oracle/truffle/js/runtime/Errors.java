@@ -865,8 +865,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorStrictDeleteProperty(JSContext context, Object key, Object object) {
-        if (context.isOptionV8CompatibilityMode()) {
+    public static JSException createTypeErrorStrictDeleteProperty(Object key, Object object) {
+        if (isV8CompatibilityMode()) {
             return createTypeErrorCannotDeletePropertyOf(key, object);
         }
         return createTypeErrorNotConfigurableProperty(key);

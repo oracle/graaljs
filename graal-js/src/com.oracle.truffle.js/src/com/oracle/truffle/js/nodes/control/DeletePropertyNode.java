@@ -174,7 +174,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         if (foundProperty != JSProperty.MISSING) {
             if (!JSProperty.isConfigurable(foundProperty)) {
                 if (strict) {
-                    throw Errors.createTypeErrorStrictDeleteProperty(getJSContext(), propertyKey, targetObject);
+                    throw Errors.createTypeErrorStrictDeleteProperty(propertyKey, targetObject);
                 } else {
                     return false;
                 }

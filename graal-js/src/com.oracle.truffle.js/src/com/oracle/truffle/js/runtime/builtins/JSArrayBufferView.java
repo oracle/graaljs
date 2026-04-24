@@ -51,7 +51,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.Uint8ArrayBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -559,7 +558,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             if (numericIndex != Undefined.instance) {
                 if (hasNumericIndex(thisObj, numericIndex)) {
                     if (isStrict) {
-                        throw Errors.createTypeErrorStrictDeleteProperty(JavaScriptLanguage.get(null).getJSContext(), key, thisObj);
+                        throw Errors.createTypeErrorStrictDeleteProperty(key, thisObj);
                     }
                     return false;
                 } else {

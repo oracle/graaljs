@@ -54,7 +54,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -202,7 +201,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         TruffleString name = (TruffleString) key;
         if (ns.getModuleExportsList().containsKey(name)) {
             if (isStrict) {
-                throw Errors.createTypeErrorStrictDeleteProperty(JavaScriptLanguage.get(null).getJSContext(), key, thisObj);
+                throw Errors.createTypeErrorStrictDeleteProperty(key, thisObj);
             } else {
                 return false;
             }
