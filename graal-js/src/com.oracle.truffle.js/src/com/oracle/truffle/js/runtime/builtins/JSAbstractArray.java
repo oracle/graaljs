@@ -53,6 +53,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -342,6 +343,9 @@ public abstract class JSAbstractArray extends JSNonProxy {
                         return true;
                     } else if (!desc.getWritable()) {
                         if (isStrict) {
+                            if (JavaScriptLanguage.get(encapsulatingNode).getJSContext().isOptionV8CompatibilityMode()) {
+                                throw Errors.createTypeErrorNotWritableProperty(index, thisObj, encapsulatingNode);
+                            }
                             throw Errors.createTypeError("Cannot assign to read only property '" + index + "' of " + JSObject.defaultToString(thisObj));
                         }
                         return true;

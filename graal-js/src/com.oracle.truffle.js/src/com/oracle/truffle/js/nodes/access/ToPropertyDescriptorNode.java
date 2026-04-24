@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -153,7 +153,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         // 9.
         if ((hasGet || hasSet) && (hasValue || hasWritable)) {
             errorBranch.enter(this);
-            throw Errors.createTypeError("Invalid property. A property cannot both have accessors and be writable or have a value");
+            throw Errors.createTypeErrorInvalidPropertyDescriptor(obj, this);
         }
         return desc;
     }

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -218,7 +219,7 @@ public abstract class JSNonProxy extends JSClass {
         if (foundProperty != null) {
             if (!JSProperty.isConfigurable(foundProperty)) {
                 if (isStrict) {
-                    throw Errors.createTypeErrorNotConfigurableProperty(key);
+                    throw Errors.createTypeErrorStrictDeleteProperty(JavaScriptLanguage.get(null).getJSContext(), key, object);
                 }
                 return false;
             }

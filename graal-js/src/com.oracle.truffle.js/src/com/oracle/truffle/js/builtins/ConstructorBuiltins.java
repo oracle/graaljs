@@ -2970,6 +2970,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object adder = getAdderFn(mapObj, Strings.SET);
             if (!isCallableNode.executeBoolean(adder)) {
                 errorBranch.enter(node);
+                if (getContext().isOptionV8CompatibilityMode()) {
+                    throw Errors.createTypeErrorPropertyNotFunction(adder, Strings.SET, mapObj, this);
+                }
                 throw Errors.createTypeError("function set not callable");
             }
             IteratorRecord iter = getIteratorNode.execute(node, iterable);
@@ -3032,6 +3035,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object adder = getAdderFn(setObj, Strings.ADD);
             if (!isCallableNode.executeBoolean(adder)) {
                 errorBranch.enter(node);
+                if (getContext().isOptionV8CompatibilityMode()) {
+                    throw Errors.createTypeErrorPropertyNotFunction(adder, Strings.ADD, setObj, this);
+                }
                 throw Errors.createTypeError("function add not callable");
             }
             IteratorRecord iter = getIteratorNode.execute(node, iterable);
