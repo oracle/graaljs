@@ -2248,8 +2248,13 @@ def configure_intl(o):
   if not icu_data_path.is_file() and Path(compressed_data).is_file():
     # unpack. deps/icu is a temporary path
     if icu_tmp_path.is_dir():
-      shutil.rmtree(icu_tmp_path)
-    icu_tmp_path.mkdir()
+      for child in icu_tmp_path.iterdir():
+        if child.is_dir() and not child.is_symlink():
+          shutil.rmtree(child)
+        else:
+          child.unlink()
+    else:
+      icu_tmp_path.mkdir()
     icu_data_path = icu_tmp_path / icu_data_file_l
     with icu_data_path.open(mode='wb') as outf:
         inf = bz2.BZ2File(compressed_data, 'rb')
