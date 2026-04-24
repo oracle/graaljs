@@ -15,6 +15,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implemented the [`Explicit Resource Management`](https://github.com/tc39/proposal-explicit-resource-management) proposal. It is available behind the experimental option (`--js.explicit-resource-management`).
 * Updated Node.js to version 24.14.1.
 * Limited Chrome inspector remote debugging to localhost.
+* Implemented the [`Joint Iteration`](https://github.com/tc39/proposal-joint-iteration) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Import Text`](https://github.com/tc39/proposal-import-text) proposal. It is available behind the experimental option (`--js.import-text`).
 * Implemented the [`Import Bytes`](https://github.com/tc39/proposal-import-bytes) proposal. It is available behind the experimental option (`--js.import-bytes`).
 * Removed support for legacy import assertions (`import ... assert {type: "..."}`) and the `--js.import-assertions` option; use import attributes (`import ... with {type: "..."}`, option `--js.import-attributes`) instead.
