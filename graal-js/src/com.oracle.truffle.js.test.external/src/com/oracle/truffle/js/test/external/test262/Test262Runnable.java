@@ -237,6 +237,7 @@ public class Test262Runnable extends TestRunnable {
                     "intl-normative-optional",
                     "iterator-helpers",
                     "iterator-sequencing",
+                    "joint-iteration",
                     "json-modules",
                     "json-parse-with-source",
                     "json-superset",
@@ -282,7 +283,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.Era-monthcode",
                     "IsHTMLDDA",
                     "await-dictionary",
-                    "joint-iteration",
                     "tail-call-optimization",
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
@@ -295,6 +295,7 @@ public class Test262Runnable extends TestRunnable {
                     "import-bytes",
                     "import-defer",
                     "import-text",
+                    "joint-iteration",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

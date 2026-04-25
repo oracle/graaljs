@@ -126,9 +126,13 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached("create(getContext())") @Shared IteratorCloseNode outerIteratorCloseNode) {
             thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
             var args = thisObj.getIteratorArgs();
-            IteratorRecord outerIterator = args.iterated;
-            if (outerIterator != null) {
-                outerIteratorCloseNode.executeVoid(outerIterator);
+            if (args instanceof IteratorFunctionBuiltins.IteratorZipArgs zipArgs) {
+                IteratorFunctionBuiltins.iteratorCloseAll(outerIteratorCloseNode, zipArgs.openIterators);
+            } else {
+                IteratorRecord outerIterator = args.iterated;
+                if (outerIterator != null) {
+                    outerIteratorCloseNode.executeVoid(outerIterator);
+                }
             }
             return createIterResultObjectNode.execute(Undefined.instance, true);
         }
@@ -141,30 +145,34 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             try {
                 var args = thisObj.getIteratorArgs();
-                IteratorRecord outerIterator = args.iterated;
-                IteratorRecord innerIterator = null;
+                if (args instanceof IteratorFunctionBuiltins.IteratorZipArgs zipArgs) {
+                    IteratorFunctionBuiltins.iteratorCloseAll(innerIteratorCloseNode, zipArgs.openIterators);
+                } else {
+                    IteratorRecord outerIterator = args.iterated;
+                    IteratorRecord innerIterator = null;
 
-                if (args instanceof IteratorFunctionBuiltins.ConcatArgs concatArgs) {
-                    assert concatArgs.innerAlive;
-                    innerIterator = concatArgs.innerIterator;
-                } else if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs flatMapArgs) {
-                    assert flatMapArgs.innerAlive;
-                    innerIterator = flatMapArgs.innerIterator;
-                }
-
-                if (innerIterator != null) {
-                    try {
-                        innerIteratorCloseNode.executeVoid(innerIterator);
-                    } catch (AbstractTruffleException e) {
-                        if (outerIterator != null) {
-                            outerIteratorCloseNode.executeAbrupt(outerIterator);
-                        }
-                        throw e;
+                    if (args instanceof IteratorFunctionBuiltins.ConcatArgs concatArgs) {
+                        assert concatArgs.innerAlive;
+                        innerIterator = concatArgs.innerIterator;
+                    } else if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs flatMapArgs) {
+                        assert flatMapArgs.innerAlive;
+                        innerIterator = flatMapArgs.innerIterator;
                     }
-                }
 
-                if (outerIterator != null) {
-                    outerIteratorCloseNode.executeVoid(outerIterator);
+                    if (innerIterator != null) {
+                        try {
+                            innerIteratorCloseNode.executeVoid(innerIterator);
+                        } catch (AbstractTruffleException e) {
+                            if (outerIterator != null) {
+                                outerIteratorCloseNode.executeAbrupt(outerIterator);
+                            }
+                            throw e;
+                        }
+                    }
+
+                    if (outerIterator != null) {
+                        outerIteratorCloseNode.executeVoid(outerIterator);
+                    }
                 }
             } finally {
                 thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
