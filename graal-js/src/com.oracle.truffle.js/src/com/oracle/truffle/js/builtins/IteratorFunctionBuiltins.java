@@ -63,6 +63,8 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
+import com.oracle.truffle.js.nodes.access.OwnPropertyKeysNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
@@ -84,7 +86,6 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -393,6 +394,8 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                         @Cached("create(MODE, getContext())") PropertyGetNode getModeNode,
                         @Cached("create(PADDING, getContext())") PropertyGetNode getPaddingNode,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
+                        @Cached OwnPropertyKeysNode ownPropertyKeysNode,
+                        @Cached JSGetOwnPropertyNode getOwnPropertyNode,
                         @Cached ListSizeNode listSize,
                         @Cached ListGetNode listGet,
                         @Cached("create(true, false, getContext())") GetIteratorFlattenableNode getIteratorFlattenableNode,
@@ -403,13 +406,9 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 errorBranch.enter(node);
                 throw Errors.createTypeErrorNotAnObject(iterables, this);
             }
-            if (!(iterables instanceof JSDynamicObject iterablesObject)) {
-                errorBranch.enter(node);
-                throw Errors.createTypeError("Iterator.zipKeyed requires a JavaScript object");
-            }
             ZipOptions zipOptions = getZipOptions(options, isObjectNode, getOptionsObjectNode, getModeNode, getPaddingNode, equalNode, node, errorBranch);
 
-            List<Object> ownKeys = JSObject.ownPropertyKeys(iterablesObject);
+            List<Object> ownKeys = ownPropertyKeysNode.execute(iterables);
             int ownKeysSize = listSize.execute(ownKeys);
             SimpleArrayList<Object> keys = new SimpleArrayList<>(ownKeysSize);
             SimpleArrayList<IteratorRecord> iterators = new SimpleArrayList<>(ownKeysSize);
@@ -417,7 +416,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 Object key = listGet.execute(ownKeys, i);
                 PropertyDescriptor desc;
                 try {
-                    desc = JSObject.getOwnProperty(iterablesObject, key);
+                    desc = getOwnPropertyNode.execute(iterables, key);
                 } catch (AbstractTruffleException ex) {
                     errorBranch.enter(node);
                     iteratorCloseAllAbrupt(iteratorCloseNode, iterators);
