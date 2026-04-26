@@ -228,6 +228,7 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -2358,7 +2359,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
-    @ImportStatic({JSConfig.class})
+    @ImportStatic({JSAbstractBuffer.class, JSConfig.class})
     public abstract static class ConstructArrayBufferNode extends ConstructWithNewTargetNode {
         private final boolean useShared;
 
@@ -2369,8 +2370,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
         protected JSDynamicObject constructFromLength(JSDynamicObject newTarget, Object length, Object options,
-                        @Cached JSToIndexNode toIndexNode,
-                        @Cached GetArrayBufferMaxByteLengthOption getMaxByteLengthOption,
+                        @Cached @Shared JSToIndexNode toIndexNode,
+                        @Cached @Shared GetArrayBufferMaxByteLengthOption getMaxByteLengthOption,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             long byteLength = toIndexNode.executeLong(length);
@@ -2406,7 +2407,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return arrayBuffer;
         }
 
-        @Specialization(guards = {"bufferInterop.hasBufferElements(buffer)"})
+        @Specialization
+        protected JSDynamicObject constructFromJSArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject length, Object options,
+                        @Cached @Shared JSToIndexNode toIndexNode,
+                        @Cached @Shared GetArrayBufferMaxByteLengthOption getMaxByteLengthOption,
+                        @Cached @Shared InlinedBranchProfile errorBranch) {
+            return constructFromLength(newTarget, length, options, toIndexNode, getMaxByteLengthOption, errorBranch, null);
+        }
+
+        @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "bufferInterop.hasBufferElements(buffer)"})
         protected JSDynamicObject constructFromInteropBuffer(JSDynamicObject newTarget, Object buffer, @SuppressWarnings("unused") Object options,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared @SuppressWarnings("unused") InteropLibrary bufferInterop) {
