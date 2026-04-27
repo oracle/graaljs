@@ -2112,9 +2112,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSNumberObject constructNumber(JSDynamicObject newTarget, Object[] args,
                         @Cached JSToNumericNode toNumericNode,
                         @Cached JSNumericToNumberNode toNumberFromNumericNode) {
+            Number number = toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]));
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            Number number = toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]));
             return JSNumber.create(getContext(), realm, proto, number);
         }
 
