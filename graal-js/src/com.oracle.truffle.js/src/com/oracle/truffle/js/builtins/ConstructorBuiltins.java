@@ -1062,9 +1062,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSBooleanObject constructBoolean(JSDynamicObject newTarget, Object value,
                         @Cached(inline = true) JSToBooleanNode toBoolean) {
+            boolean booleanValue = toBoolean.executeBoolean(this, value);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSBoolean.create(getContext(), realm, proto, toBoolean.executeBoolean(this, value));
+            return JSBoolean.create(getContext(), realm, proto, booleanValue);
         }
 
         @Override
