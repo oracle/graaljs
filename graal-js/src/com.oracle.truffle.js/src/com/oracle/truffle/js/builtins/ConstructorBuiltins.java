@@ -1097,8 +1097,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"args.length == 0"})
         protected final JSObject constructDateZero(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             JSRealm realm = getRealm();
+            long dateValue = realm.currentTimeMillis();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSDate.create(getContext(), realm, proto, realm.currentTimeMillis());
+            return JSDate.create(getContext(), realm, proto, dateValue);
         }
 
         protected static Object arg0(Object[] args) {
