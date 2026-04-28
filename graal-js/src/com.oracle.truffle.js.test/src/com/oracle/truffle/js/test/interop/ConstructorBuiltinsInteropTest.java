@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,10 +43,18 @@ package com.oracle.truffle.js.test.interop;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
@@ -95,6 +103,58 @@ public class ConstructorBuiltinsInteropTest {
         checkArrayWithForeignLengthOutOfBounds(ForeignBoxedObject.createNew(-1));
         checkArrayWithForeignLengthOutOfBounds(ForeignBoxedObject.createNew(Long.MAX_VALUE));
         checkArrayWithForeignLengthOutOfBounds(ForeignBoxedObject.createNew(Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    public void testBooleanConstructorForeignBooleanOrder() {
+        List<String> events = new ArrayList<>();
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value bindings = context.getBindings(JavaScriptLanguage.ID);
+            bindings.putMember("foreignBoolean", new RecordingForeignBoolean(events));
+            bindings.putMember("recordPrototypeAccess", (ProxyExecutable) args -> {
+                events.add("prototype");
+                return null;
+            });
+            String code = """
+                            var newTarget = new Proxy(function() {}, {
+                                get(target, key, receiver) {
+                                    if (key === 'prototype') {
+                                        recordPrototypeAccess();
+                                        return Boolean.prototype;
+                                    }
+                                    return Reflect.get(target, key, receiver);
+                                }
+                            });
+                            var boxed = Reflect.construct(Boolean, [foreignBoolean], newTarget);
+                            Object.getPrototypeOf(boxed) === Boolean.prototype && boxed.valueOf()""";
+            Value result = context.eval(JavaScriptLanguage.ID, code);
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+        assertEquals("boolean", events.get(0));
+        // Truffle assertions can record additional boolean conversions before prototype access
+        assertEquals(events.size() - 1, events.indexOf("prototype"));
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class RecordingForeignBoolean implements TruffleObject {
+        private final List<String> events;
+
+        RecordingForeignBoolean(List<String> events) {
+            this.events = events;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isBoolean() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean asBoolean() {
+            events.add("boolean");
+            return true;
+        }
     }
 
 }

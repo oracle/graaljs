@@ -1062,9 +1062,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSBooleanObject constructBoolean(JSDynamicObject newTarget, Object value,
                         @Cached(inline = true) JSToBooleanNode toBoolean) {
+            boolean booleanValue = toBoolean.executeBoolean(this, value);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSBoolean.create(getContext(), realm, proto, toBoolean.executeBoolean(this, value));
+            return JSBoolean.create(getContext(), realm, proto, booleanValue);
         }
 
         @Override
@@ -1097,8 +1098,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"args.length == 0"})
         protected final JSObject constructDateZero(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             JSRealm realm = getRealm();
+            long dateValue = realm.currentTimeMillis();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSDate.create(getContext(), realm, proto, realm.currentTimeMillis());
+            return JSDate.create(getContext(), realm, proto, dateValue);
         }
 
         protected static Object arg0(Object[] args) {
@@ -2112,9 +2114,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSNumberObject constructNumber(JSDynamicObject newTarget, Object[] args,
                         @Cached JSToNumericNode toNumericNode,
                         @Cached JSNumericToNumberNode toNumberFromNumericNode) {
+            Number number = toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]));
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            Number number = toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]));
             return JSNumber.create(getContext(), realm, proto, number);
         }
 
