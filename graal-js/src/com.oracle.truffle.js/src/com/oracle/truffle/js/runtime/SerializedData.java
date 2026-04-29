@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -359,7 +360,6 @@ public class SerializedData {
 
     private void serializeWebAssemblyModule(JSWebAssemblyModuleObject moduleObject) {
         data.add(Type.WebAssemblyModule);
-        data.add(moduleObject.getWASMModule());
         data.add(moduleObject.getWASMSource());
     }
 
@@ -533,8 +533,8 @@ public class SerializedData {
     }
 
     private static Object deserializeWebAssemblyModule(JSRealm realm, Iterator<Object> iter) {
-        Object wasmModule = iter.next();
         Source wasmSource = (Source) iter.next();
+        Object wasmModule = WebAssemblyBuiltins.moduleDecode(realm, wasmSource);
         return JSWebAssemblyModule.create(realm.getContext(), realm, wasmModule, wasmSource);
     }
 
