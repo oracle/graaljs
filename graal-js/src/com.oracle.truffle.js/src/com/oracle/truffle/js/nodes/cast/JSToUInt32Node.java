@@ -147,7 +147,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isSafeInteger(value)")
     protected static SafeInteger doLongNotSafeInteger(long value) {
-        return SafeInteger.valueOf((long) (double) value & 0xFFFFFFFFL);
+        return SafeInteger.valueOf(JSRuntime.toUInt32((double) value));
     }
 
     @Specialization(guards = "isDoubleInLongCastRange(value)")

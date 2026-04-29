@@ -131,7 +131,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isSafeInteger(value)")
     protected static int doLongNotSafeInteger(long value) {
-        return (int) (long) (double) value;
+        return JSRuntime.toInt32(value);
     }
 
     @Specialization(guards = "isDoubleInLongCastRange(value)")
@@ -236,7 +236,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
 
         @Specialization(guards = "!isSafeInteger(value)")
         protected static int doLongNotSafeInteger(long value) {
-            return (int) (long) (double) value;
+            return JSRuntime.toInt32(value);
         }
 
         @Specialization(guards = "isDoubleInLongCastRange(value)")
