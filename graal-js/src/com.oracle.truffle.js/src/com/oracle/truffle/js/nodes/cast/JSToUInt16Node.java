@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -63,14 +62,14 @@ public abstract class JSToUInt16Node extends JavaScriptBaseNode {
         return JSRuntime.toUInt16(value);
     }
 
-    @Specialization
-    protected int doDouble(double value,
-                    @Cached InlinedBranchProfile needPositiveInfinityBranch) {
-        if (JSRuntime.isPositiveInfinity(value)) {
-            needPositiveInfinityBranch.enter(this);
-            return 0;
-        }
+    @Specialization(guards = "isDoubleInLongCastRange(value)")
+    protected int doDoubleAsLong(double value) {
         return JSRuntime.toUInt16((long) value);
+    }
+
+    @Specialization(guards = "!isDoubleInLongCastRange(value)")
+    protected int doDouble(double value) {
+        return JSRuntime.toUInt16(value);
     }
 
     @Specialization
