@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -150,17 +150,12 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return SafeInteger.valueOf((long) (double) value & 0xFFFFFFFFL);
     }
 
-    @Specialization(guards = {"!isDoubleLargerThan2e32(value)"})
-    protected double doDoubleFitsInt32Negative(double value) {
+    @Specialization(guards = "isDoubleInLongCastRange(value)")
+    protected double doDoubleAsLong(double value) {
         return JSRuntime.toUInt32((long) value);
     }
 
-    @Specialization(guards = {"isDoubleLargerThan2e32(value)", "isDoubleRepresentableAsLong(value)"})
-    protected double doDoubleRepresentableAsLong(double value) {
-        return JSRuntime.toUInt32NoTruncate(value);
-    }
-
-    @Specialization(guards = {"isDoubleLargerThan2e32(value)", "!isDoubleRepresentableAsLong(value)"})
+    @Specialization(guards = "!isDoubleInLongCastRange(value)")
     protected double doDouble(double value) {
         return JSRuntime.toUInt32(value);
     }
