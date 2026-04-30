@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -426,6 +426,12 @@ public final class JSGuards {
 
     public static boolean isDoubleLargerThan2e32(double d) {
         return Math.abs(d) >= JSRuntime.TWO32;
+    }
+
+    public static boolean isDoubleInLongCastRange(double value) {
+        // In this double comparison, Long.MAX_VALUE is rounded to 2^63.
+        // Values at 2^63 and above would make double-to-long saturate.
+        return Long.MIN_VALUE <= value && value < Long.MAX_VALUE;
     }
 
     public static boolean isLongRepresentableAsInt32(long value) {

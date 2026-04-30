@@ -115,6 +115,7 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 public final class JSRuntime {
     private static final long NEGATIVE_ZERO_DOUBLE_BITS = Double.doubleToRawLongBits(-0.0);
     private static final long POSITIVE_INFINITY_DOUBLE_BITS = Double.doubleToRawLongBits(Double.POSITIVE_INFINITY);
+    private static final double TWO16 = 65536d;
     public static final double TWO32 = 4294967296d;
     public static final long INVALID_ARRAY_INDEX = -1;
     public static final long MAX_ARRAY_LENGTH = 4294967295L;
@@ -575,12 +576,21 @@ public final class JSRuntime {
 
     public static int toUInt16(Number number) {
         if (number instanceof Double) {
-            Double d = (Double) number;
-            if (isPositiveInfinity(d)) {
-                return 0;
-            }
+            return toUInt16((double) number);
+        } else if (number instanceof Long) {
+            return toUInt16(number.doubleValue());
         }
         return toUInt16(longValue(number));
+    }
+
+    public static int toUInt16(double number) {
+        return toUInt16NoTruncate(truncateDouble(number));
+    }
+
+    public static int toUInt16NoTruncate(double number) {
+        assert !Double.isFinite(number) || number % 1 == 0;
+        double d = doubleModuloTwo16(number);
+        return toUInt16((long) d);
     }
 
     public static int toUInt16(long number) {
@@ -607,6 +617,8 @@ public final class JSRuntime {
             return toUInt32((double) number);
         } else if (number instanceof SafeInteger) {
             return toUInt32(((SafeInteger) number).longValue());
+        } else if (number instanceof Long) {
+            return toUInt32(number.doubleValue());
         }
         return toUInt32(longValueVirtual(number));
     }
@@ -654,7 +666,7 @@ public final class JSRuntime {
             return (int) number.longValue();
         }
         if (number instanceof Long) {
-            return (int) (long) number;
+            return toInt32(number.doubleValue());
         }
         return toInt32Intl(number);
     }
@@ -676,6 +688,10 @@ public final class JSRuntime {
 
     private static double doubleModuloTwo32(double value) {
         return value - Math.floor(value / TWO32) * TWO32;
+    }
+
+    private static double doubleModuloTwo16(double value) {
+        return value - Math.floor(value / TWO16) * TWO16;
     }
 
     /**
