@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -441,6 +441,16 @@ public class JSRuntimeTest extends JSTest {
         assertTrue(JSRuntime.toUInt16((Object) 3) == 3);
         assertTrue(JSRuntime.toUInt16((Object) 3.14) == 3);
         assertTrue(JSRuntime.toUInt16((Object) Double.POSITIVE_INFINITY) == 0);
+        assertTrue(JSRuntime.toUInt16((Object) Long.MAX_VALUE) == 0);
+    }
+
+    @Test
+    public void testToUInt32() {
+        // toUInt32(Object)
+        assertTrue(JSRuntime.toUInt32((Object) 3) == 3);
+        assertTrue(JSRuntime.toUInt32((Object) 3.14) == 3);
+        assertTrue(JSRuntime.toUInt32((Object) Double.POSITIVE_INFINITY) == 0);
+        assertTrue(JSRuntime.toUInt32((Object) Long.MAX_VALUE) == 0);
     }
 
     @Test
@@ -450,6 +460,7 @@ public class JSRuntimeTest extends JSTest {
         assertTrue(JSRuntime.toInt32((Object) 3.14) == 3);
         assertTrue(JSRuntime.toInt32((Object) 3L) == 3);
         assertTrue(JSRuntime.toInt32((Object) Double.POSITIVE_INFINITY) == 0);
+        assertTrue(JSRuntime.toInt32((Object) Long.MAX_VALUE) == 0);
     }
 
     @Test

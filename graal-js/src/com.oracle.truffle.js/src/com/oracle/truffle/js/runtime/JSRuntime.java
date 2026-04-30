@@ -577,6 +577,8 @@ public final class JSRuntime {
     public static int toUInt16(Number number) {
         if (number instanceof Double) {
             return toUInt16((double) number);
+        } else if (number instanceof Long) {
+            return toUInt16(number.doubleValue());
         }
         return toUInt16(longValue(number));
     }
@@ -615,6 +617,8 @@ public final class JSRuntime {
             return toUInt32((double) number);
         } else if (number instanceof SafeInteger) {
             return toUInt32(((SafeInteger) number).longValue());
+        } else if (number instanceof Long) {
+            return toUInt32(number.doubleValue());
         }
         return toUInt32(longValueVirtual(number));
     }
@@ -662,7 +666,7 @@ public final class JSRuntime {
             return (int) number.longValue();
         }
         if (number instanceof Long) {
-            return (int) (long) number;
+            return toInt32(number.doubleValue());
         }
         return toInt32Intl(number);
     }
