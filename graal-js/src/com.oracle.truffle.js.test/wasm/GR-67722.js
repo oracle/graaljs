@@ -17,7 +17,7 @@
  * @option engine.DisableCodeSharing=true
  */
 
-const ATTEMPTS = 16;
+const ATTEMPTS = 8;
 const WORKERS = 8;
 const FUNCTIONS = 256;
 const PARAMS = 8;
@@ -48,8 +48,12 @@ function section(id, bytes) {
     return [id, ...u32(bytes.length), ...bytes];
 }
 
-function makeModule() {
+function makeModule(attempt) {
     const bytes = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
+
+    // Keep the module behavior unchanged, but make each attempt use a distinct
+    // source so later attempts get fresh Wasm module state.
+    bytes.push(...section(0, [...str("attempt"), ...u32(attempt)]));
 
     // Wasm caches the JS interop adapter per function type, so many distinct
     // function types give the test independent chances to hit cross-layer reuse.
@@ -85,7 +89,6 @@ function makeModule() {
     return new Uint8Array(bytes);
 }
 
-const module = new WebAssembly.Module(makeModule());
 const workerCode = `
 const FUNCTIONS = ${FUNCTIONS};
 const PARAMS = ${PARAMS};
@@ -111,7 +114,8 @@ onmessage = function(e) {
 };
 `;
 
-function runAttempt() {
+function runAttempt(attempt) {
+    const module = new WebAssembly.Module(makeModule(attempt));
     const sab = new SharedArrayBuffer(4);
     const workers = [];
 
@@ -140,5 +144,5 @@ function runAttempt() {
 }
 
 for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    runAttempt();
+    runAttempt(attempt);
 }
