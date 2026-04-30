@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -115,5 +118,17 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSWebAssemblyModuleObject(shape, proto, wasmModule, wasmSource), realm, proto);
         return factory.trackAllocation(newObj);
+    }
+
+    /**
+     * Parse Wasm module source using Env.parsePublic, equivalent to module_decode Wasm JS API.
+     *
+     * @return WasmModule
+     */
+    @TruffleBoundary
+    public static Object moduleDecode(JSRealm realm, Source wasmSource) {
+        assert JavaScriptLanguage.WASM_LANGUAGE_ID.equals(wasmSource.getLanguage()) : wasmSource;
+        CallTarget result = realm.getEnv().parsePublic(wasmSource);
+        return result.call("module_decode");
     }
 }

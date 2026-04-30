@@ -78,7 +78,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
@@ -425,7 +424,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public AbstractModuleRecord parseWasmModuleSource(JSRealm realm, Source source) {
         assert realm.getContextOptions().isWebAssembly();
-        Object compiledModule = WebAssemblyBuiltins.moduleDecode(realm, source);
+        Object compiledModule = JSWebAssemblyModule.moduleDecode(realm, source);
         JSWebAssemblyModuleObject wasmModule = JSWebAssemblyModule.create(realm.getContext(), realm, compiledModule, source);
         return new WebAssemblyModuleRecord(realm.getContext(), source, wasmModule);
     }
