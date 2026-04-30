@@ -4355,15 +4355,13 @@ public final class GraalJSAccess {
     }
 
     public Object wasmModuleObjectGetCompiledModule(Object wasmModule) {
-        return new CompiledWasmModule(
-                        ((JSWebAssemblyModuleObject) wasmModule).getWASMModule(),
-                        ((JSWebAssemblyModuleObject) wasmModule).getWASMSource());
+        return ((JSWebAssemblyModuleObject) wasmModule).getWASMSource();
     }
 
     public Object wasmModuleObjectFromCompiledModule(Object compiledModule) {
-        return JSWebAssemblyModule.create(mainJSContext, mainJSRealm,
-                        ((CompiledWasmModule) compiledModule).module(),
-                        ((CompiledWasmModule) compiledModule).source());
+        Source source = (Source) compiledModule;
+        Object wasmModule = JSWebAssemblyModule.moduleDecode(mainJSRealm, source);
+        return JSWebAssemblyModule.create(mainJSContext, mainJSRealm, wasmModule, source);
     }
 
     private static Object createWasmStreamingCallback(JSRealm realm) {

@@ -3340,7 +3340,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Source wasmSource = WebAssemblyBuiltins.buildSource(byteSource);
             Object wasmModule;
             try {
-                wasmModule = WebAssemblyBuiltins.moduleDecode(realm, wasmSource);
+                wasmModule = JSWebAssemblyModule.moduleDecode(realm, wasmSource);
             } catch (AbstractTruffleException tex) {
                 try {
                     ExceptionType type = InteropLibrary.getUncached(tex).getExceptionType(tex);

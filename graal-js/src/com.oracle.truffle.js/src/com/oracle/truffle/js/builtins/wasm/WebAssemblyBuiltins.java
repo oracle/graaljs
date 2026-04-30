@@ -152,18 +152,6 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         return Source.newBuilder(JavaScriptLanguage.WASM_LANGUAGE_ID, byteSource, moduleName).mimeType(JavaScriptLanguage.WASM_MIME_TYPE).build();
     }
 
-    /**
-     * Parse Wasm module source using Env.parsePublic, equivalent to module_decode Wasm JS API.
-     *
-     * @return WasmModule
-     */
-    @TruffleBoundary
-    public static Object moduleDecode(JSRealm realm, Source wasmSource) {
-        assert JavaScriptLanguage.WASM_LANGUAGE_ID.equals(wasmSource.getLanguage()) : wasmSource;
-        CallTarget result = realm.getEnv().parsePublic(wasmSource);
-        return result.call("module_decode");
-    }
-
     // Helper node for built-ins that produce promise whose resolution can be obtained
     // synchronously.
     protected abstract static class PromisifiedBuiltinNode extends JSBuiltinNode {
@@ -229,7 +217,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             ByteSequence byteSource = exportByteSourceNode.execute(argument);
             JSRealm realm = getRealm();
             Source wasmSource = buildSource(byteSource);
-            Object wasmModule = moduleDecode(realm, wasmSource);
+            Object wasmModule = JSWebAssemblyModule.moduleDecode(realm, wasmSource);
             return JSWebAssemblyModule.create(getContext(), realm, wasmModule, wasmSource);
         }
 
@@ -293,7 +281,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             try {
                 try {
                     Source wasmSource = buildSource(wasmByteSource);
-                    Object wasmModule = moduleDecode(realm, wasmSource);
+                    Object wasmModule = JSWebAssemblyModule.moduleDecode(realm, wasmSource);
                     return new InstantiatedSourceInfo(wasmModule, importObject, wasmSource);
                 } catch (AbstractTruffleException ex) {
                     errorBranch.enter();
