@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -148,7 +148,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
                 errorBranch.enter(this);
                 throw Errors.createTypeError("SameValue(new, O) is forbidden");
             }
-            if (JSSharedArrayBuffer.getDirectByteBuffer(newBuffer).capacity() < newLen) {
+            if (newBuffer.getByteLength() < newLen) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("insufficient length constructed");
             }
@@ -174,7 +174,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         @Specialization(replaces = "sliceSharedIntInt")
         protected JSDynamicObject sliceShared(JSArrayBufferObject.Shared thisObj, Object begin0, Object end0,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch) {
-            int len = JSSharedArrayBuffer.getDirectByteBuffer(thisObj).capacity();
+            int len = thisObj.getByteLength();
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
             return sliceSharedIntInt(thisObj, begin, end, errorBranch);
