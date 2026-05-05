@@ -485,11 +485,15 @@ def _fetch_testv8():
         _git_config.init(_location)
         _git_config.git_command(_location, ['remote', 'add', 'origin', mx_urlrewrites.rewriteurl(TESTV8_REPO)])
         _git_config.git_command(_location, ['sparse-checkout', 'set', 'test/mjsunit', 'test/intl'])
-    _success = _git_config.git_command(_location, ['checkout', TESTV8_REV], abortOnError=False)
-    if _success is None:
-        # fetch the changeset and try to checkout again
-        _git_config.git_command(_location, ['fetch', 'origin', TESTV8_REV, '--depth=1'])
-        _git_config.git_command(_location, ['checkout', TESTV8_REV])
+    rev_exists = _git_config.git_command(_location, ['rev-parse', '--verify', TESTV8_REV + '^{commit}'], abortOnError=False) is not None
+    if not rev_exists:
+        # A checkout of a missing commit returns exit code 1, which git_command
+        # treats as a non-fatal result. Check commit availability explicitly so a
+        # freshly initialized sparse checkout fetches the pinned revision.
+        _git_config.git_command(_location, ['fetch', 'origin', TESTV8_REV, '--depth=1'], abortOnError=True)
+    _git_config.git_command(_location, ['checkout', '--force', TESTV8_REV], abortOnError=True)
+    if not os.path.isdir(join(_location, 'test')):
+        mx.abort(f'TestV8 checkout at {_location} is missing the V8 test sources after checking out {TESTV8_REV}.')
 
 def deploy_binary_if_master(args):
     """If the active branch is 'master', deploy binaries for the primary suite to remote maven repository."""
