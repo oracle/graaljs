@@ -145,6 +145,7 @@ EXPORT_TO_JS(CreateWithEmptyNamedEnumerator) {
             nullptr, // deleter
             EmptyPropertyEnumeratorCallback // enumerator
     );
+    objectTemplate->SetHandler(handler);
 
     Local<Context> context = isolate->GetCurrentContext();
     Local<Object> instance = objectTemplate->NewInstance(context).ToLocalChecked();
