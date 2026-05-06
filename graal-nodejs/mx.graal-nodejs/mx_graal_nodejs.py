@@ -531,12 +531,12 @@ def _prepare_build_env(build_env=None, resolved_toolchain=None):
                 _setEnvVar(flags_var, f"-mmacosx-version-min={min_version}{' ' + other_flags if other_flags else ''}", env)
 
 def _find_clang_runtime_lib_dir(resolved_toolchain):
-    clang_lib_root = join(resolved_toolchain, 'lib', 'clang')
+    clang_lib_root = join(os.path.dirname(resolved_toolchain), 'llvm', 'lib', 'clang')
     if not exists(clang_lib_root) or not isdir(clang_lib_root):
         return None
 
     for version in sorted(os.listdir(clang_lib_root), reverse=True):
-        runtime_dir = join(clang_lib_root, version, 'lib', 'x86_64-unknown-linux-musl')
+        runtime_dir = join(clang_lib_root, version, 'lib', 'x86_64-unknown-linux-musl_swcfi')
         if exists(join(runtime_dir, 'libclang_rt.atomic.so')):
             return runtime_dir
     return None
