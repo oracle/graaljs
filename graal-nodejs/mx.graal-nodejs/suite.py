@@ -314,6 +314,7 @@ suite = {
     "GRAALNODEJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
         "class": "DeliverableStandaloneArchive",
         "platformDependent": True,
+        "deploy": False,
         "standalone_dist": "GRAALNODEJS_JVM_STANDALONE",
         "community_archive_name": "graalnode24-community-jvm",
         "enterprise_archive_name": "graalnode24-jvm",

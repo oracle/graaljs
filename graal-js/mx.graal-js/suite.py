@@ -862,6 +862,7 @@ suite = {
     "GRAALJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
         "class": "DeliverableStandaloneArchive",
         "platformDependent": True,
+        "deploy": False,
         "standalone_dist": "GRAALJS_JVM_STANDALONE",
         "community_archive_name": "graaljs-community-jvm",
         "enterprise_archive_name": "graaljs-jvm",
