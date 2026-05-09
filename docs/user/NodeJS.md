@@ -17,8 +17,8 @@ Applications can freely import and use NPM packages, including native ones.
 
 As of GraalVM for JDK 21, the GraalVM Node.js runtime is available as a separate distribution.
 Two standalone runtime options are available for both Oracle GraalVM and GraalVM Community Edition: a Native Image compiled launcher or a JVM-based runtime.
-To distinguish between them, the GraalVM Community Edition version has the suffix `-community` in the name: `graaljs-community-<version>-<os>-<arch>.tar.gz`, `graalnodejs-community-<version>-<os>-<arch>.tar.gz`.
-A standalone that comes with a JVM has a `-jvm` suffix in a name.
+To distinguish between them, the GraalVM Community Edition version has the suffix `-community` in the name: `graaljs-community-<version>-<os>-<arch>.tar.gz`, `graalnode24-community-<version>-<os>-<arch>.tar.gz`.
+A GraalVM Node.js standalone archive includes the Node.js major version in its name, for example `graalnode24`; a standalone that comes with a JVM has a `-jvm` suffix in its name.
 
 To enable the GraalVM Node.js runtime, install the Node.js distribution based on Oracle GraalVM or GraalVM Community Edition for your operating system.
 

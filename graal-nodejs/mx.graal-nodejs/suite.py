@@ -306,17 +306,18 @@ suite = {
         "class": "DeliverableStandaloneArchive",
         "platformDependent": True,
         "standalone_dist": "GRAALNODEJS_NATIVE_STANDALONE",
-        "community_archive_name": "graalnodejs-community",
-        "enterprise_archive_name": "graalnodejs",
+        "community_archive_name": "graalnode24-community",
+        "enterprise_archive_name": "graalnode24",
         "language_id": "nodejs",
     },
 
     "GRAALNODEJS_JVM_STANDALONE_RELEASE_ARCHIVE": {
         "class": "DeliverableStandaloneArchive",
         "platformDependent": True,
+        "deploy": False,
         "standalone_dist": "GRAALNODEJS_JVM_STANDALONE",
-        "community_archive_name": "graalnodejs-community-jvm",
-        "enterprise_archive_name": "graalnodejs-jvm",
+        "community_archive_name": "graalnode24-community-jvm",
+        "enterprise_archive_name": "graalnode24-jvm",
         "language_id": "nodejs",
     },
 
