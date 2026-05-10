@@ -135,7 +135,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             super(context, builtin);
         }
 
-        private JSArrayBufferObject.Shared constructNewSharedArrayBuffer(JSDynamicObject thisObj, int newLen, InlinedBranchProfile errorBranch) {
+        private JSArrayBufferObject.Shared constructNewSharedArrayBuffer(JSArrayBufferObject.Shared thisObj, int newLen, InlinedBranchProfile errorBranch) {
             var defaultConstructor = getRealm().getSharedArrayBufferConstructor();
             var constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
             var resObj = getArraySpeciesConstructorNode().construct(constr, newLen);
@@ -144,9 +144,9 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
                 throw Errors.createTypeErrorSharedArrayBufferExpected();
             }
             var newBuffer = (JSArrayBufferObject.Shared) resObj;
-            if (resObj == thisObj) {
+            if (newBuffer.getByteBuffer() == thisObj.getByteBuffer()) {
                 errorBranch.enter(this);
-                throw Errors.createTypeError("SameValue(new, O) is forbidden");
+                throw Errors.createTypeError("SharedArrayBuffer subclass returned this from species constructor");
             }
             if (newBuffer.getByteLength() < newLen) {
                 errorBranch.enter(this);

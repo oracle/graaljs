@@ -460,7 +460,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             int targetElementSize = targetArray.bytesPerElement();
             int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
             int srcByteIndex;
-            if (sameBufferProf.profile(this, sourceBuffer == targetBuffer)) {
+            if (sameBufferProf.profile(this, hasSameDataBlock(sourceBuffer, targetBuffer))) {
                 int srcByteLength = sourceLen * sourceElementSize;
 
                 boolean cloneNotNeeded = srcByteOffset + srcByteLength <= targetByteIndex || targetByteIndex + srcByteLength <= srcByteOffset;
@@ -481,6 +481,14 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             copyTypedArrayElementsNode.execute(targetBuffer, sourceBuffer,
                             targetByteIndex, srcByteIndex, sourceLen,
                             targetElementSize, sourceElementSize, targetArray, sourceArray, true);
+        }
+
+        private static boolean hasSameDataBlock(JSArrayBufferObject sourceBuffer, JSArrayBufferObject targetBuffer) {
+            if (sourceBuffer == targetBuffer) {
+                return true;
+            }
+            return sourceBuffer instanceof JSArrayBufferObject.Shared sourceShared && targetBuffer instanceof JSArrayBufferObject.Shared targetShared &&
+                            sourceShared.getByteBuffer() == targetShared.getByteBuffer();
         }
 
         @Specialization(guards = {"isJSFastArray(array)"})
