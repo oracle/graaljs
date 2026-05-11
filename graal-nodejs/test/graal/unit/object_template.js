@@ -73,10 +73,12 @@ describe('ObjectTemplate', function () {
         it('should not crash with an empty named enumerator', function () {
             var obj = module.ObjectTemplate_CreateWithEmptyNamedEnumerator();
             assert.strictEqual(Object.keys(obj).length, 0);
+            assert.deepStrictEqual(Reflect.ownKeys(obj), []);
         });
         it('should not crash with an empty indexed enumerator', function () {
             var obj = module.ObjectTemplate_CreateWithEmptyIndexedEnumerator();
             assert.strictEqual(Object.keys(obj).length, 0);
+            assert.deepStrictEqual(Reflect.ownKeys(obj), []);
         });
     });
 });
