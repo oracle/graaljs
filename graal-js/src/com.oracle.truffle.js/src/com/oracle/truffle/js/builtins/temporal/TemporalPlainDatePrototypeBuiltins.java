@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -341,6 +341,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 duration = JSTemporalDuration.createNegatedTemporalDuration(getContext(), realm, duration);
             }
 
+            duration = toDateDurationRecordWithoutTime(getContext(), realm, duration, this, errorBranch);
             Object resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
             return addDateNode.execute(calendar, date, duration, overflow);
@@ -351,6 +352,17 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected static JSTemporalPlainDateObject invalidReceiver(Object thisObj, Object temporalDurationLike, Object optParam) {
             throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
         }
+
+        private static JSTemporalDurationObject toDateDurationRecordWithoutTime(JSContext ctx, JSRealm realm, JSTemporalDurationObject duration, Node node, InlinedBranchProfile errorBranch) {
+            // ToInternalDurationRecordWith24HourDays
+            BigInt timeDuration = TemporalUtil.normalizeTimeDuration(duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
+                            duration.getNanoseconds());
+            timeDuration = TemporalUtil.add24HourDaysToNormalizedTimeDuration(timeDuration, duration.getDays());
+
+            BigInt days = timeDuration.divide(TemporalUtil.BI_NS_PER_DAY);
+            return JSTemporalDuration.createTemporalDuration(ctx, realm, duration.getYears(), duration.getMonths(), duration.getWeeks(), days.doubleValue(), 0, 0, 0, 0, 0, 0, node, errorBranch);
+        }
+
     }
 
     public abstract static class JSTemporalPlainDateWith extends JSTemporalBuiltinOperation {
