@@ -2086,38 +2086,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/argument-lower-units.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/overflow.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/subtract-from-last-representable-month.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-lower-units.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/options-read-before-algorithmic-validation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/overflow.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/subtract-from-last-representable-month.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
