@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,11 +86,9 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
@@ -455,27 +453,17 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             }
             Object resolvedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
             TemporalUtil.Overflow overflow = TemporalUtil.getTemporalOverflowOption(resolvedOptions, getOptionNode);
-            int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(),
-                            duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
+            if (duration.getWeeks() != 0 || duration.getDays() != 0 ||
+                            duration.getHours() != 0 || duration.getMinutes() != 0 || duration.getSeconds() != 0 ||
+                            duration.getMilliseconds() != 0 || duration.getMicroseconds() != 0 || duration.getNanoseconds() != 0) {
+                errorBranch.enter(node);
+                throw Errors.createRangeError("Temporal error: Can only add years or months to PlainYearMonth.");
+            }
             TruffleString calendar = yearMonth.getCalendar();
             JSDynamicObject fields = TemporalUtil.isoDateToFields(ctx, calendar, yearMonth.isoDate(), TemporalUtil.FieldsType.YEAR_MONTH);
             TemporalUtil.createDataPropertyOrThrow(ctx, fields, TemporalConstants.DAY, 1);
-            JSTemporalPlainDateObject intermediateDate = dateFromFieldsNode.execute(calendar, fields, TemporalUtil.Overflow.CONSTRAIN);
-
-            JSTemporalPlainDateObject date;
-            if (sign < 0) {
-                JSTemporalDurationObject oneMonthDuration = JSTemporalDuration.createTemporalDuration(ctx, realm,
-                                0, 1, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
-                JSTemporalPlainDateObject nextMonth = addDateNode.execute(calendar, intermediateDate, oneMonthDuration, TemporalUtil.Overflow.CONSTRAIN);
-                ISODateRecord record = TemporalUtil.balanceISODate(nextMonth.getYear(), nextMonth.getMonth(), nextMonth.getDay() - 1);
-                date = JSTemporalPlainDate.create(ctx, realm, record.year(), record.month(), record.day(), calendar, node, errorBranch);
-            } else {
-                date = intermediateDate;
-            }
-
-            JSTemporalDurationObject durationToAdd = TemporalUtil.toDateDurationRecordWithoutTime(ctx, realm, duration, this, errorBranch);
-            JSTemporalPlainDateObject addedDate = addDateNode.execute(calendar, date, durationToAdd, overflow);
+            JSTemporalPlainDateObject date = dateFromFieldsNode.execute(calendar, fields, TemporalUtil.Overflow.CONSTRAIN);
+            JSTemporalPlainDateObject addedDate = addDateNode.execute(calendar, date, duration, overflow);
             JSObject addedDateFields = TemporalUtil.isoDateToFields(ctx, calendar, addedDate.isoDate(), TemporalUtil.FieldsType.YEAR_MONTH);
             return yearMonthFromFieldsNode.execute(calendar, addedDateFields, overflow);
         }
