@@ -1,11 +1,11 @@
 # pylint: disable=line-too-long
 suite = {
-  "mxversion" : "7.65.0",
+  "mxversion" : "7.82.0",
 
   "name" : "graal-js",
 
-  "version" : "25.1.0",
-  "release" : False,
+  "version_from" : "regex",
+  "release_from" : "regex",
   "groupId" : "org.graalvm.js",
   "url" : "https://www.graalvm.org/javascript",
   "developer" : {
@@ -25,7 +25,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "ae02a136a2444c70c2d8226b07e5fd1cd593a6fb",
+           "version" : "a756965c3f49d230c4c991a948c87ea172209e5d",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
