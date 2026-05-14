@@ -89,7 +89,6 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
@@ -319,10 +318,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                                 anyPresent, patternGenerator, javaLocale, null);
                 state.temporalPlainMonthDayFormat = getDateTimeFormat(null, null, null, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.MONTH_DAY, Defaults.MONTH_DAY, false,
                                 anyPresent, patternGenerator, javaLocale, null);
-                state.temporalPlainTimeFormat = getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt, Required.TIME,
+                state.temporalPlainTimeFormat = getDateTimeFormat(null, null, null, null, null, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, null, Required.TIME,
                                 Defaults.TIME, false, anyPresent, patternGenerator, javaLocale, null);
                 state.temporalPlainDateTimeFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt,
-                                tzNameOpt, Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null);
+                                null, Required.ANY, Defaults.ALL, false, anyPresent, patternGenerator, javaLocale, null);
                 state.temporalInstanceFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt,
                                 Required.ANY, (toLocaleStringTimeZone == null) ? Defaults.ALL : Defaults.ZONED_DATE_TIME, true, anyPresent, patternGenerator, javaLocale, null);
             }
@@ -360,19 +359,19 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             state.temporalInstanceFormat.setTimeZone(timeZone);
         }
         if (state.temporalPlainDateFormat != null) {
-            state.temporalPlainDateFormat.setTimeZone(timeZone);
+            state.temporalPlainDateFormat.setTimeZone(TimeZone.GMT_ZONE);
         }
         if (state.temporalPlainYearMonthFormat != null) {
-            state.temporalPlainYearMonthFormat.setTimeZone(timeZone);
+            state.temporalPlainYearMonthFormat.setTimeZone(TimeZone.GMT_ZONE);
         }
         if (state.temporalPlainMonthDayFormat != null) {
-            state.temporalPlainMonthDayFormat.setTimeZone(timeZone);
+            state.temporalPlainMonthDayFormat.setTimeZone(TimeZone.GMT_ZONE);
         }
         if (state.temporalPlainDateTimeFormat != null) {
-            state.temporalPlainDateTimeFormat.setTimeZone(timeZone);
+            state.temporalPlainDateTimeFormat.setTimeZone(TimeZone.GMT_ZONE);
         }
         if (state.temporalPlainTimeFormat != null) {
-            state.temporalPlainTimeFormat.setTimeZone(timeZone);
+            state.temporalPlainTimeFormat.setTimeZone(TimeZone.GMT_ZONE);
         }
         state.timeZone = timeZoneId;
         state.initialized = true;
@@ -539,7 +538,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
         if (skeleton.length() == sb.length()) {
             // no adjustment needed
-            return dateFormat;
+            return new SimpleDateFormat(pattern, javaLocale);
         }
         skeleton = sb.toString();
         String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
@@ -898,7 +897,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             epochMs = handleDateTimeTemporalMonthDay(dateTimeFormat, monthDay);
         } else if (x instanceof JSTemporalPlainTimeObject time) {
             format = state.temporalPlainTimeFormat;
-            epochMs = handleDateTimeTemporalTime(dateTimeFormat, time);
+            epochMs = handleDateTimeTemporalTime(time);
         } else if (x instanceof JSTemporalPlainDateTimeObject dateTime) {
             format = state.temporalPlainDateTimeFormat;
             epochMs = handleDateTimeTemporalDateTime(dateTimeFormat, dateTime);
@@ -921,10 +920,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             throw Errors.createRangeErrorInvalidCalendar(calendar.toJavaStringUncached());
         }
 
-        JSRealm realm = JSRealm.get(null);
-        JSContext context = realm.getContext();
-        JSTemporalPlainDateTimeObject isoDateTime = JSTemporalPlainDateTime.create(context, realm, date.getYear(), date.getMonth(), date.getDay(), 12, 0, 0, 0, 0, 0, calendar);
-        BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(context, realm, Strings.fromJavaString(dateTimeFormat.getInternalState().timeZone), isoDateTime, TemporalUtil.Disambiguation.COMPATIBLE);
+        BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(date.getYear(), date.getMonth(), date.getDay(), 12, 0, 0, 0, 0, 0);
         return nsToMs(epochNs);
     }
 
@@ -934,10 +930,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             throw Errors.createRangeErrorInvalidCalendar(calendar.toJavaStringUncached());
         }
 
-        JSRealm realm = JSRealm.get(null);
-        JSContext context = realm.getContext();
-        JSTemporalPlainDateTimeObject isoDateTime = JSTemporalPlainDateTime.create(context, realm, yearMonth.getYear(), yearMonth.getMonth(), yearMonth.getDay(), 12, 0, 0, 0, 0, 0, calendar);
-        BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(context, realm, Strings.fromJavaString(dateTimeFormat.getInternalState().timeZone), isoDateTime, TemporalUtil.Disambiguation.COMPATIBLE);
+        BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(yearMonth.getYear(), yearMonth.getMonth(), yearMonth.getDay(), 12, 0, 0, 0, 0, 0);
         return nsToMs(epochNs);
     }
 
@@ -947,19 +940,12 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             throw Errors.createRangeErrorInvalidCalendar(calendar.toJavaStringUncached());
         }
 
-        JSRealm realm = JSRealm.get(null);
-        JSContext context = realm.getContext();
-        JSTemporalPlainDateTimeObject isoDateTime = JSTemporalPlainDateTime.create(context, realm, monthDay.getYear(), monthDay.getMonth(), monthDay.getDay(), 12, 0, 0, 0, 0, 0, calendar);
-        BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(context, realm, Strings.fromJavaString(dateTimeFormat.getInternalState().timeZone), isoDateTime, TemporalUtil.Disambiguation.COMPATIBLE);
+        BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(monthDay.getYear(), monthDay.getMonth(), monthDay.getDay(), 12, 0, 0, 0, 0, 0);
         return nsToMs(epochNs);
     }
 
-    private static double handleDateTimeTemporalTime(JSDateTimeFormatObject dateTimeFormat, JSTemporalPlainTimeObject time) {
-        JSRealm realm = JSRealm.get(null);
-        JSContext context = realm.getContext();
-        JSTemporalPlainDateTimeObject isoDateTime = JSTemporalPlainDateTime.create(context, realm, 1970, 1, 1, time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(),
-                        time.getMicrosecond(), time.getNanosecond(), time.getCalendar());
-        BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(context, realm, Strings.fromJavaString(dateTimeFormat.getInternalState().timeZone), isoDateTime, TemporalUtil.Disambiguation.COMPATIBLE);
+    private static double handleDateTimeTemporalTime(JSTemporalPlainTimeObject time) {
+        BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(1970, 1, 1, time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(), time.getNanosecond());
         return nsToMs(epochNs);
     }
 
@@ -969,9 +955,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             throw Errors.createRangeErrorInvalidCalendar(calendar.toJavaStringUncached());
         }
 
-        JSRealm realm = JSRealm.get(null);
-        JSContext context = realm.getContext();
-        BigInt epochNs = TemporalUtil.getEpochNanosecondsFor(context, realm, Strings.fromJavaString(dateTimeFormat.getInternalState().timeZone), dateTime, TemporalUtil.Disambiguation.COMPATIBLE);
+        BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
+                        dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
         return nsToMs(epochNs);
     }
 
