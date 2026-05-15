@@ -342,6 +342,30 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
         }
 
+        if (tzNameOpt != null && !tzNameOpt.isEmpty()) {
+            state.timeZoneName = tzNameOpt;
+        }
+
+        configureDateFormat(state.dateFormat, timeZone);
+        configureDateFormat(state.temporalInstanceFormat, timeZone);
+        configureDateFormat(state.temporalPlainDateFormat, TimeZone.GMT_ZONE);
+        configureDateFormat(state.temporalPlainYearMonthFormat, TimeZone.GMT_ZONE);
+        configureDateFormat(state.temporalPlainMonthDayFormat, TimeZone.GMT_ZONE);
+        configureDateFormat(state.temporalPlainDateTimeFormat, TimeZone.GMT_ZONE);
+        configureDateFormat(state.temporalPlainTimeFormat, TimeZone.GMT_ZONE);
+
+        state.timeZone = timeZoneId;
+        state.initialized = true;
+    }
+
+    private static void configureDateFormat(DateFormat dateFormat, TimeZone timeZone) {
+        if (dateFormat != null) {
+            useProlepticGregorianCalendar(dateFormat);
+            dateFormat.setTimeZone(timeZone);
+        }
+    }
+
+    private static void useProlepticGregorianCalendar(DateFormat dateFormat) {
         Calendar calendar = dateFormat.getCalendar();
         if (calendar instanceof GregorianCalendar gCalendar) {
             // Ensure that Gregorian calendar is used for all dates.
@@ -349,32 +373,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             // Julian calendar for dates before 1582 otherwise.
             gCalendar.setGregorianChange(new Date(Long.MIN_VALUE));
         }
-
-        if (tzNameOpt != null && !tzNameOpt.isEmpty()) {
-            state.timeZoneName = tzNameOpt;
-        }
-
-        state.dateFormat.setTimeZone(timeZone);
-        if (state.temporalInstanceFormat != null) {
-            state.temporalInstanceFormat.setTimeZone(timeZone);
-        }
-        if (state.temporalPlainDateFormat != null) {
-            state.temporalPlainDateFormat.setTimeZone(TimeZone.GMT_ZONE);
-        }
-        if (state.temporalPlainYearMonthFormat != null) {
-            state.temporalPlainYearMonthFormat.setTimeZone(TimeZone.GMT_ZONE);
-        }
-        if (state.temporalPlainMonthDayFormat != null) {
-            state.temporalPlainMonthDayFormat.setTimeZone(TimeZone.GMT_ZONE);
-        }
-        if (state.temporalPlainDateTimeFormat != null) {
-            state.temporalPlainDateTimeFormat.setTimeZone(TimeZone.GMT_ZONE);
-        }
-        if (state.temporalPlainTimeFormat != null) {
-            state.temporalPlainTimeFormat.setTimeZone(TimeZone.GMT_ZONE);
-        }
-        state.timeZone = timeZoneId;
-        state.initialized = true;
     }
 
     private static DateIntervalFormat intervalFormatFrom(DateFormat dateFormat, Locale javaLocale, String hc) {
