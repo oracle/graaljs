@@ -2105,90 +2105,6 @@
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-ignore-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-no-time-clip-non-latin-numerals.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-no-time-clip-weekday.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-no-time-clip.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaindatetime-formatting-timezonename.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-plaintime-formatting-timezonename.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-ignore-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-no-time-clip-weekday.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-no-time-clip.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-plaindatetime-formatting-timezonename.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-plaintime-formatting-timezonename.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-ignore-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-no-time-clip-weekday.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-no-time-clip.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-plaindatetime-formatting-timezonename.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-plaintime-formatting-timezonename.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-ignore-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-no-time-clip-weekday.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-no-time-clip.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-plaindatetime-formatting-timezonename.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-plaintime-formatting-timezonename.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2273,10 +2189,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-03-22"
   }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/toLocaleString/ignore-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/from/calendar-invalid-era-with-era-year.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
@@ -2320,10 +2232,6 @@
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/hourcycle.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/ignore-timezone.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
   }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
