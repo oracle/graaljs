@@ -1379,7 +1379,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalPlainDateObject nonISODateAdd(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject isoDate, JSTemporalDurationObject duration,
-                    @SuppressWarnings("unused") Overflow overflow, Node node, InlinedBranchProfile errorBranch) {
+                    Overflow overflow, Node node, InlinedBranchProfile errorBranch) {
         Calendar cal = IntlUtil.getCalendar(calendar, isoDate.getYear(), isoDate.getMonth(), isoDate.getDay());
         int years = (int) duration.getYears();
         int months = (int) duration.getMonths();
@@ -1392,12 +1392,63 @@ public final class TemporalUtil {
             }
         }
 
-        cal.add(Calendar.EXTENDED_YEAR, years);
+        if (years != 0) {
+            cal = addCalendarYears(calendar, cal, years, overflow);
+        }
+
         cal.add(Calendar.ORDINAL_MONTH, months);
         cal.add(Calendar.DAY_OF_MONTH, (int) (duration.getDays() + 7 * duration.getWeeks()));
 
         long ms = cal.getTimeInMillis();
         return JSTemporalPlainDate.create(context, realm, JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms), calendar, node, errorBranch);
+    }
+
+    private static Calendar addCalendarYears(TruffleString calendar, Calendar cal, int years, Overflow overflow) {
+        int targetYear = IntlUtil.getExtendedYear(cal) + years;
+        String monthCode = cal.getTemporalMonthCode();
+        int day = cal.get(Calendar.DAY_OF_MONTH);
+
+        Calendar result = IntlUtil.getCalendar(calendar);
+        result.clear();
+        IntlUtil.setExtendedYear(result, targetYear);
+        setTemporalMonthCodeOrConstrain(result, monthCode, overflow);
+        int maxDay = IntlUtil.getCalendarFieldMax(result, Calendar.DAY_OF_MONTH);
+        if (day > maxDay) {
+            if (overflow == Overflow.REJECT) {
+                throw Errors.createRangeError("Invalid day");
+            }
+            assert overflow == Overflow.CONSTRAIN;
+            day = maxDay;
+        }
+        result.set(Calendar.DAY_OF_MONTH, day);
+        return result;
+    }
+
+    private static void setTemporalMonthCodeOrConstrain(Calendar cal, String monthCode, Overflow overflow) {
+        int extendedYear = IntlUtil.getExtendedYear(cal);
+        cal.setTemporalMonthCode(monthCode);
+        if (!monthCode.equals(cal.getTemporalMonthCode())) {
+            // monthCode does not exist in extendedYear
+            if (overflow == Overflow.REJECT) {
+                throw Errors.createRangeError("Invalid monthCode");
+            } else if (monthCode.length() == 4) { // is leap month
+                assert overflow == Overflow.CONSTRAIN;
+                // leap month does not exist in extendedYear
+                // => constrain to non-leap month
+                String nonLeapMonthCode;
+                if (cal instanceof HebrewCalendar && "M05L".equals(monthCode)) {
+                    nonLeapMonthCode = "M06";
+                } else {
+                    nonLeapMonthCode = monthCode.substring(0, 3);
+                }
+                // the setting of non-existing leap month could have
+                // rolled the year to the next one => restore the original value
+                if (extendedYear != IntlUtil.getExtendedYear(cal)) {
+                    IntlUtil.setExtendedYear(cal, extendedYear);
+                }
+                cal.setTemporalMonthCode(nonLeapMonthCode);
+            }
+        }
     }
 
     // This method implements CalendarDateUntil() operation. Unfortunately,
@@ -3562,31 +3613,8 @@ public final class TemporalUtil {
                 }
                 IntlUtil.setOrdinalMonth(cal, newValue);
             } else {
-                int extendedYear = IntlUtil.getExtendedYear(cal);
                 String monthCodeStr = monthCode.toString();
-                cal.setTemporalMonthCode(monthCodeStr);
-                if (!monthCodeStr.equals(cal.getTemporalMonthCode())) {
-                    // monthCode does not exist in extendedYear
-                    if (overflow == Overflow.REJECT) {
-                        throw Errors.createRangeError("Invalid monthCode");
-                    } else if (monthCodeStr.length() == 4) { // is leap month
-                        assert overflow == Overflow.CONSTRAIN;
-                        // leap month does not exist in extendedYear
-                        // => constrain to non-leap month
-                        String nonLeapMonthCode;
-                        if (cal instanceof HebrewCalendar && "M05L".equals(monthCodeStr)) {
-                            nonLeapMonthCode = "M06";
-                        } else {
-                            nonLeapMonthCode = monthCodeStr.substring(0, 3);
-                        }
-                        // the setting of non existing leap month could have
-                        // rolled the year to the next one => restore the original value
-                        if (extendedYear != IntlUtil.getExtendedYear(cal)) {
-                            IntlUtil.setExtendedYear(cal, extendedYear);
-                        }
-                        cal.setTemporalMonthCode(nonLeapMonthCode);
-                    }
-                }
+                setTemporalMonthCodeOrConstrain(cal, monthCodeStr, overflow);
             }
             int maxDay = IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_MONTH);
             if (maxDay < day) {
