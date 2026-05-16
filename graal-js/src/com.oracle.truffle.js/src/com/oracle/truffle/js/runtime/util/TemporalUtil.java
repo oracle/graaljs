@@ -3462,7 +3462,7 @@ public final class TemporalUtil {
                     if (eraSet) { // both era and eraYear set
                         Integer canonicalEra = IntlUtil.canonicalizeEraInCalendar(cal, (TruffleString) era);
                         if (canonicalEra == null) {
-                            throw Errors.createTypeError("Invalid era");
+                            throw Errors.createRangeError("Invalid era");
                         }
                         if (year != Undefined.instance) {
                             // year should be consistent with era and eraYear
