@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,12 +78,12 @@ public abstract class DifferenceZonedDateTimeWithRoundingNode extends JavaScript
                     @Cached DifferenceZonedDateTimeNode differenceZonedDateTime,
                     @Cached RoundRelativeDurationNode roundRelativeDuration) {
         if (!largestUnit.isCalendarUnit() && largestUnit != Unit.DAY) {
-            var diffRecord = TemporalUtil.differenceInstant(ns1, ns2, roundingIncrement, smallestUnit, roundingMode);
-            BigInt norm = diffRecord.normalizedTimeDuration();
+            BigInt difference = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(ns2, ns1);
+            BigInt norm = TemporalUtil.roundTimeDuration(difference, roundingIncrement, smallestUnit, roundingMode);
             TimeDurationRecord result = TemporalUtil.balanceTimeDuration(norm, largestUnit);
             var durationRecord = JSTemporalDurationRecord.createWeeks(0, 0, 0, 0,
                             result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(), result.nanoseconds());
-            return new TemporalDurationWithTotalRecord(durationRecord, diffRecord.total());
+            return new TemporalDurationWithTotalRecord(durationRecord, TemporalUtil.totalTimeDuration(difference, smallestUnit));
         }
 
         var difference = differenceZonedDateTime.execute(ns1, ns2, timeZone, calendar, largestUnit, precalculatedPlainDateTime);

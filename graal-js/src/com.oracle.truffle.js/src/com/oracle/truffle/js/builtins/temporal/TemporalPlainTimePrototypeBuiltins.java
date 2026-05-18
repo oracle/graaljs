@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -367,8 +367,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
 
             if (settings.smallestUnit() != Unit.NANOSECOND || settings.roundingIncrement() != 1) {
-                var roundRecord = TemporalUtil.roundTimeDuration(0, norm, settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
-                norm = roundRecord.normalizedDuration().normalizedTimeTotalNanoseconds();
+                norm = TemporalUtil.roundTimeDuration(norm, settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
             }
 
             JSRealm realm = getRealm();

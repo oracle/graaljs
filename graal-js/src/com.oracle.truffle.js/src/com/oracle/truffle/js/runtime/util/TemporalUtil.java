@@ -2383,28 +2383,14 @@ public final class TemporalUtil {
         return norm;
     }
 
-    /**
-     * RoundTimeDuration result.
-     */
-    public record NormalizedDurationWithTotalRecord(NormalizedDurationRecord normalizedDuration, double total) {
+    public static BigInt roundTimeDuration(BigInt timeDuration, int increment, Unit unit, RoundingMode roundingMode) {
+        assert !unit.isCalendarUnit() : unit;
+        return roundTimeDurationToIncrement(timeDuration, unit.getLengthInNanoseconds(), increment, roundingMode);
     }
 
-    public static NormalizedDurationWithTotalRecord roundTimeDuration(double days0, BigInt norm0, int increment, Unit unit, RoundingMode roundingMode) {
+    public static double totalTimeDuration(BigInt norm, Unit unit) {
         assert !unit.isCalendarUnit() : unit;
-        double days = days0;
-        BigInt norm = norm0;
-        double total;
-        if (unit == Unit.DAY) {
-            double fractionalDays = days + divideNormalizedTimeDurationAsDouble(norm, NS_PER_DAY_LONG);
-            days = roundNumberToIncrement(fractionalDays, increment, roundingMode);
-            total = fractionalDays;
-            norm = zeroTimeDuration();
-        } else {
-            long divisor = unit.getLengthInNanoseconds();
-            total = divideNormalizedTimeDurationAsDouble(norm, divisor);
-            norm = roundTimeDurationToIncrement(norm, divisor, increment, roundingMode);
-        }
-        return new NormalizedDurationWithTotalRecord(createNormalizedDurationRecord(0, 0, 0, days, norm), total);
+        return divideNormalizedTimeDurationAsDouble(norm, unit.getLengthInNanoseconds());
     }
 
     @TruffleBoundary
@@ -2799,17 +2785,10 @@ public final class TemporalUtil {
         return result; // spec return type: BigInt
     }
 
-    /**
-     * DifferenceInstant result.
-     */
-    public record NormalizedTimeDurationWithTotalRecord(BigInt normalizedTimeDuration, double total) {
-    }
-
     @TruffleBoundary
-    public static NormalizedTimeDurationWithTotalRecord differenceInstant(BigInt ns1, BigInt ns2, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode) {
+    public static BigInt differenceInstant(BigInt ns1, BigInt ns2, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode) {
         BigInt difference = normalizedTimeDurationFromEpochNanosecondsDifference(ns2, ns1);
-        var roundRecord = roundTimeDuration(0, difference, roundingIncrement, smallestUnit, roundingMode);
-        return new NormalizedTimeDurationWithTotalRecord(roundRecord.normalizedDuration().normalizedTimeTotalNanoseconds(), roundRecord.total());
+        return roundTimeDuration(difference, roundingIncrement, smallestUnit, roundingMode);
     }
 
     @TruffleBoundary

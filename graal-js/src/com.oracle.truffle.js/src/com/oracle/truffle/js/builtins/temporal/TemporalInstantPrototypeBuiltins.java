@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -259,9 +259,8 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSDynamicObject resolvedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, UnitGroup.TIME, null, Unit.NANOSECOND, Unit.SECOND);
 
-            var diffRecord = TemporalUtil.differenceInstant(instant.getNanoseconds(), other.getNanoseconds(),
+            BigInt norm = TemporalUtil.differenceInstant(instant.getNanoseconds(), other.getNanoseconds(),
                             settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
-            BigInt norm = diffRecord.normalizedTimeDuration();
             TimeDurationRecord result = TemporalUtil.balanceTimeDuration(norm, settings.largestUnit());
             JSRealm realm = getRealm();
             return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,

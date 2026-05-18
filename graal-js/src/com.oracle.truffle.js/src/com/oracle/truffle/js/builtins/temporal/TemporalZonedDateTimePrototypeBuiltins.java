@@ -782,9 +782,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Unit largestUnit = settings.largestUnit();
             JSRealm realm = getRealm();
             if (!(Unit.YEAR == largestUnit || Unit.MONTH == largestUnit || Unit.WEEK == largestUnit || Unit.DAY == largestUnit)) {
-                var diffRecord = TemporalUtil.differenceInstant(zonedDateTime.getNanoseconds(), other.getNanoseconds(),
+                BigInt norm = TemporalUtil.differenceInstant(zonedDateTime.getNanoseconds(), other.getNanoseconds(),
                                 settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
-                BigInt norm = diffRecord.normalizedTimeDuration();
                 TimeDurationRecord result = TemporalUtil.balanceTimeDuration(norm, largestUnit);
                 return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
                                 sign * result.hours(), sign * result.minutes(), sign * result.seconds(),
