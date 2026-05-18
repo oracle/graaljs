@@ -1515,16 +1515,12 @@ public final class TemporalUtil {
         int months = 0;
         Calendar intermediate;
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
-            int oneDay = one.get(Calendar.DAY_OF_MONTH);
-
             int candidateYears = IntlUtil.getExtendedYear(two) - IntlUtil.getExtendedYear(one);
             if (candidateYears != 0) {
                 candidateYears -= sign;
             }
             while (true) {
-                Calendar oneTemp = (Calendar) one.clone();
-                oneTemp.add(Calendar.EXTENDED_YEAR, candidateYears);
-                if (nonISODateSurpasses(sign, oneTemp, oneDay, two)) {
+                if (nonISODateSurpasses(calendar, sign, one, two, candidateYears, 0)) {
                     break;
                 }
                 years = candidateYears;
@@ -1532,13 +1528,9 @@ public final class TemporalUtil {
             }
 
             int candidateMonths = sign;
-            intermediate = (Calendar) one.clone();
-            intermediate.add(Calendar.EXTENDED_YEAR, years);
-            intermediate.add(Calendar.ORDINAL_MONTH, candidateMonths);
-            while (!nonISODateSurpasses(sign, intermediate, oneDay, two)) {
+            while (!nonISODateSurpasses(calendar, sign, one, two, years, candidateMonths)) {
                 months = candidateMonths;
                 candidateMonths += sign;
-                intermediate.add(Calendar.ORDINAL_MONTH, sign);
             }
             if (largestUnit == Unit.MONTH) {
                 months += 12 * years;
@@ -1572,23 +1564,45 @@ public final class TemporalUtil {
         }
     }
 
-    private static boolean nonISODateSurpasses(int sign, Calendar one, int d1, Calendar two) {
-        int y1 = IntlUtil.getExtendedYear(one);
-        int y2 = IntlUtil.getExtendedYear(two);
-        if (y1 != y2) {
-            return (sign * (y1 - y2) > 0);
+    // Implements the NonISODateSurpasses(..., 0, 0)
+    private static boolean nonISODateSurpasses(TruffleString calendar, int sign, Calendar fromIsoDate, Calendar toIsoDate, int years, int months) {
+        int y0 = IntlUtil.getExtendedYear(fromIsoDate) + years;
+        String monthCode = fromIsoDate.getTemporalMonthCode();
+        int day = fromIsoDate.get(Calendar.DAY_OF_MONTH);
+        if (compareSurpasses(sign, y0, monthCode, day, toIsoDate)) {
+            return true;
         }
-        int m1 = one.get(Calendar.ORDINAL_MONTH);
-        int m2 = two.get(Calendar.ORDINAL_MONTH);
-        if (m1 != m2) {
-            return (sign * (m1 - m2) > 0);
+        Calendar monthsAdded = IntlUtil.getCalendar(calendar);
+        monthsAdded.clear();
+        IntlUtil.setExtendedYear(monthsAdded, y0);
+        setTemporalMonthCodeOrConstrain(monthsAdded, monthCode, Overflow.CONSTRAIN);
+        monthsAdded.set(Calendar.DAY_OF_MONTH, 1);
+        monthsAdded.add(Calendar.ORDINAL_MONTH, months);
+        return compareSurpasses(sign, IntlUtil.getExtendedYear(monthsAdded), monthsAdded.get(Calendar.ORDINAL_MONTH) + 1, day, toIsoDate);
+    }
+
+    private static boolean compareSurpasses(int sign, int year, String monthCode, int day, Calendar target) {
+        int targetYear = IntlUtil.getExtendedYear(target);
+        if (year != targetYear) {
+            return sign * (year - targetYear) > 0;
         }
-        int d2 = two.get(Calendar.DAY_OF_MONTH);
-        if (d1 != d2) {
-            return (sign * (d1 - d2) > 0);
-        } else {
-            return false;
+        int monthCodeComparison = monthCode.compareTo(target.getTemporalMonthCode());
+        if (monthCodeComparison != 0) {
+            return sign * monthCodeComparison > 0;
         }
+        return sign * (day - target.get(Calendar.DAY_OF_MONTH)) > 0;
+    }
+
+    private static boolean compareSurpasses(int sign, int year, int month, int day, Calendar target) {
+        int targetYear = IntlUtil.getExtendedYear(target);
+        if (year != targetYear) {
+            return sign * (year - targetYear) > 0;
+        }
+        int targetMonth = target.get(Calendar.ORDINAL_MONTH) + 1;
+        if (month != targetMonth) {
+            return sign * (month - targetMonth) > 0;
+        }
+        return sign * (day - target.get(Calendar.DAY_OF_MONTH)) > 0;
     }
 
     @TruffleBoundary
