@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,46 +50,39 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedDurationRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 /**
- * Implements the DifferencePlainDateTimeWithRounding operation.
+ * Implements the DifferencePlainDateTimeWithTotal operation.
  */
 @ImportStatic(TemporalConstants.class)
-public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScriptBaseNode {
+public abstract class DifferencePlainDateTimeWithTotalNode extends JavaScriptBaseNode {
 
-    protected DifferencePlainDateTimeWithRoundingNode() {
+    protected DifferencePlainDateTimeWithTotalNode() {
     }
 
-    public abstract JSTemporalDurationRecord execute(
-                    JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
+    public abstract double execute(
+                    int y1, int mon1, int d1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode);
+                    TruffleString calendar, Unit unit);
 
     @Specialization
-    static JSTemporalDurationRecord differencePlainDateTimeWithRounding(
-                    JSTemporalPlainDateObject plainDate1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
+    static double differencePlainDateTimeWithTotal(
+                    int y1, int mon1, int d1, int h1, int min1, int s1, int ms1, int mus1, int ns1,
                     int y2, int mon2, int d2, int h2, int min2, int s2, int ms2, int mus2, int ns2,
-                    TruffleString calendar, Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode,
+                    TruffleString calendar, Unit unit,
                     @Bind Node node,
                     @Cached DifferenceISODateTimeNode differenceISODateTime,
-                    @Cached RoundRelativeDurationNode roundRelativeDuration,
+                    @Cached TotalRelativeDurationNode totalRelativeDuration,
                     @Cached InlinedBranchProfile errorBranch) {
-        int y1 = plainDate1.getYear();
-        int mon1 = plainDate1.getMonth();
-        int d1 = plainDate1.getDay();
         if (TemporalUtil.compareISODateTime(
                         y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1,
                         y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2) == 0) {
-            return JSTemporalDurationRecord.createZero();
+            return 0;
         }
 
         if (!TemporalUtil.isoDateTimeWithinLimits(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1) || !TemporalUtil.isoDateTimeWithinLimits(y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2)) {
@@ -100,18 +93,14 @@ public abstract class DifferencePlainDateTimeWithRoundingNode extends JavaScript
         NormalizedDurationRecord diff = differenceISODateTime.execute(
                         y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1,
                         y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2,
-                        calendar, largestUnit);
-        if (smallestUnit == Unit.NANOSECOND && roundingIncrement == 1) {
-            BigInt normWithDays = TemporalUtil.add24HourDaysToNormalizedTimeDuration(diff.normalizedTimeTotalNanoseconds(), diff.days());
-            TimeDurationRecord timeResult = TemporalUtil.balanceTimeDuration(normWithDays, largestUnit);
-            return JSTemporalDurationRecord.createWeeks(diff.years(), diff.months(), diff.weeks(), diff.days(),
-                            timeResult.hours(), timeResult.minutes(), timeResult.seconds(),
-                            timeResult.milliseconds(), timeResult.microseconds(), timeResult.nanoseconds());
+                        calendar, unit);
+        if (unit == Unit.NANOSECOND) {
+            return diff.normalizedTimeTotalNanoseconds().doubleValue();
         }
 
-        ISODateTimeRecord dateTime = new ISODateTimeRecord(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1);
         BigInt originEpochNs = TemporalUtil.getUTCEpochNanoseconds(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1);
         BigInt destEpochNs = TemporalUtil.getUTCEpochNanoseconds(y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2);
-        return roundRelativeDuration.execute(diff, originEpochNs, destEpochNs, dateTime, null, calendar, largestUnit, roundingIncrement, smallestUnit, roundingMode);
+        ISODateTimeRecord isoDateTime1 = new ISODateTimeRecord(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1);
+        return totalRelativeDuration.execute(diff, originEpochNs, destEpochNs, isoDateTime1, null, calendar, unit);
     }
 }

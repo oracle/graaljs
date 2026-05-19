@@ -800,9 +800,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
             var instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
             var precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
-            var resultRecord = differenceZonedDateTimeWithRounding.execute(zonedDateTime.getNanoseconds(), other.getNanoseconds(), calendar, timeZone,
+            JSTemporalDurationRecord result = differenceZonedDateTimeWithRounding.execute(zonedDateTime.getNanoseconds(), other.getNanoseconds(), calendar, timeZone,
                             precalculatedPlainDateTime, largestUnit, settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
-            JSTemporalDurationRecord result = resultRecord.duration();
 
             return JSTemporalDuration.createTemporalDuration(getContext(), realm,
                             sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
