@@ -271,12 +271,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             hc = hcDefault;
         }
         if (hour12Opt != null) {
-            boolean h11or23 = IntlUtil.H11.equals(hcDefault) || IntlUtil.H23.equals(hcDefault);
             if (hour12Opt) {
-                hc = h11or23 ? IntlUtil.H11 : IntlUtil.H12;
+                hc = localeHourCycle12(patternGenerator);
             } else {
-                boolean h24RequestedByLocaleExtension = IntlUtil.H24.equals(selectedLocale.getUnicodeLocaleType("hc"));
-                hc = h24RequestedByLocaleExtension ? IntlUtil.H24 : IntlUtil.H23;
+                hc = localeHourCycle24(patternGenerator);
             }
         }
 
@@ -608,6 +606,18 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             }
         }
         return null;
+    }
+
+    private static String localeHourCycle12(DateTimePatternGenerator patternGenerator) {
+        String hourCycle12 = hourCycleFromPattern(patternGenerator.getBestPattern("h", DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH));
+        assert hourCycle12 != null;
+        return hourCycle12;
+    }
+
+    private static String localeHourCycle24(DateTimePatternGenerator patternGenerator) {
+        String hourCycle24 = hourCycleFromPattern(patternGenerator.getBestPattern("H", DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH));
+        assert hourCycle24 != null;
+        return hourCycle24;
     }
 
     private static String bestPatternWithHourCycle(DateTimePatternGenerator patternGenerator, String skeleton, String hc) {
