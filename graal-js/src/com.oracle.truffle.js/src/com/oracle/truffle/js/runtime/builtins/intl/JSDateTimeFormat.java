@@ -302,14 +302,14 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         if (ctx.isOptionTemporal()) {
             if (timeStyleOpt != null || dateStyleOpt != null) {
                 if (dateStyleOpt != null) {
-                    state.temporalPlainDateFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale);
-                    state.temporalPlainYearMonthFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqML", patternGenerator, javaLocale);
-                    state.temporalPlainMonthDayFormat = adjustDateTimeStyleFormat(dateFormat, "MLdFg", patternGenerator, javaLocale);
+                    state.temporalPlainDateFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale, hc);
+                    state.temporalPlainYearMonthFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqML", patternGenerator, javaLocale, hc);
+                    state.temporalPlainMonthDayFormat = adjustDateTimeStyleFormat(dateFormat, "MLdFg", patternGenerator, javaLocale, hc);
                 }
                 if (timeStyleOpt != null) {
-                    state.temporalPlainTimeFormat = adjustDateTimeStyleFormat(dateFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale);
+                    state.temporalPlainTimeFormat = adjustDateTimeStyleFormat(dateFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale, hc);
                 }
-                state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale);
+                state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale, hc);
                 state.temporalInstanceFormat = dateFormat;
             } else {
                 state.temporalPlainDateFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false,
@@ -472,7 +472,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         String skeleton = makeSkeleton(weekday, era, year, month, day, dayPeriod, hour, hc, minute, second, fractionalSecondDigits, tzName);
-        String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
+        String bestPattern = bestPatternWithHourCycle(patternGenerator, skeleton, hc);
 
         if (state != null) {
             if (containsOneOf(bestPattern, "eEc")) {
@@ -524,7 +524,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return new SimpleDateFormat(bestPattern, javaLocale);
     }
 
-    private static DateFormat adjustDateTimeStyleFormat(DateFormat dateFormat, String allowed, DateTimePatternGenerator patternGenerator, Locale javaLocale) {
+    private static DateFormat adjustDateTimeStyleFormat(DateFormat dateFormat, String allowed, DateTimePatternGenerator patternGenerator, Locale javaLocale, String hc) {
         String pattern = ((SimpleDateFormat) dateFormat).toPattern();
         String skeleton = patternGenerator.getSkeleton(pattern);
         StringBuilder sb = new StringBuilder();
@@ -535,11 +535,16 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             }
         }
         if (skeleton.length() == sb.length()) {
-            // no adjustment needed
+            if (hc != null) {
+                String patternHourCycle = hourCycleFromPattern(pattern);
+                if (patternHourCycle != null && !hc.equals(patternHourCycle)) {
+                    pattern = bestPatternWithHourCycle(patternGenerator, skeleton, hc);
+                }
+            }
             return new SimpleDateFormat(pattern, javaLocale);
         }
         skeleton = sb.toString();
-        String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
+        String bestPattern = bestPatternWithHourCycle(patternGenerator, skeleton, hc);
         return new SimpleDateFormat(bestPattern, javaLocale);
     }
 
@@ -603,6 +608,18 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             }
         }
         return null;
+    }
+
+    private static String bestPatternWithHourCycle(DateTimePatternGenerator patternGenerator, String skeleton, String hc) {
+        String bestPattern = patternGenerator.getBestPattern(adjustHourCycle(skeleton, hc), DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
+        return adjustHourCycle(bestPattern, hc);
+    }
+
+    private static String adjustHourCycle(String pattern, String hc) {
+        if (hc != null && !Objects.equals(hourCycleFromPattern(pattern), hc)) {
+            return replaceHourCycle(pattern, hc);
+        }
+        return pattern;
     }
 
     private static String replaceHourCycle(String pattern, String hourCycle) {
