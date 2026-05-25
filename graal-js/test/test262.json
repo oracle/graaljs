@@ -2030,70 +2030,6 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
-    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-invalid-offset-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/from/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/case-where-relativeto-affects-rounding-mode-half-even.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-invalid-offset-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/rounding-window.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-invalid-offset-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/rounding-window.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/from/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/from/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/from/offset-string-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -2101,13 +2037,86 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
+    "filePath" : "built-ins/TypedArray/prototype/slice/speciesctor-return-same-buffer-with-offset.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/GetOwnProperty/BigInt/index-prop-desc.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/GetOwnProperty/index-prop-desc.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/bigint-tonumber.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/null-tobigint.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/number-tobigint.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/string-nan-tobigint.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/symbol-tobigint.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/tonumber-value-throws.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/undefined-tobigint.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/tonumber-value-throws.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Incorrect test: has 'mutable' expectations even for TAs over immutable buffers."
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/numbering-system.js",
     "status" : "FAIL",
     "comment" : "Problematic test - expects AM suffix with a plain (not narrow) space, see https://github.com/tc39/test262/pull/4276#issuecomment-2544146574"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
     "status" : "PASS",
@@ -2141,181 +2150,25 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/Temporal/Instant/prototype/toLocaleString/hourcycle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/calendar-invalid-era-with-era-year.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/calendar-invalid-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/from/japanese-pre-meiji.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/add/leap-month-chinese-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/add/leap-month-dangi-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/add/leap-month-hebrew-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/since/leap-year-since.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/subtract/leap-month-chinese-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/subtract/leap-month-dangi-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDate/prototype/subtract/leap-month-hebrew-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/from/calendar-invalid-era-with-era-year.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/from/calendar-invalid-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/add/leap-month-chinese-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/add/leap-month-dangi-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/add/leap-month-hebrew-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
+    "comment" : "Caused by ICU-23274: ICU4J mislabels the 1987 Chinese leap month"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/since/leap-year-since.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/subtract/leap-month-chinese-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/subtract/leap-month-dangi-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/subtract/leap-month-hebrew-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainDateTime/prototype/toLocaleString/hourcycle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "Caused by ICU-23274: ICU4J mislabels the 1987 Chinese leap month"
   }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainMonthDay/prototype/toLocaleString/basic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainTime/prototype/toLocaleString/hourcycle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/add/leap-month-chinese-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/add/leap-month-dangi-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/add/leap-month-hebrew-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
+    "comment" : "Caused by ICU-23274: ICU4J mislabels the 1987 Chinese leap month"
   }, {
     "filePath" : "intl402/Temporal/PlainYearMonth/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/subtract/leap-month-chinese-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/subtract/leap-month-dangi-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/PlainYearMonth/prototype/subtract/leap-month-hebrew-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/calendar-invalid-era-with-era-year.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/from/calendar-invalid-era.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/add/leap-month-chinese-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/add/leap-month-dangi-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/add/leap-month-hebrew-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
+    "comment" : "Caused by ICU-23274: ICU4J mislabels the 1987 Chinese leap month"
   }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/since/leap-year-since.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/subtract/leap-month-chinese-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/subtract/leap-month-dangi-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/subtract/leap-month-hebrew-numerical-months.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-03-22"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/toLocaleString/hourcycle.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-01-09"
+    "comment" : "Caused by ICU-23274: ICU4J mislabels the 1987 Chinese leap month"
   }, {
     "filePath" : "language/comments/S7.4_A5.js",
     "status" : "PASS",
@@ -2330,14 +2183,6 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
-  }, {
-    "filePath" : "language/import/import-defer/evaluation-triggers/ignore-super-property-set-exported.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: Expects `super.exported = 14` not to trigger module evaluation when `this` is deferred module namespace object; see https://github.com/tc39/test262/issues/4980"
-  }, {
-    "filePath" : "language/import/import-defer/evaluation-triggers/ignore-super-property-set-not-exported.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: Expects `super.notExported = 14` not to trigger module evaluation when `this` is deferred module namespace object; see https://github.com/tc39/test262/issues/4980"
   }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
