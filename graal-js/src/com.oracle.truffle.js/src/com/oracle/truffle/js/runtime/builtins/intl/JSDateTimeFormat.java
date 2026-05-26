@@ -946,7 +946,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(date.getYear(), date.getMonth(), date.getDay(), 12, 0, 0, 0, 0, 0);
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalYearMonth(JSDateTimeFormatObject dateTimeFormat, JSTemporalPlainYearMonthObject yearMonth) {
@@ -956,7 +956,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(yearMonth.getYear(), yearMonth.getMonth(), yearMonth.getDay(), 12, 0, 0, 0, 0, 0);
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalMonthDay(JSDateTimeFormatObject dateTimeFormat, JSTemporalPlainMonthDayObject monthDay) {
@@ -966,12 +966,12 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(monthDay.getYear(), monthDay.getMonth(), monthDay.getDay(), 12, 0, 0, 0, 0, 0);
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalTime(JSTemporalPlainTimeObject time) {
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(1970, 1, 1, time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(), time.getNanosecond());
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalDateTime(JSDateTimeFormatObject dateTimeFormat, JSTemporalPlainDateTimeObject dateTime) {
@@ -982,19 +982,15 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalInstant(JSTemporalInstantObject instant) {
-        return nsToMs(instant.getNanoseconds());
+        return TemporalUtil.nanosToMillis(instant.getNanoseconds());
     }
 
     private static double handleDateTimeOthers(Object x) {
         return timeClip(x);
-    }
-
-    private static double nsToMs(BigInt epochNs) {
-        return epochNs.divide(BigInt.valueOf(1000000)).doubleValue();
     }
 
     private static double timeClip(Object n) {
