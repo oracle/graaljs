@@ -185,7 +185,7 @@ public final class JSError extends JSNonProxy {
 
         JSObject errorPrototype;
         if (ctx.getEcmaScriptVersion() < 6) {
-            errorPrototype = JSErrorObject.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto), proto);
+            errorPrototype = JSES5ErrorPrototypeObject.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto), proto);
             JSObjectUtil.setOrVerifyPrototype(ctx, errorPrototype, proto);
         } else {
             errorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, proto);
