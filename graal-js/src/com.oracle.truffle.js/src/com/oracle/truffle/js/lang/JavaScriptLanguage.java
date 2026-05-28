@@ -408,7 +408,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             if (optionValues.hasBeenSet(JSContextOptions.TIMER_RESOLUTION)) {
                 long timerResolution = optionValues.get(JSContextOptions.TIMER_RESOLUTION);
                 long minValue = TimeUnit.MILLISECONDS.toNanos(100);
-                if (timerResolution != 0 && timerResolution < minValue) {
+                if (timerResolution < minValue) {
                     throw new SandboxValidationError(String.format("""
                                     The validation for the given sandbox policy %s failed. \
                                     The js.timer-resolution option is set to %d, but must be set to at least %d. \

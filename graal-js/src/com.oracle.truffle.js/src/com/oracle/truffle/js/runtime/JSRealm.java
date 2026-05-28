@@ -565,7 +565,6 @@ public class JSRealm {
     private SplittableRandom splittableRandom;
     private long nanoToZeroTimeOffset;
     private long nanoTimeOrigin;
-    private long lastFuzzyTime = Long.MIN_VALUE;
 
     /**
      * This {@link Random} field stores an instance of {@link SecureRandom}. This is to avoid making
@@ -2986,7 +2985,7 @@ public class JSRealm {
     }
 
     /**
-     * The current time in nanoseconds precision (with fuzzed resolution for security reasons).
+     * The current time in nanoseconds precision with the configured timer resolution.
      * Counted from the start of the application, as required by Node.js' `performance.now()`.
      */
     public long nanoTime() {
@@ -2995,8 +2994,8 @@ public class JSRealm {
     }
 
     /**
-     * The current time in nanoseconds precision (with fuzzed resolution for security reasons). Wall
-     * clock time, to be in the same range as ECMAScript's `Date.now()`.
+     * The current time in nanoseconds precision with the configured timer resolution. Wall clock
+     * time, to be in the same range as ECMAScript's `Date.now()`.
      */
     public long nanoTimeWallClock() {
         Instant instant = Instant.now();
@@ -3009,22 +3008,9 @@ public class JSRealm {
     }
 
     private long updateResolution(long nanos) {
-        long ns = nanos;
         long resolution = getContext().getTimerResolution();
-        if (resolution > 0) {
-            return Math.floorDiv(ns, resolution) * resolution;
-        } else {
-            // fuzzy time
-            long fuzz = splittableRandom.nextLong(NANOSECONDS_PER_MILLISECOND) + 1;
-            ns = ns - ns % fuzz;
-            long last = lastFuzzyTime;
-            if (ns > last) {
-                lastFuzzyTime = ns;
-                return ns;
-            } else {
-                return last;
-            }
-        }
+        assert resolution > 0;
+        return Math.floorDiv(nanos, resolution) * resolution;
     }
 
     @TruffleBoundary
@@ -3110,7 +3096,6 @@ public class JSRealm {
         splittableRandom = new SplittableRandom();
         nanoToZeroTimeOffset = -System.nanoTime();
         nanoTimeOrigin = nanoTimeWallClock();
-        lastFuzzyTime = Long.MIN_VALUE;
     }
 
     public final SecureRandom getSecureRandom() {
