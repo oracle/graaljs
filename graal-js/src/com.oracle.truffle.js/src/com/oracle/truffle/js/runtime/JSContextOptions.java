@@ -255,8 +255,8 @@ public final class JSContextOptions {
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
     @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "<nanoseconds>", //
-                    help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
-    public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
+                    help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds.") //
+    public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L, positiveLong());
     @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
@@ -775,6 +775,20 @@ public final class JSContextOptions {
                 return iv;
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException(String.format(Locale.ROOT, "Value \"%s\" is not an integer in the range [%d, %d].", sv, min, max));
+            }
+        });
+    }
+
+    private static OptionType<Long> positiveLong() {
+        return new OptionType<>("Long", sv -> {
+            try {
+                long lv = Long.parseLong(sv);
+                if (lv <= 0) {
+                    throw new NumberFormatException();
+                }
+                return lv;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(String.format(Locale.ROOT, "Value \"%s\" is not a positive integer.", sv));
             }
         });
     }
