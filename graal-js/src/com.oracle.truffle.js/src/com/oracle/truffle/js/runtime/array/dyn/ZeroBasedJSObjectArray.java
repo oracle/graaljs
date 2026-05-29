@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
 
 import java.util.Arrays;
@@ -57,9 +55,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
 
     public static <T> ZeroBasedJSObjectArray makeZeroBasedJSObjectArray(JSDynamicObject object, int length, int usedLength, T[] array, int integrityLevel) {
         ZeroBasedJSObjectArray arrayType = createZeroBasedJSObjectArray().setIntegrityLevel(integrityLevel);
-        arraySetLength(object, length);
-        arraySetUsedLength(object, usedLength);
-        arraySetArray(object, array);
+        setArrayProperties(object, array, length, usedLength, 0, 0);
         return arrayType;
     }
 
