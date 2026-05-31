@@ -49,21 +49,17 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -73,7 +69,7 @@ import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.SetterThatIgnoresPrototypePropertiesNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -234,46 +230,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public abstract static class SetterThatIgnoresPrototypePropertiesNode extends JavaScriptBaseNode {
-        protected final JSContext context;
-        protected final Object propertyKey;
-
-        protected SetterThatIgnoresPrototypePropertiesNode(JSContext context, Object propertyKey) {
-            assert JSRuntime.isPropertyKey(propertyKey);
-            this.context = context;
-            this.propertyKey = propertyKey;
-        }
-
-        @NeverDefault
-        public static SetterThatIgnoresPrototypePropertiesNode create(JSContext context, Object propertyKey) {
-            return IteratorPrototypeBuiltinsFactory.SetterThatIgnoresPrototypePropertiesNodeGen.create(context, propertyKey);
-        }
-
-        public abstract void executeWithHomeAndValue(Object thisObj, Object home, Object value);
-
-        @Specialization
-        protected void setValue(Object thisObj, Object home, Object value,
-                        @Cached IsObjectNode isObjectNode,
-                        @Cached("create(propertyKey, context, true)") HasPropertyCacheNode hasOwnConstructorPropertyNode,
-                        @Cached("create(context, propertyKey)") CreateDataPropertyNode createConstructorPropertyNode,
-                        @Cached("create(propertyKey, false, context, true)") PropertySetNode setConstructorNode,
-                        @Cached InlinedBranchProfile errorProfile,
-                        @Cached InlinedConditionProfile hasOwnPropertyProfile) {
-            if (!isObjectNode.executeBoolean(thisObj)) {
-                errorProfile.enter(this);
-                throw Errors.createTypeErrorNotAnObject(thisObj, this);
-            } else if (thisObj == home) {
-                errorProfile.enter(this);
-                throw Errors.createTypeErrorCannotSetProperty(propertyKey, thisObj, this);
-            } else if (hasOwnPropertyProfile.profile(this, hasOwnConstructorPropertyNode.hasProperty(thisObj))) {
-                setConstructorNode.setValue(thisObj, value);
-            } else {
-                createConstructorPropertyNode.executeVoid(thisObj, value);
-            }
-        }
-
-    }
-
     public abstract static class IteratorGetConstructorNode extends JSBuiltinNode {
 
         protected IteratorGetConstructorNode(JSContext context, JSBuiltin builtin) {
@@ -296,7 +252,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected Object setValue(Object thisObj, Object value,
-                        @Cached("create(getContext(), CONSTRUCTOR)") SetterThatIgnoresPrototypePropertiesNode setterNode) {
+                        @Cached("create(CONSTRUCTOR)") SetterThatIgnoresPrototypePropertiesNode setterNode) {
             Object home = getRealm().getIteratorPrototype();
             setterNode.executeWithHomeAndValue(thisObj, home, value);
             return Undefined.instance;
@@ -326,7 +282,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected Object setValue(Object thisObj, Object value,
-                        @Cached("create(getContext(), SYMBOL_TO_STRING_TAG)") SetterThatIgnoresPrototypePropertiesNode setterNode) {
+                        @Cached("create(SYMBOL_TO_STRING_TAG)") SetterThatIgnoresPrototypePropertiesNode setterNode) {
             Object home = getRealm().getIteratorPrototype();
             setterNode.executeWithHomeAndValue(thisObj, home, value);
             return Undefined.instance;
