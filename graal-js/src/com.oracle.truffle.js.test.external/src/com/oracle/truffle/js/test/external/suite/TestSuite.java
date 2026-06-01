@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,7 +87,9 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 
+@SuppressFBWarnings(value = "AT", justification = "The test counters are updated and read by the suite coordination thread; testCount is assigned before worker tasks are submitted.")
 public abstract class TestSuite {
 
     public static final int OVERALL_TIMEOUT_SECONDS = 30 * 60;

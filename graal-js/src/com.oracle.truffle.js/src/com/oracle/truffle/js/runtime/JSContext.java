@@ -274,7 +274,9 @@ public class JSContext {
     public final JSFunctionData symbolSpeciesThisGetterFunctionData;
     public final JSFunctionData symbolIteratorThisGetterFunctionData;
 
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "written via VarHandle compareAndSet") //
     private volatile CallTarget notConstructibleCallTargetCache;
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "written via VarHandle compareAndSet") //
     private volatile CallTarget generatorNotConstructibleCallTargetCache;
 
     private static final VarHandle notConstructibleCallTargetVarHandle;

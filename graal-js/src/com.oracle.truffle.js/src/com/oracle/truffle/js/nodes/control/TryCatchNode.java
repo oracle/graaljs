@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
@@ -271,6 +272,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         public abstract Object execute(Throwable ex, boolean defaultColumnNumber);
 
         @Specialization
+        @SuppressFBWarnings(value = "RV", justification = "TruffleStackTrace.fillIn is invoked for its side effect of materializing missing stack trace elements.")
         final Object doJSException(JSException ex, boolean defaultColumnNumber,
                         @Shared @Cached(parameters = "getJSContext()") InitErrorObjectNode initErrorObjectNode,
                         @Shared @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
@@ -294,6 +296,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode.WithObj
         }
 
         @Fallback
+        @SuppressFBWarnings(value = "RV", justification = "TruffleStackTrace.fillIn is invoked for its side effect of materializing missing stack trace elements.")
         static Object doOther(Throwable ex, @SuppressWarnings("unused") boolean defaultColumnNumber) {
             assert !(ex instanceof GraalJSException) && (ex instanceof AbstractTruffleException) : ex;
             // fill in any missing stack trace elements

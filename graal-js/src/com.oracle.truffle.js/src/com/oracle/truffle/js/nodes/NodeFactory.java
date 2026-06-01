@@ -171,10 +171,10 @@ import com.oracle.truffle.js.nodes.control.AsyncIteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
-import com.oracle.truffle.js.nodes.control.CreateDisposeCapabilityNode;
 import com.oracle.truffle.js.nodes.control.ContinueNode;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTargetNode;
+import com.oracle.truffle.js.nodes.control.CreateDisposeCapabilityNode;
 import com.oracle.truffle.js.nodes.control.DebuggerNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.control.DirectBreakTargetNode;
@@ -246,6 +246,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -258,6 +259,10 @@ import com.oracle.truffle.js.runtime.util.InternalSlotId;
 public class NodeFactory {
 
     private static final NodeFactory FACTORY = new NodeFactory();
+
+    @SuppressFBWarnings(value = "SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR", justification = "Constructor must be visible to generated proxy support.")
+    protected NodeFactory() {
+    }
 
     public enum BinaryOperation {
         ADD,

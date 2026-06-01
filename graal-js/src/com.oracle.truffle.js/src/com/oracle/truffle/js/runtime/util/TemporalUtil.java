@@ -139,6 +139,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
@@ -702,6 +703,7 @@ public final class TemporalUtil {
         }
     }
 
+    @SuppressFBWarnings(value = "FE", justification = "Equality is only asserted after both strict less-than cases were handled; this is an intentional halfway check.")
     public static double applyUnsignedRoundingMode(double x, double r1, double r2, UnsignedRoundingMode urm) {
         assert urm != UnsignedRoundingMode.EMPTY;
         if (x == r1) {

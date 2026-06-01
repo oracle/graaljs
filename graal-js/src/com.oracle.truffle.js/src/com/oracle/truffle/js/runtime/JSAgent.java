@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * Base class for ECMA2017 8.7 Agents.
  */
+@SuppressFBWarnings(value = "AT", justification = "JSAgent state is owned by the agent thread; interop depth mirrors that thread's call stack.")
 public abstract class JSAgent {
 
     private static final AtomicInteger signifierGenerator = new AtomicInteger(0);
