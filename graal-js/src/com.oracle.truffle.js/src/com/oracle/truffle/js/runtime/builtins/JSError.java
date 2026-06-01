@@ -102,26 +102,7 @@ public final class JSError extends JSNonProxy {
     public static final PropertyProxy STACK_PROXY = new PropertyProxy() {
         @Override
         public Object get(JSDynamicObject store) {
-            Object value = JSObjectUtil.getHiddenProperty(store, FORMATTED_STACK_NAME);
-            if (value == null) {
-                // stack not prepared yet
-                GraalJSException truffleException = getException((JSObject) store);
-                if (truffleException == null) {
-                    value = Undefined.instance;
-                } else {
-                    JSRealm realm = JSRealm.get(null);
-                    value = prepareStack(realm, store, truffleException);
-                }
-                // FORMATTED_STACK_NAME could have been set during invocation
-                // of user-defined Error.prepareStackTrace => do not overwrite it
-                Object currentValue = JSObjectUtil.getHiddenProperty(store, FORMATTED_STACK_NAME);
-                if (currentValue == null) {
-                    JSObjectUtil.putHiddenProperty(store, FORMATTED_STACK_NAME, value);
-                } else {
-                    value = currentValue;
-                }
-            }
-            return value;
+            return getFormattedStack(store);
         }
 
         @Override
@@ -195,6 +176,9 @@ public final class JSError extends JSNonProxy {
 
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
+            if (!ctx.isOptionNashornCompatibilityMode()) {
+                JSObjectUtil.putAccessorsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
+            }
         }
         return errorPrototype;
     }
@@ -266,9 +250,10 @@ public final class JSError extends JSNonProxy {
     @TruffleBoundary
     public static JSDynamicObject setException(JSRealm realm, JSErrorObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
         errorObj.setException(exception);
-        defineStackProperty(errorObj);
+        initFormattedStack(errorObj);
         JSContext context = realm.getContext();
         if (context.isOptionNashornCompatibilityMode()) {
+            defineStackProperty(errorObj);
             JSStackTraceElement[] jsStackTrace = exception.getJSStackTrace();
             if (jsStackTrace.length > 0) {
                 JSStackTraceElement topStackTraceElement = jsStackTrace[0];
@@ -283,11 +268,41 @@ public final class JSError extends JSNonProxy {
         JSObjectUtil.defineDataProperty(context, errorObj, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
-    private static void defineStackProperty(JSErrorObject errorObj) {
+    private static void initFormattedStack(JSErrorObject errorObj) {
         assert errorObj.getException() != null;
         // Error.stack is not formatted until it is accessed
         JSObjectUtil.putHiddenProperty(errorObj, FORMATTED_STACK_NAME, null);
+    }
+
+    private static void defineStackProperty(JSErrorObject errorObj) {
         JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, MESSAGE_ATTRIBUTES | JSProperty.PROXY);
+    }
+
+    public static Object getFormattedStack(JSDynamicObject store) {
+        Object value = JSObjectUtil.getHiddenProperty(store, FORMATTED_STACK_NAME);
+        if (value == null) {
+            // stack not prepared yet
+            GraalJSException truffleException = store instanceof JSObject jsObject ? getException(jsObject) : null;
+            if (truffleException == null) {
+                value = Undefined.instance;
+            } else {
+                JSRealm realm = JSRealm.get(null);
+                value = prepareStack(realm, store, truffleException);
+            }
+            // FORMATTED_STACK_NAME could have been set during invocation
+            // of user-defined Error.prepareStackTrace => do not overwrite it
+            Object currentValue = JSObjectUtil.getHiddenProperty(store, FORMATTED_STACK_NAME);
+            if (currentValue == null) {
+                JSObjectUtil.putHiddenProperty(store, FORMATTED_STACK_NAME, value);
+            } else {
+                value = currentValue;
+            }
+        }
+        return value;
+    }
+
+    public static void setFormattedStack(JSDynamicObject store, Object value) {
+        JSObjectUtil.putHiddenProperty(store, FORMATTED_STACK_NAME, value);
     }
 
     // GR-31094 method has deoptimization sources without corresponding deoptimization targets
