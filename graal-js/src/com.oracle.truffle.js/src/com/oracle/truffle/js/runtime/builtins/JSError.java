@@ -176,7 +176,7 @@ public final class JSError extends JSNonProxy {
 
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
-            if (!ctx.isOptionNashornCompatibilityMode()) {
+            if (ctx.isOptionErrorStackAccessor()) {
                 JSObjectUtil.putAccessorsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
             }
         }
@@ -252,8 +252,10 @@ public final class JSError extends JSNonProxy {
         errorObj.setException(exception);
         initFormattedStack(errorObj);
         JSContext context = realm.getContext();
-        if (context.isOptionNashornCompatibilityMode()) {
+        if (!context.isOptionErrorStackAccessor()) {
             defineStackProperty(errorObj);
+        }
+        if (context.isOptionNashornCompatibilityMode()) {
             JSStackTraceElement[] jsStackTrace = exception.getJSStackTrace();
             if (jsStackTrace.length > 0) {
                 JSStackTraceElement topStackTraceElement = jsStackTrace[0];

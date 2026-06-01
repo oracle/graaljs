@@ -334,6 +334,9 @@ public class Test262Runnable extends TestRunnable {
         if (features.contains("explicit-resource-management")) {
             extraOptions.put(JSContextOptions.EXPLICIT_RESOURCE_MANAGEMENT_NAME, "true");
         }
+        if (features.contains("error-stack-accessor")) {
+            extraOptions.put(JSContextOptions.ERROR_STACK_ACCESSOR_NAME, "true");
+        }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
 

@@ -641,6 +641,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> STACK_TRACE_API = new OptionKey<>(false);
     @CompilationFinal private boolean stackTraceAPI;
 
+    public static final String ERROR_STACK_ACCESSOR_NAME = JS_OPTION_PREFIX + "error-stack-accessor";
+    @Option(name = ERROR_STACK_ACCESSOR_NAME, category = OptionCategory.EXPERT, help = "Enable Error Stack Accessor proposal.") //
+    public static final OptionKey<Boolean> ERROR_STACK_ACCESSOR = new OptionKey<>(false);
+    @CompilationFinal private boolean errorStackAccessor;
+
     public static final String WORKER_NAME = JS_OPTION_PREFIX + "worker";
     @Option(name = WORKER_NAME, category = OptionCategory.EXPERT, help = "Enable Worker API.") //
     public static final OptionKey<Boolean> WORKER = new OptionKey<>(false);
@@ -894,6 +899,7 @@ public final class JSContextOptions {
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
         this.arrayElementsAmongMembers = readBooleanOption(ARRAY_ELEMENTS_AMONG_MEMBERS);
         this.stackTraceAPI = STACK_TRACE_API.hasBeenSet(optionValues) ? readBooleanOption(STACK_TRACE_API) : (v8CompatibilityMode || nashornCompatibilityMode);
+        this.errorStackAccessor = readBooleanOption(ERROR_STACK_ACCESSOR);
         this.worker = WORKER.hasBeenSet(optionValues) ? readBooleanOption(WORKER) : testV8Mode;
         this.textEncoding = readBooleanOption(TEXT_ENCODING);
     }
@@ -1402,6 +1408,10 @@ public final class JSContextOptions {
 
     public boolean isStackTraceAPI() {
         return stackTraceAPI;
+    }
+
+    public boolean isErrorStackAccessor() {
+        return errorStackAccessor;
     }
 
     public short getFrequencyBasedPropertyCacheLimit() {

@@ -127,7 +127,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         setException(errorObj, exception);
         // stack is not formatted until it is accessed
         setFormattedStack.execute(errorObj, JSError.FORMATTED_STACK_NAME, null);
-        if (defineOwnStackProperty || context.isOptionNashornCompatibilityMode()) {
+        if (defineOwnStackProperty || !context.isOptionErrorStackAccessor()) {
             defineStackProperty.execute(errorObj);
         }
 
