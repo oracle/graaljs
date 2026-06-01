@@ -573,7 +573,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
                 if (this instanceof AsyncIteratorFlatMapNode.AsyncIteratorFlatMapRootNode) {
                     this.awaitYieldResumptionNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionCloseInnerIterator,
-                                    AsyncIteratorFlatMapUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseImpl, true);
+                                    AsyncIteratorFlatMapUnwrapYieldResumptionRootNode::createFlatMapUnwrapYieldResumptionCloseImpl, true);
                 } else {
                     this.awaitYieldResumptionNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionClose,
                                     AsyncIteratorUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseImpl, true);
@@ -882,7 +882,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         protected AsyncIteratorFlatMapUnwrapYieldResumptionRootNode(JSContext context, boolean closeResumption) {
             super(context, closeResumption);
             this.awaitInnerIteratorReturnResult = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionCloseInnerIteratorResumption,
-                            AsyncIteratorFlatMapUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseResumptionImpl, true);
+                            AsyncIteratorFlatMapUnwrapYieldResumptionRootNode::createFlatMapUnwrapYieldResumptionCloseResumptionImpl, true);
         }
 
         @Override
@@ -935,7 +935,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
          * Resumption of UnwrapYieldResumption: Await(resumptionValue.[[Value]]). Continues with
          * AsyncIteratorClose(iterated, awaitedValue) and either awaits or returns;
          */
-        protected static JSFunctionData createCreateUnwrapYieldResumptionCloseImpl(JSContext context) {
+        protected static JSFunctionData createFlatMapUnwrapYieldResumptionCloseImpl(JSContext context) {
             return JSFunctionData.createCallOnly(context, new AsyncIteratorFlatMapUnwrapYieldResumptionRootNode(context, false).getCallTarget(), 1, Strings.EMPTY_STRING);
         }
 
@@ -943,7 +943,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
          * Resumption of AsyncIteratorClose: Await(innerResult.[[Value]]) with normal completion.
          * Checks that innerResult is an object and returns from the generator.
          */
-        protected static JSFunctionData createCreateUnwrapYieldResumptionCloseResumptionImpl(JSContext context) {
+        protected static JSFunctionData createFlatMapUnwrapYieldResumptionCloseResumptionImpl(JSContext context) {
             return JSFunctionData.createCallOnly(context, new AsyncIteratorFlatMapUnwrapYieldResumptionRootNode(context, true).getCallTarget(), 1, Strings.EMPTY_STRING);
         }
     }
