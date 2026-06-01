@@ -219,6 +219,7 @@ public class Test262Runnable extends TestRunnable {
                     "destructuring-binding",
                     "dynamic-import",
                     "error-cause",
+                    "error-stack-accessor",
                     "explicit-resource-management",
                     "exponentiation",
                     "export-star-as-namespace-from-module",
