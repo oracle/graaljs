@@ -1379,7 +1379,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalPlainDateObject nonISODateAdd(JSContext context, JSRealm realm, TruffleString calendar, JSTemporalPlainDateObject isoDate, JSTemporalDurationObject duration,
-                    @SuppressWarnings("unused") Overflow overflow, Node node, InlinedBranchProfile errorBranch) {
+                    Overflow overflow, Node node, InlinedBranchProfile errorBranch) {
         Calendar cal = IntlUtil.getCalendar(calendar, isoDate.getYear(), isoDate.getMonth(), isoDate.getDay());
         int years = (int) duration.getYears();
         int months = (int) duration.getMonths();
@@ -1392,12 +1392,63 @@ public final class TemporalUtil {
             }
         }
 
-        cal.add(Calendar.EXTENDED_YEAR, years);
+        if (years != 0) {
+            cal = addCalendarYears(calendar, cal, years, overflow);
+        }
+
         cal.add(Calendar.ORDINAL_MONTH, months);
         cal.add(Calendar.DAY_OF_MONTH, (int) (duration.getDays() + 7 * duration.getWeeks()));
 
         long ms = cal.getTimeInMillis();
         return JSTemporalPlainDate.create(context, realm, JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms), calendar, node, errorBranch);
+    }
+
+    private static Calendar addCalendarYears(TruffleString calendar, Calendar cal, int years, Overflow overflow) {
+        int targetYear = IntlUtil.getExtendedYear(cal) + years;
+        String monthCode = cal.getTemporalMonthCode();
+        int day = cal.get(Calendar.DAY_OF_MONTH);
+
+        Calendar result = IntlUtil.getCalendar(calendar);
+        result.clear();
+        IntlUtil.setExtendedYear(result, targetYear);
+        setTemporalMonthCodeOrConstrain(result, monthCode, overflow);
+        int maxDay = IntlUtil.getCalendarFieldMax(result, Calendar.DAY_OF_MONTH);
+        if (day > maxDay) {
+            if (overflow == Overflow.REJECT) {
+                throw Errors.createRangeError("Invalid day");
+            }
+            assert overflow == Overflow.CONSTRAIN;
+            day = maxDay;
+        }
+        result.set(Calendar.DAY_OF_MONTH, day);
+        return result;
+    }
+
+    private static void setTemporalMonthCodeOrConstrain(Calendar cal, String monthCode, Overflow overflow) {
+        int extendedYear = IntlUtil.getExtendedYear(cal);
+        cal.setTemporalMonthCode(monthCode);
+        if (!monthCode.equals(cal.getTemporalMonthCode())) {
+            // monthCode does not exist in extendedYear
+            if (overflow == Overflow.REJECT) {
+                throw Errors.createRangeError("Invalid monthCode");
+            } else if (monthCode.length() == 4) { // is leap month
+                assert overflow == Overflow.CONSTRAIN;
+                // leap month does not exist in extendedYear
+                // => constrain to non-leap month
+                String nonLeapMonthCode;
+                if (cal instanceof HebrewCalendar && "M05L".equals(monthCode)) {
+                    nonLeapMonthCode = "M06";
+                } else {
+                    nonLeapMonthCode = monthCode.substring(0, 3);
+                }
+                // the setting of non-existing leap month could have
+                // rolled the year to the next one => restore the original value
+                if (extendedYear != IntlUtil.getExtendedYear(cal)) {
+                    IntlUtil.setExtendedYear(cal, extendedYear);
+                }
+                cal.setTemporalMonthCode(nonLeapMonthCode);
+            }
+        }
     }
 
     // This method implements CalendarDateUntil() operation. Unfortunately,
@@ -1464,16 +1515,12 @@ public final class TemporalUtil {
         int months = 0;
         Calendar intermediate;
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
-            int oneDay = one.get(Calendar.DAY_OF_MONTH);
-
             int candidateYears = IntlUtil.getExtendedYear(two) - IntlUtil.getExtendedYear(one);
             if (candidateYears != 0) {
                 candidateYears -= sign;
             }
             while (true) {
-                Calendar oneTemp = (Calendar) one.clone();
-                oneTemp.add(Calendar.EXTENDED_YEAR, candidateYears);
-                if (nonISODateSurpasses(sign, oneTemp, oneDay, two)) {
+                if (nonISODateSurpasses(calendar, sign, one, two, candidateYears, 0)) {
                     break;
                 }
                 years = candidateYears;
@@ -1481,13 +1528,9 @@ public final class TemporalUtil {
             }
 
             int candidateMonths = sign;
-            intermediate = (Calendar) one.clone();
-            intermediate.add(Calendar.EXTENDED_YEAR, years);
-            intermediate.add(Calendar.ORDINAL_MONTH, candidateMonths);
-            while (!nonISODateSurpasses(sign, intermediate, oneDay, two)) {
+            while (!nonISODateSurpasses(calendar, sign, one, two, years, candidateMonths)) {
                 months = candidateMonths;
                 candidateMonths += sign;
-                intermediate.add(Calendar.ORDINAL_MONTH, sign);
             }
             if (largestUnit == Unit.MONTH) {
                 months += 12 * years;
@@ -1521,23 +1564,45 @@ public final class TemporalUtil {
         }
     }
 
-    private static boolean nonISODateSurpasses(int sign, Calendar one, int d1, Calendar two) {
-        int y1 = IntlUtil.getExtendedYear(one);
-        int y2 = IntlUtil.getExtendedYear(two);
-        if (y1 != y2) {
-            return (sign * (y1 - y2) > 0);
+    // Implements the NonISODateSurpasses(..., 0, 0)
+    private static boolean nonISODateSurpasses(TruffleString calendar, int sign, Calendar fromIsoDate, Calendar toIsoDate, int years, int months) {
+        int y0 = IntlUtil.getExtendedYear(fromIsoDate) + years;
+        String monthCode = fromIsoDate.getTemporalMonthCode();
+        int day = fromIsoDate.get(Calendar.DAY_OF_MONTH);
+        if (compareSurpasses(sign, y0, monthCode, day, toIsoDate)) {
+            return true;
         }
-        int m1 = one.get(Calendar.ORDINAL_MONTH);
-        int m2 = two.get(Calendar.ORDINAL_MONTH);
-        if (m1 != m2) {
-            return (sign * (m1 - m2) > 0);
+        Calendar monthsAdded = IntlUtil.getCalendar(calendar);
+        monthsAdded.clear();
+        IntlUtil.setExtendedYear(monthsAdded, y0);
+        setTemporalMonthCodeOrConstrain(monthsAdded, monthCode, Overflow.CONSTRAIN);
+        monthsAdded.set(Calendar.DAY_OF_MONTH, 1);
+        monthsAdded.add(Calendar.ORDINAL_MONTH, months);
+        return compareSurpasses(sign, IntlUtil.getExtendedYear(monthsAdded), monthsAdded.get(Calendar.ORDINAL_MONTH) + 1, day, toIsoDate);
+    }
+
+    private static boolean compareSurpasses(int sign, int year, String monthCode, int day, Calendar target) {
+        int targetYear = IntlUtil.getExtendedYear(target);
+        if (year != targetYear) {
+            return sign * (year - targetYear) > 0;
         }
-        int d2 = two.get(Calendar.DAY_OF_MONTH);
-        if (d1 != d2) {
-            return (sign * (d1 - d2) > 0);
-        } else {
-            return false;
+        int monthCodeComparison = monthCode.compareTo(target.getTemporalMonthCode());
+        if (monthCodeComparison != 0) {
+            return sign * monthCodeComparison > 0;
         }
+        return sign * (day - target.get(Calendar.DAY_OF_MONTH)) > 0;
+    }
+
+    private static boolean compareSurpasses(int sign, int year, int month, int day, Calendar target) {
+        int targetYear = IntlUtil.getExtendedYear(target);
+        if (year != targetYear) {
+            return sign * (year - targetYear) > 0;
+        }
+        int targetMonth = target.get(Calendar.ORDINAL_MONTH) + 1;
+        if (month != targetMonth) {
+            return sign * (month - targetMonth) > 0;
+        }
+        return sign * (day - target.get(Calendar.DAY_OF_MONTH)) > 0;
     }
 
     @TruffleBoundary
@@ -2332,28 +2397,14 @@ public final class TemporalUtil {
         return norm;
     }
 
-    /**
-     * RoundTimeDuration result.
-     */
-    public record NormalizedDurationWithTotalRecord(NormalizedDurationRecord normalizedDuration, double total) {
+    public static BigInt roundTimeDuration(BigInt timeDuration, int increment, Unit unit, RoundingMode roundingMode) {
+        assert !unit.isCalendarUnit() : unit;
+        return roundTimeDurationToIncrement(timeDuration, unit.getLengthInNanoseconds(), increment, roundingMode);
     }
 
-    public static NormalizedDurationWithTotalRecord roundTimeDuration(double days0, BigInt norm0, int increment, Unit unit, RoundingMode roundingMode) {
+    public static double totalTimeDuration(BigInt norm, Unit unit) {
         assert !unit.isCalendarUnit() : unit;
-        double days = days0;
-        BigInt norm = norm0;
-        double total;
-        if (unit == Unit.DAY) {
-            double fractionalDays = days + divideNormalizedTimeDurationAsDouble(norm, NS_PER_DAY_LONG);
-            days = roundNumberToIncrement(fractionalDays, increment, roundingMode);
-            total = fractionalDays;
-            norm = zeroTimeDuration();
-        } else {
-            long divisor = unit.getLengthInNanoseconds();
-            total = divideNormalizedTimeDurationAsDouble(norm, divisor);
-            norm = roundTimeDurationToIncrement(norm, divisor, increment, roundingMode);
-        }
-        return new NormalizedDurationWithTotalRecord(createNormalizedDurationRecord(0, 0, 0, days, norm), total);
+        return divideNormalizedTimeDurationAsDouble(norm, unit.getLengthInNanoseconds());
     }
 
     @TruffleBoundary
@@ -2748,17 +2799,10 @@ public final class TemporalUtil {
         return result; // spec return type: BigInt
     }
 
-    /**
-     * DifferenceInstant result.
-     */
-    public record NormalizedTimeDurationWithTotalRecord(BigInt normalizedTimeDuration, double total) {
-    }
-
     @TruffleBoundary
-    public static NormalizedTimeDurationWithTotalRecord differenceInstant(BigInt ns1, BigInt ns2, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode) {
+    public static BigInt differenceInstant(BigInt ns1, BigInt ns2, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode) {
         BigInt difference = normalizedTimeDurationFromEpochNanosecondsDifference(ns2, ns1);
-        var roundRecord = roundTimeDuration(0, difference, roundingIncrement, smallestUnit, roundingMode);
-        return new NormalizedTimeDurationWithTotalRecord(roundRecord.normalizedDuration().normalizedTimeTotalNanoseconds(), roundRecord.total());
+        return roundTimeDuration(difference, roundingIncrement, smallestUnit, roundingMode);
     }
 
     @TruffleBoundary
@@ -3411,7 +3455,7 @@ public final class TemporalUtil {
                     if (eraSet) { // both era and eraYear set
                         Integer canonicalEra = IntlUtil.canonicalizeEraInCalendar(cal, (TruffleString) era);
                         if (canonicalEra == null) {
-                            throw Errors.createTypeError("Invalid era");
+                            throw Errors.createRangeError("Invalid era");
                         }
                         if (year != Undefined.instance) {
                             // year should be consistent with era and eraYear
@@ -3562,31 +3606,8 @@ public final class TemporalUtil {
                 }
                 IntlUtil.setOrdinalMonth(cal, newValue);
             } else {
-                int extendedYear = IntlUtil.getExtendedYear(cal);
                 String monthCodeStr = monthCode.toString();
-                cal.setTemporalMonthCode(monthCodeStr);
-                if (!monthCodeStr.equals(cal.getTemporalMonthCode())) {
-                    // monthCode does not exist in extendedYear
-                    if (overflow == Overflow.REJECT) {
-                        throw Errors.createRangeError("Invalid monthCode");
-                    } else if (monthCodeStr.length() == 4) { // is leap month
-                        assert overflow == Overflow.CONSTRAIN;
-                        // leap month does not exist in extendedYear
-                        // => constrain to non-leap month
-                        String nonLeapMonthCode;
-                        if (cal instanceof HebrewCalendar && "M05L".equals(monthCodeStr)) {
-                            nonLeapMonthCode = "M06";
-                        } else {
-                            nonLeapMonthCode = monthCodeStr.substring(0, 3);
-                        }
-                        // the setting of non existing leap month could have
-                        // rolled the year to the next one => restore the original value
-                        if (extendedYear != IntlUtil.getExtendedYear(cal)) {
-                            IntlUtil.setExtendedYear(cal, extendedYear);
-                        }
-                        cal.setTemporalMonthCode(nonLeapMonthCode);
-                    }
-                }
+                setTemporalMonthCodeOrConstrain(cal, monthCodeStr, overflow);
             }
             int maxDay = IntlUtil.getCalendarFieldMax(cal, Calendar.DAY_OF_MONTH);
             if (maxDay < day) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -187,7 +187,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         TruffleString fSeconds = Strings.EMPTY_STRING;
 
         // P1Y1M1W1DT1H1M1.123456789S
-        Pattern regex = Pattern.compile("^([\\+-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.,]+[Hh])?([\\d.,]+[Mm])?([\\d.,]+[Ss])?)?$");
+        Pattern regex = Pattern.compile("^([\\+-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt](\\d+(?:[.,]\\d{1,9})?[Hh])?(\\d+(?:[.,]\\d{1,9})?[Mm])?(\\d+(?:[.,]\\d{1,9})?[Ss])?)?$");
         Matcher matcher = regex.matcher(Strings.toJavaString(string));
         if (matcher.matches()) {
             if (matcher.start(2) < 0 && matcher.start(3) < 0 && matcher.start(4) < 0 && matcher.start(5) < 0 && matcher.start(7) < 0 && matcher.start(8) < 0 && matcher.start(9) < 0) {
@@ -302,9 +302,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             if (idx >= 0) {
                 TruffleString wholePart = Strings.lazySubstring(numstr, 0, idx);
                 TruffleString fractionalPart = Strings.lazySubstring(numstr, idx + 1);
-                if (Strings.length(fractionalPart) > 9) {
-                    throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
-                }
                 return new Pair<>(wholePart, fractionalPart);
             } else {
                 return new Pair<>(numstr, Strings.EMPTY_STRING);

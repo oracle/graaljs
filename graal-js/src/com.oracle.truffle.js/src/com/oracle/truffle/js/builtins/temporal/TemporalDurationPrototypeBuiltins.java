@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,8 +70,10 @@ import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDurationFormatNode;
+import com.oracle.truffle.js.nodes.temporal.DifferencePlainDateTimeWithTotalNode;
 import com.oracle.truffle.js.nodes.temporal.DifferencePlainDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeNode;
+import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeWithTotalNode;
 import com.oracle.truffle.js.nodes.temporal.DifferenceZonedDateTimeWithRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitValuedOptionNode;
@@ -592,9 +594,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                                 norm, precalculatedPlainDateTime, TemporalUtil.Overflow.CONSTRAIN);
 
-                var roundRecord = differenceZonedDateTimeWithRounding.execute(relativeEpochNs, targetEpochNs, calendar, timeZone,
+                roundResult = differenceZonedDateTimeWithRounding.execute(relativeEpochNs, targetEpochNs, calendar, timeZone,
                                 precalculatedPlainDateTime, largestUnit, roundingIncrement, smallestUnit, roundingMode);
-                roundResult = roundRecord.duration();
             } else if (relativeToIsZonedDateTime.profile(node, plainRelativeTo != null)) {
                 TruffleString calendar = plainRelativeTo.getCalendar();
                 TimeRecord targetTime = TemporalUtil.addTime(0, 0, 0, 0, 0, 0, norm, node, errorBranch);
@@ -602,18 +603,17 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays() + targetTime.days(),
                                 0, 0, 0, 0, 0, 0, node, errorBranch);
                 JSTemporalPlainDateObject targetDate = addDate.execute(calendar, plainRelativeTo, dateDuration, TemporalUtil.Overflow.CONSTRAIN);
-                var roundRecord = differencePlainDateTimeWithRounding.execute(plainRelativeTo, 0, 0, 0, 0, 0, 0,
+                roundResult = differencePlainDateTimeWithRounding.execute(plainRelativeTo, 0, 0, 0, 0, 0, 0,
                                 targetDate.getYear(), targetDate.getMonth(), targetDate.getDay(),
                                 targetTime.hour(), targetTime.minute(), targetTime.second(), targetTime.millisecond(), targetTime.microsecond(), targetTime.nanosecond(),
                                 calendar, largestUnit, roundingIncrement, smallestUnit, roundingMode);
-                roundResult = roundRecord.duration();
             } else {
                 if (calendarUnitsPresent || largestUnit.isCalendarUnit() || smallestUnit.isCalendarUnit()) {
                     throw Errors.createRangeError("a starting point is required for years, months, or weeks balancing and rounding");
                 }
-                var roundRecord = TemporalUtil.roundTimeDuration(duration.getDays(), norm, roundingIncrement, smallestUnit, roundingMode);
-                BigInt normWithDays = TemporalUtil.add24HourDaysToNormalizedTimeDuration(roundRecord.normalizedDuration().normalizedTimeTotalNanoseconds(), roundRecord.normalizedDuration().days());
-                TimeDurationRecord balanceResult = TemporalUtil.balanceTimeDuration(normWithDays, largestUnit);
+                BigInt timeDuration = TemporalUtil.add24HourDaysToNormalizedTimeDuration(norm, duration.getDays());
+                timeDuration = TemporalUtil.roundTimeDuration(timeDuration, roundingIncrement, smallestUnit, roundingMode);
+                TimeDurationRecord balanceResult = TemporalUtil.balanceTimeDuration(timeDuration, largestUnit);
                 roundResult = JSTemporalDurationRecord.createWeeks(0, 0, 0, balanceResult.days(),
                                 balanceResult.hours(), balanceResult.minutes(), balanceResult.seconds(),
                                 balanceResult.milliseconds(), balanceResult.microseconds(), balanceResult.nanoseconds());
@@ -644,8 +644,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached GetTemporalUnitValuedOptionNode getTemporalUnit,
                         @Cached TemporalAddDateNode addDate,
-                        @Cached DifferencePlainDateTimeWithRoundingNode differencePlainDateTimeWithRounding,
-                        @Cached DifferenceZonedDateTimeWithRoundingNode differenceZonedDateTimeWithRounding,
+                        @Cached DifferencePlainDateTimeWithTotalNode differencePlainDateTimeWithTotal,
+                        @Cached DifferenceZonedDateTimeWithTotalNode differenceZonedDateTimeWithTotal,
                         @Cached TemporalAddZonedDateTimeNode addZonedDateTimeNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -696,9 +696,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                                 norm, precalculatedPlainDateTime, TemporalUtil.Overflow.CONSTRAIN);
 
-                var roundRecord = differenceZonedDateTimeWithRounding.execute(relativeEpochNs, targetEpochNs, calendar, timeZone,
-                                precalculatedPlainDateTime, unit, 1, unit, RoundingMode.TRUNC);
-                total = roundRecord.total();
+                total = differenceZonedDateTimeWithTotal.execute(relativeEpochNs, targetEpochNs, timeZone, calendar,
+                                unit, precalculatedPlainDateTime);
             } else if (plainRelativeTo != null) {
                 TruffleString calendar = plainRelativeTo.getCalendar();
                 TimeRecord targetTime = TemporalUtil.addTime(0, 0, 0, 0, 0, 0, norm, node, errorBranch);
@@ -707,18 +706,16 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays() + targetTime.days(),
                                 0, 0, 0, 0, 0, 0, node, errorBranch);
                 JSTemporalPlainDateObject targetDate = addDate.execute(calendar, plainRelativeTo, dateDuration, TemporalUtil.Overflow.CONSTRAIN);
-                var roundRecord = differencePlainDateTimeWithRounding.execute(plainRelativeTo, 0, 0, 0, 0, 0, 0,
+                total = differencePlainDateTimeWithTotal.execute(plainRelativeTo.getYear(), plainRelativeTo.getMonth(), plainRelativeTo.getDay(), 0, 0, 0, 0, 0, 0,
                                 targetDate.getYear(), targetDate.getMonth(), targetDate.getDay(),
                                 targetTime.hour(), targetTime.minute(), targetTime.second(), targetTime.millisecond(), targetTime.microsecond(), targetTime.nanosecond(),
-                                calendar, unit, 1, unit, RoundingMode.TRUNC);
-                total = roundRecord.total();
+                                calendar, unit);
             } else {
                 if (duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0 || unit.isCalendarUnit()) {
                     throw Errors.createRangeError("a starting point is required for years, months, or weeks total");
                 }
                 BigInt normWithDays = TemporalUtil.add24HourDaysToNormalizedTimeDuration(norm, duration.getDays());
-                var roundRecord = TemporalUtil.roundTimeDuration(0, normWithDays, 1, unit, RoundingMode.TRUNC);
-                total = roundRecord.total();
+                total = TemporalUtil.totalTimeDuration(normWithDays, unit);
 
             }
             return total;
@@ -814,8 +811,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
                 Unit largestUnit = TemporalUtil.defaultTemporalLargestUnit(duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds());
-                var roundRecord = TemporalUtil.roundTimeDuration(0, norm, precision.getIncrement(), precision.getUnit(), roundingMode);
-                norm = roundRecord.normalizedDuration().normalizedTimeTotalNanoseconds();
+                norm = TemporalUtil.roundTimeDuration(norm, precision.getIncrement(), precision.getUnit(), roundingMode);
                 var time = TemporalUtil.balanceTimeDuration(norm, TemporalUtil.largerOfTwoTemporalUnits(largestUnit, Unit.SECOND));
                 result = JSTemporalDurationRecord.createWeeks(duration.getYears(), duration.getMonths(), duration.getWeeks(),
                                 duration.getDays() + time.days(), time.hours(), time.minutes(), time.seconds(), time.milliseconds(), time.microseconds(), time.nanoseconds());

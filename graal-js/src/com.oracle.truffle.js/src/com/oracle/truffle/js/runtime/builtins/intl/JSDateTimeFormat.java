@@ -271,12 +271,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             hc = hcDefault;
         }
         if (hour12Opt != null) {
-            boolean h11or23 = IntlUtil.H11.equals(hcDefault) || IntlUtil.H23.equals(hcDefault);
             if (hour12Opt) {
-                hc = h11or23 ? IntlUtil.H11 : IntlUtil.H12;
+                hc = localeHourCycle12(patternGenerator);
             } else {
-                boolean h24RequestedByLocaleExtension = IntlUtil.H24.equals(selectedLocale.getUnicodeLocaleType("hc"));
-                hc = h24RequestedByLocaleExtension ? IntlUtil.H24 : IntlUtil.H23;
+                hc = localeHourCycle24(patternGenerator);
             }
         }
 
@@ -302,14 +300,14 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         if (ctx.isOptionTemporal()) {
             if (timeStyleOpt != null || dateStyleOpt != null) {
                 if (dateStyleOpt != null) {
-                    state.temporalPlainDateFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale);
-                    state.temporalPlainYearMonthFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqML", patternGenerator, javaLocale);
-                    state.temporalPlainMonthDayFormat = adjustDateTimeStyleFormat(dateFormat, "MLdFg", patternGenerator, javaLocale);
+                    state.temporalPlainDateFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEec", patternGenerator, javaLocale, hc);
+                    state.temporalPlainYearMonthFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqML", patternGenerator, javaLocale, hc);
+                    state.temporalPlainMonthDayFormat = adjustDateTimeStyleFormat(dateFormat, "MLdFg", patternGenerator, javaLocale, hc);
                 }
                 if (timeStyleOpt != null) {
-                    state.temporalPlainTimeFormat = adjustDateTimeStyleFormat(dateFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale);
+                    state.temporalPlainTimeFormat = adjustDateTimeStyleFormat(dateFormat, "abBhHkKjJCmsSA", patternGenerator, javaLocale, hc);
                 }
-                state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale);
+                state.temporalPlainDateTimeFormat = adjustDateTimeStyleFormat(dateFormat, "GyYuUrQqMLdFgEecabBhHkKjJCmsSA", patternGenerator, javaLocale, hc);
                 state.temporalInstanceFormat = dateFormat;
             } else {
                 state.temporalPlainDateFormat = getDateTimeFormat(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, null, null, null, null, null, -1, null, Required.DATE, Defaults.DATE, false,
@@ -472,7 +470,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         String skeleton = makeSkeleton(weekday, era, year, month, day, dayPeriod, hour, hc, minute, second, fractionalSecondDigits, tzName);
-        String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
+        String bestPattern = bestPatternWithHourCycle(patternGenerator, skeleton, hc);
 
         if (state != null) {
             if (containsOneOf(bestPattern, "eEc")) {
@@ -524,7 +522,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return new SimpleDateFormat(bestPattern, javaLocale);
     }
 
-    private static DateFormat adjustDateTimeStyleFormat(DateFormat dateFormat, String allowed, DateTimePatternGenerator patternGenerator, Locale javaLocale) {
+    private static DateFormat adjustDateTimeStyleFormat(DateFormat dateFormat, String allowed, DateTimePatternGenerator patternGenerator, Locale javaLocale, String hc) {
         String pattern = ((SimpleDateFormat) dateFormat).toPattern();
         String skeleton = patternGenerator.getSkeleton(pattern);
         StringBuilder sb = new StringBuilder();
@@ -535,11 +533,16 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             }
         }
         if (skeleton.length() == sb.length()) {
-            // no adjustment needed
+            if (hc != null) {
+                String patternHourCycle = hourCycleFromPattern(pattern);
+                if (patternHourCycle != null && !hc.equals(patternHourCycle)) {
+                    pattern = bestPatternWithHourCycle(patternGenerator, skeleton, hc);
+                }
+            }
             return new SimpleDateFormat(pattern, javaLocale);
         }
         skeleton = sb.toString();
-        String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
+        String bestPattern = bestPatternWithHourCycle(patternGenerator, skeleton, hc);
         return new SimpleDateFormat(bestPattern, javaLocale);
     }
 
@@ -603,6 +606,30 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             }
         }
         return null;
+    }
+
+    private static String localeHourCycle12(DateTimePatternGenerator patternGenerator) {
+        String hourCycle12 = hourCycleFromPattern(patternGenerator.getBestPattern("h", DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH));
+        assert hourCycle12 != null;
+        return hourCycle12;
+    }
+
+    private static String localeHourCycle24(DateTimePatternGenerator patternGenerator) {
+        String hourCycle24 = hourCycleFromPattern(patternGenerator.getBestPattern("H", DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH));
+        assert hourCycle24 != null;
+        return hourCycle24;
+    }
+
+    private static String bestPatternWithHourCycle(DateTimePatternGenerator patternGenerator, String skeleton, String hc) {
+        String bestPattern = patternGenerator.getBestPattern(adjustHourCycle(skeleton, hc), DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
+        return adjustHourCycle(bestPattern, hc);
+    }
+
+    private static String adjustHourCycle(String pattern, String hc) {
+        if (hc != null && !Objects.equals(hourCycleFromPattern(pattern), hc)) {
+            return replaceHourCycle(pattern, hc);
+        }
+        return pattern;
     }
 
     private static String replaceHourCycle(String pattern, String hourCycle) {
@@ -919,7 +946,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(date.getYear(), date.getMonth(), date.getDay(), 12, 0, 0, 0, 0, 0);
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalYearMonth(JSDateTimeFormatObject dateTimeFormat, JSTemporalPlainYearMonthObject yearMonth) {
@@ -929,7 +956,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(yearMonth.getYear(), yearMonth.getMonth(), yearMonth.getDay(), 12, 0, 0, 0, 0, 0);
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalMonthDay(JSDateTimeFormatObject dateTimeFormat, JSTemporalPlainMonthDayObject monthDay) {
@@ -939,12 +966,12 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(monthDay.getYear(), monthDay.getMonth(), monthDay.getDay(), 12, 0, 0, 0, 0, 0);
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalTime(JSTemporalPlainTimeObject time) {
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(1970, 1, 1, time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(), time.getNanosecond());
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalDateTime(JSDateTimeFormatObject dateTimeFormat, JSTemporalPlainDateTimeObject dateTime) {
@@ -955,19 +982,15 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         BigInt epochNs = TemporalUtil.getUTCEpochNanoseconds(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
-        return nsToMs(epochNs);
+        return TemporalUtil.nanosToMillis(epochNs);
     }
 
     private static double handleDateTimeTemporalInstant(JSTemporalInstantObject instant) {
-        return nsToMs(instant.getNanoseconds());
+        return TemporalUtil.nanosToMillis(instant.getNanoseconds());
     }
 
     private static double handleDateTimeOthers(Object x) {
         return timeClip(x);
-    }
-
-    private static double nsToMs(BigInt epochNs) {
-        return epochNs.divide(BigInt.valueOf(1000000)).doubleValue();
     }
 
     private static double timeClip(Object n) {

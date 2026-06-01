@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.js.runtime.BigInt;
+
 /**
- * The result record returned by the operations: RoundRelativeDuration,
- * DifferencePlainDateTimeWithRounding, DifferenceZonedDateTimeWithRounding.
+ * A Duration Nudge Result Record.
  */
-public record TemporalDurationWithTotalRecord(
-                JSTemporalDurationRecord duration,
-                double total) {
+public record DurationNudgeResultRecord(
+                NormalizedDurationRecord duration,
+                BigInt nudgedEpochNs,
+                boolean didExpandCalendarUnit) {
 }

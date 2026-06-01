@@ -1203,7 +1203,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static Object getEraYear(Calendar cal) {
-        if (cal instanceof IslamicCalendar || (cal instanceof JapaneseCalendar && cal.get(Calendar.ERA) < JapaneseCalendar.MEIJI)) {
+        if (cal instanceof IslamicCalendar || (cal instanceof JapaneseCalendar jpCal && usesGregorianEra(jpCal))) {
             int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
             return (extendedYear <= 0) ? (1 - extendedYear) : extendedYear;
         } else if (cal instanceof CopticCalendar) {
@@ -1261,7 +1261,7 @@ public final class IntlUtil {
     @TruffleBoundary
     private static TruffleString getEraAsString(Calendar cal) {
         int era = cal.get(Calendar.ERA);
-        if (cal instanceof JapaneseCalendar) {
+        if (cal instanceof JapaneseCalendar jpCal) {
             if (era == JapaneseCalendar.REIWA) {
                 return REIWA;
             } else if (era == JapaneseCalendar.HEISEI) {
@@ -1270,7 +1270,7 @@ public final class IntlUtil {
                 return SHOWA;
             } else if (era == JapaneseCalendar.TAISHO) {
                 return TAISHO;
-            } else if (era == JapaneseCalendar.MEIJI) {
+            } else if (!usesGregorianEra(jpCal)) {
                 return MEIJI;
             } else {
                 int extendedYear = cal.get(Calendar.EXTENDED_YEAR);
@@ -1305,6 +1305,10 @@ public final class IntlUtil {
             return (extendedYear > 0) ? AH : BH;
         }
         return Strings.UNKNOWN;
+    }
+
+    private static boolean usesGregorianEra(JapaneseCalendar cal) {
+        return cal.get(Calendar.EXTENDED_YEAR) <= 1872;
     }
 
     @TruffleBoundary

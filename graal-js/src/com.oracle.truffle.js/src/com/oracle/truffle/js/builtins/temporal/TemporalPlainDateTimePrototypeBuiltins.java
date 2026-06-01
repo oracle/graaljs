@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -453,12 +453,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
             JSTemporalPlainDateObject plainDate = JSTemporalPlainDate.create(ctx, realm,
                             dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), node, errorBranch);
-            var resultRecord = differencePlainDateTimeWithRounding.execute(plainDate,
+            JSTemporalDurationRecord result = differencePlainDateTimeWithRounding.execute(plainDate,
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                             other.getYear(), other.getMonth(), other.getDay(),
                             other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond(),
                             other.getCalendar(), settings.largestUnit(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
-            JSTemporalDurationRecord result = resultRecord.duration();
 
             return JSTemporalDuration.createTemporalDuration(ctx, realm,
                             sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),

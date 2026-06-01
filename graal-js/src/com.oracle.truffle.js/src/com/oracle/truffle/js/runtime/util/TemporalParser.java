@@ -476,6 +476,9 @@ public final class TemporalParser {
     private boolean parseDate() {
         Matcher matcher = createMatch(patternDate, rest);
         if (matcher.matches()) {
+            if (!hasConsistentSeparators(matcher.end(1), matcher.start(2), matcher.end(2), matcher.start(3))) {
+                return false;
+            }
             year = group(rest, matcher, 1);
             month = group(rest, matcher, 2);
             day = group(rest, matcher, 3);
@@ -493,6 +496,9 @@ public final class TemporalParser {
     private boolean tryParseTimeSpec() {
         Matcher matcher = createMatch(patternTime, rest);
         if (matcher.matches()) {
+            if (!hasConsistentSeparators(matcher.end(1), matcher.start(3), matcher.end(3), matcher.start(4))) {
+                return false;
+            }
             hour = group(rest, matcher, 1);
             minute = group(rest, matcher, 3);
             second = group(rest, matcher, 4);
@@ -576,6 +582,9 @@ public final class TemporalParser {
     private boolean tryParseTimeZoneNumericUTCOffset() {
         Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, true);
         if (matcher.matches()) {
+            if (!hasConsistentSeparators(matcher.end(2), matcher.start(4), matcher.end(4), matcher.start(5))) {
+                return false;
+            }
             offsetSign = group(rest, matcher, 1);
             offsetHour = group(rest, matcher, 2);
             offsetMinute = group(rest, matcher, 4);
@@ -588,6 +597,14 @@ public final class TemporalParser {
         }
 
         return false;
+    }
+
+    // The spec grammar parameterizes DateSpec and TimeSpec by their basic/extended form,
+    // and UTCOffset has separate basic and extended alternatives. The compact regular
+    // expressions above parse both forms at once, so keep the same separator mode between
+    // the second and third components here.
+    private static boolean hasConsistentSeparators(int firstEnd, int secondStart, int secondEnd, int thirdStart) {
+        return secondStart < 0 || thirdStart < 0 || (firstEnd == secondStart) == (secondEnd == thirdStart);
     }
 
     public JSTemporalParserRecord parseTimeZoneIdentifier() {

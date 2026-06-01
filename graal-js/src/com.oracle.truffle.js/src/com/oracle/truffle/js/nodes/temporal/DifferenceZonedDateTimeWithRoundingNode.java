@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDurationWithTotalRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -65,41 +64,38 @@ public abstract class DifferenceZonedDateTimeWithRoundingNode extends JavaScript
     protected DifferenceZonedDateTimeWithRoundingNode() {
     }
 
-    public abstract TemporalDurationWithTotalRecord execute(BigInt ns1, BigInt ns2,
+    public abstract JSTemporalDurationRecord execute(BigInt ns1, BigInt ns2,
                     TruffleString calendar, TruffleString timeZone,
                     JSTemporalPlainDateTimeObject precalculatedPlainDateTime,
                     Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode);
 
     @Specialization
-    static TemporalDurationWithTotalRecord differenceZonedDateTimeWithRounding(BigInt ns1, BigInt ns2,
+    static JSTemporalDurationRecord differenceZonedDateTimeWithRounding(BigInt ns1, BigInt ns2,
                     TruffleString calendar, TruffleString timeZone,
                     JSTemporalPlainDateTimeObject precalculatedPlainDateTime,
                     Unit largestUnit, int roundingIncrement, Unit smallestUnit, RoundingMode roundingMode,
                     @Cached DifferenceZonedDateTimeNode differenceZonedDateTime,
                     @Cached RoundRelativeDurationNode roundRelativeDuration) {
         if (!largestUnit.isCalendarUnit() && largestUnit != Unit.DAY) {
-            var diffRecord = TemporalUtil.differenceInstant(ns1, ns2, roundingIncrement, smallestUnit, roundingMode);
-            BigInt norm = diffRecord.normalizedTimeDuration();
+            BigInt difference = TemporalUtil.normalizedTimeDurationFromEpochNanosecondsDifference(ns2, ns1);
+            BigInt norm = TemporalUtil.roundTimeDuration(difference, roundingIncrement, smallestUnit, roundingMode);
             TimeDurationRecord result = TemporalUtil.balanceTimeDuration(norm, largestUnit);
-            var durationRecord = JSTemporalDurationRecord.createWeeks(0, 0, 0, 0,
+            return JSTemporalDurationRecord.createWeeks(0, 0, 0, 0,
                             result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(), result.nanoseconds());
-            return new TemporalDurationWithTotalRecord(durationRecord, diffRecord.total());
         }
 
         var difference = differenceZonedDateTime.execute(ns1, ns2, timeZone, calendar, largestUnit, precalculatedPlainDateTime);
         boolean roundingGranularityIsNoop = smallestUnit == Unit.NANOSECOND && roundingIncrement == 1;
         if (roundingGranularityIsNoop) {
             TimeDurationRecord timeResult = TemporalUtil.balanceTimeDuration(difference.normalizedTimeTotalNanoseconds(), Unit.HOUR);
-            double total = difference.normalizedTimeTotalNanoseconds().doubleValue();
-            var durationRecord = JSTemporalDurationRecord.createWeeks(difference.years(), difference.months(), difference.weeks(), difference.days(),
+            return JSTemporalDurationRecord.createWeeks(difference.years(), difference.months(), difference.weeks(), difference.days(),
                             timeResult.hours(), timeResult.minutes(), timeResult.seconds(), timeResult.milliseconds(), timeResult.microseconds(), timeResult.nanoseconds());
-            return new TemporalDurationWithTotalRecord(durationRecord, total);
         }
 
         ISODateTimeRecord dateTime = new ISODateTimeRecord(
                         precalculatedPlainDateTime.getYear(), precalculatedPlainDateTime.getMonth(), precalculatedPlainDateTime.getDay(),
                         precalculatedPlainDateTime.getHour(), precalculatedPlainDateTime.getMinute(), precalculatedPlainDateTime.getSecond(),
                         precalculatedPlainDateTime.getMillisecond(), precalculatedPlainDateTime.getMicrosecond(), precalculatedPlainDateTime.getNanosecond());
-        return roundRelativeDuration.execute(difference, ns1, ns2, dateTime, calendar, timeZone, largestUnit, roundingIncrement, smallestUnit, roundingMode);
+        return roundRelativeDuration.execute(difference, ns1, ns2, dateTime, timeZone, calendar, largestUnit, roundingIncrement, smallestUnit, roundingMode);
     }
 }
