@@ -93,8 +93,8 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         return new InitErrorObjectNode(context);
     }
 
-    public JSObject execute(JSObject errorObj, GraalJSException exception, TruffleString messageOpt) {
-        return execute(errorObj, exception, messageOpt, null);
+    public JSObject executeForCaptureStackTrace(JSObject errorObj, GraalJSException exception, TruffleString messageOpt) {
+        return execute(errorObj, exception, messageOpt, null, Undefined.instance, false, true);
     }
 
     public JSObject execute(JSObject errorObj, GraalJSException exception, TruffleString messageOpt, boolean defaultColumnNumber) {
@@ -110,6 +110,10 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     }
 
     public JSObject execute(JSObject errorObj, GraalJSException exception, TruffleString messageOpt, JSObject errorsOpt, Object options, boolean defaultColumnNumber) {
+        return execute(errorObj, exception, messageOpt, errorsOpt, options, defaultColumnNumber, false);
+    }
+
+    private JSObject execute(JSObject errorObj, GraalJSException exception, TruffleString messageOpt, JSObject errorsOpt, Object options, boolean defaultColumnNumber, boolean defineOwnStackProperty) {
         if (messageOpt != null) {
             Properties.putWithFlags(setMessage, errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
         }
@@ -123,7 +127,9 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         setException(errorObj, exception);
         // stack is not formatted until it is accessed
         setFormattedStack.execute(errorObj, JSError.FORMATTED_STACK_NAME, null);
-        defineStackProperty.execute(errorObj);
+        if (defineOwnStackProperty || !context.isOptionErrorStackAccessor()) {
+            defineStackProperty.execute(errorObj);
+        }
 
         if (setLineNumber != null) {
             JSStackTraceElement[] jsStackTrace = exception.getJSStackTrace();

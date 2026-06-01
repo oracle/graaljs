@@ -23,7 +23,7 @@ function receiverChecks(callSite) {
 
 function check() {
     var oldPrepareStackTrace = Error.prepareStackTrace;
-    Error.prepareStackTrace = (e, stack) => e.stack = stack;
+    Error.prepareStackTrace = (e, stack) => stack;
     var stack = new Error().stack;
     Error.prepareStackTrace = oldPrepareStackTrace;
 
@@ -37,7 +37,7 @@ function check() {
 function checkStrict(thiz) {
     "use strict";
     var oldPrepareStackTrace = Error.prepareStackTrace;
-    Error.prepareStackTrace = (e, stack) => e.stack = stack;
+    Error.prepareStackTrace = (e, stack) => stack;
     var stack = new Error().stack;
     Error.prepareStackTrace = oldPrepareStackTrace;
 

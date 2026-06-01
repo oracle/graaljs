@@ -18,6 +18,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implemented the [`Joint Iteration`](https://github.com/tc39/proposal-joint-iteration) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [`Import Text`](https://github.com/tc39/proposal-import-text) proposal. It is available behind the experimental option (`--js.import-text`).
 * Implemented the [`Import Bytes`](https://github.com/tc39/proposal-import-bytes) proposal. It is available behind the experimental option (`--js.import-bytes`).
+* Implemented the [`Error Stack Accessor`](https://github.com/tc39/proposal-error-stack-accessor) proposal. It is available behind the experimental option (`--js.error-stack-accessor`).
 * Removed support for legacy import assertions (`import ... assert {type: "..."}`) and the `--js.import-assertions` option; use import attributes (`import ... with {type: "..."}`, option `--js.import-attributes`) instead.
 
 ## Version 25.0.0

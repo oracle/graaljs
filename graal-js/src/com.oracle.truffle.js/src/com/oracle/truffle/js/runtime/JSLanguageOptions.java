@@ -130,6 +130,7 @@ public record JSLanguageOptions(
                 boolean constAsVar,
                 boolean profileTime,
                 boolean arrayElementsAmongMembers,
+                boolean errorStackAccessor,
                 boolean stackTraceAPI,
                 boolean worker,
                 String locale) {
@@ -215,6 +216,7 @@ public record JSLanguageOptions(
         boolean constAsVar = options.isConstAsVar();
         boolean profileTime = options.isProfileTime();
         boolean arrayElementsAmongMembers = options.isArrayElementsAmongMembers();
+        boolean errorStackAccessor = options.isErrorStackAccessor();
         boolean stackTraceAPI = options.isStackTraceAPI();
         boolean worker = options.isWorker();
         String locale = options.getLocale();
@@ -295,6 +297,7 @@ public record JSLanguageOptions(
                         constAsVar,
                         profileTime,
                         arrayElementsAmongMembers,
+                        errorStackAccessor,
                         stackTraceAPI,
                         worker,
                         locale);

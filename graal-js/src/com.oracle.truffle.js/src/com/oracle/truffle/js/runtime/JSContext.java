@@ -1655,6 +1655,10 @@ public class JSContext {
         return languageOptions.nashornCompatibilityMode();
     }
 
+    public boolean isOptionErrorStackAccessor() {
+        return languageOptions.errorStackAccessor();
+    }
+
     public boolean isOptionMleBuiltin() {
         return languageOptions.isMLEMode();
     }

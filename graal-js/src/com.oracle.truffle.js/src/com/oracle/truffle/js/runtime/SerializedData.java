@@ -490,7 +490,8 @@ public class SerializedData {
         Object stack = iter.next();
         Object cause = iter.next();
         JSErrorObject errorObject = JSError.create(type, realm, message);
-        JSObject.set(errorObject, JSError.STACK_NAME, stack);
+        // Structured clone restores stack as Error internal data, not through the public accessor.
+        JSError.setFormattedStack(errorObject, stack);
         if (cause != Undefined.instance) {
             JSObject.defineOwnProperty(errorObject, Strings.CAUSE, PropertyDescriptor.createData(cause, JSAttributes.getDefaultNotEnumerable()));
         }

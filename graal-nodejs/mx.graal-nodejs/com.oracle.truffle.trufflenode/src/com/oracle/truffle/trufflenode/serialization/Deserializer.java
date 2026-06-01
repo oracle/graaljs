@@ -529,7 +529,7 @@ public class Deserializer {
         }
         JSErrorObject error = JSError.create(errorType, realm, message);
         assignId(error);
-        JSObject.set(error, JSError.STACK_NAME, stack);
+        JSError.setFormattedStack(error, stack);
         return error;
     }
 

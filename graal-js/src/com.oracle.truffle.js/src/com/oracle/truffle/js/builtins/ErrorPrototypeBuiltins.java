@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeStackGetNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeStackSetNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeToStringNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeCauseNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeMessageNodeGen;
@@ -57,6 +59,7 @@ import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignError
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeStackNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.SetterThatIgnoresPrototypePropertiesNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -64,29 +67,120 @@ import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains builtins for {@linkplain JSError}.prototype.
  */
-public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
+public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ErrorPrototypeBuiltins.ErrorPrototype> {
     public static final JSBuiltinsContainer BUILTINS = new ErrorPrototypeBuiltins();
 
     protected ErrorPrototypeBuiltins() {
-        super(JSError.PROTOTYPE_NAME);
-        defineFunction(Strings.TO_STRING, 0);
+        super(JSError.PROTOTYPE_NAME, ErrorPrototype.class);
+    }
+
+    public enum ErrorPrototype implements BuiltinEnum<ErrorPrototype> {
+        toString(0),
+        stack(0),
+        set_stack(1);
+
+        private final int length;
+
+        ErrorPrototype(int length) {
+            this.length = length;
+        }
+
+        @Override
+        public Object getKey() {
+            return switch (this) {
+                case stack, set_stack -> JSError.STACK_NAME;
+                default -> BuiltinEnum.super.getKey();
+            };
+        }
+
+        @Override
+        public int getLength() {
+            return length;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == stack;
+        }
+
+        @Override
+        public boolean isSetter() {
+            return this == set_stack;
+        }
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
-        if (Strings.equals(Strings.TO_STRING, builtin.getName())) {
-            return ErrorPrototypeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ErrorPrototype builtinEnum) {
+        switch (builtinEnum) {
+            case toString:
+                return ErrorPrototypeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case stack:
+                return ErrorPrototypeStackGetNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case set_stack:
+                return ErrorPrototypeStackSetNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class ErrorPrototypeStackGetNode extends JSBuiltinNode {
+
+        public ErrorPrototypeStackGetNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)")
+        protected final Object getStackNonObject(Object thisObj,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
+        }
+
+        @Specialization(guards = "isObjectNode.executeBoolean(thisObj)")
+        protected static Object getStackObject(Object thisObj,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+            if (thisObj instanceof JSErrorObject errorObj) {
+                return JSError.getFormattedStack(errorObj);
+            }
+            return Undefined.instance;
+        }
+    }
+
+    @ImportStatic(JSError.class)
+    public abstract static class ErrorPrototypeStackSetNode extends JSBuiltinNode {
+
+        public ErrorPrototypeStackSetNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)")
+        protected final Object setStackNonObject(Object thisObj, @SuppressWarnings("unused") Object value,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
+        }
+
+        @Specialization(guards = {"isObjectNode.executeBoolean(thisObj)", "!isString(value)"})
+        protected final Object setStackNonString(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object value,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+            throw Errors.createTypeError("Error.prototype.stack value must be a string", this);
+        }
+
+        @Specialization(guards = "isObjectNode.executeBoolean(thisObj)")
+        protected final Object setStackObject(Object thisObj, TruffleString value,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                        @Cached("create(STACK_NAME)") SetterThatIgnoresPrototypePropertiesNode setterNode) {
+            setterNode.executeWithHomeAndValue(thisObj, getRealm().getErrorPrototype(JSErrorType.Error), value);
+            return Undefined.instance;
+        }
     }
 
     @ImportStatic(Strings.class)
