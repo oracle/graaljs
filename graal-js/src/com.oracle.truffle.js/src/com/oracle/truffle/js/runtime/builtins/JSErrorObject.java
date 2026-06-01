@@ -57,6 +57,7 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
@@ -80,7 +81,11 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
 
     @Override
     protected JSObject copyWithoutProperties(Shape shape) {
-        return new JSErrorObject(shape, getPrototypeOf());
+        JSErrorObject copy = new JSErrorObject(shape, getPrototypeOf());
+        // JSException keeps a reference to its Error object, so a copied Error object needs a
+        // matching exception instance.
+        copy.setException(exception instanceof JSException jsException ? jsException.copyForErrorObject(copy) : exception);
+        return copy;
     }
 
     public GraalJSException getException() {
