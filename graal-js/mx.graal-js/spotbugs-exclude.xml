@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!--
+    SpotBugs can report assertion side effects for synthetic constructor captures and
+    ordinary field assignments (https://github.com/spotbugs/spotbugs/issues/3483).
+  -->
+  <Match>
+    <Bug pattern="ASE_ASSERTION_WITH_SIDE_EFFECT"/>
+    <Class name="~(com\.oracle\.truffle\.js|com\.oracle\.js\.parser)\..*"/>
+  </Match>
+  <Match>
+    <Bug pattern="ASE_ASSERTION_WITH_SIDE_EFFECT_METHOD"/>
+    <Class name="~(com\.oracle\.truffle\.js|com\.oracle\.js\.parser)\..*"/>
+  </Match>
+
+  <!-- Singleton exceptions inherit Serializable from Throwable but are not serialized. -->
+  <Match>
+    <Bug pattern="SING_SINGLETON_IMPLEMENTS_SERIALIZABLE"/>
+    <Class name="~(com\.oracle\.truffle\.js|com\.oracle\.js\.parser)\..*"/>
+  </Match>
+</FindBugsFilter>

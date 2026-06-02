@@ -34,7 +34,7 @@ import tempfile
 from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
-import mx, mx_sdk, mx_urlrewrites
+import mx, mx_sdk, mx_spotbugs, mx_urlrewrites
 import mx_util
 import mx_truffle
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
@@ -182,6 +182,13 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
 mx_unittest.register_unittest_config(JsUnittestConfig())
 prepend_gate_runner(_suite, _graal_js_pre_gate_runner)
 add_gate_runner(_suite, _graal_js_gate_runner)
+
+
+def _spotbugs(args):
+    """Run SpotBugs with GraalJS-specific excludes."""
+    exclude_filter = join(_suite.dir, 'mx.graal-js', 'spotbugs-exclude.xml')
+    return mx_spotbugs.spotbugs(['-exclude', exclude_filter] + args)
+
 
 class ArchiveProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
@@ -642,6 +649,7 @@ def verify_ci(args):
     mx.verify_ci(args, mx.suite('regex'), _suite, ['common.json', 'ci/common.jsonnet'])
 
 mx.update_commands(_suite, {
+    'spotbugs': [_spotbugs, '', None, mx.SUITE_DISPATCH_ROOT_SUITES_PROPS],
     'deploy-binary-if-master' : [deploy_binary_if_master, ''],
     'js' : [js, '[JS args|VM options]'],
     'jsnative': [jsnative, '[--target-folder <folder>|@VM options|--|JS args]'],
