@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -152,6 +152,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
 
         private String type;
         private String notation;
+        private String compactDisplay;
         private PluralRules pluralRules;
         private final List<TruffleString> pluralCategories = new LinkedList<>();
 
@@ -160,6 +161,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NOTATION, Strings.fromJavaString(notation), JSAttributes.getDefault());
+            if (compactDisplay != null) {
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_COMPACT_DISPLAY, Strings.fromJavaString(compactDisplay), JSAttributes.getDefault());
+            }
             super.fillBasicResolvedOptions(result);
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_PLURAL_CATEGORIES, JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
             super.fillRoundingResolvedOptions(result);
@@ -181,7 +185,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         public void initializeNumberFormatter() {
             super.initializeNumberFormatter();
             UnlocalizedNumberFormatter formatter = getUnlocalizedFormatter();
-            formatter = formatter.notation(JSNumberFormat.notationToICUNotation(notation, IntlUtil.LONG));
+            formatter = formatter.notation(JSNumberFormat.notationToICUNotation(notation, compactDisplay));
             numberFormatter = formatter.locale(getJavaLocale());
             numberRangeFormatter = NumberRangeFormatter.withLocale(getJavaLocale()).numberFormatterBoth(formatter);
         }
@@ -204,6 +208,10 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
 
         public void setNotation(String notation) {
             this.notation = notation;
+        }
+
+        public void setCompactDisplay(String compactDisplay) {
+            this.compactDisplay = compactDisplay;
         }
     }
 
