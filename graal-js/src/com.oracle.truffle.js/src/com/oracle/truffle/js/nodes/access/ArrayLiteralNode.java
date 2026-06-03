@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
+import com.oracle.truffle.js.runtime.array.dyn.AbstractDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantByteArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
@@ -235,7 +236,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         for (int i = 0; i < values.length; i++) {
             Object oValue = values[i];
             if (oValue instanceof Double) {
-                doubleArray[i] = (double) oValue;
+                doubleArray[i] = AbstractDoubleArray.canonicalizeNaN((double) oValue);
             } else if (oValue instanceof Integer) {
                 doubleArray[i] = (int) oValue;
             }
@@ -359,7 +360,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     } else {
                         doubleValue = getElement(i).executeDouble(frame);
                     }
-                    primitiveArray[i] = doubleValue;
+                    primitiveArray[i] = AbstractDoubleArray.canonicalizeNaN(doubleValue);
                 } catch (UnexpectedResultException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     assert !(e.getResult() instanceof Double);

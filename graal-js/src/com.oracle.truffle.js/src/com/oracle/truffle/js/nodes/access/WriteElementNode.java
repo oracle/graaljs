@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1316,17 +1316,17 @@ public class WriteElementNode extends JSTargetableNode {
             }
             int iIndex = (int) index;
             boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, holesDoubleArray, index, hasExplicitHolesIf));
-            if (containsHoles && inBoundsFastIf.profile(this, holesDoubleArray.isInBoundsFast(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
+            if (containsHoles && inBoundsFastIf.profile(this, holesDoubleArray.isInBoundsFast(target, index))) {
                 if (inBoundsFastHoleIf.profile(this, holesDoubleArray.isHoleFast(target, iIndex))) {
                     holesDoubleArray.setInBoundsFastHole(target, iIndex, doubleValue);
                 } else {
                     holesDoubleArray.setInBoundsFastNonHole(target, iIndex, doubleValue);
                 }
                 return true;
-            } else if (containsHoles && inBoundsIf.profile(this, holesDoubleArray.isInBounds(target, iIndex) && !HolesDoubleArray.isHoleValue(doubleValue))) {
+            } else if (containsHoles && inBoundsIf.profile(this, holesDoubleArray.isInBounds(target, iIndex))) {
                 holesDoubleArray.setInBounds(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
-            } else if (containsHoles && supportedContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
+            } else if (containsHoles && supportedContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index))) {
                 holesDoubleArray.setSupported(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else {
@@ -1334,7 +1334,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (!containsHoles && supportedNotContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index))) {
                     toArrayType = holesDoubleArray.toNonHoles(target, index, doubleValue);
                 } else {
-                    assert holesDoubleArray.isSparse(target, index) || HolesDoubleArray.isHoleValue(doubleValue);
+                    assert holesDoubleArray.isSparse(target, index);
                     toArrayType = holesDoubleArray.toSparse(target, index, doubleValue);
                 }
                 return setArrayAndWrite(toArrayType, target, index, doubleValue, root);

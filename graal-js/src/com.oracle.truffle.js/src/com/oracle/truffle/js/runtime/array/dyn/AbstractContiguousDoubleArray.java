@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,9 +63,10 @@ public abstract class AbstractContiguousDoubleArray extends AbstractDoubleArray 
 
     @Override
     public void setInBoundsFast(JSDynamicObject object, int index, double value) {
-        getArray(object)[(int) (index - getIndexOffset(object))] = value;
+        double doubleValue = canonicalizeNaN(value);
+        getArray(object)[(int) (index - getIndexOffset(object))] = doubleValue;
         if (JSConfig.TraceArrayWrites) {
-            traceWriteValue("InBoundsFast", index, value);
+            traceWriteValue("InBoundsFast", index, doubleValue);
         }
     }
 
