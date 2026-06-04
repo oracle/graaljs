@@ -870,7 +870,9 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 BigInt startNs = TemporalUtil.getStartOfDay(context, timeZone, isoDateTime.getYear(), isoDateTime.getMonth(), isoDateTime.getDay());
                 assert thisNs.compareTo(startNs) >= 0;
                 BigInt endNs = TemporalUtil.getStartOfDay(context, timeZone, dateEnd.year(), dateEnd.month(), dateEnd.day());
-                assert thisNs.compareTo(endNs) < 0;
+                if (thisNs.compareTo(endNs) >= 0) {
+                    thisNs = endNs.subtract(BigInt.ONE);
+                }
                 BigInt dayLengthNs = endNs.subtract(startNs);
                 BigInt dayProgressNs = thisNs.subtract(startNs);
                 BigInt roundedDayNs = TemporalUtil.roundTimeDurationToIncrement(dayProgressNs, dayLengthNs, roundingMode);
