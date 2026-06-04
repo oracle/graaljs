@@ -130,7 +130,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static TruffleString select(JSPluralRulesObject pluralRulesObj, double number) {
+    public static TruffleString select(JSPluralRulesObject pluralRulesObj, Number number) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
         LocalizedNumberFormatter numberFormatter = getNumberFormatter(pluralRulesObj);
         FormattedNumber formattedNumber = numberFormatter.format(number);
@@ -138,7 +138,7 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static TruffleString selectRange(JSPluralRulesObject pluralRulesObj, double x, double y) {
+    public static TruffleString selectRange(JSPluralRulesObject pluralRulesObj, Number x, Number y) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
         LocalizedNumberRangeFormatter rangeFormatter = pluralRulesObj.getInternalState().getNumberRangeFormatter();
         FormattedNumberRange formattedRange = rangeFormatter.formatRange(x, y);
