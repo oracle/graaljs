@@ -120,7 +120,7 @@ public abstract class NudgeToCalendarUnitNode extends JavaScriptBaseNode {
         r2 = r1 + increment * sign;
         startDuration = createNudgeDurationForUnit(duration, unit, r1);
         endDuration = createNudgeDurationForUnit(duration, unit, r2);
-        startEpochNs = (r1 == 0) ? originEpochNs : getEpochNanosecondsForDateDuration(ctx, realm, startDuration, isoDateTime, calendar, timeZone, addDateNode, errorBranch);
+        startEpochNs = isZeroDateDuration(startDuration) ? originEpochNs : getEpochNanosecondsForDateDuration(ctx, realm, startDuration, isoDateTime, calendar, timeZone, addDateNode, errorBranch);
         endEpochNs = getEpochNanosecondsForDateDuration(ctx, realm, endDuration, isoDateTime, calendar, timeZone, addDateNode, errorBranch);
 
         if (containsEpochNs(sign, startEpochNs, destEpochNs, endEpochNs)) {
@@ -173,6 +173,10 @@ public abstract class NudgeToCalendarUnitNode extends JavaScriptBaseNode {
             case DAY -> TemporalUtil.createNormalizedDurationRecord(duration.years(), duration.months(), duration.weeks(), value, TemporalUtil.zeroTimeDuration());
             default -> throw Errors.shouldNotReachHereUnexpectedValue(unit);
         };
+    }
+
+    private static boolean isZeroDateDuration(NormalizedDurationRecord duration) {
+        return duration.years() == 0 && duration.months() == 0 && duration.weeks() == 0 && duration.days() == 0;
     }
 
     private JSTemporalPlainDateObject calendarDateAdd(JSContext ctx, JSRealm realm, TruffleString calendar, ISODateTimeRecord dateTime,
