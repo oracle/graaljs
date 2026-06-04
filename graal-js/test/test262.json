@@ -2030,46 +2030,6 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/exact-multiple-of-larger-unit-plaindate.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/exact-multiple-of-larger-unit-zoned.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/exact-multiple-of-larger-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/exact-multiple-of-larger-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/exact-multiple-of-larger-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/exact-multiple-of-larger-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/exact-multiple-of-larger-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/exact-multiple-of-larger-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/exact-multiple-of-larger-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/exact-multiple-of-larger-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -2190,18 +2150,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "intl402/PluralRules/compactDisplay-undefined-unless-notation-compact.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "intl402/PluralRules/constructor-option-read-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
-    "filePath" : "intl402/PluralRules/constructor-options-throwing-getters.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
-  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "Caused by ICU-23274: ICU4J mislabels the 1987 Chinese leap month"
@@ -2221,10 +2169,6 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/monthCode/chinese-calendar-dates.js",
     "status" : "FAIL",
     "comment" : "Caused by ICU-23274: ICU4J mislabels the 1987 Chinese leap month"
-  }, {
-    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/round/same-date-starts-twice.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-05-26"
   }, {
     "filePath" : "language/comments/S7.4_A5.js",
     "status" : "PASS",
