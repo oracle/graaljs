@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
@@ -76,7 +77,7 @@ public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isJSObject(object)", replaces = {"doCached"})
     protected final boolean doUncached(JSDynamicObject object) {
-        return JSDynamicObject.hasProperty(object, key);
+        return Properties.containsKeyUncached(object, key);
     }
 
     @Specialization(guards = "!isJSObject(object)")

@@ -238,6 +238,7 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
  */
+@SuppressFBWarnings(value = "AT", justification = "JSRealm mutable state is accessed by the owning JavaScript agent; these fields are not cross-thread synchronization primitives.")
 public class JSRealm {
 
     public static final TruffleString POLYGLOT_CLASS_NAME = Strings.constant("Polyglot");

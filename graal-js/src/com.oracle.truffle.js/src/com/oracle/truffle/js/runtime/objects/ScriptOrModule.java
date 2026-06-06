@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 
 /**
  * Script or Module Record.
@@ -64,6 +65,7 @@ public class ScriptOrModule {
      * Cache of imported module sources to keep alive sources referenced by this module in order to
      * prevent premature code cache GC of this module's dependencies.
      */
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "written via VarHandle compareAndSet") //
     private volatile Map<TruffleString, Source> importSourceCache;
 
     public ScriptOrModule(JSContext context, Source source) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -378,10 +378,6 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
 
     public static Object getDynamicType(JSDynamicObject obj) {
         return obj.getShape().getDynamicType();
-    }
-
-    public static boolean hasProperty(JSDynamicObject obj, Object key) {
-        return Properties.containsKeyUncached(obj, key);
     }
 
     public static Property[] getPropertyArray(JSDynamicObject obj) {

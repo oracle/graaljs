@@ -110,6 +110,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -1385,7 +1386,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             private static boolean isLazyResultArray(Object result, HasHiddenKeyCacheNode hasLazyRegexResultNode) {
                 boolean isLazyResultArray = hasLazyRegexResultNode.executeHasHiddenKey(result);
-                assert isLazyResultArray == (result instanceof JSObject jso && JSDynamicObject.hasProperty(jso, JSArray.LAZY_REGEX_RESULT_ID));
+                assert isLazyResultArray == (result instanceof JSObject jso && Properties.containsKeyUncached(jso, JSArray.LAZY_REGEX_RESULT_ID));
                 return isLazyResultArray;
             }
 

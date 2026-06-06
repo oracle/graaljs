@@ -1,6 +1,6 @@
 
 suite = {
-  "mxversion" : "7.65.0",
+  "mxversion" : "7.82.0",
   "name" : "graal-nodejs",
   "version_from" : "graal-js",
   "release_from" : "graal-js",

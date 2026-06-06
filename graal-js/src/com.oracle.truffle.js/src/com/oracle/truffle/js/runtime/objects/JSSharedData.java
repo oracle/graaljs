@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.lang.invoke.VarHandle;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 
 /**
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.runtime.util.DebugCounter;
 public final class JSSharedData {
     private final JSContext context;
     private final JSDynamicObject proto;
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "written via VarHandle compareAndSet") //
     private volatile Assumption prototypeAssumption;
 
     private static final VarHandle PROTOTYPE_ASSUMPTION_VAR_HANDLE;
