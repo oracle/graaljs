@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,8 @@ import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.ToIntlMathematicalValue;
@@ -62,6 +64,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -131,20 +134,44 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         return null;
     }
 
-    public abstract static class JSNumberFormatResolvedOptionsNode extends JSBuiltinNode {
+    private abstract static class UnwrapNumberFormatNode extends JSBuiltinNode {
+
+        @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
+        @Child private ReadElementNode readFallbackSymbolNode;
+
+        UnwrapNumberFormatNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
+            readFallbackSymbolNode = ReadElementNode.create(context);
+        }
+
+        final JSNumberFormatObject unwrapNumberFormat(Object receiver, InlinedBranchProfile errorBranch) {
+            if (receiver instanceof JSNumberFormatObject numberFormat) {
+                return numberFormat;
+            }
+            JSRealm realm = getRealm();
+            if (ordinaryHasInstanceNode.executeBoolean(receiver, realm.getNumberFormatConstructor())) {
+                Object fallbackNumberFormat = readFallbackSymbolNode.executeWithTargetAndIndex(receiver, realm.getIntlFallbackSymbol());
+                if (fallbackNumberFormat instanceof JSNumberFormatObject numberFormat) {
+                    return numberFormat;
+                }
+            }
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
+        }
+    }
+
+    public abstract static class JSNumberFormatResolvedOptionsNode extends UnwrapNumberFormatNode {
 
         public JSNumberFormatResolvedOptionsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        public Object doResolvedOptions(JSNumberFormatObject numberFormat) {
-            return JSNumberFormat.resolvedOptions(getContext(), getRealm(), numberFormat);
-        }
-
-        @Fallback
-        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
+        public Object doResolvedOptions(Object numberFormat,
+                        @Cached InlinedBranchProfile errorBranch) {
+            JSNumberFormatObject numberFormatObj = unwrapNumberFormat(numberFormat, errorBranch);
+            return JSNumberFormat.resolvedOptions(getContext(), getRealm(), numberFormatObj);
         }
     }
 
@@ -222,7 +249,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
     }
 
-    public abstract static class JSNumberFormatGetFormatNode extends JSBuiltinNode {
+    public abstract static class JSNumberFormatGetFormatNode extends UnwrapNumberFormatNode {
 
         static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(Strings.toJavaString(JSNumberFormat.CLASS_NAME));
 
@@ -234,8 +261,9 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization
-        public Object doNumberFormat(JSNumberFormatObject numberFormatObj,
+        public Object doNumberFormat(Object numberFormat,
                         @Cached InlinedBranchProfile errorBranch) {
+            JSNumberFormatObject numberFormatObj = unwrapNumberFormat(numberFormat, errorBranch);
             JSNumberFormat.InternalState state = numberFormatObj.getInternalState();
 
             if (state == null) {
@@ -251,11 +279,6 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             }
 
             return state.getBoundFormatFunction();
-        }
-
-        @Fallback
-        public Object doIncompatibleReceiver(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
         }
 
         private static JSFunctionData createFormatFunctionData(JSContext context) {

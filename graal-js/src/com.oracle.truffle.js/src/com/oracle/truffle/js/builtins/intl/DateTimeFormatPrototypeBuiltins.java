@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,8 @@ import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactor
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -62,6 +64,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -133,20 +136,44 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         return null;
     }
 
-    public abstract static class JSDateTimeFormatResolvedOptionsNode extends JSBuiltinNode {
+    private abstract static class UnwrapDateTimeFormatNode extends JSBuiltinNode {
+
+        @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
+        @Child private ReadElementNode readFallbackSymbolNode;
+
+        UnwrapDateTimeFormatNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
+            readFallbackSymbolNode = ReadElementNode.create(context);
+        }
+
+        final JSDateTimeFormatObject unwrapDateTimeFormat(Object receiver, InlinedBranchProfile errorBranch) {
+            if (receiver instanceof JSDateTimeFormatObject dateTimeFormat) {
+                return dateTimeFormat;
+            }
+            JSRealm realm = getRealm();
+            if (ordinaryHasInstanceNode.executeBoolean(receiver, realm.getDateTimeFormatConstructor())) {
+                Object fallbackDateTimeFormat = readFallbackSymbolNode.executeWithTargetAndIndex(receiver, realm.getIntlFallbackSymbol());
+                if (fallbackDateTimeFormat instanceof JSDateTimeFormatObject dateTimeFormat) {
+                    return dateTimeFormat;
+                }
+            }
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
+        }
+    }
+
+    public abstract static class JSDateTimeFormatResolvedOptionsNode extends UnwrapDateTimeFormatNode {
 
         public JSDateTimeFormatResolvedOptionsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        public Object doResolvedOptions(JSDateTimeFormatObject dateTimeFormat) {
-            return JSDateTimeFormat.resolvedOptions(getContext(), getRealm(), dateTimeFormat);
-        }
-
-        @Fallback
-        public Object throwTypeError(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
+        public Object doResolvedOptions(Object dateTimeFormat,
+                        @Cached InlinedBranchProfile errorBranch) {
+            JSDateTimeFormatObject dateTimeFormatObj = unwrapDateTimeFormat(dateTimeFormat, errorBranch);
+            return JSDateTimeFormat.resolvedOptions(getContext(), getRealm(), dateTimeFormatObj);
         }
     }
 
@@ -222,7 +249,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         }
     }
 
-    public abstract static class JSDateTimeFormatGetFormatNode extends JSBuiltinNode {
+    public abstract static class JSDateTimeFormatGetFormatNode extends UnwrapDateTimeFormatNode {
 
         static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(Strings.toJavaString(JSDateTimeFormat.CLASS_NAME));
 
@@ -234,8 +261,9 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        public Object doDateTimeFormat(JSDateTimeFormatObject dateTimeFormatObj,
+        public Object doDateTimeFormat(Object dateTimeFormat,
                         @Cached InlinedBranchProfile errorBranch) {
+            JSDateTimeFormatObject dateTimeFormatObj = unwrapDateTimeFormat(dateTimeFormat, errorBranch);
             JSDateTimeFormat.InternalState state = dateTimeFormatObj.getInternalState();
 
             if (state == null || !state.isInitialized()) {
@@ -251,11 +279,6 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             }
 
             return state.getBoundFormatFunction();
-        }
-
-        @Fallback
-        public Object doIncompatibleReceiver(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
 
         private static JSFunctionData createFormatFunctionData(JSContext context) {
