@@ -167,6 +167,7 @@ import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
+import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -317,6 +318,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -532,13 +534,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructListFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case NumberFormat:
-                return ConstructNumberFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
+                return ConstructNumberFormatNodeGen.create(context, builtin, construct, newTarget, args().withThis().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
             case PluralRules:
                 return construct
                                 ? ConstructPluralRulesNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
                                 : createCallRequiresNew(context, builtin);
             case DateTimeFormat:
-                return ConstructDateTimeFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
+                return ConstructDateTimeFormatNodeGen.create(context, builtin, construct, newTarget, args().withThis().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context));
             case RelativeTimeFormat:
                 return construct
                                 ? ConstructRelativeTimeFormatNodeGen.create(context, builtin, newTarget, args().functionOrNewTarget(newTarget).fixedArgs(2).createArgumentNodes(context))
@@ -1954,18 +1956,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     public abstract static class ConstructNumberFormatNode extends ConstructWithNewTargetNode {
 
         @Child InitializeNumberFormatNode initializeNumberFormatNode;
+        @Child OrdinaryHasInstanceNode ordinaryHasInstanceNode;
+        private final boolean constructorCall;
 
-        public ConstructNumberFormatNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+        public ConstructNumberFormatNode(JSContext context, JSBuiltin builtin, boolean constructorCall, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
+            this.constructorCall = constructorCall;
             initializeNumberFormatNode = InitializeNumberFormatNode.createInitalizeNumberFormatNode(context);
+            ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
         }
 
         @Specialization
-        protected JSNumberFormatObject constructNumberFormat(JSDynamicObject newTarget, Object locales, Object options) {
+        protected JSObject constructNumberFormat(Object thisObj, JSDynamicObject newTarget, Object locales, Object options) {
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             JSNumberFormatObject numberFormat = JSNumberFormat.create(getContext(), realm, proto);
-            return initializeNumberFormatNode.executeInit(numberFormat, locales, options);
+            JSNumberFormatObject initializedNumberFormat = initializeNumberFormatNode.executeInit(numberFormat, locales, options);
+            if (!constructorCall && thisObj instanceof JSObject thisJSObj && ordinaryHasInstanceNode.executeBoolean(thisJSObj, realm.getNumberFormatConstructor())) {
+                JSRuntime.definePropertyOrThrow(thisJSObj, realm.getIntlFallbackSymbol(), PropertyDescriptor.createData(initializedNumberFormat, false, false, false));
+                return thisJSObj;
+            }
+            return initializedNumberFormat;
         }
 
         @Override
@@ -2001,18 +2012,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     public abstract static class ConstructDateTimeFormatNode extends ConstructWithNewTargetNode {
 
         @Child InitializeDateTimeFormatNode initializeDateTimeFormatNode;
+        @Child OrdinaryHasInstanceNode ordinaryHasInstanceNode;
+        private final boolean constructorCall;
 
-        public ConstructDateTimeFormatNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+        public ConstructDateTimeFormatNode(JSContext context, JSBuiltin builtin, boolean constructorCall, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
+            this.constructorCall = constructorCall;
             initializeDateTimeFormatNode = InitializeDateTimeFormatNode.createAnyDate(context);
+            ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
         }
 
         @Specialization
-        protected JSDateTimeFormatObject constructDateTimeFormat(JSDynamicObject newTarget, Object locales, Object options) {
+        protected JSObject constructDateTimeFormat(Object thisObj, JSDynamicObject newTarget, Object locales, Object options) {
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             JSDateTimeFormatObject dateTimeFormat = JSDateTimeFormat.create(getContext(), realm, proto);
-            return initializeDateTimeFormatNode.initialize(dateTimeFormat, locales, options);
+            JSDateTimeFormatObject initializedDateTimeFormat = initializeDateTimeFormatNode.initialize(dateTimeFormat, locales, options);
+            if (!constructorCall && thisObj instanceof JSObject thisJSObj && ordinaryHasInstanceNode.executeBoolean(thisJSObj, realm.getDateTimeFormatConstructor())) {
+                JSRuntime.definePropertyOrThrow(thisJSObj, realm.getIntlFallbackSymbol(), PropertyDescriptor.createData(initializedDateTimeFormat, false, false, false));
+                return thisJSObj;
+            }
+            return initializedDateTimeFormat;
         }
 
         @Override

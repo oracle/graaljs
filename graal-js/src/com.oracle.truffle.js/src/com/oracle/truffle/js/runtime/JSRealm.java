@@ -251,6 +251,7 @@ public class JSRealm {
     public static final TruffleString DEBUG_CLASS_NAME = Strings.constant("Debug");
     public static final TruffleString CONSOLE_CLASS_NAME = Strings.constant("Console");
     public static final TruffleString SYMBOL_ITERATOR_NAME = Strings.constant("[Symbol.iterator]");
+    public static final TruffleString INTL_LEGACY_CONSTRUCTED_SYMBOL = Strings.constant("IntlLegacyConstructedSymbol");
     public static final TruffleString MLE_CLASS_NAME = Strings.constant("MLE");
 
     private static final TruffleString GRAALVM_VERSION = Strings.fromJavaString(HomeFinder.getInstance().getVersion());
@@ -426,6 +427,8 @@ public class JSRealm {
     private Object unhandledPromiseRejectionHandler;
 
     private final JSDynamicObject ordinaryHasInstanceFunction;
+    // Unlike well-known symbols, the ECMA-402 [[FallbackSymbol]] is realm-specific.
+    private final Symbol intlFallbackSymbol;
 
     @CompilationFinal private JSDynamicObject javaPackageToPrimitiveFunction;
 
@@ -827,6 +830,7 @@ public class JSRealm {
         this.stringIteratorPrototype = es6 ? JSStringIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
         this.regExpStringIteratorPrototype = ecmaScriptVersion >= JSConfig.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
+        this.intlFallbackSymbol = Symbol.create(context, INTL_LEGACY_CONSTRUCTED_SYMBOL);
         ctor = JSCollator.createConstructor(this);
         this.collatorConstructor = ctor.getFunctionObject();
         this.collatorPrototype = ctor.getPrototype();
@@ -2779,6 +2783,10 @@ public class JSRealm {
 
     public final JSDynamicObject getOrdinaryHasInstanceFunction() {
         return ordinaryHasInstanceFunction;
+    }
+
+    public final Symbol getIntlFallbackSymbol() {
+        return intlFallbackSymbol;
     }
 
     public final JSFunctionObject getJSAdapterConstructor() {
