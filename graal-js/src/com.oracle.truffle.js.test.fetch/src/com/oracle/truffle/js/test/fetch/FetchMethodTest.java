@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -195,9 +197,9 @@ public class FetchMethodTest extends JSTest {
     }
 
     @Test(timeout = TEST_TIMEOUT)
-    public void testRejectOnNetworkFailure() {
+    public void testRejectOnNetworkFailure() throws IOException {
         String out = asyncThrows(
-                        "const res = await fetch('http://localhost:50000');");
+                        "const res = await fetch('%s');".formatted(unavailableLoopbackURL()));
         assertEquals("Connection refused\n", out);
     }
 
@@ -1124,21 +1126,21 @@ public class FetchMethodTest extends JSTest {
     }
 
     @Test(timeout = TEST_TIMEOUT)
-    public void testRejectNetworkFailure() {
+    public void testRejectNetworkFailure() throws IOException {
         String out = asyncThrows(
-                        "const res = await fetch('http://localhost:50000');");
+                        "const res = await fetch('%s');".formatted(unavailableLoopbackURL()));
         assertEquals("Connection refused\n", out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
-    public void testExtractErroredSysCall() {
+    public void testExtractErroredSysCall() throws IOException {
         String out = async("""
                         try {
-                            const res = await fetch('http://localhost:50000');
+                            const res = await fetch('%s');
                         } catch (err) {
                             console.log(err.message);
                         }
-                        """);
+                        """.formatted(unavailableLoopbackURL()));
         assertEquals("Connection refused\n", out);
     }
 
@@ -1178,6 +1180,23 @@ public class FetchMethodTest extends JSTest {
 
     private String replacePortNumber(String expected) {
         return expected.replace(":8080", ":" + port);
+    }
+
+    /**
+     * Finds a loopback port that was available to bind, then closes the socket so a following fetch
+     * attempt should fail with a refused connection instead of depending on a hard-coded port.
+     */
+    private static String unavailableLoopbackURL() throws IOException {
+        while (true) {
+            try (ServerSocket socket = new ServerSocket()) {
+                socket.bind(new InetSocketAddress("127.0.0.1", 0));
+                int reservedPort = socket.getLocalPort();
+                // Test snippets are passed through replacePortNumber(), so avoid its placeholder.
+                if (reservedPort != 8080) {
+                    return "http://127.0.0.1:" + reservedPort;
+                }
+            }
+        }
     }
 
     private void assertEquals(String expected, String actual) {
