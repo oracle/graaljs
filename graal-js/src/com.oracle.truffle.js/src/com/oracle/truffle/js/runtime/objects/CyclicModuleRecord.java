@@ -199,6 +199,7 @@ public abstract class CyclicModuleRecord extends AbstractModuleRecord {
         this.dfsAncestorIndex = -1;
     }
 
+    @Override
     public final Throwable getEvaluationError() {
         assert hasBeenEvaluated();
         return evaluationError;

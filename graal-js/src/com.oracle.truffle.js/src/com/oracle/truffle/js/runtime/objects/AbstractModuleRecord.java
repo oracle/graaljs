@@ -193,6 +193,12 @@ public abstract class AbstractModuleRecord extends ScriptOrModule {
 
     public abstract Object getModuleSource();
 
+    /**
+     * Returns the error thrown during module evaluation, or {@code null} if evaluation has not
+     * completed abruptly.
+     */
+    public abstract Throwable getEvaluationError();
+
     public final MaterializedFrame getEnvironment() {
         return environment;
     }

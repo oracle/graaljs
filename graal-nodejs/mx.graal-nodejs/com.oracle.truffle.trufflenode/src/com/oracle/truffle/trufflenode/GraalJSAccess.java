@@ -4035,7 +4035,7 @@ public final class GraalJSAccess {
                 return 3; // v8::Module::Status::Evaluating
             case EvaluatingAsync:
             case Evaluated:
-                if (!(record instanceof CyclicModuleRecord cyclicModuleRecord) || cyclicModuleRecord.getEvaluationError() == null) {
+                if (record.getEvaluationError() == null) {
                     return 4; // v8::Module::Status::kEvaluated
                 } else {
                     return 5; // v8::Module::Status::kErrored
@@ -4046,11 +4046,7 @@ public final class GraalJSAccess {
     }
 
     public Object moduleGetException(Object module) {
-        if (!(module instanceof CyclicModuleRecord record)) {
-            // synthetic module evaluation is always successful, currently
-            return null;
-        }
-        Throwable evaluationError = record.getEvaluationError();
+        Throwable evaluationError = ((AbstractModuleRecord) module).getEvaluationError();
         if (evaluationError instanceof GraalJSException) {
             return ((GraalJSException) evaluationError).getErrorObject();
         }
