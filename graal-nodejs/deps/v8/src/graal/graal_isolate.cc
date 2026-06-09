@@ -1142,6 +1142,9 @@ bool GraalIsolate::AddMessageListener(v8::MessageCallback callback, v8::Local<v8
 
 void GraalIsolate::NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error) {
     if (message_listener_ != nullptr && (error_to_ignore_ == nullptr || !GetJNIEnv()->IsSameObject(java_error, error_to_ignore_))) {
+        if (GraalIsolate::GetAbortOnUncaughtException() && ShouldAbortOnUncaughtException()) {
+            abort();
+        }
         error_to_ignore_ = nullptr;
         sending_message_ = true;
         message_listener_(message, error);
@@ -1179,10 +1182,13 @@ void GraalIsolate::SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncau
     abort_on_uncaught_exception_callback_ = callback;
 }
 
+bool GraalIsolate::ShouldAbortOnUncaughtException() {
+    return abort_on_uncaught_exception_callback_ == nullptr ||
+            abort_on_uncaught_exception_callback_(reinterpret_cast<v8::Isolate*> (this));
+}
+
 bool GraalIsolate::AbortOnUncaughtExceptionCallbackValue() {
-    return sending_message_ &&
-            (abort_on_uncaught_exception_callback_ == nullptr ||
-            abort_on_uncaught_exception_callback_(reinterpret_cast<v8::Isolate*> (this)));
+    return sending_message_ && ShouldAbortOnUncaughtException();
 }
 
 bool GraalIsolate::abort_on_uncaught_exception_ = false;
