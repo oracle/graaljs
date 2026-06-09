@@ -459,6 +459,7 @@ public:
     bool AddMessageListener(v8::MessageCallback callback, v8::Local<v8::Value> data);
     void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
     void SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback);
+    bool ShouldAbortOnUncaughtException();
     bool AbortOnUncaughtExceptionCallbackValue();
     void Deinitialize();
     void Deinitialize(bool exit, int status);
