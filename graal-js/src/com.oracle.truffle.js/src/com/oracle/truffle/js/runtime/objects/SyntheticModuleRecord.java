@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,6 +80,7 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     private final List<TruffleString> exportedNames;
     private Consumer<SyntheticModuleRecord> evaluationSteps;
     private CyclicModuleRecord.Status status = CyclicModuleRecord.Status.New;
+    private AbstractTruffleException evaluationError;
 
     public SyntheticModuleRecord(JSContext context, Source source, Object hostDefined,
                     List<TruffleString> exportedNames, Consumer<SyntheticModuleRecord> evaluationSteps) {
@@ -129,16 +130,22 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     @TruffleBoundary
     @Override
     public void evaluateSync(JSRealm realm) {
-        if (evaluationSteps == null) {
-            // module has already been evaluated, with normal completion.
+        if (status == CyclicModuleRecord.Status.Evaluated) {
+            if (evaluationError != null) {
+                throw evaluationError;
+            }
             return;
         }
+        assert status == CyclicModuleRecord.Status.Linked : status;
         try {
             status = CyclicModuleRecord.Status.Evaluating;
             evaluationSteps.accept(this);
-            evaluationSteps = null;
+        } catch (AbstractTruffleException e) {
+            evaluationError = e;
+            throw e;
         } finally {
             status = CyclicModuleRecord.Status.Evaluated;
+            evaluationSteps = null;
         }
     }
 
@@ -189,11 +196,17 @@ public final class SyntheticModuleRecord extends AbstractModuleRecord {
     }
 
     /**
-     * Off-spec extension: Provides a status for Node.js. Can only be New, Linked, or Evaluated.
+     * Off-spec extension: Provides a status for Node.js. Synthetic modules use Evaluated with a
+     * non-null evaluation error to represent V8's errored status.
      */
     @Override
     public CyclicModuleRecord.Status getStatus() {
         return status;
+    }
+
+    @Override
+    public AbstractTruffleException getEvaluationError() {
+        return evaluationError;
     }
 
     @Override
