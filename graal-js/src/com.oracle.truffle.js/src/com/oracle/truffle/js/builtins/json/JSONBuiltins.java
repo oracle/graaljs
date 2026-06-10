@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -306,13 +306,16 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         @SuppressWarnings("unused")
         @Specialization(guards = {"isUndefined(replacer)"})
         // GR-24628: JSON.stringify is frequently called with (just) a String argument
-        protected Object stringifyAStringNoReplacer(TruffleString str, Object replacer, Object space,
+        protected static Object stringifyAStringNoReplacer(TruffleString str, Object replacer, Object space,
+                        @Bind Node node,
+                        @Cached @Exclusive GetGapNode getGapNode,
                         @Cached("createStringBuilderProfile()") StringBuilderProfile stringBuilderProfile,
                         @Cached TruffleString.ReadCharUTF16Node readCharNode,
                         @Cached TruffleStringBuilder.AppendCharUTF16Node appendRawValueNode,
                         @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
                         @Cached TruffleStringBuilder.AppendSubstringByteIndexNode appendSubstringNode,
                         @Cached TruffleStringBuilder.ToStringNode builderToStringNode) {
+            getGapNode.execute(node, space);
             var builder = Strings.builderCreate(Strings.length(str) + 8);
             JSONStringifyStringNode.jsonQuote(stringBuilderProfile, builder, str, readCharNode, appendRawValueNode, appendStringNode, appendSubstringNode);
             return StringBuilderProfile.toString(builderToStringNode, builder);
