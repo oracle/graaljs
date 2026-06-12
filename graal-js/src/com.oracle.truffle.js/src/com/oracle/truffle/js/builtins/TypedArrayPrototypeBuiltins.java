@@ -74,7 +74,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstru
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperationWithToInt;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayAtNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayCopyWithinNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayEveryNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFillNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFilterNodeGen;
@@ -91,6 +90,7 @@ import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins.DataViewGetNode.
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins.DataViewSetNode.SetBufferElementNode;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.GetTypedArrayBufferOrNameNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.GetTypedArrayLengthOrOffsetNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewCopyWithinNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewFillNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewForEachNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewIteratorNodeGen;
@@ -252,7 +252,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case every:
                 return JSArrayEveryNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case copyWithin:
-                return JSArrayCopyWithinNodeGen.create(context, builtin, true, args().withThis().fixedArgs(3).createArgumentNodes(context));
+                return JSArrayBufferViewCopyWithinNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case indexOf:
                 return JSArrayIndexOfNodeGen.create(context, builtin, true, true, args().withThis().varArgs().createArgumentNodes(context));
             case lastIndexOf:
@@ -844,6 +844,91 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("factory") TypedArrayFactory cachedFactory,
                         @Cached SetBufferElementNode setBufferElementNode) {
             setBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, value, cachedFactory, byteBuffer);
+        }
+    }
+
+    public abstract static class JSArrayBufferViewCopyWithinNode extends JSArrayOperationWithToInt {
+
+        public JSArrayBufferViewCopyWithinNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, true);
+        }
+
+        @Specialization
+        protected Object copyWithin(Object thisObj, Object target, Object start, Object end,
+                        @Cached InlinedConditionProfile targetOffsetProfile,
+                        @Cached InlinedConditionProfile startOffsetProfile,
+                        @Cached InlinedConditionProfile endOffsetProfile,
+                        @Cached InlinedConditionProfile heapArrayProfile,
+                        @Cached InlinedConditionProfile directBufferProfile,
+                        @Cached GetBufferElementTypeDispatchNode getBufferElementNode,
+                        @Cached SetBufferElementTypeDispatchNode setBufferElementNode) {
+            JSTypedArrayObject typedArray = validateTypedArray(thisObj, true);
+            long length = getLength(typedArray);
+            long relativeTarget = toIntegerAsLong(target);
+            long targetIndex = JSRuntime.getOffset(relativeTarget, length, this, targetOffsetProfile);
+            long relativeStart = toIntegerAsLong(start);
+            long startIndex = JSRuntime.getOffset(relativeStart, length, this, startOffsetProfile);
+
+            long endIndex;
+            if (end == Undefined.instance) {
+                endIndex = length;
+            } else {
+                long relativeEnd = toIntegerAsLong(end);
+                endIndex = JSRuntime.getOffset(relativeEnd, length, this, endOffsetProfile);
+            }
+
+            long count = Math.min(endIndex - startIndex, length - targetIndex);
+            if (count > 0) {
+                checkOutOfBounds(typedArray);
+                length = getLength(typedArray);
+                count = Math.min(count, Math.min(length - targetIndex, length - startIndex));
+                if (count > 0) {
+                    TypedArray arrayType = typedArray.getArrayType();
+                    JSArrayBufferObject buffer = typedArray.getArrayBuffer();
+                    int elementSize = arrayType.bytesPerElement();
+                    int byteOffset = arrayType.getOffset(typedArray);
+                    int fromByteIndex = Math.toIntExact(startIndex * elementSize + byteOffset);
+                    int toByteIndex = Math.toIntExact(targetIndex * elementSize + byteOffset);
+                    int countBytes = Math.toIntExact(count * elementSize);
+                    copyBytes(buffer, arrayType, fromByteIndex, toByteIndex, countBytes, heapArrayProfile, directBufferProfile, getBufferElementNode, setBufferElementNode);
+                    reportLoopCount(count);
+                }
+            }
+            return typedArray;
+        }
+
+        private void copyBytes(JSArrayBufferObject buffer, TypedArray arrayType, int fromByteIndex, int toByteIndex, int countBytes,
+                        InlinedConditionProfile heapArrayProfile,
+                        InlinedConditionProfile directBufferProfile,
+                        GetBufferElementTypeDispatchNode getBufferElementNode,
+                        SetBufferElementTypeDispatchNode setBufferElementNode) {
+            if (heapArrayProfile.profile(this, arrayType.isArray())) {
+                byte[] byteArray = JSArrayBuffer.getByteArray(buffer);
+                System.arraycopy(byteArray, fromByteIndex, byteArray, toByteIndex, countBytes);
+            } else if (directBufferProfile.profile(this, arrayType.isDirect())) {
+                ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(buffer);
+                Boundaries.byteBufferPutSlice(byteBuffer, toByteIndex, byteBuffer, fromByteIndex, fromByteIndex + countBytes);
+            } else {
+                int direction;
+                int fromIndex = fromByteIndex;
+                int toIndex = toByteIndex;
+                if (fromByteIndex < toByteIndex && toByteIndex < fromByteIndex + countBytes) {
+                    direction = -1;
+                    fromIndex += countBytes - 1;
+                    toIndex += countBytes - 1;
+                } else {
+                    direction = 1;
+                }
+
+                TypedArrayFactory byteFactory = TypedArrayFactory.Uint8Array;
+                for (int i = 0; i < countBytes; i++) {
+                    Object value = getBufferElementNode.execute(this, buffer, fromIndex, true, byteFactory, null);
+                    setBufferElementNode.execute(this, buffer, toIndex, true, value, byteFactory, null);
+                    fromIndex += direction;
+                    toIndex += direction;
+                    TruffleSafepoint.poll(this);
+                }
+            }
         }
     }
 
