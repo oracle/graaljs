@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "esbuild": "^0.27.3",
+    "esbuild": "^0.28.1",
     "mkdirp": "^3.0.1",
     "prettier": "^3.6.2",
     "tap": "^21.1.0",
