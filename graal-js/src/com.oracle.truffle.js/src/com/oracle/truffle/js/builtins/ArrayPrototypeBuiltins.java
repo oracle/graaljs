@@ -333,7 +333,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             case fill:
                 return JSArrayFillNodeGen.create(context, builtin, false, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case copyWithin:
-                return JSArrayCopyWithinNodeGen.create(context, builtin, false, args().withThis().fixedArgs(3).createArgumentNodes(context));
+                return JSArrayCopyWithinNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case keys:
                 return JSArrayIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY, args().withThis().createArgumentNodes(context));
             case values:
@@ -2948,8 +2948,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
 
-        public JSArrayCopyWithinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
-            super(context, builtin, isTypedArrayImplementation);
+        public JSArrayCopyWithinNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
             this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR);
         }
 
@@ -2958,7 +2958,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached InlinedConditionProfile offsetProfile1,
                         @Cached InlinedConditionProfile offsetProfile2,
                         @Cached InlinedConditionProfile offsetProfile3) {
-            Object obj = toObjectOrValidateTypedArray(thisObj, true);
+            Object obj = toObject(thisObj);
             long len = getLength(obj);
             long to = JSRuntime.getOffset(toIntegerAsLong(target), len, this, offsetProfile1);
             long from = JSRuntime.getOffset(toIntegerAsLong(start), len, this, offsetProfile2);
@@ -2972,12 +2972,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long count = Math.min(finalIdx - from, len - to);
             long expectedCount = count;
             if (count > 0) {
-                if (isTypedArrayImplementation) {
-                    checkOutOfBounds((JSTypedArrayObject) thisObj);
-                    len = getLength(obj);
-                    count = Math.min(count, Math.min(len - to, len - from));
-                }
-
                 long direction;
                 if (from < to && to < (from + count)) {
                     direction = -1;
@@ -2988,7 +2982,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
 
                 while (count > 0) {
-                    if (isTypedArrayImplementation || hasProperty(obj, from)) {
+                    if (hasProperty(obj, from)) {
                         Object fromVal = read(obj, from);
                         write(obj, to, fromVal);
                     } else {
