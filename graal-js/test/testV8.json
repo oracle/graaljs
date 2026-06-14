@@ -1933,10 +1933,6 @@
     "status" : "FAIL",
     "comment" : "Arrays (GC proposal)."
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1239954.js",
-    "status" : "FAIL",
-    "comment" : "Arrays (GC proposal)."
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1254675.js",
     "status" : "FAIL",
     "comment" : "This test should only be run on configurations that don't support Wasm SIMD."
@@ -1960,10 +1956,6 @@
     "filePath" : "mjsunit/regress/wasm/regress-1517559.js",
     "status" : "SKIP",
     "comment" : "Uses performance.measureMemory()."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1523316.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1523740.js",
     "status" : "FAIL",
@@ -2014,10 +2006,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-330580823.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-330767273.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2110,10 +2098,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-366350766.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-366350772.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2545,10 +2529,6 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/wasm/array-bulk-operations.js",
-    "status" : "FAIL",
-    "comment" : "GC proposal."
-  }, {
     "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
     "status" : "FAIL",
     "comment" : "Different file path in error message."
@@ -2633,19 +2613,7 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-many-params-tagged.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-metrics.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-multi-instance-different-callee.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-multi-instance-inlined.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2654,10 +2622,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-tail-call-parent-frame.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-too-much-feedback.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2791,10 +2755,6 @@
     "filePath" : "mjsunit/wasm/gc-js-interop.js",
     "status" : "FAIL",
     "comment" : "Exotic object behavior of exported WasmGC objects (GR-72984)."
-  }, {
-    "filePath" : "mjsunit/wasm/gc-null-traps.js",
-    "status" : "FAIL",
-    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/generate-random-module-no-staging.js",
     "status" : "FAIL",
