@@ -1170,9 +1170,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         private static double constructorImpl(Object[] args, JSToDoubleNode toDoubleNode) {
-            double[] argsEvaluated = new double[args.length];
+            int usedArgCount = Math.min(args.length, Constructor.Date.getLength());
+            double[] argsEvaluated = new double[usedArgCount];
             boolean isNaN = false;
-            for (int i = 0; i < args.length; i++) {
+            for (int i = 0; i < usedArgCount; i++) {
                 double d = toDoubleNode.executeDouble(args[i]);
                 if (Double.isNaN(d)) {
                     isNaN = true;
