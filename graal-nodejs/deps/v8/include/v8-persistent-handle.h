@@ -448,7 +448,7 @@ bool PersistentBase<T>::IsWeak() const {
 
 template <class T>
 void PersistentBase<T>::Reset() {
-  if (this->IsEmpty()) return;
+  if (this->repr() == internal::ValueHelper::kEmpty) return;
   api_internal::DisposeGlobal(reinterpret_cast<internal::Address*> (ptr()));
   this->Clear();
 }
