@@ -5,7 +5,7 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
-## Version 25.1.0
+## Version 25.1.3
 * ECMAScript 2026 mode/features enabled by default.
 * Removed support and builds for macOS x86-64 (darwin-amd64).
 * Added an experimental option `js.crypto` that provides `getRandomValues()` and `randomUUID()` from the [Web Crypto API](https://w3c.github.io/webcrypto/#crypto-interface).
