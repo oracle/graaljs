@@ -2752,10 +2752,6 @@
     "status" : "FAIL",
     "comment" : "Bug in GC JS interop object behavior (expected TypeError not thrown)."
   }, {
-    "filePath" : "mjsunit/wasm/gc-js-interop.js",
-    "status" : "FAIL",
-    "comment" : "Exotic object behavior of exported WasmGC objects (GR-72984)."
-  }, {
     "filePath" : "mjsunit/wasm/generate-random-module-no-staging.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"

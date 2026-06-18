@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
 import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
 import com.oracle.truffle.js.runtime.builtins.JSRawJSONObject;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyExportedGC;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -279,7 +280,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return value;
     }
 
-    private static Object prepareJSObject(JSObject valueObj) {
+    private Object prepareJSObject(JSObject valueObj) {
         if (valueObj instanceof JSNumberObject numberObj) {
             return JSRuntime.toNumber(numberObj);
         } else if (valueObj instanceof JSBigIntObject bigIntObj) {
@@ -288,6 +289,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             return JSRuntime.toString(stringObj);
         } else if (valueObj instanceof JSBooleanObject booleanObj) {
             return JSBoolean.valueOf(booleanObj);
+        } else if (getJSContext().isOptionV8CompatibilityMode() && JSWebAssemblyExportedGC.isJSWebAssemblyExportedGCObject(valueObj)) {
+            return Undefined.instance;
         } else if (JSRuntime.isCallableIsJSObject(valueObj)) {
             return Undefined.instance;
         }
