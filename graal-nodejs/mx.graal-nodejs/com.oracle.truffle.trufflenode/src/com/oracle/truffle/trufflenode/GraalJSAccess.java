@@ -2820,6 +2820,21 @@ public final class GraalJSAccess {
      */
     private final Set<WeakCallback> weakCallbacks = new HashSet<>();
 
+    /**
+     * Weak callbacks keyed by the corresponding native handle. This allows ClearWeak() to cancel a
+     * queued callback even after the weak Java referent has already been cleared.
+     */
+    private final Map<Long, WeakCallback> weakCallbacksByReference = new HashMap<>();
+
+    private WeakCallback clearWeakCallback(long reference) {
+        WeakCallback weakCallback = weakCallbacksByReference.remove(reference);
+        if (weakCallback != null) {
+            weakCallbacks.remove(weakCallback);
+            weakCallback.callback = 0;
+        }
+        return weakCallback;
+    }
+
     @SuppressWarnings("unchecked")
     private WeakCallback updateWeakCallback(Object object, long reference, long data, long callbackPointer, int type) {
         Map<Long, WeakCallback> map;
@@ -2853,9 +2868,9 @@ public final class GraalJSAccess {
         if (weakCallback == null) {
             if (callbackPointer == 0) {
                 // ClearWeak()
-                return null;
+                return clearWeakCallback(reference);
             }
-            weakCallback = new WeakCallback(object, data, callbackPointer, type, weakCallbackQueue);
+            weakCallback = new WeakCallback(object, reference, data, callbackPointer, type, weakCallbackQueue);
             map.put(reference, weakCallback);
         } else {
             weakCallback.data = data;
@@ -2863,9 +2878,10 @@ public final class GraalJSAccess {
             weakCallback.type = type;
         }
         if (callbackPointer == 0) {
-            weakCallbacks.remove(weakCallback);
+            clearWeakCallback(reference);
         } else {
             weakCallbacks.add(weakCallback);
+            weakCallbacksByReference.put(reference, weakCallback);
         }
         return weakCallback;
     }
@@ -2889,6 +2905,7 @@ public final class GraalJSAccess {
     }
 
     private void processWeakCallback(WeakCallback callback) {
+        weakCallbacksByReference.remove(callback.reference, callback);
         weakCallbacks.remove(callback);
         if (callback.callback != 0) {
             if (callback.type == -1) {
@@ -2910,15 +2927,14 @@ public final class GraalJSAccess {
     }
 
     public long clearWeak(Object object, long reference) {
+        WeakCallback callback;
         if (object == null) {
-            // Clear weak called on a reference that has been GCed already.
-            // Misuse of ClearWeak() probably. The name of the method is confusing.
-            // Hence, some of the calls seem to be attempts to reset the reference
-            // instead of attempts to clear the weak status (i.e. restore the strong one).
-            return 0;
+            // The weak referent may already be cleared. The native reference still identifies
+            // the queued callback and allows us to cancel it.
+            callback = clearWeakCallback(reference);
+        } else {
+            callback = updateWeakCallback(object, reference, 0, 0, 0);
         }
-
-        WeakCallback callback = updateWeakCallback(object, reference, 0, 0, 0);
         return (callback == null) ? 0 : callback.data;
     }
 
@@ -3675,7 +3691,7 @@ public final class GraalJSAccess {
     }
 
     public void stringExternalResourceCallback(Object object, long data, long callbackPointer) {
-        WeakCallback weakCallback = new WeakCallback(object, data, callbackPointer, 1, weakCallbackQueue);
+        WeakCallback weakCallback = new WeakCallback(object, 0, data, callbackPointer, 1, weakCallbackQueue);
         weakCallbacks.add(weakCallback);
         pollWeakCallbackQueue(false);
     }
@@ -4411,11 +4427,13 @@ public final class GraalJSAccess {
     public static class WeakCallback extends WeakReference<Object> {
 
         long data;
+        long reference;
         long callback;
         int type;
 
-        WeakCallback(Object object, long data, long callback, int type, ReferenceQueue<Object> queue) {
+        WeakCallback(Object object, long reference, long data, long callback, int type, ReferenceQueue<Object> queue) {
             super(object, queue);
+            this.reference = reference;
             this.data = data;
             this.callback = callback;
             this.type = type;
@@ -4429,7 +4447,7 @@ public final class GraalJSAccess {
         long deleterData;
 
         DeleterCallback(Object backingStore, long data, int length, long deleterData, long callback, ReferenceQueue<Object> queue) {
-            super(backingStore, data, callback, -1, queue);
+            super(backingStore, 0, data, callback, -1, queue);
             this.length = length;
             this.deleterData = deleterData;
         }

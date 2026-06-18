@@ -141,9 +141,20 @@ void BaseObject::decrease_refcount() {
 }
 
 void BaseObject::increase_refcount() {
-  unsigned int prev_refcount = pointer_data()->strong_ptr_count++;
-  if (prev_refcount == 0 && !persistent_handle_.IsEmpty())
-    persistent_handle_.ClearWeak();
+  PointerData* metadata = pointer_data();
+  unsigned int prev_refcount = metadata->strong_ptr_count++;
+  if (prev_refcount == 0) {
+    if (metadata->wants_weak_jsobj && persistent_handle_.IsEmpty()) {
+      persistent_handle_.Reset();
+      // The JS wrapper is already gone, so the C++ object cannot become a
+      // strong JS root again. Treat the remaining lifetime as detached: keep
+      // it alive only while BaseObjectPtrs refer to it.
+      metadata->is_detached = true;
+      metadata->wants_weak_jsobj = false;
+    } else if (!persistent_handle_.IsEmpty()) {
+      persistent_handle_.ClearWeak();
+    }
+  }
 }
 
 void BaseObject::DeleteMe() {
