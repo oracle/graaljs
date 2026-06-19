@@ -197,6 +197,8 @@ public final class Options {
             List<String> unprocessedArguments = new ArrayList<>();
             Boolean optWebAssembly = null;
             Boolean optUnsafeWasmMemory = null;
+            boolean jitless = false;
+            boolean wasmJitless = false;
             for (String arg : arguments) {
                 String key = "";
                 String value = null;
@@ -310,7 +312,11 @@ public final class Options {
                     continue;
                 }
                 if ("jitless".equals(key)) {
-                    optWebAssembly = false;
+                    jitless = true;
+                    continue;
+                }
+                if ("wasm-jitless".equals(key)) {
+                    wasmJitless = true;
                     continue;
                 }
                 if (("js.webassembly".equals(key) || "webassembly".equals(key))) {
@@ -319,6 +325,12 @@ public final class Options {
                     optUnsafeWasmMemory = (value == null || "true".equals(value));
                 }
                 unprocessedArguments.add(arg);
+            }
+            if ((jitless || wasmJitless) && isOptionAvailable("engine.Compilation")) {
+                polyglotOptions.put("engine.Compilation", "false");
+            }
+            if (optWebAssembly == null && jitless && !wasmJitless) {
+                optWebAssembly = Boolean.FALSE;
             }
             if (optWebAssembly != Boolean.FALSE) {
                 // WebAssembly is enabled by default, if available.
@@ -408,14 +420,25 @@ public final class Options {
         }
 
         private static boolean isLanguageAvailable(String languageId) {
-            try (Engine tempEngine = Engine.newBuilder().useSystemProperties(false).//
-                            out(OutputStream.nullOutputStream()).//
-                            err(OutputStream.nullOutputStream()).//
-                            option("engine.WarnInterpreterOnly", "false").//
-                            build()) {
+            try (Engine tempEngine = createDefaultEngine()) {
                 return tempEngine.getLanguages().containsKey(languageId);
             }
         }
+
+        private static boolean isOptionAvailable(String optionName) {
+            try (Engine tempEngine = createDefaultEngine()) {
+                return tempEngine.getOptions().get(optionName) != null;
+            }
+        }
+
+        private static Engine createDefaultEngine() {
+            return Engine.newBuilder().useSystemProperties(false).//
+                            out(OutputStream.nullOutputStream()).//
+                            err(OutputStream.nullOutputStream()).//
+                            option("engine.WarnInterpreterOnly", "false").//
+                            build();
+        }
+
     }
 
 }
