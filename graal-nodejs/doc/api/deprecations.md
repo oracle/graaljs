@@ -924,6 +924,11 @@ The [`require.extensions`][] property is deprecated.
 
 <!-- YAML
 changes:
+  - version:
+    - v23.7.0
+    - v22.14.0
+    pr-url: https://github.com/nodejs/node/pull/56632
+    description: Application deprecation.
   - version: v21.0.0
     pr-url: https://github.com/nodejs/node/pull/47202
     description: Runtime deprecation.
@@ -935,7 +940,7 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Runtime
+Type: Application (non-`node_modules` code only)
 
 The [`punycode`][] module is deprecated. Please use a userland alternative
 instead.
@@ -2638,10 +2643,14 @@ future release.
 <!-- YAML
 changes:
   - version:
+      - v24.0.0
+    pr-url: https://github.com/nodejs/node/pull/55017
+    description: DEP0169 covers also `url.format()` and `url.resolve()`.
+  - version:
       - v19.0.0
       - v18.13.0
     pr-url: https://github.com/nodejs/node/pull/44919
-    description: \`url.parse()` is deprecated again in DEP0169.
+    description: DEP0169 deprecates `url.parse()` again.
   - version:
       - v15.13.0
       - v14.17.0
@@ -3724,7 +3733,7 @@ Type: Application (non-`node_modules` code only)
 have security implications. Use the [WHATWG URL API][] instead. CVEs are not
 issued for `url.parse()` vulnerabilities.
 
-Passing a string argument to [`url.format()`][] invokes `url.parse()`
+Calling [`url.format(urlString)`][] or [`url.resolve()`][] invokes `url.parse()`
 internally, and is therefore also covered by this deprecation.
 
 ### DEP0170: Invalid port when using `url.parse()`
@@ -4095,7 +4104,7 @@ Type: Documentation-only
 `process.features.tls_alpn`, `process.features.tls_ocsp`, and `process.features.tls_sni` are
 deprecated, as their values are guaranteed to be identical to that of `process.features.tls`.
 
-### DEP0190: Passing `args` to `node:child_process` `execFile`/`spawn` with `shell` option `true`
+### DEP0190: Passing `args` to `node:child_process` `execFile`/`spawn` with `shell` option
 
 <!-- YAML
 changes:
@@ -4112,7 +4121,8 @@ changes:
 Type: Runtime
 
 When an `args` array is passed to [`child_process.execFile`][] or [`child_process.spawn`][] with the option
-`{ shell: true }`, the values are not escaped, only space-separated, which can lead to shell injection.
+`{ shell: true }` or `{ shell: '/path/to/shell' }`, the values are not escaped, only space-separated,
+which can lead to shell injection.
 
 ### DEP0191: `repl.builtinModules`
 
@@ -4320,6 +4330,115 @@ import { opendir } from 'node:fs/promises';
 }
 ```
 
+### DEP0201: Passing `options.type` to `Duplex.toWeb()`
+
+<!-- YAML
+changes:
+  - version: v24.15.0
+    pr-url: https://github.com/nodejs/node/pull/61632
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Passing the `type` option to [`Duplex.toWeb()`][] is deprecated. To specify the
+type of the readable half of the constructed readable-writable pair, use the
+`readableType` option instead.
+
+### DEP0202: `Http1IncomingMessage` and `Http1ServerResponse` options of HTTP/2 servers
+
+<!-- YAML
+changes:
+  - version: v24.15.0
+    pr-url: https://github.com/nodejs/node/pull/61713
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+The `Http1IncomingMessage` and `Http1ServerResponse` options of
+[`http2.createServer()`][] and [`http2.createSecureServer()`][] are
+deprecated. Use `http1Options.IncomingMessage` and
+`http1Options.ServerResponse` instead.
+
+```cjs
+// Deprecated
+const server = http2.createSecureServer({
+  allowHTTP1: true,
+  Http1IncomingMessage: MyIncomingMessage,
+  Http1ServerResponse: MyServerResponse,
+});
+```
+
+```cjs
+// Use this instead
+const server = http2.createSecureServer({
+  allowHTTP1: true,
+  http1Options: {
+    IncomingMessage: MyIncomingMessage,
+    ServerResponse: MyServerResponse,
+  },
+});
+```
+
+### DEP0203: Passing `CryptoKey` to `node:crypto` APIs
+
+<!-- YAML
+changes:
+  - version: v24.15.0
+    pr-url: https://github.com/nodejs/node/pull/62321
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Passing a [`CryptoKey`][] to `node:crypto` functions is deprecated and
+will throw an error in a future version. This includes
+[`crypto.createPublicKey()`][], [`crypto.createPrivateKey()`][],
+[`crypto.sign()`][], [`crypto.verify()`][],
+[`crypto.publicEncrypt()`][], [`crypto.publicDecrypt()`][],
+[`crypto.privateEncrypt()`][], [`crypto.privateDecrypt()`][],
+[`Sign.prototype.sign()`][], [`Verify.prototype.verify()`][],
+[`crypto.createHmac()`][], [`crypto.createCipheriv()`][],
+[`crypto.createDecipheriv()`][], [`crypto.encapsulate()`][], and
+[`crypto.decapsulate()`][].
+
+### DEP0204: `KeyObject.from()` with non-extractable `CryptoKey`
+
+<!-- YAML
+changes:
+  - version: v24.15.0
+    pr-url: https://github.com/nodejs/node/pull/62321
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Passing a non-extractable [`CryptoKey`][] to [`KeyObject.from()`][] is
+deprecated and will throw an error in a future version.
+
+### DEP0205: `module.register()`
+
+<!-- YAML
+changes:
+  - version: v24.15.0
+    pr-url: https://github.com/nodejs/node/pull/62395
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+[`module.register()`][] is deprecated. Use [`module.registerHooks()`][]
+instead.
+
+The `module.register()` API provides off-thread async hooks for customizing ES modules;
+the `module.registerHooks()` API provides similar hooks that are synchronous, in-thread, and
+work for all types of modules.
+Supporting async hooks has proven to be complex, involving worker threads orchestration, and there are issues
+that have proven unresolveable. See [caveats of asynchronous customization hooks][]. Please migrate to
+`module.registerHooks()` as soon as possible as `module.register()` will be
+removed in a future version of Node.js.
+
 [DEP0142]: #dep0142-repl_builtinlibs
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [RFC 6066]: https://tools.ietf.org/html/rfc6066#section-3
@@ -4337,14 +4456,19 @@ import { opendir } from 'node:fs/promises';
 [`Buffer.from(buffer)`]: buffer.md#static-method-bufferfrombuffer
 [`Buffer.isBuffer()`]: buffer.md#static-method-bufferisbufferobj
 [`Cipheriv`]: crypto.md#class-cipheriv
+[`CryptoKey`]: webcrypto.md#class-cryptokey
 [`Decipheriv`]: crypto.md#class-decipheriv
+[`Duplex.toWeb()`]: stream.md#streamduplextowebstreamduplex-options
 [`Error.isError`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/isError
+[`KeyObject.from()`]: crypto.md#static-method-keyobjectfromkey
 [`REPLServer.clearBufferedCommand()`]: repl.md#replserverclearbufferedcommand
 [`ReadStream.open()`]: fs.md#class-fsreadstream
 [`Server.getConnections()`]: net.md#servergetconnectionscallback
 [`Server.listen({fd: <number>})`]: net.md#serverlistenhandle-backlog-callback
+[`Sign.prototype.sign()`]: crypto.md#signsignprivatekey-outputencoding
 [`SlowBuffer`]: buffer.md#class-slowbuffer
 [`String.prototype.toWellFormed`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/toWellFormed
+[`Verify.prototype.verify()`]: crypto.md#verifyverifyobject-signature-signatureencoding
 [`WriteStream.open()`]: fs.md#class-fswritestream
 [`assert.CallTracker`]: assert.md#class-assertcalltracker
 [`assert`]: assert.md
@@ -4363,11 +4487,21 @@ import { opendir } from 'node:fs/promises';
 [`crypto.createDecipheriv()`]: crypto.md#cryptocreatedecipherivalgorithm-key-iv-options
 [`crypto.createHash()`]: crypto.md#cryptocreatehashalgorithm-options
 [`crypto.createHmac()`]: crypto.md#cryptocreatehmacalgorithm-key-options
+[`crypto.createPrivateKey()`]: crypto.md#cryptocreateprivatekeykey
+[`crypto.createPublicKey()`]: crypto.md#cryptocreatepublickeykey
+[`crypto.decapsulate()`]: crypto.md#cryptodecapsulatekey-ciphertext-callback
+[`crypto.encapsulate()`]: crypto.md#cryptoencapsulatekey-callback
 [`crypto.fips`]: crypto.md#cryptofips
 [`crypto.pbkdf2()`]: crypto.md#cryptopbkdf2password-salt-iterations-keylen-digest-callback
+[`crypto.privateDecrypt()`]: crypto.md#cryptoprivatedecryptprivatekey-buffer
+[`crypto.privateEncrypt()`]: crypto.md#cryptoprivateencryptprivatekey-buffer
+[`crypto.publicDecrypt()`]: crypto.md#cryptopublicdecryptkey-buffer
+[`crypto.publicEncrypt()`]: crypto.md#cryptopublicencryptkey-buffer
 [`crypto.randomBytes()`]: crypto.md#cryptorandombytessize-callback
 [`crypto.scrypt()`]: crypto.md#cryptoscryptpassword-salt-keylen-options-callback
 [`crypto.setEngine()`]: crypto.md#cryptosetengineengine-flags
+[`crypto.sign()`]: crypto.md#cryptosignalgorithm-data-key-callback
+[`crypto.verify()`]: crypto.md#cryptoverifyalgorithm-data-key-signature-callback
 [`decipher.final()`]: crypto.md#decipherfinaloutputencoding
 [`decipher.setAuthTag()`]: crypto.md#deciphersetauthtagbuffer-encoding
 [`dirent.parentPath`]: fs.md#direntparentpath
@@ -4400,6 +4534,8 @@ import { opendir } from 'node:fs/promises';
 [`http.ServerResponse`]: http.md#class-httpserverresponse
 [`http.get()`]: http.md#httpgetoptions-callback
 [`http.request()`]: http.md#httprequestoptions-callback
+[`http2.createSecureServer()`]: http2.md#http2createsecureserveroptions-onrequesthandler
+[`http2.createServer()`]: http2.md#http2createserveroptions-onrequesthandler
 [`https.get()`]: https.md#httpsgetoptions-callback
 [`https.request()`]: https.md#httpsrequestoptions-callback
 [`message.connection`]: http.md#messageconnection
@@ -4410,6 +4546,8 @@ import { opendir } from 'node:fs/promises';
 [`message.trailers`]: http.md#messagetrailers
 [`mock`]: test.md#mocking
 [`module.createRequire()`]: module.md#modulecreaterequirefilename
+[`module.register()`]: module.md#moduleregisterspecifier-parenturl-options
+[`module.registerHooks()`]: module.md#moduleregisterhooksoptions
 [`os.networkInterfaces()`]: os.md#osnetworkinterfaces
 [`os.tmpdir()`]: os.md#ostmpdir
 [`process.env`]: process.md#processenv
@@ -4444,6 +4582,7 @@ import { opendir } from 'node:fs/promises';
 [`tls.createSecureContext()`]: tls.md#tlscreatesecurecontextoptions
 [`tls.createServer()`]: tls.md#tlscreateserveroptions-secureconnectionlistener
 [`url.format()`]: url.md#urlformaturlobject
+[`url.format(urlString)`]: url.md#urlformaturlstring
 [`url.parse()`]: url.md#urlparseurlstring-parsequerystring-slashesdenotehost
 [`url.resolve()`]: url.md#urlresolvefrom-to
 [`util._extend()`]: util.md#util_extendtarget-source
@@ -4462,6 +4601,7 @@ import { opendir } from 'node:fs/promises';
 [`zlib.bytesWritten`]: zlib.md#zlibbyteswritten
 [alloc]: buffer.md#static-method-bufferallocsize-fill-encoding
 [alloc_unsafe_size]: buffer.md#static-method-bufferallocunsafesize
+[caveats of asynchronous customization hooks]: module.md#caveats-of-asynchronous-customization-hooks
 [from_arraybuffer]: buffer.md#static-method-bufferfromarraybuffer-byteoffset-length
 [from_string_encoding]: buffer.md#static-method-bufferfromstring-encoding
 [legacy URL API]: url.md#legacy-url-api

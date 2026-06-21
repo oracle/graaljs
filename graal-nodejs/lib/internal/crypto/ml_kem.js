@@ -3,6 +3,7 @@
 const {
   PromiseWithResolvers,
   SafeSet,
+  StringPrototypeToLowerCase,
   TypedArrayPrototypeGetBuffer,
   TypedArrayPrototypeSet,
   Uint8Array,
@@ -68,8 +69,8 @@ async function mlKemGenerateKey(algorithm, extractable, keyUsages) {
       { name: 'OperationError', cause: err });
   }
 
-  const publicUsages = getUsagesUnion(usageSet, 'encapsulateBits', 'encapsulateKey');
-  const privateUsages = getUsagesUnion(usageSet, 'decapsulateBits', 'decapsulateKey');
+  const publicUsages = getUsagesUnion(usageSet, 'encapsulateKey', 'encapsulateBits');
+  const privateUsages = getUsagesUnion(usageSet, 'decapsulateKey', 'decapsulateBits');
 
   const keyAlgorithm = { name };
 
@@ -181,6 +182,19 @@ function mlKemImportKey(
     }
     case 'pkcs8': {
       verifyAcceptableMlKemKeyUse(name, false, usagesSet);
+
+      const privOnlyLengths = {
+        '__proto__': null,
+        'ML-KEM-512': 1660,
+        'ML-KEM-768': 2428,
+        'ML-KEM-1024': 3196,
+      };
+      if (keyData.byteLength === privOnlyLengths[name]) {
+        throw lazyDOMException(
+          'Importing an ML-KEM PKCS#8 key without a seed is not supported',
+          'NotSupportedError');
+      }
+
       try {
         keyObject = createPrivateKey({
           key: keyData,
@@ -209,14 +223,14 @@ function mlKemImportKey(
       return undefined;
   }
 
-  if (keyObject.asymmetricKeyType !== name.toLowerCase()) {
+  if (keyObject.asymmetricKeyType !== StringPrototypeToLowerCase(name)) {
     throw lazyDOMException('Invalid key type', 'DataError');
   }
 
   return new InternalCryptoKey(
     keyObject,
     { name },
-    keyUsages,
+    usagesSet,
     extractable);
 }
 

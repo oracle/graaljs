@@ -14,6 +14,8 @@ const expected_keys = [
   'v8',
   'zlib',
   'nghttp2',
+  'nghttp3',
+  'ngtcp2',
   'napi',
   'llhttp',
   'uvwasi',
@@ -41,11 +43,6 @@ if (hasUndici) {
 if (common.hasCrypto) {
   expected_keys.push('openssl');
   expected_keys.push('ncrypto');
-}
-
-if (common.hasQuic) {
-  expected_keys.push('ngtcp2');
-  expected_keys.push('nghttp3');
 }
 
 if (common.hasIntl) {

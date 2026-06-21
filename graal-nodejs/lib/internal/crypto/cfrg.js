@@ -2,6 +2,7 @@
 
 const {
   SafeSet,
+  StringPrototypeToLowerCase,
 } = primordials;
 
 const { Buffer } = require('buffer');
@@ -170,7 +171,7 @@ async function cfrgGenerateKey(algorithm, extractable, keyUsages) {
     case 'X25519':
       // Fall through
     case 'X448':
-      publicUsages = [];
+      publicUsages = new SafeSet();
       privateUsages = getUsagesUnion(usageSet, 'deriveKey', 'deriveBits');
       break;
   }
@@ -332,14 +333,14 @@ function cfrgImportKey(
       return undefined;
   }
 
-  if (keyObject.asymmetricKeyType !== name.toLowerCase()) {
+  if (keyObject.asymmetricKeyType !== StringPrototypeToLowerCase(name)) {
     throw lazyDOMException('Invalid key type', 'DataError');
   }
 
   return new InternalCryptoKey(
     keyObject,
     { name },
-    keyUsages,
+    usagesSet,
     extractable);
 }
 

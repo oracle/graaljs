@@ -289,7 +289,15 @@ const features = {
     return binding.hasCachedBuiltins();
   },
   get require_module() {
-    return getOptionValue('--experimental-require-module');
+    return getOptionValue('--require-module');
+  },
+  get quic() {
+    // TODO(@jasnell): When the implementation is updated to support Boring,
+    // then this should be refactored to depend not only on the OpenSSL version.
+    return process.config.variables.node_use_quic &&
+           !openSSLIsBoringSSL &&
+           getOptionValue('--experimental-quic') &&
+           process.config.variables.openssl_version >= 810549279; // >= 3.5.1
   },
 };
 

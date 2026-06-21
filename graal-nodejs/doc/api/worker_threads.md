@@ -256,6 +256,8 @@ In particular, this makes sense for objects that can be cloned, rather than
 transferred, and which are used by other objects on the sending side.
 For example, Node.js marks the `ArrayBuffer`s it uses for its
 [`Buffer` pool][`Buffer.allocUnsafe()`] with this.
+`ArrayBuffer.prototype.transfer()` is disallowed on such array buffer
+instances.
 
 This operation cannot be undone.
 
@@ -511,7 +513,7 @@ parent or child of the current thread.
 If the two threads are parent-children, use the [`require('node:worker_threads').parentPort.postMessage()`][]
 and the [`worker.postMessage()`][] to let the threads communicate.
 
-The example below shows the use of of `postMessageToThread`: it creates 10 nested threads,
+The example below shows the use of `postMessageToThread`: it creates 10 nested threads,
 the last one will try to communicate with the main thread.
 
 ```mjs

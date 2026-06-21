@@ -48,6 +48,9 @@ let debug = require('internal/util/debuglog').debuglog('net', (fn) => {
 });
 const {
   kReinitializeHandle,
+  kSetNoDelay,
+  kSetKeepAlive,
+  kSetKeepAliveInitialDelay,
   isIP,
   isIPv4,
   isIPv6,
@@ -57,6 +60,7 @@ const {
 const assert = require('internal/assert');
 const {
   UV_EADDRINUSE,
+  UV_EBADF,
   UV_EINVAL,
   UV_ENOTCONN,
   UV_ECANCELED,
@@ -131,6 +135,7 @@ const {
   validateNumber,
   validatePort,
   validateString,
+  validateStringWithoutNullBytes,
 } = require('internal/validators');
 const kLastWriteQueueSize = Symbol('lastWriteQueueSize');
 const { getOptionValue } = require('internal/options');
@@ -355,9 +360,7 @@ function closeSocketHandle(self, isException, isCleanupPending = false) {
 
 const kBytesRead = Symbol('kBytesRead');
 const kBytesWritten = Symbol('kBytesWritten');
-const kSetNoDelay = Symbol('kSetNoDelay');
-const kSetKeepAlive = Symbol('kSetKeepAlive');
-const kSetKeepAliveInitialDelay = Symbol('kSetKeepAliveInitialDelay');
+const kSetTOS = Symbol('kSetTOS');
 
 function Socket(options) {
   if (!(this instanceof Socket)) return new Socket(options);
@@ -473,6 +476,10 @@ function Socket(options) {
   this[kSetNoDelay] = Boolean(options.noDelay);
   this[kSetKeepAlive] = Boolean(options.keepAlive);
   this[kSetKeepAliveInitialDelay] = ~~(options.keepAliveInitialDelay / 1000);
+  if (options.typeOfService !== undefined) {
+    validateInt32(options.typeOfService, 'options.typeOfService', 0, 255);
+  }
+  this[kSetTOS] = options.typeOfService;
 
   // Shut down the socket when we're finished with it.
   this.on('end', onReadableStreamEnd);
@@ -649,6 +656,59 @@ Socket.prototype.setKeepAlive = function(enable, initialDelayMsecs) {
   }
 
   return this;
+};
+
+
+Socket.prototype.setTypeOfService = function(tos) {
+  if (NumberIsNaN(tos)) {
+    throw new ERR_INVALID_ARG_TYPE('tos', 'number', tos);
+  }
+  validateInt32(tos, 'tos', 0, 255);
+
+  if (!this._handle) {
+    this[kSetTOS] = tos;
+    return this;
+  }
+
+  if (!this._handle.setTypeOfService) {
+    this[kSetTOS] = tos;
+    return this;
+  }
+
+  if (tos !== this[kSetTOS]) {
+    this[kSetTOS] = tos;
+    const err = this._handle.setTypeOfService(tos);
+    // On Windows, setting TOS is often restricted or returns error codes even if partially applied.
+    // We treat this as a "best effort" operation and do not throw on Windows.
+    if (err && !isWindows) {
+      throw new ErrnoException(err, 'setTypeOfService');
+    }
+  }
+
+  return this;
+};
+
+
+Socket.prototype.getTypeOfService = function() {
+  if (!this._handle) {
+    // Return cached value if set, otherwise default to 0
+    return this[kSetTOS] !== undefined ? this[kSetTOS] : 0;
+  }
+
+  if (!this._handle.getTypeOfService) {
+    return this[kSetTOS] !== undefined ? this[kSetTOS] : 0;
+  }
+
+  const res = this._handle.getTypeOfService();
+  if (typeof res === 'number' && res < 0) {
+    // On Windows, getsockopt(IP_TOS) often fails. In that case, fall back
+    // to the cached value we attempted to set, or 0.
+    if (isWindows) {
+      return this[kSetTOS] !== undefined ? this[kSetTOS] : 0;
+    }
+    throw new ErrnoException(res, 'getTypeOfService');
+  }
+  return res;
 };
 
 
@@ -1066,7 +1126,7 @@ function internalConnect(
     err = checkBindError(err, localPort, self._handle);
     if (err) {
       const ex = new ExceptionWithHostPort(err, 'bind', localAddress, localPort);
-      process.nextTick(emitErrorAndDestroy, self, ex);
+      self.destroy(ex);
       return;
     }
   }
@@ -1076,7 +1136,7 @@ function internalConnect(
 
   if (addressType === 6 || addressType === 4) {
     if (self.blockList?.check(address, `ipv${addressType}`)) {
-      process.nextTick(emitErrorAndDestroy, self, new ERR_IP_BLOCKED(address));
+      self.destroy(new ERR_IP_BLOCKED(address));
       return;
     }
     const req = new TCPConnectWrap();
@@ -1108,18 +1168,10 @@ function internalConnect(
     }
 
     const ex = new ExceptionWithHostPort(err, 'connect', address, port, details);
-    process.nextTick(emitErrorAndDestroy, self, ex);
+    self.destroy(ex);
   } else if ((addressType === 6 || addressType === 4) && hasObserver('net')) {
     startPerf(self, kPerfHooksNetConnectContext, { type: 'net', name: 'connect', detail: { host: address, port } });
   }
-}
-
-// Helper function to defer socket destruction to the next tick.
-// This ensures that error handlers have a chance to be set up
-// before the error is emitted, particularly important when using
-// http.request with a custom lookup function.
-function emitErrorAndDestroy(self, err) {
-  self.destroy(err);
 }
 
 
@@ -1135,11 +1187,11 @@ function internalConnectMultiple(context, canceled) {
   // All connections have been tried without success, destroy with error
   if (canceled || context.current === context.addresses.length) {
     if (context.errors.length === 0) {
-      process.nextTick(emitErrorAndDestroy, self, new ERR_SOCKET_CONNECTION_TIMEOUT());
+      self.destroy(new ERR_SOCKET_CONNECTION_TIMEOUT());
       return;
     }
 
-    process.nextTick(emitErrorAndDestroy, self, new NodeAggregateError(context.errors));
+    self.destroy(new NodeAggregateError(context.errors));
     return;
   }
 
@@ -1320,7 +1372,7 @@ function lookupAndConnect(self, options) {
   const host = options.host || 'localhost';
   let { port, autoSelectFamilyAttemptTimeout, autoSelectFamily } = options;
 
-  validateString(host, 'options.host');
+  validateStringWithoutNullBytes(host, 'options.host');
 
   if (localAddress && !isIP(localAddress)) {
     throw new ERR_INVALID_IP_ADDRESS(localAddress);
@@ -1625,6 +1677,15 @@ function afterConnect(status, handle, req, readable, writable) {
 
     if (self[kSetKeepAlive] && self._handle.setKeepAlive) {
       self._handle.setKeepAlive(true, self[kSetKeepAliveInitialDelay]);
+    }
+
+    if (self[kSetTOS] !== undefined && self._handle.setTypeOfService) {
+      const err = self._handle.setTypeOfService(self[kSetTOS]);
+      // On Windows, setting TOS is best-effort. If it fails, we shouldn't destroy
+      // the connection or emit an error, as the socket is otherwise healthy.
+      if (err && err !== UV_EBADF && !isWindows) {
+        self.emit('error', new ErrnoException(err, 'setTypeOfService'));
+      }
     }
 
     self.emit('connect');

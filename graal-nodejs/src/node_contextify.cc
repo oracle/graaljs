@@ -23,6 +23,7 @@
 
 #include "base_object-inl.h"
 #include "cppgc/allocation.h"
+#include "debug_utils-inl.h"
 #include "memory_tracker-inl.h"
 #include "module_wrap.h"
 #include "node_context_data.h"
@@ -85,7 +86,6 @@ using v8::ScriptCompiler;
 using v8::ScriptOrigin;
 using v8::String;
 using v8::Symbol;
-using v8::Uint32;
 using v8::UnboundScript;
 using v8::Value;
 
@@ -108,15 +108,6 @@ using v8::Value;
 //
 // For every `set` of a global property, the interceptor callback defines or
 // changes the property both on the sandbox and the global proxy.
-
-namespace {
-
-// Convert an int to a V8 Name (String or Symbol).
-MaybeLocal<String> Uint32ToName(Local<Context> context, uint32_t index) {
-  return Uint32::New(context->GetIsolate(), index)->ToString(context);
-}
-
-}  // anonymous namespace
 
 ContextifyContext* ContextifyContext::New(Environment* env,
                                           Local<Object> sandbox_obj,
@@ -490,6 +481,9 @@ Intercepted ContextifyContext::PropertyQueryCallback(
     return Intercepted::kNo;
   }
 
+  per_process::Debug(
+      DebugCategory::CONTEXTIFY, "PropertyQuery(%s)\n", property);
+
   Local<Context> context = ctx->context();
   Local<Object> sandbox = ctx->sandbox();
 
@@ -536,6 +530,9 @@ Intercepted ContextifyContext::PropertyGetterCallback(
     return Intercepted::kNo;
   }
 
+  per_process::Debug(
+      DebugCategory::CONTEXTIFY, "PropertyGetter(name: %s)\n", property);
+
   Local<Context> context = ctx->context();
   Local<Object> sandbox = ctx->sandbox();
 
@@ -572,6 +569,12 @@ Intercepted ContextifyContext::PropertySetterCallback(
   if (IsStillInitializing(ctx)) {
     return Intercepted::kNo;
   }
+
+  per_process::Debug(DebugCategory::CONTEXTIFY,
+                     "PropertySetter(name: %s, value: %s), use-strict(%s)\n",
+                     property,
+                     value,
+                     args.ShouldThrowOnError());
 
   Local<Context> context = ctx->context();
   PropertyAttribute attributes = PropertyAttribute::None;
@@ -650,6 +653,9 @@ Intercepted ContextifyContext::PropertyDescriptorCallback(
     return Intercepted::kNo;
   }
 
+  per_process::Debug(
+      DebugCategory::CONTEXTIFY, "PropertyDescriptor(name: %s)\n", property);
+
   Local<Context> context = ctx->context();
 
   Local<Object> sandbox = ctx->sandbox();
@@ -675,6 +681,9 @@ Intercepted ContextifyContext::PropertyDefinerCallback(
   if (IsStillInitializing(ctx)) {
     return Intercepted::kNo;
   }
+
+  per_process::Debug(
+      DebugCategory::CONTEXTIFY, "PropertyDefiner(name: %s)\n", property);
 
   Local<Context> context = ctx->context();
   Isolate* isolate = context->GetIsolate();
@@ -746,6 +755,9 @@ Intercepted ContextifyContext::PropertyDeleterCallback(
     return Intercepted::kNo;
   }
 
+  per_process::Debug(
+      DebugCategory::CONTEXTIFY, "PropertyDeleter(name: %s)\n", property);
+
   Maybe<bool> success = ctx->sandbox()->Delete(ctx->context(), property);
 
   if (success.FromMaybe(false)) {
@@ -772,6 +784,8 @@ void ContextifyContext::PropertyEnumeratorCallback(
 
   // Still initializing
   if (IsStillInitializing(ctx)) return;
+
+  per_process::Debug(DebugCategory::CONTEXTIFY, "PropertyEnumerator()\n");
 
   Local<Array> properties;
   // Only get own named properties, exclude indices.
@@ -803,6 +817,9 @@ void ContextifyContext::IndexedPropertyEnumeratorCallback(
 
   // Still initializing
   if (IsStillInitializing(ctx)) return;
+
+  per_process::Debug(DebugCategory::CONTEXTIFY,
+                     "IndexedPropertyEnumerator()\n");
 
   Local<Array> properties;
 
@@ -845,11 +862,8 @@ Intercepted ContextifyContext::IndexedPropertyQueryCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertyQueryCallback(name, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertyQueryCallback(name, args);
 }
 
 // static
@@ -862,11 +876,8 @@ Intercepted ContextifyContext::IndexedPropertyGetterCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertyGetterCallback(name, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertyGetterCallback(name, args);
 }
 
 Intercepted ContextifyContext::IndexedPropertySetterCallback(
@@ -880,11 +891,8 @@ Intercepted ContextifyContext::IndexedPropertySetterCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertySetterCallback(name, value, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertySetterCallback(name, value, args);
 }
 
 // static
@@ -897,11 +905,8 @@ Intercepted ContextifyContext::IndexedPropertyDescriptorCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertyDescriptorCallback(name, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertyDescriptorCallback(name, args);
 }
 
 Intercepted ContextifyContext::IndexedPropertyDefinerCallback(
@@ -915,11 +920,8 @@ Intercepted ContextifyContext::IndexedPropertyDefinerCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertyDefinerCallback(name, desc, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertyDefinerCallback(name, desc, args);
 }
 
 // static

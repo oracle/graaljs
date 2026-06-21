@@ -1,12 +1,8 @@
 'use strict';
 
 const {
-  ArrayBufferIsView,
-  ArrayBufferPrototypeSlice,
-  ArrayFrom,
   ArrayPrototypePush,
   SafeSet,
-  TypedArrayPrototypeSlice,
 } = primordials;
 
 const {
@@ -28,8 +24,6 @@ const {
   kKeyVariantAES_GCM_256,
   kKeyVariantAES_KW_256,
   kKeyVariantAES_OCB_256,
-  kWebCryptoCipherDecrypt,
-  kWebCryptoCipherEncrypt,
 } = internalBinding('crypto');
 
 const {
@@ -143,80 +137,33 @@ function asyncAesKwCipher(mode, key, data) {
     getVariant('AES-KW', key[kAlgorithm].length)));
 }
 
-async function asyncAesGcmCipher(mode, key, data, algorithm) {
+function asyncAesGcmCipher(mode, key, data, algorithm) {
   const { tagLength = 128 } = algorithm;
-
   const tagByteLength = tagLength / 8;
-  let tag;
-  switch (mode) {
-    case kWebCryptoCipherDecrypt: {
-      const slice = ArrayBufferIsView(data) ?
-        TypedArrayPrototypeSlice : ArrayBufferPrototypeSlice;
-      tag = slice(data, -tagByteLength);
 
-      // Refs: https://www.w3.org/TR/WebCryptoAPI/#aes-gcm-operations
-      //
-      // > If *plaintext* has a length less than *tagLength* bits, then `throw`
-      // > an `OperationError`.
-      if (tagByteLength > tag.byteLength) {
-        throw lazyDOMException(
-          'The provided data is too small.',
-          'OperationError');
-      }
-
-      data = slice(data, 0, -tagByteLength);
-      break;
-    }
-    case kWebCryptoCipherEncrypt:
-      tag = tagByteLength;
-      break;
-  }
-
-  return await jobPromise(() => new AESCipherJob(
+  return jobPromise(() => new AESCipherJob(
     kCryptoJobAsync,
     mode,
     key[kKeyObject][kHandle],
     data,
     getVariant('AES-GCM', key[kAlgorithm].length),
     algorithm.iv,
-    tag,
+    tagByteLength,
     algorithm.additionalData));
 }
 
-async function asyncAesOcbCipher(mode, key, data, algorithm) {
+function asyncAesOcbCipher(mode, key, data, algorithm) {
   const { tagLength = 128 } = algorithm;
-
   const tagByteLength = tagLength / 8;
-  let tag;
-  switch (mode) {
-    case kWebCryptoCipherDecrypt: {
-      const slice = ArrayBufferIsView(data) ?
-        TypedArrayPrototypeSlice : ArrayBufferPrototypeSlice;
-      tag = slice(data, -tagByteLength);
 
-      // Similar to GCM, OCB requires the tag to be present for decryption
-      if (tagByteLength > tag.byteLength) {
-        throw lazyDOMException(
-          'The provided data is too small.',
-          'OperationError');
-      }
-
-      data = slice(data, 0, -tagByteLength);
-      break;
-    }
-    case kWebCryptoCipherEncrypt:
-      tag = tagByteLength;
-      break;
-  }
-
-  return await jobPromise(() => new AESCipherJob(
+  return jobPromise(() => new AESCipherJob(
     kCryptoJobAsync,
     mode,
     key[kKeyObject][kHandle],
     data,
     getVariant('AES-OCB', key.algorithm.length),
     algorithm.iv,
-    tag,
+    tagByteLength,
     algorithm.additionalData));
 }
 
@@ -257,7 +204,7 @@ async function aesGenerateKey(algorithm, extractable, keyUsages) {
   return new InternalCryptoKey(
     key,
     { name, length },
-    ArrayFrom(usagesSet),
+    usagesSet,
     extractable);
 }
 
@@ -352,7 +299,7 @@ function aesImportKey(
   return new InternalCryptoKey(
     keyObject,
     { name, length },
-    keyUsages,
+    usagesSet,
     extractable);
 }
 

@@ -330,6 +330,28 @@ function reportModuleNotFoundToWatchMode(basePath, extensions) {
 }
 
 /**
+ * Tell the watch mode that a module was required, from within a worker thread.
+ * @param {string} filename Absolute path of the module
+ * @returns {void}
+ */
+function reportModuleToWatchModeFromWorker(filename) {
+  if (!shouldReportRequiredModules()) {
+    return;
+  }
+  const { isMainThread } = internalBinding('worker');
+  if (isMainThread) {
+    return;
+  }
+  // Lazy require to avoid circular dependency: worker_threads is loaded after
+  // the CJS loader is fully set up.
+  const { parentPort } = require('worker_threads');
+  if (!parentPort) {
+    return;
+  }
+  parentPort.postMessage({ 'watch:require': [filename] });
+}
+
+/**
  * Create a new module instance.
  * @param {string} id
  * @param {Module} parent
@@ -1035,41 +1057,63 @@ function getExportsForCircularRequire(module) {
   return module.exports;
 }
 
+
+/**
+ * Wraps result of Module._resolveFilename to include additional fields for hooks.
+ * See resolveForCJSWithHooks.
+ * @param {string} specifier
+ * @param {Module|undefined} parent
+ * @param {boolean} isMain
+ * @param {ResolveFilenameOptions} options
+ * @returns {{url?: string, format?: string, parentURL?: string, filename: string}}
+ */
+function wrapResolveFilename(specifier, parent, isMain, options) {
+  const filename = Module._resolveFilename(specifier, parent, isMain, options).toString();
+  return { __proto__: null, url: undefined, format: undefined, filename };
+}
+
+/**
+ * See resolveForCJSWithHooks.
+ * @param {string} specifier
+ * @param {Module|undefined} parent
+ * @param {boolean} isMain
+ * @param {ResolveFilenameOptions} options
+ * @returns {{url?: string, format?: string, parentURL?: string, filename: string}}
+ */
+function defaultResolveImplForCJSLoading(specifier, parent, isMain, options) {
+  // For backwards compatibility, when encountering requests starting with node:,
+  // throw ERR_UNKNOWN_BUILTIN_MODULE on failure or return the normalized ID on success
+  // without going into Module._resolveFilename.
+  let normalized;
+  if (StringPrototypeStartsWith(specifier, 'node:')) {
+    normalized = BuiltinModule.normalizeRequirableId(specifier);
+    if (!normalized) {
+      throw new ERR_UNKNOWN_BUILTIN_MODULE(specifier);
+    }
+    return { __proto__: null, url: specifier, format: 'builtin', filename: normalized };
+  }
+  return wrapResolveFilename(specifier, parent, isMain, options);
+}
+
 /**
  * Resolve a module request for CommonJS, invoking hooks from module.registerHooks()
  * if necessary.
  * @param {string} specifier
  * @param {Module|undefined} parent
  * @param {boolean} isMain
- * @param {boolean} shouldSkipModuleHooks
+ * @param {object} internalResolveOptions
+ * @param {boolean} internalResolveOptions.shouldSkipModuleHooks Whether to skip module hooks.
+ * @param {ResolveFilenameOptions} internalResolveOptions.requireResolveOptions Options from require.resolve().
+ *   Only used when it comes from require.resolve().
  * @returns {{url?: string, format?: string, parentURL?: string, filename: string}}
  */
-function resolveForCJSWithHooks(specifier, parent, isMain, shouldSkipModuleHooks) {
-  let defaultResolvedURL;
-  let defaultResolvedFilename;
-  let format;
-
-  function defaultResolveImpl(specifier, parent, isMain, options) {
-    // For backwards compatibility, when encountering requests starting with node:,
-    // throw ERR_UNKNOWN_BUILTIN_MODULE on failure or return the normalized ID on success
-    // without going into Module._resolveFilename.
-    let normalized;
-    if (StringPrototypeStartsWith(specifier, 'node:')) {
-      normalized = BuiltinModule.normalizeRequirableId(specifier);
-      if (!normalized) {
-        throw new ERR_UNKNOWN_BUILTIN_MODULE(specifier);
-      }
-      defaultResolvedURL = specifier;
-      format = 'builtin';
-      return normalized;
-    }
-    return Module._resolveFilename(specifier, parent, isMain, options).toString();
-  }
-
+function resolveForCJSWithHooks(specifier, parent, isMain, internalResolveOptions) {
+  const { requireResolveOptions, shouldSkipModuleHooks } = internalResolveOptions;
+  const defaultResolveImpl = requireResolveOptions ?
+    wrapResolveFilename : defaultResolveImplForCJSLoading;
   // Fast path: no hooks, just return simple results.
   if (!resolveHooks.length || shouldSkipModuleHooks) {
-    const filename = defaultResolveImpl(specifier, parent, isMain);
-    return { __proto__: null, url: defaultResolvedURL, filename, format };
+    return defaultResolveImpl(specifier, parent, isMain, requireResolveOptions);
   }
 
   // Slow path: has hooks, do the URL conversions and invoke hooks with contexts.
@@ -1098,27 +1142,25 @@ function resolveForCJSWithHooks(specifier, parent, isMain, shouldSkipModuleHooks
     } else {
       conditionSet = getCjsConditions();
     }
-    defaultResolvedFilename = defaultResolveImpl(specifier, parent, isMain, {
+
+    const result = defaultResolveImpl(specifier, parent, isMain, {
       __proto__: null,
+      paths: requireResolveOptions?.paths,
       conditions: conditionSet,
     });
+    // If the default resolver does not return a URL, convert it for the public API.
+    result.url ??= convertCJSFilenameToURL(result.filename);
 
-    defaultResolvedURL = convertCJSFilenameToURL(defaultResolvedFilename);
-    return { __proto__: null, url: defaultResolvedURL };
+    // Remove filename because it's not part of the public API.
+    // TODO(joyeecheung): maybe expose it in the public API to avoid re-conversion for users too.
+    return { __proto__: null, url: result.url, format: result.format };
   }
 
   const resolveResult = resolveWithHooks(specifier, parentURL, /* importAttributes */ undefined,
                                          getCjsConditionsArray(), defaultResolve);
-  const { url } = resolveResult;
-  format = resolveResult.format;
-
-  let filename;
-  if (url === defaultResolvedURL) {  // Not overridden, skip the re-conversion.
-    filename = defaultResolvedFilename;
-  } else {
-    filename = convertURLToCJSFilename(url);
-  }
-
+  const { url, format } = resolveResult;
+  // Convert the URL from the hook chain back to a filename for internal use.
+  const filename = convertURLToCJSFilename(url);
   const result = { __proto__: null, url, format, filename, parentURL };
   debug('resolveForCJSWithHooks', specifier, parent?.id, isMain, shouldSkipModuleHooks, '->', result);
   return result;
@@ -1213,10 +1255,10 @@ function loadBuiltinWithHooks(id, url, format) {
  * @param {string} request Specifier of module to load via `require`
  * @param {Module} parent Absolute path of the module importing the child
  * @param {boolean} isMain Whether the module is the main entry point
- * @param {object|undefined} options Additional options for loading the module
+ * @param {object|undefined} internalResolveOptions Additional options for loading the module
  * @returns {object}
  */
-Module._load = function(request, parent, isMain, options = kEmptyObject) {
+Module._load = function(request, parent, isMain, internalResolveOptions = kEmptyObject) {
   let relResolveCacheIdentifier;
   if (parent) {
     debug('Module._load REQUEST %s parent: %s', request, parent.id);
@@ -1226,6 +1268,7 @@ Module._load = function(request, parent, isMain, options = kEmptyObject) {
     relResolveCacheIdentifier = `${parent.path}\x00${request}`;
     const filename = relativeResolveCache[relResolveCacheIdentifier];
     reportModuleToWatchMode(filename);
+    reportModuleToWatchModeFromWorker(filename);
     if (filename !== undefined) {
       const cachedModule = Module._cache[filename];
       if (cachedModule !== undefined) {
@@ -1239,7 +1282,7 @@ Module._load = function(request, parent, isMain, options = kEmptyObject) {
     }
   }
 
-  const resolveResult = resolveForCJSWithHooks(request, parent, isMain, options.shouldSkipModuleHooks);
+  const resolveResult = resolveForCJSWithHooks(request, parent, isMain, internalResolveOptions);
   let { format } = resolveResult;
   const { url, filename } = resolveResult;
 
@@ -1316,6 +1359,7 @@ Module._load = function(request, parent, isMain, options = kEmptyObject) {
     }
 
     reportModuleToWatchMode(filename);
+    reportModuleToWatchModeFromWorker(filename);
     Module._cache[filename] = module;
     module[kIsCachedByESMLoader] = false;
     // If there are resolve hooks, carry the context information into the
@@ -1407,8 +1451,9 @@ Module._resolveFilename = function(request, parent, isMain, options) {
     paths = Module._resolveLookupPaths(request, parent);
   }
 
-  if (request[0] === '#' && (parent?.filename || parent?.id === '<repl>')) {
-    const parentPath = parent?.filename ?? process.cwd() + path.sep;
+  const parentPath = trySelfParentPath(parent);
+
+  if (request[0] === '#' && (parent.filename || parent.id === '<repl>')) {
     const pkg = packageJsonReader.getNearestParentPackageJSON(parentPath);
     if (pkg?.data.imports != null) {
       try {
@@ -1428,7 +1473,6 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   }
 
   // Try module self resolution first
-  const parentPath = trySelfParentPath(parent);
   const selfResolved = trySelf(parentPath, request, conditions);
   if (selfResolved) {
     const cacheKey = request + '\x00' +
@@ -1737,7 +1781,7 @@ function wrapSafe(filename, content, cjsModuleInstance, format) {
     } else {
       // For modules being loaded by `require()`, if require(esm) is disabled,
       // don't try to reparse to detect format and just throw for ESM syntax.
-      shouldDetectModule = getOptionValue('--experimental-require-module');
+      shouldDetectModule = getOptionValue('--require-module');
     }
   }
   const result = compileFunctionForCJSLoader(content, filename, false /* is_sea_main */, shouldDetectModule);
@@ -1779,8 +1823,6 @@ Module.prototype._compile = function(content, filename, format) {
     }
   }
 
-  let redirects;
-
   let compiledWrapper;
   if (format !== 'module') {
     const result = wrapSafe(filename, content, this, format);
@@ -1796,7 +1838,7 @@ Module.prototype._compile = function(content, filename, format) {
   }
 
   const dirname = path.dirname(filename);
-  const require = makeRequireFunction(this, redirects);
+  const require = makeRequireFunction(this);
   let result;
   const exports = this.exports;
   const thisValue = exports;
@@ -1936,7 +1978,7 @@ Module._extensions['.js'] = function(module, filename) {
   const { source, format: loadedFormat } = loadSource(module, filename, format);
   // Function require shouldn't be used in ES modules when require(esm) is disabled.
   if ((loadedFormat === 'module' || loadedFormat === 'module-typescript') &&
-    !getOptionValue('--experimental-require-module')) {
+    !getOptionValue('--require-module')) {
     const err = getRequireESMError(module, pkg, source, filename);
     throw err;
   }

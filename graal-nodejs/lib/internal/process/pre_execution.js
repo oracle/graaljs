@@ -124,6 +124,8 @@ function prepareExecution(options) {
   // Process initial diagnostic reporting configuration, if present.
   initializeReport();
 
+  setupDiagnosticsChannel();
+
   // Load permission system API
   initializePermission();
 
@@ -161,6 +163,9 @@ function prepareExecution(options) {
     // The setup should be called in LOAD_SCRIPT message handler.
     assert(!initializeModules);
   }
+
+  const { initializeExtensionFormatMap } = require('internal/modules/esm/get_format');
+  initializeExtensionFormatMap();
 
   setupVmModules();
   if (initializeModules) {
@@ -607,6 +612,14 @@ function initializeClusterIPC() {
     // Make sure it's not accidentally inherited by child processes.
     delete process.env.NODE_UNIQUE_ID;
   }
+}
+
+function setupDiagnosticsChannel() {
+  // Re-link native channels after snapshot deserialization since
+  // JS references are cleared during serialization.
+  const dc = require('diagnostics_channel');
+  const dc_binding = internalBinding('diagnostics_channel');
+  dc_binding.linkNativeChannel((name) => dc.channel(name));
 }
 
 function initializePermission() {

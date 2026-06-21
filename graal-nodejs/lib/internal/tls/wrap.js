@@ -113,6 +113,82 @@ const kIsVerified = Symbol('verified');
 
 const noop = () => {};
 
+const kTLSSessionStatePrefix = Buffer.from('\0nodejs:tls:session:1\0');
+
+function getSessionServerIdentity(options) {
+  return options?.servername ||
+         options?.host ||
+         options?.socket?._host ||
+         'localhost';
+}
+
+function wrapSessionState(session, options) {
+  if (!Buffer.isBuffer(session) || options?.isServer)
+    return session;
+
+  const servername = Buffer.from(getSessionServerIdentity(options), 'utf8');
+  const servernameLength = Buffer.allocUnsafe(2);
+  servernameLength.writeUInt16BE(servername.length, 0);
+
+  return Buffer.concat([
+    kTLSSessionStatePrefix,
+    servernameLength,
+    servername,
+    session,
+  ]);
+}
+
+function unwrapSessionState(session) {
+  if (!Buffer.isBuffer(session) ||
+      session.length < kTLSSessionStatePrefix.length + 2 ||
+      Buffer.compare(
+        session.subarray(0, kTLSSessionStatePrefix.length),
+        kTLSSessionStatePrefix,
+      ) !== 0) {
+    return;
+  }
+
+  const start = kTLSSessionStatePrefix.length;
+  const servernameLength = session.readUInt16BE(start);
+  const servernameStart = start + 2;
+  const servernameEnd = servernameStart + servernameLength;
+  if (session.length < servernameEnd)
+    return;
+
+  return {
+    servername: session.toString('utf8', servernameStart, servernameEnd),
+    session: session.subarray(servernameEnd),
+  };
+}
+
+function getSessionForReuse(session, options) {
+  if (typeof session === 'string')
+    session = Buffer.from(session, 'latin1');
+
+  if (options?.isServer)
+    return session;
+
+  const wrappedSession = unwrapSessionState(session);
+  if (wrappedSession !== undefined) {
+    const servername = getSessionServerIdentity(options);
+    if (wrappedSession.servername !== servername) {
+      debug('ignore session for %s: authenticated for %s',
+            servername, wrappedSession.servername);
+      return;
+    }
+
+    return wrappedSession.session;
+  }
+
+  if (Buffer.isBuffer(session) && options?.rejectUnauthorized !== false) {
+    debug('ignore raw session for verified client connection to %s',
+          getSessionServerIdentity(options));
+    return;
+  }
+
+  return session;
+}
+
 let ipServernameWarned = false;
 let tlsTracingWarned = false;
 
@@ -341,10 +417,11 @@ function requestOCSPDone(socket) {
 function onnewsessionclient(sessionId, session) {
   debug('client emit session');
   const owner = this[owner_symbol];
+  const wrappedSession = wrapSessionState(session, owner[kConnectOptions]);
   if (owner[kIsVerified]) {
-    owner.emit('session', session);
+    owner.emit('session', wrappedSession);
   } else {
-    owner[kPendingSession] = session;
+    owner[kPendingSession] = wrappedSession;
   }
 }
 
@@ -595,6 +672,9 @@ function TLSSocket(socket, opts) {
     highWaterMark: tlsOptions.highWaterMark,
     onread: !socket ? tlsOptions.onread : null,
     signal: tlsOptions.signal,
+    noDelay: tlsOptions.noDelay,
+    keepAlive: tlsOptions.keepAlive,
+    keepAliveInitialDelay: tlsOptions.keepAliveInitialDelay,
   });
 
   // Proxy for API compatibility
@@ -1131,9 +1211,19 @@ TLSSocket.prototype.setServername = function(name) {
 };
 
 TLSSocket.prototype.setSession = function(session) {
-  if (typeof session === 'string')
-    session = Buffer.from(session, 'latin1');
-  this._handle.setSession(session);
+  session = getSessionForReuse(session, this[kConnectOptions] || this._tlsOptions);
+  if (session !== undefined)
+    this._handle.setSession(session);
+};
+
+TLSSocket.prototype.getSession = function() {
+  if (!this._handle)
+    return null;
+
+  return wrapSessionState(
+    this._handle.getSession(),
+    this[kConnectOptions] || this._tlsOptions,
+  );
 };
 
 TLSSocket.prototype.getPeerCertificate = function(detailed) {
@@ -1192,7 +1282,6 @@ function makeSocketMethodProxy(name) {
   'getFinished',
   'getPeerFinished',
   'getProtocol',
-  'getSession',
   'getTLSTicket',
   'isSessionReused',
   'enableTrace',
@@ -1569,7 +1658,7 @@ Server.prototype.addContext = function(servername, context) {
     servername
       .replace(/([.^$+?\-\\[\]{}])/g, '\\$1')
       .replaceAll('*', '[^.]*')
-  }$`);
+  }$`, 'i');
 
   const secureContext =
     context instanceof common.SecureContext ? context : tls.createSecureContext(context);
@@ -1655,12 +1744,11 @@ function onConnectSecure() {
   // Verify that server's identity matches it's certificate's names
   // Unless server has resumed our existing session
   if (!verifyError && !this.isSessionReused()) {
-    const hostname = options.servername ||
-                   options.host ||
-                   (options.socket?._host) ||
-                   'localhost';
     const cert = this.getPeerCertificate(true);
-    verifyError = options.checkServerIdentity(hostname, cert);
+    verifyError = options.checkServerIdentity(
+      getSessionServerIdentity(options),
+      cert,
+    );
   }
 
   if (verifyError) {
@@ -1737,6 +1825,8 @@ exports.connect = function connect(...args) {
 
   const context = options.secureContext || tls.createSecureContext(options);
 
+  options.session = getSessionForReuse(options.session, options);
+
   const tlssock = new TLSSocket(options.socket, {
     allowHalfOpen: options.allowHalfOpen,
     pipe: !!options.path,
@@ -1752,6 +1842,9 @@ exports.connect = function connect(...args) {
     highWaterMark: options.highWaterMark,
     onread: options.onread,
     signal: options.signal,
+    noDelay: options.noDelay,
+    keepAlive: options.keepAlive,
+    keepAliveInitialDelay: options.keepAliveInitialDelay,
   });
 
   // rejectUnauthorized property can be explicitly defined as `undefined`

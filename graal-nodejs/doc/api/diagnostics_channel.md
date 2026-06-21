@@ -1303,7 +1303,7 @@ closing the stream can be retrieved using the `stream.rstCode` property.
 
 > Stability: 1 - Experimental
 
-##### Event: `'module.require.start'`
+##### Event: `'tracing:module.require:start'`
 
 * `event` {Object} containing the following properties
   * `id` Argument passed to `require()`. Module name.
@@ -1311,7 +1311,7 @@ closing the stream can be retrieved using the `stream.rstCode` property.
 
 Emitted when `require()` is executed. See [`start` event][].
 
-##### Event: `'module.require.end'`
+##### Event: `'tracing:module.require:end'`
 
 * `event` {Object} containing the following properties
   * `id` Argument passed to `require()`. Module name.
@@ -1319,7 +1319,7 @@ Emitted when `require()` is executed. See [`start` event][].
 
 Emitted when a `require()` call returns. See [`end` event][].
 
-##### Event: `'module.require.error'`
+##### Event: `'tracing:module.require:error'`
 
 * `event` {Object} containing the following properties
   * `id` Argument passed to `require()`. Module name.
@@ -1328,7 +1328,7 @@ Emitted when a `require()` call returns. See [`end` event][].
 
 Emitted when a `require()` throws an error. See [`error` event][].
 
-##### Event: `'module.import.asyncStart'`
+##### Event: `'tracing:module.import:asyncStart'`
 
 * `event` {Object} containing the following properties
   * `id` Argument passed to `import()`. Module name.
@@ -1336,7 +1336,7 @@ Emitted when a `require()` throws an error. See [`error` event][].
 
 Emitted when `import()` is invoked. See [`asyncStart` event][].
 
-##### Event: `'module.import.asyncEnd'`
+##### Event: `'tracing:module.import:asyncEnd'`
 
 * `event` {Object} containing the following properties
   * `id` Argument passed to `import()`. Module name.
@@ -1344,7 +1344,7 @@ Emitted when `import()` is invoked. See [`asyncStart` event][].
 
 Emitted when `import()` has completed. See [`asyncEnd` event][].
 
-##### Event: `'module.import.error'`
+##### Event: `'tracing:module.import:error'`
 
 * `event` {Object} containing the following properties
   * `id` Argument passed to `import()`. Module name.
@@ -1413,13 +1413,79 @@ added: v16.18.0
 
 Emitted when a new process is created.
 
-##### Event: `'execve'`
+`tracing:child_process.spawn:start`
+
+* `process` {ChildProcess}
+* `options` {Object}
+
+Emitted when [`child_process.spawn()`][] is invoked, before the process is
+actually spawned.
+
+`tracing:child_process.spawn:end`
+
+* `process` {ChildProcess}
+
+Emitted when [`child_process.spawn()`][] has completed successfully and the
+process has been created.
+
+`tracing:child_process.spawn:error`
+
+* `process` {ChildProcess}
+* `error` {Error}
+
+Emitted when [`child_process.spawn()`][] encounters an error.
+
+##### Event: `'process.execve'`
 
 * `execPath` {string}
 * `args` {string\[]}
 * `env` {string\[]}
 
 Emitted when [`process.execve()`][] is invoked.
+
+#### Web Locks
+
+> Stability: 1 - Experimental
+
+<!-- YAML
+added: v24.15.0
+-->
+
+These channels are emitted for each [`locks.request()`][] call. See
+[`worker_threads.locks`][] for details on Web Locks.
+
+##### Event: `'locks.request.start'`
+
+* `name` {string} The name of the requested lock resource.
+* `mode` {string} The lock mode: `'exclusive'` or `'shared'`.
+
+Emitted when a lock request is initiated, before the lock is granted.
+
+##### Event: `'locks.request.grant'`
+
+* `name` {string} The name of the requested lock resource.
+* `mode` {string} The lock mode: `'exclusive'` or `'shared'`.
+
+Emitted when a lock is successfully granted and the callback is about to run.
+
+##### Event: `'locks.request.miss'`
+
+* `name` {string} The name of the requested lock resource.
+* `mode` {string} The lock mode: `'exclusive'` or `'shared'`.
+
+Emitted when `ifAvailable` is `true` and the lock is not immediately available,
+and the request callback is invoked with `null` instead of a `Lock` object.
+
+##### Event: `'locks.request.end'`
+
+* `name` {string} The name of the requested lock resource.
+* `mode` {string} The lock mode: `'exclusive'` or `'shared'`.
+* `steal` {boolean} Whether the request uses steal semantics.
+* `ifAvailable` {boolean} Whether the request uses ifAvailable semantics.
+* `error` {Error|undefined} The error thrown by the callback, if any.
+
+Emitted when a lock request has finished, whether the callback succeeded,
+threw an error, or the lock was stolen.
 
 #### Worker Thread
 
@@ -1444,12 +1510,15 @@ Emitted when a new thread is created.
 [`channel.runStores(context, ...)`]: #channelrunstorescontext-fn-thisarg-args
 [`channel.subscribe(onMessage)`]: #channelsubscribeonmessage
 [`channel.unsubscribe(onMessage)`]: #channelunsubscribeonmessage
+[`child_process.spawn()`]: child_process.md#child_processspawncommand-args-options
 [`diagnostics_channel.channel(name)`]: #diagnostics_channelchannelname
 [`diagnostics_channel.subscribe(name, onMessage)`]: #diagnostics_channelsubscribename-onmessage
 [`diagnostics_channel.tracingChannel()`]: #diagnostics_channeltracingchannelnameorchannels
 [`end` event]: #endevent
 [`error` event]: #errorevent
+[`locks.request()`]: worker_threads.md#locksrequestname-options-callback
 [`net.Server.listen()`]: net.md#serverlisten
 [`process.execve()`]: process.md#processexecvefile-args-env
 [`start` event]: #startevent
+[`worker_threads.locks`]: worker_threads.md#worker_threadslocks
 [context loss]: async_context.md#troubleshooting-context-loss

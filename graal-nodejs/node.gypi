@@ -250,6 +250,7 @@
 
     [ 'node_shared_zstd=="false"', {
       'dependencies': [ 'deps/zstd/zstd.gyp:zstd' ],
+      'defines': [ 'NODE_BUNDLED_ZSTD' ],
     }],
 
     [ 'OS=="mac"', {
@@ -431,12 +432,6 @@
             }],
           ]
         }],
-        [ 'openssl_quic=="true" and node_shared_ngtcp2=="false"', {
-          'dependencies': [ './deps/ngtcp2/ngtcp2.gyp:ngtcp2' ]
-        }],
-        [ 'openssl_quic=="true" and node_shared_nghttp3=="false"', {
-          'dependencies': [ './deps/ngtcp2/ngtcp2.gyp:nghttp3' ]
-        }]
       ]
     }, {
       'defines': [ 'HAVE_OPENSSL=0' ]
@@ -450,6 +445,23 @@
       'defines': [ 'HAVE_SQLITE=1' ],
     }, {
       'defines': [ 'HAVE_SQLITE=0' ]
+    }],
+    [ 'node_use_quic=="true"', {
+      'defines': [ 'HAVE_QUIC=1' ],
+      'conditions': [
+        [ 'node_shared_openssl=="false"', {
+          'dependencies': [
+            './deps/ngtcp2/ngtcp2.gyp:ngtcp2',
+            './deps/ngtcp2/ngtcp2.gyp:nghttp3',
+
+            # For tests
+            './deps/ngtcp2/ngtcp2.gyp:ngtcp2_test_server',
+            './deps/ngtcp2/ngtcp2.gyp:ngtcp2_test_client',
+          ],
+        }],
+      ],
+    }, {
+      'defines': [ 'HAVE_QUIC=0' ]
     }],
   ],
 }

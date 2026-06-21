@@ -1,4 +1,4 @@
-const { test } = require('node:test')
+const { test, describe } = require('node:test')
 
 test('should fail on first two attempts', ({ attempt }) => {
   if (attempt < 2) {
@@ -38,3 +38,30 @@ function nestedAmbiguousTest(expectedAttempts) {
 
 test('nested ambiguous (expectedAttempts=0)', nestedAmbiguousTest(0));
 test('nested ambiguous (expectedAttempts=1)', nestedAmbiguousTest(2));
+
+
+describe('describe rerun', { timeout: 1000, concurrency: 1000 }, () => {
+  test('passed on first attempt', async (t) => {
+    await t.test('nested', async () => {});
+  });
+  test('a');
+});
+
+
+// Shared helper creates subtests at the same source location each time it's
+// called, producing ambiguous test identifiers (disambiguated with ":(N)"
+// suffixes in the rerun state file). Regression coverage for a bug where the
+// suite's synthetic rerun fn double-started its direct children, which then
+// re-invoked the synthetic descendant-creator against an already-incremented
+// disambiguator map and emitted spurious failures.
+function ambiguousHelper(t) {
+  return Promise.all([
+    t.test('shared sub A', () => {}),
+    t.test('shared sub B', () => {}),
+  ]);
+}
+
+describe('rerun with ambiguous shared helper', { timeout: 1000, concurrency: 1000 }, () => {
+  test('first caller', (t) => ambiguousHelper(t));
+  test('second caller', (t) => ambiguousHelper(t));
+});

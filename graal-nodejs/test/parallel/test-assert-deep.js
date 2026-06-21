@@ -260,6 +260,14 @@ function assertOnlyDeepEqual(a, b, err) {
   assert.throws(partial, err || { code: 'ERR_ASSERTION' });
 }
 
+function activateMemoizedCycleDetection() {
+  const circA = {};
+  circA.self = circA;
+  const circB = {};
+  circB.self = circB;
+  assert.deepStrictEqual(circA, circB);
+}
+
 test('es6 Maps and Sets', () => {
   assertDeepAndStrictEqual(new Set(), new Set());
   assertDeepAndStrictEqual(new Map(), new Map());
@@ -609,6 +617,36 @@ test('GH-14441. Circular structures should be consistent', () => {
   }
 });
 
+test('deepStrictEqual handles shared expected array elements after cycle detection', () => {
+  const sharedExpected = { outer: { inner: 0 } };
+  const actualValues = [{ outer: { inner: 0 } }, { outer: { inner: 0 } }];
+  const expectedValues = [sharedExpected, sharedExpected];
+
+  activateMemoizedCycleDetection();
+
+  assertDeepAndStrictEqual(actualValues[0], expectedValues[0]);
+  assertDeepAndStrictEqual(actualValues[1], expectedValues[1]);
+  assertDeepAndStrictEqual(actualValues, expectedValues);
+});
+
+test('deepStrictEqual handles cross-root aliases after cycle detection', () => {
+  activateMemoizedCycleDetection();
+
+  const nestedExpected = {};
+  nestedExpected.loop = nestedExpected;
+  nestedExpected.payload = { value: 1 };
+
+  const expected = {};
+  expected.loop = nestedExpected;
+  expected.payload = { value: 1 };
+
+  const actual = {};
+  actual.loop = expected;
+  actual.payload = { value: 1 };
+
+  assertDeepAndStrictEqual(actual, expected);
+});
+
 // https://github.com/nodejs/node-v0.x-archive/pull/7178
 test('Ensure reflexivity of deepEqual with `arguments` objects.', () => {
   const args = (function() { return arguments; })();
@@ -778,6 +816,19 @@ test('Additional tests', () => {
   );
 
   assertNotDeepOrStrict(new Date(), new Date(2000, 3, 14));
+
+  {
+    // Invalid dates deep comparison.
+    const date1 = new Date('foo');
+    const date2 = new Date('bar');
+    date1.foo = true;
+    date2.foo = true;
+    assertDeepAndStrictEqual(date1, date2);
+
+    date1.bar = false;
+    date2.bar = true;
+    assertNotDeepOrStrict(date1, date2);
+  }
 
   assertDeepAndStrictEqual(/a/, /a/);
   assertDeepAndStrictEqual(/a/g, /a/g);

@@ -16,6 +16,7 @@ const {
   ObjectPrototypeHasOwnProperty,
   RegExpPrototypeExec,
   String,
+  StringPrototypeIncludes,
   StringPrototypeToUpperCase,
   StringPrototypeTrim,
 } = primordials;
@@ -163,6 +164,14 @@ const validateUint32 = hideStackFrames((value, name, positive = false) => {
 const validateString = hideStackFrames((value, name) => {
   if (typeof value !== 'string')
     throw new ERR_INVALID_ARG_TYPE(name, 'string', value);
+});
+
+/** @type {validateString} */
+const validateStringWithoutNullBytes = hideStackFrames((value, name) => {
+  validateString(value, name);
+  if (StringPrototypeIncludes(value, '\u0000')) {
+    throw new ERR_INVALID_ARG_VALUE(name, value, 'must be a string without null bytes');
+  }
 });
 
 /**
@@ -509,7 +518,7 @@ function validateUnion(value, name, union) {
   (not necessarily a valid URI reference) followed by zero or more
   link-params separated by semicolons.
 */
-const linkValueRegExp = /^(?:<[^>]*>)(?:\s*;\s*[^;"\s]+(?:=(")?[^;"\s]*\1)?)*$/;
+const linkValueRegExp = /^(?:<[^>\r\n]*>)(?:\s*;\s*[^;"\s]+(?:=(")?[^;"\s]*\1)?)*$/;
 
 /**
  * @param {any} value
@@ -677,6 +686,7 @@ module.exports = {
   validatePort,
   validateSignalName,
   validateString,
+  validateStringWithoutNullBytes,
   validateUint32,
   validateUndefined,
   validateUnion,

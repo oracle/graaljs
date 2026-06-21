@@ -25,7 +25,7 @@ const {
 
 const {
   getDefaultTriggerAsyncId,
-  getHookArrays,
+  enabledHooksExist,
   newAsyncId,
   initHooksExist,
   emitInit,
@@ -102,7 +102,8 @@ function processTicksAndRejections() {
       AsyncContextFrame.set(priorContextFrame);
     }
     runMicrotasks();
-  } while (!queue.isEmpty() || processPromiseRejections());
+  } while (!queue.isEmpty() ||
+           (hasRejectionToWarn() && processPromiseRejections()));
   setHasTickScheduled(false);
   setHasRejectionToWarn(false);
 }
@@ -160,7 +161,7 @@ function queueMicrotask(callback) {
   validateFunction(callback, 'callback');
 
   const contextFrame = AsyncContextFrame.current();
-  if (contextFrame || getHookArrays()[0].length > 0) {
+  if (contextFrame || enabledHooksExist()) {
     const asyncResource = new AsyncResource(
       'Microtask',
       defaultMicrotaskResourceOpts,

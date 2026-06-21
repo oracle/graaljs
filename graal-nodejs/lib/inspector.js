@@ -225,6 +225,16 @@ const NetworkResources = {
   put,
 };
 
+const DOMStorage = {
+  domStorageItemAdded: (params) => broadcastToFrontend('DOMStorage.domStorageItemAdded', params),
+  domStorageItemRemoved: (params) => broadcastToFrontend('DOMStorage.domStorageItemRemoved', params),
+  domStorageItemUpdated: (params) => broadcastToFrontend('DOMStorage.domStorageItemUpdated', params),
+  domStorageItemsCleared: (params) => broadcastToFrontend('DOMStorage.domStorageItemsCleared', params),
+  // Pseudo-event: not part of the CDP DOMStorage domain.
+  // Call DOMStorageAgent::registerStorage in inspector/dom_storage_agent.cc.
+  registerStorage: (params) => broadcastToFrontend('DOMStorage.registerStorage', params),
+};
+
 module.exports = {
   open: inspectorOpen,
   close: _debugEnd,
@@ -234,6 +244,7 @@ module.exports = {
   Session,
   Network,
   NetworkResources,
+  DOMStorage,
 };
 
 // Use the mockup provided by 'inspect' instrument

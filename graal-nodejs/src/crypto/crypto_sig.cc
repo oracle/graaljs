@@ -241,6 +241,7 @@ bool SupportsContextString(const EVPKeyPointer& key) {
   return false;
 #else
   switch (key.id()) {
+    case EVP_PKEY_ED25519:
     case EVP_PKEY_ED448:
 #if OPENSSL_WITH_PQC
     case EVP_PKEY_ML_DSA_44:
@@ -310,7 +311,7 @@ void Sign::Initialize(Environment* env, Local<Object> target) {
   Isolate* isolate = env->isolate();
   Local<FunctionTemplate> t = NewFunctionTemplate(isolate, New);
 
-  t->InstanceTemplate()->SetInternalFieldCount(SignBase::kInternalFieldCount);
+  t->InstanceTemplate()->SetInternalFieldCount(Sign::kInternalFieldCount);
 
   SetProtoMethod(isolate, t, "init", SignInit);
   SetProtoMethod(isolate, t, "update", SignUpdate);
@@ -437,7 +438,7 @@ void Verify::Initialize(Environment* env, Local<Object> target) {
   Isolate* isolate = env->isolate();
   Local<FunctionTemplate> t = NewFunctionTemplate(isolate, New);
 
-  t->InstanceTemplate()->SetInternalFieldCount(SignBase::kInternalFieldCount);
+  t->InstanceTemplate()->SetInternalFieldCount(Verify::kInternalFieldCount);
 
   SetProtoMethod(isolate, t, "init", VerifyInit);
   SetProtoMethod(isolate, t, "update", VerifyUpdate);

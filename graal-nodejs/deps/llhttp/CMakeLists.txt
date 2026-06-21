@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.25.0)
 cmake_policy(SET CMP0069 NEW)
 
-project(llhttp VERSION 9.3.0)
+project(llhttp VERSION 9.4.2)
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 set(CMAKE_C_STANDARD 99)
 
@@ -24,8 +25,8 @@ endif()
 # Options
 #
 # Generic option
-option(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so)" ON)
-option(BUILD_STATIC_LIBS "Build static libraries (.lib/.a)" OFF)
+option(LLHTTP_BUILD_SHARED_LIBS "Build shared libraries (.dll/.so)" ON)
+option(LLHTTP_BUILD_STATIC_LIBS "Build static libraries (.lib/.a)" OFF)
 
 # Source code
 set(LLHTTP_SOURCES
@@ -66,21 +67,9 @@ function(config_library target)
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   )
-
-  install(FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/libllhttp.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
-  )
-
-  # This is required to work with FetchContent
-  install(EXPORT llhttp
-    FILE llhttp-config.cmake
-    NAMESPACE llhttp::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/llhttp
-  )
 endfunction(config_library target)
 
-if(BUILD_SHARED_LIBS)
+if(LLHTTP_BUILD_SHARED_LIBS)
   add_library(llhttp_shared SHARED
       ${llhttp_src}
   )
@@ -88,16 +77,44 @@ if(BUILD_SHARED_LIBS)
   config_library(llhttp_shared)
 endif()
 
-if(BUILD_STATIC_LIBS)
+if(LLHTTP_BUILD_STATIC_LIBS)
   add_library(llhttp_static STATIC
       ${llhttp_src}
   )
-  if(BUILD_SHARED_LIBS)
-    add_library(llhttp::llhttp ALIAS llhttp_shared)
-  else()
+  if(NOT LLHTTP_BUILD_SHARED_LIBS)
     add_library(llhttp::llhttp ALIAS llhttp_static)
   endif()
   config_library(llhttp_static)
+endif()
+
+if(TARGET llhttp_shared OR TARGET llhttp_static)
+  install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/libllhttp.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+  )
+
+  install(EXPORT llhttp
+    FILE llhttp-targets.cmake
+    NAMESPACE llhttp::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/llhttp
+  )
+
+  configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/llhttpConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/llhttpConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/llhttp
+  )
+
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/llhttpConfigVersion.cmake
+    COMPATIBILITY AnyNewerVersion
+  )
+
+  install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/llhttpConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/llhttpConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/llhttp
+  )
 endif()
 
 # On windows with Visual Studio, add a debug postfix so that release
@@ -113,6 +130,6 @@ message(STATUS "Project configure summary:")
 message(STATUS "")
 message(STATUS "  CMake build type .................: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Install prefix ...................: ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "  Build shared library .............: ${BUILD_SHARED_LIBS}")
-message(STATUS "  Build static library .............: ${BUILD_STATIC_LIBS}")
+message(STATUS "  Build shared library .............: ${LLHTTP_BUILD_SHARED_LIBS}")
+message(STATUS "  Build static library .............: ${LLHTTP_BUILD_STATIC_LIBS}")
 message(STATUS "")

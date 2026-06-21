@@ -1179,7 +1179,12 @@ E('ERR_CRYPTO_SCRYPT_NOT_SUPPORTED', 'Scrypt algorithm not supported', Error);
 // Switch to TypeError. The current implementation does not seem right.
 E('ERR_CRYPTO_SIGN_KEY_REQUIRED', 'No key provided to sign', Error);
 E('ERR_DEBUGGER_ERROR', '%s', Error);
-E('ERR_DEBUGGER_STARTUP_ERROR', '%s', Error);
+E('ERR_DEBUGGER_STARTUP_ERROR', function(message, details = undefined) {
+  if (details !== undefined) {
+    ObjectAssign(this, details);
+  }
+  return message;
+}, Error);
 E('ERR_DIR_CLOSED', 'Directory handle was closed', Error);
 E('ERR_DIR_CONCURRENT_OPERATION',
   'Cannot do synchronous work on directory handle with concurrent ' +
@@ -1318,6 +1323,8 @@ E('ERR_HTTP2_STREAM_SELF_DEPENDENCY',
 E('ERR_HTTP2_TOO_MANY_CUSTOM_SETTINGS',
   'Number of custom settings exceeds MAX_ADDITIONAL_SETTINGS', Error);
 E('ERR_HTTP2_TOO_MANY_INVALID_FRAMES', 'Too many invalid HTTP/2 frames', Error);
+E('ERR_HTTP2_TOO_MANY_ORIGINS',
+  'The server sent more ORIGIN frames than the allowed number of %s', Error);
 E('ERR_HTTP2_TRAILERS_ALREADY_SENT',
   'Trailing headers have already been sent', Error);
 E('ERR_HTTP2_TRAILERS_NOT_READY',
@@ -1717,6 +1724,15 @@ E('ERR_REQUIRE_ESM',
       'all ES modules instead).\n';
     return msg;
   }, Error);
+E('ERR_REQUIRE_ESM_RACE_CONDITION', (filename, parentFilename, isForAsyncLoaderHookWorker) => {
+  let raceMessage = `Cannot require() ES Module ${filename} because it is not yet fully loaded.\n`;
+  raceMessage += 'This may be caused by a race condition if the module is simultaneously dynamically ';
+  raceMessage += 'import()-ed via Promise.all().\n';
+  raceMessage += 'Try await-ing the import() sequentially in a loop instead.\n';
+  raceMessage += ` (From ${parentFilename ? `${parentFilename} in ` : ' '}`;
+  raceMessage += `${isForAsyncLoaderHookWorker ? 'loader hook worker thread' : 'non-loader-hook thread'})`;
+  return raceMessage;
+}, Error);
 E('ERR_SCRIPT_EXECUTION_INTERRUPTED',
   'Script execution was interrupted by `SIGINT`', Error);
 E('ERR_SERVER_ALREADY_LISTEN',

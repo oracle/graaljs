@@ -5,18 +5,24 @@ const {
 } = primordials;
 
 const {
+  getOptionValue,
+} = require('internal/options');
+
+if (!process.features.quic || !getOptionValue('--experimental-quic')) {
+  return;
+}
+
+const {
   customInspectSymbol: kInspect,
 } = require('internal/util');
 
 const {
   kHandle: kKeyObjectHandle,
-  kKeyObject: kKeyObjectInner,
 } = require('internal/crypto/util');
 
 // Symbols used to hide various private properties and methods from the
 // public API.
 
-const kApplicationProvider = Symbol('kApplicationProvider');
 const kBlocked = Symbol('kBlocked');
 const kConnect = Symbol('kConnect');
 const kDatagram = Symbol('kDatagram');
@@ -44,7 +50,6 @@ const kWantsHeaders = Symbol('kWantsHeaders');
 const kWantsTrailers = Symbol('kWantsTrailers');
 
 module.exports = {
-  kApplicationProvider,
   kBlocked,
   kConnect,
   kDatagram,
@@ -54,7 +59,6 @@ module.exports = {
   kHeaders,
   kInspect,
   kKeyObjectHandle,
-  kKeyObjectInner,
   kListen,
   kNewSession,
   kNewStream,

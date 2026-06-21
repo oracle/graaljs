@@ -422,16 +422,20 @@ assert.throws(
   { private: fixtures.readKey('ed25519_private.pem', 'ascii'),
     public: fixtures.readKey('ed25519_public.pem', 'ascii'),
     algo: null,
-    sigLen: 64 },
+    supportsContext: hasOpenSSL(3, 2),
+    sigLen: 64,
+    raw: true },
   { private: fixtures.readKey('ed448_private.pem', 'ascii'),
     public: fixtures.readKey('ed448_public.pem', 'ascii'),
     algo: null,
-    supportsContext: true,
-    sigLen: 114 },
+    supportsContext: hasOpenSSL(3, 2),
+    sigLen: 114,
+    raw: true },
   { private: fixtures.readKey('rsa_private_2048.pem', 'ascii'),
     public: fixtures.readKey('rsa_public_2048.pem', 'ascii'),
     algo: 'sha1',
-    sigLen: 256 },
+    sigLen: 256,
+    raw: false },
 ].forEach((pair) => {
   const algo = pair.algo;
 
@@ -458,6 +462,29 @@ assert.throws(
     assert.strictEqual(crypto.verify(algo, data, pubKeyObj, sig), true);
   }
 
+  if (pair.raw) {
+    const data = Buffer.from('Hello world');
+    const privKeyObj = crypto.createPrivateKey(pair.private);
+    const pubKeyObj = crypto.createPublicKey(pair.public);
+    const { asymmetricKeyType } = privKeyObj;
+    const rawPrivate = {
+      key: privKeyObj.export({ format: 'raw-private' }),
+      format: 'raw-private',
+      asymmetricKeyType,
+    };
+    const rawPublic = {
+      key: pubKeyObj.export({ format: 'raw-public' }),
+      format: 'raw-public',
+      asymmetricKeyType,
+    };
+
+    const sig = crypto.sign(algo, data, rawPrivate);
+    assert.strictEqual(sig.length, pair.sigLen);
+
+    assert.strictEqual(crypto.verify(algo, data, rawPrivate, sig), true);
+    assert.strictEqual(crypto.verify(algo, data, rawPublic, sig), true);
+  }
+
   {
     const data = Buffer.from('Hello world');
     const otherData = Buffer.from('Goodbye world');
@@ -475,7 +502,7 @@ assert.throws(
                        true);
   });
 
-  if (pair.supportsContext && hasOpenSSL(3, 2)) {
+  if (pair.supportsContext) {
     const data = Buffer.from('Hello world');
     {
       const context = new Uint8Array();
@@ -504,7 +531,7 @@ assert.throws(
       code: 'ERR_OUT_OF_RANGE',
       message: 'context string must be at most 255 bytes',
     });
-  } else if (pair.supportsContext) {
+  } else {
     const data = Buffer.from('Hello world');
     {
       const context = new Uint8Array();
@@ -524,6 +551,47 @@ assert.throws(
     }
   }
 });
+
+// Ed25519ctx: Ed25519 with context string.
+if (hasOpenSSL(3, 2)) {
+  const privKey = fixtures.readKey('ed25519_private.pem', 'ascii');
+  const pubKey = fixtures.readKey('ed25519_public.pem', 'ascii');
+  const data = Buffer.from('Hello world');
+
+  {
+    const context = Buffer.from('my context');
+    const sig = crypto.sign(null, data, { key: privKey, context });
+    assert.strictEqual(sig.length, 64);
+
+    // Verify with matching context succeeds
+    assert.strictEqual(crypto.verify(null, data, { key: pubKey, context }, sig), true);
+
+    // Verify without context fails (Ed25519ctx !== Ed25519 pure)
+    assert.strictEqual(crypto.verify(null, data, { key: pubKey }, sig), false);
+
+    // Verify with wrong context fails
+    assert.strictEqual(crypto.verify(null, data, {
+      key: pubKey,
+      context: Buffer.from('wrong'),
+    }, sig), false);
+  }
+
+  {
+    // Empty context: behaves the same as no context because the
+    // internal has_context check requires a non-empty context string.
+    const context = new Uint8Array();
+    const sig = crypto.sign(null, data, { key: privKey, context });
+
+    assert.strictEqual(crypto.verify(null, data, { key: pubKey, context }, sig), true);
+    assert.strictEqual(crypto.verify(null, data, { key: pubKey }, sig), true);
+  }
+
+  // Context too long
+  assert.throws(() => crypto.sign(null, data, { key: privKey, context: new Uint8Array(256) }), {
+    code: 'ERR_OUT_OF_RANGE',
+    message: 'context string must be at most 255 bytes',
+  });
+}
 
 [1, {}, [], true, Infinity].forEach((input) => {
   const data = Buffer.alloc(1);
