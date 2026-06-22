@@ -2750,11 +2750,7 @@
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-objects.js",
     "status" : "FAIL",
-    "comment" : "Bug in GC JS interop object behavior (expected TypeError not thrown)."
-  }, {
-    "filePath" : "mjsunit/wasm/gc-js-interop.js",
-    "status" : "FAIL",
-    "comment" : "Exotic object behavior of exported WasmGC objects (GR-72984)."
+    "comment" : "V8 expects Reflect.defineProperty/Reflect.preventExtensions on exported Wasm GC objects to throw TypeError, but the Wasm JS API internal methods return false and Reflect exposes false."
   }, {
     "filePath" : "mjsunit/wasm/generate-random-module-no-staging.js",
     "status" : "FAIL",
