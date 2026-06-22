@@ -2766,9 +2766,9 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/wasm/huge-memory.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "runInIsolation" : true,
-    "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
+    "comment" : "Skipped because it eats up a lot of memory."
   }, {
     "filePath" : "mjsunit/wasm/huge-typedarray.js",
     "status" : "FAIL",
