@@ -70,6 +70,12 @@ v8::Promise::PromiseState GraalPromise::State() {
     return static_cast<v8::Promise::PromiseState> (state);
 }
 
+void GraalPromise::MarkAsHandled() {
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_promise = GetJavaObject();
+    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::promise_mark_as_handled, java_promise);
+}
+
 v8::MaybeLocal<v8::Promise::Resolver> GraalPromise::ResolverNew(v8::Local<v8::Context> context) {
     GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
     jobject java_context = graal_context->GetJavaObject();

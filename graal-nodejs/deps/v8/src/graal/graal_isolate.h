@@ -360,6 +360,7 @@ enum GraalAccessMethod {
     promise_resolver_resolve,
     promise_resolver_reject,
     promise_then,
+    promise_mark_as_handled,
     module_compile,
     module_instantiate,
     module_evaluate,

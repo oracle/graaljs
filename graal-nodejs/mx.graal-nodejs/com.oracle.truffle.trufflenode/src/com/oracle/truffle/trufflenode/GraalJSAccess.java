@@ -3952,6 +3952,10 @@ public final class GraalJSAccess {
         return JSRuntime.call(then, promise, new Object[]{onFulfilled, onRejected});
     }
 
+    public void promiseMarkAsHandled(Object promise) {
+        ((JSPromiseObject) promise).setIsHandled(true);
+    }
+
     private JSDynamicObject getResolverFactory(Object realm) {
         RealmData data = getRealmEmbedderData(realm);
         JSDynamicObject resolverFactory = data.getResolverFactory();

@@ -51,6 +51,7 @@ public:
     bool IsPromise() const override;
     v8::Local<v8::Value> Result();
     v8::Promise::PromiseState State();
+    void MarkAsHandled();
     v8::MaybeLocal<v8::Promise> Then(v8::Local<v8::Context> context, v8::Local<v8::Function> on_fulfilled, v8::Local<v8::Function> on_rejected);
     static v8::MaybeLocal<v8::Promise::Resolver> ResolverNew(v8::Local<v8::Context> context);
     static v8::Maybe<bool> ResolverResolve(v8::Promise::Resolver* resolver, v8::Local<v8::Value> value);

@@ -4302,7 +4302,7 @@ namespace v8 {
     }
 
     void Promise::MarkAsHandled() {
-        TRACE
+        reinterpret_cast<GraalPromise*> (this)->MarkAsHandled();
     }
 
     MaybeLocal<Promise> Promise::Then(Local<Context> context, Local<Function> on_fulfilled, Local<Function> on_rejected) {

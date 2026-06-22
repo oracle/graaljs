@@ -199,6 +199,7 @@
       { "name": "objectTemplateSetCallAsFunctionHandler" },
       { "name": "objectTemplateSetHandler" },
       { "name": "objectTemplateSetInternalFieldCount" },
+      { "name": "promiseMarkAsHandled" },
       { "name": "promiseResolverNew" },
       { "name": "promiseResolverReject" },
       { "name": "promiseResolverResolve" },
