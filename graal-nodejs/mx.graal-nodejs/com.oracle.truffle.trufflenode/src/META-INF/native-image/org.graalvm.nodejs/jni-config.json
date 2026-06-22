@@ -10,6 +10,7 @@
       { "name": "arrayBufferGetContents" },
       { "name": "arrayBufferNew" },
       { "name": "arrayBufferNewBackingStore" },
+      { "name": "arrayBufferSetDetachKey" },
       { "name": "arrayBufferViewBuffer" },
       { "name": "arrayBufferViewByteLength" },
       { "name": "arrayBufferViewByteOffset" },

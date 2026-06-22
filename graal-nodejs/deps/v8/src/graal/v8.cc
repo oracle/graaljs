@@ -208,12 +208,15 @@ namespace v8 {
     }
 
     Maybe<bool> ArrayBuffer::Detach(Local<v8::Value> key) {
-        reinterpret_cast<GraalArrayBuffer*> (this)->Detach();
-        return Just(true);
+        return reinterpret_cast<GraalArrayBuffer*> (this)->Detach(key);
     }
 
     bool ArrayBuffer::WasDetached() const {
         return reinterpret_cast<const GraalArrayBuffer*> (this)->WasDetached();
+    }
+
+    void ArrayBuffer::SetDetachKey(v8::Local<v8::Value> key) {
+        reinterpret_cast<GraalArrayBuffer*> (this)->SetDetachKey(key);
     }
 
     Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, size_t byte_length, BackingStoreInitializationMode initialization_mode) {

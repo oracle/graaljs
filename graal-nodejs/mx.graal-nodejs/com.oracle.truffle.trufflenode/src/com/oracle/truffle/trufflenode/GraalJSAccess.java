@@ -1490,8 +1490,13 @@ public final class GraalJSAccess {
         return arrayBufferViewByteLength(JSObject.getJSContext(dynamicObject), dynamicObject);
     }
 
-    public void arrayBufferDetach(Object arrayBuffer) {
-        JSArrayBuffer.detachArrayBuffer((JSArrayBufferObject) arrayBuffer);
+    public void arrayBufferSetDetachKey(Object arrayBuffer, Object key) {
+        ((JSArrayBufferObject) arrayBuffer).setDetachKey(JSRuntime.nullToUndefined(key));
+    }
+
+    public boolean arrayBufferDetach(Object arrayBuffer, Object key) {
+        JSArrayBuffer.detachArrayBuffer((JSArrayBufferObject) arrayBuffer, JSRuntime.nullToUndefined(key));
+        return true;
     }
 
     public boolean arrayBufferWasDetached(Object arrayBuffer) {

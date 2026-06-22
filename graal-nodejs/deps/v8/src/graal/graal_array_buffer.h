@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,8 @@ public:
     inline bool IsDirect() const;
     inline bool IsShared() const;
     void Detach();
+    v8::Maybe<bool> Detach(v8::Local<v8::Value> key);
+    void SetDetachKey(v8::Local<v8::Value> key);
     bool WasDetached() const;
     std::shared_ptr<v8::BackingStore> GetBackingStore();
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, size_t byte_length);
