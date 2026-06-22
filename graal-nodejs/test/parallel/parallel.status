@@ -90,6 +90,7 @@ test-max-old-space-size-percentage: FAIL
 test-repl-paste-big-data: FAIL
 
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint, %PrepareFunctionForOptimization)
+test-buffer-swap-fast: FAIL
 test-http-same-map: FAIL
 test-os-fast: FAIL
 test-perf-hooks-histogram-fast-calls: FAIL
