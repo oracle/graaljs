@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 25.2.4
+* Updated Node.js to version 24.17.0.
+
 ## Version 25.1.3
 * ECMAScript 2026 mode/features enabled by default.
 * Removed support and builds for macOS x86-64 (darwin-amd64).
