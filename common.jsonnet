@@ -80,17 +80,10 @@ targets +
 
   linux_aarch64:: common.linux_aarch64 + self.linux_common,
 
-  darwin_amd64:: common.darwin_amd64 + self.darwin_common + {
-    environment+: {
-      // for compatibility with macOS BigSur
-      MACOSX_DEPLOYMENT_TARGET: '11.0',
-    },
-  },
-
   darwin_aarch64:: common.darwin_aarch64 + self.darwin_common + {
     environment+: {
-      // for compatibility with macOS BigSur
-      MACOSX_DEPLOYMENT_TARGET: '11.0',
+      // for compatibility with macOS Sonoma
+      MACOSX_DEPLOYMENT_TARGET: '14.0',
     },
   },
 
