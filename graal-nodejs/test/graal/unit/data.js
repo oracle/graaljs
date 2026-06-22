@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,36 +39,46 @@
  * SOFTWARE.
  */
 
-#include "arguments.cc"
-#include "array.cc"
-#include "arraybuffer.cc"
-#include "bigint.cc"
-#include "boolean.cc"
-#include "bootstrap.cc"
-#include "cast.cc"
-#include "context.cc"
-#include "data.cc"
-#include "exception.cc"
-#include "external.cc"
-#include "function.cc"
-#include "function_template.cc"
-#include "gc.cc"
-#include "local.cc"
-#include "integer.cc"
-#include "isolate.cc"
-#include "message.cc"
-#include "null.cc"
-#include "object.cc"
-#include "object_new.cc"
-#include "object_template.cc"
-#include "persistent.cc"
-#include "script.cc"
-#include "set.cc"
-#include "stacktrace.cc"
-#include "string.cc"
-#include "symbol.cc"
-#include "try_catch.cc"
-#include "undefined.cc"
-#include "value.cc"
-#include "v8obj.cc"
-#include "wasm_memory.cc"
+var assert = require('assert');
+var module = require('./_unit');
+
+describe('Data - Is*()', function () {
+    describe('IsValue', function () {
+        it('should return true for a number', function () {
+            assert.strictEqual(module.Data_IsValueForNumber(), true);
+        });
+        it('should return true for a public symbol', function () {
+            assert.strictEqual(module.Data_IsValueForSymbol(), true);
+        });
+        it('should return false for a private symbol', function () {
+            assert.strictEqual(module.Data_IsValueForPrivate(), false);
+        });
+        it('should return false for a module', function () {
+            assert.strictEqual(module.Data_IsValueForModule(), false);
+        });
+    });
+
+    describe('IsPrivate', function () {
+        it('should return true for Private::New()', function () {
+            assert.strictEqual(module.Data_IsPrivateForPrivateNew(), true);
+        });
+        it('should return true for Private::ForApi()', function () {
+            assert.strictEqual(module.Data_IsPrivateForPrivateForApi(), true);
+        });
+        it('should return false for a public symbol', function () {
+            assert.strictEqual(module.Data_IsPrivateForSymbol(), false);
+        });
+    });
+
+    describe('IsModule', function () {
+        it('should return true for a compiled module', function () {
+            assert.strictEqual(module.Data_IsModuleForModule(), true);
+        });
+        it('should return false for a number', function () {
+            assert.strictEqual(module.Data_IsModuleForNumber(), false);
+        });
+        it('should return false for a private symbol', function () {
+            assert.strictEqual(module.Data_IsModuleForPrivate(), false);
+        });
+    });
+});
