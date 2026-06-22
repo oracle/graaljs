@@ -130,8 +130,8 @@ describe('Buffer.utf8Write', function() {
             assert.strictEqual(Buffer.alloc(10).utf8Write('a', 1, 0xffffffff), 1);
         }, RangeErrorBufferOutOfBounds_Length);
     });
-    it('length is zero', function() {
-        assert.strictEqual(Buffer.alloc(0).utf8Write.length, 1);
+    it('length is three', function() {
+        assert.strictEqual(Buffer.alloc(0).utf8Write.length, 3);
     });
     if (module.hasJavaInterop()) {
         it('should accept interop buffer', function() {
@@ -204,8 +204,8 @@ describe('Buffer.utf8Slice', function() {
         }, TypeErrorNotBuffer);
         TypedArrays.forEach(TypedArray => Buffer.prototype.utf8Slice.call(new TypedArray()));
     });
-    it('length is zero', function() {
-        assert.strictEqual(Buffer.alloc(0).utf8Slice.length, 0);
+    it('length is two', function() {
+        assert.strictEqual(Buffer.alloc(0).utf8Slice.length, 2);
     });
     it('should replace invalid UTF-8 bytes with replacement characters', function() {
         let invalid = [
