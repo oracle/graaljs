@@ -4272,8 +4272,25 @@ namespace v8 {
     }
 
     MaybeLocal<Array> Array::New(Local<Context> context, size_t length, std::function<MaybeLocal<v8::Value>()> next_value_callback) {
-        TRACE
-        return Local<Array>();
+        GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
+        GraalIsolate* graal_isolate = graal_context->Isolate();
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        jobjectArray java_elements = env->NewObjectArray(length, graal_isolate->GetObjectClass(), NULL);
+        for (size_t i = 0; i < length; i++) {
+            Local<Value> value;
+            if (!next_value_callback().ToLocal(&value)) {
+                env->DeleteLocalRef(java_elements);
+                return {};
+            }
+            jobject java_element = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
+            env->SetObjectArrayElement(java_elements, i, java_element);
+        }
+        jobject java_context = graal_context->GetJavaObject();
+        JNI_CALL(jobject, java_array, graal_isolate, GraalAccessMethod::array_new_from_elements, Object, java_context, java_elements);
+        env->DeleteLocalRef(java_elements);
+        GraalArray* graal_array = GraalArray::Allocate(graal_isolate, java_array);
+        v8::Array* v8_array = reinterpret_cast<v8::Array*> (graal_array);
+        return v8::Local<v8::Array>::New(context->GetIsolate(), v8_array);
     }
 
     MaybeLocal<Object> RegExp::Exec(Local<Context> context, Local<String> subject) {
