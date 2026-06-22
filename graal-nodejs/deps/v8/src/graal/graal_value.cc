@@ -83,6 +83,10 @@
 #include "graal_string-inl.h"
 #include "graal_symbol-inl.h"
 
+bool GraalValue::IsValue() const {
+    return !IsPrivate();
+}
+
 bool GraalValue::IsObject() const {
     return false;
 }

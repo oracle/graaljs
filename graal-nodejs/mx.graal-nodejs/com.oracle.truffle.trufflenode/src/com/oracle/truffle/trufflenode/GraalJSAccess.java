@@ -1790,6 +1790,10 @@ public final class GraalJSAccess {
         return registry.computeIfAbsent(stringDesc, Symbol::createPrivateRegistered);
     }
 
+    public boolean symbolIsPrivate(Object symbol) {
+        return JSRuntime.isPrivateSymbol(symbol);
+    }
+
     public Object functionNewInstance(Object function, Object[] arguments) {
         return JSRuntime.construct(function, arguments);
     }

@@ -4216,12 +4216,19 @@ namespace v8 {
     }
 
     bool Data::IsValue() const {
-        TRACE
-        return true;
+        return reinterpret_cast<const GraalData*> (this)->IsValue();
+    }
+
+    bool Data::IsPrivate() const {
+        return reinterpret_cast<const GraalData*> (this)->IsPrivate();
+    }
+
+    bool Data::IsModule() const {
+        return reinterpret_cast<const GraalData*> (this)->IsModule();
     }
 
     bool Data::IsModuleRequest() const {
-        return reinterpret_cast<const GraalData*>(this)->IsModuleRequest();
+        return reinterpret_cast<const GraalData*> (this)->IsModuleRequest();
     }
 
     AllocationProfile* HeapProfiler::GetAllocationProfile() {

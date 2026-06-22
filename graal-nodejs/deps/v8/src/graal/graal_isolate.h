@@ -354,6 +354,7 @@ enum GraalAccessMethod {
     symbol_get_async_dispose,
     symbol_private_for_api,
     symbol_private_new,
+    symbol_is_private,
     promise_result,
     promise_state,
     promise_resolver_new,

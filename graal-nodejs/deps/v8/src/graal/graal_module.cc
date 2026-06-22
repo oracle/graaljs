@@ -167,6 +167,10 @@ v8::Local<v8::UnboundModuleScript> GraalModule::GetUnboundModuleScript() {
     return v8::Local<v8::UnboundModuleScript>::New(v8_isolate, v8_script);
 }
 
+bool GraalModule::IsModule() const {
+    return true;
+}
+
 v8::Local<v8::FixedArray> GraalModule::GetModuleRequests() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_requests, graal_isolate, GraalAccessMethod::module_get_module_requests, Object, GetJavaObject());

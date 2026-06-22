@@ -259,6 +259,7 @@
       { "name": "symbolGetToPrimitive" },
       { "name": "symbolGetToStringTag" },
       { "name": "symbolGetUnscopables" },
+      { "name": "symbolIsPrivate" },
       { "name": "symbolName" },
       { "name": "symbolNew" },
       { "name": "symbolPrivateForApi" },

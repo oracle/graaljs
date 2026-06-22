@@ -41,6 +41,18 @@
 
 #include "graal_data-inl.h"
 
+bool GraalData::IsValue() const {
+    return false;
+}
+
+bool GraalData::IsPrivate() const {
+    return false;
+}
+
+bool GraalData::IsModule() const {
+    return false;
+}
+
 bool GraalData::IsModuleRequest() const {
     return false;
 }

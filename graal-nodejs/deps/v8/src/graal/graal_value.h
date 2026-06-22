@@ -119,6 +119,7 @@ public:
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object, bool create_new_local_ref);
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object, int type, bool use_shared_buffer);
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object, int type, bool use_shared_buffer, void* placement);
+    bool IsValue() const override;
     virtual bool IsObject() const;
     virtual bool IsFunction() const;
     virtual bool IsExternal() const;

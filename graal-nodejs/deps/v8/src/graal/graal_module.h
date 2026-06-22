@@ -42,12 +42,12 @@
 #ifndef GRAAL_MODULE_H_
 #define GRAAL_MODULE_H_
 
-#include "graal_handle_content.h"
+#include "graal_data.h"
 #include "graal_isolate.h"
 
 class GraalIsolate;
 
-class GraalModule : public GraalHandleContent {
+class GraalModule : public GraalData {
 public:
     inline static GraalModule* Allocate(GraalIsolate* isolate, jobject java_module);
     static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::Data> options);
@@ -64,6 +64,7 @@ public:
             v8::Module::SyntheticModuleEvaluationSteps evaluation_steps);
     v8::Maybe<bool> SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value);
     v8::Local<v8::UnboundModuleScript> GetUnboundModuleScript();
+    bool IsModule() const override;
     bool HasTopLevelAwait() const;
     bool IsGraphAsync() const;
     bool IsSourceTextModule() const;

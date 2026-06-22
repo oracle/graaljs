@@ -44,9 +44,9 @@
 
 #include "graal_module.h"
 
-#include "graal_handle_content-inl.h"
+#include "graal_data-inl.h"
 
-inline GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
+inline GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalData(isolate, java_module) {
 }
 
 inline GraalModule* GraalModule::Allocate(GraalIsolate* isolate, jobject java_module) {

@@ -49,6 +49,9 @@ class GraalIsolate;
 class GraalData : public GraalHandleContent {
 public:
     inline GraalData(GraalIsolate* isolate, jobject java_object);
+    virtual bool IsValue() const;
+    virtual bool IsPrivate() const;
+    virtual bool IsModule() const;
     virtual bool IsModuleRequest() const;
 };
 

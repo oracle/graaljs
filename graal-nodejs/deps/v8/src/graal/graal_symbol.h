@@ -67,6 +67,7 @@ public:
     static v8::Local<v8::Symbol> ForApi(v8::Isolate* isolate, v8::Local<v8::String> description);
     static v8::Local<v8::Private> PrivateForApi(v8::Isolate* isolate, v8::Local<v8::String> description);
     v8::Local<v8::Value> Name() const;
+    bool IsPrivate() const override;
     bool IsSymbol() const override;
     bool IsName() const override;
 protected:
