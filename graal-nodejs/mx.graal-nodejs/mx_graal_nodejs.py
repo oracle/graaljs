@@ -390,15 +390,15 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
-def setLibraryPath():
+def setLibraryPath(java_home):
     """
     Adds $JAVA_HOME/lib to LD_LIBRARY_PATH or the OS equivalent thereof.
     Ensures libjsig is found in single executable application (SEA) tests that copy the node executable to a temp dir.
     """
     if _current_os == 'windows':
-        library_path = join(_java_home(forBuild=True), 'bin')
+        library_path = join(java_home, 'bin')
     else:
-        library_path = join(_java_home(forBuild=True), 'lib')
+        library_path = join(java_home, 'lib')
 
     if not exists(library_path):
         return
@@ -594,15 +594,20 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         mx.warn(f"Could not find {standalone} nodejs standalone. Falling back to default `mx node` command.\n" +
                 "You may need to build the standalone distribution(s) and dynamically import '/substratevm,/wasm' (e.g., using `mx --env svm node`).")
 
-    setLibraryPath()
     nodeExe = join(_suite.dir, 'out', mode, 'node')
 
     if mx.suite('substratevm', fatalIfMissing=False) is not None and _prepare_svm_env():
+        setLibraryPath(_java_home(forBuild=True))
         return mode, vmArgs, progArgs, nodeExe
 
     # Running on the JVM.
-    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs + get_jdk(forBuild=True).java_args):
+    if mx.suite('compiler', fatalIfMissing=False) is not None:
+        vmArgs = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'] + vmArgs
+    elif not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs + get_jdk(forBuild=True).java_args):
         vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+
+    java_home = _java_home()
+    setLibraryPath(java_home)
 
     node_jvm_mp = (os.environ['NODE_JVM_MODULE_PATH'] + pathsep) if 'NODE_JVM_MODULE_PATH' in os.environ else ''
     node_mp = node_jvm_mp + mx.classpath(['TRUFFLENODE']
@@ -610,7 +615,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:INSIGHT_HEAP'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
         + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
     _setEnvVar('NODE_JVM_MODULE_PATH', node_mp)
-    _setEnvVar('JAVA_HOME', _java_home(forBuild=True))  # when running with the Graal compiler, setting `$JAVA_HOME` to the GraalJDK should be done after calling `mx.classpath()`, which resets `$JAVA_HOME` to the value of the `--java-home` mx cmd line argument
+    _setEnvVar('JAVA_HOME', java_home)  # when running with the Graal compiler, setting `$JAVA_HOME` to the GraalJDK should be done after calling `mx.classpath()`, which resets `$JAVA_HOME` to the value of the `--java-home` mx cmd line argument
 
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', f"{join(_suite.mxDir, 'fake_launchers')}{pathsep}{prevPATH}")
