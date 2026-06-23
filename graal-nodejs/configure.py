@@ -105,6 +105,12 @@ parser.add_argument('--debug-node',
     default=None,
     help='build the Node.js part of the binary with debugging symbols')
 
+parser.add_argument('--debug-symbols',
+    action='store_true',
+    dest='debug_symbols',
+    default=None,
+    help='add debugging symbols to release builds (adds -g without enabling DCHECKs)')
+
 parser.add_argument('--dest-cpu',
     action='store',
     dest='dest_cpu',
@@ -958,12 +964,6 @@ parser.add_argument('--without-siphash',
 
 # End dummy list.
 
-parser.add_argument('--with-quic',
-    action='store_true',
-    dest='quic',
-    default=None,
-    help='build with QUIC support')
-
 parser.add_argument('--without-ssl',
     action='store_true',
     dest='without_ssl',
@@ -981,6 +981,12 @@ parser.add_argument('--without-sqlite',
     dest='without_sqlite',
     default=None,
     help='build without SQLite (disables SQLite and Web Storage API)')
+
+parser.add_argument('--experimental-quic',
+    action='store_true',
+    dest='experimental_quic',
+    default=None,
+    help='build with experimental QUIC support')
 
 parser.add_argument('--ninja',
     action='store_true',
@@ -1322,6 +1328,65 @@ def get_gas_version(cc):
   warn(f'Could not recognize `gas`: {gas_ret}')
   return '0.0'
 
+def get_openssl_version():
+  """Parse OpenSSL version from opensslv.h header file.
+
+  Returns the version as a number matching OPENSSL_VERSION_NUMBER format:
+  0xMNN00PPSL where M=major, NN=minor, PP=patch, S=status(0xf=release,0x0=pre), L=0
+  """
+
+  try:
+    # Use the C compiler to extract preprocessor macros from opensslv.h
+    args = ['-E', '-dM', '-include', 'openssl/opensslv.h', '-']
+    if not options.shared_openssl:
+      args = ['-I', 'deps/openssl/openssl/include'] + args
+    elif options.shared_openssl_includes:
+      args = ['-I', options.shared_openssl_includes] + args
+
+    proc = subprocess.Popen(
+      shlex.split(CC) + args,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE
+    )
+    with proc:
+      proc.stdin.write(b'\n')
+      out = to_utf8(proc.communicate()[0])
+
+    if proc.returncode != 0:
+      warn('Failed to extract OpenSSL version from opensslv.h header')
+      return 0
+
+    # Parse the macro definitions
+    macros = {}
+    for line in out.split('\n'):
+      if line.startswith('#define OPENSSL_VERSION_'):
+        parts = line.split()
+        if len(parts) >= 3:
+          macro_name = parts[1]
+          macro_value = parts[2]
+          macros[macro_name] = macro_value
+
+    # Extract version components
+    major = int(macros.get('OPENSSL_VERSION_MAJOR', '0'))
+    minor = int(macros.get('OPENSSL_VERSION_MINOR', '0'))
+    patch = int(macros.get('OPENSSL_VERSION_PATCH', '0'))
+
+    # Check if it's a pre-release (has non-empty PRE_RELEASE string)
+    pre_release = macros.get('OPENSSL_VERSION_PRE_RELEASE', '""').strip('"')
+    status = 0x0 if pre_release else 0xf
+    # Construct version number: 0xMNN00PPSL
+    version_number = ((major << 28) |
+                     (minor << 20) |
+                     (patch << 4) |
+                     status)
+
+    return version_number
+
+  except (OSError, ValueError, subprocess.SubprocessError) as e:
+    warn(f'Failed to determine OpenSSL version from header: {e}')
+    return 0
+
 # Note: Apple clang self-reports as clang 4.2.0 and gcc 4.2.1.  It passes
 # the version check more by accident than anything else but a more rigorous
 # check involves checking the build number against an allowlist.  I'm not
@@ -1570,6 +1635,9 @@ def configure_node(o):
   o['variables']['control_flow_guard'] = b(options.enable_cfg)
   o['variables']['node_use_amaro'] = b(not options.without_amaro)
   o['variables']['debug_node'] = b(options.debug_node)
+  o['variables']['debug_symbols'] = b(options.debug_symbols)
+  if options.debug_symbols:
+    o['cflags'] += ['-g']
   o['default_configuration'] = 'Debug' if options.debug else 'Release'
   if options.error_on_warn and options.suppress_all_error_on_warn:
     raise Exception('--error_on_warn is incompatible with --suppress_all_error_on_warn.')
@@ -1828,21 +1896,29 @@ def configure_library(lib, output, pkgname=None):
       output['libraries'] += [pkg_libpath]
 
     default_libs = getattr(options, shared_lib + '_libname')
-    default_libs = [f'-l{l}' for l in default_libs.split(',')]
 
     if default_libs:
-      output['libraries'] += default_libs
+      output['libraries'] += [f'-l{l}' for l in default_libs.split(',')]
     elif pkg_libs:
       output['libraries'] += pkg_libs.split()
 
 
 def configure_v8(o, configs):
-  set_configuration_variable(configs, 'v8_enable_v8_checks', release=1, debug=0)
+  set_configuration_variable(configs, 'v8_enable_v8_checks', release=0, debug=1)
 
   o['variables']['v8_enable_webassembly'] = 0 if options.v8_lite_mode else 1
   o['variables']['v8_enable_javascript_promise_hooks'] = 1
   o['variables']['v8_enable_lite_mode'] = 1 if options.v8_lite_mode else 0
-  o['variables']['v8_enable_gdbjit'] = 1 if options.gdb else 0
+  is_gdbjit_supported_arch = (
+      'x64' in o['variables']['target_arch'] or
+      'ia32' in o['variables']['target_arch'] or
+      'ppc64' in o['variables']['target_arch']
+  )
+  is_linux = flavor == 'linux'
+  if (options.gdb is not None):
+    o['variables']['v8_enable_gdbjit'] = 1 if options.gdb else 0
+  else:
+    o['variables']['v8_enable_gdbjit'] = 1 if is_gdbjit_supported_arch and is_linux else 0
   o['variables']['v8_optimized_debug'] = 0 if options.v8_non_optimized_debug else 1
   o['variables']['dcheck_always_on'] = 1 if options.v8_with_dchecks else 0
   o['variables']['v8_enable_object_print'] = 0 if options.v8_disable_object_print else 1
@@ -1902,7 +1978,6 @@ def configure_openssl(o):
   variables['node_shared_ngtcp2'] = b(options.shared_ngtcp2)
   variables['node_shared_nghttp3'] = b(options.shared_nghttp3)
   variables['openssl_is_fips'] = b(options.openssl_is_fips)
-  variables['node_quic'] = b(options.quic)
   variables['node_fipsinstall'] = b(False)
 
   if options.openssl_no_asm:
@@ -1964,10 +2039,6 @@ def configure_openssl(o):
   if options.openssl_is_fips and not options.shared_openssl:
     variables['node_fipsinstall'] = b(True)
 
-  variables['openssl_quic'] = b(options.quic)
-  if options.quic:
-    o['defines'] += ['NODE_OPENSSL_HAS_QUIC']
-
   configure_library('openssl', o)
 
 def configure_sqlite(o):
@@ -1980,6 +2051,10 @@ def configure_sqlite(o):
     return
 
   configure_library('sqlite', o, pkgname='sqlite3')
+
+def configure_quic(o):
+  o['variables']['node_use_quic'] = b(options.experimental_quic and
+                                      not options.without_ssl)
 
 def configure_static(o):
   if options.fully_static or options.partly_static:
@@ -2442,6 +2517,7 @@ configure_library('uvwasi', output)
 configure_library('zstd', output, pkgname='libzstd')
 configure_v8(output, configurations)
 configure_openssl(output)
+configure_quic(output)
 configure_intl(output)
 configure_static(output)
 configure_inspector(output)

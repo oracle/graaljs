@@ -213,6 +213,9 @@ Disable top-level await keyword support in REPL.
 .It Fl -no-experimental-sqlite
 Disable the experimental node:sqlite module.
 .
+.It Fl -no-require-module
+Disable support for loading ECMAScript modules with require().
+.
 .It Fl -no-strip-types
 Disable type-stripping for TypeScript files.
 .
@@ -228,6 +231,10 @@ Enable the experimental QUIC support.
 .
 .It Fl -experimental-inspector-network-resource
 Enable experimental support for inspector network resources.
+
+.It Fl -experimental-storage-inspection
+Enable experimental support for storage inspection.
+
 .
 .It Fl -force-context-aware
 Disable loading native addons that are not context-aware.
@@ -490,6 +497,22 @@ Configures the type of test isolation used in the test runner.
 .It Fl -test-name-pattern
 A regular expression that configures the test runner to only execute tests
 whose name matches the provided pattern.
+.
+.It Fl -test-random-seed
+Set the seed used to randomize test execution order.
+This applies to both test file execution order and queued tests within each file.
+Providing this flag enables randomization implicitly, even without
+\fB--test-randomize\fR.
+The value must be an integer between 0 and 4294967295.
+This flag cannot be used with \fB--watch\fR or \fB--test-rerun-failures\fR.
+.
+.It Fl -test-randomize
+Randomize test execution order.
+This applies to both test file execution order and queued tests within each file.
+This can help detect tests that rely on shared state or execution order.
+The seed used for randomization is printed in the test summary and can be
+reused with \fB--test-random-seed\fR.
+This flag cannot be used with \fB--watch\fR or \fB--test-rerun-failures\fR.
 .
 .It Fl -test-reporter
 A test reporter to use when running tests.

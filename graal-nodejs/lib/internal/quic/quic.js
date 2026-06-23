@@ -10,16 +10,20 @@ const {
   ArrayPrototypePush,
   BigInt,
   ObjectDefineProperties,
+  ObjectKeys,
   SafeSet,
   SymbolAsyncDispose,
   Uint8Array,
 } = primordials;
 
-// QUIC requires that Node.js be compiled with crypto support.
 const {
-  assertCrypto,
-} = require('internal/util');
-assertCrypto();
+  getOptionValue,
+} = require('internal/options');
+
+// QUIC requires that Node.js be compiled with crypto support.
+if (!process.features.quic || !getOptionValue('--experimental-quic')) {
+  return;
+}
 
 const { inspect } = require('internal/util/inspect');
 
@@ -29,7 +33,6 @@ let debug = require('internal/util/debuglog').debuglog('quic', (fn) => {
 
 const {
   Endpoint: Endpoint_,
-  Http3Application: Http3,
   setCallbacks,
 
   // The constants to be exposed to end users for various options.
@@ -93,7 +96,6 @@ const {
 
 const {
   isKeyObject,
-  isCryptoKey,
 } = require('internal/crypto/keys');
 
 const {
@@ -106,12 +108,12 @@ const {
 
 const {
   buildNgHeaderString,
+  assertValidPseudoHeader,
 } = require('internal/http2/util');
 
 const kEmptyObject = { __proto__: null };
 
 const {
-  kApplicationProvider,
   kBlocked,
   kConnect,
   kDatagram,
@@ -137,7 +139,6 @@ const {
   kVersionNegotiation,
   kInspect,
   kKeyObjectHandle,
-  kKeyObjectInner,
   kWantsHeaders,
   kWantsTrailers,
 } = require('internal/quic/symbols');
@@ -181,7 +182,6 @@ const onSessionHandshakeChannel = dc.channel('quic.session.handshake');
 /**
  * @typedef {import('../socketaddress.js').SocketAddress} SocketAddress
  * @typedef {import('../crypto/keys.js').KeyObject} KeyObject
- * @typedef {import('../crypto/keys.js').CryptoKey} CryptoKey
  */
 
 /**
@@ -254,7 +254,7 @@ const onSessionHandshakeChannel = dc.channel('quic.session.handshake');
  * @property {boolean} [verifyClient] Verify the client
  * @property {boolean} [tlsTrace] Enable TLS tracing
  * @property {boolean} [verifyPrivateKey] Verify the private key
- * @property {KeyObject|CryptoKey|Array<KeyObject|CryptoKey>} [keys] The keys
+ * @property {KeyObject|KeyObject[]} [keys] The keys
  * @property {ArrayBuffer|ArrayBufferView|Array<ArrayBuffer|ArrayBufferView>} [certs] The certificates
  * @property {ArrayBuffer|ArrayBufferView|Array<ArrayBuffer|ArrayBufferView>} [ca] The certificate authority
  * @property {ArrayBuffer|ArrayBufferView|Array<ArrayBuffer|ArrayBufferView>} [crl] The certificate revocation list
@@ -472,6 +472,18 @@ setCallbacks({
   onSessionTicket(ticket) {
     debug('session ticket callback', this[kOwner]);
     this[kOwner][kSessionTicket](ticket);
+  },
+
+  /**
+   * Called when the client receives a NEW_TOKEN frame from the server.
+   * The token can be used for future connections to the same server
+   * address to skip address validation.
+   * @param {Buffer} token The opaque token data
+   * @param {SocketAddress} address The remote server address
+   */
+  onSessionNewToken(token, address) {
+    debug('session new token callback', this[kOwner]);
+    // TODO(@jasnell): Emit to JS for storage and future reconnection use
   },
 
   /**
@@ -708,7 +720,25 @@ class QuicStream {
   }
 
   /**
-   * @param {ArrayBuffer|ArrayBufferView|Blob} outbound
+   * Immediately destroys the stream. Any queued data is discarded. If an
+   * error is given, the closed promise will be rejected with that error.
+   * If no error is given, the closed promise will be resolved.
+   * @param {any} error
+   */
+  destroy(error) {
+    if (this.destroyed) return;
+    const handle = this.#handle;
+    this[kFinishClose](error);
+    handle.destroy();
+  }
+
+  /**
+   * Sets the outbound data source for the stream. This can only be called
+   * once and must be called before any data will be sent. The body can be
+   * an ArrayBuffer, a TypedArray or DataView, or a Blob. If the stream
+   * is destroyed or already has an outbound data source, an error will
+   * be thrown.
+   * @param {ArrayBuffer|SharedArrayBuffer|ArrayBufferView|Blob} outbound
    */
   setOutbound(outbound) {
     if (this.destroyed) {
@@ -780,8 +810,13 @@ class QuicStream {
     } else {
       debug(`stream ${this.id} sending headers`, headers);
     }
+    const headerString = buildNgHeaderString(
+      headers,
+      assertValidPseudoHeader,
+      true, // This could become an option in future
+    );
     // TODO(@jasnell): Support differentiating between early headers, primary headers, etc
-    return this.#handle.sendHeaders(1, buildNgHeaderString(headers), 1);
+    return this.#handle.sendHeaders(1, headerString, 1);
   }
 
   [kFinishClose](error) {
@@ -1731,7 +1766,14 @@ class QuicEndpoint {
   get closing() { return this.#isPendingClose; }
 
   /** @type {boolean} */
-  get destroyed() { return this.#handle === undefined; }
+  get listening() {
+    return this.#listening;
+  }
+
+  /** @type {boolean} */
+  get destroyed() {
+    return this.#handle === undefined;
+  }
 
   /**
    * Forcefully terminates the endpoint by immediately destroying all sessions
@@ -1757,6 +1799,41 @@ class QuicEndpoint {
       session.destroy(error);
     }
     return this.closed;
+  }
+
+  /**
+   * Replace or merge SNI TLS contexts for this endpoint. Each entry
+   * in the map is a host name to TLS identity options object. If
+   * replace is true, the entire SNI map is replaced. Otherwise, the
+   * provided entries are merged into the existing map.
+   * @param {object} entries
+   * @param {{replace?: boolean}} [options]
+   */
+  setSNIContexts(entries, options = kEmptyObject) {
+    if (this.#handle === undefined) {
+      throw new ERR_INVALID_STATE('Endpoint is destroyed');
+    }
+    validateObject(entries, 'entries');
+    const { replace = false } = options;
+    validateBoolean(replace, 'options.replace');
+
+    // Process each entry through the identity options validator,
+    // then build a full TLS options object (shared + identity).
+    const processed = { __proto__: null };
+    for (const hostname of ObjectKeys(entries)) {
+      validateString(hostname, 'entries key');
+      const identity = processIdentityOptions(entries[hostname],
+                                              `entries['${hostname}']`);
+      if (identity.keys.length === 0) {
+        throw new ERR_MISSING_ARGS(`entries['${hostname}'].keys`);
+      }
+      if (identity.certs === undefined) {
+        throw new ERR_MISSING_ARGS(`entries['${hostname}'].certs`);
+      }
+      processed[hostname] = identity;
+    }
+
+    this.#handle.setSNIContexts(processed, replace);
   }
 
   #maybeGetCloseError(context, status) {
@@ -1917,48 +1994,26 @@ function processEndpointOption(endpoint) {
 }
 
 /**
- * @param {SessionOptions} tls
- * @param {boolean} forServer
+ * Validate and extract identity options (keys, certs, ca, crl) from
+ * an SNI entry.
+ * @param {object} identity
+ * @param {string} label
  * @returns {object}
  */
-function processTlsOptions(tls, forServer) {
+function processIdentityOptions(identity, label) {
   const {
-    servername,
-    protocol,
-    ciphers = DEFAULT_CIPHERS,
-    groups = DEFAULT_GROUPS,
-    keylog = false,
-    verifyClient = false,
-    tlsTrace = false,
-    verifyPrivateKey = false,
     keys,
     certs,
     ca,
     crl,
-  } = tls;
-
-  if (servername !== undefined) {
-    validateString(servername, 'options.servername');
-  }
-  if (protocol !== undefined) {
-    validateString(protocol, 'options.protocol');
-  }
-  if (ciphers !== undefined) {
-    validateString(ciphers, 'options.ciphers');
-  }
-  if (groups !== undefined) {
-    validateString(groups, 'options.groups');
-  }
-  validateBoolean(keylog, 'options.keylog');
-  validateBoolean(verifyClient, 'options.verifyClient');
-  validateBoolean(tlsTrace, 'options.tlsTrace');
-  validateBoolean(verifyPrivateKey, 'options.verifyPrivateKey');
+    verifyPrivateKey = false,
+  } = identity;
 
   if (certs !== undefined) {
     const certInputs = ArrayIsArray(certs) ? certs : [certs];
     for (const cert of certInputs) {
       if (!isArrayBufferView(cert) && !isArrayBuffer(cert)) {
-        throw new ERR_INVALID_ARG_TYPE('options.certs',
+        throw new ERR_INVALID_ARG_TYPE(`${label}.certs`,
                                        ['ArrayBufferView', 'ArrayBuffer'], cert);
       }
     }
@@ -1968,7 +2023,7 @@ function processTlsOptions(tls, forServer) {
     const caInputs = ArrayIsArray(ca) ? ca : [ca];
     for (const caCert of caInputs) {
       if (!isArrayBufferView(caCert) && !isArrayBuffer(caCert)) {
-        throw new ERR_INVALID_ARG_TYPE('options.ca',
+        throw new ERR_INVALID_ARG_TYPE(`${label}.ca`,
                                        ['ArrayBufferView', 'ArrayBuffer'], caCert);
       }
     }
@@ -1978,7 +2033,7 @@ function processTlsOptions(tls, forServer) {
     const crlInputs = ArrayIsArray(crl) ? crl : [crl];
     for (const crlCert of crlInputs) {
       if (!isArrayBufferView(crlCert) && !isArrayBuffer(crlCert)) {
-        throw new ERR_INVALID_ARG_TYPE('options.crl',
+        throw new ERR_INVALID_ARG_TYPE(`${label}.crl`,
                                        ['ArrayBufferView', 'ArrayBuffer'], crlCert);
       }
     }
@@ -1990,44 +2045,165 @@ function processTlsOptions(tls, forServer) {
     for (const key of keyInputs) {
       if (isKeyObject(key)) {
         if (key.type !== 'private') {
-          throw new ERR_INVALID_ARG_VALUE('options.keys', key, 'must be a private key');
+          throw new ERR_INVALID_ARG_VALUE(`${label}.keys`, key,
+                                          'must be a private key');
         }
         ArrayPrototypePush(keyHandles, key[kKeyObjectHandle]);
-      } else if (isCryptoKey(key)) {
-        if (key.type !== 'private') {
-          throw new ERR_INVALID_ARG_VALUE('options.keys', key, 'must be a private key');
-        }
-        ArrayPrototypePush(keyHandles, key[kKeyObjectInner][kKeyObjectHandle]);
       } else {
-        throw new ERR_INVALID_ARG_TYPE('options.keys', ['KeyObject', 'CryptoKey'], key);
+        throw new ERR_INVALID_ARG_TYPE(`${label}.keys`, 'KeyObject', key);
       }
     }
   }
 
-  // For a server we require key and cert at least
-  if (forServer) {
-    if (keyHandles.length === 0) {
-      throw new ERR_MISSING_ARGS('options.keys');
-    }
-    if (certs === undefined) {
-      throw new ERR_MISSING_ARGS('options.certs');
-    }
-  }
+  validateBoolean(verifyPrivateKey, `${label}.verifyPrivateKey`);
 
   return {
     __proto__: null,
+    keys: keyHandles,
+    certs,
+    ca,
+    crl,
+    verifyPrivateKey,
+  };
+}
+
+/**
+ * @param {object} tls
+ * @param {boolean} forServer
+ * @returns {object}
+ */
+function processTlsOptions(tls, forServer) {
+  const {
     servername,
-    protocol,
+    alpn,
+    ciphers = DEFAULT_CIPHERS,
+    groups = DEFAULT_GROUPS,
+    keylog = false,
+    verifyClient = false,
+    tlsTrace = false,
+    sni,
+    // Client-only: identity options are specified directly (no sni map)
+    keys,
+    certs,
+    ca,
+    crl,
+    verifyPrivateKey = false,
+  } = tls;
+
+  if (servername !== undefined) {
+    validateString(servername, 'options.servername');
+  }
+  if (ciphers !== undefined) {
+    validateString(ciphers, 'options.ciphers');
+  }
+  if (groups !== undefined) {
+    validateString(groups, 'options.groups');
+  }
+  validateBoolean(keylog, 'options.keylog');
+  validateBoolean(verifyClient, 'options.verifyClient');
+  validateBoolean(tlsTrace, 'options.tlsTrace');
+
+  // Encode the ALPN option to wire format (length-prefixed protocol names).
+  // Server: array of protocol names. Client: single protocol name.
+  // If not specified, the C++ default (h3) is used.
+  let encodedAlpn;
+  if (alpn !== undefined) {
+    const protocols = forServer ?
+      (ArrayIsArray(alpn) ? alpn : [alpn]) :
+      [alpn];
+    if (!forServer) {
+      validateString(alpn, 'options.alpn');
+    }
+    let totalLen = 0;
+    for (let i = 0; i < protocols.length; i++) {
+      validateString(protocols[i], `options.alpn[${i}]`);
+      if (protocols[i].length === 0 || protocols[i].length > 255) {
+        throw new ERR_INVALID_ARG_VALUE(`options.alpn[${i}]`, protocols[i],
+                                        'must be between 1 and 255 characters');
+      }
+      totalLen += 1 + protocols[i].length;
+    }
+    // Build wire format: [len1][name1][len2][name2]...
+    const buf = Buffer.allocUnsafe(totalLen);
+    let offset = 0;
+    for (let i = 0; i < protocols.length; i++) {
+      buf[offset++] = protocols[i].length;
+      buf.write(protocols[i], offset, 'ascii');
+      offset += protocols[i].length;
+    }
+    encodedAlpn = buf.toString('latin1');
+  }
+
+  // Shared TLS options (same for all identities on the endpoint).
+  const shared = {
+    __proto__: null,
+    servername,
+    alpn: encodedAlpn,
     ciphers,
     groups,
     keylog,
     verifyClient,
     tlsTrace,
-    verifyPrivateKey,
-    keys: keyHandles,
-    certs,
-    ca,
-    crl,
+  };
+
+  // For servers, identity options come from the sni map.
+  // The '*' entry is the default/fallback identity.
+  if (forServer) {
+    if (sni === undefined || typeof sni !== 'object') {
+      throw new ERR_MISSING_ARGS('options.sni');
+    }
+    if (sni['*'] === undefined) {
+      throw new ERR_MISSING_ARGS("options.sni['*']");
+    }
+
+    // Process the default ('*') identity into the main tls options.
+    const defaultIdentity = processIdentityOptions(sni['*'], "options.sni['*']");
+    if (defaultIdentity.keys.length === 0) {
+      throw new ERR_MISSING_ARGS("options.sni['*'].keys");
+    }
+    if (defaultIdentity.certs === undefined) {
+      throw new ERR_MISSING_ARGS("options.sni['*'].certs");
+    }
+
+    // Build the SNI entries (excluding '*') as full TLS options objects.
+    // Each inherits the shared options and overrides the identity fields.
+    const sniEntries = { __proto__: null };
+    for (const hostname of ObjectKeys(sni)) {
+      if (hostname === '*') continue;
+      validateString(hostname, 'options.sni key');
+      const identity = processIdentityOptions(sni[hostname],
+                                              `options.sni['${hostname}']`);
+      if (identity.keys.length === 0) {
+        throw new ERR_MISSING_ARGS(`options.sni['${hostname}'].keys`);
+      }
+      if (identity.certs === undefined) {
+        throw new ERR_MISSING_ARGS(`options.sni['${hostname}'].certs`);
+      }
+      // Build a full TLS options object: shared + identity.
+      sniEntries[hostname] = {
+        __proto__: null,
+        ...shared,
+        ...identity,
+      };
+    }
+
+    return {
+      __proto__: null,
+      ...shared,
+      ...defaultIdentity,
+      sni: sniEntries,
+    };
+  }
+
+  // For clients, identity options are specified directly (no sni map).
+  const clientIdentity = processIdentityOptions({
+    keys, certs, ca, crl, verifyPrivateKey,
+  }, 'options');
+
+  return {
+    __proto__: null,
+    ...shared,
+    ...clientIdentity,
   };
 }
 
@@ -2065,12 +2241,7 @@ function processSessionOptions(options, forServer = false) {
     maxStreamWindow,
     maxWindow,
     cc,
-    [kApplicationProvider]: provider,
   } = options;
-
-  if (provider !== undefined) {
-    validateObject(provider, 'options[kApplicationProvider]');
-  }
 
   if (cc !== undefined) {
     validateString(cc, 'options.cc');
@@ -2100,7 +2271,6 @@ function processSessionOptions(options, forServer = false) {
     maxStreamWindow,
     maxWindow,
     sessionTicket,
-    provider,
     cc,
   };
 }
@@ -2202,7 +2372,8 @@ module.exports = {
   QuicEndpoint,
   QuicSession,
   QuicStream,
-  Http3,
+  DEFAULT_CIPHERS,
+  DEFAULT_GROUPS,
 };
 
 ObjectDefineProperties(module.exports, {

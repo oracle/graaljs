@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,7 +121,18 @@ bool GraalArrayBuffer::IsSharedArrayBuffer() const {
 }
 
 void GraalArrayBuffer::Detach() {
-    JNI_CALL_VOID(Isolate(), GraalAccessMethod::array_buffer_detach, GetJavaObject());
+    Detach(v8::Local<v8::Value>()).Check();
+}
+
+v8::Maybe<bool> GraalArrayBuffer::Detach(v8::Local<v8::Value> key) {
+    jobject java_key = key.IsEmpty() ? nullptr : reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
+    JNI_CALL(jboolean, detached, Isolate(), GraalAccessMethod::array_buffer_detach, Boolean, GetJavaObject(), java_key);
+    return Isolate()->GetJNIEnv()->ExceptionCheck() ? v8::Nothing<bool>() : v8::Just<bool>(detached);
+}
+
+void GraalArrayBuffer::SetDetachKey(v8::Local<v8::Value> key) {
+    jobject java_key = key.IsEmpty() ? nullptr : reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::array_buffer_set_detach_key, GetJavaObject(), java_key);
 }
 
 bool GraalArrayBuffer::WasDetached() const {

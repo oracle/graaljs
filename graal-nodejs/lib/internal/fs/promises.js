@@ -678,6 +678,12 @@ async function read(handle, bufferOrParams, offset, length, position) {
 
   length ??= buffer.byteLength - offset;
 
+  if (position == null) {
+    position = -1;
+  } else {
+    validatePosition(position, 'position', length);
+  }
+
   if (length === 0)
     return { __proto__: null, bytesRead: length, buffer };
 
@@ -687,12 +693,6 @@ async function read(handle, bufferOrParams, offset, length, position) {
   }
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
-
-  if (position == null) {
-    position = -1;
-  } else {
-    validatePosition(position, 'position', length);
-  }
 
   const bytesRead = (await PromisePrototypeThen(
     binding.read(handle.fd, buffer, offset, length, position, kUsePromises),
@@ -1034,12 +1034,16 @@ async function lstat(path, options = { bigint: false }) {
   return getStatsFromBinding(result);
 }
 
-async function stat(path, options = { bigint: false }) {
+async function stat(path, options = { bigint: false, throwIfNoEntry: true }) {
   const result = await PromisePrototypeThen(
-    binding.stat(getValidatedPath(path), options.bigint, kUsePromises),
+    binding.stat(getValidatedPath(path), options.bigint, kUsePromises, options.throwIfNoEntry),
     undefined,
     handleErrorFromBinding,
   );
+
+  // Binding will resolve undefined if UV_ENOENT or UV_ENOTDIR and throwIfNoEntry is false
+  if (!options.throwIfNoEntry && result === undefined) return undefined;
+
   return getStatsFromBinding(result);
 }
 
@@ -1150,6 +1154,9 @@ async function utimes(path, atime, mtime) {
 }
 
 async function futimes(handle, atime, mtime) {
+  if (permission.isEnabled()) {
+    throw new ERR_ACCESS_DENIED('futimes API is disabled when Permission Model is enabled.');
+  }
   atime = toUnixTimestamp(atime, 'atime');
   mtime = toUnixTimestamp(mtime, 'mtime');
   return await PromisePrototypeThen(

@@ -27,6 +27,7 @@ const {
   ERR_REQUIRE_ASYNC_MODULE,
   ERR_REQUIRE_CYCLE_MODULE,
   ERR_REQUIRE_ESM,
+  ERR_REQUIRE_ESM_RACE_CONDITION,
   ERR_UNKNOWN_MODULE_FORMAT,
 } = require('internal/errors').codes;
 const { getOptionValue } = require('internal/options');
@@ -48,6 +49,7 @@ const {
   kEvaluating,
   kEvaluationPhase,
   kInstantiated,
+  kUninstantiated,
   kErrored,
   kSourcePhase,
   throwIfPromiseRejected,
@@ -62,7 +64,7 @@ const {
   loadWithHooks: loadWithSyncHooks,
   validateLoadSloppy,
 } = require('internal/modules/customization_hooks');
-let defaultResolve, defaultLoadSync, importMetaInitializer;
+let importMetaInitializer;
 
 const { tracingChannel } = require('diagnostics_channel');
 const onImport = tracingChannel('module.import');
@@ -97,37 +99,9 @@ function newLoadCache() {
   return new LoadCache();
 }
 
-let _translators;
-function lazyLoadTranslators() {
-  _translators ??= require('internal/modules/esm/translators');
-  return _translators;
-}
-
-/**
- * Lazy-load translators to avoid potentially unnecessary work at startup (ex if ESM is not used).
- * @returns {import('./translators.js').Translators}
- */
-function getTranslators() {
-  return lazyLoadTranslators().translators;
-}
-
-/**
- * Generate message about potential race condition caused by requiring a cached module that has started
- * async linking.
- * @param {string} filename Filename of the module being required.
- * @param {string|undefined} parentFilename Filename of the module calling require().
- * @param {boolean} isForAsyncLoaderHookWorker Whether this is for the async loader hook worker.
- * @returns {string} Error message.
- */
-function getRaceMessage(filename, parentFilename, isForAsyncLoaderHookWorker) {
-  let raceMessage = `Cannot require() ES Module ${filename} because it is not yet fully loaded.\n`;
-  raceMessage += 'This may be caused by a race condition if the module is simultaneously dynamically ';
-  raceMessage += 'import()-ed via Promise.all().\n';
-  raceMessage += 'Try await-ing the import() sequentially in a loop instead.\n';
-  raceMessage += ` (From ${parentFilename ? `${parentFilename} in ` : ' '}`;
-  raceMessage += `${isForAsyncLoaderHookWorker ? 'loader hook worker thread' : 'non-loader-hook thread'})`;
-  return raceMessage;
-}
+const { translators } = require('internal/modules/esm/translators');
+const { defaultResolve } = require('internal/modules/esm/resolve');
+const { defaultLoadSync, throwUnknownModuleFormat } = require('internal/modules/esm/load');
 
 /**
  * @typedef {import('../cjs/loader.js').Module} CJSModule
@@ -177,18 +151,6 @@ class ModuleLoader {
    * Registry of loaded modules, akin to `require.cache`
    */
   loadCache = newLoadCache();
-
-  /**
-   * Methods which translate input code or other information into ES modules
-   */
-  translators = getTranslators();
-
-  /**
-   * Truthy to allow the use of `import.meta.resolve`. This is needed
-   * currently because the `Hooks` class does not have `resolveSync`
-   * implemented and `import.meta.resolve` requires it.
-   */
-  allowImportMetaResolve;
 
   /**
    * @see {AsyncLoaderHooks.isForAsyncLoaderHookWorker}
@@ -305,7 +267,7 @@ class ModuleLoader {
    */
   importSyncForRequire(mod, filename, source, isMain, parent) {
     const url = pathToFileURL(filename).href;
-    if (!getOptionValue('--experimental-require-module')) {
+    if (!getOptionValue('--require-module')) {
       throw new ERR_REQUIRE_ESM(url, true);
     }
 
@@ -328,7 +290,7 @@ class ModuleLoader {
       const parentFilename = urlToFilename(parent?.filename);
       // This race should only be possible on the loader hook thread. See https://github.com/nodejs/node/issues/59666
       if (!job.module) {
-        assert.fail(getRaceMessage(filename, parentFilename), this.isForAsyncLoaderHookWorker);
+        throw new ERR_REQUIRE_ESM_RACE_CONDITION(filename, parentFilename, this.isForAsyncLoaderHookWorker);
       }
       const status = job.module.getStatus();
       debug('Module status', job, status);
@@ -361,8 +323,8 @@ class ModuleLoader {
         throwIfPromiseRejected(job.instantiated);
       }
       if (status !== kEvaluating) {
-        assert.fail(`Unexpected module status ${status}. ` +
-                    getRaceMessage(filename, parentFilename));
+        assert(status === kUninstantiated, `Unexpected module status ${status}`);
+        throw new ERR_REQUIRE_ESM_RACE_CONDITION(filename, parentFilename, false);
       }
       let message = `Cannot require() ES Module ${filename} in a cycle.`;
       if (parentFilename) {
@@ -398,7 +360,7 @@ class ModuleLoader {
   #checkCachedJobForRequireESM(specifier, url, parentURL, job) {
     // This race should only be possible on the loader hook thread. See https://github.com/nodejs/node/issues/59666
     if (!job.module) {
-      assert.fail(getRaceMessage(url, parentURL, this.isForAsyncLoaderHookWorker));
+      throw new ERR_REQUIRE_ESM_RACE_CONDITION(url, parentURL, this.isForAsyncLoaderHookWorker);
     }
     // This module is being evaluated, which means it's imported in a previous link
     // in a cycle.
@@ -464,7 +426,7 @@ class ModuleLoader {
   #translate(url, translateContext, parentURL) {
     const { translatorKey, format } = translateContext;
     this.validateLoadResult(url, format);
-    const translator = getTranslators().get(translatorKey);
+    const translator = translators.get(translatorKey);
 
     if (!translator) {
       throw new ERR_UNKNOWN_MODULE_FORMAT(translatorKey, url);
@@ -495,7 +457,7 @@ class ModuleLoader {
     }
 
     if (formatFromLoad === 'module' || formatFromLoad === 'module-typescript') {
-      if (!getOptionValue('--experimental-require-module')) {
+      if (!getOptionValue('--require-module')) {
         throw new ERR_REQUIRE_ESM(url, true);
       }
     }
@@ -552,6 +514,16 @@ class ModuleLoader {
     if (process.env.WATCH_REPORT_DEPENDENCIES && process.send) {
       const type = requestType === kRequireInImportedCJS ? 'require' : 'import';
       process.send({ [`watch:${type}`]: [url] });
+    }
+    // Relay Events from worker to main thread
+    if (process.env.WATCH_REPORT_DEPENDENCIES && !process.send) {
+      const { isMainThread } = internalBinding('worker');
+      if (!isMainThread) {
+        const { parentPort } = require('worker_threads');
+        if (parentPort) {
+          parentPort.postMessage({ 'watch:import': [url] });
+        }
+      }
     }
 
     // TODO(joyeecheung): update the module requests to use importAttributes as property names.
@@ -715,7 +687,7 @@ class ModuleLoader {
     if (cachedResult != null) {
       return cachedResult;
     }
-    defaultResolve ??= require('internal/modules/esm/resolve').defaultResolve;
+
     const result = defaultResolve(specifier, context);
     this.#resolveCache.set(requestKey, parentURL, result);
     return result;
@@ -744,13 +716,16 @@ class ModuleLoader {
    * `module.registerHooks()` hooks.
    * @param {string} [parentURL] See {@link resolve}.
    * @param {ModuleRequest} request See {@link resolve}.
+   * @param {boolean} [shouldSkipSyncHooks] Whether to skip the synchronous hooks registered by module.registerHooks().
+   *   This is used to maintain compatibility for the re-invented require.resolve (in imported CJS customized
+   *   by module.register()`) which invokes the CJS resolution separately from the hook chain.
    * @returns {{ format: string, url: string }}
    */
-  resolveSync(parentURL, request) {
+  resolveSync(parentURL, request, shouldSkipSyncHooks = false) {
     const specifier = `${request.specifier}`;
     const importAttributes = request.attributes ?? kEmptyObject;
 
-    if (syncResolveHooks.length) {
+    if (!shouldSkipSyncHooks && syncResolveHooks.length) {
       // Has module.registerHooks() hooks, chain the asynchronous hooks in the default step.
       return resolveWithSyncHooks(specifier, parentURL, importAttributes, this.#defaultConditions,
                                   this.#resolveAndMaybeBlockOnLoaderThread.bind(this));
@@ -792,7 +767,6 @@ class ModuleLoader {
     if (this.#asyncLoaderHooks?.loadSync) {
       return this.#asyncLoaderHooks.loadSync(url, context);
     }
-    defaultLoadSync ??= require('internal/modules/esm/load').defaultLoadSync;
     return defaultLoadSync(url, context);
   }
 
@@ -818,7 +792,7 @@ class ModuleLoader {
 
   validateLoadResult(url, format) {
     if (format == null) {
-      require('internal/modules/esm/load').throwUnknownModuleFormat(url, format);
+      throwUnknownModuleFormat(url, format);
     }
   }
 

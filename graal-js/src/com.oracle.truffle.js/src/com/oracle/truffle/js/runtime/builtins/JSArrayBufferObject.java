@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
     private final int maxByteLength;
     private int byteLength;
+    private Object detachKey = Undefined.instance;
 
     protected JSArrayBufferObject(Shape shape, JSDynamicObject proto, int byteLength, int maxByteLength) {
         super(shape, proto);
@@ -111,9 +112,12 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
         return (maxByteLength == JSArrayBuffer.IMMUTABLE_BUFFER);
     }
 
-    @SuppressWarnings("static-method")
     public final Object getDetachKey() {
-        return Undefined.instance;
+        return detachKey;
+    }
+
+    public final void setDetachKey(Object detachKey) {
+        this.detachKey = detachKey;
     }
 
     public static byte[] getByteArray(Object thisObj) {

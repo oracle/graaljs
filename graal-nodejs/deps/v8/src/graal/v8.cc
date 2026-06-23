@@ -208,12 +208,15 @@ namespace v8 {
     }
 
     Maybe<bool> ArrayBuffer::Detach(Local<v8::Value> key) {
-        reinterpret_cast<GraalArrayBuffer*> (this)->Detach();
-        return Just(true);
+        return reinterpret_cast<GraalArrayBuffer*> (this)->Detach(key);
     }
 
     bool ArrayBuffer::WasDetached() const {
         return reinterpret_cast<const GraalArrayBuffer*> (this)->WasDetached();
+    }
+
+    void ArrayBuffer::SetDetachKey(v8::Local<v8::Value> key) {
+        reinterpret_cast<GraalArrayBuffer*> (this)->SetDetachKey(key);
     }
 
     Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, size_t byte_length, BackingStoreInitializationMode initialization_mode) {
@@ -3630,6 +3633,10 @@ namespace v8 {
         return std::unique_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store, data, byte_length)));
     }
 
+    std::unique_ptr<BackingStore> SharedArrayBuffer::NewBackingStore(void* data, size_t byte_length, v8::BackingStore::DeleterCallback deleter, void* deleter_data) {
+        return ArrayBuffer::NewBackingStore(data, byte_length, deleter, deleter_data);
+    }
+
     std::shared_ptr<BackingStore> ArrayBuffer::GetBackingStore() {
         return reinterpret_cast<GraalArrayBuffer*> (this)->GetBackingStore();
     }
@@ -4209,12 +4216,19 @@ namespace v8 {
     }
 
     bool Data::IsValue() const {
-        TRACE
-        return true;
+        return reinterpret_cast<const GraalData*> (this)->IsValue();
+    }
+
+    bool Data::IsPrivate() const {
+        return reinterpret_cast<const GraalData*> (this)->IsPrivate();
+    }
+
+    bool Data::IsModule() const {
+        return reinterpret_cast<const GraalData*> (this)->IsModule();
     }
 
     bool Data::IsModuleRequest() const {
-        return reinterpret_cast<const GraalData*>(this)->IsModuleRequest();
+        return reinterpret_cast<const GraalData*> (this)->IsModuleRequest();
     }
 
     AllocationProfile* HeapProfiler::GetAllocationProfile() {
@@ -4265,8 +4279,25 @@ namespace v8 {
     }
 
     MaybeLocal<Array> Array::New(Local<Context> context, size_t length, std::function<MaybeLocal<v8::Value>()> next_value_callback) {
-        TRACE
-        return Local<Array>();
+        GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
+        GraalIsolate* graal_isolate = graal_context->Isolate();
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        jobjectArray java_elements = env->NewObjectArray(length, graal_isolate->GetObjectClass(), NULL);
+        for (size_t i = 0; i < length; i++) {
+            Local<Value> value;
+            if (!next_value_callback().ToLocal(&value)) {
+                env->DeleteLocalRef(java_elements);
+                return {};
+            }
+            jobject java_element = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
+            env->SetObjectArrayElement(java_elements, i, java_element);
+        }
+        jobject java_context = graal_context->GetJavaObject();
+        JNI_CALL(jobject, java_array, graal_isolate, GraalAccessMethod::array_new_from_elements, Object, java_context, java_elements);
+        env->DeleteLocalRef(java_elements);
+        GraalArray* graal_array = GraalArray::Allocate(graal_isolate, java_array);
+        v8::Array* v8_array = reinterpret_cast<v8::Array*> (graal_array);
+        return v8::Local<v8::Array>::New(context->GetIsolate(), v8_array);
     }
 
     MaybeLocal<Object> RegExp::Exec(Local<Context> context, Local<String> subject) {
@@ -4295,7 +4326,7 @@ namespace v8 {
     }
 
     void Promise::MarkAsHandled() {
-        TRACE
+        reinterpret_cast<GraalPromise*> (this)->MarkAsHandled();
     }
 
     MaybeLocal<Promise> Promise::Then(Local<Context> context, Local<Function> on_fulfilled, Local<Function> on_rejected) {

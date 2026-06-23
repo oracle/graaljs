@@ -32,6 +32,7 @@
     'node_use_bundled_v8%': 'true',
     'node_use_node_snapshot%': 'false',
     'node_use_openssl%': 'true',
+    'node_use_quic%': 'false',
     'node_use_sqlite%': 'true',
     'node_use_v8_platform%': 'true',
     'node_v8_options%': '',
@@ -77,6 +78,7 @@
       'src/async_context_frame.cc',
       'src/async_wrap.cc',
       'src/base_object.cc',
+      'src/builtin_info.cc',
       'src/cares_wrap.cc',
       'src/cleanup_queue.cc',
       'src/compile_cache.cc',
@@ -127,6 +129,7 @@
       'src/node_main_instance.cc',
       'src/node_messaging.cc',
       'src/node_metadata.cc',
+      'src/node_diagnostics_channel.cc',
       'src/node_modules.cc',
       'src/node_options.cc',
       'src/node_os.cc',
@@ -203,6 +206,7 @@
       'src/base_object_types.h',
       'src/blob_serializer_deserializer.h',
       'src/blob_serializer_deserializer-inl.h',
+      "src/builtin_info.h",
       'src/callback_queue.h',
       'src/callback_queue-inl.h',
       'src/cleanup_queue.h',
@@ -260,8 +264,10 @@
       'src/node_mem.h',
       'src/node_mem-inl.h',
       'src/node_messaging.h',
+      'src/node_hash.h',
       'src/node_metadata.h',
       'src/node_mutex.h',
+      'src/node_diagnostics_channel.h',
       'src/node_modules.h',
       'src/node_object_wrap.h',
       'src/node_options.h',
@@ -326,6 +332,42 @@
       'src/util.h',
       'src/util-inl.h',
     ],
+    'node_quic_sources': [
+      'src/quic/bindingdata.cc',
+      'src/quic/cid.cc',
+      'src/quic/data.cc',
+      'src/quic/logstream.cc',
+      'src/quic/packet.cc',
+      'src/quic/preferredaddress.cc',
+      'src/quic/sessionticket.cc',
+      'src/quic/tokens.cc',
+      'src/quic/application.cc',
+      'src/quic/endpoint.cc',
+      'src/quic/http3.cc',
+      'src/quic/session.cc',
+      'src/quic/streams.cc',
+      'src/quic/tlscontext.cc',
+      'src/quic/transportparams.cc',
+      'src/quic/quic.cc',
+      'src/quic/arena.h',
+      'src/quic/bindingdata.h',
+      'src/quic/cid.h',
+      'src/quic/data.h',
+      'src/quic/defs.h',
+      'src/quic/logstream.h',
+      'src/quic/packet.h',
+      'src/quic/preferredaddress.h',
+      'src/quic/sessionticket.h',
+      'src/quic/tokens.h',
+      'src/quic/transportparams.h',
+      'src/quic/application.h',
+      'src/quic/endpoint.h',
+      'src/quic/http3.h',
+      'src/quic/session.h',
+      'src/quic/streams.h',
+      'src/quic/tlscontext.h',
+      'src/quic/guard.h',
+    ],
     'node_crypto_sources': [
       'src/crypto/crypto_aes.cc',
       'src/crypto/crypto_argon2.cc',
@@ -386,45 +428,16 @@
       'src/node_crypto.cc',
       'src/node_crypto.h',
     ],
-    'node_quic_sources': [
-      'src/quic/application.cc',
-      'src/quic/bindingdata.cc',
-      'src/quic/cid.cc',
-      'src/quic/data.cc',
-      'src/quic/endpoint.cc',
-      'src/quic/http3.cc',
-      'src/quic/logstream.cc',
-      'src/quic/packet.cc',
-      'src/quic/preferredaddress.cc',
-      'src/quic/session.cc',
-      'src/quic/sessionticket.cc',
-      'src/quic/streams.cc',
-      'src/quic/tlscontext.cc',
-      'src/quic/tokens.cc',
-      'src/quic/transportparams.cc',
-      'src/quic/application.h',
-      'src/quic/bindingdata.h',
-      'src/quic/cid.h',
-      'src/quic/data.h',
-      'src/quic/endpoint.h',
-      'src/quic/http3.h',
-      'src/quic/logstream.h',
-      'src/quic/packet.h',
-      'src/quic/preferredaddress.h',
-      'src/quic/session.h',
-      'src/quic/sessionticket.h',
-      'src/quic/streams.h',
-      'src/quic/tlscontext.h',
-      'src/quic/tokens.h',
-      'src/quic/transportparams.h',
-      'src/quic/quic.cc',
-    ],
     'node_cctest_openssl_sources': [
       'test/cctest/test_crypto_clienthello.cc',
       'test/cctest/test_node_crypto.cc',
       'test/cctest/test_node_crypto_env.cc',
+    ],
+    'node_cctest_quic_sources': [
+      'test/cctest/test_quic_arena.cc',
       'test/cctest/test_quic_cid.cc',
       'test/cctest/test_quic_error.cc',
+      'test/cctest/test_quic_preferredaddress.cc',
       'test/cctest/test_quic_tokens.cc',
     ],
     'node_cctest_inspector_sources': [
@@ -939,7 +952,13 @@
           },
         }],
         [ 'node_builtin_modules_path!=""', {
-          'defines': [ 'NODE_BUILTIN_MODULES_PATH="<(node_builtin_modules_path)"' ]
+          'defines': [ 'NODE_BUILTIN_MODULES_PATH="<(node_builtin_modules_path)"' ],
+          # When loading builtins from disk, JS source files do not need to
+          # trigger rebuilds since the binary reads them at runtime.
+          'sources!': [
+            '<@(library_files)',
+            '<@(deps_files)',
+          ],
         }],
         [ 'node_shared=="true"', {
           'sources': [
@@ -1009,14 +1028,14 @@
             'deps/ncrypto/ncrypto.gyp:ncrypto',
           ],
         }],
-        [ 'node_quic=="true"', {
-          'sources': [
-            '<@(node_quic_sources)',
-          ],
-        }],
         [ 'node_use_sqlite=="true"', {
           'sources': [
             '<@(node_sqlite_sources)',
+          ],
+        }],
+        [ 'node_use_quic=="true"', {
+          'sources': [
+            '<@(node_quic_sources)',
           ],
         }],
         [ 'OS in "linux freebsd mac solaris openharmony" and '
@@ -1083,6 +1102,16 @@
             '<@(library_files)',
             '<@(deps_files)',
             'config.gypi'
+          ],
+          'conditions': [
+            [ 'node_builtin_modules_path!=""', {
+              # When loading builtins from disk, JS source files do not need
+              # to trigger rebuilds since the binary reads them at runtime.
+              'inputs!': [
+                '<@(library_files)',
+                '<@(deps_files)',
+              ],
+            }],
           ],
           'outputs': [
             '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
@@ -1313,6 +1342,13 @@
         }, {
           'sources!': [ '<@(node_cctest_openssl_sources)' ],
         }],
+        [ 'node_use_quic=="true"', {
+          'defines': [
+            'HAVE_QUIC=1',
+          ],
+        }, {
+          'sources!': [ '<@(node_cctest_quic_sources)' ],
+        }],
         ['v8_enable_inspector==1', {
           'defines': [
             'HAVE_INSPECTOR=1',
@@ -1462,6 +1498,8 @@
         'tools/executable_wrapper.h',
         'src/embedded_data.h',
         'src/embedded_data.cc',
+        'src/builtin_info.h',
+        'src/builtin_info.cc',
       ],
       'conditions': [
         [ 'node_shared_simdutf=="false"', {

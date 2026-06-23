@@ -1,19 +1,13 @@
 'use strict';
 
 const {
-  ArrayBufferIsView,
-  ArrayBufferPrototypeSlice,
-  ArrayFrom,
   SafeSet,
-  TypedArrayPrototypeSlice,
 } = primordials;
 
 const {
   ChaCha20Poly1305CipherJob,
   KeyObjectHandle,
   kCryptoJobAsync,
-  kWebCryptoCipherDecrypt,
-  kWebCryptoCipherEncrypt,
 } = internalBinding('crypto');
 
 const {
@@ -46,35 +40,13 @@ function validateKeyLength(length) {
     throw lazyDOMException('Invalid key length', 'DataError');
 }
 
-async function c20pCipher(mode, key, data, algorithm) {
-  let tag;
-  switch (mode) {
-    case kWebCryptoCipherDecrypt: {
-      const slice = ArrayBufferIsView(data) ?
-        TypedArrayPrototypeSlice : ArrayBufferPrototypeSlice;
-
-      if (data.byteLength < 16) {
-        throw lazyDOMException(
-          'The provided data is too small.',
-          'OperationError');
-      }
-
-      tag = slice(data, -16);
-      data = slice(data, 0, -16);
-      break;
-    }
-    case kWebCryptoCipherEncrypt:
-      tag = 16;
-      break;
-  }
-
-  return await jobPromise(() => new ChaCha20Poly1305CipherJob(
+function c20pCipher(mode, key, data, algorithm) {
+  return jobPromise(() => new ChaCha20Poly1305CipherJob(
     kCryptoJobAsync,
     mode,
     key[kKeyObject][kHandle],
     data,
     algorithm.iv,
-    tag,
     algorithm.additionalData));
 }
 
@@ -103,7 +75,7 @@ async function c20pGenerateKey(algorithm, extractable, keyUsages) {
   return new InternalCryptoKey(
     createSecretKey(keyData),
     { name },
-    ArrayFrom(usagesSet),
+    usagesSet,
     extractable);
 }
 
@@ -182,7 +154,7 @@ function c20pImportKey(
   return new InternalCryptoKey(
     keyObject,
     { name },
-    keyUsages,
+    usagesSet,
     extractable);
 }
 

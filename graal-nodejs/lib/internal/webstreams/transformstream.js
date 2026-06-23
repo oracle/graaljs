@@ -47,11 +47,12 @@ const {
   customInspect,
   extractHighWaterMark,
   extractSizeAlgorithm,
+  getNonWritablePropertyDescriptor,
   isBrandCheck,
-  nonOpFlush,
-  kType,
   kState,
+  kType,
   nonOpCancel,
+  nonOpFlush,
 } = require('internal/webstreams/util');
 
 const {
@@ -72,14 +73,6 @@ const {
 const assert = require('internal/assert');
 
 const kSkipThrow = Symbol('kSkipThrow');
-
-const getNonWritablePropertyDescriptor = (value) => {
-  return {
-    __proto__: null,
-    configurable: true,
-    value,
-  };
-};
 
 /**
  * @typedef {import('./queuingstrategies').QueuingStrategy
@@ -524,7 +517,12 @@ function transformStreamDefaultControllerError(controller, error) {
 
 async function transformStreamDefaultControllerPerformTransform(controller, chunk) {
   try {
-    return await controller[kState].transformAlgorithm(chunk, controller);
+    const transformAlgorithm = controller[kState].transformAlgorithm;
+    if (transformAlgorithm === undefined) {
+      // Algorithms were cleared by a concurrent cancel/abort/close.
+      return;
+    }
+    return await transformAlgorithm(chunk, controller);
   } catch (error) {
     transformStreamError(controller[kState].stream, error);
     throw error;

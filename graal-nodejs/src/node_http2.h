@@ -270,6 +270,11 @@ using Http2Header = NgHeader<Http2HeaderTraits>;
 class Http2Stream : public AsyncWrap,
                     public StreamBase {
  public:
+  enum InternalFields {
+    kInternalFieldCount = std::max<uint32_t>(AsyncWrap::kInternalFieldCount,
+                                             StreamBase::kInternalFieldCount),
+  };
+
   static Http2Stream* New(
       Http2Session* session,
       int32_t id,
@@ -966,6 +971,8 @@ class Http2Session : public AsyncWrap,
 
   // Flag to indicate that JavaScript has initiated a graceful closure
   bool graceful_close_initiated_ = false;
+  bool goaway_initiated_ = false;
+  bool internal_goaway_sent_ = false;
 };
 
 struct Http2SessionPerformanceEntryTraits {

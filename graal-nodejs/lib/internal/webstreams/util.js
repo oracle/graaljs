@@ -7,22 +7,18 @@ const {
   ArrayPrototypePush,
   ArrayPrototypeShift,
   AsyncIteratorPrototype,
-  FunctionPrototypeCall,
   MathMax,
   NumberIsNaN,
   PromisePrototypeThen,
+  ReflectApply,
   ReflectGet,
   Symbol,
-  SymbolAsyncIterator,
-  SymbolIterator,
   Uint8Array,
 } = primordials;
 
 const {
   codes: {
-    ERR_ARG_NOT_ITERABLE,
     ERR_INVALID_ARG_VALUE,
-    ERR_INVALID_STATE,
   },
 } = require('internal/errors');
 
@@ -54,6 +50,14 @@ const AsyncIterator = {
   __proto__: AsyncIteratorPrototype,
   next: undefined,
   return: undefined,
+};
+
+const getNonWritablePropertyDescriptor = (value) => {
+  return {
+    __proto__: null,
+    configurable: true,
+    value,
+  };
 };
 
 function extractHighWaterMark(value, defaultHWM) {
@@ -166,15 +170,9 @@ function enqueueValueWithSize(controller, value, size) {
   controller[kState].queueTotalSize += size;
 }
 
-// This implements "invoke a callback function type" for callback functions that return a promise.
-// See https://webidl.spec.whatwg.org/#es-invoking-callback-functions
-async function invokePromiseCallback(fn, thisArg, ...args) {
-  return FunctionPrototypeCall(fn, thisArg, ...args);
-}
-
 function createPromiseCallback(name, fn, thisArg) {
   validateFunction(fn, name);
-  return (...args) => invokePromiseCallback(fn, thisArg, ...args);
+  return async (...args) => ReflectApply(fn, thisArg, args);
 }
 
 function isPromisePending(promise) {
@@ -188,7 +186,7 @@ function setPromiseHandled(promise) {
   // MarkAsHandled, but this avoids the extra boundary cross
   // and is hopefully faster at the cost of an extra Promise
   // allocation.
-  PromisePrototypeThen(promise, () => {}, () => {});
+  PromisePrototypeThen(promise, undefined, () => {});
 }
 
 async function nonOpFlush() {}
@@ -208,92 +206,32 @@ function lazyTransfer() {
   return transfer;
 }
 
-function createAsyncFromSyncIterator(syncIteratorRecord) {
-  const syncIterable = {
-    [SymbolIterator]: () => syncIteratorRecord.iterator,
-  };
-
-  const asyncIterator = (async function* () {
-    return yield* syncIterable;
-  }());
-
-  const nextMethod = asyncIterator.next;
-  return { iterator: asyncIterator, nextMethod, done: false };
-}
-
-// Refs: https://tc39.es/ecma262/#sec-getiterator
-function getIterator(obj, kind = 'sync', method) {
-  if (method === undefined) {
-    if (kind === 'async') {
-      method = obj[SymbolAsyncIterator];
-      if (method == null) {
-        const syncMethod = obj[SymbolIterator];
-
-        if (syncMethod === undefined) {
-          throw new ERR_ARG_NOT_ITERABLE(obj);
-        }
-
-        const syncIteratorRecord = getIterator(obj, 'sync', syncMethod);
-        return createAsyncFromSyncIterator(syncIteratorRecord);
-      }
-    } else {
-      method = obj[SymbolIterator];
-    }
-  }
-
-  if (method === undefined) {
-    throw new ERR_ARG_NOT_ITERABLE(obj);
-  }
-
-  const iterator = FunctionPrototypeCall(method, obj);
-  if (typeof iterator !== 'object' || iterator === null) {
-    throw new ERR_INVALID_STATE.TypeError('The iterator method must return an object');
-  }
-  const nextMethod = iterator.next;
-  return { iterator, nextMethod, done: false };
-}
-
-function iteratorNext(iteratorRecord, value) {
-  let result;
-  if (value === undefined) {
-    result = FunctionPrototypeCall(iteratorRecord.nextMethod, iteratorRecord.iterator);
-  } else {
-    result = FunctionPrototypeCall(iteratorRecord.nextMethod, iteratorRecord.iterator, [value]);
-  }
-  if (typeof result !== 'object' || result === null) {
-    throw new ERR_INVALID_STATE.TypeError('The iterator.next() method must return an object');
-  }
-  return result;
-}
-
 module.exports = {
   ArrayBufferViewGetBuffer,
   ArrayBufferViewGetByteLength,
   ArrayBufferViewGetByteOffset,
   AsyncIterator,
   canCopyArrayBuffer,
-  createPromiseCallback,
   cloneAsUint8Array,
   copyArrayBuffer,
+  createPromiseCallback,
   customInspect,
   dequeueValue,
   enqueueValueWithSize,
   extractHighWaterMark,
   extractSizeAlgorithm,
-  lazyTransfer,
-  invokePromiseCallback,
+  getNonWritablePropertyDescriptor,
   isBrandCheck,
   isPromisePending,
-  peekQueueValue,
-  resetQueue,
-  setPromiseHandled,
+  kState,
+  kType,
+  lazyTransfer,
   nonOpCancel,
   nonOpFlush,
   nonOpPull,
   nonOpStart,
   nonOpWrite,
-  getIterator,
-  iteratorNext,
-  kType,
-  kState,
+  peekQueueValue,
+  resetQueue,
+  setPromiseHandled,
 };

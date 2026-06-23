@@ -133,6 +133,11 @@ v8::Local<v8::Value> GraalSymbol::Name() const {
     return v8::Local<v8::Value>::New(v8_isolate, v8_value);
 }
 
+bool GraalSymbol::IsPrivate() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::symbol_is_private, Boolean, GetJavaObject());
+    return result;
+}
+
 bool GraalSymbol::IsSymbol() const {
     return true;
 }

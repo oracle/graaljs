@@ -50,7 +50,7 @@ const {
   TypedArrayPrototypeGetByteOffset,
   TypedArrayPrototypeGetLength,
   TypedArrayPrototypeSet,
-  TypedArrayPrototypeSlice,
+  TypedArrayPrototypeSubarray,
   Uint8Array,
   Uint8ArrayPrototype,
 } = primordials;
@@ -146,6 +146,13 @@ const {
   utf8Write,
 } = require('internal/buffer');
 
+const {
+  namespace: {
+    addDeserializeCallback,
+    isBuildingSnapshot,
+  },
+} = require('internal/v8/startup_snapshot');
+
 FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
 addBufferPrototypeMethods(Buffer.prototype);
@@ -178,6 +185,13 @@ function createPool() {
   poolOffset = 0;
 }
 createPool();
+if (isBuildingSnapshot()) {
+  addDeserializeCallback(() => {
+    // TODO(legendecas): ArrayBuffer.[[ArrayBufferDetachKey]] is not been serialized.
+    // Remove this callback when snapshot serialization supports it.
+    createPool();
+  });
+}
 
 function alignPool() {
   // Ensure aligned slices
@@ -373,28 +387,33 @@ Buffer.copyBytesFrom = function copyBytesFrom(view, offset, length) {
     return new FastBuffer();
   }
 
-  if (offset !== undefined || length !== undefined) {
-    if (offset !== undefined) {
-      validateInteger(offset, 'offset', 0);
-      if (offset >= viewLength) return new FastBuffer();
-    } else {
-      offset = 0;
-    }
-    let end;
-    if (length !== undefined) {
-      validateInteger(length, 'length', 0);
-      end = offset + length;
-    } else {
-      end = viewLength;
-    }
+  let start = 0;
+  let end = viewLength;
 
-    view = TypedArrayPrototypeSlice(view, offset, end);
+  if (offset !== undefined) {
+    validateInteger(offset, 'offset', 0);
+    if (offset >= viewLength) return new FastBuffer();
+    start = offset;
   }
+
+  if (length !== undefined) {
+    validateInteger(length, 'length', 0);
+    // The old code used TypedArrayPrototypeSlice which clamps internally.
+    end = MathMin(start + length, viewLength);
+  }
+
+  if (end <= start) return new FastBuffer();
+
+  const viewByteLength = TypedArrayPrototypeGetByteLength(view);
+  const elementSize = viewByteLength / viewLength;
+  const srcByteOffset = TypedArrayPrototypeGetByteOffset(view) +
+                        start * elementSize;
+  const srcByteLength = (end - start) * elementSize;
 
   return fromArrayLike(new Uint8Array(
     TypedArrayPrototypeGetBuffer(view),
-    TypedArrayPrototypeGetByteOffset(view),
-    TypedArrayPrototypeGetByteLength(view)));
+    srcByteOffset,
+    srcByteLength));
 };
 
 // Identical to the built-in %TypedArray%.of(), but avoids using the deprecated
@@ -551,14 +570,15 @@ function fromArrayBuffer(obj, byteOffset, length) {
 }
 
 function fromArrayLike(obj) {
-  if (obj.length <= 0)
+  const { length } = obj;
+  if (length <= 0)
     return new FastBuffer();
-  if (obj.length < (Buffer.poolSize >>> 1)) {
-    if (obj.length > (poolSize - poolOffset))
+  if (length < (Buffer.poolSize >>> 1)) {
+    if (length > (poolSize - poolOffset))
       createPool();
-    const b = new FastBuffer(allocPool, poolOffset, obj.length);
+    const b = new FastBuffer(allocPool, poolOffset, length);
     TypedArrayPrototypeSet(b, obj, 0);
-    poolOffset += obj.length;
+    poolOffset += length;
     alignPool();
     return b;
   }
@@ -615,25 +635,55 @@ Buffer.concat = function concat(list, length) {
   if (length === undefined) {
     length = 0;
     for (let i = 0; i < list.length; i++) {
-      if (list[i].length) {
-        length += list[i].length;
+      const buf = list[i];
+      if (!isUint8Array(buf)) {
+        // TODO(BridgeAR): This should not be of type ERR_INVALID_ARG_TYPE.
+        // Instead, find the proper error code for this.
+        throw new ERR_INVALID_ARG_TYPE(
+          `list[${i}]`, ['Buffer', 'Uint8Array'], buf);
       }
+      length += TypedArrayPrototypeGetByteLength(buf);
     }
-  } else {
-    validateOffset(length, 'length');
+
+    const buffer = allocate(length);
+    let pos = 0;
+    for (let i = 0; i < list.length; i++) {
+      const buf = list[i];
+      const bufLength = TypedArrayPrototypeGetByteLength(buf);
+      TypedArrayPrototypeSet(buffer, buf, pos);
+      pos += bufLength;
+    }
+
+    if (pos < length) {
+      TypedArrayPrototypeFill(buffer, 0, pos, length);
+    }
+    return buffer;
   }
 
-  const buffer = Buffer.allocUnsafe(length);
-  let pos = 0;
+  validateOffset(length, 'length');
   for (let i = 0; i < list.length; i++) {
-    const buf = list[i];
-    if (!isUint8Array(buf)) {
+    if (!isUint8Array(list[i])) {
       // TODO(BridgeAR): This should not be of type ERR_INVALID_ARG_TYPE.
       // Instead, find the proper error code for this.
       throw new ERR_INVALID_ARG_TYPE(
         `list[${i}]`, ['Buffer', 'Uint8Array'], list[i]);
     }
-    pos += _copyActual(buf, buffer, pos, 0, buf.length, true);
+  }
+
+  const buffer = allocate(length);
+  let pos = 0;
+  for (let i = 0; i < list.length; i++) {
+    const buf = list[i];
+    const bufLength = TypedArrayPrototypeGetByteLength(buf);
+    if (pos + bufLength > length) {
+      TypedArrayPrototypeSet(buffer,
+                             TypedArrayPrototypeSubarray(buf, 0, length - pos),
+                             pos);
+      pos = length;
+      break;
+    }
+    TypedArrayPrototypeSet(buffer, buf, pos);
+    pos += bufLength;
   }
 
   // Note: `length` is always equal to `buffer.length` at this point
@@ -702,11 +752,7 @@ const encodingOps = {
     write: asciiWrite,
     slice: asciiSlice,
     indexOf: (buf, val, byteOffset, dir) =>
-      indexOfBuffer(buf,
-                    fromStringFast(val, encodingOps.ascii),
-                    byteOffset,
-                    encodingsMap.ascii,
-                    dir),
+      indexOfString(buf, val, byteOffset, encodingsMap.ascii, dir),
   },
   base64: {
     encoding: 'base64',
@@ -867,17 +913,17 @@ Buffer.prototype.toString = function toString(encoding, start, end) {
     return utf8Slice(this, 0, this.length);
   }
 
-  const len = this.length;
+  const bufferLength = TypedArrayPrototypeGetLength(this);
 
   if (start <= 0)
     start = 0;
-  else if (start >= len)
+  else if (start >= bufferLength)
     return '';
   else
     start = MathTrunc(start) || 0;
 
-  if (end === undefined || end > len)
-    end = len;
+  if (end === undefined || end > bufferLength)
+    end = bufferLength;
   else
     end = MathTrunc(end) || 0;
 
@@ -1088,7 +1134,9 @@ function _fill(buf, value, offset, end, encoding) {
       value = 0;
     } else if (value.length === 1) {
       // Fast path: If `value` fits into a single byte, use that numeric value.
-      if (normalizedEncoding === 'utf8') {
+      // ASCII shares this branch with utf8 since code < 128 covers the full
+      // ASCII range; anything outside falls through to C++ bindingFill.
+      if (normalizedEncoding === 'utf8' || normalizedEncoding === 'ascii') {
         const code = StringPrototypeCharCodeAt(value, 0);
         if (code < 128) {
           value = code;
@@ -1138,21 +1186,22 @@ function _fill(buf, value, offset, end, encoding) {
 }
 
 Buffer.prototype.write = function write(string, offset, length, encoding) {
+  const bufferLength = TypedArrayPrototypeGetLength(this);
   // Buffer#write(string);
   if (offset === undefined) {
-    return utf8Write(this, string, 0, this.length);
+    return utf8Write(this, string, 0, bufferLength);
   }
   // Buffer#write(string, encoding)
   if (length === undefined && typeof offset === 'string') {
     encoding = offset;
-    length = this.length;
+    length = bufferLength;
     offset = 0;
 
   // Buffer#write(string, offset[, length][, encoding])
   } else {
-    validateOffset(offset, 'offset', 0, this.length);
+    validateOffset(offset, 'offset', 0, bufferLength);
 
-    const remaining = this.length - offset;
+    const remaining = bufferLength - offset;
 
     if (length === undefined) {
       length = remaining;
@@ -1160,7 +1209,7 @@ Buffer.prototype.write = function write(string, offset, length, encoding) {
       encoding = length;
       length = remaining;
     } else {
-      validateOffset(length, 'length', 0, this.length);
+      validateOffset(length, 'length', 0, bufferLength);
       if (length > remaining)
         length = remaining;
     }
@@ -1178,9 +1227,10 @@ Buffer.prototype.write = function write(string, offset, length, encoding) {
 };
 
 Buffer.prototype.toJSON = function toJSON() {
-  if (this.length > 0) {
-    const data = new Array(this.length);
-    for (let i = 0; i < this.length; ++i)
+  const bufferLength = TypedArrayPrototypeGetLength(this);
+  if (bufferLength > 0) {
+    const data = new Array(bufferLength);
+    for (let i = 0; i < bufferLength; ++i)
       data[i] = this[i];
     return { type: 'Buffer', data };
   }
@@ -1205,7 +1255,7 @@ function adjustOffset(offset, length) {
 }
 
 Buffer.prototype.subarray = function subarray(start, end) {
-  const srcLength = this.length;
+  const srcLength = TypedArrayPrototypeGetLength(this);
   start = adjustOffset(start, srcLength);
   end = end !== undefined ? adjustOffset(end, srcLength) : srcLength;
   const newLength = end > start ? end - start : 0;
@@ -1223,45 +1273,52 @@ function swap(b, n, m) {
 }
 
 Buffer.prototype.swap16 = function swap16() {
-  // For Buffer.length < 128, it's generally faster to
+  // Ref: https://github.com/nodejs/node/pull/61871#discussion_r2889557696
+  // For Buffer.length <= 32, it's generally faster to
   // do the swap in javascript. For larger buffers,
   // dropping down to the native code is faster.
-  const len = this.length;
+  const len = TypedArrayPrototypeGetLength(this);
   if (len % 2 !== 0)
     throw new ERR_INVALID_BUFFER_SIZE('16-bits');
-  if (len < 128) {
+  if (len <= 32) {
     for (let i = 0; i < len; i += 2)
       swap(this, i, i + 1);
     return this;
   }
-  return _swap16(this);
+  _swap16(this);
+  return this;
 };
 
 Buffer.prototype.swap32 = function swap32() {
-  // For Buffer.length < 192, it's generally faster to
+  // Ref: https://github.com/nodejs/node/pull/61871#discussion_r2889557696
+  // For Buffer.length <= 32, it's generally faster to
   // do the swap in javascript. For larger buffers,
   // dropping down to the native code is faster.
-  const len = this.length;
+  const len = TypedArrayPrototypeGetLength(this);
   if (len % 4 !== 0)
     throw new ERR_INVALID_BUFFER_SIZE('32-bits');
-  if (len < 192) {
+  if (len <= 32) {
     for (let i = 0; i < len; i += 4) {
       swap(this, i, i + 3);
       swap(this, i + 1, i + 2);
     }
     return this;
   }
-  return _swap32(this);
+  _swap32(this);
+  return this;
 };
 
 Buffer.prototype.swap64 = function swap64() {
-  // For Buffer.length < 192, it's generally faster to
+  // Ref: https://github.com/nodejs/node/pull/61871#discussion_r2889557696
+  // For Buffer.length < 48, it's generally faster to
   // do the swap in javascript. For larger buffers,
   // dropping down to the native code is faster.
-  const len = this.length;
+  // Threshold differs from swap16/swap32 (<=32) because swap64's
+  // crossover is between 40 and 48 (native wins at 48, loses at 40).
+  const len = TypedArrayPrototypeGetLength(this);
   if (len % 8 !== 0)
     throw new ERR_INVALID_BUFFER_SIZE('64-bits');
-  if (len < 192) {
+  if (len < 48) {
     for (let i = 0; i < len; i += 8) {
       swap(this, i, i + 7);
       swap(this, i + 1, i + 6);
@@ -1270,7 +1327,8 @@ Buffer.prototype.swap64 = function swap64() {
     }
     return this;
   }
-  return _swap64(this);
+  _swap64(this);
+  return this;
 };
 
 Buffer.prototype.toLocaleString = Buffer.prototype.toString;

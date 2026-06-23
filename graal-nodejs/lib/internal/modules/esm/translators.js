@@ -14,7 +14,7 @@ const {
   StringPrototypeReplaceAll,
   StringPrototypeSlice,
   StringPrototypeStartsWith,
-  globalThis: { WebAssembly },
+  globalThis,
 } = primordials;
 
 const {
@@ -23,7 +23,7 @@ const {
 
 const { BuiltinModule } = require('internal/bootstrap/realm');
 const assert = require('internal/assert');
-const { readFileSync } = require('fs');
+const fs = require('fs');
 const { dirname, extname } = require('path');
 const {
   assertBufferSource,
@@ -58,16 +58,7 @@ const { maybeCacheSourceMap } = require('internal/source_map/source_map_cache');
 const moduleWrap = internalBinding('module_wrap');
 const { ModuleWrap, kEvaluationPhase } = moduleWrap;
 
-// Lazy-loading to avoid circular dependencies.
-let getSourceSync;
-/**
- * @param {Parameters<typeof import('./load').getSourceSync>[0]} url
- * @returns {ReturnType<typeof import('./load').getSourceSync>}
- */
-function getSource(url) {
-  getSourceSync ??= require('internal/modules/esm/load').getSourceSync;
-  return getSourceSync(url);
-}
+const { getSourceSync } = require('internal/modules/esm/load');
 
 const { parse: cjsParse } = internalBinding('cjs_lexer');
 
@@ -102,6 +93,8 @@ translators.set('module', function moduleStrategy(url, translateContext, parentU
 
 const { requestTypes: { kRequireInImportedCJS } } = require('internal/modules/esm/utils');
 const kShouldSkipModuleHooks = { __proto__: null, shouldSkipModuleHooks: true };
+const kShouldNotSkipModuleHooks = { __proto__: null, shouldSkipModuleHooks: false };
+
 /**
  * Loads a CommonJS module via the ESM Loader sync CommonJS translator.
  * This translator creates its own version of the `require` function passed into CommonJS modules.
@@ -114,7 +107,9 @@ const kShouldSkipModuleHooks = { __proto__: null, shouldSkipModuleHooks: true };
  * @param {boolean} isMain - Whether the module is the entrypoint
  */
 function loadCJSModule(module, source, url, filename, isMain) {
-  const compileResult = compileFunctionForCJSLoader(source, filename, false /* is_sea_main */, false);
+  // Use the full URL as the V8 resource name so that any search params
+  // (e.g. ?node-test-mock) are preserved in coverage reports.
+  const compileResult = compileFunctionForCJSLoader(source, url, false /* is_sea_main */, false);
 
   const { function: compiledWrapper, sourceMapURL, sourceURL } = compileResult;
   // Cache the source map for the cjs module if present.
@@ -143,8 +138,8 @@ function loadCJSModule(module, source, url, filename, isMain) {
       specifier = `${pathToFileURL(path)}`;
     }
 
-    // FIXME(node:59666) Currently, the ESM loader re-invents require() here for imported CJS and this
-    // requires a separate cache to be populated as well as introducing several quirks. This is not ideal.
+    // NOTE: This re-invented require() is only used on the loader-hook worker thread.
+    // On the main thread, the authentic require() is used instead (fixed by #60380).
     const request = { specifier, attributes: importAttributes, phase: kEvaluationPhase, __proto__: null };
     const job = cascadedLoader.getOrCreateModuleJob(url, request, kRequireInImportedCJS);
     job.runSync();
@@ -172,14 +167,17 @@ function loadCJSModule(module, source, url, filename, isMain) {
   };
   setOwnProperty(requireFn, 'resolve', function resolve(specifier) {
     if (!StringPrototypeStartsWith(specifier, 'node:')) {
-      const path = CJSModule._resolveFilename(specifier, module);
-      if (specifier !== path) {
-        specifier = `${pathToFileURL(path)}`;
+      const {
+        filename, url: resolvedURL,
+      } = resolveForCJSWithHooks(specifier, module, false, kShouldNotSkipModuleHooks);
+      if (specifier !== filename) {
+        specifier = resolvedURL ?? `${pathToFileURL(filename)}`;
       }
     }
 
     const request = { specifier, __proto__: null, attributes: kEmptyObject };
-    const { url: resolvedURL } = cascadedLoader.resolveSync(url, request);
+    // Skip sync hooks in resolveSync since resolveForCJSWithHooks already ran them above.
+    const { url: resolvedURL } = cascadedLoader.resolveSync(url, request, /* shouldSkipSyncHooks */ true);
     return urlToFilename(resolvedURL);
   });
   setOwnProperty(requireFn, 'main', process.mainModule);
@@ -209,7 +207,7 @@ function createCJSModuleWrap(url, translateContext, parentURL, loadCJS = loadCJS
   const isMain = (parentURL === undefined);
   const filename = urlToFilename(url);
   // In case the source was not provided by the `load` step, we need fetch it now.
-  source = stringify(source ?? getSource(new URL(url)).source);
+  source = stringify(source ?? getSourceSync(new URL(url)).source);
 
   const { exportNames, module } = cjsPreparseModuleExports(filename, source, sourceFormat);
   cjsCache.set(url, module);
@@ -344,7 +342,11 @@ translators.set('commonjs', function commonjsStrategy(url, translateContext, par
 
   try {
     // We still need to read the FS to detect the exports.
-    translateContext.source ??= readFileSync(new URL(url), 'utf8');
+    // If you are reading this code to figure out how to patch Node.js module loading
+    // behavior - DO NOT depend on the patchability in new code: Node.js
+    // internals may stop going through the JavaScript fs module entirely.
+    // Prefer module.registerHooks() or other more formal fs hooks released in the future.
+    translateContext.source ??= fs.readFileSync(new URL(url), 'utf8');
   } catch {
     // Continue regardless of error.
   }
@@ -409,7 +411,7 @@ function cjsPreparseModuleExports(filename, source, format) {
       let resolved;
       let format;
       try {
-        ({ format, filename: resolved } = resolveForCJSWithHooks(reexport, module, false));
+        ({ format, filename: resolved } = resolveForCJSWithHooks(reexport, module, false, kShouldNotSkipModuleHooks));
       } catch (e) {
         debug(`Failed to resolve '${reexport}', skipping`, e);
         continue;
@@ -515,6 +517,8 @@ translators.set('json', function jsonStrategy(url, translateContext) {
 const wasmInstances = new SafeWeakMap();
 translators.set('wasm', function(url, translateContext) {
   const { source } = translateContext;
+  // WebAssembly global is not available during snapshot building, so we need to get it lazily.
+  const { WebAssembly } = globalThis;
   assertBufferSource(source, false, 'load');
 
   debug(`Translating WASMModule ${url}`, translateContext);
@@ -523,6 +527,7 @@ translators.set('wasm', function(url, translateContext) {
   try {
     compiled = new WebAssembly.Module(source, {
       builtins: ['js-string'],
+      importedStringConstants: 'wasm:js/string-constants',
     });
   } catch (err) {
     err.message = errPath(url) + ': ' + err.message;

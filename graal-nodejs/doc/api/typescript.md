@@ -138,11 +138,10 @@ The most prominent features that require transformation are:
 
 * `Enum` declarations
 * `namespace` with runtime code
-* legacy `module` with runtime code
 * parameter properties
 * import aliases
 
-`namespaces` and `module` that do not contain runtime code are supported.
+`namespace`s that do not contain runtime code are supported.
 This example will work correctly:
 
 ```ts
@@ -225,7 +224,7 @@ with `#`.
 [`--no-strip-types`]: cli.md#--no-strip-types
 [`ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`]: errors.md#err_unsupported_typescript_syntax
 [`tsconfig` "paths"]: https://www.typescriptlang.org/tsconfig/#paths
-[`tsx`]: https://tsx.is/
+[`tsx`]: https://tsx.hirok.io/
 [`verbatimModuleSyntax`]: https://www.typescriptlang.org/tsconfig/#verbatimModuleSyntax
 [file extensions are mandatory]: esm.md#mandatory-file-extensions
 [full support]: #full-typescript-support

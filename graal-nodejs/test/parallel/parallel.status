@@ -90,6 +90,7 @@ test-max-old-space-size-percentage: FAIL
 test-repl-paste-big-data: FAIL
 
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint, %PrepareFunctionForOptimization)
+test-buffer-swap-fast: FAIL
 test-http-same-map: FAIL
 test-os-fast: FAIL
 test-perf-hooks-histogram-fast-calls: FAIL
@@ -357,6 +358,9 @@ test-fs-read-stream-concurrent-reads: PASS, FLAKY
 # with a better checking mechanism.
 # https://github.com/nodejs/build/issues/3043
 test-snapshot-incompatible: SKIP
+
+# https://github.com/nodejs/node/issues/53579
+test-snapshot-reproducible: SKIP
 
 [$system==win32]
 # https://github.com/nodejs/node/issues/59090

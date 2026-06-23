@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,11 +50,13 @@ import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
@@ -236,8 +238,16 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
      */
     @TruffleBoundary
     public static void detachArrayBuffer(JSArrayBufferObject arrayBuffer) {
+        detachArrayBuffer(arrayBuffer, Undefined.instance);
+    }
+
+    @TruffleBoundary
+    public static void detachArrayBuffer(JSArrayBufferObject arrayBuffer, Object key) {
         if (arrayBuffer.isImmutable()) {
             throw Errors.createTypeErrorImmutableBuffer();
+        }
+        if (!JSRuntime.identical(key, arrayBuffer.getDetachKey())) {
+            throw Errors.createTypeErrorInvalidDetachKey();
         }
         JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate("no detached array buffer");
         if (isJSDirectArrayBuffer(arrayBuffer)) {

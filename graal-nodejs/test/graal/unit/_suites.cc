@@ -47,6 +47,7 @@
 #include "bootstrap.cc"
 #include "cast.cc"
 #include "context.cc"
+#include "data.cc"
 #include "exception.cc"
 #include "external.cc"
 #include "function.cc"

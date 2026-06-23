@@ -36,6 +36,8 @@ constexpr size_t kSizeOf_EVP_MD_CTX = 48;
 constexpr size_t kSizeOf_EVP_PKEY = 72;
 constexpr size_t kSizeOf_EVP_PKEY_CTX = 80;
 constexpr size_t kSizeOf_HMAC_CTX = 32;
+constexpr size_t kSizeOf_SSL_CTX = 240;
+constexpr size_t kSizeOf_X509 = 128;
 
 bool ProcessFipsOptions();
 
@@ -348,7 +350,7 @@ class CryptoJob : public AsyncWrap, public ThreadPoolWork {
     v8::Local<v8::FunctionTemplate> job = NewFunctionTemplate(isolate, new_fn);
     job->Inherit(AsyncWrap::GetConstructorTemplate(env));
     job->InstanceTemplate()->SetInternalFieldCount(
-        AsyncWrap::kInternalFieldCount);
+        CryptoJob::kInternalFieldCount);
     SetProtoMethod(isolate, job, "run", Run);
     SetConstructorFunction(context, target, CryptoJobTraits::JobName, job);
   }

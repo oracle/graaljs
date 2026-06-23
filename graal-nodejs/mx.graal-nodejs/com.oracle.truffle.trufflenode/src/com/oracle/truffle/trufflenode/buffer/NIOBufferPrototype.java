@@ -49,8 +49,8 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 
 public enum NIOBufferPrototype implements BuiltinEnum<NIOBufferPrototype> {
 
-    utf8Write(1),
-    utf8Slice(0);
+    utf8Write(3),
+    utf8Slice(2);
 
     public static final TruffleString NIOBUFFER_PROTOTYPE = Strings.constant("NIOBuffer.prototype");
     public static final JSBuiltinsContainer BUILTINS = JSBuiltinsContainer.fromEnum(NIOBUFFER_PROTOTYPE, NIOBufferPrototype.class);

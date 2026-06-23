@@ -3,6 +3,7 @@
 const {
   ArrayBufferIsView,
   ArrayBufferPrototypeGetByteLength,
+  ArrayFrom,
   ArrayPrototypeIncludes,
   ArrayPrototypePush,
   BigInt,
@@ -15,7 +16,8 @@ const {
   ObjectEntries,
   ObjectKeys,
   ObjectPrototypeHasOwnProperty,
-  Promise,
+  PromiseWithResolvers,
+  SafeSet,
   StringPrototypeToUpperCase,
   Symbol,
   TypedArrayPrototypeGetBuffer,
@@ -480,6 +482,8 @@ function createSupportedAlgorithms(algorithmDefs) {
 const kSupportedAlgorithms = createSupportedAlgorithms(kAlgorithmDefinitions);
 
 const simpleAlgorithmDictionaries = {
+  AesCbcParams: { iv: 'BufferSource' },
+  AesCtrParams: { counter: 'BufferSource' },
   AeadParams: { iv: 'BufferSource', additionalData: 'BufferSource' },
   // publicExponent is not strictly a BufferSource but it is a Uint8Array that we normalize
   // this way
@@ -563,10 +567,13 @@ function normalizeAlgorithm(algorithm, op) {
     return { name: algName };
 
   // 6.
-  const normalizedAlgorithm = webidl.converters[desiredType](algorithm, {
-    prefix: 'Failed to normalize algorithm',
-    context: 'passed algorithm',
-  });
+  const normalizedAlgorithm = webidl.converters[desiredType](
+    { __proto__: algorithm, name: algName },
+    {
+      prefix: 'Failed to normalize algorithm',
+      context: 'passed algorithm',
+    },
+  );
   // 7.
   normalizedAlgorithm.name = algName;
 
@@ -651,15 +658,15 @@ function onDone(resolve, reject, err, result) {
 }
 
 function jobPromise(getJob) {
-  return new Promise((resolve, reject) => {
-    try {
-      const job = getJob();
-      job.ondone = FunctionPrototypeBind(onDone, job, resolve, reject);
-      job.run();
-    } catch (err) {
-      onDone(resolve, reject, err);
-    }
-  });
+  const { promise, resolve, reject } = PromiseWithResolvers();
+  try {
+    const job = getJob();
+    job.ondone = FunctionPrototypeBind(onDone, job, resolve, reject);
+    job.run();
+  } catch (err) {
+    onDone(resolve, reject, err);
+  }
+  return promise;
 }
 
 // In WebCrypto, the publicExponent option in RSA is represented as a
@@ -679,7 +686,7 @@ function bigIntArrayToUnsignedInt(input) {
     result |= input[n] << 8 * n_reversed;
   }
 
-  return result;
+  return result >>> 0;
 }
 
 function bigIntArrayToUnsignedBigInt(input) {
@@ -701,12 +708,38 @@ function getStringOption(options, key) {
 }
 
 function getUsagesUnion(usageSet, ...usages) {
-  const newset = [];
+  const newset = new SafeSet();
   for (let n = 0; n < usages.length; n++) {
     if (usageSet.has(usages[n]))
-      ArrayPrototypePush(newset, usages[n]);
+      newset.add(usages[n]);
   }
   return newset;
+}
+
+const kCanonicalUsageOrder = new SafeSet([
+  'encrypt', 'decrypt',
+  'sign', 'verify',
+  'deriveKey', 'deriveBits',
+  'wrapKey', 'unwrapKey',
+  'encapsulateKey', 'encapsulateBits',
+  'decapsulateKey', 'decapsulateBits',
+]);
+
+/**
+ * Returns the usages from `usageSet` as an array in the canonical order
+ * defined by {@link kCanonicalUsageOrder}.
+ * @param {SafeSet<string>} usageSet
+ * @returns {string[]}
+ */
+function getSortedUsages(usageSet) {
+  if (usageSet.size <= 1) {
+    return ArrayFrom(usageSet);
+  }
+  const result = [];
+  for (const usage of kCanonicalUsageOrder) {
+    if (usageSet.has(usage)) ArrayPrototypePush(result, usage);
+  }
+  return result;
 }
 
 function getBlockSize(name) {
@@ -747,6 +780,7 @@ function getDigestSizeInBytes(name) {
 }
 
 const kKeyOps = {
+  __proto__: null,
   sign: 1,
   verify: 2,
   encrypt: 3,
@@ -824,6 +858,7 @@ module.exports = {
   getDigestSizeInBytes,
   getStringOption,
   getUsagesUnion,
+  getSortedUsages,
   secureHeapUsed,
   getCachedHashId,
   getHashCache,

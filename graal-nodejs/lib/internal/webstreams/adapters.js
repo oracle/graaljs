@@ -2,15 +2,15 @@
 
 const {
   ArrayPrototypeFilter,
-  ArrayPrototypeMap,
-  Boolean,
-  ObjectEntries,
+  ObjectKeys,
   PromisePrototypeThen,
   PromiseResolve,
   PromiseWithResolvers,
-  SafePromiseAll,
+  SafePromiseAllReturnVoid,
   SafePromisePrototypeFinally,
   SafeSet,
+  StringPrototypeStartsWith,
+  Symbol,
   TypeError,
   TypedArrayPrototypeGetBuffer,
   TypedArrayPrototypeGetByteLength,
@@ -54,6 +54,10 @@ const {
 } = require('buffer');
 
 const {
+  isAnyArrayBuffer,
+} = require('internal/util/types');
+
+const {
   AbortError,
   ErrnoException,
   codes: {
@@ -67,6 +71,7 @@ const {
 const {
   kEmptyObject,
   normalizeEncoding,
+  setOwnProperty,
 } = require('internal/util');
 
 const {
@@ -86,35 +91,43 @@ const {
 
 const { eos } = require('internal/streams/end-of-stream');
 
+const { zlib } = internalBinding('constants');
 const { UV_EOF } = internalBinding('uv');
 
 const encoder = new TextEncoder();
 
+const kValidateChunk = Symbol('kValidateChunk');
+const kDestroyOnSyncError = Symbol('kDestroyOnSyncError');
+
 // Collect all negative (error) ZLIB codes and Z_NEED_DICT
-const ZLIB_FAILURES = new SafeSet([
-  ...ArrayPrototypeFilter(
-    ArrayPrototypeMap(
-      ObjectEntries(internalBinding('constants').zlib),
-      ({ 0: code, 1: value }) => (value < 0 ? code : null),
-    ),
-    Boolean,
+const ZLIB_FAILURES = new SafeSet(
+  ArrayPrototypeFilter(
+    ObjectKeys(zlib),
+    (code) => code === 'Z_NEED_DICT' || zlib[code] < 0,
   ),
-  'Z_NEED_DICT',
-]);
+);
 
 /**
  * @param {Error|null} cause
  * @returns {Error|null}
  */
 function handleKnownInternalErrors(cause) {
+  const causeCode = cause?.code;
   switch (true) {
-    case cause?.code === 'ERR_STREAM_PREMATURE_CLOSE': {
+    case causeCode === 'ERR_STREAM_PREMATURE_CLOSE': {
       return new AbortError(undefined, { cause });
     }
-    case ZLIB_FAILURES.has(cause?.code): {
+    case ZLIB_FAILURES.has(causeCode):
+    // Brotli decoder error codes are formatted as 'ERR_' +
+    // BrotliDecoderErrorString(), where the latter returns strings like
+    // '_ERROR_FORMAT_...', '_ERROR_ALLOC_...', '_ERROR_UNREACHABLE', etc.
+    // The resulting JS error codes all start with 'ERR__ERROR_'.
+    // Falls through
+    case causeCode != null &&
+      StringPrototypeStartsWith(causeCode, 'ERR__ERROR_'): {
       // eslint-disable-next-line no-restricted-syntax
       const error = new TypeError(undefined, { cause });
-      error.code = cause.code;
+      setOwnProperty(error, 'code', causeCode);
       return error;
     }
     default:
@@ -135,9 +148,10 @@ function handleKnownInternalErrors(cause) {
 
 /**
  * @param {Writable} streamWritable
+ * @param {object} [options]
  * @returns {WritableStream}
  */
-function newWritableStreamFromStreamWritable(streamWritable) {
+function newWritableStreamFromStreamWritable(streamWritable, options = kEmptyObject) {
   // Not using the internal/streams/utils isWritableNodeStream utility
   // here because it will return false if streamWritable is a Duplex
   // whose writable option is false. For a Duplex that is not writable,
@@ -172,8 +186,7 @@ function newWritableStreamFromStreamWritable(streamWritable) {
   let closed;
 
   function onDrain() {
-    if (backpressurePromise !== undefined)
-      backpressurePromise.resolve();
+    backpressurePromise?.resolve();
   }
 
   const cleanup = eos(streamWritable, (error) => {
@@ -184,8 +197,7 @@ function newWritableStreamFromStreamWritable(streamWritable) {
     // that happen to emit an error event again after finished is called.
     streamWritable.on('error', () => {});
     if (error != null) {
-      if (backpressurePromise !== undefined)
-        backpressurePromise.reject(error);
+      backpressurePromise?.reject(error);
       // If closed is not undefined, the error is happening
       // after the WritableStream close has already started.
       // We need to reject it here.
@@ -213,12 +225,29 @@ function newWritableStreamFromStreamWritable(streamWritable) {
     start(c) { controller = c; },
 
     write(chunk) {
-      if (streamWritable.writableNeedDrain || !streamWritable.write(chunk)) {
-        backpressurePromise = PromiseWithResolvers();
-        return SafePromisePrototypeFinally(
-          backpressurePromise.promise, () => {
-            backpressurePromise = undefined;
-          });
+      try {
+        options[kValidateChunk]?.(chunk);
+        if (!streamWritable.writableObjectMode && isAnyArrayBuffer(chunk)) {
+          chunk = new Uint8Array(chunk);
+        }
+        if (streamWritable.writableNeedDrain || !streamWritable.write(chunk)) {
+          backpressurePromise = PromiseWithResolvers();
+          return SafePromisePrototypeFinally(
+            backpressurePromise.promise, () => {
+              backpressurePromise = undefined;
+            });
+        }
+      } catch (error) {
+        // When the kDestroyOnSyncError flag is set (e.g. for
+        // CompressionStream), a sync throw must also destroy the
+        // stream so the readable side is errored too. Without this
+        // the readable side hangs forever. This replicates the
+        // TransformStream semantics: error both sides on any throw
+        // in the transform path.
+        if (options[kDestroyOnSyncError]) {
+          destroy(streamWritable, error);
+        }
+        throw error;
       }
     },
 
@@ -279,9 +308,8 @@ function newStreamWritableFromWritableStream(writableStream, options = kEmptyObj
 
     writev(chunks, callback) {
       function done(error) {
-        error = error.filter((e) => e);
         try {
-          callback(error.length === 0 ? undefined : error);
+          callback(error);
         } catch (error) {
           // In a next tick because this is happening within
           // a promise context, and if there are any errors
@@ -296,7 +324,7 @@ function newStreamWritableFromWritableStream(writableStream, options = kEmptyObj
         writer.ready,
         () => {
           return PromisePrototypeThen(
-            SafePromiseAll(
+            SafePromiseAllReturnVoid(
               chunks,
               (data) => writer.write(data.chunk)),
             done,
@@ -624,7 +652,7 @@ function newStreamReadableFromReadableStream(readableStream, options = kEmptyObj
 
 /**
  * @param {Duplex} duplex
- * @param {{ type?: 'bytes' }} [options]
+ * @param {{ readableType?: 'bytes' }} [options]
  * @returns {ReadableWritablePair}
  */
 function newReadableWritablePairFromDuplex(duplex, options = kEmptyObject) {
@@ -641,17 +669,29 @@ function newReadableWritablePairFromDuplex(duplex, options = kEmptyObject) {
 
   validateObject(options, 'options');
 
+  const readableOptions = {
+    __proto__: null,
+    // DEP0201: 'options.type' is a deprecated alias for 'options.readableType'
+    type: options.readableType ?? options.type,
+  };
+
   if (isDestroyed(duplex)) {
     const writable = new WritableStream();
-    const readable = new ReadableStream({ type: options.type });
+    const readable = new ReadableStream({ type: readableOptions.type });
     writable.close();
     readable.cancel();
     return { readable, writable };
   }
 
+  const writableOptions = {
+    __proto__: null,
+    [kValidateChunk]: options[kValidateChunk],
+    [kDestroyOnSyncError]: options[kDestroyOnSyncError],
+  };
+
   const writable =
     isWritable(duplex) ?
-      newWritableStreamFromStreamWritable(duplex) :
+      newWritableStreamFromStreamWritable(duplex, writableOptions) :
       new WritableStream();
 
   if (!isWritable(duplex))
@@ -659,8 +699,8 @@ function newReadableWritablePairFromDuplex(duplex, options = kEmptyObject) {
 
   const readable =
     isReadable(duplex) ?
-      newReadableStreamFromStreamReadable(duplex, options) :
-      new ReadableStream({ type: options.type });
+      newReadableStreamFromStreamReadable(duplex, readableOptions) :
+      new ReadableStream({ type: readableOptions.type });
 
   if (!isReadable(duplex))
     readable.cancel();
@@ -729,9 +769,8 @@ function newStreamDuplexFromReadableWritablePair(pair = kEmptyObject, options = 
 
     writev(chunks, callback) {
       function done(error) {
-        error = error.filter((e) => e);
         try {
-          callback(error.length === 0 ? undefined : error);
+          callback(error);
         } catch (error) {
           // In a next tick because this is happening within
           // a promise context, and if there are any errors
@@ -746,7 +785,7 @@ function newStreamDuplexFromReadableWritablePair(pair = kEmptyObject, options = 
         writer.ready,
         () => {
           return PromisePrototypeThen(
-            SafePromiseAll(
+            SafePromiseAllReturnVoid(
               chunks,
               (data) => writer.write(data.chunk)),
             done,
@@ -851,7 +890,7 @@ function newStreamDuplexFromReadableWritablePair(pair = kEmptyObject, options = 
 
       if (!writableClosed || !readableClosed) {
         PromisePrototypeThen(
-          SafePromiseAll([
+          SafePromiseAllReturnVoid([
             closeWriter(),
             closeReader(),
           ]),
@@ -1051,4 +1090,6 @@ module.exports = {
   newStreamDuplexFromReadableWritablePair,
   newWritableStreamFromStreamBase,
   newReadableStreamFromStreamBase,
+  kValidateChunk,
+  kDestroyOnSyncError,
 };

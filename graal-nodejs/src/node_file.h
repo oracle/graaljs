@@ -44,6 +44,7 @@ constexpr size_t kFsStatsBufferLength =
 enum class FsStatFsOffset {
   kType = 0,
   kBSize,
+  kFrSize,
   kBlocks,
   kBFree,
   kBAvail,
@@ -321,7 +322,8 @@ class FileHandleReadWrap final : public ReqWrap<uv_fs_t> {
 class FileHandle final : public AsyncWrap, public StreamBase {
  public:
   enum InternalFields {
-    kFileHandleBaseField = StreamBase::kInternalFieldCount,
+    kFileHandleBaseField = std::max<uint32_t>(AsyncWrap::kInternalFieldCount,
+                                              StreamBase::kInternalFieldCount),
     kClosingPromiseSlot,
     kInternalFieldCount
   };

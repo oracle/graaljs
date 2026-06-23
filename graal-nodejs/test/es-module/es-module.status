@@ -24,6 +24,9 @@ test-require-module-tla-print-execution: FAIL
 # Uses js-string builtins
 test-esm-wasm-js-string-builtins     : FAIL
 
+# CyclicModuleRecord.loadedModules ignores import phase
+test-esm-wasm-source-phase-identity  : FAIL
+
 # Different output for TypeScript SyntaxError
 test-typescript-eval                 : FAIL
 

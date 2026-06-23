@@ -25,13 +25,10 @@ const {
 const assert = require('internal/assert');
 const internalFS = require('internal/fs/utils');
 const { BuiltinModule } = require('internal/bootstrap/realm');
-const { realpathSync } = require('fs');
+const fs = require('fs');
 const { getOptionValue } = require('internal/options');
 // Do not eagerly grab .manifest, it may be in TDZ
 const { sep, posix: { relative: relativePosixPath }, resolve } = require('path');
-const preserveSymlinks = getOptionValue('--preserve-symlinks');
-const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
-const inputTypeFlag = getOptionValue('--input-type');
 const { URL, pathToFileURL, fileURLToPath, isURL, URLParse } = require('internal/url');
 const { getCWDURL, setOwnProperty } = require('internal/util');
 const { canParse: URLCanParse } = internalBinding('url');
@@ -49,8 +46,7 @@ const {
   ERR_UNSUPPORTED_DIR_IMPORT,
   ERR_UNSUPPORTED_RESOLVE_REQUEST,
 } = require('internal/errors').codes;
-
-const { Module: CJSModule } = require('internal/modules/cjs/loader');
+const { defaultGetFormatWithoutErrors } = require('internal/modules/esm/get_format');
 const { getConditionsSet } = require('internal/modules/esm/utils');
 const packageJsonReader = require('internal/modules/package_json_reader');
 const internalFsBinding = internalBinding('fs');
@@ -249,7 +245,7 @@ function finalizeResolution(resolved, base, preserveSymlinks) {
   }
 
   const stats = internalFsBinding.internalModuleStat(
-    StringPrototypeEndsWith(internalFsBinding, path, '/') ? StringPrototypeSlice(path, -1) : path,
+    StringPrototypeEndsWith(path, '/') ? StringPrototypeSlice(path, -1) : path,
   );
 
   // Check for stats.isDirectory()
@@ -277,7 +273,11 @@ function finalizeResolution(resolved, base, preserveSymlinks) {
   }
 
   if (!preserveSymlinks) {
-    const real = realpathSync(path, {
+    // If you are reading this code to figure out how to patch Node.js module loading
+    // behavior - DO NOT depend on the patchability in new code: Node.js
+    // internals may stop going through the JavaScript fs module entirely.
+    // Prefer module.registerHooks() or other more formal fs hooks released in the future.
+    const real = fs.realpathSync(path, {
       [internalFS.realpathCacheKey]: realpathCache,
     });
     const { search, hash } = resolved;
@@ -873,6 +873,7 @@ function moduleResolve(specifier, base, conditions, preserveSymlinks) {
  */
 function resolveAsCommonJS(specifier, parentURL) {
   try {
+    const { Module: CJSModule } = require('internal/modules/cjs/loader');
     const parent = fileURLToPath(parentURL);
     const tmpModule = new CJSModule(parent, null);
     tmpModule.paths = CJSModule._nodeModulePaths(parent);
@@ -982,7 +983,7 @@ function defaultResolve(specifier, context = {}) {
     // input, to avoid user confusion over how expansive the effect of the
     // flag should be (i.e. entry point only, package scope surrounding the
     // entry point, etc.).
-    if (inputTypeFlag) { throw new ERR_INPUT_TYPE_NOT_ALLOWED(); }
+    if (getOptionValue('--input-type')) { throw new ERR_INPUT_TYPE_NOT_ALLOWED(); }
   }
 
   conditions = getConditionsSet(conditions);
@@ -992,7 +993,7 @@ function defaultResolve(specifier, context = {}) {
       specifier,
       parentURL,
       conditions,
-      isMain ? preserveSymlinksMain : preserveSymlinks,
+      isMain ? getOptionValue('--preserve-symlinks-main') : getOptionValue('--preserve-symlinks'),
     );
   } catch (error) {
     // Try to give the user a hint of what would have been the
@@ -1046,8 +1047,3 @@ module.exports = {
   packageResolve,
   throwIfInvalidParentURL,
 };
-
-// cycle
-const {
-  defaultGetFormatWithoutErrors,
-} = require('internal/modules/esm/get_format');

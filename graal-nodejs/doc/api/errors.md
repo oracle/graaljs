@@ -1732,6 +1732,17 @@ added: v15.14.0
 The limit of acceptable invalid HTTP/2 protocol frames sent by the peer,
 as specified through the `maxSessionInvalidFrames` option, has been exceeded.
 
+<a id="ERR_HTTP2_TOO_MANY_ORIGINS"></a>
+
+### `ERR_HTTP2_TOO_MANY_ORIGINS`
+
+<!-- YAML
+added: v24.17.0
+-->
+
+The number of uniq origin sent by the server has exceeded the value defined in
+`options.maxOriginSetSize`.
+
 <a id="ERR_HTTP2_TRAILERS_ALREADY_SENT"></a>
 
 ### `ERR_HTTP2_TRAILERS_ALREADY_SENT`
@@ -2657,8 +2668,6 @@ A QUIC session failed because version negotiation is required.
 
 ### `ERR_REQUIRE_ASYNC_MODULE`
 
-> Stability: 1 - Experimental
-
 When trying to `require()` a [ES Module][], the module turns out to be asynchronous.
 That is, it contains top-level await.
 
@@ -2669,8 +2678,6 @@ before looking for the top-level awaits).
 <a id="ERR_REQUIRE_CYCLE_MODULE"></a>
 
 ### `ERR_REQUIRE_CYCLE_MODULE`
-
-> Stability: 1 - Experimental
 
 When trying to `require()` a [ES Module][], a CommonJS to ESM or ESM to CommonJS edge
 participates in an immediate cycle.
@@ -2702,6 +2709,19 @@ An attempt was made to `require()` an [ES Module][].
 This error has been deprecated since `require()` now supports loading synchronous
 ES modules. When `require()` encounters an ES module that contains top-level
 `await`, it will throw [`ERR_REQUIRE_ASYNC_MODULE`][] instead.
+
+<a id="ERR_REQUIRE_ESM_RACE_CONDITION"></a>
+
+### `ERR_REQUIRE_ESM_RACE_CONDITION`
+
+<!-- YAML
+added: v24.16.0
+-->
+
+> Stability: 1 - Experimental.
+
+An attempt was made to `require()` an [ES Module][] while another `import()` call
+was already in progress to load it asynchronously.
 
 <a id="ERR_SCRIPT_EXECUTION_INTERRUPTED"></a>
 

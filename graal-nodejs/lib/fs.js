@@ -193,6 +193,7 @@ function makeStatsCallback(cb) {
 
   return (err, stats) => {
     if (err) return cb(err);
+    if (stats === undefined && err === null) return cb(null, undefined);
     cb(err, getStatsFromBinding(stats));
   };
 }
@@ -645,6 +646,12 @@ function read(fd, buffer, offsetOrOptions, length, position, callback) {
 
   length |= 0;
 
+  if (position == null) {
+    position = -1;
+  } else {
+    validatePosition(position, 'position', length);
+  }
+
   if (length === 0) {
     return process.nextTick(function tick() {
       callback(null, 0, buffer);
@@ -657,12 +664,6 @@ function read(fd, buffer, offsetOrOptions, length, position, callback) {
   }
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
-
-  if (position == null) {
-    position = -1;
-  } else {
-    validatePosition(position, 'position', length);
-  }
 
   function wrapper(err, bytesRead) {
     // Retain a reference to buffer so that it can't be GC'ed too soon.
@@ -716,6 +717,12 @@ function readSync(fd, buffer, offsetOrOptions, length, position) {
 
   length |= 0;
 
+  if (position == null) {
+    position = -1;
+  } else {
+    validatePosition(position, 'position', length);
+  }
+
   if (length === 0) {
     return 0;
   }
@@ -726,12 +733,6 @@ function readSync(fd, buffer, offsetOrOptions, length, position) {
   }
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
-
-  if (position == null) {
-    position = -1;
-  } else {
-    validatePosition(position, 'position', length);
-  }
 
   return binding.read(fd, buffer, offset, length, position);
 }
@@ -1630,23 +1631,31 @@ function lstat(path, options = { bigint: false }, callback) {
 /**
  * Asynchronously gets the stats of a file.
  * @param {string | Buffer | URL} path
- * @param {{ bigint?: boolean; }} [options]
+ * @param {{ bigint?: boolean, signal?: AbortSignal }} [options]
  * @param {(
  *   err?: Error,
  *   stats?: Stats
  *   ) => any} callback
  * @returns {void}
  */
-function stat(path, options = { bigint: false }, callback) {
+function stat(path, options = { bigint: false, throwIfNoEntry: true }, callback) {
   if (typeof options === 'function') {
     callback = options;
     options = kEmptyObject;
+  } else if (options === null || typeof options !== 'object') {
+    options = kEmptyObject;
+  } else {
+    options = getOptions(options, { bigint: false });
   }
+
   callback = makeStatsCallback(callback);
+  path = getValidatedPath(path);
+
+  if (checkAborted(options.signal, callback)) return;
 
   const req = new FSReqCallback(options.bigint);
   req.oncomplete = callback;
-  binding.stat(getValidatedPath(path), options.bigint, req);
+  binding.stat(getValidatedPath(path), options.bigint, req, options.throwIfNoEntry);
 }
 
 function statfs(path, options = { bigint: false }, callback) {
@@ -2503,6 +2512,7 @@ function appendFileSync(path, data, options) {
  *   recursive?: boolean;
  *   encoding?: string;
  *   signal?: AbortSignal;
+ *   throwIfNoEntry?: boolean;
  *   }} [options]
  * @param {(
  *   eventType?: string,
@@ -2521,6 +2531,7 @@ function watch(filename, options, listener) {
 
   if (options.persistent === undefined) options.persistent = true;
   if (options.recursive === undefined) options.recursive = false;
+  if (options.throwIfNoEntry === undefined) options.throwIfNoEntry = true;
 
   let watcher;
   const watchers = require('internal/fs/watchers');
@@ -2538,7 +2549,8 @@ function watch(filename, options, listener) {
                                     options.persistent,
                                     options.recursive,
                                     options.encoding,
-                                    options.ignore);
+                                    options.ignore,
+                                    options.throwIfNoEntry);
   }
 
   if (listener) {
