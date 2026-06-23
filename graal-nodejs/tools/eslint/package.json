@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
-    "@babel/core": "^8.0.0-rc.3",
+    "@babel/core": "^8.0.1",
     "@babel/eslint-parser": "^8.0.0-rc.3",
     "@babel/plugin-syntax-import-source": "^8.0.0-rc.3",
     "@eslint/js": "^10.0.1",
