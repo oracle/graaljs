@@ -468,7 +468,7 @@ def testv8(args, nonZeroIsFatal=True):
     _stack_size = '3m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
     _run_test_suite(
         custom_args=args,
-        default_vm_args=[],
+        default_vm_args=['--add-modules=jdk.incubator.vector'],
         max_heap='8g',
         stack_size=_stack_size,
         main_class='com.oracle.truffle.js.test.external.testv8.TestV8',

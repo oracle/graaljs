@@ -1931,7 +1931,7 @@
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1237024.js",
     "status" : "FAIL",
-    "comment" : "Arrays (GC proposal)."
+    "comment" : "Creates a v128 array whose byte length is exactly 1 << 30; GraalWasm currently permits this boundary, while V8 expects a RuntimeError for arrays at this size."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1254675.js",
     "status" : "FAIL",
@@ -2077,10 +2077,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-361369297.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-361611472.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
@@ -2102,10 +2098,6 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-366635354.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-369652650.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
@@ -2209,10 +2201,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-455832038.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-461547336.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
@@ -2234,10 +2222,6 @@
     "comment" : "new failures 2026-02-12"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-471380636.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-473272199.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
@@ -2573,14 +2557,6 @@
     "status" : "FAIL",
     "comment" : "Uses return_call_indirect from the tail calls proposal."
   }, {
-    "filePath" : "mjsunit/wasm/code-flushing-single-isolate.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/code-flushing.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/compare-exchange64-stress.js",
     "status" : "SKIP",
     "comment" : "Sometimes gets stuck."
@@ -2593,33 +2569,25 @@
     "status" : "FAIL",
     "comment" : "Tests %SerializeWasmModule and %DeserializeWasmModule."
   }, {
-    "filePath" : "mjsunit/wasm/cont-bind.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
     "filePath" : "mjsunit/wasm/denormals.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses V8-specific wasm denormals control API (setFlushDenormals)."
   }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-dynamic-tierup.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Relies on V8-specific tier-up/deopt observability (%WasmDeoptsExecutedCount/%IsTurboFanFunction) and expected deopt convergence."
   }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-inlined-stacktrace.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Different wording of divide-by-zero trap ('integer divide by zero' vs 'divide by zero')."
   }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-inlined.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
   }, {
-    "filePath" : "mjsunit/wasm/deopt/deopt-metrics.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-serialized-module.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses V8-specific wasm module serialization APIs (serializeModule/deserializeModule)."
   }, {
     "filePath" : "mjsunit/wasm/deopt/deopt-tail-call-parent-frame.js",
     "status" : "FAIL",
@@ -2702,15 +2670,7 @@
   }, {
     "filePath" : "mjsunit/wasm/esm/module-import-source-dynamic-not-found.mjs",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/esm/module-import-source-dynamic.mjs",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/esm/module-import-source.mjs",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Uses assertStringContains, but upstream mjsunit.js does not define this helper."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-gc.js",
     "status" : "FAIL",
@@ -2726,7 +2686,7 @@
   }, {
     "filePath" : "mjsunit/wasm/gc-casts-from-any.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Stringref proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-experiments.js",
     "status" : "FAIL",
@@ -2734,7 +2694,7 @@
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-async-debugger.js",
     "status" : "FAIL",
-    "comment" : "GC proposal."
+    "comment" : "Duplicate of gc-js-interop-async.js with debugger enabled."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-export.mjs",
     "status" : "SKIP",
@@ -2752,14 +2712,6 @@
     "status" : "FAIL",
     "comment" : "V8 expects Reflect.defineProperty/Reflect.preventExtensions on exported Wasm GC objects to throw TypeError, but the Wasm JS API internal methods return false and Reflect exposes false."
   }, {
-    "filePath" : "mjsunit/wasm/generate-random-module-no-staging.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/generate-random-module.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/grow-huge-memory.js",
     "status" : "FAIL",
     "runInIsolation" : true,
@@ -2770,9 +2722,9 @@
     "comment" : "new failures 2025-02-10"
   }, {
     "filePath" : "mjsunit/wasm/huge-memory.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "runInIsolation" : true,
-    "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
+    "comment" : "Skipped because it eats up a lot of memory."
   }, {
     "filePath" : "mjsunit/wasm/huge-typedarray.js",
     "status" : "FAIL",
@@ -2785,11 +2737,11 @@
   }, {
     "filePath" : "mjsunit/wasm/imported-dataview.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Different stack traces for exceptions thrown by imported DataView builtins."
   }, {
     "filePath" : "mjsunit/wasm/imported-strings-constants.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Unsupported V8-specific WebAssembly.Module option importedStringConstants."
   }, {
     "filePath" : "mjsunit/wasm/imported-strings-invalid.js",
     "status" : "FAIL",
@@ -2848,7 +2800,7 @@
   }, {
     "filePath" : "mjsunit/wasm/log-wasm-to-js-wrapper-indirect.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Uses V8-specific d8.profiler APIs and expects profiling samples for wasm-to-js/js-to-wasm wrappers."
   }, {
     "filePath" : "mjsunit/wasm/loop-unrolling.js",
     "status" : "FAIL",
@@ -2856,19 +2808,15 @@
   }, {
     "filePath" : "mjsunit/wasm/max-module-size-flag.js",
     "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Tests V8's --wasm-max-module-size flag and expects a CompileError."
   }, {
     "filePath" : "mjsunit/wasm/max-wasm-functions.js",
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/wasm/memory-control.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/memory-huge-constant-index.js",
     "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
+    "comment" : "Test expects v8 to use the words 'Out of memory' when trying to instantiate a very large memory."
   }, {
     "filePath" : "mjsunit/wasm/memory64.js",
     "status" : "FAIL",
@@ -2888,13 +2836,9 @@
     "runInIsolation" : true,
     "comment" : "Fails when trying to access the underlying ArrayBuffer of a WebAssembly.Memory. This is because GraalJS ArrayBuffers are currently capped at 2GB (- 1 byte) and this test exercises 4GB large memories."
   }, {
-    "filePath" : "mjsunit/wasm/module-source.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2025-02-10"
-  }, {
     "filePath" : "mjsunit/wasm/multi-memory.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Fails with LinkError instead of RuntimeError. The failure occurs in module instantiation and the spec for the WebAssembly JS interface states that errors from instantiation are to be signalled using LinkError (except for when the error originates from the start function, which should use RuntimeError). In this case, the error does not originate from the start function, but from the memory initialization using an active data segment. Apart from this, we pass all tests in the file."
   }, {
     "filePath" : "mjsunit/wasm/multiple-code-spaces.js",
     "status" : "SKIP",
@@ -2913,7 +2857,7 @@
   }, {
     "filePath" : "mjsunit/wasm/reference-globals.js",
     "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
+    "comment" : "TestArrayNewArrayTooLarge expects a RuntimeError trap during instantiation; GraalJS reports LinkError for the constant-expression array allocation failure, which is spec-defensible because the error does not originate from the start function."
   }, {
     "filePath" : "mjsunit/wasm/reference-table-js-interop.js",
     "status" : "FAIL",
@@ -2924,10 +2868,6 @@
     "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/wasm/regress-455605199.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/wasm/resume-throw.js",
     "status" : "FAIL",
     "comment" : "new failures 2026-02-12"
   }, {
@@ -3017,14 +2957,6 @@
     "filePath" : "mjsunit/wasm/simd-wasm-interpreter.js",
     "status" : "FAIL",
     "comment" : "new failures 2025-02-10"
-  }, {
-    "filePath" : "mjsunit/wasm/stack-switching-params.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2026-02-12"
-  }, {
-    "filePath" : "mjsunit/wasm/stack-switching.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/wasm/stack.js",
     "status" : "FAIL"
@@ -3185,10 +3117,6 @@
     "filePath" : "mjsunit/wasm/worker-running-empty-loop-interruptible.js",
     "status" : "SKIP",
     "comment" : "Empty infinite wasm loop cannot be cancelled."
-  }, {
-    "filePath" : "mjsunit/wasm/wrapper-compilation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
