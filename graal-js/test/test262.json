@@ -18,6 +18,10 @@
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
   }, {
+    "filePath" : "built-ins/Atomics/pause/non-integral-iterationnumber-throws.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test: Atomics.pause does not process the first argument anymore."
+  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
