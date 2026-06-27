@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -213,7 +212,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             case waitAsync:
                 return AtomicsWaitAsyncNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
             case pause:
-                return AtomicsPauseNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return AtomicsPauseNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
         }
         return null;
     }
@@ -1280,45 +1279,16 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
     }
 
-    @ImportStatic({JSRuntime.class})
     public abstract static class AtomicsPauseNode extends JSBuiltinNode {
-
-        private static final int MAX_SPIN_WAIT = 1024;
 
         protected AtomicsPauseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isUndefined(n)")
-        protected static Object pauseOnce(Object n) {
+        @Specialization
+        protected static Object pause() {
             Thread.onSpinWait();
             return Undefined.instance;
-        }
-
-        @Specialization
-        protected static Object pauseInt(int n) {
-            int iterations = Math.min(n, MAX_SPIN_WAIT);
-            for (int i = 0; i < iterations; i++) {
-                Thread.onSpinWait();
-            }
-            return Undefined.instance;
-        }
-
-        @Specialization(guards = "isIntegralNumber(n)")
-        protected static Object pauseDouble(double n) {
-            return pauseInt((int) n);
-        }
-
-        @Specialization
-        protected static Object pauseLong(long n) {
-            return pauseInt((int) Math.min(Math.max(n, 0), Integer.MAX_VALUE));
-        }
-
-        @SuppressWarnings("unused")
-        @Fallback
-        protected static Object illegalArgument(Object n) {
-            throw Errors.createTypeError("Atomics.pause argument must be undefined or an integer");
         }
     }
 
