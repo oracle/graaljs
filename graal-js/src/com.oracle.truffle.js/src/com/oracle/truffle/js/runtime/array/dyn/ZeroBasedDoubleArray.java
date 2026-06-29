@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.array.dyn;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -131,15 +132,28 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     }
 
     @Override
-    public HolesDoubleArray toHoles(JSDynamicObject object, long index, Object value) {
+    public AbstractWritableArray toHoles(JSDynamicObject object, long index, Object value) {
         double[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
-        HolesDoubleArray newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, array, 0, 0, usedLength, 0, integrityLevel);
+
+        AbstractWritableArray newArray;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, containsHoleValue(object))) {
+            newArray = toObjectHoles(object);
+        } else {
+            newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, array, 0, 0, usedLength, 0, integrityLevel);
+        }
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
+    }
+
+    @Override
+    protected HolesObjectArray toObjectHoles(JSDynamicObject object) {
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        return HolesObjectArray.makeHolesObjectArray(object, length, convertToObject(object), 0, 0, usedLength, 0, integrityLevel);
     }
 
     @Override

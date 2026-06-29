@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -109,18 +110,33 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    public HolesDoubleArray toHoles(JSDynamicObject object, long index, Object value) {
+    public AbstractWritableArray toHoles(JSDynamicObject object, long index, Object value) {
         double[] array = getArray(object);
         int length = lengthInt(object);
         int usedLength = getUsedLength(object);
         int arrayOffset = getArrayOffset(object);
         long indexOffset = getIndexOffset(object);
 
-        HolesDoubleArray newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, array, indexOffset, arrayOffset, usedLength, 0, integrityLevel);
+        AbstractWritableArray newArray;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, containsHoleValue(object))) {
+            newArray = toObjectHoles(object);
+        } else {
+            newArray = HolesDoubleArray.makeHolesDoubleArray(object, length, array, indexOffset, arrayOffset, usedLength, 0, integrityLevel);
+        }
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
         }
         return newArray;
+    }
+
+    @Override
+    protected HolesObjectArray toObjectHoles(JSDynamicObject object) {
+        int length = lengthInt(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = getArrayOffset(object);
+        long indexOffset = getIndexOffset(object);
+
+        return HolesObjectArray.makeHolesObjectArray(object, length, convertToObject(object), indexOffset, arrayOffset, usedLength, 0, integrityLevel);
     }
 
     @Override

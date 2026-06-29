@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -206,6 +206,11 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     @Override
     public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return deleteElementHoles(object, index);
+    }
+
+    @Override
+    protected HolesObjectArray toObjectHoles(JSDynamicObject object) {
+        throw new UnsupportedOperationException("already a holes array");
     }
 
     @Override
