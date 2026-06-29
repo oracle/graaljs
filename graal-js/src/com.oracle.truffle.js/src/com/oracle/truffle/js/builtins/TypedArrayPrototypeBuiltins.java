@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,9 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -84,7 +86,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIndex
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayJoinNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayMapNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayReduceNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins.DataViewGetNode.GetBufferElementNode;
@@ -107,6 +108,7 @@ import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSTypedArraySortNode;
 import com.oracle.truffle.js.nodes.array.TypedArrayLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
@@ -118,7 +120,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -248,7 +249,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case reduceRight:
                 return JSArrayReduceNodeGen.create(context, builtin, true, false, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
             case slice:
-                return JSArraySliceNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return TypedArrayPrototypeBuiltinsFactory.TypedArraySliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case every:
                 return JSArrayEveryNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case copyWithin:
@@ -328,11 +329,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          */
         @Specialization
         protected JSTypedArrayObject subarray(JSTypedArrayObject thisObj, Object start, Object end,
+                        @Cached TypedArrayLengthNode typedArrayLength,
                         @Cached InlinedConditionProfile negativeBegin,
                         @Cached InlinedConditionProfile negativeEnd,
                         @Cached InlinedConditionProfile smallerEnd) {
             TypedArray array = typedArrayGetArrayType(thisObj);
-            long srcLength = JSArrayBufferView.isOutOfBounds(thisObj, getContext()) ? 0 : array.length(thisObj);
+            long srcLength = typedArrayLength.execute(this, thisObj, getContext());
             long relativeStart = toInteger(start);
             long startIndex = negativeBegin.profile(this, relativeStart < 0) ? Math.max(srcLength + relativeStart, 0) : Math.min(relativeStart, srcLength);
             int srcByteOffset = thisObj.getByteOffset();
@@ -366,7 +368,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected ArraySpeciesConstructorNode getArraySpeciesConstructorNode() {
             if (arraySpeciesCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                arraySpeciesCreateNode = insert(ArraySpeciesConstructorNode.create(getContext(), true));
+                arraySpeciesCreateNode = insert(ArraySpeciesConstructorNode.create(true));
             }
             return arraySpeciesCreateNode;
         }
@@ -427,7 +429,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
     abstract static class SetTypedArrayNode extends JavaScriptBaseNode {
 
         @Child private InteropLibrary interopLibrary;
-        @Child private InteropLibrary getByteBufferInterop;
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToBigIntNode toBigIntNode;
 
@@ -454,10 +455,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             int srcByteOffset = array.getByteOffset();
             int targetByteOffset = targetObj.getByteOffset();
 
+            int sourceElementSize = sourceArray.bytesPerElement();
+            int targetElementSize = targetArray.bytesPerElement();
+            int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
             int srcByteIndex;
             if (sameBufferProf.profile(this, sourceBuffer == targetBuffer)) {
-                int srcByteLength = sourceLen * sourceArray.bytesPerElement();
-                int targetByteIndex = targetByteOffset + targetOffset * targetArray.bytesPerElement();
+                int srcByteLength = sourceLen * sourceElementSize;
 
                 boolean cloneNotNeeded = srcByteOffset + srcByteLength <= targetByteIndex || targetByteIndex + srcByteLength <= srcByteOffset;
                 if (cloneNotNeeded) {
@@ -474,8 +477,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else {
                 srcByteIndex = srcByteOffset;
             }
-            copyTypedArrayElementsDistinctBuffers(targetBuffer, sourceBuffer, targetArray, sourceArray, targetOffset, targetByteOffset, sourceLen, srcByteIndex,
-                            copyTypedArrayElementsNode, this);
+            copyTypedArrayElementsNode.execute(targetBuffer, sourceBuffer,
+                            targetByteIndex, srcByteIndex, sourceLen,
+                            targetElementSize, sourceElementSize, targetArray, sourceArray, true);
         }
 
         @Specialization(guards = {"isJSFastArray(array)"})
@@ -559,41 +563,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return toBigIntNode.execute(value);
         }
 
-        private void copyTypedArrayElementsDistinctBuffers(JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
-                        int targetOffset, int targetByteOffset, int sourceLength, int sourceByteIndex,
-                        CopyTypedArrayElementsNode copyTypedArrayElementsNode, Node node) {
-            int targetElementSize = targetType.bytesPerElement();
-            int sourceElementSize = sourceType.bytesPerElement();
-            int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
-
-            /*
-             * If we are able to get a ByteBuffer from the source and/or target interop buffer, then
-             * use it directly instead of going through interop for each element.
-             */
-            ByteBuffer sourceInteropByteBuffer = null;
-            if (sourceType.isInterop()) {
-                sourceInteropByteBuffer = getByteBufferFromInteropBuffer(sourceBuffer);
-            }
-            ByteBuffer targetInteropByteBuffer = null;
-            if (targetType.isInterop()) {
-                targetInteropByteBuffer = getByteBufferFromInteropBuffer(targetBuffer);
-            }
-
-            copyTypedArrayElementsNode.execute(node, targetBuffer, sourceBuffer,
-                            targetByteIndex, sourceByteIndex, sourceLength,
-                            targetElementSize, sourceElementSize, targetType, sourceType,
-                            sourceInteropByteBuffer, targetInteropByteBuffer, true);
-            reportLoopCount(node, sourceLength);
-        }
-
-        private ByteBuffer getByteBufferFromInteropBuffer(JSArrayBufferObject interopBuffer) {
-            if (getByteBufferInterop == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
-            }
-            return JSInteropUtil.jsInteropBufferAsByteBuffer(interopBuffer, getByteBufferInterop, getRealm());
-        }
-
         private JSArrayBufferObject cloneArrayBuffer(JSArrayBufferObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset, JSContext context,
                         InlinedConditionProfile isDirectProfile, Node node) {
             JSArrayBufferObject clonedArrayBuffer;
@@ -657,11 +626,45 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-    @GenerateCached(false)
-    @GenerateInline
     abstract static class CopyTypedArrayElementsNode extends JavaScriptBaseNode {
 
-        abstract void execute(Node node, JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
+        @Child private InteropLibrary asByteBufferInterop;
+
+        final void execute(JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
+                        int targetByteIndex, int sourceByteIndex, int sourceLength,
+                        int targetElementSize, int sourceElementSize,
+                        TypedArray targetType, TypedArray sourceType,
+                        boolean distinctBuffers) {
+            /*
+             * If we are able to get a ByteBuffer from the source and/or target interop buffer, then
+             * use it directly instead of going through interop for each element.
+             */
+            ByteBuffer sourceInteropByteBuffer = null;
+            if (sourceType.isInterop()) {
+                sourceInteropByteBuffer = getByteBufferFromInteropBuffer(sourceBuffer);
+            }
+            ByteBuffer targetInteropByteBuffer = null;
+            if (targetType.isInterop()) {
+                targetInteropByteBuffer = getByteBufferFromInteropBuffer(targetBuffer);
+            }
+            execute(targetBuffer, sourceBuffer,
+                            targetByteIndex, sourceByteIndex, sourceLength,
+                            targetElementSize, sourceElementSize,
+                            targetType, sourceType,
+                            sourceInteropByteBuffer, targetInteropByteBuffer,
+                            distinctBuffers);
+            reportLoopCount(this, sourceLength);
+        }
+
+        private ByteBuffer getByteBufferFromInteropBuffer(JSArrayBufferObject interopBuffer) {
+            if (asByteBufferInterop == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                asByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
+            }
+            return JSInteropUtil.jsInteropBufferAsByteBuffer(interopBuffer, asByteBufferInterop, getRealm());
+        }
+
+        abstract void execute(JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
                         int targetByteIndex, int sourceByteIndex, int sourceLength,
                         int targetElementSize, int sourceElementSize,
                         TypedArray targetType, TypedArray sourceType,
@@ -669,48 +672,38 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         ByteBuffer targetByteBuffer,
                         boolean distinctBuffers);
 
-        @Specialization(guards = {"targetType.getFactory() == sourceType.getFactory()", "targetType.isArray()", "sourceType.isArray()"})
-        static void copyBytewiseArray(Node node, JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
-                        int targetByteIndex, int sourceByteIndex, int sourceLength,
-                        @SuppressWarnings("unused") int targetElementSize, int sourceElementSize,
-                        @SuppressWarnings("unused") TypedArray targetType, @SuppressWarnings("unused") TypedArray sourceType,
-                        @SuppressWarnings("unused") ByteBuffer sourceInteropByteBuffer,
-                        @SuppressWarnings("unused") ByteBuffer targetInteropByteBuffer,
-                        boolean distinctBuffers,
-                        @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
-                        @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode) {
-            int sourceByteLength = sourceLength * sourceElementSize;
-            byte[] sourceByteArray = JSArrayBuffer.getByteArray(sourceBuffer);
-            byte[] targetByteArray = JSArrayBuffer.getByteArray(targetBuffer);
-            // buffers must be distinct for bulk copy to be allowed
-            if (distinctBuffers || sourceByteArray != targetByteArray) {
-                System.arraycopy(sourceByteArray, sourceByteIndex, targetByteArray, targetByteIndex, sourceByteLength);
-                return;
-            }
-
-            // if we could not do a bulk copy, perform a bytewise copy
-            copyBytewiseCommon(node, targetBuffer, sourceBuffer, targetByteIndex, sourceByteIndex, sourceByteLength,
-                            null, null, getBufferElementNode, setBufferElementNode);
-        }
-
         /**
          * If source element type == target element type, the copy must be performed in a manner
          * that preserves the bit-level encoding of the source data. This is not guaranteed for
          * float16 and float32 when copying elementwise due to the round-trip conversion to and from
          * double being lossy for NaN values.
          */
-        @Specialization(guards = {"targetType.getFactory() == sourceType.getFactory()", "!targetType.isArray() || !sourceType.isArray()"})
-        static void copyBytewise(Node node, JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
+        @Specialization(guards = {"targetType.getFactory() == sourceType.getFactory()"})
+        static void copyBytewise(JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
                         int targetByteIndex, int sourceByteIndex, int sourceLength,
                         @SuppressWarnings("unused") int targetElementSize, int sourceElementSize,
                         TypedArray targetType, TypedArray sourceType,
                         ByteBuffer sourceInteropByteBuffer,
                         ByteBuffer targetInteropByteBuffer,
                         boolean distinctBuffers,
+                        @Bind Node node,
                         @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
                         @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode,
+                        @Cached InlinedConditionProfile bothArraysBranch,
+                        @Cached @Exclusive InlinedBranchProfile sameArrayBranch,
                         @Cached CopyTypedArrayElementsFromInteropBufferNode copyTypedArrayElementsFromInteropBufferNode) {
             int sourceByteLength = sourceLength * sourceElementSize;
+            if (bothArraysBranch.profile(node, targetType.isArray() && sourceType.isArray())) {
+                byte[] sourceByteArray = JSArrayBuffer.getByteArray(sourceBuffer);
+                byte[] targetByteArray = JSArrayBuffer.getByteArray(targetBuffer);
+                if (distinctBuffers || sourceByteArray != targetByteArray) {
+                    System.arraycopy(sourceByteArray, sourceByteIndex, targetByteArray, targetByteIndex, sourceByteLength);
+                    return;
+                } else {
+                    sameArrayBranch.enter(node);
+                }
+            }
+
             ByteBuffer sourceByteBuffer;
             ByteBuffer targetByteBuffer;
             if (sourceType.isDirect()) {
@@ -729,8 +722,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 assert targetType.isArray();
                 targetByteBuffer = Boundaries.byteBufferWrap(JSArrayBuffer.getByteArray(targetBuffer));
             }
-            // same element type => bulk copy (if possible)
-            // buffers must be distinct for bulk copy to be allowed
+            // if buffers are distinct, try to perform a bulk copy
             if (distinctBuffers) {
                 if (sourceByteBuffer != null && targetByteBuffer != null) {
                     Boundaries.byteBufferPutSlice(
@@ -745,15 +737,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 }
             }
 
-            copyBytewiseCommon(node, targetBuffer, sourceBuffer, targetByteIndex, sourceByteIndex, sourceByteLength,
-                            sourceByteBuffer, targetByteBuffer, getBufferElementNode, setBufferElementNode);
-        }
-
-        private static void copyBytewiseCommon(Node node, JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
-                        int targetByteIndex, int sourceByteIndex, int sourceByteLength,
-                        ByteBuffer sourceByteBuffer, ByteBuffer targetByteBuffer,
-                        GetBufferElementTypeDispatchNode getBufferElementNode,
-                        SetBufferElementTypeDispatchNode setBufferElementNode) {
             // if we could not do a bulk copy, perform a bytewise copy
             boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
             TypedArrayFactory sourceFactory = TypedArrayFactory.Uint8Array;
@@ -769,16 +752,17 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          * If source element type != target element type, must do an elementwise copy.
          */
         @Specialization(guards = {"targetType.getFactory() != sourceType.getFactory()"})
-        static void copyElementwise(Node node, JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
+        static void copyElementwise(JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer,
                         int targetByteIndex, int sourceByteIndex, int sourceLength,
                         int targetElementSize, int sourceElementSize,
                         TypedArray targetType, TypedArray sourceType,
                         ByteBuffer sourceByteBuffer,
                         ByteBuffer targetByteBuffer,
                         @SuppressWarnings("unused") boolean distinctBuffers,
+                        @Bind Node node,
                         @Cached @Shared GetBufferElementTypeDispatchNode getBufferElementNode,
                         @Cached @Shared SetBufferElementTypeDispatchNode setBufferElementNode,
-                        @Cached InlinedBranchProfile errorBranch) {
+                        @Cached @Exclusive InlinedBranchProfile errorBranch) {
             if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
                 errorBranch.enter(node);
                 throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(node);
@@ -829,13 +813,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         static Object doCached(Node node, JSArrayBufferObject buffer, int bufferIndex, boolean littleEndian,
                         @SuppressWarnings("unused") TypedArrayFactory factory, ByteBuffer byteBuffer,
                         @Cached("factory") TypedArrayFactory cachedFactory,
-                        @Cached InlinedConditionProfile hasByteBuffer,
                         @Cached GetBufferElementNode getBufferElementNode) {
-            if (hasByteBuffer.profile(node, byteBuffer != null)) {
-                return JSRuntime.getBufferElementDirect(ByteBufferAccess.forOrder(littleEndian), byteBuffer, cachedFactory, bufferIndex);
-            } else {
-                return getBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, cachedFactory);
-            }
+            return getBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, cachedFactory, byteBuffer);
         }
     }
 
@@ -852,14 +831,60 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         static void doCached(Node node, JSArrayBufferObject buffer, int bufferIndex, boolean littleEndian, Object value,
                         @SuppressWarnings("unused") TypedArrayFactory factory, ByteBuffer byteBuffer,
                         @Cached("factory") TypedArrayFactory cachedFactory,
-                        @Cached InlinedConditionProfile hasByteBuffer,
                         @Cached SetBufferElementNode setBufferElementNode) {
-            if (hasByteBuffer.profile(node, byteBuffer != null)) {
-                JSRuntime.setBufferElementDirect(ByteBufferAccess.forOrder(littleEndian), byteBuffer, cachedFactory, bufferIndex, value);
-            } else {
-                setBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, value, cachedFactory);
-            }
+            setBufferElementNode.execute(node, buffer, bufferIndex, littleEndian, value, cachedFactory, byteBuffer);
         }
+    }
+
+    public abstract static class TypedArraySliceNode extends JSArrayOperation {
+
+        public TypedArraySliceNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, true);
+        }
+
+        @Specialization
+        protected Object slice(Object thisObj, Object begin, Object end,
+                        @Cached JSToIntegerAsLongNode toIntegerAsLong,
+                        @Cached CopyTypedArrayElementsNode copyTypedArrayElements,
+                        @Cached InlinedConditionProfile sizeIsZero,
+                        @Cached InlinedConditionProfile offsetProfile1,
+                        @Cached InlinedConditionProfile offsetProfile2) {
+            JSTypedArrayObject sourceTypedArray = validateTypedArray(thisObj);
+            long len = getLength(sourceTypedArray);
+            long startPos = begin != Undefined.instance ? JSRuntime.getOffset(toIntegerAsLong.executeLong(begin), len, this, offsetProfile1) : 0;
+
+            long endPos;
+            if (end == Undefined.instance) {
+                endPos = len;
+            } else {
+                endPos = JSRuntime.getOffset(toIntegerAsLong.executeLong(end), len, this, offsetProfile2);
+            }
+
+            long size = startPos <= endPos ? endPos - startPos : 0;
+            JSTypedArrayObject resultTypedArray = getArraySpeciesConstructorNode().typedArraySpeciesCreate(sourceTypedArray, JSRuntime.longToIntOrDouble(size));
+            if (sizeIsZero.profile(this, size > 0)) {
+                checkOutOfBounds(sourceTypedArray);
+                endPos = Math.min(endPos, getLength(sourceTypedArray));
+                size = startPos <= endPos ? endPos - startPos : 0;
+
+                TypedArray sourceType = sourceTypedArray.getArrayType();
+                TypedArray targetType = resultTypedArray.getArrayType();
+                JSArrayBufferObject sourceBuffer = sourceTypedArray.getArrayBuffer();
+                JSArrayBufferObject targetBuffer = resultTypedArray.getArrayBuffer();
+                int sourceElementSize = sourceType.bytesPerElement();
+                int targetElementSize = targetType.bytesPerElement();
+                int sourceByteOffset = sourceType.getOffset(sourceTypedArray);
+                int targetByteOffset = targetType.getOffset(resultTypedArray);
+                long sourceByteIndex = startPos * sourceElementSize + sourceByteOffset;
+                assert JSRuntime.longIsRepresentableAsInt(size) && JSRuntime.longIsRepresentableAsInt(sourceByteIndex);
+
+                copyTypedArrayElements.execute(targetBuffer, sourceBuffer,
+                                targetByteOffset, (int) sourceByteIndex, (int) size,
+                                targetElementSize, sourceElementSize, targetType, sourceType, false);
+            }
+            return resultTypedArray;
+        }
+
     }
 
     public abstract static class JSArrayBufferViewForEachNode extends ArrayForEachIndexCallOperation {

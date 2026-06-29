@@ -1,0 +1,14 @@
+#/*
+# * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+# * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+# *
+# * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+# */
+#
+# Regression test for interop typed-array Truffle performance warnings.
+#
+> if [ "${MODE}" = "jvm" ]
+>[0r] js --shared-engine --experimental-options --engine.WarnInterpreterOnly=false --engine.CompilationFailureAction=ExitVM --engine.TraceCompilation=true --engine.CompileImmediately=true --engine.BackgroundCompilation=false --compiler.TracePerformanceWarnings=all ${TEST_DIR}/perf_warn_interop_typed_array.js
+(?s)^(?!.*perf warn).*$
+opt done
+> fi
