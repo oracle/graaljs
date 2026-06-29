@@ -960,7 +960,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "Experimental type-stripping for TypeScript files.",
             &EnvironmentOptions::experimental_strip_types,
             kAllowedInEnvvar,
-            true);
+            HAVE_AMARO);
   Implies("--experimental-strip-types", "--experimental-detect-module");
 
   AddOption("--experimental-transform-types",

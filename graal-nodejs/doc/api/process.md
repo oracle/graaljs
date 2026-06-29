@@ -917,8 +917,8 @@ added: v0.1.27
 The `process.argv` property returns an array containing the command-line
 arguments passed when the Node.js process was launched. The first element will
 be [`process.execPath`][]. See `process.argv0` if access to the original value
-of `argv[0]` is needed. The second element will be the path to the JavaScript
-file being executed. The remaining elements will be any additional command-line
+of `argv[0]` is needed. If a [program entry point][] was provided, the second element
+will be the absolute path to it. The remaining elements are additional command-line
 arguments.
 
 For example, assuming the following script for `process-args.js`:
@@ -4314,6 +4314,29 @@ documentation for the [`'warning'` event][process_warning] and the
 [`emitWarning()` method][process_emit_warning] for more information about this
 flag's behavior.
 
+## `process.traceProcessWarnings`
+
+<!-- YAML
+added: v6.10.0
+-->
+
+* {boolean}
+
+The `process.traceProcessWarnings` property indicates whether the `--trace-warnings` flag
+is set on the current Node.js process. This property allows programmatic control over the
+tracing of warnings, enabling or disabling stack traces for warnings at runtime.
+
+```js
+// Enable trace warnings
+process.traceProcessWarnings = true;
+
+// Emit a warning with a stack trace
+process.emitWarning('Warning with stack trace');
+
+// Disable trace warnings
+process.traceProcessWarnings = false;
+```
+
 ## `process.umask()`
 
 <!-- YAML
@@ -4375,7 +4398,7 @@ added: v22.14.0
 
 > Stability: 1 - Experimental
 
-* `maybeUnfefable` {any} An object that may be "unref'd".
+* `maybeRefable` {any} An object that may be "unref'd".
 
 An object is "unrefable" if it implements the Node.js "Refable protocol".
 Specifically, this means that the object implements the `Symbol.for('nodejs.ref')`
@@ -4608,6 +4631,7 @@ cases:
 [process.cpuUsage]: #processcpuusagepreviousvalue
 [process_emit_warning]: #processemitwarningwarning-type-code-ctor
 [process_warning]: #event-warning
+[program entry point]: https://nodejs.org/api/cli.html#program-entry-point
 [report documentation]: report.md
 [terminal raw mode]: tty.md#readstreamsetrawmodemode
 [uv_get_available_memory]: https://docs.libuv.org/en/v1.x/misc.html#c.uv_get_available_memory

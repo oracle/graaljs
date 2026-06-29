@@ -129,7 +129,7 @@ const { BuiltinModule } = require('internal/bootstrap/realm');
 const {
   maybeCacheSourceMap,
 } = require('internal/source_map/source_map_cache');
-const { pathToFileURL, fileURLToPath, isURL } = require('internal/url');
+const { pathToFileURL, fileURLToPath, isURL, URL } = require('internal/url');
 const {
   pendingDeprecate,
   emitExperimentalWarning,
@@ -1497,9 +1497,8 @@ function loadESMFromCJS(mod, filename, format, source) {
         } else if (mod[kIsCachedByESMLoader]) {
           // It comes from the require() built for `import cjs` and doesn't have a parent recorded
           // in the CJS module instance. Inspect the stack trace to see if the require()
-          // comes from node_modules and reduce the noise. If there are more than 100 frames,
-          // just give up and assume it is under node_modules.
-          shouldEmitWarning = !isInsideNodeModules(100, true);
+          // comes from node_modules as a direct call and reduce the noise.
+          shouldEmitWarning = !isInsideNodeModules();
         }
       } else {
         shouldEmitWarning = true;
@@ -1869,7 +1868,7 @@ Module._extensions['.node'] = function(module, filename) {
  * Creates a `require` function that can be used to load modules from the specified path.
  * @param {string} filename The path to the module
  */
-function createRequireFromPath(filename) {
+function createRequireFromPath(filename, fileURL) {
   // Allow a directory to be passed as the filename
   const trailingSlash =
     StringPrototypeEndsWith(filename, '/') ||
@@ -1881,6 +1880,10 @@ function createRequireFromPath(filename) {
 
   const m = new Module(proxyPath);
   m.filename = proxyPath;
+  if (fileURL !== undefined) {
+    // Save the URL if createRequire() was given a URL, to preserve search params, if any.
+    m[kURL] = fileURL.href;
+  }
 
   m.paths = Module._nodeModulePaths(m.path);
   return makeRequireFunction(m, null);
@@ -1891,27 +1894,31 @@ const createRequireError = 'must be a file URL object, file URL string, or ' +
 
 /**
  * Creates a new `require` function that can be used to load modules.
- * @param {string | URL} filename The path or URL to the module context for this `require`
+ * @param {string | URL} filenameOrURL The path or URL to the module context for this `require`
  * @throws {ERR_INVALID_ARG_VALUE} If `filename` is not a string or URL, or if it is a relative path that cannot be
  * resolved to an absolute path.
  */
-function createRequire(filename) {
-  let filepath;
+function createRequire(filenameOrURL) {
+  let filepath, fileURL;
 
-  if (isURL(filename) ||
-      (typeof filename === 'string' && !path.isAbsolute(filename))) {
+  if (isURL(filenameOrURL) ||
+      (typeof filenameOrURL === 'string' && !path.isAbsolute(filenameOrURL))) {
     try {
-      filepath = fileURLToPath(filename);
+      // It might be an URL, try to convert it.
+      // If it's a relative path, it would not parse and would be considered invalid per
+      // the documented contract.
+      fileURL = new URL(filenameOrURL);
+      filepath = fileURLToPath(fileURL);
     } catch {
-      throw new ERR_INVALID_ARG_VALUE('filename', filename,
+      throw new ERR_INVALID_ARG_VALUE('filename', filenameOrURL,
                                       createRequireError);
     }
-  } else if (typeof filename !== 'string') {
-    throw new ERR_INVALID_ARG_VALUE('filename', filename, createRequireError);
+  } else if (typeof filenameOrURL !== 'string') {
+    throw new ERR_INVALID_ARG_VALUE('filename', filenameOrURL, createRequireError);
   } else {
-    filepath = filename;
+    filepath = filenameOrURL;
   }
-  return createRequireFromPath(filepath);
+  return createRequireFromPath(filepath, fileURL);
 }
 
 /**

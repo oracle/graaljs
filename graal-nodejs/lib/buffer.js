@@ -182,15 +182,14 @@ function showFlaggedDeprecation() {
   if (bufferWarningAlreadyEmitted ||
       ++nodeModulesCheckCounter > 10000 ||
       (!require('internal/options').getOptionValue('--pending-deprecation') &&
-       isInsideNodeModules(100, true))) {
+       isInsideNodeModules(3))) {
     // We don't emit a warning, because we either:
     // - Already did so, or
     // - Already checked too many times whether a call is coming
     //   from node_modules and want to stop slowing down things, or
     // - We aren't running with `--pending-deprecation` enabled,
     //   and the code is inside `node_modules`.
-    // - We found node_modules in up to the topmost 100 frames, or
-    //   there are more than 100 frames and we don't want to search anymore.
+    // - If the topmost non-internal frame is not inside `node_modules`.
     return;
   }
 
@@ -244,7 +243,7 @@ function copyImpl(source, target, targetStart, sourceStart, sourceEnd) {
   return _copyActual(source, target, targetStart, sourceStart, sourceEnd);
 }
 
-function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
+function _copyActual(source, target, targetStart, sourceStart, sourceEnd, isUint8Copy = false) {
   if (sourceEnd - sourceStart > target.byteLength - targetStart)
     sourceEnd = sourceStart + target.byteLength - targetStart;
 
@@ -256,7 +255,11 @@ function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
   if (nb <= 0)
     return 0;
 
-  _copy(source, target, targetStart, sourceStart, nb);
+  if (sourceStart === 0 && nb === sourceLen && (isUint8Copy || isUint8Array(target))) {
+    TypedArrayPrototypeSet(target, source, targetStart);
+  } else {
+    _copy(source, target, targetStart, sourceStart, nb);
+  }
 
   return nb;
 }
@@ -347,13 +350,13 @@ Buffer.copyBytesFrom = function copyBytesFrom(view, offset, length) {
 
   const viewLength = TypedArrayPrototypeGetLength(view);
   if (viewLength === 0) {
-    return Buffer.alloc(0);
+    return new FastBuffer();
   }
 
   if (offset !== undefined || length !== undefined) {
     if (offset !== undefined) {
       validateInteger(offset, 'offset', 0);
-      if (offset >= viewLength) return Buffer.alloc(0);
+      if (offset >= viewLength) return new FastBuffer();
     } else {
       offset = 0;
     }
@@ -381,8 +384,9 @@ Buffer.copyBytesFrom = function copyBytesFrom(view, offset, length) {
 // Refs: https://tc39.github.io/ecma262/#sec-%typedarray%.of
 // Refs: https://esdiscuss.org/topic/isconstructor#content-11
 const of = (...items) => {
-  const newObj = createUnsafeBuffer(items.length);
-  for (let k = 0; k < items.length; k++)
+  const len = items.length;
+  const newObj = new FastBuffer(len); // In heap for small sizes
+  for (let k = 0; k < len; k++)
     newObj[k] = items[k];
   return newObj;
 };
@@ -605,7 +609,7 @@ Buffer.concat = function concat(list, length) {
       throw new ERR_INVALID_ARG_TYPE(
         `list[${i}]`, ['Buffer', 'Uint8Array'], list[i]);
     }
-    pos += _copyActual(buf, buffer, pos, 0, buf.length);
+    pos += _copyActual(buf, buffer, pos, 0, buf.length, true);
   }
 
   // Note: `length` is always equal to `buffer.length` at this point
@@ -1262,7 +1266,7 @@ if (internalBinding('config').hasIntl) {
       throw new ERR_INVALID_ARG_TYPE('source',
                                      ['Buffer', 'Uint8Array'], source);
     }
-    if (source.length === 0) return Buffer.alloc(0);
+    if (source.length === 0) return new FastBuffer();
 
     fromEncoding = normalizeEncoding(fromEncoding) || fromEncoding;
     toEncoding = normalizeEncoding(toEncoding) || toEncoding;

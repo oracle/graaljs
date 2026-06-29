@@ -339,7 +339,7 @@ changes:
     description: Add support for WHATWG URL instances.
 -->
 
-> Stability: 1.2 - Release candidate
+> Stability: 1.1 - Active development
 
 * `specifier` {string|URL} Customization hooks to be registered; this should be
   the same string that would be passed to `import()`, except that if it is
@@ -712,8 +712,7 @@ changes:
 
 <!-- type=misc -->
 
-> Stability: 1.2 - Release candidate (asynchronous version)
-> Stability: 1.1 - Active development (synchronous version)
+> Stability: 1.1 - Active development
 
 There are two types of module customization hooks that are currently supported:
 

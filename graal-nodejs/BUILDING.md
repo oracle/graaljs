@@ -160,11 +160,11 @@ platforms. This is true regardless of entries in the table below.
 
 Depending on the host platform, the selection of toolchains may vary.
 
-| Operating System | Compiler Versions                                              |
-| ---------------- | -------------------------------------------------------------- |
-| Linux            | GCC >= 10.1                                                    |
-| Windows          | Visual Studio >= 2022 with the Windows 10 SDK on a 64-bit host |
-| macOS            | Xcode >= 13 (Apple LLVM >= 12)                                 |
+| Operating System | Compiler Versions                                           |
+| ---------------- | ----------------------------------------------------------- |
+| Linux            | GCC >= 10.1                                                 |
+| Windows          | Visual Studio 2022 with the Windows 10 SDK on a 64-bit host |
+| macOS            | Xcode >= 13 (Apple LLVM >= 12)                              |
 
 ### Official binary platforms and toolchains
 
@@ -226,9 +226,9 @@ Supported platforms and toolchains change with each major version of Node.js.
 This document is only valid for the current major version of Node.js.
 Consult previous versions of this document for older versions of Node.js:
 
-* [Node.js 21](https://github.com/nodejs/node/blob/v21.x/BUILDING.md)
+* [Node.js 24](https://github.com/nodejs/node/blob/v24.x/BUILDING.md)
+* [Node.js 22](https://github.com/nodejs/node/blob/v22.x/BUILDING.md)
 * [Node.js 20](https://github.com/nodejs/node/blob/v20.x/BUILDING.md)
-* [Node.js 18](https://github.com/nodejs/node/blob/v18.x/BUILDING.md)
 
 ## Building Node.js on supported platforms
 
@@ -359,6 +359,27 @@ You can also execute the tests in a test suite directory
 
 ```bash
 tools/test.py test/message
+```
+
+You can execute tests that match a specific naming pattern using the wildcard
+`*`. For example, to run all tests under `test/parallel` with a name that starts
+with `test-stream-`:
+
+```bash
+tools/test.py test/parallel/test-stream-*
+tools/test.py parallel/test-stream-*  # The test/ prefix can be omitted
+# In some shell environments, you may need to quote the pattern
+tools/test.py "test/parallel/test-stream-*"
+```
+
+The wildcard `*` can be used in any part of the path. For example, to run all tests
+with a name that starts with `test-inspector-`, regardless of the directory they are in:
+
+```bash
+# Matches test/sequential/test-inspector-*, test/parallel/test-inspector-*,
+# test/known_issues/test-inspector-*, etc.
+tools/test.py "test/*/test-inspector-*"
+tools/test.py "*/test-inspector-*"  # The test/ prefix can be omitted
 ```
 
 If you want to check the other options, please refer to the help by using
@@ -543,7 +564,7 @@ on Linux, you can try [Docker](https://www.docker.com/products/docker-desktop/)
 (using an image like `gengjiawen/node-build:2020-02-14`).
 
 The `--debug` is not necessary and will slow down build and testing, but it can
-show clear stacktrace if ASan hits an issue.
+show a clear stack trace if ASan hits an issue.
 
 ```bash
 ./configure --debug --enable-asan && make -j4
@@ -621,8 +642,8 @@ the number of parallel build tasks (`-j<n>`).
 
 #### Tips
 
-You may need disable vcpkg integration if you got link error about symbol
-redefine related to zlib.lib(zlib1.dll), even you never install it by hand,
+You may need to disable vcpkg integration if you encounter a link error about symbol
+redefinition related to zlib.lib(zlib1.dll), even if you never installed it by hand,
 as vcpkg is part of CLion and Visual Studio now.
 
 ```powershell
@@ -665,7 +686,7 @@ Optional requirements to build the MSI installer package:
 
 Optional requirements for compiling for Windows on ARM (ARM64):
 
-* Visual Studio 17.6.0 or newer
+* Visual Studio 2022 (17.6.0 or newer)
   > **Note:** There is [a bug](https://github.com/nodejs/build/issues/3739) in `17.10.x`
   > preventing Node.js from compiling.
 * Visual Studio optional components
@@ -694,24 +715,16 @@ easily. These files will install the following
 [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/) packages:
 
 * Git for Windows with the `git` and Unix tools added to the `PATH`
-* `Python 3.12`
+* `Python 3.14`
 * `Visual Studio 2022` (Community, Enterprise or Professional)
 * `Visual Studio 2022 Build Tools` with Visual C++ workload, Clang and ClangToolset
 * `NetWide Assembler`
 
-To install Node.js prerequisites from Powershell Terminal:
+To install Node.js prerequisites from PowerShell Terminal:
 
 ```powershell
 winget configure .\.configurations\configuration.dsc.yaml
 ```
-
-Alternatively, you can use [Dev Home](https://learn.microsoft.com/en-us/windows/dev-home/)
-to install the prerequisites:
-
-* Switch to `Machine Configuration` tab
-* Click on `Configuration File`
-* Choose the corresponding WinGet configuration file
-* Click on `Set up as admin`
 
 ##### Option 3: Automated install with Boxstarter
 
@@ -798,7 +811,7 @@ cp c:\ccache\ccache.exe c:\ccache\cl.exe
 ```
 
 With newer version of Visual Studio, it may need the copy to be `clang-cl.exe`
-instead. If the output of `vcbuild.bat` suggestion missing `clang-cl.exe`, copy
+instead. If the output of `vcbuild.bat` suggests missing `clang-cl.exe`, copy
 it differently:
 
 ```powershell

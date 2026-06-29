@@ -1,6 +1,7 @@
 import { AsyncContextFrameBinding } from './internalBinding/async_context_frame';
 import { AsyncWrapBinding } from './internalBinding/async_wrap';
 import { BlobBinding } from './internalBinding/blob';
+import { BufferBinding } from './internalBinding/buffer';
 import { ConfigBinding } from './internalBinding/config';
 import { ConstantsBinding } from './internalBinding/constants';
 import { DebugBinding } from './internalBinding/debug';
@@ -16,6 +17,7 @@ import { OSBinding } from './internalBinding/os';
 import { ProcessBinding } from './internalBinding/process';
 import { SeaBinding } from './internalBinding/sea';
 import { SerdesBinding } from './internalBinding/serdes';
+import { StringDecoderBinding } from './internalBinding/string_decoder';
 import { SymbolsBinding } from './internalBinding/symbols';
 import { TimersBinding } from './internalBinding/timers';
 import { TypesBinding } from './internalBinding/types';
@@ -31,6 +33,7 @@ interface InternalBindingMap {
   async_context_frame: AsyncContextFrameBinding;
   async_wrap: AsyncWrapBinding;
   blob: BlobBinding;
+  buffer: BufferBinding;
   config: ConfigBinding;
   constants: ConstantsBinding;
   debug: DebugBinding;
@@ -47,6 +50,7 @@ interface InternalBindingMap {
   process: ProcessBinding;
   sea: SeaBinding;
   serdes: SerdesBinding;
+  string_decoder: StringDecoderBinding;
   symbols: SymbolsBinding;
   timers: TimersBinding;
   types: TypesBinding;

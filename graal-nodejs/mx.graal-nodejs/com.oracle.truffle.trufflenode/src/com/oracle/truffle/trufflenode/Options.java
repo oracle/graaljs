@@ -162,7 +162,6 @@ public final class Options {
                         "harmony-proxies",
                         "harmony-shipping",
                         "harmony-weak-refs",
-                        "jitless",
                         "js-float16array",
                         "lazy",
                         "log-timer-events",
@@ -325,6 +324,10 @@ public final class Options {
                 }
                 if ("stack-trace-limit".equals(key)) {
                     polyglotOptions.put("js.stack-trace-limit", value);
+                    continue;
+                }
+                if ("jitless".equals(key)) {
+                    optWebAssembly = false;
                     continue;
                 }
                 if (("js.webassembly".equals(key) || "webassembly".equals(key))) {

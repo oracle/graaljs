@@ -41,6 +41,7 @@ const {
 } = incoming;
 
 const kIncomingMessage = Symbol('IncomingMessage');
+const kSkipPendingData = Symbol('SkipPendingData');
 const kOnMessageBegin = HTTPParser.kOnMessageBegin | 0;
 const kOnHeaders = HTTPParser.kOnHeaders | 0;
 const kOnHeadersComplete = HTTPParser.kOnHeadersComplete | 0;
@@ -58,9 +59,11 @@ const MAX_HEADER_PAIRS = 2000;
 // called to process trailing HTTP headers.
 function parserOnHeaders(headers, url) {
   // Once we exceeded headers limit - stop collecting them
-  if (this.maxHeaderPairs <= 0 ||
-      this._headers.length < this.maxHeaderPairs) {
+  const capacity = this.maxHeaderPairs - this._headers.length;
+  if (this.maxHeaderPairs <= 0 || capacity >= headers.length) {
     this._headers.push(...headers);
+  } else if (capacity > 0) {
+    this._headers.push(...headers.slice(0, capacity));
   }
   this._url += url;
 }
@@ -126,7 +129,7 @@ function parserOnBody(b) {
   const stream = this.incoming;
 
   // If the stream has already been removed, then drop it.
-  if (stream === null)
+  if (stream === null || stream[kSkipPendingData])
     return;
 
   // Pretend this was the result of a stream._read call.
@@ -141,7 +144,7 @@ function parserOnMessageComplete() {
   const parser = this;
   const stream = parser.incoming;
 
-  if (stream !== null) {
+  if (stream !== null && !stream[kSkipPendingData]) {
     stream.complete = true;
     // Emit any trailing headers.
     const headers = parser._headers;
@@ -306,4 +309,5 @@ module.exports = {
   HTTPParser,
   isLenient,
   prepareError,
+  kSkipPendingData,
 };
