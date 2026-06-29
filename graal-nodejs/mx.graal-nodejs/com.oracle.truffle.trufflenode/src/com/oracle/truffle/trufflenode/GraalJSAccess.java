@@ -4006,12 +4006,50 @@ public final class GraalJSAccess {
         return moduleLoader;
     }
 
+    private static boolean isWasmModuleName(String moduleName) {
+        try {
+            String uriPath = new URI(moduleName).getPath();
+            if (uriPath != null) {
+                return uriPath.endsWith(JavaScriptLanguage.WASM_SOURCE_NAME_SUFFIX);
+            }
+        } catch (URISyntaxException usex) {
+        }
+        return moduleName.endsWith(JavaScriptLanguage.WASM_SOURCE_NAME_SUFFIX);
+    }
+
+    private static boolean isWasmModuleName(TruffleString specifier) {
+        return isWasmModuleName(Strings.toJavaString(specifier));
+    }
+
+    private static boolean hasOtherWasmPhaseRequest(ScriptOrModule referrer, ModuleRequest moduleRequest) {
+        if (!(referrer instanceof CyclicModuleRecord record) || !isWasmModuleName(moduleRequest.specifier())) {
+            return false;
+        }
+        Module.ImportPhase otherPhase;
+        if (moduleRequest.phase() == Module.ImportPhase.Source) {
+            otherPhase = Module.ImportPhase.Evaluation;
+        } else if (moduleRequest.phase() == Module.ImportPhase.Evaluation) {
+            otherPhase = Module.ImportPhase.Source;
+        } else {
+            return false;
+        }
+        for (ModuleRequest requestedModule : record.getRequestedModules()) {
+            if (requestedModule.phase() == otherPhase &&
+                            Strings.equals(requestedModule.specifier(), moduleRequest.specifier()) &&
+                            requestedModule.attributes().equals(moduleRequest.attributes())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Object moduleCompile(Object context, Object sourceCode, Object name, Object hostDefinedOptions) {
         JSRealm realm = (JSRealm) context;
         TruffleString moduleName = (TruffleString) name;
-        Source.LiteralBuilder builder = Source.newBuilder(JavaScriptLanguage.ID, Strings.toJavaString((TruffleString) sourceCode), Strings.toJavaString(moduleName));
+        String moduleNameString = Strings.toJavaString(moduleName);
+        Source.LiteralBuilder builder = Source.newBuilder(JavaScriptLanguage.ID, Strings.toJavaString((TruffleString) sourceCode), moduleNameString);
         try {
-            builder = builder.uri(new URI(Strings.toJavaString(moduleName)));
+            builder = builder.uri(new URI(moduleNameString));
         } catch (URISyntaxException usex) {
         }
         builder.mimeType(JavaScriptLanguage.MODULE_MIME_TYPE);
@@ -4027,6 +4065,9 @@ public final class GraalJSAccess {
         // Get the correct Source instance to be used as weak map key.
         source = parsedModule.getSource();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
+        if (realm.getContextOptions().isWebAssembly() && isWasmModuleName(moduleNameString)) {
+            return new NodeWasmModuleRecord(parsedModule, getModuleLoader(), new NodeHostDefined());
+        }
         return new JSModuleRecord(parsedModule, getModuleLoader(), new NodeHostDefined());
     }
 
@@ -4523,11 +4564,26 @@ public final class GraalJSAccess {
             JSRealm realm = JSRealm.get(null);
             Object result = NativeAccess.executeResolveCallback(callback, realm, specifier, importAttributes, referrer, sourcePhase);
             AbstractModuleRecord module;
+            boolean mixedPhaseWasm = hasOtherWasmPhaseRequest(referrer, moduleRequest);
             if (sourcePhase) {
                 JSWebAssemblyModuleObject moduleObject = (JSWebAssemblyModuleObject) result;
-                module = new WebAssemblyModuleRecord(realm.getContext(), moduleObject.getWASMSource(), moduleObject);
+                if (mixedPhaseWasm) {
+                    Object evaluationResult = NativeAccess.executeResolveCallback(moduleCallback, realm, specifier, importAttributes, referrer,
+                                    false);
+                    module = (AbstractModuleRecord) evaluationResult;
+                    if (module instanceof NodeWasmModuleRecord wasmModuleRecord) {
+                        wasmModuleRecord.setModuleSourceObject(moduleObject);
+                    }
+                } else {
+                    module = new WebAssemblyModuleRecord(realm.getContext(), moduleObject.getWASMSource(), moduleObject);
+                }
             } else {
                 module = (AbstractModuleRecord) result;
+                if (mixedPhaseWasm && module instanceof NodeWasmModuleRecord wasmModuleRecord) {
+                    Object sourceResult = NativeAccess.executeResolveCallback(sourceCallback, realm, specifier, importAttributes, referrer,
+                                    true);
+                    wasmModuleRecord.setModuleSourceObject((JSWebAssemblyModuleObject) sourceResult);
+                }
             }
             referrerCache.put(moduleRequest, module);
             return module;
@@ -4577,6 +4633,23 @@ public final class GraalJSAccess {
             return weakCallbackMap;
         }
 
+    }
+
+    static final class NodeWasmModuleRecord extends JSModuleRecord {
+        private JSWebAssemblyModuleObject moduleSourceObject;
+
+        NodeWasmModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, NodeHostDefined hostDefined) {
+            super(parsedModule, moduleLoader, hostDefined);
+        }
+
+        void setModuleSourceObject(JSWebAssemblyModuleObject moduleSourceObject) {
+            this.moduleSourceObject = moduleSourceObject;
+        }
+
+        @Override
+        public Object getModuleSource() {
+            return (moduleSourceObject == null) ? super.getModuleSource() : moduleSourceObject;
+        }
     }
 
     static final class NodeHostDefined {
