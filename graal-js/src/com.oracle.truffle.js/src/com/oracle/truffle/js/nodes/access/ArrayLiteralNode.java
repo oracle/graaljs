@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
-import com.oracle.truffle.js.runtime.array.dyn.AbstractDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantByteArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
@@ -236,7 +235,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         for (int i = 0; i < values.length; i++) {
             Object oValue = values[i];
             if (oValue instanceof Double) {
-                doubleArray[i] = AbstractDoubleArray.canonicalizeNaN((double) oValue);
+                doubleArray[i] = (double) oValue;
             } else if (oValue instanceof Integer) {
                 doubleArray[i] = (int) oValue;
             }
@@ -360,7 +359,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     } else {
                         doubleValue = getElement(i).executeDouble(frame);
                     }
-                    primitiveArray[i] = AbstractDoubleArray.canonicalizeNaN(doubleValue);
+                    primitiveArray[i] = doubleValue;
                 } catch (UnexpectedResultException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     assert !(e.getResult() instanceof Double);

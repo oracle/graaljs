@@ -72,10 +72,9 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
 
     @Override
     public void setInBoundsFast(JSDynamicObject object, int index, double value) {
-        double doubleValue = canonicalizeNaN(value);
-        getArray(object)[index] = doubleValue;
+        getArray(object)[index] = value;
         if (JSConfig.TraceArrayWrites) {
-            traceWriteValue("InBoundsFast", index, doubleValue);
+            traceWriteValue("InBoundsFast", index, value);
         }
     }
 

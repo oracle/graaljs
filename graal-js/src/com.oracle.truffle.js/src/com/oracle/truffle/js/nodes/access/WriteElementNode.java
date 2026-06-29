@@ -1316,17 +1316,17 @@ public class WriteElementNode extends JSTargetableNode {
             }
             int iIndex = (int) index;
             boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, holesDoubleArray, index, hasExplicitHolesIf));
-            if (containsHoles && inBoundsFastIf.profile(this, holesDoubleArray.isInBoundsFast(target, index))) {
+            if (containsHoles && inBoundsFastIf.profile(this, holesDoubleArray.isInBoundsFast(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
                 if (inBoundsFastHoleIf.profile(this, holesDoubleArray.isHoleFast(target, iIndex))) {
                     holesDoubleArray.setInBoundsFastHole(target, iIndex, doubleValue);
                 } else {
                     holesDoubleArray.setInBoundsFastNonHole(target, iIndex, doubleValue);
                 }
                 return true;
-            } else if (containsHoles && inBoundsIf.profile(this, holesDoubleArray.isInBounds(target, iIndex))) {
+            } else if (containsHoles && inBoundsIf.profile(this, holesDoubleArray.isInBounds(target, iIndex) && !HolesDoubleArray.isHoleValue(doubleValue))) {
                 holesDoubleArray.setInBounds(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
-            } else if (containsHoles && supportedContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index))) {
+            } else if (containsHoles && supportedContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
                 holesDoubleArray.setSupported(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else {
@@ -1334,7 +1334,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (!containsHoles && supportedNotContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index))) {
                     toArrayType = holesDoubleArray.toNonHoles(target, index, doubleValue);
                 } else {
-                    assert holesDoubleArray.isSparse(target, index);
+                    assert holesDoubleArray.isSparse(target, index) || HolesDoubleArray.isHoleValue(doubleValue);
                     toArrayType = holesDoubleArray.toSparse(target, index, doubleValue);
                 }
                 return setArrayAndWrite(toArrayType, target, index, doubleValue, root);

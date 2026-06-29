@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,10 +110,9 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     private void setInBoundsFastIntl(JSDynamicObject object, int index, int internalIndex, double value) {
-        double doubleValue = canonicalizeNaN(value);
-        getArray(object)[internalIndex] = doubleValue;
+        getArray(object)[internalIndex] = value;
         if (JSConfig.TraceArrayWrites) {
-            traceWriteValue("InBoundsFast", index, doubleValue);
+            traceWriteValue("InBoundsFast", index, value);
         }
     }
 
