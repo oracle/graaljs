@@ -38,7 +38,7 @@ This enables GraalJS which is built on top of Oracle GraalVM and licensed under 
 Use _artifactId_ `js-community` instead of `js` if you want to use GraalJS built on GraalVM Community Edition.
 
 Go step-by-step to create a Maven project, embedding JavaScript in Java, and run it.
-This example application was tested with GraalVM for JDK 23 and the GraalVM Polyglot API version 24.1.0.
+This example application was tested with GraalVM for JDK 25 and the GraalVM Polyglot API version 25.1.3.
 See how to install GraalVM on the [Downloads page](https://www.graalvm.org/downloads/).
 
 1. Create a new Maven Java project named "helloworld" in your favorite IDE or from your terminal with the following structure:
@@ -97,10 +97,10 @@ See how to install GraalVM on the [Downloads page](https://www.graalvm.org/downl
     ```
     Set the GraalJS and GraalVM Polyglot API versions by adding a `graaljs.version` property to the `<properties>` section.
     Alternatively, you can replace `${graaljs.version}` with the version string directly.
-    For this example, use `24.1.0`:
+    For this example, use `25.1.3`:
     ```xml
     <properties>
-        <graaljs.version>24.1.0</graaljs.version>
+        <graaljs.version>25.1.3</graaljs.version>
     </properties>
     ```
 

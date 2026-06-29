@@ -79,6 +79,20 @@ try {
 
 ### Global Properties
 
+#### `crypto`
+
+The optional `crypto` global property provides the Web Crypto API methods `getRandomValues()` and `randomUUID()`.
+Enable it with the experimental `js.crypto` option:
+
+```shell
+js --experimental-options --js.crypto
+```
+
+#### `performance`
+
+The optional `performance` global property provides `now()`, `timeOrigin`, and `toJSON()` from the Web High Resolution Time API.
+Enable it with the stable `js.performance` option. The `js` launcher enables it by default.
+
 #### `load(source)`
 - loads (parses and executes) the specified JavaScript source code
 

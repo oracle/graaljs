@@ -112,7 +112,7 @@ It expects a Boolean value and the default is `true`.
 
 #### Strict Mode
 
-The `--js.strict option enables JavaScript's strict mode for all scripts.
+The `--js.strict` option enables JavaScript's strict mode for all scripts.
 It expects a Boolean value and the default is `false`.
 
 ### Frequently Used Experimental Options
