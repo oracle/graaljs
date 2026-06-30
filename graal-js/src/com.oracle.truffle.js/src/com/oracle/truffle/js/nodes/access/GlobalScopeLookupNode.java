@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -53,7 +51,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 
 /**
  * Checks if a scope binding is present and guards against TDZ and const assignment.
@@ -74,14 +71,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
     public abstract boolean execute(Object scope);
 
     @SuppressWarnings("unused")
-    @Specialization(assumptions = {"assumption"})
-    static boolean doAbsent(JSDynamicObject scope,
-                    @Cached("getAbsentPropertyAssumption(scope.getShape())") Assumption assumption) {
-        return false;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"scope.getShape() == cachedShape"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit", replaces = "doAbsent")
+    @Specialization(guards = {"scope.getShape() == cachedShape"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit")
     final boolean doCached(JSDynamicObject scope,
                     @Cached("scope.getShape()") Shape cachedShape,
                     @Cached("cachedShape.hasProperty(varName)") boolean exists,
@@ -131,14 +121,5 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
             return property != null && JSProperty.isConst(property);
         }
         return false;
-    }
-
-    @NeverDefault
-    final Assumption getAbsentPropertyAssumption(Shape shape) {
-        Property property = shape.getProperty(varName);
-        if (property == null) {
-            return JSShape.getPropertyAssumption(shape, varName);
-        }
-        return Assumption.NEVER_VALID;
     }
 }
