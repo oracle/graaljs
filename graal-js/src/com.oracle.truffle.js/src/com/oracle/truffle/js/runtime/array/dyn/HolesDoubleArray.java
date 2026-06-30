@@ -110,10 +110,9 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     private void setInBoundsFastIntl(JSDynamicObject object, int index, int internalIndex, double value) {
-        double doubleValue = canonicalizeNaN(value);
-        getArray(object)[internalIndex] = doubleValue;
+        getArray(object)[internalIndex] = value;
         if (JSConfig.TraceArrayWrites) {
-            traceWriteValue("InBoundsFast", index, doubleValue);
+            traceWriteValue("InBoundsFast", index, value);
         }
     }
 
@@ -207,6 +206,11 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     @Override
     public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return deleteElementHoles(object, index);
+    }
+
+    @Override
+    protected HolesObjectArray toObjectHoles(JSDynamicObject object) {
+        throw new UnsupportedOperationException("already a holes array");
     }
 
     @Override

@@ -63,10 +63,9 @@ public abstract class AbstractContiguousDoubleArray extends AbstractDoubleArray 
 
     @Override
     public void setInBoundsFast(JSDynamicObject object, int index, double value) {
-        double doubleValue = canonicalizeNaN(value);
-        getArray(object)[(int) (index - getIndexOffset(object))] = doubleValue;
+        getArray(object)[(int) (index - getIndexOffset(object))] = value;
         if (JSConfig.TraceArrayWrites) {
-            traceWriteValue("InBoundsFast", index, doubleValue);
+            traceWriteValue("InBoundsFast", index, value);
         }
     }
 

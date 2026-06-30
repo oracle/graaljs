@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -459,11 +459,9 @@ public class DynamicArrayTest extends JSTest {
         assertForward(HolesIntArray.HOLE_VALUE, 0);
     }
 
-    @Ignore
-    @Test(expected = AssertionError.class)
-    public void testInvalidDoubleHoles() {
-        JSArrayObject arrayObject = createEmptyArray();
-        arrayObject.getArrayType().setElement(arrayObject, 0, HolesDoubleArray.HOLE_VALUE_DOUBLE, false);
+    @Test
+    public void testValidDoubleHoles() {
+        assertForward(HolesDoubleArray.HOLE_VALUE_DOUBLE, 0);
     }
 
     @Ignore

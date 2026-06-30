@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.FASTPATH_PROBABILITY;
 import static com.oracle.truffle.api.CompilerDirectives.SLOWPATH_PROBABILITY;
 import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -59,18 +60,6 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
         super(integrityLevel, cache);
     }
 
-    /*
-     * User-provided NaN payloads can collide with the internal HolesDoubleArray hole value.
-     * Canonicalize NaN values before storing them into JS double-array backing stores so that only
-     * actual holes contain the hole value.
-     */
-    public static double canonicalizeNaN(double value) {
-        if (injectBranchProbability(SLOWPATH_PROBABILITY, Double.isNaN(value))) {
-            return Double.NaN;
-        }
-        return value;
-    }
-
     @Override
     AbstractWritableArray sameTypeHolesArray(JSDynamicObject object, int length, Object array, long indexOffset, int arrayOffset, int usedLength, int holeCount) {
         return HolesDoubleArray.makeHolesDoubleArray(object, length, (double[]) array, indexOffset, arrayOffset, usedLength, holeCount, integrityLevel);
@@ -82,8 +71,10 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
         assert JSRuntime.isArrayIndex(index) : index;
         if (injectBranchProbability(FASTPATH_PROBABILITY, (value instanceof Integer || value instanceof Double) && isSupported(object, (int) index))) {
-            double doubleValue = canonicalizeNaN(JSRuntime.doubleValue((Number) value));
-            assert !HolesDoubleArray.isHoleValue(doubleValue);
+            double doubleValue = JSRuntime.doubleValue((Number) value);
+            if (injectBranchProbability(SLOWPATH_PROBABILITY, HolesDoubleArray.isHoleValue(doubleValue))) {
+                return toObject(object, index, value).setElementImpl(object, index, value, strict);
+            }
             setSupported(object, (int) index, doubleValue, null, SetSupportedProfileAccess.getUncached());
             return this;
         } else {
@@ -128,19 +119,17 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     public final void setInBounds(JSDynamicObject object, int index, double value, Node node, SetSupportedProfileAccess profile) {
-        double doubleValue = canonicalizeNaN(value);
-        getArray(object)[prepareInBounds(object, index, node, profile)] = doubleValue;
+        getArray(object)[prepareInBounds(object, index, node, profile)] = value;
         if (JSConfig.TraceArrayWrites) {
-            traceWriteValue("InBounds", index, doubleValue);
+            traceWriteValue("InBounds", index, value);
         }
     }
 
     public final void setSupported(JSDynamicObject object, int index, double value, Node node, SetSupportedProfileAccess profile) {
-        double doubleValue = canonicalizeNaN(value);
         int preparedIndex = prepareSupported(object, index, node, profile);
-        getArray(object)[preparedIndex] = doubleValue;
+        getArray(object)[preparedIndex] = value;
         if (JSConfig.TraceArrayWrites) {
-            traceWriteValue("Supported", index, doubleValue);
+            traceWriteValue("Supported", index, value);
         }
     }
 
@@ -175,7 +164,7 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     }
 
     @Override
-    public abstract AbstractDoubleArray toHoles(JSDynamicObject object, long index, Object value);
+    public abstract AbstractWritableArray toHoles(JSDynamicObject object, long index, Object value);
 
     @Override
     public final AbstractWritableArray toDouble(JSDynamicObject object, long index, double value) {
@@ -185,6 +174,31 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
     @Override
     public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
         return toHoles(object, index, HolesDoubleArray.HOLE_VALUE).deleteElementImpl(object, index, strict);
+    }
+
+    protected abstract HolesObjectArray toObjectHoles(JSDynamicObject object);
+
+    protected static Object[] convertToObject(JSDynamicObject object) {
+        double[] array = getArray(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = arrayGetArrayOffset(object);
+        Object[] objectArray = new Object[array.length];
+        for (int i = arrayOffset; i < arrayOffset + usedLength; i++) {
+            objectArray[i] = array[i];
+        }
+        return objectArray;
+    }
+
+    protected static boolean containsHoleValue(JSDynamicObject object) {
+        double[] array = getArray(object);
+        int usedLength = getUsedLength(object);
+        int arrayOffset = arrayGetArrayOffset(object);
+        for (int i = 0; i < usedLength; i++) {
+            if (HolesDoubleArray.isHoleValue(array[arrayOffset + i])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
