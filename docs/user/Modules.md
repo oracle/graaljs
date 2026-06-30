@@ -30,9 +30,42 @@ Experimental support for CommonJS modules can be enabled through the `js.commonj
 
 GraalJS supports the full ES modules specification, including `import` statements, dynamic modules import using `import()`, and advanced features such as [top-level `await`](https://github.com/tc39/proposal-top-level-await).
 
-ECMAScript modules can be loaded in a `Context` simply by evaluating the module sources. 
-GraalJS loads ECMAScript modules based on their file extension. 
-Therefore, any ECMAScript module should have file name extension _.mjs_. 
+GraalJS supports import attributes using the `with` syntax:
+
+```js
+import config from "./config.json" with { type: "json" };
+```
+
+Legacy import assertions using `assert`, and the `js.import-assertions` option, are no longer supported.
+Use import attributes and the `js.import-attributes` option instead.
+
+#### Importing Source Text and Bytes
+
+GraalJS can import the contents of a module without evaluating it.
+Enable import attributes together with the corresponding experimental feature:
+
+```shell
+js --experimental-options \
+   --js.import-attributes \
+   --js.import-text \
+   --module application.mjs
+```
+
+Use the `text` import attribute to receive the source as a string:
+
+```js
+import source from "./document.txt" with { type: "text" };
+```
+
+Enable `--js.import-bytes` and use the `bytes` import attribute to receive the source as a `Uint8Array`:
+
+```js
+import data from "./data.bin" with { type: "bytes" };
+```
+
+ECMAScript modules can be loaded in a `Context` simply by evaluating the module sources.
+GraalJS loads ECMAScript modules based on their file extension.
+Therefore, any ECMAScript module should have file name extension _.mjs_.
 Alternatively, the module [Source](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html) should have MIME type `"application/javascript+module"`.
 
 As an example, let's assume that you have a file named _foo.mjs_ containing the following simple ES module:

@@ -2,7 +2,7 @@
 
 # GraalJS
 
-GraalJS is a JavaScript engine implemented in Java on top of GraalVM. 
+GraalJS is a JavaScript engine implemented in Java on top of GraalVM.
 It is an ECMAScript-compliant runtime to execute JavaScript and Node.js applications, and includes all the benefits from the GraalVM stack including interoperability with Java.
 GraalJS is an open-source project.
 
@@ -25,7 +25,7 @@ We also provide [standalone distributions](https://github.com/oracle/graaljs/rel
 Thanks to GraalJS, you can easily embed JavaScript into a Java application.
 All necessary artifacts can be downloaded directly from Maven Central.
 
-All artifacts relevant to embedders can be found in the Maven dependency group [org.graalvm.polyglot](https://central.sonatype.com/namespace/org.graalvm.polyglot). 
+All artifacts relevant to embedders can be found in the Maven dependency group [org.graalvm.polyglot](https://central.sonatype.com/namespace/org.graalvm.polyglot).
 
 Below is a minimal Maven dependency setup that you can copy into your _pom.xml_:
 ```xml
@@ -49,19 +49,19 @@ To access [polyglot isolate](https://www.graalvm.org/reference-manual/embed-lang
 
 See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub for a complete runnable example.
 
-You can use GraalJS with GraalVM JDK, Oracle JDK, or OpenJDK. 
-If you prefer running on a stock JVM, have a look at [Run GraalJS on a Stock JDK](docs/user/RunOnJDK.md). 
+You can use GraalJS with GraalVM JDK, Oracle JDK, or OpenJDK.
+If you prefer running on a stock JVM, have a look at [Run GraalJS on a Stock JDK](docs/user/RunOnJDK.md).
 Note that in this mode many features and optimizations of GraalVM are not available.
 Due to those limitations, running on a stock JVM is not a supported feature - please use a GraalVM instead.
 
 ### Standalone Distributions
 
-Standalone distributions are published on [GitHub](https://github.com/oracle/graaljs/releases). 
-There are two language runtime options to choose from: 
+Standalone distributions are published on [GitHub](https://github.com/oracle/graaljs/releases).
+There are two language runtime options to choose from:
 - Native launcher compiled ahead of time with GraalVM Native Image;
 - JVM-based runtime.
 
-To distinguish between them, a standalone that comes with a JVM has a `-jvm` infix in the name. 
+To distinguish between them, a standalone that comes with a JVM has a `-jvm` infix in the name.
 Also, the GraalVM Community Edition version has `-community` in the name, for example, `graaljs-community-<version>-<os>-<arch>.tar.gz`.
 
 Four different configurations are available for each component and platform combination:
@@ -73,7 +73,7 @@ Four different configurations are available for each component and platform comb
 | Native       | UPL     | `-community`     |
 | JVM          | UPL     | `-community-jvm` |
 
-To install GraalJS from a standalone, download and extract the archive from the [GitHub Releases](https://github.com/oracle/graaljs/releases) page. 
+To install GraalJS from a standalone, download and extract the archive from the [GitHub Releases](https://github.com/oracle/graaljs/releases) page.
 After the installation, the `js` or `node` executable in the `bin` subdirectory can be used to run JavaScript files or Node modules, respectively.
 If no file is provided on the command line, an interactive shell (REPL) will be spawned.
 
@@ -84,8 +84,8 @@ If no file is provided on the command line, an interactive shell (REPL) will be 
 
 ## Node.js Runtime
 
-GraalJS can run unmodified Node.js applications. 
-GraalVM's Node.js runtime is based on a recent version of Node.js, and runs the GraalJS engine instead of Google V8. 
+GraalJS can run unmodified Node.js applications.
+GraalVM's Node.js runtime is based on a recent version of Node.js, and runs the GraalJS engine instead of Google V8.
 It provides high compatibility with the existing NPM packages.
 This includes NPM packages with native implementations.
 Note that some NPM modules may require to be recompiled from source with GraalJS (if they ship with binaries that have been compiled for Node.js based on V8).
@@ -110,7 +110,7 @@ In addition, some popular extensions of other engines are supported. See [GraalJ
 ## Operating Systems Compatibility
 
 The core JavaScript engine is a Java application and is thus compatible with every operating system that provides a compatible JVM. See [Run GraalJS on a Stock JDK](docs/user/RunOnJDK.md).
-We provide binary distributions and fully support GraalJS on Linux (x64, AArch64), macOS (x64, AArch64), and Windows (x64), currently.
+We provide binary distributions and fully support GraalJS on Linux (x64, AArch64), macOS (AArch64), and Windows (x64).
 
 ## Stay Connected with the Community
 
