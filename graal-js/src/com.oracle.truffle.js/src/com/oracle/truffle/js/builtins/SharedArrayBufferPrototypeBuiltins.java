@@ -263,7 +263,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
                     errorBranch.enter(this);
                     throw Errors.createRangeError("invalid newByteLength");
                 }
-            } while (thisObj.updateByteLength(currentByteLength, (int) newByteLength));
+            } while (!thisObj.updateByteLength(currentByteLength, (int) newByteLength));
             return Undefined.instance;
         }
 
