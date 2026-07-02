@@ -1094,9 +1094,13 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String[] availableTimeZones() {
-        Set<String> set = TimeZone.getAvailableIDs(TimeZone.SystemTimeZoneType.CANONICAL_LOCATION, null, null);
+        Set<String> set = TimeZone.getAvailableIDs(TimeZone.SystemTimeZoneType.CANONICAL, null, null);
         set = new HashSet<>(set);
         set.remove("Antarctica/McMurdo");
+        // ECMA-402 designates UTC as the primary identifier for these ICU aliases.
+        set.remove("Etc/UTC");
+        set.remove("Etc/GMT");
+        set.add("UTC");
         String[] timeZones = set.toArray(new String[set.size()]);
         Arrays.sort(timeZones);
         return timeZones;
