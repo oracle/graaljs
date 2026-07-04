@@ -507,7 +507,7 @@ def mx_post_parse_cmd_line(args):
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     if register_project and register_distribution:
-        isolate_build_options = ['-H:+AuxiliaryEngineCache', '-H:ReservedAuxiliaryImageBytes=2145482548'] if not mx.is_windows() else []
+        isolate_build_options = libjsvm_dynamic_build_args()
         meta_pom = [p for p in _suite.dists if p.name == 'JS_POM'][0]
         mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'js',
                                         'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
@@ -525,17 +525,22 @@ def graaljs_standalone_deps():
         deps += ['wasm:WASM']
     return deps
 
-def libjsvm_build_args():
+def libjsvm_dynamic_build_args():
+    return libjsvm_dynamic_build_args_common() + (libjsvm_dynamic_build_args_ee() if is_nativeimage_ee() else [])
+
+def libjsvm_dynamic_build_args_common():
+    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() >= mx.VersionSpec("25") and is_wasm_available():
+        return [
+            '-H:+UnlockExperimentalVMOptions',
+            '-H:+VectorAPISupport',
+            '--add-modules=jdk.incubator.vector',
+        ]
+    else:
+        return []
+
+def libjsvm_dynamic_build_args_ee():
     image_build_args = []
-    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
-        image_build_args.extend([
-            '--exclude-config',
-            r'wasm\.jar',
-            r'META-INF/native-image/org\.graalvm\.wasm/wasm-language/native-image\.properties',
-            '--initialize-at-build-time=org.graalvm.wasm',
-            '-H:MaxRuntimeCompileMethods=2000',
-        ])
-    if is_nativeimage_ee() and not mx.is_windows():
+    if not mx.is_windows():
         image_build_args.extend([
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
@@ -578,11 +583,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 # Uncomment to disable JLine FFM provider at native image build time
                 # '-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true',
                 '--enable-native-access=org.graalvm.shadowed.jline',
-            ],
-            build_args_enterprise=[
-                '-H:+AuxiliaryEngineCache',
-                '-H:ReservedAuxiliaryImageBytes=2145482548',
-            ] if not mx.is_windows() else [],
+            ] + libjsvm_dynamic_build_args_common(),
+            build_args_enterprise=libjsvm_dynamic_build_args_ee(),
             language='js',
             default_vm_args=[
                 '--vm.-enable-native-access=org.graalvm.shadowed.jline',

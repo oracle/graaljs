@@ -474,7 +474,7 @@ suite = {
         #"-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true",
         "--enable-native-access=org.graalvm.shadowed.jline",
       ],
-      "dynamicBuildArgs": "libjsvm_build_args",
+      "dynamicBuildArgs": "libjsvm_dynamic_build_args",
     },
   },
 

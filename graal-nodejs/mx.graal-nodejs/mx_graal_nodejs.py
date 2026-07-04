@@ -634,17 +634,22 @@ def graalnodejs_standalone_deps():
         deps += ['wasm:WASM']
     return deps
 
-def libgraalnodejs_build_args():
+def libgraalnodejs_dynamic_build_args():
+    return libgraalnodejs_dynamic_build_args_common() + (libgraalnodejs_dynamic_build_args_ee() if is_nativeimage_ee() else [])
+
+def libgraalnodejs_dynamic_build_args_common():
+    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() >= mx.VersionSpec("25") and is_wasm_available():
+        return [
+            '-H:+UnlockExperimentalVMOptions',
+            '-H:+VectorAPISupport',
+            '--add-modules=jdk.incubator.vector',
+        ]
+    else:
+        return []
+
+def libgraalnodejs_dynamic_build_args_ee():
     image_build_args = []
-    if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25"):
-        image_build_args.extend([
-            '--exclude-config',
-            r'wasm\.jar',
-            r'META-INF/native-image/org\.graalvm\.wasm/wasm-language/native-image\.properties',
-            '--initialize-at-build-time=org.graalvm.wasm',
-            '-H:MaxRuntimeCompileMethods=2000',
-        ])
-    if is_nativeimage_ee() and not mx.is_windows():
+    if not mx.is_windows():
         image_build_args.extend([
             '-H:+AuxiliaryEngineCache',
             '-H:ReservedAuxiliaryImageBytes=2145482548',
@@ -695,11 +700,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 *(['--language:wasm'] if is_wasm_available() else []),
                 # Disable JLine FFM provider at native image build time (node launcher does not use jline)
                 "-Dorg.graalvm.shadowed.org.jline.terminal.ffm.disable=true",
-            ],
-            build_args_enterprise=[
-                '-H:+AuxiliaryEngineCache',
-                '-H:ReservedAuxiliaryImageBytes=2145482548',
-            ] if not mx.is_windows() else [],
+            ] + libgraalnodejs_dynamic_build_args_common(),
+            build_args_enterprise=libgraalnodejs_dynamic_build_args_ee(),
             home_finder=True,
         ),
     ],
