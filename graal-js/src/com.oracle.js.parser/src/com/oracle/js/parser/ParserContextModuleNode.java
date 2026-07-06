@@ -41,7 +41,9 @@
 package com.oracle.js.parser;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
@@ -69,7 +71,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
     private final Scope moduleScope;
     private final AbstractParser parser;
 
-    private List<ModuleRequest> requestedModules = new ArrayList<>();
+    private Set<ModuleRequest> requestedModules = new LinkedHashSet<>();
     private List<ImportEntry> importEntries = new ArrayList<>();
     private List<ExportEntry> localExportEntries = new ArrayList<>();
     private List<ExportEntry> indirectExportEntries = new ArrayList<>();

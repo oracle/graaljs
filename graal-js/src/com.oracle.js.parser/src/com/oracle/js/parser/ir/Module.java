@@ -41,6 +41,7 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -232,7 +233,7 @@ public final class Module {
     private final List<ImportNode> imports;
     private final List<ExportNode> exports;
 
-    public Module(List<ModuleRequest> requestedModules, List<ImportEntry> importEntries, List<ExportEntry> localExportEntries, List<ExportEntry> indirectExportEntries,
+    public Module(Collection<ModuleRequest> requestedModules, List<ImportEntry> importEntries, List<ExportEntry> localExportEntries, List<ExportEntry> indirectExportEntries,
                     List<ExportEntry> starExportEntries, List<ImportNode> imports, List<ExportNode> exports) {
         this.requestedModules = List.copyOf(requestedModules);
         this.importEntries = List.copyOf(importEntries);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,8 @@ import com.oracle.js.parser.ir.ImportNode;
 import com.oracle.js.parser.ir.ImportSpecifierNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Module.ImportPhase;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Strings;
@@ -71,8 +73,15 @@ public class ImportParserTest {
     public static final TruffleString DEFAULT = Strings.constant("default");
 
     private static FunctionNode parseModule(String code) {
-        ScriptEnvironment env = ScriptEnvironment.builder().strict(true).ecmaScriptVersion(ScriptEnvironment.ES_2020).importAttributes(true).build();
-        Parser parser = new Parser(env, Source.sourceFor("name", code), new ErrorManager.ThrowErrorManager());
+        return parseModule(code, null);
+    }
+
+    private static FunctionNode parseModule(String code, Boolean sourcePhaseImports) {
+        ScriptEnvironment.Builder envBuilder = ScriptEnvironment.builder().strict(true).ecmaScriptVersion(ScriptEnvironment.ES_2020).importAttributes(true);
+        if (sourcePhaseImports != null) {
+            envBuilder.sourcePhaseImports(sourcePhaseImports);
+        }
+        Parser parser = new Parser(envBuilder.build(), Source.sourceFor("name", code), new ErrorManager.ThrowErrorManager());
         return parser.parseModule("moduleName");
     }
 
@@ -284,5 +293,53 @@ public class ImportParserTest {
         ImportEntry importEntry = module.getImportEntries().get(0);
         assertEquals(importEntry.toString(), expectedAttributes.size(), importEntry.getModuleRequest().attributes().size());
         assertEquals(importEntry.toString(), expectedAttributes, importEntry.getModuleRequest().attributes());
+    }
+
+    @Test
+    public void testRequestedModulesDeduplicated() {
+        Module module = parseModule("""
+                        import {foo as firstFoo} from "foo";
+                        import {bar as secondFoo} from "foo";
+                        import json from "bar" with {type: "json"};
+                        import text from "bar" with {type: "text"};
+                        """).getModule();
+
+        List<ModuleRequest> requestedModules = module.getRequestedModules();
+        assertEquals(3, requestedModules.size());
+
+        ModuleRequest request0 = requestedModules.get(0);
+        assertEquals(FOO, request0.specifier());
+        assertEquals(Map.of(), request0.attributes());
+        assertEquals(ImportPhase.Evaluation, request0.phase());
+
+        ModuleRequest request1 = requestedModules.get(1);
+        assertEquals(BAR, request1.specifier());
+        assertEquals(Map.of(Strings.fromJavaString("type"), Strings.fromJavaString("json")), request1.attributes());
+        assertEquals(ImportPhase.Evaluation, request1.phase());
+
+        ModuleRequest request2 = requestedModules.get(2);
+        assertEquals(BAR, request2.specifier());
+        assertEquals(Map.of(Strings.fromJavaString("type"), Strings.fromJavaString("text")), request2.attributes());
+        assertEquals(ImportPhase.Evaluation, request2.phase());
+    }
+
+    @Test
+    public void testRequestedModulesDistinguishImportPhases() {
+        Module module = parseModule("""
+                        import source firstSource from "foo";
+                        import source secondSource from "foo";
+                        import {bar as evaluationBinding} from "foo";
+                        """, true).getModule();
+
+        List<ModuleRequest> requestedModules = module.getRequestedModules();
+        assertEquals(2, requestedModules.size());
+
+        ModuleRequest request0 = requestedModules.get(0);
+        assertEquals(FOO, request0.specifier());
+        assertEquals(ImportPhase.Source, request0.phase());
+
+        ModuleRequest request1 = requestedModules.get(1);
+        assertEquals(FOO, request1.specifier());
+        assertEquals(ImportPhase.Evaluation, request1.phase());
     }
 }

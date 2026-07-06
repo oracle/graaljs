@@ -185,9 +185,6 @@ test-vm-timeout-escape-promise-2: FAIL
 test-vm-module-after-evaluate: FAIL
 test-vm-script-after-evaluate: FAIL
 
-# v8::Module::GetModuleRequests() (i.e. Module.requestedModules) contains duplicate entries
-test-vm-module-modulerequests: FAIL
-
 # run-time user-land snapshots are not supported
 test-snapshot-api: FAIL
 test-snapshot-argv1: FAIL
