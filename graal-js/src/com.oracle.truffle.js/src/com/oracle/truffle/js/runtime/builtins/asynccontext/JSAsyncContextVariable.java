@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JSAsyncContextVariable extends JSNonProxy implements JSConstructorFactory.WithFunctions, PrototypeSupplier {
+public final class JSAsyncContextVariable extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final TruffleString CLASS_NAME = Strings.constant("Variable");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Variable.prototype");
@@ -97,7 +97,7 @@ public final class JSAsyncContextVariable extends JSNonProxy implements JSConstr
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, AsyncContextBuiltins.BUILTINS);
+        return INSTANCE.createConstructorAndPrototype(realm);
     }
 
     @Override
