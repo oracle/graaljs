@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -220,6 +220,10 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         public void execute(JSFunctionObject boundFunction, JSFunctionObject targetFunction, TruffleString prefix, int argCount) {
+            if (!(boundFunction instanceof JSFunctionObject.BoundOrWrapped)) {
+                executeOrdinaryFunction(boundFunction, targetFunction, prefix, argCount);
+                return;
+            }
             if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(targetFunction))) {
                 if (!JSProperty.isProxy(functionLengthGetPropertyFlags.execute(targetFunction, Strings.LENGTH, 0))) {
                     // The Get node serves as an implicit branch profile.
@@ -242,6 +246,10 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         public void execute(JSFunctionObject boundFunction, Object target, TruffleString prefix, int argCount) {
+            if (!(boundFunction instanceof JSFunctionObject.BoundOrWrapped)) {
+                executeOrdinaryFunction(boundFunction, target, prefix, argCount);
+                return;
+            }
             if (isJSFunctionProfile.profile(target instanceof JSFunctionObject)) {
                 execute(boundFunction, (JSFunctionObject) target, prefix, argCount);
                 return;
@@ -252,6 +260,35 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             copyName(boundFunction, target, prefix);
+        }
+
+        /**
+         * CopyNameAndLength for an ordinary functions. Bound and wrapped
+         * functions use the specialized paths above, which preserve their
+         * lazy function name and length properties.
+         */
+        private void executeOrdinaryFunction(JSFunctionObject function, Object target, TruffleString prefix, int argCount) {
+            Number length = 0;
+            if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(target))) {
+                length = copyLength(target, argCount);
+            }
+            JSFunction.setFunctionLength(function, length);
+            copyName(function, target, prefix);
+        }
+
+        private Number copyLength(Object target, int argCount) {
+            Object targetLen = getFunctionLengthNode.getValue(target);
+            if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
+                int targetLenAsInt = (int) targetLen;
+                // inner Math.max() avoids potential underflow during the subtraction
+                return Math.max(0, Math.max(0, targetLenAsInt) - argCount);
+            } else if (JSRuntime.isNumber(targetLen) || targetLen instanceof Long) {
+                double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
+                if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
+                    return JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - argCount));
+                }
+            }
+            return 0;
         }
 
         private void copyLength(JSFunctionObject boundFunction, Object target, int argCount) {
@@ -278,7 +315,12 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (!JSGuards.isString(targetName)) {
                 targetName = Strings.EMPTY_STRING;
             }
-            ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundName((TruffleString) targetName, prefix);
+            TruffleString name = (TruffleString) targetName;
+            if (boundFunction instanceof JSFunctionObject.BoundOrWrapped boundOrWrapped) {
+                boundOrWrapped.setBoundName(name, prefix);
+            } else {
+                JSFunction.setFunctionName(boundFunction, Strings.isEmpty(prefix) ? name : Strings.concat(prefix, name));
+            }
         }
 
         private static double toIntegerOrInfinity(Number number) {
