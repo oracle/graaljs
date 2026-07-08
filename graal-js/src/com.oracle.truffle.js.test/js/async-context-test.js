@@ -73,6 +73,59 @@ function main() {
     assertSame(new AsyncContext.Variable({}).name, '');
 })();
 
+(function testSnapshotWrap() {
+    const receiver = {};
+    let wrapped;
+    function target(a, b) {
+        assertSame(this, receiver);
+        return [context.get(), a, b];
+    }
+    context.run('wrapped', () => {
+        wrapped = AsyncContext.Snapshot.wrap(target);
+    });
+    assertSame(wrapped.name, 'wrapped target');
+    assertSame(wrapped.length, 2);
+    assertSame(wrapped.call(receiver, 1, 2).join(','), 'wrapped,1,2');
+    assertThrows(() => AsyncContext.Snapshot.wrap(42), TypeError);
+})();
+
+(function testSnapshotWrapCopyNameAndLength() {
+    function target() {
+    }
+    let lengthGets = 0;
+    let nameGets = 0;
+    Object.defineProperties(target, {
+        length: {
+            configurable: true,
+            get() {
+                lengthGets++;
+                return 2.9;
+            }
+        },
+        name: {
+            configurable: true,
+            get() {
+                nameGets++;
+                return 'copied';
+            }
+        }
+    });
+    const wrapped = AsyncContext.Snapshot.wrap(target);
+    assertSame(lengthGets, 1);
+    assertSame(nameGets, 1);
+    assertSame(wrapped.length, 2);
+    assertSame(wrapped.name, 'wrapped copied');
+
+    function targetWithoutLength() {
+    }
+    delete targetWithoutLength.length;
+    delete targetWithoutLength.name;
+    Object.setPrototypeOf(targetWithoutLength, {length: 12, name: 'inherited'});
+    const wrappedWithoutLength = AsyncContext.Snapshot.wrap(targetWithoutLength);
+    assertSame(wrappedWithoutLength.length, 0);
+    assertSame(wrappedWithoutLength.name, 'wrapped inherited');
+})();
+
 (function testPromiseReactionContext() {
     const thenable = {
         then(resolve) {

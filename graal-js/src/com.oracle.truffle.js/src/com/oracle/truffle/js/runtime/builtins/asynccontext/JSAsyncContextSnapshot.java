@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins.asynccontext;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.asynccontext.AsyncContextBuiltins;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextSnapshotFunctionBuiltins;
 import com.oracle.truffle.js.builtins.asynccontext.AsyncContextSnapshotPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -97,7 +98,7 @@ public final class JSAsyncContextSnapshot extends JSNonProxy implements JSConstr
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, AsyncContextBuiltins.BUILTINS);
+        return INSTANCE.createConstructorAndPrototype(realm, AsyncContextSnapshotFunctionBuiltins.BUILTINS);
     }
 
     @Override
