@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -71,4 +71,40 @@ function main() {
     
     assertSame(new AsyncContext.Variable().name, '');
     assertSame(new AsyncContext.Variable({}).name, '');
+})();
+
+(function testPromiseReactionContext() {
+    const thenable = {
+        then(resolve) {
+            assertSame(context.get(), 'promise');
+            resolve();
+        }
+    };
+    context.run('promise', () => {
+        Promise.resolve().then(() => {
+            assertSame(context.get(), 'promise');
+            return thenable;
+        }).then(() => {
+            assertSame(context.get(), 'promise');
+        });
+    });
+})();
+
+(function testPromiseReactionRejectionContext() {
+    const reason = new Error('expected rejection');
+    const thenable = {
+        then(resolve, reject) {
+            assertSame(context.get(), 'rejected');
+            reject(reason);
+        }
+    };
+    context.run('rejected', () => {
+        Promise.resolve().then(() => {
+            assertSame(context.get(), 'rejected');
+            return thenable;
+        }).then(undefined, (rejection) => {
+            assertSame(rejection, reason);
+            assertSame(context.get(), 'rejected');
+        });
+    });
 })();
