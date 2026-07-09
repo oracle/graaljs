@@ -56,6 +56,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.module.CreateImportMetaNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -266,12 +267,18 @@ public class JSModuleRecord extends CyclicModuleRecord {
     @Override
     public Object executeModule(JSRealm realm, PromiseCapabilityRecord capability) {
         JSFunctionObject moduleFunction = JSFunction.create(realm, this.getFunctionData());
-        if (!this.hasTLA()) {
-            assert capability == null;
-            return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, this));
-        } else {
-            assert capability != null;
-            return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, this, capability));
+        JSAgent agent = realm.getAgent();
+        AsyncContext previousContextMapping = agent.asyncContextSwap(AsyncContext.empty());
+        try {
+            if (!this.hasTLA()) {
+                assert capability == null;
+                return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, this));
+            } else {
+                assert capability != null;
+                return JSFunction.call(JSArguments.create(Undefined.instance, moduleFunction, this, capability));
+            }
+        } finally {
+            agent.asyncContextSwap(previousContextMapping);
         }
     }
 
