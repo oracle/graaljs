@@ -99,7 +99,7 @@ public final class AsyncContextSnapshotFunctionBuiltins extends JSBuiltinsContai
         @Specialization
         protected final JSFunctionObject wrap(Object fn,
                         @Cached IsCallableNode isCallable,
-                        @Cached("create(getContext())") CopyFunctionNameAndLengthNode copyNameAndLength,
+                        @Cached CopyFunctionNameAndLengthNode copyNameAndLength,
                         @Cached InlinedBranchProfile errorProfile) {
             if (!isCallable.executeBoolean(fn)) {
                 errorProfile.enter(this);
