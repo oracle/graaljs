@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,12 +46,14 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 
 public final class JSGeneratorObject extends JSNonProxyObject {
 
     private JSFunction.GeneratorState generatorState;
     private MaterializedFrame generatorContext;
     private CallTarget generatorTarget;
+    private AsyncContext asyncContextMapping;
 
     protected JSGeneratorObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
@@ -79,6 +81,14 @@ public final class JSGeneratorObject extends JSNonProxyObject {
 
     public void setGeneratorTarget(CallTarget generatorTarget) {
         this.generatorTarget = generatorTarget;
+    }
+
+    public AsyncContext getAsyncContextMapping() {
+        return asyncContextMapping;
+    }
+
+    public void setAsyncContextMapping(AsyncContext asyncContextMapping) {
+        this.asyncContextMapping = asyncContextMapping;
     }
 
     @Override

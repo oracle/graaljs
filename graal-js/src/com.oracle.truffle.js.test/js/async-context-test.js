@@ -126,6 +126,57 @@ function main() {
     assertSame(wrappedWithoutLength.name, 'wrapped inherited');
 })();
 
+(function testGeneratorContext() {
+    let generator;
+    context.run('generator', () => {
+        generator = (function* () {
+            assertSame(context.get(), 'generator');
+            yield 1;
+            assertSame(context.get(), 'generator');
+            yield 2;
+        })();
+    });
+    context.run('generator caller 1', () => {
+        assertSame(generator.next().value, 1);
+        assertSame(context.get(), 'generator caller 1');
+    });
+    context.run('generator caller 2', () => {
+        assertSame(generator.next().value, 2);
+        assertSame(context.get(), 'generator caller 2');
+    });
+})();
+
+(function testAsyncGeneratorContext() {
+    let generator;
+    context.run('async generator', () => {
+        generator = (async function* () {
+            assertSame(context.get(), 'async generator');
+            yield 1;
+            await Promise.resolve();
+            assertSame(context.get(), 'async generator');
+            yield 2;
+        })();
+    });
+    let first;
+    context.run('async generator caller 1', () => {
+        first = generator.next();
+        first.then((result) => {
+            assertSame(result.value, 1);
+            assertSame(context.get(), 'async generator caller 1');
+            let second;
+            context.run('async generator caller 2', () => {
+                second = generator.next();
+                assertSame(context.get(), 'async generator caller 2');
+            });
+            return second;
+        }).then((result) => {
+            assertSame(result.value, 2);
+            assertSame(context.get(), 'async generator caller 1');
+        });
+        assertSame(context.get(), 'async generator caller 1');
+    });
+})();
+
 (function testPromiseReactionContext() {
     const thenable = {
         then(resolve) {

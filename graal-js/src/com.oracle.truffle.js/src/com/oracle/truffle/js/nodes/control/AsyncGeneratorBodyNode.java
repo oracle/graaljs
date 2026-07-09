@@ -66,6 +66,7 @@ import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -75,6 +76,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -130,6 +132,8 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             }
             Object prev = null;
             TruffleContext childContext = null;
+            JSAgent agent = currentRealm.getAgent();
+            AsyncContext previousContextMapping = agent.asyncContextSwap(generatorObject.getAsyncContextMapping());
 
             if (enterContext) {
                 childContext = realm.getTruffleContext();
@@ -172,6 +176,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                 if (enterContext) {
                     childContext.leave(this, prev);
                 }
+                agent.asyncContextSwap(previousContextMapping);
             }
         }
 
@@ -270,6 +275,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         generatorObject.setAsyncGeneratorContext(materializedFrame);
         generatorObject.setAsyncGeneratorTarget(resumeTarget);
         generatorObject.setAsyncGeneratorQueue(new ArrayDeque<>(4));
+        generatorObject.setAsyncContextMapping(JSRealm.get(this).getAgent().getAsyncContextMapping());
         writeAsyncContext.executeWrite(frame, AsyncRootNode.createAsyncContext(resumeTarget, generatorObject, materializedFrame));
     }
 
