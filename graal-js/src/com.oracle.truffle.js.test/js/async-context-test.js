@@ -62,6 +62,8 @@ function main() {
 }
 
 (function testNames() {
+    assertSame(AsyncContext[Symbol.toStringTag], 'AsyncContext');
+    assertSame(String(AsyncContext), '[object AsyncContext]');
     assertSame(AsyncContext.Variable.prototype[Symbol.toStringTag], 'AsyncContext.Variable');
     assertSame(AsyncContext.Snapshot.prototype[Symbol.toStringTag], 'AsyncContext.Snapshot');
     assertSame(String(new AsyncContext.Variable()), '[object AsyncContext.Variable]');

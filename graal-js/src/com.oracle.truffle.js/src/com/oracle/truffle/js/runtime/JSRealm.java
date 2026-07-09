@@ -2153,7 +2153,7 @@ public class JSRealm {
             putGlobalProperty(JSWorker.CLASS_NAME, getWorkerConstructor());
         }
         if (getContextOptions().isAsyncContext()) {
-            putGlobalProperty(JSAsyncContext.NAMESPACE_NAME, JSAsyncContext.create(this));
+            putGlobalProperty(JSAsyncContext.CLASS_NAME, JSAsyncContext.create(this));
         }
         if (getContextOptions().isTextEncoding()) {
             putGlobalProperty(JSTextEncoder.CLASS_NAME, textEncoderConstructor);

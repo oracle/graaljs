@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
  */
 public final class JSAsyncContext {
 
-    public static final TruffleString NAMESPACE_NAME = Strings.constant("AsyncContext");
+    public static final TruffleString CLASS_NAME = Strings.constant("AsyncContext");
 
     private JSAsyncContext() {
     }
@@ -61,6 +61,7 @@ public final class JSAsyncContext {
         JSObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putDataProperty(obj, JSAsyncContextSnapshot.CLASS_NAME, realm.getAsyncContextSnapshotConstructor());
         JSObjectUtil.putDataProperty(obj, JSAsyncContextVariable.CLASS_NAME, realm.getAsyncContexVariableConstructor());
+        JSObjectUtil.putToStringTag(obj, CLASS_NAME);
         return obj;
     }
 }

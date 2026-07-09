@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,7 @@ public final class AsyncContextBuiltins extends JSBuiltinsContainer.SwitchEnum<A
     public static final JSBuiltinsContainer BUILTINS = new AsyncContextBuiltins();
 
     protected AsyncContextBuiltins() {
-        super(JSAsyncContext.NAMESPACE_NAME, AsyncContext.class);
+        super(JSAsyncContext.CLASS_NAME, AsyncContext.class);
     }
 
     public enum AsyncContext implements BuiltinEnum<AsyncContext> {
