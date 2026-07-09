@@ -36,7 +36,6 @@ test-gc-http-client-timeout: SKIP
 test-http-server-keep-alive-timeout-slow-client-headers: FAIL
 test-vm-break-on-sigint: FAIL
 test-watch-mode: SKIP
-test-without-async-context-frame: FAIL
 test-worker-fshandles-open-close-on-termination: SKIP
 
 [$system==win32]
