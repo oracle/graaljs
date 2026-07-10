@@ -17,7 +17,7 @@ packaging==24.2
 Pygments==2.19.1
 requests==2.32.3
 snowballstemmer==2.2.0
-soupsieve==2.6
+soupsieve==2.8.4
 sphinx-basic-ng==1.0.0b2
 sphinxcontrib-applehelp==2.0.0
 sphinxcontrib-devhelp==2.0.0
