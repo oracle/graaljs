@@ -237,6 +237,7 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta",
                     "intl-normative-optional",
                     "iterator-helpers",
+                    "iterator-includes",
                     "iterator-sequencing",
                     "joint-iteration",
                     "json-modules",
@@ -296,6 +297,7 @@ public class Test262Runnable extends TestRunnable {
                     "import-bytes",
                     "import-defer",
                     "import-text",
+                    "iterator-includes",
                     "joint-iteration",
     });
 

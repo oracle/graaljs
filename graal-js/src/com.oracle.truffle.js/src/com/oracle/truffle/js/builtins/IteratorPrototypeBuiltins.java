@@ -70,6 +70,7 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.SetterThatIgnoresPrototypePropertiesNode;
+import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -80,11 +81,13 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -115,18 +118,18 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     public enum IteratorPrototype implements BuiltinEnum<IteratorPrototype> {
         toArray(0),
         forEach(1),
-
         some(1),
         every(1),
         find(1),
-
         reduce(1),
-
         map(1),
         filter(1),
         take(1),
         drop(1),
         flatMap(1),
+
+        includes(1),
+
         symbolDispose(0),
 
         constructor(0),
@@ -169,6 +172,14 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == includes) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
@@ -196,6 +207,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorDropNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case flatMap:
                 return IteratorPrototypeBuiltinsFactory.IteratorFlatMapNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case includes:
+                return IteratorPrototypeBuiltinsFactory.IteratorIncludesNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case symbolDispose:
                 return IteratorPrototypeBuiltinsFactory.IteratorDisposeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case constructor:
@@ -1175,6 +1188,91 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
             return iteratorCloseNode;
+        }
+    }
+
+    public abstract static class IteratorIncludesNode extends IteratorMethodNode {
+        @Child private IteratorStepNode iteratorStepNode;
+        @Child private IteratorValueNode iteratorValueNode;
+        @Child private IteratorCloseNode iteratorCloseNode;
+        @Child private JSIdenticalNode identicalNode;
+
+        protected IteratorIncludesNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.iteratorStepNode = IteratorStepNode.create();
+            this.iteratorValueNode = IteratorValueNode.create();
+            this.iteratorCloseNode = IteratorCloseNode.create(context);
+            this.identicalNode = JSIdenticalNode.createSameValueZero();
+        }
+
+        @Specialization
+        protected Object includes(Object thisObj, Object searchElement, Object skippedElements,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedBranchProfile skippedElementsBranch,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
+
+            long toSkip = 0;
+            if (skippedElements != Undefined.instance) {
+                skippedElementsBranch.enter(this);
+                toSkip = getElementsToSkip(thisObj, skippedElements, errorBranch);
+            }
+
+            IteratorRecord iterated = getIteratorDirect(thisObj);
+            // For +Infinity, toSkip is Long.MAX_VALUE. Starting at one ensures that the
+            // comparison remains true even after overflow because every long is <= Long.MAX_VALUE.
+            long skippedPlusOne = 1;
+            while (true) {
+                Object next = iteratorStepNode.execute(iterated);
+                if (next == Boolean.FALSE) {
+                    return false;
+                }
+                Object value = iteratorValueNode.execute(next);
+                if (skippedPlusOne <= toSkip) {
+                    skippedPlusOne++;
+                } else if (identicalNode.executeBoolean(value, searchElement)) {
+                    return iteratorCloseNode.execute(iterated, true);
+                }
+            }
+        }
+
+        private long getElementsToSkip(Object iterator, Object skippedElements, InlinedBranchProfile errorBranch) {
+            try {
+                // The proposal validates skippedElements without coercing it to a Number.
+                long value;
+                if (skippedElements instanceof Integer intValue) {
+                    value = intValue.longValue();
+                } else if (skippedElements instanceof SafeInteger safeInteger) {
+                    value = safeInteger.longValue();
+                } else if (skippedElements instanceof Long longValue) {
+                    value = longValue;
+                    if (value > JSRuntime.MAX_SAFE_INTEGER_LONG) {
+                        errorBranch.enter(this);
+                        throw Errors.createRangeError("skippedElements exceeds the maximum safe integer", this);
+                    }
+                } else if (skippedElements instanceof Double number &&
+                                (Double.isInfinite(number) || JSRuntime.isIntegralNumber(number))) {
+                    if (Double.isFinite(number) && number > JSRuntime.MAX_SAFE_INTEGER) {
+                        errorBranch.enter(this);
+                        throw Errors.createRangeError("skippedElements exceeds the maximum safe integer", this);
+                    }
+                    value = number.longValue();
+                } else {
+                    errorBranch.enter(this);
+                    throw Errors.createTypeError("skippedElements must be an integral Number or infinity", this);
+                }
+                if (value < 0) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeErrorIndexNegative(this);
+                }
+                return value;
+            } catch (AbstractTruffleException ex) {
+                iteratorCloseNode.executeDirectAbrupt(iterator);
+                throw ex;
+            }
         }
     }
 

@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 25.3.4
+* Implemented the [`Iterator Includes`](https://github.com/tc39/proposal-iterator-includes) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+
 ## Version 25.2.4
 * Updated Node.js to version 24.17.0.
 
