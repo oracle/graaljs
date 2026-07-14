@@ -237,6 +237,7 @@ public class Test262Runnable extends TestRunnable {
                     "import-text",
                     "import.meta",
                     "intl-normative-optional",
+                    "iterator-chunking",
                     "iterator-helpers",
                     "iterator-includes",
                     "iterator-sequencing",
@@ -299,6 +300,7 @@ public class Test262Runnable extends TestRunnable {
                     "import-bytes",
                     "import-defer",
                     "import-text",
+                    "iterator-chunking",
                     "iterator-includes",
                     "joint-iteration",
     });

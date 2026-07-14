@@ -170,7 +170,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         }
                     }
 
-                    if (outerIterator != null) {
+                    /*
+                     * Chunking helpers can yield a final partial result after IteratorStepValue has
+                     * set [[Done]] to true; we must not close the underlying iterator in that case.
+                     */
+                    if (outerIterator != null && !outerIterator.isDone()) {
                         outerIteratorCloseNode.executeVoid(outerIterator);
                     }
                 }

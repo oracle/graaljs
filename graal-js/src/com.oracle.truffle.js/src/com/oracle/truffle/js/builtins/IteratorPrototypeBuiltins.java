@@ -97,6 +97,8 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -107,6 +109,7 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
 /**
@@ -136,6 +139,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         includes(1),
         join(1),
+        chunks(1),
+        windows(1),
 
         symbolDispose(0),
 
@@ -182,7 +187,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == includes || this == join) {
+            if (EnumSet.of(includes, join, chunks, windows).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -218,6 +223,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorIncludesNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case join:
                 return IteratorPrototypeBuiltinsFactory.IteratorJoinNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case chunks:
+                return IteratorPrototypeBuiltinsFactory.IteratorChunksNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case windows:
+                return IteratorPrototypeBuiltinsFactory.IteratorWindowsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case symbolDispose:
                 return IteratorPrototypeBuiltinsFactory.IteratorDisposeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case constructor:
@@ -1365,6 +1374,233 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             } catch (AbstractTruffleException ex) {
                 iteratorCloseNode.executeAbrupt(iterated);
                 throw ex;
+            }
+        }
+    }
+
+    protected abstract static class IteratorChunkingNode<T extends IteratorArgs> extends IteratorFromGeneratorNode<T> {
+
+        private static final long MAX_CHUNK_OR_WINDOW_SIZE = 0xffff_ffffL;
+
+        protected IteratorChunkingNode(JSContext context, JSBuiltin builtin, BuiltinFunctionKey nextKey, Function<JSContext, JSFunctionData> nextFactory) {
+            super(context, builtin, nextKey, nextFactory);
+        }
+
+        protected final void validateReceiver(Object thisObj, IsObjectNode isObjectNode, InlinedBranchProfile errorBranch) {
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
+        }
+
+        protected final long validateSize(Object thisObj, Object size, InlinedBranchProfile errorBranch) {
+            try {
+                long validatedSize;
+                if (size instanceof Integer intValue) {
+                    validatedSize = intValue.longValue();
+                } else if (size instanceof SafeInteger safeInteger) {
+                    validatedSize = safeInteger.longValue();
+                } else if (size instanceof Long longValue) {
+                    validatedSize = longValue;
+                } else if (size instanceof Double doubleValue && JSRuntime.isIntegralNumber(doubleValue)) {
+                    validatedSize = doubleValue.longValue();
+                } else {
+                    errorBranch.enter(this);
+                    throw Errors.createTypeError("chunk or window size must be an integral Number", this);
+                }
+                if (validatedSize < 1 || validatedSize > MAX_CHUNK_OR_WINDOW_SIZE) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeError("chunk or window size is outside the allowed range", this);
+                }
+                return validatedSize;
+            } catch (AbstractTruffleException ex) {
+                iteratorCloseDirectAbrupt(thisObj);
+                throw ex;
+            }
+        }
+    }
+
+    protected abstract static class IteratorChunksNode extends IteratorChunkingNode<IteratorChunksNode.IteratorChunksArgs> {
+
+        protected IteratorChunksNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, BuiltinFunctionKey.IteratorChunks, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorChunksNextNode.create(c)));
+        }
+
+        protected static class IteratorChunksArgs extends IteratorArgs {
+            public final long chunkSize;
+            public final SimpleArrayList<Object> buffer;
+
+            public IteratorChunksArgs(IteratorRecord iterated, long chunkSize) {
+                super(iterated);
+                this.chunkSize = chunkSize;
+                this.buffer = SimpleArrayList.create(chunkSize);
+            }
+        }
+
+        @Specialization
+        protected JSDynamicObject chunks(Object thisObj, Object chunkSize,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            validateReceiver(thisObj, isObjectNode, errorBranch);
+            long validatedSize = validateSize(thisObj, chunkSize, errorBranch);
+            IteratorRecord iterated = getIteratorDirect(thisObj);
+            return createIteratorHelperObject(new IteratorChunksArgs(iterated, validatedSize));
+        }
+
+        protected abstract static class IteratorChunksNextNode extends IteratorFromGeneratorImplNode<IteratorChunksArgs> {
+
+            protected IteratorChunksNextNode(JSContext context) {
+                super(context);
+            }
+
+            @Specialization
+            protected Object next(JSIteratorHelperObject thisObj,
+                            @Cached InlinedBranchProfile growProfile) {
+                IteratorChunksArgs args = getArgs(thisObj);
+                IteratorRecord iterated = args.iterated;
+                if (iterated.isDone()) {
+                    return createResultDone(thisObj);
+                }
+                var buffer = args.buffer;
+                while (true) {
+                    Object next = iteratorStep(iterated);
+                    if (next == Boolean.FALSE) {
+                        iterated.setDone(true);
+                        if (buffer.size() != 0) {
+                            return createResultContinue(thisObj, createResultArray(buffer));
+                        }
+                        return createResultDone(thisObj);
+                    }
+                    buffer.add(iteratorValue(next), this, growProfile);
+                    if (buffer.size() == args.chunkSize) {
+                        return createResultContinue(thisObj, createResultArray(buffer));
+                    }
+                }
+            }
+
+            private JSArrayObject createResultArray(SimpleArrayList<Object> buffer) {
+                var chunk = JSArray.createZeroBasedObjectArray(context, getRealm(), buffer.toArray());
+                buffer.clear();
+                return chunk;
+            }
+
+            @Override
+            public IteratorFromGeneratorImplNode<IteratorChunksArgs> copyUninitialized() {
+                return create(context);
+            }
+
+            public static IteratorChunksNextNode create(JSContext context) {
+                return IteratorPrototypeBuiltinsFactory.IteratorChunksNodeGen.IteratorChunksNextNodeGen.create(context);
+            }
+        }
+    }
+
+    protected abstract static class IteratorWindowsNode extends IteratorChunkingNode<IteratorWindowsNode.IteratorWindowsArgs> {
+
+        private static final TruffleString ONLY_FULL = Strings.constant("only-full");
+        private static final TruffleString ALLOW_PARTIAL = Strings.constant("allow-partial");
+
+        @Child private TruffleString.EqualNode equalNode = TruffleString.EqualNode.create();
+
+        protected IteratorWindowsNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, BuiltinFunctionKey.IteratorWindows, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorWindowsNextNode.create(c)));
+        }
+
+        protected static class IteratorWindowsArgs extends IteratorArgs {
+            public final long windowSize;
+            public final boolean allowPartial;
+            public final SimpleArrayList<Object> buffer;
+            public int start;
+
+            public IteratorWindowsArgs(IteratorRecord iterated, long windowSize, boolean allowPartial) {
+                super(iterated);
+                this.windowSize = windowSize;
+                this.allowPartial = allowPartial;
+                this.buffer = SimpleArrayList.create(windowSize);
+            }
+        }
+
+        @Specialization
+        protected JSDynamicObject windows(Object thisObj, Object windowSize, Object undersized,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            validateReceiver(thisObj, isObjectNode, errorBranch);
+            long validatedSize = validateSize(thisObj, windowSize, errorBranch);
+            boolean allowPartial;
+            if (undersized == Undefined.instance || isUndersizedMode(undersized, ONLY_FULL)) {
+                allowPartial = false;
+            } else if (isUndersizedMode(undersized, ALLOW_PARTIAL)) {
+                allowPartial = true;
+            } else {
+                errorBranch.enter(this);
+                iteratorCloseDirectAbrupt(thisObj);
+                throw Errors.createTypeError("undersized must be either 'only-full' or 'allow-partial'", this);
+            }
+            IteratorRecord iterated = getIteratorDirect(thisObj);
+            return createIteratorHelperObject(new IteratorWindowsArgs(iterated, validatedSize, allowPartial));
+        }
+
+        private boolean isUndersizedMode(Object value, TruffleString mode) {
+            return value instanceof TruffleString string && Strings.equals(equalNode, string, mode);
+        }
+
+        protected abstract static class IteratorWindowsNextNode extends IteratorFromGeneratorImplNode<IteratorWindowsArgs> {
+
+            protected IteratorWindowsNextNode(JSContext context) {
+                super(context);
+            }
+
+            @Specialization
+            protected Object next(JSIteratorHelperObject thisObj,
+                            @Cached InlinedBranchProfile growProfile) {
+                IteratorWindowsArgs args = getArgs(thisObj);
+                IteratorRecord iterated = args.iterated;
+                if (iterated.isDone()) {
+                    return createResultDone(thisObj);
+                }
+                var buffer = args.buffer;
+                while (true) {
+                    Object next = iteratorStep(iterated);
+                    if (next == Boolean.FALSE) {
+                        iterated.setDone(true);
+                        if (args.allowPartial && buffer.size() != 0 && buffer.size() < args.windowSize) {
+                            return createResultContinue(thisObj, createResultArray(buffer, args.start));
+                        }
+                        return createResultDone(thisObj);
+                    }
+
+                    Object value = iteratorValue(next);
+                    int bufferSize = buffer.size();
+                    boolean isFull = bufferSize == args.windowSize;
+                    if (isFull) {
+                        buffer.set(args.start, value);
+                        args.start = args.start + 1 == bufferSize ? 0 : args.start + 1;
+                    } else {
+                        buffer.add(value, this, growProfile);
+                        isFull = buffer.size() == args.windowSize;
+                    }
+                    if (isFull) {
+                        return createResultContinue(thisObj, createResultArray(buffer, args.start));
+                    }
+                }
+            }
+
+            private Object createResultArray(SimpleArrayList<Object> buffer, int start) {
+                int size = buffer.size();
+                Object[] window = new Object[size];
+                for (int i = 0; i < size; i++) {
+                    window[i] = buffer.get((start + i) % size);
+                }
+                return JSArray.createZeroBasedObjectArray(context, getRealm(), window);
+            }
+
+            @Override
+            public IteratorFromGeneratorImplNode<IteratorWindowsArgs> copyUninitialized() {
+                return create(context);
+            }
+
+            public static IteratorWindowsNextNode create(JSContext context) {
+                return IteratorPrototypeBuiltinsFactory.IteratorWindowsNodeGen.IteratorWindowsNextNodeGen.create(context);
             }
         }
     }
