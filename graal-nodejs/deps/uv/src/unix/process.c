@@ -19,6 +19,14 @@
  * IN THE SOFTWARE.
  */
 
+#if defined(__linux__) && !defined(__GLIBC__)
+
+/* GraalVM changes: Use musl's posix_spawn extensions to avoid an unnecessary raw fork on Linux. */
+
+/* _GNU_SOURCE exposes the file-action extensions needed by that path. */
+# define _GNU_SOURCE
+#endif
+
 #include "uv.h"
 #include "internal.h"
 
@@ -35,9 +43,10 @@
 #include <fcntl.h>
 #include <poll.h>
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) || (defined(__linux__) && !defined(__GLIBC__))
 # include <spawn.h>
 # include <paths.h>
+# if defined(__APPLE__)
 # include <sys/kauth.h>
 # include <sys/types.h>
 # include <sys/sysctl.h>
@@ -45,6 +54,7 @@
 # include <crt_externs.h>
 # include <xlocale.h>
 # define environ (*_NSGetEnviron())
+# endif
 
 /* macOS 10.14 back does not define this constant */
 # ifndef POSIX_SPAWN_SETSID
@@ -420,10 +430,14 @@ static void uv__process_child_init(const uv_process_options_t* options,
 }
 
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) || (defined(__linux__) && !defined(__GLIBC__))
 typedef struct uv__posix_spawn_fncs_tag {
   struct {
+#if defined(__APPLE__)
     int (*addchdir_np)(const posix_spawn_file_actions_t *, const char *);
+#else
+    int (*addchdir_np)(posix_spawn_file_actions_t *, const char *);
+#endif
   } file_actions;
 } uv__posix_spawn_fncs_t;
 
@@ -434,13 +448,19 @@ static int posix_spawn_can_use_setsid;
 
 
 static void uv__spawn_init_posix_spawn_fncs(void) {
+#if defined(__APPLE__)
   /* Try to locate all non-portable functions at runtime */
   posix_spawn_fncs.file_actions.addchdir_np =
     dlsym(RTLD_DEFAULT, "posix_spawn_file_actions_addchdir_np");
+#else
+  posix_spawn_fncs.file_actions.addchdir_np =
+    posix_spawn_file_actions_addchdir_np;
+#endif
 }
 
 
 static void uv__spawn_init_can_use_setsid(void) {
+#if defined(__APPLE__)
   int which[] = {CTL_KERN, KERN_OSRELEASE};
   unsigned major;
   unsigned minor;
@@ -457,6 +477,9 @@ static void uv__spawn_init_can_use_setsid(void) {
     return;
 
   posix_spawn_can_use_setsid = (major >= 19);  /* macOS Catalina */
+#else
+  posix_spawn_can_use_setsid = 1;
+#endif
 }
 
 
@@ -503,9 +526,11 @@ static int uv__spawn_set_posix_spawn_attrs(
    *    spawn-sigmask in attributes
    * 4) POSIX_SPAWN_SETSID: Make the process a new session leader if a detached
    *    session was requested. */
-  flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
-          POSIX_SPAWN_SETSIGDEF |
+  flags = POSIX_SPAWN_SETSIGDEF |
           POSIX_SPAWN_SETSIGMASK;
+#if defined(__APPLE__)
+  flags |= POSIX_SPAWN_CLOEXEC_DEFAULT;
+#endif
   if (options->flags & UV_PROCESS_DETACHED) {
     /* If running on a version of macOS where this flag is not supported,
      * revert back to the fork/exec flow. Otherwise posix_spawn will
@@ -621,10 +646,16 @@ static int uv__spawn_set_posix_spawn_file_actions(
       }
     }
 
-    if (fd == use_fd)
+    if (fd == use_fd) {
+#if defined(__APPLE__)
         err = posix_spawn_file_actions_addinherit_np(actions, fd);
-    else
+#else
+        /* A self-dup action clears FD_CLOEXEC in musl's posix_spawn. */
+        err = posix_spawn_file_actions_adddup2(actions, fd, fd);
+#endif
+    } else {
         err = posix_spawn_file_actions_adddup2(actions, use_fd, fd);
+    }
     assert(err != ENOSYS);
     if (err != 0)
       goto error;
@@ -872,7 +903,7 @@ static int uv__spawn_and_init_child(
   int exec_errorno;
   ssize_t r;
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) || (defined(__linux__) && !defined(__GLIBC__))
   uv_once(&posix_spawn_init_once, uv__spawn_init_posix_spawn);
 
   /* Special child process spawn case for macOS Big Sur (11.0) onwards
