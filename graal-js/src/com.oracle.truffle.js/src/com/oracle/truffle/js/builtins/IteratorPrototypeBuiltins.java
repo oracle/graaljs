@@ -55,6 +55,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
@@ -74,11 +77,13 @@ import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -102,6 +107,7 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
 /**
  * Contains builtins for {@linkplain JSIterator}.prototype.
@@ -129,6 +135,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         flatMap(1),
 
         includes(1),
+        join(1),
 
         symbolDispose(0),
 
@@ -175,7 +182,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == includes) {
+            if (this == includes || this == join) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -209,6 +216,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorFlatMapNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case includes:
                 return IteratorPrototypeBuiltinsFactory.IteratorIncludesNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case join:
+                return IteratorPrototypeBuiltinsFactory.IteratorJoinNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case symbolDispose:
                 return IteratorPrototypeBuiltinsFactory.IteratorDisposeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case constructor:
@@ -1271,6 +1280,90 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return value;
             } catch (AbstractTruffleException ex) {
                 iteratorCloseNode.executeDirectAbrupt(iterator);
+                throw ex;
+            }
+        }
+    }
+
+    public abstract static class IteratorJoinNode extends IteratorMethodNode {
+        @Child private JSToStringNode separatorToStringNode;
+        @Child private JSToStringNode elementToStringNode;
+        @Child private IteratorStepNode iteratorStepNode;
+        @Child private IteratorValueNode iteratorValueNode;
+        @Child private IteratorCloseNode iteratorCloseNode;
+        @Child private JSIsNullOrUndefinedNode isNullOrUndefinedNode;
+        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
+        @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
+        private final StringBuilderProfile stringBuilderProfile;
+
+        protected IteratorJoinNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.separatorToStringNode = JSToStringNode.create();
+            this.elementToStringNode = JSToStringNode.create();
+            this.iteratorStepNode = IteratorStepNode.create();
+            this.iteratorValueNode = IteratorValueNode.create();
+            this.iteratorCloseNode = IteratorCloseNode.create(context);
+            this.isNullOrUndefinedNode = JSIsNullOrUndefinedNode.create();
+            this.appendStringNode = TruffleStringBuilder.AppendStringNode.create();
+            this.builderToStringNode = TruffleStringBuilder.ToStringNode.create();
+            this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
+        }
+
+        @Specialization
+        protected TruffleString join(Object thisObj, Object separator,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
+
+            TruffleString sep;
+            if (separator == Undefined.instance) {
+                sep = Strings.COMMA;
+            } else {
+                try {
+                    sep = separatorToStringNode.executeString(separator);
+                } catch (AbstractTruffleException ex) {
+                    iteratorCloseNode.executeDirectAbrupt(thisObj);
+                    throw ex;
+                }
+            }
+
+            IteratorRecord iterated = getIteratorDirect(thisObj);
+            var sb = stringBuilderProfile.newStringBuilder();
+            boolean first = true;
+            while (true) {
+                Object next = iteratorStepNode.execute(iterated);
+                if (next == Boolean.FALSE) {
+                    break;
+                }
+                Object value = iteratorValueNode.execute(next);
+                if (first) {
+                    first = false;
+                } else {
+                    append(iterated, sb, sep);
+                }
+                if (isNullOrUndefinedNode.executeBoolean(value)) {
+                    continue;
+                }
+                TruffleString valueString;
+                try {
+                    valueString = elementToStringNode.executeString(value);
+                } catch (AbstractTruffleException ex) {
+                    iteratorCloseNode.executeAbrupt(iterated);
+                    throw ex;
+                }
+                append(iterated, sb, valueString);
+            }
+            return StringBuilderProfile.toString(builderToStringNode, sb);
+        }
+
+        private void append(IteratorRecord iterated, TruffleStringBuilderUTF16 sb, TruffleString string) {
+            try {
+                stringBuilderProfile.append(appendStringNode, sb, string);
+            } catch (AbstractTruffleException ex) {
+                iteratorCloseNode.executeAbrupt(iterated);
                 throw ex;
             }
         }
