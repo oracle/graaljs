@@ -103,7 +103,7 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     public static final TruffleString NO_SUCH_PROPERTY_NAME = Strings.constant("__noSuchProperty__");
     public static final TruffleString NO_SUCH_METHOD_NAME = Strings.constant("__noSuchMethod__");
-    protected static final String[] EMPTY_STRING_ARRAY = new String[0];
+    public static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     protected JSObject(Shape shape, JSDynamicObject proto) {
         super(shape);

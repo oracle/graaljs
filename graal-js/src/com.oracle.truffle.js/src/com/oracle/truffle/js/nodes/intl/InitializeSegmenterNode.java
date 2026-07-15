@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,7 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
 
     protected InitializeSegmenterNode(JSContext context) {
         this.context = context;
-        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
+        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create();
         this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
         this.getGranularityOption = GetStringOptionNode.create(context, IntlUtil.KEY_GRANULARITY, GRANULARITY_OPTION_VALUES, IntlUtil.GRAPHEME);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);

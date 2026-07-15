@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,7 +120,7 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
         protected Object getCanonicalLocales(Object locales) {
             if (canonicalizeLocaleListNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                canonicalizeLocaleListNode = insert(JSToCanonicalizedLocaleListNode.create(getContext()));
+                canonicalizeLocaleListNode = insert(JSToCanonicalizedLocaleListNode.create());
             }
             String[] languageTags = canonicalizeLocaleListNode.executeLanguageTags(locales);
             return JSArray.createConstant(getContext(), getRealm(), Strings.fromJavaStringArray(languageTags));

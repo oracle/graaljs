@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormat;
-import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormatObject;
-import com.oracle.truffle.js.runtime.util.IntlUtil;
-import com.oracle.truffle.js.runtime.util.Pair;
-
 import static com.oracle.truffle.js.nodes.intl.GetDurationUnitOptionsNode.Unit.DAYS;
 import static com.oracle.truffle.js.nodes.intl.GetDurationUnitOptionsNode.Unit.HOURS;
 import static com.oracle.truffle.js.nodes.intl.GetDurationUnitOptionsNode.Unit.MICROSECONDS;
@@ -60,6 +50,16 @@ import static com.oracle.truffle.js.nodes.intl.GetDurationUnitOptionsNode.Unit.N
 import static com.oracle.truffle.js.nodes.intl.GetDurationUnitOptionsNode.Unit.SECONDS;
 import static com.oracle.truffle.js.nodes.intl.GetDurationUnitOptionsNode.Unit.WEEKS;
 import static com.oracle.truffle.js.nodes.intl.GetDurationUnitOptionsNode.Unit.YEARS;
+
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDurationFormatObject;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.Pair;
 
 public abstract class InitializeDurationFormatNode extends JavaScriptBaseNode {
 
@@ -85,7 +85,7 @@ public abstract class InitializeDurationFormatNode extends JavaScriptBaseNode {
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeDurationFormatNode(JSContext context) {
-        this.canonicalizedLocaleList = JSToCanonicalizedLocaleListNode.create(context);
+        this.canonicalizedLocaleList = JSToCanonicalizedLocaleListNode.create();
         this.getOptionsObject = GetOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);

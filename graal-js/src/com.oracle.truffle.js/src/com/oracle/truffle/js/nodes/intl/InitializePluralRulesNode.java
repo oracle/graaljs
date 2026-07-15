@@ -77,7 +77,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
     protected InitializePluralRulesNode(JSContext context) {
         this.context = context;
-        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
+        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create();
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
         this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE, TYPE_OPTION_VALUES, IntlUtil.CARDINAL);

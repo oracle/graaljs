@@ -814,6 +814,11 @@ public final class IntlUtil {
     @TruffleBoundary
     public static String toLowerCase(JSContext ctx, String s, String[] locales) {
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
+        return toLowerCase(s, strippedLocale);
+    }
+
+    @TruffleBoundary
+    public static String toLowerCase(String s, Locale strippedLocale) {
         StringBuilder result = new StringBuilder();
         Lower tr = CaseMap.toLower();
         tr.apply(strippedLocale, s, result, null);
@@ -823,6 +828,11 @@ public final class IntlUtil {
     @TruffleBoundary
     public static String toUpperCase(JSContext ctx, String s, String[] locales) {
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
+        return toUpperCase(s, strippedLocale);
+    }
+
+    @TruffleBoundary
+    public static String toUpperCase(String s, Locale strippedLocale) {
         StringBuilder result = new StringBuilder();
         Upper tr = CaseMap.toUpper();
         tr.apply(strippedLocale, s, result, null);
