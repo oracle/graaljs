@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
 
     protected InitializeListFormatNode(JSContext context) {
         this.context = context;
-        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
+        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create();
         this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
         this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE, TYPE_OPTION_VALUES, IntlUtil.CONJUNCTION);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, GetStringOptionNode.LONG_SHORT_NARROW_OPTION_VALUES, IntlUtil.LONG);

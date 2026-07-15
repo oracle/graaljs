@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,7 +70,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
 
     protected InitializeRelativeTimeFormatNode(JSContext context) {
         this.context = context;
-        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
+        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create();
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, GetStringOptionNode.LONG_SHORT_NARROW_OPTION_VALUES, IntlUtil.LONG);
         this.getNumericOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMERIC, RELATIVE_TIME_FORMAT_NUMERIC_OPTION_VALUES, IntlUtil.ALWAYS);

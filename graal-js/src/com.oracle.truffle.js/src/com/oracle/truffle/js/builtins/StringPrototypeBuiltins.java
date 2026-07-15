@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2001,10 +2001,25 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         public JSStringToLocaleLowerOrUpperCaseNode(JSContext context, JSBuiltin builtin, boolean toUpperCase) {
             super(context, builtin);
             this.toUpperCase = toUpperCase;
-            this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
+            this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create();
         }
 
-        @Specialization
+        @Specialization(guards = "isUndefined(locales)")
+        protected final TruffleString doStringDefaultLocale(TruffleString thisStr, @SuppressWarnings("unused") Object locales,
+                        @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
+                        @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode) {
+            if (Strings.isEmpty(thisStr)) {
+                return thisStr;
+            }
+            Locale locale = getContext().getLocale();
+            String thisJStr = Strings.toJavaString(toJavaStringNode, thisStr);
+            String resultJStr = toUpperCase
+                            ? IntlUtil.toUpperCase(thisJStr, locale)
+                            : IntlUtil.toLowerCase(thisJStr, locale);
+            return Strings.fromJavaString(fromJavaStringNode, resultJStr);
+        }
+
+        @Specialization(replaces = "doStringDefaultLocale")
         protected final TruffleString doString(TruffleString thisStr, Object locale,
                         @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode) {

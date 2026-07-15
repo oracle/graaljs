@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,15 +43,19 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
@@ -63,7 +67,6 @@ import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
@@ -78,43 +81,44 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  */
 @ImportStatic({JSConfig.class})
 public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode {
-    final JSContext context;
-    private final BranchProfile errorBranch = BranchProfile.create();
 
-    protected JSToCanonicalizedLocaleListNode(JSContext context) {
-        this.context = context;
+    protected JSToCanonicalizedLocaleListNode() {
     }
 
-    public static JSToCanonicalizedLocaleListNode create(JSContext context) {
-        return JSToCanonicalizedLocaleListNodeGen.create(context);
+    @NeverDefault
+    public static JSToCanonicalizedLocaleListNode create() {
+        return JSToCanonicalizedLocaleListNodeGen.create();
     }
 
     public abstract String[] executeLanguageTags(Object value);
 
     @Specialization
-    protected String[] doTString(TruffleString s) {
-        return doJavaString(Strings.toJavaString(s));
+    protected static String[] doTString(TruffleString s,
+                    @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode) {
+        return doJavaString(Strings.toJavaString(toJavaStringNode, s));
     }
 
     @Specialization(guards = {"isUndefined(object)"})
-    protected String[] doUndefined(@SuppressWarnings("unused") Object object) {
-        return new String[0];
+    protected static String[] doUndefined(@SuppressWarnings("unused") Object object) {
+        return JSObject.EMPTY_STRING_ARRAY;
     }
 
     @Specialization
-    protected String[] doLocale(JSLocaleObject object) {
+    protected static String[] doLocale(JSLocaleObject object) {
         return doJavaString(object.getInternalState().getLocale());
     }
 
     @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isUndefined(object)", "!isJSLocale(object)"})
-    protected String[] doOtherType(Object object,
+    protected static String[] doOtherType(Object object,
+                    @Bind Node node,
                     @Cached JSToObjectNode toObjectNode,
-                    @Cached("create(context)") JSGetLengthNode getLengthNode,
+                    @Cached("create(getJSContext())") JSGetLengthNode getLengthNode,
                     @Cached JSHasPropertyNode hasPropertyNode,
                     @Cached @Shared TypeOfNode typeOfNode,
                     @Cached @Shared JSToStringNode toStringNode,
                     @Cached @Shared TruffleString.EqualNode equalsNode,
-                    @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode) {
+                    @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         List<String> result = new ArrayList<>();
         JSDynamicObject localeObj = (JSDynamicObject) toObjectNode.execute(object);
         long len = getLengthNode.executeLong(localeObj);
@@ -123,7 +127,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 Object kValue = JSObject.get(localeObj, k);
                 TruffleString typeOfKValue = typeOfNode.executeString(kValue);
                 if (JSRuntime.isNullOrUndefined(kValue) || ((!Strings.equals(equalsNode, Strings.STRING, typeOfKValue) && !Strings.equals(equalsNode, Strings.OBJECT, typeOfKValue)))) {
-                    errorBranch.enter();
+                    errorBranch.enter(node);
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
                 String lt;
@@ -142,21 +146,23 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     @Specialization(guards = {"isForeignObject(object)"})
-    protected String[] doForeignType(Object object,
+    protected static String[] doForeignType(Object object,
+                    @Bind Node node,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrayInterop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary valueInterop,
                     @Cached ImportValueNode importValueNode,
                     @Cached @Shared TypeOfNode typeOfNode,
                     @Cached @Shared JSToStringNode toStringNode,
                     @Cached @Shared TruffleString.EqualNode equalsNode,
-                    @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode) {
+                    @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         List<String> result = new ArrayList<>();
         long len;
         try {
             len = arrayInterop.getArraySize(object);
         } catch (UnsupportedMessageException e) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorInteropException(object, e, "getArraySize", this);
+            errorBranch.enter(node);
+            throw Errors.createTypeErrorInteropException(object, e, "getArraySize", node);
         }
         for (long k = 0; k < len; k++) {
             if (arrayInterop.isArrayElementReadable(object, k)) {
@@ -169,14 +175,14 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                         Object kValue = importValueNode.executeWithTarget(foreignValue);
                         TruffleString typeOfKValue = typeOfNode.executeString(kValue);
                         if (!Strings.equals(equalsNode, Strings.STRING, typeOfKValue) && !Strings.equals(equalsNode, Strings.OBJECT, typeOfKValue)) {
-                            errorBranch.enter();
+                            errorBranch.enter(node);
                             throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                         }
                         tag = Strings.toJavaString(toJavaStringNode, toStringNode.executeString(kValue));
                     }
                 } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(object, e, "readArrayElement", k, this);
+                    errorBranch.enter(node);
+                    throw Errors.createTypeErrorInteropException(object, e, "readArrayElement", k, node);
                 }
                 String canonicalizedTag = IntlUtil.validateAndCanonicalizeLanguageTag(tag);
                 if (!Boundaries.listContains(result, canonicalizedTag)) {
@@ -187,6 +193,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
         return Boundaries.listToStringArray(result);
     }
 
+    @TruffleBoundary
     private static String[] doJavaString(String s) {
         return new String[]{IntlUtil.validateAndCanonicalizeLanguageTag(s)};
     }
