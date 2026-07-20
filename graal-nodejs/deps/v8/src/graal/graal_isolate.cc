@@ -51,6 +51,7 @@
 #include "uv.h"
 #include <algorithm>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string>
 #include <string.h>
 #include <tuple>
@@ -83,6 +84,7 @@
 #else
 
 #include <io.h>
+#include <windows.h>
 
 #endif
 
@@ -1146,7 +1148,7 @@ bool GraalIsolate::AddMessageListener(v8::MessageCallback callback, v8::Local<v8
 void GraalIsolate::NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error) {
     if (message_listener_ != nullptr && (error_to_ignore_ == nullptr || !GetJNIEnv()->IsSameObject(java_error, error_to_ignore_))) {
         if (GraalIsolate::GetAbortOnUncaughtException() && ShouldAbortOnUncaughtException()) {
-            abort();
+            Abort();
         }
         error_to_ignore_ = nullptr;
         sending_message_ = true;
@@ -1192,6 +1194,18 @@ bool GraalIsolate::ShouldAbortOnUncaughtException() {
 
 bool GraalIsolate::AbortOnUncaughtExceptionCallbackValue() {
     return sending_message_ && ShouldAbortOnUncaughtException();
+}
+
+void GraalIsolate::Abort() {
+#ifdef _WIN32
+    fflush(stdout);
+    fflush(stderr);
+    // V8's default hard-abort mode terminates with IMMEDIATE_CRASH(), which
+    // raises a breakpoint exception on Windows.
+    DebugBreak();
+#else
+    abort();
+#endif
 }
 
 bool GraalIsolate::abort_on_uncaught_exception_ = false;

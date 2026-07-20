@@ -650,6 +650,8 @@ public:
         return abort_on_uncaught_exception_;
     }
 
+    static void Abort();
+
     static inline bool InternalErrorCheckEnabled() {
         return internal_error_check_;
     }
