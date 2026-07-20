@@ -1724,7 +1724,7 @@ namespace v8 {
             // (and hope that the value returned by the callback
             // is the same as if we asked when the exception was thrown).
             // See fatal_try_catch.HasCaught() in node.cc
-            abort();
+            GraalIsolate::Abort();
         }
         if (rethrow_) {
             return !env->IsSameObject((jobject) exception_, env->ExceptionOccurred());
