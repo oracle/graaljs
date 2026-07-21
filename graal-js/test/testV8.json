@@ -545,6 +545,13 @@
     "filePath" : "mjsunit/es6/generator-destructuring.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/iterator-prototype.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Staging Iterator.prototype methods change the expected property count."
+  }, {
     "filePath" : "mjsunit/es6/math-log2-log10.js",
     "status" : "PASS",
     "statusOverrides" : {
