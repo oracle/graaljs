@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Idempotent;
@@ -52,18 +53,18 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.CopyFunctionNameAndLengthNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.HasInstanceNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSApplyNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSBindNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSCallNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSFunctionToStringNodeGen;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
@@ -196,71 +197,105 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public static final class CopyFunctionNameAndLengthNode extends JavaScriptBaseNode {
-        @Child private HasPropertyCacheNode hasFunctionLengthNode;
-        @Child private PropertyGetNode getFunctionLengthNode;
-        @Child private PropertyGetNode getFunctionNameNode;
-        @Child private DynamicObject.GetPropertyFlagsNode functionLengthGetPropertyFlags;
-        @Child private DynamicObject.GetPropertyFlagsNode functionNameGetPropertyFlags;
-        private final ConditionProfile hasFunctionLengthProfile = ConditionProfile.create();
-        private final ConditionProfile hasIntegerFunctionLengthProfile = ConditionProfile.create();
-        private final ConditionProfile isJSFunctionProfile = ConditionProfile.create();
-
-        public CopyFunctionNameAndLengthNode(JSContext context) {
-            this.hasFunctionLengthNode = HasPropertyCacheNode.create(JSFunction.LENGTH, context, true);
-            this.getFunctionLengthNode = PropertyGetNode.create(JSFunction.LENGTH, false, context);
-            this.getFunctionNameNode = PropertyGetNode.create(JSFunction.NAME, false, context);
-            this.functionLengthGetPropertyFlags = DynamicObject.GetPropertyFlagsNode.create();
-            this.functionNameGetPropertyFlags = DynamicObject.GetPropertyFlagsNode.create();
-        }
+    @ImportStatic(JSFunction.class)
+    public abstract static class CopyFunctionNameAndLengthNode extends JavaScriptBaseNode {
 
         @NeverDefault
-        public static CopyFunctionNameAndLengthNode create(JSContext context) {
-            return new CopyFunctionNameAndLengthNode(context);
+        public static CopyFunctionNameAndLengthNode create() {
+            return CopyFunctionNameAndLengthNodeGen.create();
         }
 
-        public void execute(JSFunctionObject boundFunction, JSFunctionObject targetFunction, TruffleString prefix, int argCount) {
-            if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(targetFunction))) {
+        public abstract void execute(JSFunctionObject function, Object target, TruffleString prefix, int argCount);
+
+        @Specialization
+        protected static void doBoundOrWrappedFunction(JSFunctionObject.BoundOrWrapped boundFunction, JSFunctionObject targetFunction, TruffleString prefix, int argCount,
+                        @Bind Node node,
+                        @Cached("create(LENGTH, getJSContext(), true)") @Shared HasPropertyCacheNode hasFunctionLengthNode,
+                        @Cached("create(LENGTH, false, getJSContext())") @Shared PropertyGetNode getFunctionLengthNode,
+                        @Cached("create(NAME, false, getJSContext())") @Shared PropertyGetNode getFunctionNameNode,
+                        @Cached DynamicObject.GetPropertyFlagsNode functionLengthGetPropertyFlags,
+                        @Cached DynamicObject.GetPropertyFlagsNode functionNameGetPropertyFlags,
+                        @Cached @Shared InlinedConditionProfile hasFunctionLengthProfile,
+                        @Cached @Shared InlinedConditionProfile hasIntegerFunctionLengthProfile) {
+            if (hasFunctionLengthProfile.profile(node, hasFunctionLengthNode.hasProperty(targetFunction))) {
                 if (!JSProperty.isProxy(functionLengthGetPropertyFlags.execute(targetFunction, Strings.LENGTH, 0))) {
                     // The Get node serves as an implicit branch profile.
-                    copyLength(boundFunction, targetFunction, argCount);
+                    copyLength(boundFunction, targetFunction, argCount, node, getFunctionLengthNode, hasIntegerFunctionLengthProfile);
                 } else {
                     int targetLen = targetFunction instanceof JSFunctionObject.BoundOrWrapped
                                     ? ((JSFunctionObject.BoundOrWrapped) targetFunction).getBoundLength()
                                     : JSFunction.getLength(targetFunction);
                     assert targetLen >= 0;
                     int length = Math.max(0, targetLen - argCount);
-                    ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundLength(length);
+                    boundFunction.setBoundLength(length);
                 }
             }
 
             // If the target has name proxy property, the name can be lazily computed.
             if (!JSProperty.isProxy(functionNameGetPropertyFlags.execute(targetFunction, Strings.NAME, 0))) {
                 // The Get node serves as an implicit branch profile.
-                copyName(boundFunction, targetFunction, prefix);
+                copyName(boundFunction, targetFunction, prefix, getFunctionNameNode);
             }
         }
 
-        public void execute(JSFunctionObject boundFunction, Object target, TruffleString prefix, int argCount) {
-            if (isJSFunctionProfile.profile(target instanceof JSFunctionObject)) {
-                execute(boundFunction, (JSFunctionObject) target, prefix, argCount);
-                return;
+        @Specialization(guards = "!isJSFunction(target)")
+        protected static void doBoundOrWrappedFunction(JSFunctionObject.BoundOrWrapped boundFunction, Object target, TruffleString prefix, int argCount,
+                        @Bind Node node,
+                        @Cached("create(LENGTH, getJSContext(), true)") @Shared HasPropertyCacheNode hasFunctionLengthNode,
+                        @Cached("create(LENGTH, false, getJSContext())") @Shared PropertyGetNode getFunctionLengthNode,
+                        @Cached("create(NAME, false, getJSContext())") @Shared PropertyGetNode getFunctionNameNode,
+                        @Cached @Shared InlinedConditionProfile hasFunctionLengthProfile,
+                        @Cached @Shared InlinedConditionProfile hasIntegerFunctionLengthProfile) {
+            if (hasFunctionLengthProfile.profile(node, hasFunctionLengthNode.hasProperty(target))) {
+                copyLength(boundFunction, target, argCount, node, getFunctionLengthNode, hasIntegerFunctionLengthProfile);
             }
 
-            if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(target))) {
-                copyLength(boundFunction, target, argCount);
-            }
-
-            copyName(boundFunction, target, prefix);
+            copyName(boundFunction, target, prefix, getFunctionNameNode);
         }
 
-        private void copyLength(JSFunctionObject boundFunction, Object target, int argCount) {
+        @Specialization(guards = "!isBoundOrWrapped(function)")
+        protected static void doOrdinaryFunction(JSFunctionObject function, Object target, TruffleString prefix, int argCount,
+                        @Bind Node node,
+                        @Cached("create(LENGTH, getJSContext(), true)") @Shared HasPropertyCacheNode hasFunctionLengthNode,
+                        @Cached("create(LENGTH, false, getJSContext())") @Shared PropertyGetNode getFunctionLengthNode,
+                        @Cached("create(NAME, false, getJSContext())") @Shared PropertyGetNode getFunctionNameNode,
+                        @Cached @Shared InlinedConditionProfile hasFunctionLengthProfile,
+                        @Cached @Shared InlinedConditionProfile hasIntegerFunctionLengthProfile) {
+            Number length = 0;
+            if (hasFunctionLengthProfile.profile(node, hasFunctionLengthNode.hasProperty(target))) {
+                length = copyLength(target, argCount, node, getFunctionLengthNode, hasIntegerFunctionLengthProfile);
+            }
+            JSFunction.setFunctionLength(function, length);
+            copyName(function, target, prefix, getFunctionNameNode);
+        }
+
+        protected static boolean isBoundOrWrapped(JSFunctionObject function) {
+            return function instanceof JSFunctionObject.BoundOrWrapped;
+        }
+
+        private static Number copyLength(Object target, int argCount, Node node, PropertyGetNode getFunctionLengthNode, InlinedConditionProfile hasIntegerFunctionLengthProfile) {
             Object targetLen = getFunctionLengthNode.getValue(target);
-            if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
+            if (hasIntegerFunctionLengthProfile.profile(node, targetLen instanceof Integer)) {
+                int targetLenAsInt = (int) targetLen;
+                // inner Math.max() avoids potential underflow during the subtraction
+                return Math.max(0, Math.max(0, targetLenAsInt) - argCount);
+            } else if (JSRuntime.isNumber(targetLen) || targetLen instanceof Long) {
+                double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
+                if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
+                    return JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - argCount));
+                }
+            }
+            return 0;
+        }
+
+        private static void copyLength(JSFunctionObject.BoundOrWrapped boundFunction, Object target, int argCount, Node node, PropertyGetNode getFunctionLengthNode,
+                        InlinedConditionProfile hasIntegerFunctionLengthProfile) {
+            Object targetLen = getFunctionLengthNode.getValue(target);
+            if (hasIntegerFunctionLengthProfile.profile(node, targetLen instanceof Integer)) {
                 int targetLenAsInt = (int) targetLen;
                 // inner Math.max() avoids potential underflow during the subtraction
                 int lengthAsInt = Math.max(0, Math.max(0, targetLenAsInt) - argCount);
-                ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundLength(lengthAsInt);
+                boundFunction.setBoundLength(lengthAsInt);
             } else if (JSRuntime.isNumber(targetLen) || targetLen instanceof Long) {
                 Number length;
                 double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
@@ -273,12 +308,16 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        private void copyName(JSFunctionObject boundFunction, Object target, TruffleString prefix) {
+        private static void copyName(JSFunctionObject.BoundOrWrapped boundFunction, Object target, TruffleString prefix, PropertyGetNode getFunctionNameNode) {
             Object targetName = getFunctionNameNode.getValue(target);
-            if (!JSGuards.isString(targetName)) {
-                targetName = Strings.EMPTY_STRING;
-            }
-            ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundName((TruffleString) targetName, prefix);
+            TruffleString name = targetName instanceof TruffleString string ? string : Strings.EMPTY_STRING;
+            boundFunction.setBoundName(name, prefix);
+        }
+
+        private static void copyName(JSFunctionObject function, Object target, TruffleString prefix, PropertyGetNode getFunctionNameNode) {
+            Object targetName = getFunctionNameNode.getValue(target);
+            TruffleString name = targetName instanceof TruffleString string ? string : Strings.EMPTY_STRING;
+            JSFunction.setFunctionName(function, Strings.isEmpty(prefix) ? name : Strings.concat(prefix, name));
         }
 
         private static double toIntegerOrInfinity(Number number) {
@@ -300,7 +339,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected final JSDynamicObject bindJSFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
-                        @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
+                        @Cached @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
                         @Cached @Shared InlinedConditionProfile isConstructorProfile,
                         @Cached @Shared InlinedConditionProfile isAsyncProfile,
                         @Cached @Shared InlinedConditionProfile setProtoProfile) {
@@ -320,7 +359,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
                         @Cached ForeignObjectPrototypeNode foreignPrototypeNode,
                         @Cached IsConstructorNode isConstructorNode,
-                        @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
+                        @Cached @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
                         @Cached @Shared InlinedConditionProfile isProxyProfile,
                         @Cached @Shared InlinedConditionProfile isConstructorProfile,
                         @Cached @Shared InlinedConditionProfile setProtoProfile) {

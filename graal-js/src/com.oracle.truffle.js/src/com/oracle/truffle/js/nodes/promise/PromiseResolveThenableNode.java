@@ -91,17 +91,18 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         JSDynamicObject resolve = resolvingFunctions.getFirst();
         JSDynamicObject reject = resolvingFunctions.getSecond();
         JSAgent agent = getRealm().getAgent();
+        var previousContextMapping = agent.asyncContextSwap(then.asyncContextSnapshot());
         try {
-            var previousContextMapping = agent.asyncContextSwap(then.asyncContextSnapshot());
             context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseToResolve);
             try {
                 return callResolveNode.executeCall(JSArguments.create(thenable, then.callback(), resolve, reject));
+            } catch (AbstractTruffleException ex) {
+                return callReject(reject, ex);
             } finally {
                 context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseToResolve);
-                agent.asyncContextSwap(previousContextMapping);
             }
-        } catch (AbstractTruffleException ex) {
-            return callReject(reject, ex);
+        } finally {
+            agent.asyncContextSwap(previousContextMapping);
         }
     }
 

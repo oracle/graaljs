@@ -143,50 +143,50 @@ public abstract class PromiseReactionJobNode extends JavaScriptBaseNode {
             JobCallback handler = reaction.getHandler();
             assert promiseCapability != null || handler != null;
             JSAgent agent = getRealm().getAgent();
+            var previousContextMapping = agent.asyncContextSwap(reaction.getAsyncContextMapping());
 
-            if (promiseCapability != null) {
-                context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseCapability.getPromise());
-            }
+            try {
+                if (promiseCapability != null) {
+                    context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseCapability.getPromise());
+                }
 
-            Object handlerResult;
-            boolean fulfill;
-            if (handlerProf.profile(handler == null)) {
-                handlerResult = argument;
-                fulfill = reaction.isFulfill();
-            } else {
-                try {
-                    var previousContextMapping = agent.asyncContextSwap(handler.asyncContextSnapshot());
+                Object handlerResult;
+                boolean fulfill;
+                if (handlerProf.profile(handler == null)) {
+                    handlerResult = argument;
+                    fulfill = reaction.isFulfill();
+                } else {
                     try {
                         handlerResult = callHandler().executeCall(JSArguments.createOneArg(Undefined.instance, handler.callback(), argument));
-                    } finally {
-                        agent.asyncContextSwap(previousContextMapping);
+                        // If promiseCapability is undefined, return NormalCompletion(empty).
+                        if (promiseCapability == null) {
+                            return Undefined.instance;
+                        }
+                        fulfill = true;
+                    } catch (AbstractTruffleException ex) {
+                        // If promiseCapability is undefined, handlerResult is not an abrupt completion.
+                        if (promiseCapability == null) {
+                            assert context.isOptionTopLevelAwait();
+                            // top-level-await evaluation: throw exception directly from promise job
+                            // when TopLevelCapability is rejected (via Context.eval(moduleSource)).
+                            throw ex;
+                        }
+                        handlerResult = getErrorObject().execute(ex);
+                        fulfill = false;
                     }
-                    // If promiseCapability is undefined, return NormalCompletion(empty).
-                    if (promiseCapability == null) {
-                        return Undefined.instance;
-                    }
-                    fulfill = true;
-                } catch (AbstractTruffleException ex) {
-                    // If promiseCapability is undefined, handlerResult is not an abrupt completion.
-                    if (promiseCapability == null) {
-                        assert context.isOptionTopLevelAwait();
-                        // top-level-await evaluation: throw exception directly from promise job
-                        // when TopLevelCapability is rejected (via Context.eval(moduleSource)).
-                        throw ex;
-                    }
-                    handlerResult = getErrorObject().execute(ex);
-                    fulfill = false;
                 }
-            }
-            Object status;
-            if (fulfill) {
-                status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), handlerResult));
-            } else {
-                status = callReject().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), handlerResult));
-            }
+                Object status;
+                if (fulfill) {
+                    status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), handlerResult));
+                } else {
+                    status = callReject().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), handlerResult));
+                }
 
-            context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
-            return status;
+                context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
+                return status;
+            } finally {
+                agent.asyncContextSwap(previousContextMapping);
+            }
         }
 
         private JSFunctionCallNode callResolve() {

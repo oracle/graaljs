@@ -61,9 +61,6 @@ test-cli-node-print-help: FAIL
 test-crypto-dh-leak: SKIP
 test-worker-memory: SKIP
 
-# Sometimes crashes on svm due to an intentional stack overflow
-test-error-serdes: PASS, CRASH
-
 # Uses --harmony-struct (Structs proposal)
 test-experimental-shared-value-conveyor: FAIL
 
@@ -85,9 +82,6 @@ test-internal-util-construct-sab: FAIL
 
 # Flag --max-old-space-size-percentage is not supported
 test-max-old-space-size-percentage: FAIL
-
-# Suspicious performance test
-test-repl-paste-big-data: FAIL
 
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint, %PrepareFunctionForOptimization)
 test-buffer-swap-fast: FAIL
@@ -220,7 +214,6 @@ test-trace-exit: FAIL
 test-module-print-timing: SKIP
 test-throw-error-with-getter-throw-traced: FAIL
 test-throw-undefined-or-null-traced: FAIL
-test-trace-atomics-wait: SKIP
 test-trace-events-all: SKIP
 test-trace-events-api: SKIP
 test-trace-events-async-hooks: SKIP
@@ -250,7 +243,6 @@ test-trace-events-worker-metadata-with-name: SKIP
 test-trace-exit-stack-limit: FAIL
 
 # Unclassified
-test-async-context-frame: FAIL
 test-async-hooks-http-parser-destroy: SKIP
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
@@ -266,8 +258,6 @@ test-net-connect-memleak: FAIL
 test-process-env: FAIL
 test-process-finalization: FAIL
 test-repl: FAIL
-test-runner-output: FAIL
-test-runner-watch-mode: SKIP
 test-tls-connect-memleak: FAIL
 test-trace-env-stack: FAIL
 test-ttywrap-stack: FAIL
@@ -288,9 +278,7 @@ test-zlib-unused-weak: FAIL
 
 # Fails randomly
 test-http-outgoing-end-cork: SKIP
-test-http-server-request-timeouts-mixed: PASS,FLAKY
 test-http2-server-rst-stream: SKIP
-test-runner-run-watch: SKIP
 test-signal-args: PASS,FAIL
 # GC-based random failures
 test-abortsignal-drop-settled-signals: SKIP

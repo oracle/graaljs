@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,8 +59,10 @@ import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -68,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorState;
 import com.oracle.truffle.js.runtime.builtins.JSGenerator;
 import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -128,9 +131,15 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             generatorObject.setGeneratorState(generatorState);
 
             writeYieldValue.executeWrite(generatorFrame, value);
-
             try {
-                Object result = functionBody.execute(generatorFrame);
+                JSAgent agent = JSRealm.get(this).getAgent();
+                AsyncContext previousContextMapping = agent.asyncContextSwap(generatorObject.getAsyncContextMapping());
+                Object result;
+                try {
+                    result = functionBody.execute(generatorFrame);
+                } finally {
+                    agent.asyncContextSwap(previousContextMapping);
+                }
                 return createIterResultObject.execute(result, true);
             } catch (YieldException e) {
                 generatorState = GeneratorState.SuspendedYield;
@@ -198,6 +207,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         generatorObject.setGeneratorState(GeneratorState.SuspendedStart);
         generatorObject.setGeneratorContext(frame.materialize());
         generatorObject.setGeneratorTarget(generatorRootNode.getCallTarget());
+        generatorObject.setAsyncContextMapping(JSRealm.get(this).getAgent().getAsyncContextMapping());
     }
 
     @Override

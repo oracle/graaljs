@@ -9,12 +9,8 @@ prefix es-module
 ### Graal.js-specific ###
 
 # missing support for source maps
-test-esm-loader-hooks                : FAIL
 test-esm-source-map                  : FAIL
 test-typescript-transform            : FAIL
-
-# Module doesn't see const variable created in global scope by a custom loader
-test-esm-loader-side-effect          : FAIL
 
 # Missing detection of unsettled top-level-await
 test-esm-detect-ambiguous            : FAIL
@@ -26,9 +22,6 @@ test-esm-wasm-js-string-builtins     : FAIL
 
 # Different output for TypeScript SyntaxError
 test-typescript-eval                 : FAIL
-
-# Unclassified
-test-require-module-tla              : SKIP
 
 # transient test failure tracked under GR-61384
 test-esm-long-path-win               : SKIP

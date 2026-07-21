@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,6 +106,21 @@ public class PromiseRejectionHandlerTest {
             context.eval("js", "count = 0; Graal.setUnhandledPromiseRejectionHandler(() => count++); Promise.reject('test')");
             Value count = context.eval("js", "count");
             assertEquals(1, count.asInt());
+        }
+    }
+
+    @Test
+    public void testAsyncContext() {
+        Context.Builder builder = JSTest.newContextBuilder().option("js.unhandled-rejections", "handler").option("js.async-context", "true").allowAllAccess(true);
+        try (Context context = builder.build()) {
+            context.eval("js", """
+                            const variable = new AsyncContext.Variable({defaultValue: 'default'});
+                            let seen;
+                            Graal.setUnhandledPromiseRejectionHandler(() => seen = variable.get());
+                            variable.run('rejection', () => Promise.reject('reason'));
+                            """);
+            Value value = context.eval("js", "seen");
+            assertEquals("rejection", value.asString());
         }
     }
 

@@ -151,7 +151,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "isCallable.executeBoolean(value)")
         protected final Object objectCallable(JSContext context, JSRealm callerRealm, Object value,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
-                        @Cached("create(context)") CopyFunctionNameAndLengthNode copyNameAndLengthNode) {
+                        @Cached CopyFunctionNameAndLengthNode copyNameAndLengthNode) {
             CompilerAsserts.partialEvaluationConstant(context);
             JSFunctionData wrappedFunctionCall = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.OrdinaryWrappedFunctionCall, ShadowRealmPrototypeBuiltins::createWrappedFunctionImpl);
             JSFunctionObject wrapped = JSFunction.createWrapped(context, callerRealm, wrappedFunctionCall, value);

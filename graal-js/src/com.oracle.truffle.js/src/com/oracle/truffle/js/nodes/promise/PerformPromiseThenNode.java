@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
@@ -97,8 +98,9 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
         JobCallback onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? agent.hostMakeJobCallback(onFulfilled) : null;
         JobCallback onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? agent.hostMakeJobCallback(onRejected) : null;
         assert resultCapability != null || (onFulfilledHandler != null && onRejectedHandler != null);
-        PromiseReactionRecord fulfillReaction = PromiseReactionRecord.create(resultCapability, onFulfilledHandler, true);
-        PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
+        AsyncContext asyncContextMapping = agent.getAsyncContextMapping();
+        PromiseReactionRecord fulfillReaction = PromiseReactionRecord.create(resultCapability, onFulfilledHandler, true, asyncContextMapping);
+        PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false, asyncContextMapping);
 
         int promiseState = JSPromise.getPromiseState(promise);
         if (pendingProf.profile(this, promiseState == JSPromise.PENDING)) {

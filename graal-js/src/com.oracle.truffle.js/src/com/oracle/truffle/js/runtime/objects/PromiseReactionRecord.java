@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,13 @@ public final class PromiseReactionRecord {
     private final PromiseCapabilityRecord capability;
     private final boolean fulfill;
     private final JobCallback handler;
+    private final AsyncContext asyncContextMapping;
 
-    private PromiseReactionRecord(PromiseCapabilityRecord capability, JobCallback handler, boolean fulfill) {
+    private PromiseReactionRecord(PromiseCapabilityRecord capability, JobCallback handler, boolean fulfill, AsyncContext asyncContextMapping) {
         this.capability = capability;
         this.handler = handler;
         this.fulfill = fulfill;
+        this.asyncContextMapping = asyncContextMapping;
     }
 
     public PromiseCapabilityRecord getCapability() {
@@ -69,7 +71,11 @@ public final class PromiseReactionRecord {
         return !isFulfill();
     }
 
-    public static PromiseReactionRecord create(PromiseCapabilityRecord capability, JobCallback handler, boolean fulfill) {
-        return new PromiseReactionRecord(capability, handler, fulfill);
+    public AsyncContext getAsyncContextMapping() {
+        return asyncContextMapping;
+    }
+
+    public static PromiseReactionRecord create(PromiseCapabilityRecord capability, JobCallback handler, boolean fulfill, AsyncContext asyncContextMapping) {
+        return new PromiseReactionRecord(capability, handler, fulfill, asyncContextMapping);
     }
 }
