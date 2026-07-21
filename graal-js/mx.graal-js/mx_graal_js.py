@@ -546,14 +546,12 @@ def libjsvm_dynamic_build_args():
     return libjsvm_dynamic_build_args_common() + (libjsvm_dynamic_build_args_ee() if is_nativeimage_ee() else [])
 
 def libjsvm_dynamic_build_args_common():
+    image_build_args = []
     if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() >= mx.VersionSpec("25") and is_wasm_available():
-        return [
-            '-H:+UnlockExperimentalVMOptions',
-            '-H:+VectorAPISupport',
-            '--add-modules=jdk.incubator.vector',
-        ]
-    else:
-        return []
+        image_build_args.append('--add-modules=jdk.incubator.vector')
+        if mx_sdk_vm_ng.get_bootstrap_graalvm_jdk_version() < mx.VersionSpec("25.2"):
+            image_build_args.extend(['-H:+UnlockExperimentalVMOptions', '-H:+VectorAPISupport'])
+    return image_build_args
 
 def libjsvm_dynamic_build_args_ee():
     image_build_args = []
