@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -491,6 +491,20 @@ public class InternalArrayTest extends JSTest {
         assertTrue((Boolean) testHelper.run("var a = []; a[0] = " + hole + "-1; a[3] = 3; a[0] !== undefined;"));
         assertTrue((Boolean) testHelper.run("var b = [0,1,2," + hole + "-1,4,5]; b[3] !== undefined;"));
         assertTrue((Boolean) testHelper.run("var c = [1000]; for (var i=0;i<1000;i++) { c[i]=i; }; c[1000]=" + hole + "-1; c[1000] !== undefined;"));
+    }
+
+    @Test
+    public void testHolesIntArrayWithMinValue() {
+        String script = """
+                        var a = [];
+                        a[0] = 0;
+                        a[3] = 3;
+                        a[1] = %d | 0;
+                        a;
+                        """.formatted(HolesIntArray.HOLE_VALUE);
+        var array = testHelper.runJSArray(script);
+        assertEquals(HolesObjectArray.class, array.getArrayType().getClass());
+        assertArrayEquals(new Object[]{0, HolesIntArray.HOLE_VALUE, Undefined.instance, 3}, array.getArrayType().toArray(array));
     }
 
     @Test

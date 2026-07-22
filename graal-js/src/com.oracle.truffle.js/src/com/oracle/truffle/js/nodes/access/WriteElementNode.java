@@ -1184,6 +1184,7 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsFastHoleIf,
                         @Cached InlinedConditionProfile supportedContainsHolesIf,
                         @Cached InlinedConditionProfile supportedNotContainsHolesIf,
+                        @Cached InlinedConditionProfile supportedHoleValueIf,
                         @Cached InlinedConditionProfile hasExplicitHolesIf,
                         @Cached InlinedBranchProfile needPrototypeBranch,
                         @Cached SetSupportedProfileAccess setSupportedProfile) {
@@ -1197,6 +1198,7 @@ public class WriteElementNode extends JSTargetableNode {
                                 inBoundsFastHoleIf,
                                 supportedContainsHolesIf,
                                 supportedNotContainsHolesIf,
+                                supportedHoleValueIf,
                                 hasExplicitHolesIf,
                                 needPrototypeBranch,
                                 setSupportedProfile);
@@ -1217,6 +1219,7 @@ public class WriteElementNode extends JSTargetableNode {
                         InlinedConditionProfile inBoundsFastHoleIf,
                         InlinedConditionProfile supportedContainsHolesIf,
                         InlinedConditionProfile supportedNotContainsHolesIf,
+                        InlinedConditionProfile supportedHoleValueIf,
                         InlinedConditionProfile hasExplicitHolesIf,
                         InlinedBranchProfile needPrototypeBranch,
                         SetSupportedProfileAccess setSupportedProfile) {
@@ -1243,8 +1246,10 @@ public class WriteElementNode extends JSTargetableNode {
                 ScriptArray toArrayType;
                 if (!containsHoles && supportedNotContainsHolesIf.profile(this, holesIntArray.isSupported(target, index))) {
                     toArrayType = holesIntArray.toNonHoles(target, index, intValue);
+                } else if (supportedHoleValueIf.profile(this, HolesIntArray.isHoleValue(intValue) && holesIntArray.isSupported(target, index))) {
+                    toArrayType = holesIntArray.toObject(target, index, intValue);
                 } else {
-                    assert holesIntArray.isSparse(target, index) || HolesIntArray.isHoleValue(intValue);
+                    assert holesIntArray.isSparse(target, index);
                     toArrayType = holesIntArray.toSparse(target, index, intValue);
                 }
                 return setArrayAndWrite(toArrayType, target, index, intValue, root);
