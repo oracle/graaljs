@@ -44,6 +44,7 @@ import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -63,6 +64,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncGenerator;
@@ -72,7 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -134,18 +136,21 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.setThisNode = PropertySetNode.createSetHidden(AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.THIS_ID, context);
         }
 
-        public JSDynamicObject execute(IteratorRecord iterated, JSFunctionObject start) {
-            JSAsyncGeneratorObject iterator = JSAsyncGenerator.create(context.getAsyncIteratorHelperObjectFactory(), getRealm());
+        public JSObject execute(IteratorRecord iterated, JSFunctionObject start) {
+            JSRealm realm = getRealm();
+            JSAsyncGeneratorObject iterator = JSAsyncGenerator.create(context.getAsyncIteratorHelperObjectFactory(), realm);
             setIteratedNode.setValue(iterator, iterated);
             setGeneratorResumptionTargetNode.setValue(iterator, start);
             iterator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.SuspendedStart);
             iterator.setAsyncGeneratorQueue(new ArrayDeque<>(4));
             iterator.setGeneratorBrand(GENERATOR_BRAND);
+            iterator.setAsyncContextMapping(realm.getAgent().getAsyncContextMapping());
 
             setThisNode.setValue(start, iterator);
             return iterator;
         }
 
+        @NeverDefault
         public static CreateAsyncIteratorHelperNode create(JSContext context) {
             return new CreateAsyncIteratorHelperNode(context);
         }
@@ -196,7 +201,13 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             assert !queue.isEmpty();
 
             CallTarget resumptionTarget = JSFunction.getCallTarget(resumptionClosure);
-            internalCallNode.execute(resumptionTarget, JSArguments.createOneArg(iterator, resumptionClosure, completion));
+            var agent = getRealm().getAgent();
+            var previousContextMapping = agent.asyncContextSwap(iterator.getAsyncContextMapping());
+            try {
+                internalCallNode.execute(resumptionTarget, JSArguments.createOneArg(iterator, resumptionClosure, completion));
+            } finally {
+                agent.asyncContextSwap(previousContextMapping);
+            }
         }
     }
 
