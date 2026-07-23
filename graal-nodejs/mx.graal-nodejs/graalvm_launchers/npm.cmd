@@ -36,9 +36,9 @@ for %%a in (%*) do (
   rem Maybe some of those arguments where not really intended for the launcher but were application arguments
   if "!u_arg:~0,5!"=="--vm." (
     set "node_arg=true"
-  ) else if "!u_arg:~0,5!"=="--jvm" (
+  ) else if "!u_arg!"=="--jvm" (
     set "node_arg=true"
-  ) else if "!u_arg:~0,8!"=="--native" (
+  ) else if "!u_arg!"=="--native" (
     set "node_arg=true"
   ) else if "!u_arg:~0,9!"=="--engine." (
     set "node_arg=true"

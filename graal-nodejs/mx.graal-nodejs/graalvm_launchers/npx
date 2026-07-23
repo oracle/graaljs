@@ -24,9 +24,7 @@ for opt in "${@:1}"; do
             NODE_DIR="${opt}" ;;
         --vm.*)
             NODE_ARGS+=("${opt}") ;;
-        --jvm*)
-            NODE_ARGS+=("${opt}") ;;
-        --native*)
+        --jvm|--native)
             NODE_ARGS+=("${opt}") ;;
         --engine.*)
             NODE_ARGS+=("${opt}") ;;
