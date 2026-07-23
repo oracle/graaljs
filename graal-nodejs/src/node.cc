@@ -816,6 +816,17 @@ static ExitCode ProcessGlobalArgsInternal(std::vector<std::string>* args,
     v8_args_as_char_ptr.resize(argc);
   }
 
+  // VM options are translated to NODE_JVM_OPTIONS by
+  // V8::SetFlagsFromCommandLine(). Do not retain their original command-line
+  // form in process.execArgv: child_process.fork() inherits both the
+  // environment and process.execArgv, which would otherwise apply these
+  // options twice in the child process.
+  if (exec_args != nullptr) {
+    std::erase_if(*exec_args, [](const std::string& arg) {
+      return arg.starts_with("--vm.");
+    });
+  }
+
   // Anything that's still in v8_argv is not a V8 or a node option.
   for (size_t i = 1; i < v8_args_as_char_ptr.size(); i++)
     errors->push_back("bad option: " + std::string(v8_args_as_char_ptr[i]));
