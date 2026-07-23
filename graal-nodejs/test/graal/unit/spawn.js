@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@
 var assert = require('assert');
 var child_process = require('child_process');
 var module = require('./_unit');
+var path = require('path');
 var spawnSync = child_process.spawnSync;
 
 function checkTheAnswerToLifeTheUniverseAndEverything(answer) {
@@ -71,6 +72,22 @@ describe('Spawn', function () {
     it('should accept --use-strict option', function () {
         var result = spawnSync(process.execPath, ['--use-strict', '-p', '6*7']);
         checkTheAnswerToLifeTheUniverseAndEverything(result);
+    });
+    it.skipOnNode('should not duplicate VM options in a forked process', function () {
+        var childScript = path.join(__dirname, 'fork-jvm-options-child.mjs');
+        var parentScript = `
+            const child = require('child_process').fork(${JSON.stringify(childScript)});
+            child.on('message', (message) => {
+                console.log('FORKED_JVM_OPTIONS:' + JSON.stringify(message));
+            });`;
+        var option = '--vm.Dfoo=bar';
+        var result = spawnSync(process.execPath, [option, '-e', parentScript]);
+        assert.strictEqual(result.status, 0, result.stderr.toString());
+        var match = result.stdout.toString().match(/FORKED_JVM_OPTIONS:(.+)/);
+        assert.ok(match, result.stdout.toString());
+        var childOptions = JSON.parse(match[1]);
+        assert.ok(!childOptions.execArgv.includes(option));
+        assert.strictEqual(childOptions.jvmOptions.split('-Dfoo=bar').length - 1, 1);
     });
     it('should survive duplicates in envPairs', function (done) {
         // Copy the current content of process.env
