@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ContiguousDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ContiguousIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ContiguousJSObjectArray;
+import com.oracle.truffle.js.runtime.array.dyn.HolesDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesJSObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
@@ -505,6 +506,24 @@ public class InternalArrayTest extends JSTest {
         var array = testHelper.runJSArray(script);
         assertEquals(HolesObjectArray.class, array.getArrayType().getClass());
         assertArrayEquals(new Object[]{0, HolesIntArray.HOLE_VALUE, Undefined.instance, 3}, array.getArrayType().toArray(array));
+    }
+
+    @Test
+    public void testHolesDoubleArrayWithHoleValue() {
+        String script = """
+                        var buffer = new ArrayBuffer(8);
+                        var view = new DataView(buffer);
+                        view.setBigUint64(0, 0x%xn);
+                        var holeValue = view.getFloat64(0);
+                        var a = [];
+                        a[0] = 0.5;
+                        a[3] = 3.5;
+                        a[1] = holeValue;
+                        a;
+                        """.formatted(HolesDoubleArray.HOLE_VALUE);
+        var array = testHelper.runJSArray(script);
+        assertEquals(HolesObjectArray.class, array.getArrayType().getClass());
+        assertArrayEquals(new Object[]{0.5, HolesDoubleArray.HOLE_VALUE_DOUBLE, Undefined.instance, 3.5}, array.getArrayType().toArray(array));
     }
 
     @Test
