@@ -1273,8 +1273,6 @@ namespace v8 {
         bool show_help = false;
         bool use_jvm = false;
         bool use_native = false;
-        bool show_jvm_warning = false;
-        bool show_native_warning = false;
         std::string vm_args;
 
         int unprocessed = 0;
@@ -1289,20 +1287,7 @@ namespace v8 {
                 classpath = arg + sizeof ("--vm.classpath") - 1;
             } else if (!strncmp(arg, "--vm.cp", sizeof ("--vm.cp") - 1)) {
                 classpath = arg + sizeof ("--vm.cp") - 1;
-            } else if (!strncmp(arg, "--jvm.classpath", sizeof ("--jvm.classpath") - 1)) {
-                show_jvm_warning = true;
-                classpath = arg + sizeof ("--jvm.classpath") - 1;
-            } else if (!strncmp(arg, "--jvm.cp", sizeof ("--jvm.cp") - 1)) {
-                show_jvm_warning = true;
-                classpath = arg + sizeof ("--jvm.cp") - 1;
-            } else if (!strncmp(arg, "--vm.", sizeof ("--vm.") - 1) || !strncmp(arg, "--jvm.", sizeof ("--jvm.") - 1) || (!strncmp(arg, "--native.", sizeof ("--native.") - 1) && strcmp(arg, "--native.help"))) {
-                if (arg[2] == 'j') {
-                    use_jvm = true;
-                    show_jvm_warning = true;
-                } else if (arg[2] == 'n') {
-                    use_native = true;
-                    show_native_warning = true;
-                }
+            } else if (!strncmp(arg, "--vm.", sizeof ("--vm.") - 1)) {
                 const char *trailing = strchr(arg, '.') + 1;
                 if (!vm_args.empty()) {
                     vm_args.append(" ");
@@ -1363,12 +1348,6 @@ namespace v8 {
             // claim that we understood and processed all command line options
             // (we have termined already if we encountered an unknown option)
             *argc = 1;
-        }
-        if (show_jvm_warning) {
-            fprintf(stderr, "'--jvm.*' options are deprecated, use '--vm.*' instead.\n");
-        }
-        if (show_native_warning) {
-            fprintf(stderr, "'--native.*' options are deprecated, use '--vm.*' instead.\n");
         }
         if (show_help) {
             // show help and terminate

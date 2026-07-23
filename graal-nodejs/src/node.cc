@@ -816,6 +816,17 @@ static ExitCode ProcessGlobalArgsInternal(std::vector<std::string>* args,
     v8_args_as_char_ptr.resize(argc);
   }
 
+  // VM options are translated to NODE_JVM_OPTIONS by
+  // V8::SetFlagsFromCommandLine(). Do not retain their original command-line
+  // form in process.execArgv: child_process.fork() inherits both the
+  // environment and process.execArgv, which would otherwise apply these
+  // options twice in the child process.
+  if (exec_args != nullptr) {
+    std::erase_if(*exec_args, [](const std::string& arg) {
+      return arg.starts_with("--vm.");
+    });
+  }
+
   // Anything that's still in v8_argv is not a V8 or a node option.
   for (size_t i = 1; i < v8_args_as_char_ptr.size(); i++)
     errors->push_back("bad option: " + std::string(v8_args_as_char_ptr[i]));
@@ -1636,18 +1647,10 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
     const char *classpath = nullptr;
     if (!strncmp(arg, "--vm.Xss", sizeof("--vm.Xss") - 1)) {
       nptr = arg + sizeof("--vm.Xss") - 1;
-    } else if (!strncmp(arg, "--jvm.Xss", sizeof("--jvm.Xss") - 1)) {
-      nptr = arg + sizeof("--jvm.Xss") - 1;
-    } else if(!strncmp(arg, "--native.Xss", sizeof("--native.Xss") - 1)) {
-      nptr = arg + sizeof("--native.Xss") - 1;
     } else if (!strncmp(arg, "--vm.classpath", sizeof ("--vm.classpath") - 1)) {
       classpath = arg + sizeof ("--vm.classpath") - 1;
     } else if (!strncmp(arg, "--vm.cp", sizeof ("--vm.cp") - 1)) {
       classpath = arg + sizeof ("--vm.cp") - 1;
-    } else if (!strncmp(arg, "--jvm.classpath", sizeof ("--jvm.classpath") - 1)) {
-      classpath = arg + sizeof ("--jvm.classpath") - 1;
-    } else if (!strncmp(arg, "--jvm.cp", sizeof ("--jvm.cp") - 1)) {
-      classpath = arg + sizeof ("--jvm.cp") - 1;
     } else if (arg[0] != '-') { // stop at first non-option argument
         break;
     }
@@ -1666,9 +1669,7 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
       }
     }
     if (nptr != nullptr) {
-      // NOTE: if more than one value is specified, return the last one. If
-      // --native and --jvm are mixed, let the parsing code for all arguments
-      // handle this.
+      // If more than one value is specified, return the last one.
       char *endptr;
       long value = strtol(nptr, &endptr, 10);
       if (endptr != nptr) {
