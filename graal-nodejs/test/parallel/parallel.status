@@ -263,7 +263,6 @@ test-ttywrap-stack: FAIL
 test-vm-global-setter: FAIL
 test-vm-low-stack-space: SKIP
 test-vm-module-link: FAIL
-test-vm-new-script-new-context: FAIL
 test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP
 test-worker-cleanexit-with-moduleload: SKIP
