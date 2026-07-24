@@ -298,8 +298,10 @@ public class SerializedData {
         data.add(map.size());
         JSHashMap.Cursor cursor = map.getEntries();
         while (cursor.advance()) {
-            serializeValue(cursor.getKey());
-            serializeValue(cursor.getValue());
+            Object key = cursor.getKey();
+            Object value = cursor.getValue();
+            serializeValue(key);
+            serializeValue(value);
         }
     }
 
