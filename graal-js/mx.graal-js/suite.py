@@ -754,9 +754,6 @@ suite = {
         "./": [
           "file:README.md",
         ],
-        "bin/": [
-          "file:mx.graal-js/graalvm_launchers/<cmd:js-polyglot-get>",
-        ]
       },
     },
 
@@ -819,6 +816,7 @@ suite = {
         "./": [
           "dependency:GRAALJS_STANDALONE_COMMON/*",
         ],
+        "bin/<cmd:js-polyglot-get>": "file:mx.graal-js/graalvm_launchers/<cmd:js-polyglot-get>",
         "jvm/": {
           "source_type": "dependency",
           "dependency": "sdk:STANDALONE_JAVA_HOME",

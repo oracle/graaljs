@@ -824,7 +824,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'bin/<exe:node>',
         'bin/<cmd:npm>',
         'bin/<cmd:npx>',
-        'bin/<cmd:node-polyglot-get>',
     ],
     polyglot_lib_build_args=['--language:nodejs'],
     polyglot_lib_jar_dependencies=['graal-nodejs:TRUFFLENODE'],
