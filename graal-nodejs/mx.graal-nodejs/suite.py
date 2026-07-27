@@ -199,7 +199,6 @@ suite = {
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npm>",
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npx>",
         ],
-        "bin/<cmd:node-polyglot-get>": "file:../graal-js/mx.graal-js/graalvm_launchers/<cmd:js-polyglot-get>",
       },
       "os" : {
         "windows" : {},
@@ -271,6 +270,7 @@ suite = {
         "./": [
           "dependency:GRAALNODEJS_STANDALONE_COMMON/*",
         ],
+        "bin/<cmd:node-polyglot-get>": "file:../graal-js/mx.graal-js/graalvm_launchers/<cmd:js-polyglot-get>",
         "jvm/": {
           "source_type": "dependency",
           "dependency": "sdk:STANDALONE_JAVA_HOME",
