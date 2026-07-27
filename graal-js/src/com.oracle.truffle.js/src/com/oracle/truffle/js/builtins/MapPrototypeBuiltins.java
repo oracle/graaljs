@@ -63,8 +63,8 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapForEachNo
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapGetNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapHasNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapSetNodeGen;
-import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetOrInsertNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetOrInsertComputedNodeGen;
+import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetOrInsertNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -202,7 +202,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization
         protected static JSDynamicObject doMap(JSMapObject thisObj) {
-            JSMap.getInternalMap(thisObj).clear();
+            thisObj.clear();
             return Undefined.instance;
         }
 
@@ -260,7 +260,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected boolean doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return JSMap.getInternalMap(thisObj).remove(normalizedKey);
+            return thisObj.remove(normalizedKey);
         }
 
         @InliningCutoff
@@ -299,8 +299,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected Object doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            Object value = JSMap.getInternalMap(thisObj).get(normalizedKey);
-            return JSRuntime.nullToUndefined(value);
+            return thisObj.getOrDefault(normalizedKey, Undefined.instance);
         }
 
         @InliningCutoff
@@ -337,7 +336,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected JSDynamicObject doMap(JSMapObject thisObj, Object key, Object value) {
             Object normalizedKey = normalize(key);
-            JSMap.getInternalMap(thisObj).put(normalizedKey, value);
+            thisObj.put(normalizedKey, value);
             return thisObj;
         }
 
@@ -377,7 +376,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected boolean doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return JSMap.getInternalMap(thisObj).has(normalizedKey);
+            return thisObj.has(normalizedKey);
         }
 
         @InliningCutoff
@@ -407,8 +406,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         protected Object doMap(JSMapObject thisObj, Object callback, Object thisArg,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") @Shared JSFunctionCallNode callNode) {
-            JSHashMap map = JSMap.getInternalMap(thisObj);
-            JSHashMap.Cursor cursor = map.getEntries();
+            JSHashMap.Cursor cursor = thisObj.getEntries();
             while (cursor.advance()) {
                 Object value = cursor.getValue();
                 Object key = cursor.getKey();
@@ -473,7 +471,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization
         protected static int doMap(JSMapObject thisObj) {
-            return JSMap.getMapSize(thisObj);
+            return thisObj.size();
         }
 
         @InliningCutoff
@@ -508,7 +506,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization
         protected final JSObject doMap(JSMapObject map) {
-            return JSMapIterator.create(getContext(), getRealm(), map, JSMap.getInternalMap(map).getEntries(), iterationKind);
+            return JSMapIterator.create(getContext(), getRealm(), map, map.getEntries(), iterationKind);
         }
 
         @InliningCutoff
@@ -561,7 +559,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected Object doMap(JSMapObject thisObj, Object key, Object value) {
             Object normalizedKey = normalize(key);
-            Object result = JSMap.getInternalMap(thisObj).getOrInsert(normalizedKey, value);
+            Object result = thisObj.getOrInsert(normalizedKey, value);
             return JSRuntime.nullToUndefined(result);
         }
 
@@ -612,11 +610,10 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object normalizedKey = normalize(key);
-            JSHashMap internalMap = JSMap.getInternalMap(thisObj);
-            Object value = internalMap.get(normalizedKey);
+            Object value = thisObj.get(normalizedKey);
             if (value == null) {
                 value = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, callbackfn, normalizedKey));
-                internalMap.put(normalizedKey, value);
+                thisObj.put(normalizedKey, value);
             }
             return JSRuntime.nullToUndefined(value);
         }

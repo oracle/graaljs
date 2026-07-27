@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,7 +86,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
 import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
@@ -378,7 +377,6 @@ public class Deserializer {
 
     private JSDynamicObject readJSMap(JSContext context, JSRealm realm) {
         JSMapObject object = JSMap.create(context, realm);
-        JSHashMap internalMap = JSMap.getInternalMap(object);
         assignId(object);
         SerializationTag tag;
         int read = 0;
@@ -386,7 +384,7 @@ public class Deserializer {
             read++;
             Object key = readValue(realm, tag);
             Object value = readValue(realm);
-            internalMap.put(key, value);
+            object.put(key, value);
         }
         int expected = readVarInt();
         if (2 * read != expected) {
@@ -397,14 +395,13 @@ public class Deserializer {
 
     private JSDynamicObject readJSSet(JSContext context, JSRealm realm) {
         JSSetObject object = JSSet.create(context, realm);
-        JSHashMap internalMap = JSSet.getInternalSet(object);
         assignId(object);
         SerializationTag tag;
         int read = 0;
         while ((tag = readTag()) != SerializationTag.END_JS_SET) {
             read++;
             Object value = readValue(realm, tag);
-            internalMap.put(value, value);
+            object.add(value);
         }
         int expected = readVarInt();
         if (read != expected) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.util.JSHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -117,12 +116,11 @@ public class MapFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<MapFunct
 
         @TruffleBoundary
         protected void setGroups(JSMapObject map, Map<Object, List<Object>> groups) {
-            JSHashMap internalMap = JSMap.getInternalMap(map);
             JSRealm realm = getRealm();
             JSContext context = getContext();
             for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
                 JSArrayObject elements = JSArray.createConstant(context, realm, entry.getValue().toArray());
-                internalMap.put(entry.getKey(), elements);
+                map.put(entry.getKey(), elements);
             }
         }
 

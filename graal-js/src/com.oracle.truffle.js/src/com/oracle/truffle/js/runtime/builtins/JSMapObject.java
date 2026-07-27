@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -69,13 +70,53 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 public final class JSMapObject extends JSNonProxyObject {
     private final JSHashMap map;
 
-    protected JSMapObject(Shape shape, JSDynamicObject proto, JSHashMap map) {
+    protected JSMapObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
-        this.map = map;
+        this.map = new JSHashMap();
     }
 
-    public JSHashMap getMap() {
-        return map;
+    public int size() {
+        return map.size();
+    }
+
+    public Object get(Object key) {
+        return map.get(key);
+    }
+
+    public Object getOrDefault(Object key, Object defaultValue) {
+        return map.getOrDefault(key, defaultValue);
+    }
+
+    public boolean has(Object key) {
+        return map.has(key);
+    }
+
+    public boolean remove(Object key) {
+        return map.remove(key);
+    }
+
+    public void clear() {
+        map.clear();
+    }
+
+    public void put(Object key, Object value) {
+        try {
+            map.put(key, value);
+        } catch (IllegalStateException ex) {
+            throw Errors.createRangeError("Map maximum size exceeded");
+        }
+    }
+
+    public Object getOrInsert(Object key, Object value) {
+        try {
+            return map.getOrInsert(key, value);
+        } catch (IllegalStateException ex) {
+            throw Errors.createRangeError("Map maximum size exceeded");
+        }
+    }
+
+    public JSHashMap.Cursor getEntries() {
+        return map.getEntries();
     }
 
     @Override
@@ -91,12 +132,12 @@ public final class JSMapObject extends JSNonProxyObject {
 
     @ExportMessage
     long getHashSize() {
-        return getMap().size();
+        return size();
     }
 
     @ExportMessage
     Object getHashEntriesIterator() {
-        return new EntriesIterator(getMap().getEntries());
+        return new EntriesIterator(getEntries());
     }
 
     @ExportMessage
@@ -104,7 +145,7 @@ public final class JSMapObject extends JSNonProxyObject {
                     @Cached @Shared ImportValueNode importKeyNode,
                     @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        return getMap().has(normalizedKey);
+        return has(normalizedKey);
     }
 
     @ExportMessage
@@ -113,7 +154,7 @@ public final class JSMapObject extends JSNonProxyObject {
                     @Cached @Shared ImportValueNode importKeyNode,
                     @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        Object value = getMap().get(normalizedKey);
+        Object value = get(normalizedKey);
         if (value == null) {
             throw UnknownKeyException.create(key);
         }
@@ -126,7 +167,7 @@ public final class JSMapObject extends JSNonProxyObject {
                     @Cached @Shared ImportValueNode importKeyNode,
                     @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        Object value = getMap().get(normalizedKey);
+        Object value = get(normalizedKey);
         if (value == null) {
             return defaultValue;
         }
@@ -139,7 +180,7 @@ public final class JSMapObject extends JSNonProxyObject {
                     @Cached @Shared ImportValueNode importKeyNode,
                     @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        return getMap().has(normalizedKey);
+        return has(normalizedKey);
     }
 
     @ExportMessage
@@ -154,7 +195,7 @@ public final class JSMapObject extends JSNonProxyObject {
                     @Cached @Exclusive ImportValueNode importValueNode,
                     @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        getMap().put(normalizedKey, importValueNode.executeWithTarget(value));
+        put(normalizedKey, importValueNode.executeWithTarget(value));
     }
 
     @ExportMessage
@@ -162,7 +203,7 @@ public final class JSMapObject extends JSNonProxyObject {
                     @Cached @Shared ImportValueNode importKeyNode,
                     @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        if (!getMap().remove(normalizedKey)) {
+        if (!remove(normalizedKey)) {
             throw UnknownKeyException.create(key);
         }
     }
@@ -173,7 +214,7 @@ public final class JSMapObject extends JSNonProxyObject {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.concatAll(Strings.BRACKET_OPEN, getClassName(), Strings.BRACKET_CLOSE);
         } else {
-            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), JSMap.getInternalMap(this), depth);
+            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), map, depth);
         }
     }
 

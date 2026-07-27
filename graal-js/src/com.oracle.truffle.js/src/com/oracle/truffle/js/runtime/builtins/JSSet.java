@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSSet extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
 
@@ -69,9 +68,9 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
         return create(factory, realm, factory.getPrototype(realm));
     }
 
-    public static JSSetObject create(JSContext context, JSRealm realm, JSHashMap internalMap) {
+    public static JSSetObject create(JSContext context, JSRealm realm, JSSetObject originalSet) {
         JSObjectFactory factory = context.getSetFactory();
-        return create(factory, realm, factory.getPrototype(realm), internalMap);
+        return create(factory, realm, factory.getPrototype(realm), originalSet);
     }
 
     public static JSSetObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
@@ -80,12 +79,14 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     private static JSSetObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
-        return create(factory, realm, proto, new JSHashMap());
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSSetObject(shape, proto), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
-    private static JSSetObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, JSHashMap internalMap) {
+    private static JSSetObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, JSSetObject originalSet) {
         var shape = factory.getShape(realm, proto);
-        var newObj = factory.initProto(new JSSetObject(shape, proto, internalMap), realm, proto);
+        var newObj = factory.initProto(new JSSetObject(shape, proto, originalSet), realm, proto);
         return factory.trackAllocation(newObj);
     }
 
@@ -103,14 +104,6 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
             return (int) value;
         }
         return value;
-    }
-
-    public static JSHashMap getInternalSet(JSSetObject obj) {
-        return obj.getMap();
-    }
-
-    public static int getSetSize(JSSetObject obj) {
-        return getInternalSet(obj).size();
     }
 
     @Override

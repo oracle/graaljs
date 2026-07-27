@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -52,15 +53,47 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSSetObject extends JSNonProxyObject {
+    /** Dummy value to associate with a key in the backing map. */
+    private static final Object PRESENT = new Object();
+
     private final JSHashMap map;
 
-    protected JSSetObject(Shape shape, JSDynamicObject proto, JSHashMap map) {
+    protected JSSetObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
-        this.map = map;
+        this.map = new JSHashMap();
     }
 
-    public JSHashMap getMap() {
-        return map;
+    protected JSSetObject(Shape shape, JSDynamicObject proto, JSSetObject originalSet) {
+        super(shape, proto);
+        this.map = originalSet.map.copy();
+    }
+
+    public int size() {
+        return map.size();
+    }
+
+    public boolean has(Object key) {
+        return map.has(key);
+    }
+
+    public boolean remove(Object key) {
+        return map.remove(key);
+    }
+
+    public void clear() {
+        map.clear();
+    }
+
+    public void add(Object key) {
+        try {
+            map.putIfAbsent(key, PRESENT);
+        } catch (IllegalStateException ex) {
+            throw Errors.createRangeError("Set maximum size exceeded");
+        }
+    }
+
+    public JSHashMap.Cursor getEntries() {
+        return map.getEntries();
     }
 
     @Override
@@ -74,7 +107,7 @@ public final class JSSetObject extends JSNonProxyObject {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return Strings.concatAll(Strings.BRACKET_OPEN, getClassName(), Strings.BRACKET_CLOSE);
         } else {
-            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), JSSet.getInternalSet(this), depth);
+            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), map, depth);
         }
     }
 }

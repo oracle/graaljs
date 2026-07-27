@@ -308,11 +308,11 @@ public class JSRuntimeTest extends JSTest {
     @Test
     public void testSafeToStringCollections() {
         JSMapObject map = JSMap.create(testHelper.getJSContext(), testHelper.getRealm());
-        JSMap.getInternalMap(map).put("foo", "bar");
+        map.put("foo", "bar");
         assertEquals(Strings.constant("Map(1){\"foo\" => \"bar\"}"), JSRuntime.safeToString(map));
 
         JSSetObject set = JSSet.create(testHelper.getJSContext(), testHelper.getRealm());
-        JSSet.getInternalSet(set).put("foo", "UNUSED");
+        set.add("foo");
         assertEquals(Strings.constant("Set(1){\"foo\"}"), JSRuntime.safeToString(set));
     }
 
