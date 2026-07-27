@@ -321,12 +321,12 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             iteratorCloseNode = IteratorCloseNode.create(context);
         }
 
-        protected Object call(Object function, Object target, Object... userArguments) {
+        protected Object call(Object function, Object target, Object element) {
             if (callFunctionNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callFunctionNode = insert(JSFunctionCallNode.createCall());
             }
-            return callFunctionNode.executeCall(JSArguments.create(target, function, userArguments));
+            return callFunctionNode.executeCall(JSArguments.createOneArg(target, function, element));
         }
 
     }
@@ -353,9 +353,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     break;
                 }
                 Object nextValue = normalize(iteratorValueNode.execute(next));
-                if (!resultSet.has(nextValue)) {
-                    resultSet.add(nextValue);
-                }
+                resultSet.add(nextValue);
             }
             return resultSet;
         }
@@ -392,7 +390,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     Object e = cursor.getKey();
                     Object inOtherObj = call(otherRec.has(), otherRec.set(), e);
                     boolean inOther = toBooleanNode.executeBoolean(this, inOtherObj);
-                    if (inOther && !resultSet.has(e)) {
+                    if (inOther) {
                         resultSet.add(e);
                     }
                 }
@@ -404,9 +402,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         break;
                     }
                     Object nextValue = normalize(iteratorValueNode.execute(next));
-                    boolean alreadyInResult = resultSet.has(nextValue);
                     boolean inThis = set.has(nextValue);
-                    if (!alreadyInResult && inThis) {
+                    if (inThis) {
                         resultSet.add(nextValue);
                     }
                 }
@@ -493,15 +490,10 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     break;
                 }
                 Object nextValue = normalize(iteratorValueNode.execute(next));
-                boolean inResult = resultSet.has(nextValue);
                 if (set.has(nextValue)) {
-                    if (inResult) {
-                        resultSet.remove(nextValue);
-                    }
+                    resultSet.remove(nextValue);
                 } else {
-                    if (!inResult) {
-                        resultSet.add(nextValue);
-                    }
+                    resultSet.add(nextValue);
                 }
             }
             return resultSet;

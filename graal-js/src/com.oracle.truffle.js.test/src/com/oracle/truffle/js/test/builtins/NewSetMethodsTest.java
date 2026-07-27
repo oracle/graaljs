@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -236,6 +236,19 @@ public class NewSetMethodsTest {
                             "var result = set1.symmetricDifference(set2); %s;",
                             createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6), createSetString(1, 2, 5, 6),
                             setEqualsString("result", "expected"));
+            Value result = context.eval(JavaScriptLanguage.ID, code);
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
+    public void testSymmetricDifferenceDuplicateKeys() {
+        try (Context context = getNewSetMethodsContext()) {
+            String code = "var set = new Set([1, 2]);" +
+                            "var other = {size: 4, has() {}, keys() { return [1, 1, 3, 3].values(); }};" +
+                            "var result = set.symmetricDifference(other);" +
+                            "result.size === 2 && [...result].toString() === '2,3';";
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isBoolean());
             assertTrue(result.asBoolean());
