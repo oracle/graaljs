@@ -392,7 +392,14 @@ public final class JSHashMap {
 
     private static int getHash(Object key) {
         int hash = key.hashCode();
-        return hash ^ (hash >>> 16);
+        return mixHash(hash);
+    }
+
+    private static int mixHash(int hashCode) {
+        int hash = hashCode;
+        hash ^= hash >>> 13;
+        hash ^= hash << 17;
+        return hash ^ (hash >>> 5);
     }
 
     private static final class Node {
