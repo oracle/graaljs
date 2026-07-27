@@ -324,10 +324,35 @@ public final class JSHashMap {
     @TruffleBoundary
     public JSHashMap copy() {
         JSHashMap result = new JSHashMap();
-        for (Node node = head; node != null; node = node.nextOrder) {
-            result.put(node.key, node.value);
+        if (size > LINEAR_LOOKUP_THRESHOLD) {
+            result.table = new Node[tableCapacityForSize(size)];
         }
+        Node previous = null;
+        for (Node node = head; node != null; node = node.nextOrder) {
+            Node copy = new Node(node.hash, node.key, node.value, previous);
+            if (previous == null) {
+                result.head = copy;
+            } else {
+                previous.nextOrder = copy;
+            }
+            if (result.table != null) {
+                int bucketIndex = copy.hash & (result.table.length - 1);
+                copy.nextBucket = result.table[bucketIndex];
+                result.table[bucketIndex] = copy;
+            }
+            previous = copy;
+        }
+        result.tail = previous;
+        result.size = size;
         return result;
+    }
+
+    private static int tableCapacityForSize(int size) {
+        int capacity = INITIAL_TABLE_CAPACITY;
+        while (size > capacity - (capacity >> 2)) {
+            capacity <<= 1;
+        }
+        return capacity;
     }
 
     private Node find(Object key, int hash) {

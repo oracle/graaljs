@@ -285,6 +285,35 @@ public class JSHashMapTest {
     }
 
     @Test
+    public void testCopyUsesCachedHashes() {
+        for (int entryCount : new int[]{0, 4, 12}) {
+            JSHashMap map = new JSHashMap();
+            ThrowingHashKey[] keys = new ThrowingHashKey[entryCount];
+            for (int i = 0; i < entryCount; i++) {
+                keys[i] = new ThrowingHashKey(i);
+                map.put(keys[i], i);
+                keys[i].setThrowOnHashCode(true);
+            }
+
+            JSHashMap copy = map.copy();
+            assertEquals(entryCount, copy.size());
+
+            JSHashMap.Cursor cursor = copy.getEntries();
+            for (int i = 0; i < entryCount; i++) {
+                keys[i].setThrowOnHashCode(false);
+                assertEquals(i, copy.get(keys[i]));
+                assertTrue(cursor.advance());
+                assertEquals(keys[i], cursor.getKey());
+            }
+            assertFalse(cursor.advance());
+            if (entryCount > 0) {
+                assertTrue(map.remove(keys[0]));
+                assertEquals(0, copy.get(keys[0]));
+            }
+        }
+    }
+
+    @Test
     public void testNewEntryIsHashedOnce() {
         JSHashMap map = new JSHashMap();
         for (int i = 0; i < 5; i++) {
