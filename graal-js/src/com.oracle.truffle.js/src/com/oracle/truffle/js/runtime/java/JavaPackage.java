@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -100,13 +99,8 @@ public final class JavaPackage extends JSNonProxy {
         return obj instanceof JavaPackageObject;
     }
 
-    public static TruffleString getPackageName(JSDynamicObject obj) {
-        assert isJavaPackage(obj);
-        return ((JavaPackageObject) obj).getPackageName();
-    }
-
     @TruffleBoundary
-    public static Object lookupClass(JSRealm realm, JSDynamicObject thisObj, TruffleString className) {
+    public static Object lookupClass(JSRealm realm, JavaPackageObject thisObj, TruffleString className) {
         TruffleLanguage.Env env = realm.getEnv();
         assert env.isHostLookupAllowed();
         TruffleString qualifiedName = prependPackageName(thisObj, className);
@@ -126,11 +120,11 @@ public final class JavaPackage extends JSNonProxy {
         return null;
     }
 
-    public static JSDynamicObject subpackage(JSContext context, JSRealm realm, JSDynamicObject thisObj, TruffleString name) {
+    public static JSDynamicObject subpackage(JSContext context, JSRealm realm, JavaPackageObject thisObj, TruffleString name) {
         return create(context, realm, prependPackageName(thisObj, name));
     }
 
-    public static Object getJavaClassOrConstructorOrSubPackage(JSContext context, JSDynamicObject thisObj, TruffleString name) {
+    public static Object getJavaClassOrConstructorOrSubPackage(JSContext context, JavaPackageObject thisObj, TruffleString name) {
         JSRealm realm = JSRealm.get(null);
         if (context.isOptionNashornCompatibilityMode() && Strings.endsWith(name, Strings.PAREN_CLOSE)) {
             // constructor directly? e.g. java.awt["Color(int,int,int)"]
@@ -148,7 +142,7 @@ public final class JavaPackage extends JSNonProxy {
         return getJavaClassOrSubPackage(context, realm, thisObj, name);
     }
 
-    private static Object getJavaClassOrSubPackage(JSContext context, JSRealm realm, JSDynamicObject thisObj, TruffleString name) {
+    private static Object getJavaClassOrSubPackage(JSContext context, JSRealm realm, JavaPackageObject thisObj, TruffleString name) {
         Object javaClass = lookupClass(realm, thisObj, name);
         if (javaClass != null) {
             return javaClass;
@@ -157,14 +151,14 @@ public final class JavaPackage extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static TruffleString prependPackageName(JSDynamicObject thisObj, TruffleString className) {
-        TruffleString packageName = getPackageName(thisObj);
+    private static TruffleString prependPackageName(JavaPackageObject thisObj, TruffleString className) {
+        TruffleString packageName = thisObj.getPackageName();
         return (!Strings.isEmpty(packageName)) ? Strings.concatAll(packageName, Strings.DOT, className) : className;
     }
 
     @TruffleBoundary
-    public static Object toPrimitiveString(JSDynamicObject obj) {
-        return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, getPackageName(obj), Strings.BRACKET_CLOSE);
+    public static Object toPrimitiveString(JavaPackageObject obj) {
+        return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, obj.getPackageName(), Strings.BRACKET_CLOSE);
     }
 
     public static JSFunctionObject createToPrimitiveFunction(JSContext context, JSRealm realm) {
@@ -181,13 +175,13 @@ public final class JavaPackage extends JSNonProxy {
                 Object obj = JSArguments.getThisObject(arguments);
                 Object hint = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : null;
 
-                if (!JSRuntime.isObject(obj)) {
-                    throw Errors.createTypeError("cannot call JavaPackage[@@toPrimitive] with non-object argument");
+                if (!(obj instanceof JavaPackageObject javaPackage)) {
+                    throw Errors.createTypeError("cannot call JavaPackage[@@toPrimitive] with incompatible receiver");
                 }
                 if (Strings.HINT_STRING.equals(hint)) {
-                    return toPrimitiveString((JSDynamicObject) obj);
+                    return toPrimitiveString(javaPackage);
                 } else if (Strings.HINT_DEFAULT.equals(hint) || Strings.HINT_NUMBER.equals(hint)) {
-                    return JSObject.ordinaryToPrimitive((JSDynamicObject) obj, JSToPrimitiveNode.Hint.Number);
+                    return JSObject.ordinaryToPrimitive(javaPackage, JSToPrimitiveNode.Hint.Number);
                 } else {
                     throw Errors.createTypeError("invalid hint");
                 }
@@ -204,7 +198,7 @@ public final class JavaPackage extends JSNonProxy {
             return propertyValue;
         }
         if (key instanceof TruffleString name) {
-            return getJavaClassOrConstructorOrSubPackage(JSObject.getJSContext(store), store, name);
+            return getJavaClassOrConstructorOrSubPackage(JSObject.getJSContext(store), (JavaPackageObject) store, name);
         } else {
             return null;
         }

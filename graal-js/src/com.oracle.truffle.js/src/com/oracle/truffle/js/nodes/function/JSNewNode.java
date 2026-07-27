@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.java.JavaPackageObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -169,10 +169,10 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
     }
 
-    @Specialization(guards = "isJavaPackage(target)")
-    public Object createClassNotFoundError(VirtualFrame frame, JSDynamicObject target) {
+    @Specialization
+    public Object createClassNotFoundError(VirtualFrame frame, JavaPackageObject target) {
         getAbstractFunctionArguments(frame);
-        throw Errors.createTypeErrorClassNotFound(JavaPackage.getPackageName(target));
+        throw Errors.createTypeErrorClassNotFound(target.getPackageName());
     }
 
     @TruffleBoundary
