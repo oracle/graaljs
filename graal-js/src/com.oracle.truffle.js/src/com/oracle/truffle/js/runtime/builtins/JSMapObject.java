@@ -58,7 +58,6 @@ import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -97,19 +96,11 @@ public final class JSMapObject extends JSNonProxyObject {
     }
 
     public void put(Object key, int hashCode, Object value) {
-        try {
-            map.put(key, hashCode, value);
-        } catch (IllegalStateException ex) {
-            throw Errors.createRangeError("Map maximum size exceeded");
-        }
+        map.put(key, hashCode, value);
     }
 
     public Object getOrInsert(Object key, int hashCode, Object value) {
-        try {
-            return map.getOrInsert(key, hashCode, value);
-        } catch (IllegalStateException ex) {
-            throw Errors.createRangeError("Map maximum size exceeded");
-        }
+        return map.getOrInsert(key, hashCode, value);
     }
 
     public JSHashMap.Cursor getEntries() {

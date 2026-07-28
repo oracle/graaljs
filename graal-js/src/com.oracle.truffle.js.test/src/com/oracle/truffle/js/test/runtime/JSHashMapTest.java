@@ -40,22 +40,29 @@
  */
 package com.oracle.truffle.js.test.runtime;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
+import com.oracle.truffle.js.test.JSTest;
 
 public class JSHashMapTest {
 
@@ -853,6 +860,39 @@ public class JSHashMapTest {
         assertEquals("second", cursor.getKey());
         assertTrue(copy.advance());
         assertEquals("second", copy.getKey());
+    }
+
+    @Test
+    public void testMaximumElementCount() throws ReflectiveOperationException {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            context.initialize(JavaScriptLanguage.ID);
+            context.enter();
+
+            Field maximumElementCountField = JSHashMap.class.getDeclaredField("MAX_ELEMENT_COUNT");
+            maximumElementCountField.setAccessible(true);
+            int maximumElementCount = maximumElementCountField.getInt(null);
+
+            var map = newJSHashMap();
+            map.put("existing", "value");
+            Field sizeField = JSHashMap.class.getDeclaredField("size");
+            sizeField.setAccessible(true);
+            sizeField.setInt(map.map, maximumElementCount);
+
+            map.put("existing", "updated");
+            assertEquals("updated", map.putIfAbsent("existing", "unused"));
+            assertEquals("updated", map.getOrInsert("existing", "unused"));
+
+            assertThat(assertThrows(JSException.class, () -> map.put("put", "value")).getMessage(), containsString("maximum size exceeded"));
+            assertThat(assertThrows(JSException.class, () -> map.putIfAbsent("putIfAbsent", "value")).getMessage(), containsString("maximum size exceeded"));
+            assertThat(assertThrows(JSException.class, () -> map.getOrInsert("getOrInsert", "value")).getMessage(), containsString("maximum size exceeded"));
+            assertEquals(maximumElementCount, map.size());
+            assertEquals("updated", map.get("existing"));
+            assertFalse(map.has("put"));
+            assertFalse(map.has("putIfAbsent"));
+            assertFalse(map.has("getOrInsert"));
+
+            context.leave();
+        }
     }
 
     private static final class ModelMap {

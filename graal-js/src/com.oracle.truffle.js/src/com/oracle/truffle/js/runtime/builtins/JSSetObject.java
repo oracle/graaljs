@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -85,11 +84,7 @@ public final class JSSetObject extends JSNonProxyObject {
     }
 
     public void add(Object key, int hashCode) {
-        try {
-            map.putIfAbsent(key, hashCode, PRESENT);
-        } catch (IllegalStateException ex) {
-            throw Errors.createRangeError("Set maximum size exceeded");
-        }
+        map.putIfAbsent(key, hashCode, PRESENT);
     }
 
     public JSHashMap.Cursor getEntries() {

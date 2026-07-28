@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.util;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.js.runtime.Errors;
 
 /**
  * ES6-compliant hash map implementation. A single node links each entry into both a hash bucket and
@@ -185,7 +186,7 @@ public final class JSHashMap {
     }
 
     private static RuntimeException capacityExceededException() {
-        return new IllegalStateException("maximum size exceeded");
+        return Errors.createRangeError("maximum size exceeded");
     }
 
     /**
