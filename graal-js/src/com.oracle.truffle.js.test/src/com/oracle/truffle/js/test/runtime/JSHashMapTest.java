@@ -595,6 +595,33 @@ public class JSHashMapTest {
     }
 
     @Test
+    public void testShrinkUsesCachedHashesAndPreservesOrder() {
+        JSHashMap map = new JSHashMap();
+        CountingKey[] keys = new CountingKey[48];
+        for (int i = 0; i < keys.length; i++) {
+            keys[i] = new CountingKey(i);
+            map.put(keys[i], i);
+            keys[i].resetHashCodeCalls();
+        }
+
+        for (int i = 0; i <= 32; i++) {
+            assertTrue(map.remove(keys[i]));
+        }
+        assertEquals(15, map.size());
+        for (int i = 33; i < keys.length; i++) {
+            assertEquals(0, keys[i].getHashCodeCalls());
+        }
+
+        JSHashMap.Cursor cursor = map.getEntries();
+        for (int i = 33; i < keys.length; i++) {
+            assertTrue(cursor.advance());
+            assertEquals(keys[i], cursor.getKey());
+            assertEquals(i, cursor.getValue());
+        }
+        assertFalse(cursor.advance());
+    }
+
+    @Test
     public void testRemovalPreservesCursorsAndCachedHashes() {
         JSHashMap map = new JSHashMap();
         CountingKey[] keys = new CountingKey[13];

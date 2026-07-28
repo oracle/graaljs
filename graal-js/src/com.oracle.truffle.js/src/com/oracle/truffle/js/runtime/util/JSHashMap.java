@@ -192,8 +192,11 @@ public final class JSHashMap {
      * Rebuilds bucket chains using cached hashes and therefore cannot invoke user callbacks.
      */
     private void rebuildTable(int newCapacity) {
-        Node[] newTable = new Node[newCapacity];
-        int mask = newCapacity - 1;
+        rebuildTable(new Node[newCapacity]);
+    }
+
+    private void rebuildTable(Node[] newTable) {
+        int mask = newTable.length - 1;
         for (Node node = head; node != null; node = node.nextOrder) {
             int bucketIndex = node.hash & mask;
             node.nextBucket = newTable[bucketIndex];
@@ -233,7 +236,12 @@ public final class JSHashMap {
         if (node == null) {
             return false;
         }
-        if (table != null) {
+        int newSize = size - 1;
+        Node[] smallerTable = null;
+        if (table != null && newSize > LINEAR_LOOKUP_THRESHOLD && newSize < (table.length >> 2)) {
+            smallerTable = new Node[table.length >> 1];
+        }
+        if (table != null && smallerTable == null) {
             unlinkBucket(node);
         }
         unlinkOrder(node);
@@ -241,12 +249,14 @@ public final class JSHashMap {
         node.value = null;
         node.nextBucket = null;
         node.nextOrder = null;
-        size--;
+        size = newSize;
         if (table != null && size <= LINEAR_LOOKUP_THRESHOLD) {
             table = null;
             for (Node current = head; current != null; current = current.nextOrder) {
                 current.nextBucket = null;
             }
+        } else if (smallerTable != null) {
+            rebuildTable(smallerTable);
         }
         return true;
     }
