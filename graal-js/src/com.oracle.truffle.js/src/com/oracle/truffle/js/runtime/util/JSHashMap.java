@@ -108,9 +108,9 @@ public final class JSHashMap {
      * Insert new entry, if key does not already exist, otherwise update the existing entry's value.
      */
     @TruffleBoundary
-    public void put(Object key, Object value) {
+    public void put(Object key, int hashCode, Object value) {
         assert key != null && value != null;
-        int hash = getHash(key);
+        int hash = mixHash(hashCode);
         Node node = find(key, hash);
         if (node == null) {
             putNewEntry(key, value, hash);
@@ -125,9 +125,9 @@ public final class JSHashMap {
      * @return the existing value, or {@code null} if the new entry was inserted
      */
     @TruffleBoundary
-    public Object putIfAbsent(Object key, Object value) {
+    public Object putIfAbsent(Object key, int hashCode, Object value) {
         assert key != null && value != null;
-        int hash = getHash(key);
+        int hash = mixHash(hashCode);
         Node node = find(key, hash);
         if (node == null) {
             putNewEntry(key, value, hash);
@@ -137,9 +137,9 @@ public final class JSHashMap {
     }
 
     @TruffleBoundary
-    public Object getOrInsert(Object key, Object value) {
+    public Object getOrInsert(Object key, int hashCode, Object value) {
         assert key != null && value != null;
-        int hash = getHash(key);
+        int hash = mixHash(hashCode);
         Node node = find(key, hash);
         if (node == null) {
             putNewEntry(key, value, hash);
@@ -206,33 +206,29 @@ public final class JSHashMap {
     }
 
     @TruffleBoundary
-    public Object get(Object key) {
+    public Object get(Object key, int hashCode) {
         assert key != null;
-        int hash = getHash(key);
-        Node node = find(key, hash);
+        Node node = find(key, mixHash(hashCode));
         return node == null ? null : node.value;
     }
 
     @TruffleBoundary
-    public Object getOrDefault(Object key, Object defaultValue) {
+    public Object getOrDefault(Object key, int hashCode, Object defaultValue) {
         assert key != null;
-        int hash = getHash(key);
-        Node node = find(key, hash);
+        Node node = find(key, mixHash(hashCode));
         return node == null ? defaultValue : node.value;
     }
 
     @TruffleBoundary
-    public boolean has(Object key) {
+    public boolean has(Object key, int hashCode) {
         assert key != null;
-        int hash = getHash(key);
-        return find(key, hash) != null;
+        return find(key, mixHash(hashCode)) != null;
     }
 
     @TruffleBoundary
-    public boolean remove(Object key) {
+    public boolean remove(Object key, int hashCode) {
         assert key != null;
-        int hash = getHash(key);
-        Node node = find(key, hash);
+        Node node = find(key, mixHash(hashCode));
         if (node == null) {
             return false;
         }
@@ -390,11 +386,6 @@ public final class JSHashMap {
 
     private static boolean compareKeys(Object key, Object entryKey) {
         return key == entryKey || key.equals(entryKey);
-    }
-
-    private static int getHash(Object key) {
-        int hash = key.hashCode();
-        return mixHash(hash);
     }
 
     private static int mixHash(int hashCode) {

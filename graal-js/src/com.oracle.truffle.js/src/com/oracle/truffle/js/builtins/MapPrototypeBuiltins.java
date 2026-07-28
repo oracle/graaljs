@@ -66,6 +66,7 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapSetNodeGe
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetOrInsertComputedNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetOrInsertNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetSizeNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
@@ -176,6 +177,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
     public abstract static class JSMapOperation extends JSBuiltinNode {
         @Child private JSCollectionsNormalizeNode normalizeNode = JSCollectionsNormalizeNode.create();
+        @Child private JSCollectionsHashCodeNode hashCodeNode = JSCollectionsHashCodeNode.create();
 
         protected JSMapOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -183,6 +185,10 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         protected final Object normalize(Object value) {
             return normalizeNode.execute(value);
+        }
+
+        protected final int hashCode(Object key) {
+            return hashCodeNode.execute(key);
         }
 
         protected static boolean isForeignHash(Object value, InteropLibrary interopLibrary) {
@@ -260,7 +266,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected boolean doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return thisObj.remove(normalizedKey);
+            int hashCode = hashCode(normalizedKey);
+            return thisObj.remove(normalizedKey, hashCode);
         }
 
         @InliningCutoff
@@ -299,7 +306,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected Object doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return thisObj.getOrDefault(normalizedKey, Undefined.instance);
+            int hashCode = hashCode(normalizedKey);
+            return thisObj.getOrDefault(normalizedKey, hashCode, Undefined.instance);
         }
 
         @InliningCutoff
@@ -336,7 +344,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected JSDynamicObject doMap(JSMapObject thisObj, Object key, Object value) {
             Object normalizedKey = normalize(key);
-            thisObj.put(normalizedKey, value);
+            int hashCode = hashCode(normalizedKey);
+            thisObj.put(normalizedKey, hashCode, value);
             return thisObj;
         }
 
@@ -376,7 +385,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected boolean doMap(JSMapObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return thisObj.has(normalizedKey);
+            int hashCode = hashCode(normalizedKey);
+            return thisObj.has(normalizedKey, hashCode);
         }
 
         @InliningCutoff
@@ -559,7 +569,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization
         protected Object doMap(JSMapObject thisObj, Object key, Object value) {
             Object normalizedKey = normalize(key);
-            Object result = thisObj.getOrInsert(normalizedKey, value);
+            int hashCode = hashCode(normalizedKey);
+            Object result = thisObj.getOrInsert(normalizedKey, hashCode, value);
             return JSRuntime.nullToUndefined(result);
         }
 
@@ -610,10 +621,11 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object normalizedKey = normalize(key);
-            Object value = thisObj.get(normalizedKey);
+            int hashCode = hashCode(normalizedKey);
+            Object value = thisObj.getOrDefault(normalizedKey, hashCode, null);
             if (value == null) {
                 value = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, callbackfn, normalizedKey));
-                thisObj.put(normalizedKey, value);
+                thisObj.put(normalizedKey, hashCode, value);
             }
             return JSRuntime.nullToUndefined(value);
         }

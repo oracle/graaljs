@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -75,6 +74,10 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
         return JSCollectionsNormalizeNodeGen.create();
     }
 
+    public static JSCollectionsNormalizeNode getUncached() {
+        return JSCollectionsNormalizeNodeGen.getUncached();
+    }
+
     @Specialization
     static int doInt(int value) {
         return value;
@@ -82,7 +85,7 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
 
     @Specialization
     static Object doDouble(double value) {
-        return JSSet.normalizeDouble(value);
+        return normalizeDouble(value);
     }
 
     @Specialization
@@ -152,4 +155,12 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
         }
     }
 
+    public static Object normalizeDouble(double value) {
+        if (JSRuntime.isNegativeZero(value)) {
+            return 0;
+        } else if (JSRuntime.doubleIsRepresentableAsInt(value)) {
+            return (int) value;
+        }
+        return value;
+    }
 }

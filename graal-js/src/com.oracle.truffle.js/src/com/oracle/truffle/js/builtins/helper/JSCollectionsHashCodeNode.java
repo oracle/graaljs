@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,76 +38,78 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.builtins.helper;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.util.JSHashMap;
 
-public final class JSSetObject extends JSNonProxyObject {
-    /** Dummy value to associate with a key in the backing map. */
-    private static final Object PRESENT = new Object();
+/**
+ * Get hash code for JS collections (i.e. Map or Set). The provided key must be normalized first.
+ *
+ * @see JSCollectionsNormalizeNode
+ */
+@GenerateUncached
+public abstract class JSCollectionsHashCodeNode extends JavaScriptBaseNode {
 
-    private final JSHashMap map;
+    public abstract int execute(Object key);
 
-    protected JSSetObject(Shape shape, JSDynamicObject proto) {
-        super(shape, proto);
-        this.map = new JSHashMap();
+    @NeverDefault
+    public static JSCollectionsHashCodeNode create() {
+        return JSCollectionsHashCodeNodeGen.create();
     }
 
-    protected JSSetObject(Shape shape, JSDynamicObject proto, JSSetObject originalSet) {
-        super(shape, proto);
-        this.map = originalSet.map.copy();
+    public static JSCollectionsHashCodeNode getUncached() {
+        return JSCollectionsHashCodeNodeGen.getUncached();
     }
 
-    public int size() {
-        return map.size();
+    @Specialization
+    static int doInt(int key) {
+        return Integer.hashCode(key);
     }
 
-    public boolean has(Object key, int hashCode) {
-        return map.has(key, hashCode);
+    @Specialization
+    static int doDouble(double key) {
+        return Double.hashCode(key);
     }
 
-    public boolean remove(Object key, int hashCode) {
-        return map.remove(key, hashCode);
+    @Specialization
+    static int doString(TruffleString key,
+                    @Cached TruffleString.HashCodeNode hashCodeNode) {
+        return hashCodeNode.execute(key, TruffleString.Encoding.UTF_16);
     }
 
-    public void clear() {
-        map.clear();
+    @Specialization
+    static int doJSObject(JSDynamicObject key) {
+        return key.identityHashCode();
     }
 
-    public void add(Object key, int hashCode) {
-        try {
-            map.putIfAbsent(key, hashCode, PRESENT);
-        } catch (IllegalStateException ex) {
-            throw Errors.createRangeError("Set maximum size exceeded");
-        }
+    @Specialization
+    static int doBoolean(boolean key) {
+        return Boolean.hashCode(key);
     }
 
-    public JSHashMap.Cursor getEntries() {
-        return map.getEntries();
+    @Specialization
+    static int doSymbol(Symbol key) {
+        return key.hashCode();
     }
 
-    @Override
-    public TruffleString getClassName() {
-        return JSSet.CLASS_NAME;
+    @Specialization
+    static int doBigInt(BigInt key) {
+        return key.hashCode();
     }
 
-    @Override
     @TruffleBoundary
-    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return Strings.concatAll(Strings.BRACKET_OPEN, getClassName(), Strings.BRACKET_CLOSE);
-        } else {
-            return JSRuntime.collectionToConsoleString(this, allowSideEffects, format, getClassName(), map, depth);
-        }
+    @Fallback
+    static int doOther(Object key) {
+        return key.hashCode();
     }
 }

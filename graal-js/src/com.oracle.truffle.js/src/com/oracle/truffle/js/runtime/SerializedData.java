@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -466,7 +467,7 @@ public class SerializedData {
         for (int i = 0; i < size; i++) {
             Object key = deserializeValue(realm, iter, deserialized);
             Object value = deserializeValue(realm, iter, deserialized);
-            mapObject.put(key, value);
+            mapObject.put(key, JSCollectionsHashCodeNode.getUncached().execute(key), value);
         }
         return mapObject;
     }
@@ -477,7 +478,7 @@ public class SerializedData {
         int size = (int) iter.next();
         for (int i = 0; i < size; i++) {
             Object value = deserializeValue(realm, iter, deserialized);
-            setObject.add(value);
+            setObject.add(value, JSCollectionsHashCodeNode.getUncached().execute(value));
         }
         return setObject;
     }

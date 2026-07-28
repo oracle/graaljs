@@ -59,6 +59,7 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSuperse
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetSymmetricDifferenceNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetUnionNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.SetGetSizeNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
@@ -202,6 +203,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
     public abstract static class JSSetOperation extends JSBuiltinNode {
         @Child private JSCollectionsNormalizeNode normalizeNode;
+        @Child private JSCollectionsHashCodeNode hashCodeNode;
 
         public JSSetOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -213,6 +215,14 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 normalizeNode = insert(JSCollectionsNormalizeNodeGen.create());
             }
             return normalizeNode.execute(value);
+        }
+
+        protected int hashCode(Object key) {
+            if (hashCodeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                hashCodeNode = insert(JSCollectionsHashCodeNode.create());
+            }
+            return hashCodeNode.execute(key);
         }
     }
 
@@ -249,7 +259,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected boolean delete(JSSetObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return thisObj.remove(normalizedKey);
+            int hashCode = hashCode(normalizedKey);
+            return thisObj.remove(normalizedKey, hashCode);
         }
 
         @SuppressWarnings("unused")
@@ -271,7 +282,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected JSDynamicObject add(JSSetObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            thisObj.add(normalizedKey);
+            int hashCode = hashCode(normalizedKey);
+            thisObj.add(normalizedKey, hashCode);
             return thisObj;
         }
 
@@ -294,7 +306,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected boolean has(JSSetObject thisObj, Object key) {
             Object normalizedKey = normalize(key);
-            return thisObj.has(normalizedKey);
+            int hashCode = hashCode(normalizedKey);
+            return thisObj.has(normalizedKey, hashCode);
         }
 
         @SuppressWarnings("unused")
@@ -353,7 +366,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     break;
                 }
                 Object nextValue = normalize(iteratorValueNode.execute(next));
-                resultSet.add(nextValue);
+                int hashCode = hashCode(nextValue);
+                resultSet.add(nextValue, hashCode);
             }
             return resultSet;
         }
@@ -391,7 +405,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     Object inOtherObj = call(otherRec.has(), otherRec.set(), e);
                     boolean inOther = toBooleanNode.executeBoolean(this, inOtherObj);
                     if (inOther) {
-                        resultSet.add(e);
+                        resultSet.add(e, hashCode(e));
                     }
                 }
             } else {
@@ -402,9 +416,10 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         break;
                     }
                     Object nextValue = normalize(iteratorValueNode.execute(next));
-                    boolean inThis = set.has(nextValue);
+                    int hashCode = hashCode(nextValue);
+                    boolean inThis = set.has(nextValue, hashCode);
                     if (inThis) {
-                        resultSet.add(nextValue);
+                        resultSet.add(nextValue, hashCode);
                     }
                 }
             }
@@ -444,7 +459,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     Object inOtherObj = call(otherRec.has(), otherRec.set(), e);
                     boolean inOther = toBooleanNode.executeBoolean(this, inOtherObj);
                     if (inOther) {
-                        resultSet.remove(e);
+                        resultSet.remove(e, hashCode(e));
                     }
                 }
             } else {
@@ -455,7 +470,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         break;
                     }
                     Object nextValue = normalize(iteratorValueNode.execute(next));
-                    resultSet.remove(nextValue);
+                    int hashCode = hashCode(nextValue);
+                    resultSet.remove(nextValue, hashCode);
                 }
             }
             return resultSet;
@@ -490,10 +506,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     break;
                 }
                 Object nextValue = normalize(iteratorValueNode.execute(next));
-                if (set.has(nextValue)) {
-                    resultSet.remove(nextValue);
+                int hashCode = hashCode(nextValue);
+                if (set.has(nextValue, hashCode)) {
+                    resultSet.remove(nextValue, hashCode);
                 } else {
-                    resultSet.add(nextValue);
+                    resultSet.add(nextValue, hashCode);
                 }
             }
             return resultSet;
@@ -567,7 +584,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     break;
                 }
                 Object nextValue = normalize(iteratorValueNode.execute(next));
-                if (!set.has(nextValue)) {
+                int hashCode = hashCode(nextValue);
+                if (!set.has(nextValue, hashCode)) {
                     iteratorCloseNode.executeVoid(keysIter);
                     return false;
                 }
@@ -617,7 +635,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         break;
                     }
                     Object nextValue = normalize(iteratorValueNode.execute(next));
-                    if (set.has(nextValue)) {
+                    int hashCode = hashCode(nextValue);
+                    if (set.has(nextValue, hashCode)) {
                         iteratorCloseNode.executeVoid(keysIter);
                         return false;
                     }

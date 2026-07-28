@@ -53,6 +53,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -79,37 +80,33 @@ public final class JSMapObject extends JSNonProxyObject {
         return map.size();
     }
 
-    public Object get(Object key) {
-        return map.get(key);
+    public Object getOrDefault(Object key, int hashCode, Object defaultValue) {
+        return map.getOrDefault(key, hashCode, defaultValue);
     }
 
-    public Object getOrDefault(Object key, Object defaultValue) {
-        return map.getOrDefault(key, defaultValue);
+    public boolean has(Object key, int hashCode) {
+        return map.has(key, hashCode);
     }
 
-    public boolean has(Object key) {
-        return map.has(key);
-    }
-
-    public boolean remove(Object key) {
-        return map.remove(key);
+    public boolean remove(Object key, int hashCode) {
+        return map.remove(key, hashCode);
     }
 
     public void clear() {
         map.clear();
     }
 
-    public void put(Object key, Object value) {
+    public void put(Object key, int hashCode, Object value) {
         try {
-            map.put(key, value);
+            map.put(key, hashCode, value);
         } catch (IllegalStateException ex) {
             throw Errors.createRangeError("Map maximum size exceeded");
         }
     }
 
-    public Object getOrInsert(Object key, Object value) {
+    public Object getOrInsert(Object key, int hashCode, Object value) {
         try {
-            return map.getOrInsert(key, value);
+            return map.getOrInsert(key, hashCode, value);
         } catch (IllegalStateException ex) {
             throw Errors.createRangeError("Map maximum size exceeded");
         }
@@ -143,18 +140,20 @@ public final class JSMapObject extends JSNonProxyObject {
     @ExportMessage
     boolean isHashEntryReadable(Object key,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        return has(normalizedKey);
+        return has(normalizedKey, hashCodeNode.execute(normalizedKey));
     }
 
     @ExportMessage
     Object readHashValue(Object key,
                     @Cached @Shared ExportValueNode exportValueNode,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) throws UnknownKeyException {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        Object value = get(normalizedKey);
+        Object value = getOrDefault(normalizedKey, hashCodeNode.execute(normalizedKey), null);
         if (value == null) {
             throw UnknownKeyException.create(key);
         }
@@ -165,9 +164,10 @@ public final class JSMapObject extends JSNonProxyObject {
     Object readHashValueOrDefault(Object key, Object defaultValue,
                     @Cached @Shared ExportValueNode exportValueNode,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        Object value = get(normalizedKey);
+        Object value = getOrDefault(normalizedKey, hashCodeNode.execute(normalizedKey), null);
         if (value == null) {
             return defaultValue;
         }
@@ -178,9 +178,10 @@ public final class JSMapObject extends JSNonProxyObject {
     @ExportMessage(name = "isHashEntryRemovable")
     boolean isHashEntryModifiable(Object key,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        return has(normalizedKey);
+        return has(normalizedKey, hashCodeNode.execute(normalizedKey));
     }
 
     @ExportMessage
@@ -193,17 +194,19 @@ public final class JSMapObject extends JSNonProxyObject {
     void writeHashEntry(Object key, Object value,
                     @Cached @Shared ImportValueNode importKeyNode,
                     @Cached @Exclusive ImportValueNode importValueNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        put(normalizedKey, importValueNode.executeWithTarget(value));
+        put(normalizedKey, hashCodeNode.execute(normalizedKey), importValueNode.executeWithTarget(value));
     }
 
     @ExportMessage
     void removeHashEntry(Object key,
                     @Cached @Shared ImportValueNode importKeyNode,
-                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode,
+                    @Cached @Shared JSCollectionsHashCodeNode hashCodeNode) throws UnknownKeyException {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
-        if (!remove(normalizedKey)) {
+        if (!remove(normalizedKey, hashCodeNode.execute(normalizedKey))) {
             throw UnknownKeyException.create(key);
         }
     }

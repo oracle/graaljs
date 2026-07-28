@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.MapFunctionBuiltinsFactory.MapGroupByNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
 import com.oracle.truffle.js.nodes.access.GroupByNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -56,8 +60,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import java.util.List;
-import java.util.Map;
 
 public class MapFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<MapFunctionBuiltins.MapFunction> {
     public static final JSBuiltinsContainer BUILTINS = new MapFunctionBuiltins();
@@ -120,7 +122,8 @@ public class MapFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<MapFunct
             JSContext context = getContext();
             for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
                 JSArrayObject elements = JSArray.createConstant(context, realm, entry.getValue().toArray());
-                map.put(entry.getKey(), elements);
+                Object key = entry.getKey();
+                map.put(key, JSCollectionsHashCodeNode.getUncached().execute(key), elements);
             }
         }
 

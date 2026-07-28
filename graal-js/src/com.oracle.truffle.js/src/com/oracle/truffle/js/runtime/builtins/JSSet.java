@@ -45,7 +45,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -88,22 +87,6 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSSetObject(shape, proto, originalSet), realm, proto);
         return factory.trackAllocation(newObj);
-    }
-
-    public static Object normalize(Object value) {
-        if (value instanceof Double) {
-            return normalizeDouble((Double) value);
-        }
-        return value;
-    }
-
-    public static Object normalizeDouble(double value) {
-        if (JSRuntime.isNegativeZero(value)) {
-            return 0;
-        } else if (JSRuntime.doubleIsRepresentableAsInt(value)) {
-            return (int) value;
-        }
-        return value;
     }
 
     @Override

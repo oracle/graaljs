@@ -52,6 +52,8 @@ import java.util.Random;
 
 import org.junit.Test;
 
+import com.oracle.truffle.js.builtins.helper.JSCollectionsHashCodeNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -59,7 +61,7 @@ public class JSHashMapTest {
 
     @Test
     public void testBasicOperations() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         assertEquals(0, map.size());
         assertFalse(map.has("key"));
         assertNull(map.get("key"));
@@ -87,8 +89,32 @@ public class JSHashMapTest {
     }
 
     @Test
+    public void testCollectionHashCodeNode() {
+        JSCollectionsHashCodeNode hashCodeNode = JSCollectionsHashCodeNode.getUncached();
+        Object[] keys = {42, 1.5, Double.NaN, true, Strings.fromJavaString("string"), new Object()};
+        for (Object key : keys) {
+            assertEquals(key.hashCode(), hashCodeNode.execute(key));
+        }
+    }
+
+    @Test
+    public void testPrecomputedHashCode() {
+        var map = newJSHashMap();
+        CountingKey key = new CountingKey(42);
+        int hashCode = key.hashCode();
+
+        map.put(key, hashCode, "value");
+        assertEquals("value", map.putIfAbsent(key, hashCode, "unused"));
+        assertEquals("value", map.getOrInsert(key, hashCode, "unused"));
+        assertEquals("value", map.getOrDefault(key, hashCode, null));
+        assertTrue(map.has(key, hashCode));
+        assertTrue(map.remove(key, hashCode));
+        assertEquals(1, key.getHashCodeCalls());
+    }
+
+    @Test
     public void testPutIfAbsent() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
 
         assertNull(map.putIfAbsent("existing", "first"));
         assertEquals("first", map.putIfAbsent("existing", "second"));
@@ -97,7 +123,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCursorSeesInsertionsUntilDone() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         JSHashMap.Cursor cursor = map.getEntries();
         assertTrue(cursor.shouldAdvance());
 
@@ -119,7 +145,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCursorHandlesRemoval() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         map.put("first", 1);
         map.put("second", 2);
         map.put("third", 3);
@@ -142,7 +168,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCursorHandlesClear() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         map.put("first", 1);
         map.put("second", 2);
 
@@ -157,7 +183,7 @@ public class JSHashMapTest {
         assertEquals("third", cursor.getKey());
         assertFalse(cursor.advance());
 
-        JSHashMap emptyMap = new JSHashMap();
+        var emptyMap = newJSHashMap();
         JSHashMap.Cursor emptyCursor = emptyMap.getEntries();
         emptyMap.clear();
         emptyMap.put("new", 1);
@@ -167,7 +193,7 @@ public class JSHashMapTest {
 
     @Test
     public void testMultipleCursors() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         map.put("first", 1);
         map.put("second", 2);
 
@@ -188,7 +214,7 @@ public class JSHashMapTest {
 
     @Test
     public void testHashTableCollisionsAndGrowth() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         CollisionKey[] keys = new CollisionKey[300];
         for (int i = 0; i < keys.length; i++) {
             keys[i] = new CollisionKey(i);
@@ -232,7 +258,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCollisionChainRemovalAndReinsertion() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         CollisionKey[] keys = new CollisionKey[10];
         for (int i = 0; i < keys.length; i++) {
             keys[i] = new CollisionKey(i);
@@ -260,7 +286,7 @@ public class JSHashMapTest {
 
     @Test
     public void testTableCreationUsesCachedHashes() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         ThrowingHashKey[] keys = new ThrowingHashKey[6];
         for (int i = 0; i < 4; i++) {
             keys[i] = new ThrowingHashKey(i);
@@ -287,7 +313,7 @@ public class JSHashMapTest {
     @Test
     public void testCopyUsesCachedHashes() {
         for (int entryCount : new int[]{0, 4, 12}) {
-            JSHashMap map = new JSHashMap();
+            var map = newJSHashMap();
             ThrowingHashKey[] keys = new ThrowingHashKey[entryCount];
             for (int i = 0; i < entryCount; i++) {
                 keys[i] = new ThrowingHashKey(i);
@@ -295,7 +321,7 @@ public class JSHashMapTest {
                 keys[i].setThrowOnHashCode(true);
             }
 
-            JSHashMap copy = map.copy();
+            var copy = map.copy();
             assertEquals(entryCount, copy.size());
 
             JSHashMap.Cursor cursor = copy.getEntries();
@@ -315,7 +341,7 @@ public class JSHashMapTest {
 
     @Test
     public void testNewEntryIsHashedOnce() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         for (int i = 0; i < 5; i++) {
             map.put(i, i);
         }
@@ -333,7 +359,7 @@ public class JSHashMapTest {
 
     @Test
     public void testFailedInsertionPreservesCursors() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         for (int i = 0; i < 12; i++) {
             map.put(i, i);
         }
@@ -364,7 +390,7 @@ public class JSHashMapTest {
 
     @Test
     public void testFailedEqualityLeavesMapUnchanged() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         ThrowingEqualsKey stored = new ThrowingEqualsKey(1, false);
         map.put(stored, 1);
 
@@ -380,7 +406,7 @@ public class JSHashMapTest {
 
     @Test
     public void testLargeHashTable() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         int entryCount = 70_000;
         for (int i = 0; i < entryCount; i++) {
             map.put(i, -i);
@@ -404,7 +430,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCursorHandlesHashedClear() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         for (int i = 0; i < 20; i++) {
             map.put(i, i);
         }
@@ -427,7 +453,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCursorSurvivesEarlierRemovals() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         for (int i = 0; i < 20; i++) {
             map.put(i, i);
         }
@@ -453,7 +479,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCursorRecoversAfterCurrentRemoval() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         for (int i = 0; i < 20; i++) {
             map.put(i, i);
         }
@@ -482,7 +508,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCursorsRecoverAcrossRemovalChains() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         for (int i = 0; i < 40; i++) {
             map.put(i, i);
         }
@@ -527,7 +553,7 @@ public class JSHashMapTest {
 
     @Test
     public void testInsertionAfterCurrentRemoval() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         for (int i = 0; i < 4; i++) {
             map.put(i, i);
         }
@@ -547,7 +573,7 @@ public class JSHashMapTest {
 
     @Test
     public void testRemovalUsesCachedHashes() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         CountingKey[] keys = new CountingKey[13];
         for (int i = 0; i < 12; i++) {
             keys[i] = new CountingKey(i);
@@ -578,7 +604,7 @@ public class JSHashMapTest {
 
     @Test
     public void testResizeUsesCachedHashes() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         CountingKey[] keys = new CountingKey[13];
         for (int i = 0; i < 12; i++) {
             keys[i] = new CountingKey(i);
@@ -596,7 +622,7 @@ public class JSHashMapTest {
 
     @Test
     public void testShrinkUsesCachedHashesAndPreservesOrder() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         CountingKey[] keys = new CountingKey[48];
         for (int i = 0; i < keys.length; i++) {
             keys[i] = new CountingKey(i);
@@ -623,7 +649,7 @@ public class JSHashMapTest {
 
     @Test
     public void testRemovalPreservesCursorsAndCachedHashes() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         CountingKey[] keys = new CountingKey[13];
         for (int i = 0; i < 12; i++) {
             keys[i] = new CountingKey(i);
@@ -671,7 +697,7 @@ public class JSHashMapTest {
 
     @Test
     public void testRepeatedClearTransitions() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         map.put(0, 0);
         map.put(1, 1);
         JSHashMap.Cursor cursor = map.getEntries();
@@ -694,7 +720,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCollisionRemovalWithLiveCursor() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         CollisionKey[] keys = new CollisionKey[40];
         for (int i = 0; i < keys.length; i++) {
             keys[i] = new CollisionKey(i);
@@ -718,7 +744,7 @@ public class JSHashMapTest {
 
     @Test
     public void testExhaustedCursorAcrossTransitions() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         map.put(0, 0);
         JSHashMap.Cursor cursor = map.getEntries();
         assertTrue(cursor.advance());
@@ -736,7 +762,7 @@ public class JSHashMapTest {
     @Test
     @SuppressFBWarnings(value = "DMI_RANDOM_USED_ONLY_ONCE", justification = "The seeded generator is reused for all 10,000 iterations of this randomized test")
     public void testRandomizedMutationAndIteration() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         ModelMap model = new ModelMap();
         List<JSHashMap.Cursor> cursors = new ArrayList<>();
         List<ModelCursor> modelCursors = new ArrayList<>();
@@ -814,7 +840,7 @@ public class JSHashMapTest {
 
     @Test
     public void testCursorCopy() {
-        JSHashMap map = new JSHashMap();
+        var map = newJSHashMap();
         map.put("first", 1);
         map.put("second", 2);
 
@@ -1056,6 +1082,95 @@ public class JSHashMapTest {
         @Override
         public boolean equals(Object obj) {
             return obj instanceof CollisionKey other && id == other.id;
+        }
+    }
+
+    private static JSHashMapFacade newJSHashMap() {
+        return new JSHashMapFacade();
+    }
+
+    private static final class JSHashMapFacade {
+        private final JSHashMap map;
+
+        JSHashMapFacade() {
+            this(new JSHashMap());
+        }
+
+        private JSHashMapFacade(JSHashMap map) {
+            this.map = map;
+        }
+
+        int size() {
+            return map.size();
+        }
+
+        void put(Object key, Object value) {
+            map.put(key, key.hashCode(), value);
+        }
+
+        void put(Object key, int hashCode, Object value) {
+            map.put(key, hashCode, value);
+        }
+
+        Object putIfAbsent(Object key, Object value) {
+            return map.putIfAbsent(key, key.hashCode(), value);
+        }
+
+        Object putIfAbsent(Object key, int hashCode, Object value) {
+            return map.putIfAbsent(key, hashCode, value);
+        }
+
+        Object getOrInsert(Object key, Object value) {
+            return map.getOrInsert(key, key.hashCode(), value);
+        }
+
+        Object getOrInsert(Object key, int hashCode, Object value) {
+            return map.getOrInsert(key, hashCode, value);
+        }
+
+        Object get(Object key) {
+            return map.get(key, key.hashCode());
+        }
+
+        Object get(Object key, int hashCode) {
+            return map.get(key, hashCode);
+        }
+
+        Object getOrDefault(Object key, int hashCode, Object defaultValue) {
+            return map.getOrDefault(key, hashCode, defaultValue);
+        }
+
+        boolean has(Object key) {
+            return map.has(key, key.hashCode());
+        }
+
+        boolean has(Object key, int hashCode) {
+            return map.has(key, hashCode);
+        }
+
+        boolean remove(Object key) {
+            return map.remove(key, key.hashCode());
+        }
+
+        boolean remove(Object key, int hashCode) {
+            return map.remove(key, hashCode);
+        }
+
+        void clear() {
+            map.clear();
+        }
+
+        JSHashMap.Cursor getEntries() {
+            return map.getEntries();
+        }
+
+        JSHashMapFacade copy() {
+            return new JSHashMapFacade(map.copy());
+        }
+
+        @Override
+        public String toString() {
+            return map.toString();
         }
     }
 }
