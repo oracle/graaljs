@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -59,6 +61,11 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
 public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitializer {
+
+    public static final int BUILTIN_FUNCTION_DATA_TABLE_SIZE = 2044;
+    private static final AtomicInteger NEXT_SLOT = new AtomicInteger();
+
+    private final int index;
     private final TruffleString name;
     private final TruffleString fullName;
     private final Object key;
@@ -79,6 +86,10 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
                     boolean annexB, BuiltinNodeFactory functionNodeFactory, BuiltinNodeFactory constructorNodeFactory, BuiltinNodeFactory newTargetConstructorFactory, boolean isOptional) {
         assert isAllowedKey(key);
         assert (byte) ecmaScriptVersion == ecmaScriptVersion && (byte) attributeFlags == attributeFlags;
+        this.index = NEXT_SLOT.getAndIncrement();
+        if (index >= BUILTIN_FUNCTION_DATA_TABLE_SIZE) {
+            throw new IllegalStateException("Too many builtins: " + (index + 1));
+        }
         this.name = functionName;
         this.fullName = (containerName == null) ? name : Strings.concatAll(containerName, Strings.DOT, name);
         this.key = key;
@@ -94,6 +105,10 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
 
     public JSBuiltin(TruffleString containerName, TruffleString name, int length, int flags, BuiltinNodeFactory functionNodeFactory) {
         this(containerName, name, name, length, flags, 5, false, functionNodeFactory, null, null, false);
+    }
+
+    public int getIndex() {
+        return index;
     }
 
     /**
@@ -232,8 +247,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             initializeCallTargets(functionData);
         }
 
-        context.putBuiltinFunctionData(this, functionData);
-        return functionData;
+        return context.getOrInsertBuiltinFunctionData(this, functionData);
     }
 
     JSBuiltinNode createNode(JSContext context, boolean construct, boolean newTarget) {
