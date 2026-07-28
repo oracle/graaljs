@@ -79,10 +79,10 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ThrowTypeErrorRootNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.promise.BuiltinPromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
-import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -438,6 +438,7 @@ public class JSContext {
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
+    @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionDataTable;
 
     final JSFunctionData throwTypeErrorFunctionData;
     final JSFunctionData throwTypeErrorRestrictedPropertyFunctionData;
@@ -463,8 +464,6 @@ public class JSContext {
     private final StableContextOptionValue<Boolean> optionV8CompatibilityMode;
     private final StableContextOptionValue<Boolean> optionDirectByteBuffer;
     private final StableContextOptionValue<Long> optionTimerResolution;
-
-    private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
 
     private final JSPrototypeData nullPrototypeData = new JSPrototypeData();
     private final JSPrototypeData inObjectPrototypeData = new JSPrototypeData();
@@ -659,6 +658,7 @@ public class JSContext {
         this.symbolIteratorThisGetterFunctionData = JSFunctionData.createCallOnly(this, createReadFrameThisCallTarget(lang, SYMBOL_ITERATOR_NAME), 0, SYMBOL_ITERATOR_NAME);
 
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
+        this.builtinFunctionDataTable = new JSFunctionData[JSBuiltin.BUILTIN_FUNCTION_DATA_TABLE_SIZE];
 
         this.timeProfiler = languageOptions.profileTime() ? new TimeProfiler() : null;
 
@@ -1832,14 +1832,19 @@ public class JSContext {
         return Objects.requireNonNull(functionData);
     }
 
-    public final JSFunctionData getBuiltinFunctionData(Builtin key) {
+    public final JSFunctionData getBuiltinFunctionData(JSBuiltin builtin) {
         CompilerAsserts.neverPartOfCompilation();
-        return builtinFunctionDataMap.get(key);
+        return builtinFunctionDataTable[builtin.getIndex()];
     }
 
-    public final void putBuiltinFunctionData(Builtin key, JSFunctionData functionData) {
+    public final JSFunctionData getOrInsertBuiltinFunctionData(JSBuiltin builtin, JSFunctionData newFunctionData) {
         CompilerAsserts.neverPartOfCompilation();
-        builtinFunctionDataMap.putIfAbsent(key, functionData);
+        int index = builtin.getIndex();
+        JSFunctionData functionData = newFunctionData;
+        if (!FUNCTION_DATA_ARRAY_VAR_HANDLE.compareAndSet(builtinFunctionDataTable, index, (JSFunctionData) null, functionData)) {
+            functionData = (JSFunctionData) FUNCTION_DATA_ARRAY_VAR_HANDLE.getVolatile(builtinFunctionDataTable, index);
+        }
+        return Objects.requireNonNull(functionData);
     }
 
     public final boolean neverCreatedChildRealms() {
