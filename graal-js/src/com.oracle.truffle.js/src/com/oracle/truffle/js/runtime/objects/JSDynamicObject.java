@@ -95,7 +95,6 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     }
 
     @ExportMessage
-    @TruffleBoundary
     public final int identityHashCode() {
         return super.hashCode();
     }
