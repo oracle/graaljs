@@ -356,6 +356,8 @@ public class JSContext {
         AsyncIteratorFindWithResult,
         AsyncGeneratorAwaitReturnFulfilled,
         AsyncGeneratorAwaitReturnRejected,
+        Empty,
+        CallSite,
         IteratorConcat,
         IteratorMap,
         IteratorFilter,
@@ -446,7 +448,6 @@ public class JSContext {
     private final StableContextOptionValue<Long> optionTimerResolution;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
-    private final Map<TruffleString, JSFunctionData> namedEmptyFunctionsDataMap = new ConcurrentHashMap<>();
 
     private final JSPrototypeData nullPrototypeData = new JSPrototypeData();
     private final JSPrototypeData inObjectPrototypeData = new JSPrototypeData();
@@ -1403,10 +1404,6 @@ public class JSContext {
 
     public CallTarget getEmptyFunctionCallTarget() {
         return emptyFunctionCallTarget;
-    }
-
-    public JSFunctionData getNamedEmptyFunctionData(TruffleString name) {
-        return namedEmptyFunctionsDataMap.computeIfAbsent(name, k -> JSFunctionData.createCallOnly(this, emptyFunctionCallTarget, 0, name));
     }
 
     /** CallTarget for an empty function that returns undefined. */
