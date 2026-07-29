@@ -442,6 +442,11 @@ suite = {
       "default_vm_args": [
         "--vm.-enable-native-access=org.graalvm.shadowed.jline",
       ],
+      "multitarget": [
+        {"os": ["linux"], "libc": ["glibc", "default"], "compiler": ["llvm-toolchain", "host", "*"]},
+        {"os": ["linux"], "libc": ["musl"], "variant": ["swcfi"]},
+        {"os": ["windows", "darwin"], "libc": ["default"]},
+      ],
     },
 
     "libjsvm": {
@@ -789,7 +794,7 @@ suite = {
           "extracted-dependency:GRAALJS_GRAALVM_SUPPORT",
           "dependency:graaljs_licenses/*",
         ],
-        "bin/<exe:js>": "dependency:graaljs_thin_launcher",
+        "bin/<exe:js>": "dependency:graaljs_thin_launcher/<os>-<arch>/<multitarget_libc_selection>/<exe:graaljs_thin_launcher>",
         "release": "dependency:sdk:STANDALONE_JAVA_HOME/release",
       },
     },

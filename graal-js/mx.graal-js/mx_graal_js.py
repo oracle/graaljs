@@ -34,7 +34,7 @@ import tempfile
 from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
-import mx, mx_sdk, mx_spotbugs, mx_urlrewrites
+import mx, mx_sdk, mx_spotbugs, mx_subst, mx_urlrewrites
 import mx_util
 import mx_truffle
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
@@ -543,7 +543,10 @@ def graaljs_standalone_deps():
     return deps
 
 def libjsvm_dynamic_build_args():
-    return libjsvm_dynamic_build_args_common() + (libjsvm_dynamic_build_args_ee() if is_nativeimage_ee() else [])
+    build_args = libjsvm_dynamic_build_args_common()
+    if "musl" in mx_subst.path_substitutions.substitute("<multitarget_libc_selection>"):
+        build_args += ["-H:+GraalOS"]
+    return build_args + (libjsvm_dynamic_build_args_ee() if is_nativeimage_ee() else [])
 
 def libjsvm_dynamic_build_args_common():
     image_build_args = []
