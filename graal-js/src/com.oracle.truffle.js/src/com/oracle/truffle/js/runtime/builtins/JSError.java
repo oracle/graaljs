@@ -54,6 +54,7 @@ import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
@@ -216,7 +217,10 @@ public final class JSError extends JSNonProxy {
     }
 
     public static JSConstructor createCallSiteConstructor(JSRealm realm) {
-        JSFunctionObject constructor = JSFunction.createNamedEmptyFunction(realm, CALL_SITE_CLASS_NAME);
+        JSContext context = realm.getContext();
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.CallSite,
+                        c -> JSFunctionData.createCallOnly(c, c.getEmptyFunctionCallTarget(), 0, CALL_SITE_CLASS_NAME));
+        JSFunctionObject constructor = JSFunction.create(realm, functionData);
         JSDynamicObject prototype = createCallSitePrototype(realm);
         JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putConstructorPrototypeProperty(constructor, prototype);

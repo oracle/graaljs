@@ -592,16 +592,9 @@ public final class JSFunction extends JSNonProxy {
         JSObjectUtil.putBuiltinAccessorProperty(obj, ARGUMENTS, realm.getThrowerAccessor());
     }
 
-    public static JSFunctionData createNamedEmptyFunctionData(JSContext context, TruffleString name) {
-        return context.getNamedEmptyFunctionData(name);
-    }
-
     public static JSFunctionData createEmptyFunctionData(JSContext context) {
-        return createNamedEmptyFunctionData(context, Strings.EMPTY_STRING);
-    }
-
-    public static JSFunctionObject createNamedEmptyFunction(JSRealm realm, TruffleString name) {
-        return JSFunction.create(realm, createNamedEmptyFunctionData(realm.getContext(), name));
+        return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.Empty,
+                        c -> JSFunctionData.createCallOnly(c, c.getEmptyFunctionCallTarget(), 0, Strings.EMPTY_STRING));
     }
 
     public static JSFunctionObject createEmptyFunction(JSRealm realm) {

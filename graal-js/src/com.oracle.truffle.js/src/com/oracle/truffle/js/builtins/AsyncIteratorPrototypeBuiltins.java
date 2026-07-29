@@ -215,8 +215,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 } else {
                     Object result = callNode.executeCall(JSArguments.createOneArg(thisObj, returnMethod, Undefined.instance));
                     JSPromiseObject resultWrapper = promiseResolveNode.executeDefault(result);
-                    JSFunctionObject onFulfilled = JSFunction.create(getRealm(),
-                                    getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.Empty, c -> c.getNamedEmptyFunctionData(Strings.EMPTY_STRING)));
+                    JSFunctionObject onFulfilled = JSFunction.create(getRealm(), JSFunction.createEmptyFunctionData(getContext()));
                     performPromiseThenNode.execute(resultWrapper, onFulfilled, Undefined.instance, promiseCapability);
                 }
             } catch (AbstractTruffleException ex) {

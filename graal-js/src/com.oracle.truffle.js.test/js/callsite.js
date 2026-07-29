@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -32,6 +32,11 @@ function check() {
     assertSame(globalThis, callSite.getThis());
     assertSame('global', callSite.getTypeName());
     receiverChecks(callSite);
+
+    var constructor = Object.getPrototypeOf(callSite).constructor;
+    assertSame('CallSite', constructor.name);
+    assertSame(0, constructor.length);
+    assertSame(undefined, constructor());
 }
 
 function checkStrict(thiz) {
