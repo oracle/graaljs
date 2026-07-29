@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -599,11 +600,16 @@ public class JSContext {
 
     private final JSWebAssemblyInstance.Cache webAssemblyCache;
 
+    @SuppressFBWarnings(value = "UWF_UNWRITTEN_FIELD", justification = "written via VarHandle compareAndSet") //
+    private volatile Map<JSBuiltin, JSFunctionData> builtinFunctionDataFallback;
+    private static final VarHandle builtinFunctionDataFallbackVarHandle;
+
     static {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         try {
             notConstructibleCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "notConstructibleCallTargetCache", CallTarget.class);
             generatorNotConstructibleCallTargetVarHandle = lookup.findVarHandle(JSContext.class, "generatorNotConstructibleCallTargetCache", CallTarget.class);
+            builtinFunctionDataFallbackVarHandle = lookup.findVarHandle(JSContext.class, "builtinFunctionDataFallback", Map.class);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw Errors.shouldNotReachHere(e);
         }
@@ -1834,17 +1840,41 @@ public class JSContext {
 
     public final JSFunctionData getBuiltinFunctionData(JSBuiltin builtin) {
         CompilerAsserts.neverPartOfCompilation();
-        return builtinFunctionDataTable[builtin.getIndex()];
+        int index = builtin.getIndex();
+        if (index < builtinFunctionDataTable.length) {
+            return builtinFunctionDataTable[index];
+        }
+        return getBuiltinFunctionDataFallback(builtin);
+    }
+
+    private JSFunctionData getBuiltinFunctionDataFallback(JSBuiltin builtin) {
+        var fallbackMap = builtinFunctionDataFallback;
+        return fallbackMap == null ? null : fallbackMap.get(builtin);
     }
 
     public final JSFunctionData getOrInsertBuiltinFunctionData(JSBuiltin builtin, JSFunctionData newFunctionData) {
         CompilerAsserts.neverPartOfCompilation();
         int index = builtin.getIndex();
-        JSFunctionData functionData = newFunctionData;
-        if (!FUNCTION_DATA_ARRAY_VAR_HANDLE.compareAndSet(builtinFunctionDataTable, index, (JSFunctionData) null, functionData)) {
-            functionData = (JSFunctionData) FUNCTION_DATA_ARRAY_VAR_HANDLE.getVolatile(builtinFunctionDataTable, index);
+        if (index < builtinFunctionDataTable.length) {
+            JSFunctionData functionData = newFunctionData;
+            if (!FUNCTION_DATA_ARRAY_VAR_HANDLE.compareAndSet(builtinFunctionDataTable, index, (JSFunctionData) null, functionData)) {
+                functionData = (JSFunctionData) FUNCTION_DATA_ARRAY_VAR_HANDLE.getVolatile(builtinFunctionDataTable, index);
+            }
+            return Objects.requireNonNull(functionData);
         }
-        return Objects.requireNonNull(functionData);
+        return getOrInsertBuiltinFunctionDataFallback(builtin, newFunctionData);
+    }
+
+    private JSFunctionData getOrInsertBuiltinFunctionDataFallback(JSBuiltin builtin, JSFunctionData newFunctionData) {
+        var fallbackMap = builtinFunctionDataFallback;
+        if (fallbackMap == null) {
+            fallbackMap = new ConcurrentHashMap<>();
+            if (!builtinFunctionDataFallbackVarHandle.compareAndSet(this, (ConcurrentMap<JSBuiltin, JSFunctionData>) null, fallbackMap)) {
+                fallbackMap = builtinFunctionDataFallback;
+            }
+        }
+        JSFunctionData functionData = fallbackMap.putIfAbsent(builtin, newFunctionData);
+        return functionData == null ? newFunctionData : functionData;
     }
 
     public final boolean neverCreatedChildRealms() {

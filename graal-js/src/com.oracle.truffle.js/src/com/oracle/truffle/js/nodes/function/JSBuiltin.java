@@ -87,9 +87,6 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         assert isAllowedKey(key);
         assert (byte) ecmaScriptVersion == ecmaScriptVersion && (byte) attributeFlags == attributeFlags;
         this.index = NEXT_SLOT.getAndIncrement();
-        if (index >= BUILTIN_FUNCTION_DATA_TABLE_SIZE) {
-            throw new IllegalStateException("Too many builtins: " + (index + 1));
-        }
         this.name = functionName;
         this.fullName = (containerName == null) ? name : Strings.concatAll(containerName, Strings.DOT, name);
         this.key = key;
