@@ -329,7 +329,7 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         protected ByteBuffer getContents() {
-            return isDetached() ? null : ByteBuffer.wrap(byteArray);
+            return isDetached() ? null : Boundaries.byteBufferWrap(byteArray);
         }
 
         @ExportMessage(name = "getByteLength")
